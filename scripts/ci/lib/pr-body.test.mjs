@@ -869,55 +869,79 @@ describe("field, issue #150 — a genuinely multi-line value is captured in full
   });
 });
 
-describe("field, Opus review — a reopened #409 variant in this PR's own first fix", () => {
-  // An earlier version of this fix stopped a value only at the next bold-label line, the
-  // next `## ` heading, or end-of-input. That let an EMPTY label pick up whatever
-  // non-label line came right after it as its "value" -- prose, a `### ` sub-heading, a
-  // bare-CR-separated line -- exactly #409's shape again, just with something other than
-  // a label line underneath. These three cases are Opus's own reproductions.
+describe("field, two Opus security review passes — why { firstLine: true } exists", () => {
+  // Two separate Opus passes on two separate attempts at enumerating "what ends a
+  // multi-line value" each found a REOPENED variant of #409: an empty label followed by
+  // prose, a sub-heading, bare-CR line endings (pass 1), then a trailing note on the very
+  // next line with no blank line, a blockquote, a list item, a thematic break, or a code
+  // fence (pass 2) all still read as "filled in" instead of empty. Enumerating more
+  // boundary shapes only invites the next variant -- the actual fix is structural: the
+  // five security-sensitive call sites in check-pr-template.mjs use `{ firstLine: true }`
+  // instead, which discards everything past the first line break UNCONDITIONALLY, so
+  // there is no boundary-shape enumeration left to be incomplete. Every case below is one
+  // of the two Opus passes' own reproductions, re-run against `firstLine: true`.
 
-  it("case A: an empty Session followed by a blank line then prose still reads as '' (not the prose)", () => {
+  const emptyLabelCases = [
+    ["a blank line then prose", "**Session:**\n\nReviewer not spawned yet -- pending."],
+    ["a ### sub-heading immediately after, no blank line", "**Session:**\n### Not yet reviewed"],
+    ["a plain continuation line immediately after, no blank line (pass 2's regression)", "**Session:**\nReviewer not spawned yet -- pending."],
+    ["a blockquote line immediately after", "**Session:**\n> a note"],
+    ["a list item immediately after", "**Session:**\n- a note"],
+    ["a thematic break immediately after", "**Session:**\n---\na note"],
+    ["a code fence immediately after", "**Session:**\n```\ncode\n```"],
+    ["bare CR (old Mac) line endings", "**Session:**\r**Surfaces examined:**"],
+    ["CRLF line endings", "**Session:**\r\n**Surfaces examined:**"],
+  ];
+
+  for (const [name, text] of emptyLabelCases) {
+    it(`an empty label followed by ${name} still reads as '' under firstLine:true`, () => {
+      assert.equal(field(text, "Session", { firstLine: true }), "");
+    });
+  }
+
+  it("a filled value with a trailing note captures only the first line, never the note (closes pass 2's self-review bypass)", () => {
     const text =
-      "**Model:** Sonnet 5\n**Session:**\n\nReviewer not spawned yet -- pending.";
-    assert.equal(field(text, "Session"), "");
-  });
-
-  it("case A variant: an empty label followed immediately by a ### sub-heading still reads as ''", () => {
-    const text = "**Session:**\n### Not yet reviewed";
-    assert.equal(field(text, "Session"), "");
-  });
-
-  it("case B: a Session value with a trailing note after a blank line captures only the value, not the note", () => {
-    // This is what actually defeats the "reviewer must differ from author" self-review
-    // check: if the real Session value bleeds into the note below it, the compared
-    // string is no longer the same one `## Implemented by` would need to match to be
-    // (wrongly) treated as identical -- or, as here, a genuinely self-authored review
-    // could slip past because the two long, note-including strings don't happen to
-    // collide even though the real session values do.
-    const text =
-      "**Model:** Sonnet 5\n**Session:** lane-abc\n\n" +
+      "**Model:** Sonnet 5\n**Session:** lane-abc\n" +
       "Verdict: APPROVE. Long note that must not become part of the Session value.";
-    assert.equal(field(text, "Session"), "lane-abc");
+    assert.equal(field(text, "Session", { firstLine: true }), "lane-abc");
   });
 
-  it("case C: bare CR (old Mac) line endings between two empty labels still read as ''", () => {
-    const text = "**Model:**\r**Session:**\r**Surfaces examined:**";
-    assert.equal(field(text, "Model"), "");
-    assert.equal(field(text, "Session"), "");
-    assert.equal(field(text, "Surfaces examined"), "");
+  it("a filled value followed by a blank line and a note still captures only the first line", () => {
+    const text =
+      "**Session:** lane-abc\n\nVerdict: APPROVE, some prose here.";
+    assert.equal(field(text, "Session", { firstLine: true }), "lane-abc");
   });
 
-  it("case C variant: CRLF line endings between two empty labels still read as ''", () => {
-    const text = "**Model:**\r\n**Session:**\r\n**Surfaces examined:**";
-    assert.equal(field(text, "Model"), "");
-    assert.equal(field(text, "Session"), "");
+  it("firstLine:true is what actually protects the self-review comparison, exercised end to end", () => {
+    // The exact shape that defeated the comparison in default (multi-line) mode: two
+    // Session values that are IDENTICAL up to the real session id, differing only in a
+    // trailing note with no blank line before it. Multi-line mode would capture the note
+    // as part of the value, so the two long strings would (wrongly) compare as different
+    // even though the actual sessions are the same. firstLine:true captures only
+    // "lane-abc" on both sides, so the comparison correctly sees them as equal.
+    const implementedBy = "**Model:** Sonnet 5\n**Session:** lane-abc\nSome note.";
+    const reviewedBy =
+      "**Model:** Sonnet 5\n**Session:** lane-abc\nA different note entirely.";
+    const opts = { firstLine: true };
+    assert.equal(
+      field(reviewedBy, "Session", opts),
+      field(implementedBy, "Session", opts),
+    );
   });
+});
 
+describe("field, default (multi-line) mode is unaffected by firstLine and still serves issue #150", () => {
   it("does not regress: a genuinely multi-line value with CRLF line endings is still captured in full", () => {
     const text = "**Spec:** line one\r\nline two\r\n**Rules in scope:** n/a";
     assert.equal(field(text, "Spec"), "line one\nline two");
   });
+
+  it("the #409 fix (empty label adjacent to the next label) still holds in default mode", () => {
+    assert.equal(field("**Model:**\n**Session:**", "Model"), "");
+    assert.equal(field("**Model:**\n**Session:** the-session", "Model"), "");
+  });
 });
+
 
 describe("field, exercised through the real pull-request template — check-pr-template.mjs's own checks", () => {
   // These reproduce, at the `sections()`/`field()` level check-pr-template.mjs itself
@@ -939,8 +963,10 @@ describe("field, exercised through the real pull-request template — check-pr-t
     );
     assert.ok(reviewedBy, "## Reviewed by must exist in the template");
 
-    const model = field(reviewedBy.text, "Model");
-    const session = field(reviewedBy.text, "Session");
+    const model = field(reviewedBy.text, "Model", { firstLine: true });
+    const session = field(reviewedBy.text, "Session", {
+      firstLine: true,
+    });
 
     // Before the fix, `model` was "" but `session` came back as a real string (whatever
     // followed on the ## Security review's own "**Model:**" line, once headings and
@@ -965,7 +991,10 @@ describe("field, exercised through the real pull-request template — check-pr-t
       /\*\*Model:\*\*.*$/m,
       "**Model:** Sonnet 5",
     );
-    assert.equal(field(sameModelText, "Model").toLowerCase(), "sonnet 5");
+    assert.equal(
+      field(sameModelText, "Model", { firstLine: true }).toLowerCase(),
+      "sonnet 5",
+    );
 
     const implementedModel = "Sonnet 5";
     const implementedSession = "session-abc";
@@ -998,7 +1027,9 @@ describe("field, exercised through the real pull-request template — check-pr-t
 
     // Untouched placeholder: model reads as "", which fails `/^opus/i.test(model)` —
     // exactly the "must name Opus" failure check-pr-template.mjs reports.
-    const unfilledModel = field(securityReview.text, "Model");
+    const unfilledModel = field(securityReview.text, "Model", {
+      firstLine: true,
+    });
     assert.equal(unfilledModel, "");
     assert.equal(/^opus/i.test(unfilledModel), false);
 
@@ -1007,7 +1038,10 @@ describe("field, exercised through the real pull-request template — check-pr-t
       /\*\*Model:\*\*.*$/m,
       "**Model:** Opus 5",
     );
-    assert.equal(/^opus/i.test(field(filledOpus, "Model")), true);
+    assert.equal(
+      /^opus/i.test(field(filledOpus, "Model", { firstLine: true })),
+      true,
+    );
 
     // A genuinely filled, WRONG value is still correctly rejected — the fix does not
     // weaken this check into always passing.
@@ -1015,7 +1049,10 @@ describe("field, exercised through the real pull-request template — check-pr-t
       /\*\*Model:\*\*.*$/m,
       "**Model:** Sonnet 5",
     );
-    assert.equal(/^opus/i.test(field(filledWrong, "Model")), false);
+    assert.equal(
+      /^opus/i.test(field(filledWrong, "Model", { firstLine: true })),
+      false,
+    );
   });
 });
 

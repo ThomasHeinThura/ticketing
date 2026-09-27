@@ -518,60 +518,62 @@ export function sections(markdown) {
 }
 
 /**
- * `**Model:** Opus 5` → `Opus 5`. Also captures a genuinely MULTI-LINE value in full
- * (issue #150) — e.g. `**Spec:** blocked — see\nworkflows.md for the open findings` reads
- * as one value, not just `"blocked — see"`.
+ * `**Model:** Opus 5` → `Opus 5`.
  *
- * **Where a field's value ends.** Not "the rest of the document" (that would swallow
- * unrelated content past the current section), and not "the first newline" (that is
- * issue #150's bug: GitHub renders a manual line break inside a paragraph as a space, so a
- * human reading the rendered body sees one sentence while the old regex, lacking the `s`
- * (dotAll) flag, silently dropped everything after the first `\n`). The value runs from
- * right after the label through the next of: another bold-label line (`**Xyz:**`), a BLANK
- * line (an actual paragraph break — a single line break stays inside the same value, a
- * blank line starts a new one), or a `#`-prefixed heading line of ANY level — or the end of
- * the input — whichever comes first, trimmed of surrounding whitespace. `\r\n`/bare `\r`
- * are normalized to `\n` before matching, so a value's line breaks are recognized
- * regardless of the body's actual line-ending style.
+ * **Two Opus security review passes on earlier versions of a multi-line capture (issue
+ * #150) each found a REOPENED variant of #409** (the exact class of bug this file exists
+ * to prevent): every attempt at enumerating "what ends a field's value" (a blank line, a
+ * heading, a thematic break, a list item, a table row, ...) kept missing another shape —
+ * an empty label followed by prose, or by a note on the very next line, or by a quote/list/
+ * code-fence line, all still read as "filled in" instead of empty, defeating the "must be
+ * filled in" check and the "reviewer must differ from author" self-review check.
+ *
+ * **The actual fix is structural, not another boundary**: only ONE real caller
+ * (`check-reviews.mjs`'s `Spec` field) needs a multi-line value at all, and for that
+ * caller over-capturing is always safe — it can only make `check-reviews.mjs` check MORE
+ * `.md` paths than `main` would, never fewer. Every other real caller
+ * (`check-pr-template.mjs`'s `Model`/`Session` under `## Implemented by` and
+ * `## Reviewed by`, and `Model` under `## Security review`) is exactly the security-
+ * sensitive comparison this bug class keeps defeating, and multi-line capture can only
+ * WEAKEN those checks — there is no way for a longer captured string to make an unfilled
+ * field look more empty, or a self-review look less self-authored. So those five calls now
+ * pass `{ firstLine: true }` and get back the ORIGINAL, narrowly-scoped, single-line
+ * semantics (plus #409's own same-line-only label-to-value gap fix, which is unaffected
+ * either way) — provably safe because it is exactly what was already in place, and
+ * extensively exercised, before issue #150 was ever filed.
  *
  * Issue #409: the whitespace between the label and the value used to be `\s*`, which
  * matches a newline. A label line with nothing after it (`**Model:**`), immediately
  * followed by another bold-label line with no blank line between them, let `\s*` consume
  * the newline and hand the NEXT line's text to the capture as if it were THIS label's
- * value — a non-empty, garbage string instead of `""`. Reproduced against the untouched
- * `.github/pull_request_template.md` placeholder for `## Reviewed by`
- * (`**Model:** <!-- ... -->` / `**Session:** <!-- ... -->`), which reduces to two adjacent
- * blank bold-label lines once `stripComments()` removes the HTML comments: `field(text,
- * "Model")` returned `"**Session:**"` instead of `""`, defeating every "must be filled in"
- * check in check-pr-template.mjs that relies on `field(...) === ""`.
+ * value — a non-empty, garbage string instead of `""`. That fix (same-line whitespace
+ * only, `[ \t]*`, between the label and the value) applies identically in both modes below.
  *
- * That fix (same-line whitespace only, `[ \t]*`, between the label and the value) is kept
- * exactly as is: it still governs only the gap between the label and where the value
- * *starts*. Where the value *ends* is the separate question this fix answers.
- *
- * **Opus security review of an earlier version of this fix found a REOPENED variant of
- * #409**, the exact class of bug this file exists to prevent: the first cut of this fix
- * stopped a value only at the next label line, the next `## ` heading, or end-of-input —
- * so an empty label followed by ANY other kind of line (plain prose, a `### ` sub-heading,
- * a bare-`\r`-separated line) silently captured that as its "value", again defeating the
- * "must be filled in" and "reviewer must differ from author" checks. The boundary above
- * (also stopping at a blank line and at a heading of any level, plus CR normalization)
- * closes that reopened gap — an empty label immediately followed by a blank line, prose, a
- * sub-heading, or a bare-CR-separated line all still correctly capture `""`, exactly like
- * an empty label immediately followed by another label line does. See the `## Reviewed by`
- * self-review / #409-variant tests below for the exact reproductions this closes.
+ * @param {string} text
+ * @param {string} label
+ * @param {{ firstLine?: boolean }} [options] `firstLine: true` stops the value at the
+ *   first line break or end of input — the safe, narrowly-scoped mode every
+ *   security-sensitive caller uses. Omitted/false keeps the value running through
+ *   subsequent lines up to the next bold-label line, a blank line, a `## ` heading, or
+ *   end of input — multi-line capture (issue #150), for the one caller
+ *   (`check-reviews.mjs`'s `Spec`) where a longer value is never unsafe.
  */
-export function field(text, label) {
+export function field(text, label, options = {}) {
+  const normalized = text.replace(/\r\n?/g, "\n");
+  if (options.firstLine) {
+    const pattern = new RegExp(
+      `^[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*(.*)$`,
+      "im",
+    );
+    const match = pattern.exec(normalized);
+    return match ? match[1].trim() : "";
+  }
   const pattern = new RegExp(
     `^[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*([\\s\\S]*?)` +
-      "(?=\\n[ \\t]*\\*\\*[^*\\n]+:\\*\\*|\\n[ \\t]*\\n|\\n[ \\t]*#|(?![\\s\\S]))",
+      "(?=\\n[ \\t]*\\*\\*[^*\\n]+:\\*\\*|\\n[ \\t]*\\n|\\n[ \\t]*##(?!#)|(?![\\s\\S]))",
     "im",
   );
-  // Bare `\r` (old Mac line endings) and `\r\n` both normalize to `\n` first -- the
-  // pattern above only recognizes `\n` as a line break, and a bare `\r` on its own
-  // reopens issue #409's exact shape (an empty label reading as filled because nothing
-  // the pattern treats as a boundary follows it before the next label's text).
-  const match = pattern.exec(text.replace(/\r\n?/g, "\n"));
+  const match = pattern.exec(normalized);
   return match ? match[1].trim() : "";
 }
 

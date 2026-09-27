@@ -269,10 +269,21 @@ async function main() {
     }
   }
   if (implementedBy && reviewedBy) {
-    const implementedModel = field(implementedBy.text, "Model");
-    const implementedSession = field(implementedBy.text, "Session");
-    const reviewedModel = field(reviewedBy.text, "Model");
-    const reviewedSession = field(reviewedBy.text, "Session");
+    // firstLine: true (issue #150 delta) -- these five calls (here and the Security
+    // review Model check below) are exactly the security-sensitive comparisons the #409
+    // bug class keeps reopening variants of; multi-line capture can only weaken them, so
+    // they keep the original, narrowly-scoped, single-line semantics. See field()'s own
+    // doc comment in pr-body.mjs.
+    const implementedModel = field(implementedBy.text, "Model", {
+      firstLine: true,
+    });
+    const implementedSession = field(implementedBy.text, "Session", {
+      firstLine: true,
+    });
+    const reviewedModel = field(reviewedBy.text, "Model", { firstLine: true });
+    const reviewedSession = field(reviewedBy.text, "Session", {
+      firstLine: true,
+    });
 
     if (reviewedModel === "" || reviewedSession === "") {
       failures.push(
@@ -366,7 +377,7 @@ async function main() {
         : `removes ${scope.removed.length} glob(s) from the security-review list ` +
           `(${scope.removed.join(", ")})`;
 
-    const model = field(securityReview.text, "Model");
+    const model = field(securityReview.text, "Model", { firstLine: true });
     if (!/^opus/i.test(model)) {
       failures.push(
         violation(
