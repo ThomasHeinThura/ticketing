@@ -280,3 +280,18 @@ another code delta.
 **This closes the review chain for PR #423** — five Opus passes across the original
 rewrite and four rounds of narrow, each-time-real findings, ending CLEAR WITH FINDINGS with
 the one remaining item (F7) reasoned as non-blocking and filed as a follow-up.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `2f0b28d21623ee132ac119d5ccbf8fdf81352600`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. The merge from `main` touches two of this PR's own files, but
+both changes are pure documentation/comment text from already-reviewed, already-merged PRs
+with zero logic impact: `docs/04-engineering/error-fix-loop.md` gains PR #422's own lesson
+entry (unrelated content, doc-only), and `scripts/ci/lib/scratch-repo.mjs` gets only its
+top-of-file doc comment updated to describe PR #410's already-reviewed `repoRoot`
+derivation change — no code lines changed in either file. Independently re-ran the full
+test suite (747/747, up from 741 — the extra 6 are unrelated tests merged in from other
+PRs) and `check-env.mjs` against the real repo (unchanged: 29/52) after this merge.
