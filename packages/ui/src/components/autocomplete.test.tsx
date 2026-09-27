@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { expectNoA11yViolations } from "../test/a11y";
 import {
   Autocomplete,
   AutocompleteInput,
@@ -51,5 +52,32 @@ describe("Autocomplete", () => {
 
     fireEvent.click(screen.getByText("Banana"));
     expect(onSelectBanana).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the trigger button with a default accessible name", () => {
+    render(
+      <Autocomplete items={["Apple", "Banana"]}>
+        <AutocompleteInput aria-label="Search fruit" showTrigger />
+      </Autocomplete>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Toggle options" }),
+    ).toBeInTheDocument();
+  });
+
+  it("has no accessibility violations", async () => {
+    const { baseElement } = render(
+      <Autocomplete inline items={["Apple", "Banana"]} open>
+        <AutocompleteInput aria-label="Search fruit" showTrigger />
+        <AutocompleteList>
+          {(item: string) => (
+            <AutocompleteItem key={item}>{item}</AutocompleteItem>
+          )}
+        </AutocompleteList>
+      </Autocomplete>,
+    );
+
+    await expectNoA11yViolations(baseElement);
   });
 });
