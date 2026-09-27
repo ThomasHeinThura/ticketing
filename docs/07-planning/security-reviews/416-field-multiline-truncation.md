@@ -104,3 +104,13 @@ commit is #420's already-reviewed merge, zero overlap with this PR's own files. 
 update also refreshes the `pull_request` event payload, clearing a stale-body false failure
 on `check-pr-template.mjs`'s Note-link check (same class as before — the payload the
 previous run read predated the Note line, despite the live body already containing it).
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `27eeca7cfb130260f6b8f82c03babc2652ee0032`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
+reviewed head (`91a5845c5a61b0edcff3e56d73c25cfae90c36d0`) and this one — the intervening
+commit is #327's already-reviewed merge (docs-only, no overlap with this PR's own files).
