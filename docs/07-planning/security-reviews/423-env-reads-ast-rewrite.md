@@ -212,3 +212,40 @@ real global — a false positive, safe direction, filed as a follow-up.
 
 **Surfaces examined:** the five fixes plus surrounding code; 41 hand-built probes against
 both this head and `871e16d`; the real repo via `check-env.mjs --report` (unchanged: 29/52).
+
+---
+
+## Security review — pass 4 (short delta on the ExpressionStatement fix)
+
+**Model:** Opus 5.5, fresh independent context (did not author or run passes 1/2/3)
+**Session:** subagent `a1dc109931e3a8e02`
+
+**Reviewed head:** `40f4011717bcf8b65b6ce7df4e231bfbc151b20b`
+
+**Verdict: BLOCKING.** Confirmed pass 3's `ExpressionStatement` fix is implemented exactly
+as specified and stress-tested the new boundary itself (labeled statements, block-wrapped
+assignments, parenthesized/cast-wrapped standalone statements, `if`/`for` bodies) — all
+correctly stay `[]`, all still correctly charge a later genuine read through the alias.
+Confirmed the accepted double-charge side effect is a harmless over-count. Confirmed both
+F5 doc corrections are present and accurate.
+
+**Finding F6 (new, a different dimension from F3):** an exported binding assigned LATER
+(not at its own declaration) is silently dropped — `export let x; x = process;` gives `[]`,
+while `export let x = process;` correctly charges. Root cause:
+`handleBindingDeclaration`'s own module-boundary charge only fires when the assignment IS
+the declaration (the `exported` parameter), and the `BinaryExpression` dispatch for a later
+reassignment always passes `exported = false`, since a plain assignment has no way to know
+whether the name it's assigning to was declared with `export`. Confirmed a genuine
+within-PR regression (charged at `871e16d`, silently dropped starting at the pass-2 fix).
+
+**Exact fix specified and pre-tested in a throwaway copy:** collect the set of top-level
+`export`-modified variable-statement declaration names once per file, then have the
+`BinaryExpression` dispatch pass `exportedNames.has(node.left.text)` instead of a
+hardcoded `false` for the `exported` argument. Confirmed this closes all three variants
+tested while leaving already-correct cases unaffected. One accepted, safe-direction
+ceiling: a local variable in an inner scope sharing a name with a top-level exported one
+would over-charge, not under-charge.
+
+**Surfaces examined:** the pass-3 fix and its new boundary (11 hand-built adversarial
+variants); the double-charge side effect; both F5 doc corrections; the real repo
+(unchanged: 29/52); the full test suite (736/736).
