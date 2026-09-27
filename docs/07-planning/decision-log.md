@@ -15,6 +15,16 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-27 · `input-otp`, `react-day-picker`, `react-hook-form` added to `packages/ui` devDependencies (issue #9 primitive moves)
+
+**Decision:** `input-otp`, `react-day-picker` and `react-hook-form` are added to `packages/ui/package.json`, at the same versions `apps/web` already pins, to support moving `input-otp.tsx`, `calendar.tsx` and `form.tsx` into `packages/ui/src/components/`. `check:deps`'s `UI_RUNTIME_IMPORTS` allowlist and `docs/01-architecture/monorepo-layout.md`'s boundary diagram are updated to match — `pnpm check:deps` correctly failed until this was done, which is the gate working as intended (a new runtime dependency on a moved primitive is exactly the kind of edge it's meant to catch), not a defect to route around.
+
+**Why:** these three primitives cannot function without their respective libraries (an OTP input, a date picker, and a form-state manager), and all three are already vetted, already-lockfiled dependencies of `apps/web` — this is "the same dependency now used by a second workspace package," not a new supply-chain surface.
+
+**Alternatives:** leave the three primitives in `apps/web/src/components/ui/` rather than move them (rejected — that's the exact "apps/web/src/components/ui is empty" gate issue #9 is not yet closed on, and these are legitimate, reusable primitives, not app-specific glue like `error-display.tsx`/`error-test.tsx`, which correctly stayed behind); vendor a second identical devDependency pin instead of reusing the existing versions (rejected — needless divergence for no benefit).
+
+**Decided by:** the orchestrating session, 2026-09-27, under Thomas's standing delegation for implementation-detail dependency choices that don't change architecture or gate semantics.
+
 ### 2026-09-27 · `pal-mcp` re-tested after Thomas said the leak was fixed — LEAK STILL REPRODUCES, suspension stands
 
 **Decision:** `pal-mcp` remains suspended as the reviewer/auditor of record. Thomas asked this session to resume using it, stating he had fixed the cross-call content leak on the 9Router side. Before complying, a fresh adversarial re-test was run (4 isolated calls, synthetic throwaway content only, no real repo content submitted): 3 of 4 came back contaminated with content never submitted in that call. This is a materially larger, still-adversarial sample than the earlier "2 clean calls" that gave a false "seems fixed" signal in this same session on 2026-09-26 — that earlier all-clear was wrong, and this session is not repeating that mistake by trusting a second unverified "it's fixed" claim.
