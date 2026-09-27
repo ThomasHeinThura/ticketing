@@ -61,7 +61,7 @@ Both PRs are behind `main` by 5 commits. None of those commits touches `packages
 
 ## Verdict
 
-- **#389: CLEAR** at `f6686cac5379fe44aad8536ad6d8c5a39410f61a`
+- **#389: CLEAR** at `f6686cac5379fe44aad8536ad6d8c5a39410f61a` — merged to `main` at `4fbb036f8cfba1175b9fa02a46b5f40062044ca4` (docs-only lightweight re-confirmation on top).
 - **#390: CLEAR** at `c375136c88306b2afff6dc7792758cdc038ee699`
 
 ---
@@ -75,3 +75,13 @@ Both PRs are behind `main` by 5 commits. None of those commits touches `packages
 
 - `git show --remerge-diff 70ae2ff` is empty — clean automatic merge.
 - Brings in 9 merged PRs' worth of unrelated `main` history (#383, #388, and their own docs/decision-log entries), zero overlap with `packages/ui/**` or the dependency-graph files this review covers.
+
+---
+
+## Merge confirmation: #389 landed on main, #390's own merge is clean (2026-09-27)
+
+**Reviewed head:** post-merge, pending exact SHA
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+#389 merged to `main` at `4fbb036f8cfba1175b9fa02a46b5f40062044ca4`. #390's merge of `main` into its own branch produced exactly one conflict: this note file itself (both branches independently appended their own re-confirmation sections after the shared "Verdict" section) — resolved by keeping both sections, no content dropped or altered. `packages/ui/package.json`, `pnpm-lock.yaml`, `a11y.ts`, and `setup.ts` merged with zero conflict, since #389's merged version is byte-identical to what #390 already had (both PRs carried the same reconciled content throughout). No security-relevant content changed by this merge.
