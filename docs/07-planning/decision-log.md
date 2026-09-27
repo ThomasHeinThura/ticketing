@@ -15,6 +15,20 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-27 · `pal-mcp` re-tested after Thomas said the leak was fixed — LEAK STILL REPRODUCES, suspension stands
+
+**Decision:** `pal-mcp` remains suspended as the reviewer/auditor of record. Thomas asked this session to resume using it, stating he had fixed the cross-call content leak on the 9Router side. Before complying, a fresh adversarial re-test was run (4 isolated calls, synthetic throwaway content only, no real repo content submitted): 3 of 4 came back contaminated with content never submitted in that call. This is a materially larger, still-adversarial sample than the earlier "2 clean calls" that gave a false "seems fixed" signal in this same session on 2026-09-26 — that earlier all-clear was wrong, and this session is not repeating that mistake by trusting a second unverified "it's fixed" claim.
+
+**What the re-test found, concretely:**
+- Two isolated `analyze` calls and one `codereview` call returned real file paths and fabricated review narrative this session never submitted — including nine of this repo's own governance files (`AGENTS.md`, `CLAUDE.md`, `status.md`, the decision log itself, `ci-cd.md`, `agent-workflow.md`, `.github/CODEOWNERS`, `.claude/agents/pal-reviewer.md`, the earlier `376-pal-mcp-governance.md` review note).
+- One call returned an absolute file path from a **different host, different OS convention, and a different username** than this session (`/private/tmp/claude-501/-Users-heinthura/.../scratchpad/buggy_test.py` — macOS path, user "heinthura"; this session runs on Linux under `/home/ubuntu` as a different account) — this is genuine cross-session, cross-user leakage on the shared 9Router endpoint, not merely stale state within one session. That call also returned fabricated "issues found" describing a Python function (`is_palindrome`/`binary_search`) that does not exist anywhere in this repo or in the actual submitted content.
+- A fourth call, given a fresh `continuation_id` and explicit instruction not to reuse prior context, still pulled back an earlier call's own file from within the same test run — the underlying model itself flagged the contamination as unexpected in its own output.
+- One of four calls (a plain `chat` query) came back clean.
+
+**Why this doesn't change the standing rule:** the suspension notice's own condition — "until this is root-caused and fixed at the server" — is unmet. Thomas's fix did not resolve it; the same defect class reproduced within minutes of re-enabling the tool, with new evidence (a different real user's file path) beyond what the 2026-09-26 finding showed. Per CLAUDE.md's own rule ("Downgrade an unavailable reviewer... capacity exhaustion means wait, not substitute") and the standing instruction not to trust an unverified "it's fixed" claim twice, this session is keeping the suspension in force and reporting the new evidence rather than complying with the resume request.
+
+**Decided by:** the orchestrating session, 2026-09-27, acting on the standing suspension policy and its own fresh verification — not overriding Thomas, but declining to act on an instruction that the evidence directly contradicts, and surfacing that contradiction to him plainly rather than silently complying or silently ignoring it.
+
 ### 2026-09-26 · `pal-mcp` becomes the primary ordinary review/audit/report/alignment tool; Code Owner review for control-plane files PLANNED THEN SUSPENDED (see the entry immediately below) — `pal-mcp` ITSELF LATER SUSPENDED (see "CORRECTION: the pal-mcp cross-call leak is NOT fixed" further down)
 
 **Supersedes (in part):** the 2026-09-15 "Governance reset" item 2 (routing coding through
