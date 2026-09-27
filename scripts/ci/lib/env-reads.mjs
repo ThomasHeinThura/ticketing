@@ -177,6 +177,33 @@ const FUNCTION_LIKE_KINDS = new Set([
  * did (#403's ordinary review, Finding 1: a shadow parameter in one function was silently
  * suppressing an unrelated, real `process.env.X` read elsewhere in the same file).
  */
+function isWithin(node, root) {
+  if (!root) return false;
+  for (let current = node; current; current = current.parent) {
+    if (current === root) return true;
+  }
+  return false;
+}
+
+/** Is `node` lexically within `fn`'s own shadowing region — its body, or one of its
+ * parameters' own name/default-value bindings? A computed class-member/method key
+ * (`current.name`), a decorator on the function/method itself, or a decorator on ONE of its
+ * OWN parameters, all evaluate in the OUTER scope, before that parameter's binding takes
+ * effect — none of those make `current` "inside" `fn` for shadowing purposes (Opus review of
+ * #423 pass 1: `class C { [process.env.SECRET_KEY](process) {} }` must still see the real
+ * `process`, even though the method's own parameter happens to be named `process`). */
+function isShadowRegion(node, fn) {
+  if (isWithin(node, fn.body)) return true;
+  for (const parameter of fn.parameters ?? []) {
+    if (
+      isWithin(node, parameter.name) ||
+      (parameter.initializer && isWithin(node, parameter.initializer))
+    )
+      return true;
+  }
+  return false;
+}
+
 function isShadowedAt(node, name) {
   for (let current = node?.parent; current; current = current.parent) {
     if (
@@ -185,7 +212,8 @@ function isShadowedAt(node, name) {
         (parameter) =>
           parameter.name?.kind === ts.SyntaxKind.Identifier &&
           parameter.name.text === name,
-      )
+      ) &&
+      isShadowRegion(node, current)
     )
       return true;
     if (
@@ -286,35 +314,170 @@ function classify(startNode, aliases) {
   }
 }
 
-/** The value an exported arrow/function *actually* exposes, unwrapping a concise arrow body
- * or a shallow `return` in the first block of statements (a return nested in an `if`/loop is
- * an accepted limit — the exported-boundary check this feeds is a narrow, deliberate net for
- * #382's M1 examples, not a general control-flow analysis). Returns `expr` itself, unchanged,
- * when it is not a function at all. */
-function unwrapFunctionReturn(expr) {
-  const node = unwrap(expr);
-  if (!node) return expr;
-  if (node.kind === ts.SyntaxKind.ArrowFunction) {
-    if (node.body?.kind !== ts.SyntaxKind.Block) return unwrap(node.body);
-    return shallowReturn(node.body) ?? expr;
+/**
+ * Structural default-flip (Opus review of #423 pass 1, "the coverage-regression class"):
+ * walk up through the same transparent wrappers `unwrap` sees through (a real parent may be
+ * several parens/casts/`await`s above the node classify() actually resolved), and return the
+ * outermost transparent wrapper together with ITS real parent — the syntactic position that
+ * actually decides whether this value is consumed safely.
+ */
+function effectiveParent(node) {
+  let current = node;
+  for (;;) {
+    const parent = current.parent;
+    if (
+      parent &&
+      (parent.kind === ts.SyntaxKind.ParenthesizedExpression ||
+        parent.kind === ts.SyntaxKind.AsExpression ||
+        parent.kind === ts.SyntaxKind.SatisfiesExpression ||
+        parent.kind === ts.SyntaxKind.TypeAssertionExpression ||
+        parent.kind === ts.SyntaxKind.NonNullExpression ||
+        parent.kind === ts.SyntaxKind.AwaitExpression) &&
+      parent.expression === current
+    ) {
+      current = parent;
+      continue;
+    }
+    return { node: current, parent };
   }
-  if (node.kind === ts.SyntaxKind.FunctionExpression) {
-    return shallowReturn(node.body) ?? expr;
-  }
-  return expr;
 }
 
-function shallowReturn(block) {
-  if (!block) return null;
-  for (const statement of block.statements) {
-    if (
-      statement.kind === ts.SyntaxKind.ReturnStatement &&
-      statement.expression
-    ) {
-      return unwrap(statement.expression);
-    }
-  }
-  return null;
+/** Is `effNode` exactly the initializer of a declaration whose OWN alias-tracking dispatch
+ * (`handleBindingDeclaration`, reached from `visit`'s `VariableDeclaration`/`Parameter`/
+ * `BinaryExpression` cases) already decides whether — and how — to charge it? Those three
+ * sites are the only places a plain identifier/object/array binding target gets tracked
+ * forward as an alias instead of charged as a bare escape right here; charging the generic
+ * default there too would double-count every later use of the alias. */
+function isTrackedAliasDeclarationSite(effNode, parent) {
+  if (!parent) return false;
+  const bindableName = (kind) =>
+    kind === ts.SyntaxKind.Identifier ||
+    kind === ts.SyntaxKind.ObjectBindingPattern ||
+    kind === ts.SyntaxKind.ArrayBindingPattern;
+  if (
+    (parent.kind === ts.SyntaxKind.VariableDeclaration ||
+      parent.kind === ts.SyntaxKind.Parameter) &&
+    parent.initializer === effNode
+  )
+    return bindableName(parent.name?.kind);
+  if (
+    parent.kind === ts.SyntaxKind.BinaryExpression &&
+    parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+    parent.right === effNode &&
+    parent.left.kind === ts.SyntaxKind.Identifier
+  )
+    return true;
+  return false;
+}
+
+/**
+ * Opus review of #423 pass 1 — the structural fix: `classify()` resolving a node to
+ * `process`/`globalThis`/`importMeta`/`env`/`importMetaEnv` is, by default, a read of
+ * interest (charge it as an escape), unless the immediate (transparent-wrapper-adjusted)
+ * context is one of the specifically recognized SAFE narrowings:
+ *
+ *  - a member/element access that narrows it further, OR a genuine named/computed property
+ *    read off the bag itself (both already handled elsewhere — `visit`'s own
+ *    `PropertyAccessExpression`/`ElementAccessExpression` case for the latter);
+ *  - an argument already consumed by a wrapper call `classify()` itself resolves
+ *    (`Reflect.get`, `Object.getOwnPropertyDescriptor`, `require`/dynamic `import`) —
+ *    charging the argument too would double-count the same value the call was built from;
+ *  - a tracked-alias/destructuring declaration site — `handleBindingDeclaration` already
+ *    decides whether and how to charge it (unconditionally for the `env`/`importMetaEnv` bag
+ *    itself, only on module-boundary crossing for a bare `process`/`import.meta` alias).
+ *
+ * Every other place one of these five values appears as a value — a plain identifier
+ * reference, a constructor/call argument, a return value at any depth, an operator operand,
+ * an assignment target that is not a plain identifier, a class field initializer, a
+ * destructuring pattern with a quoted/computed key, a JSX spread/prop, and so on — is charged
+ * here, structurally, because nothing more specific claimed it; not because that particular
+ * shape was separately enumerated. Takes `classify`'s two collaborators (the aliases-in-
+ * progress and the actual charging function) as parameters — this function is pure/testable
+ * on its own structural logic, and `findEnvReadsInSourceFile` is the only real caller.
+ */
+function isSafeConsumingContext(node, aliases) {
+  const { node: effNode, parent } = effectiveParent(node);
+  if (
+    (parent?.kind === ts.SyntaxKind.PropertyAccessExpression ||
+      parent?.kind === ts.SyntaxKind.ElementAccessExpression) &&
+    parent.expression === effNode
+  )
+    return true;
+  if (
+    parent?.kind === ts.SyntaxKind.CallExpression &&
+    Array.prototype.includes.call(parent.arguments ?? [], effNode) &&
+    classify(parent, aliases) !== null
+  )
+    return true;
+  if (isTrackedAliasDeclarationSite(effNode, parent)) return true;
+  // A truthiness test — `if (process)`, `while (import.meta.env)` — reads nothing OUT of the
+  // bag/global and hands the value to no one; matches the existing, pre-#423 "does not flag
+  // D3 shape L1's false positives" behavior (a condition test is not a read).
+  if (
+    (parent?.kind === ts.SyntaxKind.IfStatement ||
+      parent?.kind === ts.SyntaxKind.WhileStatement ||
+      parent?.kind === ts.SyntaxKind.DoStatement) &&
+    parent.expression === effNode
+  )
+    return true;
+  if (
+    parent?.kind === ts.SyntaxKind.ConditionalExpression &&
+    parent.condition === effNode
+  )
+    return true;
+  return false;
+}
+
+/** Is `node` a declaration's own BINDING name — a `const p = ...`, a parameter, or a
+ * destructuring target — rather than a reference to whatever value that name resolves to?
+ * Real JS scoping distinguishes a binding from a reference structurally; `classify()` must
+ * never be asked "what does this NAME denote" for the name being introduced, only for a real
+ * usage of it (matches this file's own "does not flag D3 shape L1's false positives" note:
+ * "this design never calls classify() on a declaration's own name, only on the values
+ * initializers/arguments actually resolve to"). A `{ process }` SHORTHAND property is
+ * deliberately excluded here — that one Identifier is simultaneously the key and a genuine
+ * value reference (D3's own "object literal shorthand property" case). */
+const DECLARATION_NAME_HOLDER_KINDS = new Set([
+  // Binds a NEW local name — not a reference to whatever that name resolves to.
+  ts.SyntaxKind.VariableDeclaration,
+  ts.SyntaxKind.Parameter,
+  ts.SyntaxKind.BindingElement,
+  ts.SyntaxKind.ImportSpecifier,
+  ts.SyntaxKind.ImportClause,
+  ts.SyntaxKind.NamespaceImport,
+  // A property/method/class/function's own NAME is a key, not a value — `process` as an
+  // object-literal property key (`{ process: { env: {...} } }`) or a class/method/function
+  // name is exactly as unrelated to the real global as any other identically-spelled local
+  // (matches this file's own "ignores nested properties named like runtime globals" note).
+  // `ShorthandPropertyAssignment` is deliberately NOT here — that one identifier is
+  // simultaneously the key and a genuine value reference (D3's own shorthand-property case).
+  ts.SyntaxKind.PropertyAssignment,
+  ts.SyntaxKind.MethodDeclaration,
+  ts.SyntaxKind.PropertyDeclaration,
+  ts.SyntaxKind.GetAccessor,
+  ts.SyntaxKind.SetAccessor,
+  ts.SyntaxKind.EnumMember,
+  ts.SyntaxKind.PropertySignature,
+  ts.SyntaxKind.MethodSignature,
+  ts.SyntaxKind.FunctionDeclaration,
+  ts.SyntaxKind.FunctionExpression,
+  ts.SyntaxKind.ClassDeclaration,
+  ts.SyntaxKind.ClassExpression,
+  // A member access's own `.name` (`options.process`) is a property name, not a reference to
+  // whatever variable happens to share that spelling — `classify`'s own
+  // `PropertyAccessExpression` case never looks at it either, only at `.expression`; matches
+  // the existing "ignores nested properties named like runtime globals" test.
+  ts.SyntaxKind.PropertyAccessExpression,
+]);
+
+function isDeclarationBindingName(node) {
+  const parent = node.parent;
+  return (
+    node.kind === ts.SyntaxKind.Identifier &&
+    !!parent &&
+    parent.name === node &&
+    DECLARATION_NAME_HOLDER_KINDS.has(parent.kind)
+  );
 }
 
 function hasExportModifier(node) {
@@ -417,10 +580,17 @@ export function findEnvReadsInSourceFile(sourceFile) {
     if (sourceKind === "process" || sourceKind === "importMeta") {
       const bagKind = sourceKind === "process" ? "env" : "importMetaEnv";
       for (const element of pattern.elements) {
-        if (element.dotDotDotToken) continue;
+        if (element.dotDotDotToken) continue; // accepted limit, unchanged — see file header
         const keyNode = element.propertyName ?? element.name;
-        if (keyNode.kind !== ts.SyntaxKind.Identifier || keyNode.text !== "env")
+        if (keyNode.kind !== ts.SyntaxKind.Identifier) {
+          // A quoted or computed key off `process`/`import.meta` itself — same fail-closed
+          // reasoning as `memberMatch`'s own computed-key default: cannot prove this key is
+          // NOT `"env"`, so charge the escape rather than silently drop it (Opus review of
+          // #423 pass 1, "Destructuring from process | a quoted or computed key").
+          chargeEscape(element, bagKind);
           continue;
+        }
+        if (keyNode.text !== "env") continue;
         chargeEscape(element, bagKind);
         if (element.name.kind === ts.SyntaxKind.Identifier) {
           (bagKind === "env" ? aliases.env : aliases.importMetaEnv).add(
@@ -433,13 +603,15 @@ export function findEnvReadsInSourceFile(sourceFile) {
 
     if (sourceKind === "globalThis") {
       for (const element of pattern.elements) {
-        if (element.dotDotDotToken) continue;
+        if (element.dotDotDotToken) continue; // accepted limit, unchanged — see file header
         const keyNode = element.propertyName ?? element.name;
-        if (
-          keyNode.kind !== ts.SyntaxKind.Identifier ||
-          keyNode.text !== "process"
-        )
+        if (keyNode.kind !== ts.SyntaxKind.Identifier) {
+          // Same fail-closed reasoning as the `process`/`import.meta` branch above, applied
+          // to a quoted/computed key reaching for `"process"` off `globalThis`.
+          chargeEscape(element, "process.env");
           continue;
+        }
+        if (keyNode.text !== "process") continue;
         if (element.name.kind === ts.SyntaxKind.Identifier) {
           aliases.process.add(element.name.text);
         } else if (element.name.kind === ts.SyntaxKind.ObjectBindingPattern) {
@@ -481,21 +653,29 @@ export function findEnvReadsInSourceFile(sourceFile) {
     }
 
     if (!exported) return;
-    const unwrapped = unwrapFunctionReturn(initializer);
-    if (unwrapped !== initializer) {
-      // A function body's return value crossing the module boundary (#382 M1's
-      // `export const get = () => process`) — `get` itself is a function, not an alias,
-      // so it is never added to `aliases`, only checked for this one escape charge.
-      chargeBareValueIfEscaping(unwrapped);
-    } else if (plainKind === "process" || plainKind === "importMeta") {
-      // env/importMetaEnv classifications were already charged above, unconditionally;
-      // only the bare-process/import.meta case is new here (#382 M1's `export const p =
-      // process` / `export default process`, handled at the ExportAssignment case).
+    if (plainKind === "process" || plainKind === "importMeta") {
+      // env/importMetaEnv classifications were already charged above, unconditionally; only
+      // the bare-process/import.meta case is new here (#382 M1's `export const p = process`
+      // / `export default process`). A function VALUE (`export const get = () => process`)
+      // is not a function classify() resolves at all — it is caught generically instead, by
+      // `maybeChargeBareEscape` reaching the arrow's own return value during the ordinary
+      // tree walk into its body, the same as any other return, exported or not.
       chargeBareValueIfEscaping(initializer);
     }
   }
 
   function visit(node) {
+    if (
+      (node.kind === ts.SyntaxKind.Identifier ||
+        node.kind === ts.SyntaxKind.MetaProperty ||
+        node.kind === ts.SyntaxKind.PropertyAccessExpression ||
+        node.kind === ts.SyntaxKind.ElementAccessExpression ||
+        node.kind === ts.SyntaxKind.CallExpression) &&
+      !isDeclarationBindingName(node) &&
+      !isSafeConsumingContext(node, aliases)
+    ) {
+      chargeBareValueIfEscaping(node);
+    }
     switch (node.kind) {
       case ts.SyntaxKind.PropertyAccessExpression:
       case ts.SyntaxKind.ElementAccessExpression: {
@@ -514,55 +694,13 @@ export function findEnvReadsInSourceFile(sourceFile) {
         }
         break;
       }
-      case ts.SyntaxKind.SpreadAssignment:
-      case ts.SyntaxKind.SpreadElement: {
-        const kind = classify(node.expression, aliases);
-        if (kind === "env" || kind === "importMetaEnv")
-          chargeEscape(node, kind);
-        break;
-      }
-      // Ordinary review of #423 (this PR), Finding 2 — the bag or a bare global escaping
-      // through an object-literal property value, an array-literal element, a ternary branch,
-      // or an `||`/`??` fallback is exactly as much an escape as the spread case above (a value
-      // that used to be reachable only through a real member access is now reachable through
-      // whatever consumes this container/expression); charged the same way, via
-      // `chargeBareValueIfEscaping`, which already no-ops on anything that isn't a bare
-      // process/import.meta/env/import.meta.env value.
-      case ts.SyntaxKind.PropertyAssignment:
-        chargeBareValueIfEscaping(node.initializer);
-        break;
-      case ts.SyntaxKind.ShorthandPropertyAssignment:
-        chargeBareValueIfEscaping(node.name);
-        break;
-      case ts.SyntaxKind.ArrayLiteralExpression:
-        for (const element of node.elements) {
-          if (element.kind !== ts.SyntaxKind.SpreadElement)
-            chargeBareValueIfEscaping(element);
-        }
-        break;
-      case ts.SyntaxKind.ConditionalExpression:
-        chargeBareValueIfEscaping(node.whenTrue);
-        chargeBareValueIfEscaping(node.whenFalse);
-        break;
       case ts.SyntaxKind.CallExpression: {
-        // A call classify() itself resolves (require/dynamic import/Reflect.get/
-        // Object.getOwnPropertyDescriptor of process or import.meta) already has its
-        // meaning accounted for wherever ITS result is consumed; charging its own
-        // arguments too would double-count the same `process` it was built from (#382's
-        // own "does not double-flag Reflect.get because process is its first argument").
-        // Every other call is an ordinary escape: passing the bare bag, or `process`/
-        // `import.meta` itself, to some other function is exactly #382's M1 class
-        // ("process passed as a bare/later call argument") — this file cannot know what
-        // the callee does with it, so it is charged here, at the call site.
-        if (classify(node, aliases) === null) {
-          for (const argument of node.arguments) {
-            chargeBareValueIfEscaping(argument);
-          }
-        }
         // `import("node:process").then((m) => m.env.X)` — the awaited form is handled by
         // `classify`'s CallExpression case already; this narrow addition resolves the
         // promise-chained callback's own parameter to the same "process" alias, so its
-        // body's `.env` access is attributed exactly like any other alias.
+        // body's `.env` access is attributed exactly like any other alias. A destructured
+        // (not simple-identifier) callback parameter — `.then(({ env }) => env.X)` — is
+        // handled the same way any other destructure of `process`/`import.meta` is.
         if (
           node.expression?.kind === ts.SyntaxKind.PropertyAccessExpression &&
           node.expression.name.text === "then"
@@ -575,17 +713,13 @@ export function findEnvReadsInSourceFile(sourceFile) {
               (target === "process" ? aliases.process : aliases.importMeta).add(
                 param.name.text,
               );
+            } else if (
+              param?.name?.kind === ts.SyntaxKind.ObjectBindingPattern
+            ) {
+              analyzeObjectPattern(param.name, target);
             }
           }
         }
-        break;
-      }
-      case ts.SyntaxKind.WithStatement: {
-        // `with (process) { ... }` brings every property of `process` into scope as bare
-        // identifiers inside its body — this file cannot know which ones a body goes on
-        // to use, so the whole construct is charged as one escape at the `with` itself,
-        // fail closed, rather than trying to resolve bare identifiers inside the body.
-        chargeBareValueIfEscaping(node.expression);
         break;
       }
       case ts.SyntaxKind.VariableDeclaration: {
@@ -597,26 +731,18 @@ export function findEnvReadsInSourceFile(sourceFile) {
         handleBindingDeclaration(node.name, node.initializer, false);
         break;
       case ts.SyntaxKind.BinaryExpression:
+        // Only the plain-identifier-assignment case still needs its own dispatch (into
+        // `handleBindingDeclaration`, for alias-tracking); every other operator — `||`, `??`,
+        // `&&`, the comma operator, `in`, a logical-assignment (`||=`/`&&=`/`??=`), an
+        // ordinary `=` to a non-identifier target — is handled generically above: whichever
+        // operand denotes the bag/global gets visited as its own node with this
+        // `BinaryExpression` as its real parent, which is not a recognized safe context, so
+        // the blanket check already charges it.
         if (
           node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
           node.left.kind === ts.SyntaxKind.Identifier
         ) {
           handleBindingDeclaration(node.left, node.right, false);
-        } else if (
-          node.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
-          node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken
-        ) {
-          chargeBareValueIfEscaping(node.left);
-          chargeBareValueIfEscaping(node.right);
-        }
-        break;
-      case ts.SyntaxKind.ExportAssignment:
-        chargeBareValueIfEscaping(unwrapFunctionReturn(node.expression));
-        break;
-      case ts.SyntaxKind.FunctionDeclaration:
-        if (hasExportModifier(node)) {
-          const returned = shallowReturn(node.body);
-          if (returned) chargeBareValueIfEscaping(returned);
         }
         break;
       case ts.SyntaxKind.ExportDeclaration: {

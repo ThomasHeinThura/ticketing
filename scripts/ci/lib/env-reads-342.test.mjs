@@ -506,12 +506,25 @@ for (const [label, source] of m1ExportCases) {
   });
 }
 
-test("environment detector does not charge a non-exported alias of the same shapes", () => {
-  // The mirror image of m1ExportCases: nothing crosses a module boundary, so nothing is
-  // charged merely for existing — matches the long-standing "ignores nested properties
-  // named like runtime globals" test's spirit (an alias, on its own, is not a read).
+test("environment detector does not charge a plain, non-exported alias declaration", () => {
+  // A plain alias — nothing crosses a module boundary, nothing is RETURNED anywhere — is not
+  // itself a read, matches the long-standing "ignores nested properties named like runtime
+  // globals" test's spirit.
   assert.deepEqual(findEnvReads("const p = process;"), []);
-  assert.deepEqual(findEnvReads("const get = () => process;"), []);
+});
+
+// Opus review of #423 pass 1 (the structural fix) — unlike a plain alias declaration, a
+// function that RETURNS the bare global is charged at the return site itself, regardless of
+// whether that function is ever exported: this file cannot know whether some other,
+// non-exported caller in the SAME file goes on to leak it further, so the return is the last
+// place left to charge (the "Values returned" row: "`return process.env` in a local
+// (non-exported) function; `() => process.env`"; the same now holds for the bare `process`/
+// `import.meta` object a function returns, not only the narrowed `.env` bag).
+test("environment detector charges a non-exported function's return of the bare global", () => {
+  assert.deepEqual(
+    findEnvReads("const get = () => process;").map(({ kind }) => kind),
+    ["alias"],
+  );
 });
 
 // #382's Opus review, "M4" — nested destructuring of `process` out of `globalThis`. The two
