@@ -18,10 +18,8 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { symlinkSync } from "node:fs";
 import path from "node:path";
 import { after, describe, it } from "node:test";
-import { repoRoot } from "../lib/repo.mjs";
 import {
   cleanUpScratchRepos,
   commit,
@@ -38,21 +36,14 @@ const NODE = process.execPath;
 /**
  * A scratch repo carrying a byte-for-byte copy of this branch's checker code.
  *
- * `check-deps.mjs` is the one checker that imports the `typescript` package, which
- * `installCheckers` does not copy (every other probe's checker has no such dependency).
- * Symlinking the real `node_modules` in makes Node's package resolution find it the same
- * way it would in a real worktree of this project (which always has its own real
- * `node_modules`, installed by `pnpm install`, not a symlink — the symlink here is only a
- * test-time stand-in for that).
+ * `check-deps.mjs` is the one checker that imports the `typescript` package.
+ * `installCheckers` (since #342) symlinks the real `node_modules` in itself, so Node's
+ * package resolution finds it the same way it would in a real worktree of this project.
  */
 function scriptCheckout(name) {
   const dir = scratchDir(`check-deps-vacuous-${name}`);
   initRepo(dir);
   installCheckers(dir);
-  symlinkSync(
-    path.join(repoRoot, "node_modules"),
-    path.join(dir, "node_modules"),
-  );
   commit(dir, "chore: bootstrap checker checkout");
   return dir;
 }
