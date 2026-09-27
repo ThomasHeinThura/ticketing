@@ -192,3 +192,21 @@ comes out of the merge, per this project's own exact-head discipline.
 
 F1/F2 are optional (cheap, worth doing before merge but not required to close this review).
 Clear to merge pending the branch-update reconfirmation.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `61f20df46ad4f781a0888285c0f013063a43d1a3`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Real two-parent merge with `origin/main` (which had advanced
+with #432's hierarchy routes), resolving a routine conflict in the GENERATED
+`tests/permissions/matrix.fixture.json` only — regenerated via `REGEN_MATRIX=1`, not
+hand-edited. `git diff 56515bf..61f20df` scoped to every application file this PR touches
+is empty. A stale `@taskdesk/domain` build artifact caused one transient `tsc` error
+unrelated to this PR (missing `validateReparent` export, correctly present in source,
+resolved by rebuilding the package) — not a real regression, confirmed and fixed. Re-verified
+after the merge: full permissions suite 13/83, `tsc --noEmit` clean, `check-openapi.mjs`
+clean (141 operations, contract auto-merged correctly with no drift).
+
+Clear to merge.
