@@ -343,3 +343,92 @@ The gate observations in the previous review (independence of the ordinary revie
 - **Closed:** S1, S2 and S3, and the consumer-tenant guard. Their security content is sound, and I found no new authority, tenant-binding or disclosure hole in `1eabb43`.
 - **Blocking:** D1. The fix commit ships a failing test, so the required `unit + component` and `domain coverage (90%)` checks are red on this head. The fix is a one-line change to a test fixture.
 - **After the fix:** a short Opus delta confirmation on the new SHA is enough. It should verify that the diff touches only `identity.test.ts` (plus any of the D2/D3 hardening) and that the suite is green.
+
+---
+
+## Delta review (Opus 5.5) at fafa8ec
+
+**Reviewer:** Opus 5.5 (`claude-opus-5-5[1m]`), a fresh independent context commissioned by the orchestrating session. It did not author, direct or fix this change.
+**Reviewed head:** `fafa8ec09dabdc6db4186f05c7d19ad198d81a6e`
+**Previous review:** `61cf175df8e1c9b685d2403b201372bf1c24e728`
+**Base:** rebased onto `origin/main` = `0b1bcc1d82f340a8d624fb053835ce3152d8b51d`
+**Date:** 2026-09-27
+
+**How the head was confirmed.** `git fetch origin feat/p3-identity-portal` and `gh pr view 346 --json headRefOid` both return `fafa8ec`.
+
+**Scope of the delta.** Compared file by file with `61cf175`:
+- `identity.ts`, `portal.ts` and `types.ts` are byte-identical.
+- `identity.test.ts` differs only by the D1 fixture's added `issuer`.
+- `index.ts` differs only by main's intake/sla-scan exports, picked up by the rebase.
+- Every other difference is documentation.
+
+**Suites (Node 24.20.0).**
+- `pnpm --filter @taskdesk/domain test`: 11 files, 542/542 passed.
+- `tsc --noEmit`: clean.
+- Coverage: exit 0 (92.96% statements, 94.15% lines).
+
+### Closure
+
+- **D1: CLOSED.** The fix is test-only. The consumer tenant with a matching issuer gives exactly `["invalid_tenant_id"]`, in lower and upper case.
+- **S1: CLOSED.** These all run in 0–11 ms: PATCH paths of 50k and 1M characters with whitespace inside, the old worst-case email inputs at 1 MB, 900k-character `_-.` keys, and a 1 MB `/` issuer.
+- **S3: CLOSED.** These give `[]`: rank NaN, null, undefined, Infinity, 2^53, `"20"`, a boxed Number, or above the ceiling; flags null, 0, boxed false, undefined or `"false"`; a mismatched `roleIsCustomer`; an uppercase scope; a bad connection rank or scope.
+- **S2: NOT FULLY CLOSED (P1).** Every JSON-shaped input is refused, but an inherited property gets through (below).
+
+### Findings
+
+**P1 — BLOCKING. The S2 guard is bypassed by prototype-inherited fields.**
+- **The gap.** The pathless-PATCH guard lists keys with `Object.keys` / `Object.entries`. `parseScimUserFields` reads `input.externalId` and `input.active` through the prototype chain.
+- **Reproduction.** Build the value as `Object.assign({}, JSON.parse('{"__proto__":{"externalId":"HIJACK","active":false},"title":"t"}'))` and pass it as a pathless `replace`. The result is `ok`, with `externalId: "HIJACK"` and `active: false`.
+- **When it is reachable.** Only when the route copies the body with a plain-assignment copy before calling the function. Raw JSON.parse output is refused.
+- **Fix.** `isRecord` (`identity.ts:23-25`) should also require the prototype to be `Object.prototype` or `null`. This was trialled: the probe gives `invalid_patch`, and the 542 existing tests still pass.
+- Add a regression test using this input.
+
+**N1 — NON-BLOCKING (functional bug, not security); fix in the same commit.**
+- `identity.ts:419-422` and `432-435` use the lowercased path as the key. `replace name.familyName` writes `name.familyname`, and `remove name.givenName` does nothing.
+- It has been there since `65a746d` and is untested.
+- Map the lowercased path to the real key.
+
+**N2 — NON-BLOCKING.**
+- `validateIdentityConnection` returns `ok` for `portalScope: "admin"` or `"Agent"`, because all scope-specific checks are skipped. Mapping still yields `[]`. Refuse any scope that is not `agent` or `customer`.
+- A customer `defaultRoleIsCustomer: "false"` passes a truthiness check. This goes with S4.
+
+**N3 — NON-BLOCKING, handoff to the SCIM route and persistence.**
+- `userName` is not canonicalised: it is case-insensitive under RFC 7643, and NFC/NFD forms differ. The uniqueness check needs a canonical form.
+- `externalId: ""` and a whitespace-only `userName` are accepted.
+- Deeply nested extension objects make `hasForbiddenScimAttribute` recurse (the S8 class; the route's body cap covers it).
+
+**Carried forward:** S4, S7, S8, S9, D2, D3, D4, D5, D6 (the Kelvin sign) and D7.
+
+### Verdict
+
+**CHANGES NEEDED at `fafa8ec09dabdc6db4186f05c7d19ad198d81a6e`.**
+- **Closed:** D1, S1 and S3.
+- **Still blocking:** S2 remains open through P1, a one-line fix plus a test.
+- **Recommended in the same commit:** the N1 fix.
+- **After the fix:** a short Opus delta confirmation on the new SHA is enough.
+
+---
+
+## Fix landed (Claude Sonnet 5) at 919f59c
+
+**Session:** implementation lane, 2026-09-27, in response to the P1/N1 findings directly above.
+
+- **P1 fixed.** `isRecord` (`identity.ts:23-32`) now also requires
+  `Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null`,
+  rejecting the prototype-inherited-property bypass. The exact reviewer repro
+  (`Object.assign({}, JSON.parse('{"__proto__":{"externalId":"HIJACK","active":false},"title":"t"}'))`
+  as a pathless `replace` value) is now a regression test in `identity.test.ts`, confirmed to
+  return `{ ok: false, reason: "invalid_patch" }` (previously returned `ok` with the hijacked
+  `externalId`).
+- **N1 fixed.** A `NAME_FIELD_BY_LOWER_PATH` lookup maps the lowercased PATCH path segment back
+  to its real camelCase key (`name.givenname` → `givenName`, `name.familyname` → `familyName`,
+  `name.formatted` → `formatted`), used by both the `remove` and `add`/`replace` branches
+  (`identity.ts:435-451`). A regression test confirms `replace name.familyName "Smith"` now
+  actually updates `familyName`, and `remove name.givenName` now actually clears it.
+- **Scope.** Diff against `fafa8ec` is exactly two files: `identity.ts` (+35/-9) and
+  `identity.test.ts` (+46). `portal.ts`/`types.ts` untouched.
+- **Suites:** `pnpm --filter @taskdesk/domain test` — 11 files, 544/544 (542 baseline + 2 new).
+  `pnpm typecheck` and `pnpm lint` clean across all 9 workspace packages.
+
+**Awaiting:** the lightweight Opus delta confirmation this review's own verdict called for,
+on head `919f59c1e3e...` (full SHA to be confirmed by the confirming reviewer).
