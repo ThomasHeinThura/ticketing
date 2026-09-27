@@ -2,7 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
-import { workItemTable } from "../../database/schema";
+import { projectTable, workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import type { ActivityActorType } from "../activity";
 
@@ -60,16 +60,34 @@ export async function deleteWorkItem(
   const now = new Date();
 
   const deleted = await db.transaction(async (tx) => {
-    const [deleted] = await tx
-      .update(workItemTable)
-      .set({ deletedAt: now })
+    // Opus security review of PR #433, F1: `requireWorkItemReach()` enforces the
+    // #202/#204 soft-deleted-project freeze for single-item routes via this same
+    // join, but the bulk route calls this controller directly with `middleware: []`
+    // and never goes through that middleware. Mirrored here so every caller --
+    // including bulk -- is covered regardless of which middleware chain it went
+    // through.
+    const [row] = await tx
+      .select({ id: workItemTable.id })
+      .from(workItemTable)
+      .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
       .where(
         and(
           eq(workItemTable.key, key),
           eq(workItemTable.workspaceId, workspaceId),
           isNull(workItemTable.deletedAt),
+          isNull(projectTable.deletedAt),
         ),
       )
+      .limit(1);
+
+    if (!row) {
+      throw new HTTPException(404, { message: "Work item not found" });
+    }
+
+    const [deleted] = await tx
+      .update(workItemTable)
+      .set({ deletedAt: now })
+      .where(and(eq(workItemTable.id, row.id), isNull(workItemTable.deletedAt)))
       .returning();
 
     if (!deleted) {

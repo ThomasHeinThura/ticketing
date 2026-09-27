@@ -805,6 +805,15 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
     return c.json(state, 200);
   })
   .openapi(bulkWorkItemsRoute, async (c) => {
+    // F3, Opus security review of PR #433: `workspaceId` here is read straight from
+    // the request body, which `assertCallerHasCapability`'s own contract note (see
+    // `require-workspace-capability.ts`) says never to do -- it can only check
+    // authority IN the workspace it is given, not whether that's the workspace the
+    // write actually lands in. Safe today ONLY because `deleteWorkItem`/
+    // `assignWorkItem` each independently re-filter every per-item write on this same
+    // `workspaceId` (a mismatched id just finds no row and 404s per item) -- this is
+    // a load-bearing invariant, not an incidental detail: any future change to this
+    // route or its two called controllers must keep that per-item re-filter.
     const { workspaceId, workItemKeys, operation, assigneeId } =
       c.req.valid("json");
     const userId = c.get("userId");

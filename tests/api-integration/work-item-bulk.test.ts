@@ -403,6 +403,86 @@ describe("API integration: bulk work item operations (#23 fourth slice)", () => 
     expect(response.status).toBe(403);
   });
 
+  it("Opus review of #433, F1: bulk delete on a soft-deleted project's item fails and leaves the row unchanged", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const a = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "A",
+      })
+    ).json()) as { key: string };
+
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    const response = await bulkRequest(app, {
+      workspaceId: creator.workspace.id,
+      workItemKeys: [a.key],
+      operation: "delete",
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      succeeded: string[];
+      failed: Array<{ id: string; reason: string }>;
+    };
+    expect(body.succeeded).toHaveLength(0);
+    expect(body.failed).toHaveLength(1);
+    expect(body.failed[0]?.id).toBe(a.key);
+    expect(body.failed[0]?.reason).toContain("Work item not found");
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, a.key));
+    expect(row?.deletedAt).toBeNull();
+  });
+
+  it("Opus review of #433, F1: bulk assign on a soft-deleted project's item fails and leaves the row unchanged", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    const target = await addPersonOnRoster(project.id);
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const a = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "A",
+      })
+    ).json()) as { key: string };
+
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    const response = await bulkRequest(app, {
+      workspaceId: creator.workspace.id,
+      workItemKeys: [a.key],
+      operation: "assign",
+      assigneeId: target.id,
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      succeeded: string[];
+      failed: Array<{ id: string; reason: string }>;
+    };
+    expect(body.succeeded).toHaveLength(0);
+    expect(body.failed).toHaveLength(1);
+    expect(body.failed[0]?.id).toBe(a.key);
+    expect(body.failed[0]?.reason).toContain("Work item not found");
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, a.key));
+    expect(row?.assigneeId).toBeNull();
+  });
+
   it("writes one bulk.performed audit summary row", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);
