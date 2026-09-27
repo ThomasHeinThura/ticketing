@@ -79,6 +79,6 @@ describe("Menubar", () => {
         region: { enabled: false },
       },
     });
-    expect(results).toHaveNoViolations();
+    expect(results.violations).toEqual([]);
   });
 });
