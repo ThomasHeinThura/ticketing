@@ -198,6 +198,8 @@ export {
   collectMiddleware,
   collectRoutes,
   computeRouteCoverage,
+  DECLARED_ROUTER_MIDDLEWARE,
+  type DeclaredRouterMiddleware,
   formatCoverageReport,
   type HonoLikeApp,
   type HonoRouterEntry,

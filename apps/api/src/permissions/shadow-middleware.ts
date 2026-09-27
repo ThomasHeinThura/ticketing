@@ -44,6 +44,7 @@
 
 import {
   type CredentialKind,
+  DECLARED_ROUTER_MIDDLEWARE,
   evaluatePolicy,
   isCapabilityPolicy,
   normaliseRouteKey,
@@ -146,23 +147,70 @@ async function writeErrorRecord(args: {
  * another route's bucket, and their own keys never got a tally row (readable as "no
  * traffic" rather than "never measured").
  *
- * Selection: the FIRST matched entry whose method is not `ALL` (Hono records middleware —
- * the guard, compress — as `method: "ALL"`, and route-level middleware share their route's
- * path/method, so the first non-`ALL` entry carries the dispatched route's path). This is
- * the fix's final form after live probing on all three problem routes: `c.req.routePath`
- * was tried as the primary signal and REJECTED — for `GET /api/ws/user` it reported
- * `/api/ws/:projectId` (the param form) while `matchedRoutes` listed `GET /api/ws/user`
- * first, and Opus's own probe established Hono dispatches the first match. Instrumented
- * evidence, not theory: `matchedRoutes` for these three paths all put the literal before
- * the parameter.
+ * Selection: the FIRST matched entry whose raw `METHOD path` is not one of the framework's
+ * own declared catch-all middleware registrations (`DECLARED_ROUTER_MIDDLEWARE`'s `"ALL /*"`
+ * and `"ALL /api/*"` -- CORS/compress and the auth guard, never real routes). This is
+ * broader than the earlier "method is not ALL" filter (Opus B1 delta, this PR): a route
+ * registered only via `.all()`/`.mount()`, or under a custom HTTP method `normaliseRouteKey`
+ * does not recognise, used to fall through this filter and return `null`, which
+ * `assertRouteIsClassified` then silently treated as "nothing to check" -- a fail-open gap
+ * for exactly the routes the guard exists to catch. Excluding only the two known catch-all
+ * keys keeps every other matched entry, `ALL`-method or not.
+ *
+ * The matched entry's OWN registered method is used to build the key, never
+ * `c.req.method` (Opus B2 delta, same PR): Hono dispatches a HEAD request through its
+ * matching GET route, so `c.req.method` stays `"HEAD"` while the matched route's own
+ * `method` is `"GET"` -- the method the registry and route-coverage actually classified.
+ * Keying on the matched route's own method fixes both the `.all()`/custom-method case (it
+ * now has its own real registered method to key off) and HEAD (it resolves via the
+ * underlying GET route's registered method).
+ *
+ * `null` is returned only when no non-catch-all entry matched at all -- a genuine
+ * unmatched/404 case, not one Hono attributes to a route.
+ *
+ * This is the fix's final form after live probing on all three problem routes:
+ * `c.req.routePath` was tried as the primary signal and REJECTED -- for `GET /api/ws/user`
+ * it reported `/api/ws/:projectId` (the param form) while `matchedRoutes` listed
+ * `GET /api/ws/user` first, and Opus's own probe established Hono dispatches the first
+ * match. Instrumented evidence, not theory: `matchedRoutes` for these three paths all put
+ * the literal before the parameter.
  */
+const DECLARED_CATCH_ALL_KEYS = new Set(
+  DECLARED_ROUTER_MIDDLEWARE.map((entry) => entry.key),
+);
+
+/** The dispatched route's own `{ method, path }`, or `null` when nothing matched at all. */
+export type AttributedRoute = {
+  readonly method: string;
+  readonly path: string;
+};
+
+/**
+ * The FIRST matched entry that is not one of the framework's own declared catch-all
+ * middleware registrations (`DECLARED_CATCH_ALL_KEYS`). `null` only for a genuinely
+ * unmatched request -- see `attributedRouteKey`'s own doc comment above for why this is
+ * broader than "method is not ALL" and why the method comes from the matched entry, never
+ * `c.req.method`.
+ *
+ * Exported separately from `attributedRouteKey` so a caller that needs to distinguish "no
+ * route matched" (a real 404, nothing to check) from "a route matched but its key could not
+ * be normalised" (`route-classification-guard.ts`'s B1 fix: that case must still refuse, not
+ * be swallowed into the same `null` as an unmatched request) can tell them apart.
+ */
+export function attributedMatchedRoute(c: Context): AttributedRoute | null {
+  const matched = c.req.matchedRoutes.find(
+    (r) => !DECLARED_CATCH_ALL_KEYS.has(`${r.method} ${r.path}`),
+  );
+  return matched ? { method: matched.method, path: matched.path } : null;
+}
+
 export function attributedRouteKey(c: Context): string | null {
-  const matched = c.req.matchedRoutes.find((r) => r.method !== "ALL");
+  const matched = attributedMatchedRoute(c);
   if (!matched) {
     return null;
   }
   try {
-    return normaliseRouteKey(`${c.req.method} ${matched.path}`);
+    return normaliseRouteKey(`${matched.method} ${matched.path}`);
   } catch {
     return null;
   }

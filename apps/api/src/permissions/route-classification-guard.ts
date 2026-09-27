@@ -24,32 +24,60 @@
  * `shadow-middleware.ts`'s own doc comment: they are exactly the routes `policy-registry.ts`
  * already enumerates as public/delegated by design.
  *
- * Reuses `attributedRouteKey` from `shadow-middleware.ts` (Hono dispatches the FIRST matched
- * route when a literal and a parameter route both match; see that function's own doc comment
- * for the instrumented evidence) rather than a second implementation of the same attribution
- * logic.
+ * Reuses `attributedMatchedRoute` from `shadow-middleware.ts` (Hono dispatches the FIRST
+ * matched route when a literal and a parameter route both match; see that function's own
+ * doc comment for the instrumented evidence) rather than a second implementation of the same
+ * attribution logic.
+ *
+ * **Opus delta (this PR, B1/B2): a matched route that could not be keyed must still refuse,
+ * not be swallowed.** The earlier version called `attributedRouteKey` directly and treated
+ * its `null` return (no route matched AT ALL, and a route matched but its key could not be
+ * normalised) the same way -- silently letting the request through. That fail-open two ways:
+ * a route reachable only via `.all()`/`.mount()`, and a route registered under a custom HTTP
+ * method `normaliseRouteKey` does not recognise. This guard now asks
+ * `attributedMatchedRoute` for the raw matched entry first, so it can tell "genuinely
+ * unmatched" (a real 404, nothing to check) apart from "matched, but the key computation
+ * itself failed" (refuse -- the route exists and was never classified as anything).
  */
 
+import { normaliseRouteKey } from "@taskdesk/permissions";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { policyRegistry } from "../policy-registry";
-import { attributedRouteKey } from "./shadow-middleware";
+import { attributedMatchedRoute } from "./shadow-middleware";
+
+function refuseUnclassified(reason: string): never {
+  console.error(
+    `policy registry: ${reason}; refusing request rather than serving it unclassified`,
+  );
+  throw new HTTPException(500, { message: "Internal Server Error" });
+}
 
 /**
- * Throws `HTTPException(500)` if the dispatched route has no entry in the policy registry.
- * A route Hono could not attribute (no non-`ALL` matched route -- should not happen for a
- * real request below the guard) is not refused here; it has no route to check a policy
- * against, and the guard's own coverage lives at `route-coverage.test.ts`, not here.
+ * Throws `HTTPException(500)` if the dispatched route has no entry in the policy registry,
+ * or if the dispatched route's own key could not even be computed. A route Hono could not
+ * match at all (no matched entry -- a genuine 404) is not refused here; it has no route to
+ * check a policy against, and the guard's own coverage lives at `route-coverage.test.ts`,
+ * not here.
  */
 export function assertRouteIsClassified(c: Context): void {
-  const routeKey = attributedRouteKey(c);
-  if (routeKey === null) {
+  const matched = attributedMatchedRoute(c);
+  if (matched === null) {
     return;
   }
-  if (policyRegistry.get(routeKey) === undefined) {
-    console.error(
-      `policy registry: no entry for ${routeKey}; refusing request rather than serving it unclassified`,
+
+  let routeKey: string;
+  try {
+    routeKey = normaliseRouteKey(`${matched.method} ${matched.path}`);
+  } catch (error) {
+    refuseUnclassified(
+      `matched route "${matched.method} ${matched.path}" has no valid route key (${
+        error instanceof Error ? error.message : String(error)
+      })`,
     );
-    throw new HTTPException(500, { message: "Internal Server Error" });
+  }
+
+  if (policyRegistry.get(routeKey) === undefined) {
+    refuseUnclassified(`no entry for ${routeKey}`);
   }
 }
