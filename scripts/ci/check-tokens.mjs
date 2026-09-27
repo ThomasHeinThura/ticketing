@@ -17,10 +17,10 @@
  *    anywhere outside `packages/ui/src/styles/`, is a HARD FAILURE — a component reaches
  *    for an existing semantic token instead of inventing a one-off color. Matched only
  *    inside an actual string/CSS-value position (a quoted string in code, a bracketed
- *    Tailwind arbitrary value, or a bare CSS declaration), never bare in prose — the same
- *    anchoring `check-ui.mjs` uses so a comment that merely *mentions* something
- *    hex-shaped (`"issue #4c9` never happens, but `"#123"` easily could as an issue number
- *    or a test id) is not mistaken for a real color.
+ *    Tailwind arbitrary value, or a bare CSS declaration), never bare in prose — so a
+ *    comment that merely *mentions* something hex-shaped (`"issue #4c9` never happens, but
+ *    `"#123"` easily could as an issue number or a test id) is not mistaken for a real
+ *    color.
  *
  * **Scope of check 2, deliberately narrowed to the design-system surface**: only
  * `apps/web/src/**` and `packages/ui/**` (outside `packages/ui/src/styles/`) are scanned —
@@ -80,9 +80,9 @@ const COLOR_LITERAL_SCAN_ROOTS = ["apps/web/src", "packages/ui"];
  * within the scanned roots: `label-color.ts`'s own round-trip test intentionally preserves
  * an arbitrary hex color a user or an imported system supplied for a label, and the
  * identifier-search test uses `"#123"` as an issue-number-shaped search query, not a color
- * at all. Both are excluded by exact path, the same way `check-ui.mjs` excludes its own
- * fixture-carrying test file — narrowed to these two files, not a blanket test-file
- * exemption, so a real component test that hardcodes a color is still caught. (This
+ * at all. Both are excluded by exact path — narrowed to these two files, not a blanket
+ * test-file exemption, so a real component test that hardcodes a color is still caught.
+ * (This
  * checker's own file, full of hex-shaped example text in its header comment and pattern
  * definitions, needs no such exclusion: it lives under `scripts/ci/`, outside both scanned
  * roots.)

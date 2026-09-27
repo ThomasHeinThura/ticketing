@@ -70,6 +70,18 @@ describe("check:ui — radixImportsIn", () => {
     ]);
   });
 
+  it("finds a member-call require, e.g. module.require(...) (Opus review #413 F1 -- a regression against main's regex, which caught this via \\brequire\\s*\\()", () => {
+    const source = 'const y = module.require("radix-ui");\n';
+    assert.deepEqual(radixImportsIn(source), ["radix-ui"]);
+  });
+
+  it("does not treat a renamed/reassigned require as a real require call (documented accepted limit, unchanged)", () => {
+    const source = ["const req = require;", 'const y = req("radix-ui");'].join(
+      "\n",
+    );
+    assert.deepEqual(radixImportsIn(source), []);
+  });
+
   it('finds a side-effect-only `import "radix-ui"` with no `from`', () => {
     const source = 'import "radix-ui";\n';
     assert.deepEqual(radixImportsIn(source), ["radix-ui"]);

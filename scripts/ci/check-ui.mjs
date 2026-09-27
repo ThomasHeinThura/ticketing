@@ -152,8 +152,17 @@ export function moduleSpecifiersIn(sourceFile) {
       case ts.SyntaxKind.CallExpression: {
         const callee = node.expression;
         const isDynamicImport = callee.kind === ts.SyntaxKind.ImportKeyword;
+        // Opus review (#413 F1): a bare `require("x")` and a member-call form like
+        // `module.require("x")` are both real at runtime in CommonJS. The old regex
+        // caught the member-call form (`\brequire\s*\(` doesn't care what precedes it);
+        // matching only a bare `Identifier` callee here was a real regression against it.
+        // `(require)("x")` and a renamed import (`createRequire(...)("x")`) stay outside
+        // the documented accepted limit, same as before this fix.
         const isRequire =
-          callee.kind === ts.SyntaxKind.Identifier && callee.text === "require";
+          (callee.kind === ts.SyntaxKind.Identifier &&
+            callee.text === "require") ||
+          (callee.kind === ts.SyntaxKind.PropertyAccessExpression &&
+            callee.name.text === "require");
         if (isDynamicImport || isRequire) add(node.arguments[0]);
         break;
       }
@@ -358,7 +367,7 @@ async function main() {
               relative,
               "could not be parsed" +
                 (diagnostics.length > 0
-                  ? ` (${diagnostics.map((d) => d.messageText).join("; ")})`
+                  ? ` (${diagnostics.map((d) => d.text).join("; ")})`
                   : "") +
                 "; whether it imports an unlisted Radix package cannot be proven.",
             ),
