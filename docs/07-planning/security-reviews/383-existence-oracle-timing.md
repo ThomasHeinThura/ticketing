@@ -151,3 +151,15 @@ Each mutation was reverted afterwards, and `git diff --quiet HEAD` passed.
 
 - `git show --remerge-diff ffb9d9d` is empty — clean automatic merge, no conflict-resolution content.
 - This merge is larger than the prior two: it brings in PR #375's real changes (`apps/api/drizzle/0070_audit_log_project_id.sql`, `apps/api/src/database/schema.ts`, `apps/api/src/audit/audit-writer.ts`, `apps/api/src/audit/controllers/list-workspace-audit.ts`), which is genuinely security-review scope. But #375 itself already carries its own complete, independent Opus CLEAR verdict (`docs/07-planning/security-reviews/375-audit-log-project-id-reach-filter.md`), and none of those files overlap with anything #383 touches (`apps/api/src/utils/authorize-asset-access.ts`, `apps/api/src/utils/require-invitation-workspace-access.ts`, `apps/api/src/asset/policy.ts`, `apps/api/src/index.ts`'s asset/ws/invitation routes). Confirmed via `git diff e486c84..ffb9d9d --stat`: zero files in common with #383's own diff against `main`.
+
+---
+
+## Lightweight re-confirmation after third branch update (2026-09-27)
+
+**Reviewed head:** `8f2d109690c36efc52dbe04b6e2f7b583d2f16e0`
+**Previously reviewed head:** `ffb9d9d96ac3d435080d107fc35cad66b90627ac`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR WITH FINDINGS, unchanged.
+
+- `git show --remerge-diff 8f2d109` is empty — clean automatic merge.
+- Brings in PR #381's already-reviewed changes (`shadow-context.ts`, `shadow-middleware.ts`), zero overlap with this PR's own asset/ws/invitation files.
