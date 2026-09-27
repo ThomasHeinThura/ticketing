@@ -527,15 +527,12 @@ export function sections(markdown) {
  * issue #150's bug: GitHub renders a manual line break inside a paragraph as a space, so a
  * human reading the rendered body sees one sentence while the old regex, lacking the `s`
  * (dotAll) flag, silently dropped everything after the first `\n`). The value runs from
- * right after the label through the next of: another bold-label line (`**Xyz:**`, whatever
- * it names — the shape every field in this file's callers uses), a `## ` heading line (a
- * value can never legitimately run into the next section), or the end of the input —
- * whichever comes first — trimmed of surrounding whitespace. This matches how both callers
- * actually use the return value: `check-pr-template.mjs` reads `Model`/`Session` fields
- * that sit one directly after another with no blank line required between them, and
- * `check-reviews.mjs` reads a `Spec` field that is followed by a `Rules in scope` field in
- * the same `## Task` section — both need the next label line to be a hard stop, not part of
- * the value.
+ * right after the label through the next of: another bold-label line (`**Xyz:**`), a BLANK
+ * line (an actual paragraph break — a single line break stays inside the same value, a
+ * blank line starts a new one), or a `#`-prefixed heading line of ANY level — or the end of
+ * the input — whichever comes first, trimmed of surrounding whitespace. `\r\n`/bare `\r`
+ * are normalized to `\n` before matching, so a value's line breaks are recognized
+ * regardless of the body's actual line-ending style.
  *
  * Issue #409: the whitespace between the label and the value used to be `\s*`, which
  * matches a newline. A label line with nothing after it (`**Model:**`), immediately
@@ -550,19 +547,31 @@ export function sections(markdown) {
  *
  * That fix (same-line whitespace only, `[ \t]*`, between the label and the value) is kept
  * exactly as is: it still governs only the gap between the label and where the value
- * *starts*. Where the value *ends* is the separate question this fix answers, via the
- * lazy `[\s\S]*?` capture bounded by the next-label/next-heading/end-of-input lookahead
- * below — so an empty label immediately followed by another label line still captures ""
- * (the boundary fires at zero captured characters), while a genuinely filled value keeps
- * being captured across as many lines as it actually spans.
+ * *starts*. Where the value *ends* is the separate question this fix answers.
+ *
+ * **Opus security review of an earlier version of this fix found a REOPENED variant of
+ * #409**, the exact class of bug this file exists to prevent: the first cut of this fix
+ * stopped a value only at the next label line, the next `## ` heading, or end-of-input —
+ * so an empty label followed by ANY other kind of line (plain prose, a `### ` sub-heading,
+ * a bare-`\r`-separated line) silently captured that as its "value", again defeating the
+ * "must be filled in" and "reviewer must differ from author" checks. The boundary above
+ * (also stopping at a blank line and at a heading of any level, plus CR normalization)
+ * closes that reopened gap — an empty label immediately followed by a blank line, prose, a
+ * sub-heading, or a bare-CR-separated line all still correctly capture `""`, exactly like
+ * an empty label immediately followed by another label line does. See the `## Reviewed by`
+ * self-review / #409-variant tests below for the exact reproductions this closes.
  */
 export function field(text, label) {
   const pattern = new RegExp(
     `^[ \\t]*\\*\\*${label}:\\*\\*[ \\t]*([\\s\\S]*?)` +
-      "(?=\\n[ \\t]*\\*\\*[^*\\n]+:\\*\\*|\\n[ \\t]*##(?!#)|(?![\\s\\S]))",
+      "(?=\\n[ \\t]*\\*\\*[^*\\n]+:\\*\\*|\\n[ \\t]*\\n|\\n[ \\t]*#|(?![\\s\\S]))",
     "im",
   );
-  const match = pattern.exec(text);
+  // Bare `\r` (old Mac line endings) and `\r\n` both normalize to `\n` first -- the
+  // pattern above only recognizes `\n` as a line break, and a bare `\r` on its own
+  // reopens issue #409's exact shape (an empty label reading as filled because nothing
+  // the pattern treats as a boundary follows it before the next label's text).
+  const match = pattern.exec(text.replace(/\r\n?/g, "\n"));
   return match ? match[1].trim() : "";
 }
 

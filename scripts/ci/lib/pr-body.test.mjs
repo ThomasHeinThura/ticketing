@@ -869,6 +869,56 @@ describe("field, issue #150 — a genuinely multi-line value is captured in full
   });
 });
 
+describe("field, Opus review — a reopened #409 variant in this PR's own first fix", () => {
+  // An earlier version of this fix stopped a value only at the next bold-label line, the
+  // next `## ` heading, or end-of-input. That let an EMPTY label pick up whatever
+  // non-label line came right after it as its "value" -- prose, a `### ` sub-heading, a
+  // bare-CR-separated line -- exactly #409's shape again, just with something other than
+  // a label line underneath. These three cases are Opus's own reproductions.
+
+  it("case A: an empty Session followed by a blank line then prose still reads as '' (not the prose)", () => {
+    const text =
+      "**Model:** Sonnet 5\n**Session:**\n\nReviewer not spawned yet -- pending.";
+    assert.equal(field(text, "Session"), "");
+  });
+
+  it("case A variant: an empty label followed immediately by a ### sub-heading still reads as ''", () => {
+    const text = "**Session:**\n### Not yet reviewed";
+    assert.equal(field(text, "Session"), "");
+  });
+
+  it("case B: a Session value with a trailing note after a blank line captures only the value, not the note", () => {
+    // This is what actually defeats the "reviewer must differ from author" self-review
+    // check: if the real Session value bleeds into the note below it, the compared
+    // string is no longer the same one `## Implemented by` would need to match to be
+    // (wrongly) treated as identical -- or, as here, a genuinely self-authored review
+    // could slip past because the two long, note-including strings don't happen to
+    // collide even though the real session values do.
+    const text =
+      "**Model:** Sonnet 5\n**Session:** lane-abc\n\n" +
+      "Verdict: APPROVE. Long note that must not become part of the Session value.";
+    assert.equal(field(text, "Session"), "lane-abc");
+  });
+
+  it("case C: bare CR (old Mac) line endings between two empty labels still read as ''", () => {
+    const text = "**Model:**\r**Session:**\r**Surfaces examined:**";
+    assert.equal(field(text, "Model"), "");
+    assert.equal(field(text, "Session"), "");
+    assert.equal(field(text, "Surfaces examined"), "");
+  });
+
+  it("case C variant: CRLF line endings between two empty labels still read as ''", () => {
+    const text = "**Model:**\r\n**Session:**\r\n**Surfaces examined:**";
+    assert.equal(field(text, "Model"), "");
+    assert.equal(field(text, "Session"), "");
+  });
+
+  it("does not regress: a genuinely multi-line value with CRLF line endings is still captured in full", () => {
+    const text = "**Spec:** line one\r\nline two\r\n**Rules in scope:** n/a";
+    assert.equal(field(text, "Spec"), "line one\nline two");
+  });
+});
+
 describe("field, exercised through the real pull-request template — check-pr-template.mjs's own checks", () => {
   // These reproduce, at the `sections()`/`field()` level check-pr-template.mjs itself
   // calls, the three behaviours issue #409 asked to be proven unaffected: the
