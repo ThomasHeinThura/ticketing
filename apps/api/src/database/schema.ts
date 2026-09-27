@@ -448,6 +448,141 @@ export const columnTable = pgTable(
   (table) => [index("column_projectId_idx").on(table.projectId)],
 );
 
+// ── Issue #25's bounded slice: milestone, prerequisite, stakeholder, document_link ──────
+// (`docs/03-features/projects-and-engagements.md`, `docs/01-architecture/data-model.md`
+// §3). Purely additive project sub-resources -- each carries only `project_id` plus the
+// exact columns data-model.md §3 names, and nothing in the existing project surface
+// references any of these tables. Project ownership (`parent_id`/`owner_team_id`,
+// PR-1..PR-5) and `project.health`/`kind` are NOT part of this slice -- see the PR
+// description for why those are a separate, larger piece of work.
+
+export const milestoneTable = pgTable(
+  "milestone",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    date: timestamp("date", { mode: "date" }).notNull(),
+    // Non-null once reached. "The current milestone is derived as the first not yet
+    // reached" (projects-and-engagements.md) -- computed at read time from this column,
+    // never stored redundantly.
+    reachedAt: timestamp("reached_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [index("milestone_projectId_idx").on(table.projectId)],
+);
+
+export const prerequisiteTable = pgTable(
+  "prerequisite",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    title: text("title").notNull(),
+    // `us` | `customer` | `both` -- projects-and-engagements.md's "Prerequisites" list.
+    ownerSide: text("owner_side").notNull(),
+    dueDate: timestamp("due_date", { mode: "date" }),
+    isBlocking: boolean("is_blocking").default(false).notNull(),
+    // Non-null once ticked off. `PR-11`: a customer cannot tick this off -- there is no
+    // portal route onto this table at all (customer sessions never carry a workspace
+    // membership `workspaceAccess.fromProject()` can find), so this is structural, the
+    // same way `PR-8`'s own reasoning is: nothing here needs an application-level check.
+    completedAt: timestamp("completed_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("prerequisite_projectId_idx").on(table.projectId),
+    check(
+      "prerequisite_owner_side_allowed",
+      sql`${table.ownerSide} in ('us', 'customer', 'both')`,
+    ),
+  ],
+);
+
+export const stakeholderTable = pgTable(
+  "stakeholder",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    // Always a `person` row -- a placeholder (no-login) person covers "with or without a
+    // login" (projects-and-engagements.md's own Concepts table), so this is NOT NULL,
+    // same idiom `membershipTable.personId` already uses.
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    role: text("role").notNull(),
+    escalationOrder: integer("escalation_order").notNull(),
+    escalationWaitMinutes: integer("escalation_wait_minutes")
+      .default(0)
+      .notNull(),
+    // `PR-12`: "A stakeholder may be stood down without deletion, removing them from
+    // counts and pickers while preserving history." Never deleted by this API -- the
+    // stand-down route only flips this.
+    active: boolean("active").default(true).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("stakeholder_projectId_idx").on(table.projectId),
+    index("stakeholder_personId_idx").on(table.personId),
+  ],
+);
+
+export const documentLinkTable = pgTable(
+  "document_link",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    url: text("url").notNull(),
+    title: text("title").notNull(),
+    // Customer visibility is off by default (projects-and-engagements.md, "Documents").
+    customerVisible: boolean("customer_visible").default(false).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [index("document_link_projectId_idx").on(table.projectId)],
+);
+
 export const workflowRuleTable = pgTable(
   "workflow_rule",
   {
