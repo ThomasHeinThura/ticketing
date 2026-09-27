@@ -430,11 +430,58 @@ describe("issue #143 — regex after a keyword is not division", () => {
     });
   }
 
-  it("still tells a real division from a regex (no regression)", () => {
-    const out = stripCodeComments('const n = a / b; it.skip("x");', {
-      blankStrings: true,
-    });
-    assert.match(out, /a \/ b/);
+  it("still tells a real division from a regex (no regression, proves something)", () => {
+    // Opus security review: a plain `assert.match(out, /a \/ b/)` proves nothing, because
+    // code inside a MISREAD regex is copied through unchanged too -- the old assertion
+    // would pass even against a version that treats every previous token as regex-
+    // permitting. The real property is that a real division doesn't get misread as
+    // opening a regex that then swallows a string containing a `/` and everything after
+    // it on the line -- so assert on the call AFTER a string containing a slash, the same
+    // shape as the `of`/property-access cases below.
+    const source = 'const n = a / b; s = "/"; it.skip("x");';
+    assert.equal(scan(source), true, "a real division must not hide the call after it");
+  });
+
+  it("Opus security review: `of` is a legal identifier, not always a keyword -- dropped from the allow-list", () => {
+    // `let of = 5; return of / 2;` is real code with `of` as a plain variable and `/` as
+    // genuine division. Keeping `of` in REGEX_ALLOWED_KEYWORDS bought nothing (a regex
+    // object can't be looped over, so `for (x of /re/)` fails at runtime anyway) and cost
+    // a real false negative here.
+    // Note: the pre-#143 (single-character lookback) scanner already handles this
+    // particular input correctly by coincidence (`of` ends in `f`, a word character, so
+    // it never matched `REGEX_ALLOWED_BEFORE` either) -- this case isolates the `of`-as-
+    // keyword regression this PR's OWN multi-char keyword list introduced, not the
+    // original #143 defect, so there is no meaningful pre-#143 baseline to compare here.
+    const source = 'let of = 5; x = of / 2; s = "/"; it.skip("a", fn);';
+    assert.equal(scan(source), true, "must not hide the call after `of / 2`");
+  });
+
+  it("Opus security review: a reserved word used as a PROPERTY NAME is not a keyword either", () => {
+    // Every keyword in REGEX_ALLOWED_KEYWORDS is also a legal property name -- `mod.default`,
+    // `o.in`, `o.new` are all real, common patterns, and none of them puts a following `/`
+    // in regex position: `mod.default / 2` is division, the same as any other property
+    // read divided by a number.
+    for (const source of [
+      'mod.default / 2; s = "/"; it.skip("a", fn);',
+      'o.in / 2; s = "/"; it.skip("a", fn);',
+      'o.new / 2; s = "/"; it.skip("a", fn);',
+    ]) {
+      assert.equal(scan(source), true, `must not hide the call in: ${source}`);
+    }
+  });
+
+  it("Opus security review: optional chaining before a keyword-shaped property name is handled the same way", () => {
+    const source = 'o?.default / 2; s = "/"; it.skip("a", fn);';
+    assert.equal(scan(source), true, "must not hide the call after `o?.default / 2`");
+  });
+
+  it("does not regress: a real keyword followed by a genuinely dotted call still sees a regex correctly", () => {
+    // Sanity check in the other direction -- the `.`-precedes-word check must only
+    // suppress the keyword reading when the DOT comes before the word that would
+    // otherwise be read as a keyword, not whenever a `.` appears anywhere nearby.
+    const source =
+      'function f(x) { return /[\'"]/.test(x); it.skip("real", fn); }';
+    assert.equal(scan(source), true);
   });
 });
 

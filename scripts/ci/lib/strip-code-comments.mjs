@@ -116,6 +116,16 @@ const REGEX_ALLOWED_BEFORE = new Set([
  * (Acorn, Esprima): each one is followed by the START of an expression, never a value a `/`
  * could divide.
  */
+/**
+ * Opus security review of #143's first fix: `of` is a CONTEXTUAL keyword, not reserved —
+ * unlike every other entry here, it stays a legal identifier outside a `for...of` head
+ * (`let of = 5; return of / 2;` is real code, `of` a plain variable, `/` genuine
+ * division). Dropped entirely rather than special-cased: a regex object can't be looped
+ * over, so `for (x of /re/)` fails at runtime anyway — keeping `of` bought nothing and
+ * cost a real false-negative (`of / 2` misread as regex-open, which can hide later code
+ * on the same or a following line depending on what closes the fake regex/string/
+ * template it opens).
+ */
 const REGEX_ALLOWED_KEYWORDS = new Set([
   "return",
   "typeof",
@@ -124,7 +134,6 @@ const REGEX_ALLOWED_KEYWORDS = new Set([
   "throw",
   "new",
   "in",
-  "of",
   "instanceof",
   "case",
   "yield",
@@ -141,6 +150,13 @@ const WORD_CHAR = /[A-Za-z0-9_$]/;
  * run, not just the one character next to it, so `return` and an identifier ending in `n`
  * (e.g. a variable called `division`) can be told apart. Returns a single character for
  * anything that is not a word (an operator, a bracket, `\n`), unchanged from before #143.
+ *
+ * Opus security review, same pass as the `of` removal above: every reserved word is also
+ * a legal PROPERTY NAME (`mod.default`, `o.in`, `o?.new`), and a property access is never
+ * itself the start of an expression the way the bare keyword is — `mod.default / 2` is
+ * division, not `default` followed by a regex. So a word immediately preceded by `.` or
+ * `?.` (skipping whitespace) is reported as a `.` (a character `REGEX_ALLOWED_BEFORE`
+ * does NOT contain), not as the keyword text, regardless of what the word itself spells.
  */
 function previousMeaningful(out) {
   let i = out.length - 1;
@@ -151,6 +167,9 @@ function previousMeaningful(out) {
   if (!WORD_CHAR.test(out[i])) return out[i];
   let start = i;
   while (start > 0 && WORD_CHAR.test(out[start - 1])) start -= 1;
+  // `obj.default` and `obj?.default` both have `.` directly before the word start --
+  // `?.`'s `?` sits one character further back and doesn't need its own check.
+  if (start > 0 && out[start - 1] === ".") return ".";
   return out.slice(start, i + 1).join("");
 }
 
