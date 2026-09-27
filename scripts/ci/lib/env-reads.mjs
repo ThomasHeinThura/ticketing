@@ -31,14 +31,20 @@
  *     `<Type>`/`!` casts, `await`, a `require`/dynamic `import` of `"process"`/`"node:process"`,
  *     `Reflect.get`/`Object.getOwnPropertyDescriptor`, and any alias created by a plain
  *     `const x = <one of the above>` (including chains: an alias of an alias).
- *  2. The tree walk uses that purely to decide, at every real property/element access,
- *     destructuring pattern, spread, assignment, and module export in the file, whether it is
- *     a **named** read (a literal variable name — attributable), a **computed** read (a
- *     dynamic key into the bag — cannot be attributed to a name), or an **alias** read (the
- *     whole bag, or the bare `process`/`import.meta` object itself, escapes as a value — a
- *     parameter default, an object spread, a non-flat destructure, or crossing a module
- *     boundary via `export`). Nothing here is a special case for one shape; every shape above
- *     is just what `classify` returns at a real AST node the grammar already distinguishes.
+ *  2. The tree walk charges every node `classify` resolves to one of those values as an
+ *     **alias** read, BY DEFAULT — unless its immediate context (parent, seeing through the
+ *     same transparent wrappers `classify` does) is one of the specifically recognized safe
+ *     narrowings: a member/element access that narrows it further (a **named** read — a
+ *     literal variable name off the bag, attributable — or a **computed** read — a dynamic
+ *     key into the bag, not attributable to a name); an argument a resolved wrapper call
+ *     (`Reflect.get`, `Object.getOwnPropertyDescriptor`, `require`/dynamic `import`) already
+ *     consumes; a tracked-alias/destructuring declaration site (`handleBindingDeclaration`
+ *     decides whether and how to charge it there instead); or a bare condition test
+ *     (`if (process)`, a `typeof` operand) that reads nothing out of the value. See
+ *     `isSafeConsumingContext`. This is a structural default-flip (Opus review of #423 pass
+ *     1), not an allow-list of shapes to charge — every place one of these five values
+ *     appears as a value and nothing more specific claimed it is charged, because the default
+ *     is to charge, not because that particular shape was separately enumerated.
  *
  * `process[X]`/`globalThis[X]`/`import.meta[X]` with anything other than a literal string
  * that plainly is NOT the property being reached (or a numeric index) fails closed as a match
@@ -47,10 +53,16 @@
  * `check-env.mjs`'s test-vs-application scope note for the one carve-out this gate has at all.
  *
  * Accepted limits, by design (documented so the next reviewer finds the answer here, not by
- * re-discovering it): cross-file dataflow (a raw `process`/`process.env` passed as a bare
- * function argument, or returned from a function that is never itself exported, is not
- * traced into its callee); a `.then(cb => ...)` callback on `import('node:process')` (the
- * awaited/`await import(...)` form is handled, the promise-chaining form is not); legacy
+ * re-discovering it — Opus review of #423 pass 2, F5: a bare function argument, a
+ * non-exported function's return, and a `.then(cb)` callback are now CAUGHT by the
+ * default-flip above, not limits): rest-destructuring from `process`/`globalThis`
+ * (`const { ...rest } = process` — the rest element itself is not traced further);
+ * `.default.env` reached through a dynamic/namespace import
+ * (`(await import("./cfg")).default.env`); a bare condition test — `if (process.env)`,
+ * `while (import.meta.env)`, a ternary's own condition position, a `typeof` operand — is
+ * deliberately not charged, since nothing escapes from a check that never hands the value to
+ * anyone (see `isSafeConsumingContext`); a bare `globalThis`/`window` value (not narrowed by
+ * `.process`/`[...]`) is never charged by design — only the narrowed access matters; legacy
  * `<Type>expr` angle-bracket assertions in a `.tsx`-parsed fixture (real files keep their own
  * extension and are unaffected — this is a unit-test-harness limitation only, see
  * `parseAdHocSourceFile`, not a real detection gap: `as`/`satisfies`/non-null casts exercise
@@ -166,17 +178,8 @@ const FUNCTION_LIKE_KINDS = new Set([
   ts.SyntaxKind.SetAccessor,
 ]);
 
-/**
- * Is `name` shadowed at `node`'s lexical position — a real, per-scope answer, not a file-wide
- * one? Walks `node`'s parent chain (the real parser sets `.parent`, so this needs no separate
- * bookkeeping pass) looking for an enclosing function whose own parameter list binds `name`, or
- * an enclosing `catch` clause whose binding is `name`. Either makes `name` refer to that local
- * binding for everything lexically inside it — the real JS scoping rule this file otherwise
- * does not model (see the `Identifier` case's own comment) — without treating a same-named
- * binding ANYWHERE else in the file as relevant, which is what the previous, file-wide `Set`
- * did (#403's ordinary review, Finding 1: a shadow parameter in one function was silently
- * suppressing an unrelated, real `process.env.X` read elsewhere in the same file).
- */
+/** Is `node` anywhere in `root`'s own subtree (including `root` itself)? Walks `node`'s real
+ * parent chain — the only primitive `isShadowRegion`/`isShadowedAt` below need. */
 function isWithin(node, root) {
   if (!root) return false;
   for (let current = node; current; current = current.parent) {
@@ -204,6 +207,17 @@ function isShadowRegion(node, fn) {
   return false;
 }
 
+/**
+ * Is `name` shadowed at `node`'s lexical position — a real, per-scope answer, not a file-wide
+ * one? Walks `node`'s parent chain (the real parser sets `.parent`, so this needs no separate
+ * bookkeeping pass) looking for an enclosing function whose own parameter list binds `name`, or
+ * an enclosing `catch` clause whose binding is `name`. Either makes `name` refer to that local
+ * binding for everything lexically inside it — the real JS scoping rule this file otherwise
+ * does not model (see the `Identifier` case's own comment) — without treating a same-named
+ * binding ANYWHERE else in the file as relevant, which is what the previous, file-wide `Set`
+ * did (#403's ordinary review, Finding 1: a shadow parameter in one function was silently
+ * suppressing an unrelated, real `process.env.X` read elsewhere in the same file).
+ */
 function isShadowedAt(node, name) {
   for (let current = node?.parent; current; current = current.parent) {
     if (
@@ -350,10 +364,16 @@ function effectiveParent(node) {
  * default there too would double-count every later use of the alias. */
 function isTrackedAliasDeclarationSite(effNode, parent) {
   if (!parent) return false;
+  // `ArrayBindingPattern` is deliberately NOT here (Opus review of #423 pass 2, F2):
+  // `handleBindingDeclaration` just returns for an array pattern without charging anything
+  // (array-pattern destructuring isn't traced — an accepted, documented limit), so treating
+  // it as "already handled" here silently dropped the charge instead of falling through to
+  // the default. Neither `const [a] = process.env` nor a destructured array-pattern
+  // parameter default is actually iterable at runtime, but this gate still charges the
+  // escape, matching the old tokenizer.
   const bindableName = (kind) =>
     kind === ts.SyntaxKind.Identifier ||
-    kind === ts.SyntaxKind.ObjectBindingPattern ||
-    kind === ts.SyntaxKind.ArrayBindingPattern;
+    kind === ts.SyntaxKind.ObjectBindingPattern;
   if (
     (parent.kind === ts.SyntaxKind.VariableDeclaration ||
       parent.kind === ts.SyntaxKind.Parameter) &&
@@ -391,9 +411,9 @@ function isTrackedAliasDeclarationSite(effNode, parent) {
  * an assignment target that is not a plain identifier, a class field initializer, a
  * destructuring pattern with a quoted/computed key, a JSX spread/prop, and so on — is charged
  * here, structurally, because nothing more specific claimed it; not because that particular
- * shape was separately enumerated. Takes `classify`'s two collaborators (the aliases-in-
- * progress and the actual charging function) as parameters — this function is pure/testable
- * on its own structural logic, and `findEnvReadsInSourceFile` is the only real caller.
+ * shape was separately enumerated. Takes one parameter besides `node` — the aliases collected
+ * so far, the same collaborator `classify()` itself needs — so it is pure/testable on its own
+ * structural logic; `findEnvReadsInSourceFile` is the only real caller.
  */
 function isSafeConsumingContext(node, aliases) {
   const { node: effNode, parent } = effectiveParent(node);
@@ -405,7 +425,7 @@ function isSafeConsumingContext(node, aliases) {
     return true;
   if (
     parent?.kind === ts.SyntaxKind.CallExpression &&
-    Array.prototype.includes.call(parent.arguments ?? [], effNode) &&
+    parent.arguments?.[0] === effNode &&
     classify(parent, aliases) !== null
   )
     return true;
@@ -423,6 +443,13 @@ function isSafeConsumingContext(node, aliases) {
   if (
     parent?.kind === ts.SyntaxKind.ConditionalExpression &&
     parent.condition === effNode
+  )
+    return true;
+  // `typeof process !== "undefined"` — `typeof` never reads a value out of its operand, same
+  // reasoning as the truthiness-test exemption above (Opus review of #423 pass 2, F4).
+  if (
+    parent?.kind === ts.SyntaxKind.TypeOfExpression &&
+    parent.expression === effNode
   )
     return true;
   return false;
@@ -445,6 +472,11 @@ const DECLARATION_NAME_HOLDER_KINDS = new Set([
   ts.SyntaxKind.ImportSpecifier,
   ts.SyntaxKind.ImportClause,
   ts.SyntaxKind.NamespaceImport,
+  // `export * as process from "./x"` — `process` here is the new binding name the namespace
+  // is re-exported under, not a reference to anything (the same non-reference role
+  // `NamespaceImport`'s own name plays); it re-exports "./x"'s namespace, never the real
+  // global (Opus review of #423 pass 2, F4).
+  ts.SyntaxKind.NamespaceExport,
   // A property/method/class/function's own NAME is a key, not a value — `process` as an
   // object-literal property key (`{ process: { env: {...} } }`) or a class/method/function
   // name is exactly as unrelated to the real global as any other identically-spelled local
@@ -470,14 +502,73 @@ const DECLARATION_NAME_HOLDER_KINDS = new Set([
   ts.SyntaxKind.PropertyAccessExpression,
 ]);
 
+/**
+ * The positions above (`DECLARATION_NAME_HOLDER_KINDS`, keyed off `.name`) plus a handful of
+ * further NAME-shaped positions the AST spells with a different field, none of them a value
+ * reference either (Opus review of #423 pass 2, F3/F4):
+ *
+ *  - the LHS of a plain `x = ...` assignment — re-establishing what `x` denotes, not reading
+ *    it (matches a declaration's own binding name; without this, `let x; x = process;`
+ *    double-charges once `x` becomes a tracked alias on a later fixed-point round, where
+ *    `const p = process` alone charges zero — a later genuine read of `x`, e.g. `x.env.Y`,
+ *    is unaffected since that identifier is a separate node in a safe consuming context, not
+ *    this one);
+ *  - a labeled statement's own label, and a `break`/`continue` naming that label;
+ *  - a JSX attribute's NAME (`<C process={1}/>` — a prop name, not a value);
+ *  - a destructuring element's PROPERTY key when it differs from the bound name (`const {
+ *    process: child } = options` — a key read off `options`, not a reference to the global);
+ *  - an import specifier's ORIGINAL name (`import { process as p } from "./x"` — names what
+ *    is being imported, not a reference to anything already in scope);
+ *  - an export specifier's exported name, but ONLY when a distinct local name precedes it
+ *    (`export { x as process }` — `process` is purely the exported spelling; `export {
+ *    process }` alone has no separate local name, so that same field IS the real local
+ *    reference and must still resolve to the global, matching the `ShorthandPropertyAssignment`
+ *    carve-out above).
+ *
+ * A `typeof` operand (`typeof process !== "undefined"`) is a further NAME-shaped position, but
+ * lives in `isSafeConsumingContext` instead — unlike the positions here, it isn't restricted to
+ * a bare identifier (`typeof process.env` narrows through a real `PropertyAccessExpression`
+ * first), so it needs the same parent-of-any-node-kind treatment as the truthiness-test
+ * exemption there.
+ */
 function isDeclarationBindingName(node) {
   const parent = node.parent;
-  return (
-    node.kind === ts.SyntaxKind.Identifier &&
-    !!parent &&
+  if (!parent) return false;
+  if (node.kind !== ts.SyntaxKind.Identifier) return false;
+  if (parent.name === node && DECLARATION_NAME_HOLDER_KINDS.has(parent.kind))
+    return true;
+  if (
+    parent.kind === ts.SyntaxKind.BinaryExpression &&
+    parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+    parent.left === node
+  )
+    return true;
+  if (
+    (parent.kind === ts.SyntaxKind.LabeledStatement ||
+      parent.kind === ts.SyntaxKind.BreakStatement ||
+      parent.kind === ts.SyntaxKind.ContinueStatement) &&
+    parent.label === node
+  )
+    return true;
+  if (parent.kind === ts.SyntaxKind.JsxAttribute && parent.name === node)
+    return true;
+  if (
+    parent.kind === ts.SyntaxKind.BindingElement &&
+    parent.propertyName === node
+  )
+    return true;
+  if (
+    parent.kind === ts.SyntaxKind.ImportSpecifier &&
+    parent.propertyName === node
+  )
+    return true;
+  if (
+    parent.kind === ts.SyntaxKind.ExportSpecifier &&
     parent.name === node &&
-    DECLARATION_NAME_HOLDER_KINDS.has(parent.kind)
-  );
+    parent.propertyName
+  )
+    return true;
+  return false;
 }
 
 function hasExportModifier(node) {
@@ -658,7 +749,7 @@ export function findEnvReadsInSourceFile(sourceFile) {
       // the bare-process/import.meta case is new here (#382 M1's `export const p = process`
       // / `export default process`). A function VALUE (`export const get = () => process`)
       // is not a function classify() resolves at all — it is caught generically instead, by
-      // `maybeChargeBareEscape` reaching the arrow's own return value during the ordinary
+      // `chargeBareValueIfEscaping` reaching the arrow's own return value during the ordinary
       // tree walk into its body, the same as any other return, exported or not.
       chargeBareValueIfEscaping(initializer);
     }
