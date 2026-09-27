@@ -96,10 +96,21 @@ FROM ${NODE_IMAGE} AS runtime
 # deliberately. Verified safe by rebuilding this exact base image locally with
 # the purge applied and confirming wget and node both still work, with no
 # other installed package depending on it.
+# libpcre2-8-0 ships in the base image below its patched version; upgrading it in place
+# (Debian's security repo already has the fix) closes 3 real, fixed CVEs the release scan
+# still flags even with `ignore-unfixed: true` (decision log, 2026-09-27), since a fix being
+# available is exactly the case that flag does NOT skip.
+#
+# npm's own bundled CLI (ships inside the Node base image for `npm install`-style workflows)
+# is never invoked in this runtime image -- the app is a pre-built bundle started with plain
+# `node`, and the build stages use pnpm via corepack, not this bundled npm. Deleting its
+# install directory closes the remaining fixed-but-unaddressed findings the same way; `node`
+# and `corepack` (a separate binary, unaffected) still work, verified locally.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends wget \
+ && apt-get install -y --only-upgrade libpcre2-8-0 \
  && apt-get purge -y --allow-remove-essential perl-base \
- && rm -rf /var/lib/apt/lists/* \
+ && rm -rf /var/lib/apt/lists/* /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
  && groupadd --system --gid 10001 taskdesk \
  && useradd --system --uid 10001 --gid taskdesk --home-dir /app --shell /usr/sbin/nologin taskdesk
 
