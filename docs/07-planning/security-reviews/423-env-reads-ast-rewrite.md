@@ -249,3 +249,34 @@ would over-charge, not under-charge.
 **Surfaces examined:** the pass-3 fix and its new boundary (11 hand-built adversarial
 variants); the double-charge side effect; both F5 doc corrections; the real repo
 (unchanged: 29/52); the full test suite (736/736).
+
+---
+
+## Security review — pass 5 (final delta) — CLEAR
+
+**Model:** Opus 5.5, fresh independent context (did not author or run passes 1-4)
+**Session:** subagent `a334b553754649b41`
+
+**Reviewed head:** `0e4dd6ee5ba8fb4f59f123f5511b3b3ac47c4ac5`
+
+**Verdict: CLEAR WITH FINDINGS (non-blocking).** Confirmed F6's fix matches the spec exactly
+(`exportedNames` only collects top-level, plain-identifier `export`-modified variable
+declarations; can only ADD a charge, never exempt one). Ran the full suite (741/741) and
+the real-repo check (unchanged: 29/52). Specifically probed every adjacent risk this
+pattern (F3, F6) has shown twice now: `export { x }` doesn't double-charge; exported
+function/class reassignment is a TypeScript compile error (TS2629/TS2630/TS2395) so
+unreachable in this codebase's `.ts` files; no bad interaction with the shadow-scoping fix
+(can only over-charge, never miss); scoped correctly to top-level only (a namespace-body
+export isn't reached, confirmed absent from `apps/`/`packages/`).
+
+**F7 (new, non-blocking):** `exportedNames` only recognizes a plain-identifier declaration,
+so an exported DESTRUCTURING declaration reassigned later is still missed — `export let
+{ x } = o; x = process;` and array/renamed-key variants give `[]`. Reasoned as genuinely
+non-blocking: this file's header already lists `const { ...rest } = process` as an accepted
+limit, an easier way to hide a read than F7, so F7 doesn't lower the gate's actual floor;
+confirmed absent from `apps/`/`packages/`. Filed as a follow-up (issue #427) rather than
+another code delta.
+
+**This closes the review chain for PR #423** — five Opus passes across the original
+rewrite and four rounds of narrow, each-time-real findings, ending CLEAR WITH FINDINGS with
+the one remaining item (F7) reasoned as non-blocking and filed as a follow-up.
