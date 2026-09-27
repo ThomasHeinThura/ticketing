@@ -97,4 +97,19 @@ fix); two adversarial hand-built cases probing for a new false negative; every o
 `packages/domain/src/audit/node-crypto.d.ts` — both unaffected).
 
 **Filed as follow-ups, correctly out of scope for this PR:** doc-accuracy correction for F1
-and F2's comment wording, and F3's pre-existing bare-name-validation gap.
+and F2's comment wording, and F3's pre-existing bare-name-validation gap — all three tracked
+in issue #424.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `2250ee0a63c4c992ac86c71ea8ab4bc71843ebe3`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. The only diff on this PR's own reviewed files
+(`scripts/ci/check-deps.mjs`, `scripts/ci/check-deps.test.mjs`,
+`docs/04-engineering/error-fix-loop.md`) between the last reviewed head
+(`9af53cdefce51496e2fbdfb6a2151baea962234f`) and this one is an unrelated, already-reviewed
+doc bullet inserted elsewhere in `error-fix-loop.md` by a separately merged PR (the
+"hand-written regex/lexer CI gate" lesson) — no overlap with this PR's own content, no code
+change.
