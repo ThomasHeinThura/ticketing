@@ -5,11 +5,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { repoRoot } from "./lib/repo.mjs";
 
-const root = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../..",
-);
 const contract = "tests/api-contract/openapi.json";
 const version = "1.32.1";
 const redoclyConfig = "scripts/ci/redocly.yaml";
@@ -17,6 +14,16 @@ const archiveName = `oasdiff_${version}_linux_amd64.tar.gz`;
 const archiveSha256 =
   "7c8939fc49b75ee11fec66a5b83b37a2fca6aee109fed85013b1ba2ac2a1ee7f";
 const approvedBreaksPath = "scripts/ci/openapi-approved-breaks.json";
+
+/**
+ * Absolute path to the approved-breaks allowlist, resolved against `repoRoot`
+ * (`scripts/ci/lib/repo.mjs` — the CALLING worktree's root, not wherever this script's own
+ * file happens to live; see #415, the #399 bug recurring in the one checker that computed
+ * its own root instead of importing `repoRoot`).
+ */
+export function approvedBreaksFilePath() {
+  return path.join(repoRoot, approvedBreaksPath);
+}
 
 const APPROVED_BREAK_KEYS = [
   "operation",
@@ -440,7 +447,7 @@ export function parseRedoclyReport(output) {
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
-    cwd: root,
+    cwd: repoRoot,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
     ...options,
@@ -608,7 +615,7 @@ async function main() {
   let approvedBreaks;
   try {
     const approvedBreaksText = await fs.readFile(
-      path.join(root, approvedBreaksPath),
+      approvedBreaksFilePath(),
       "utf8",
     );
     approvedBreaks = parseApprovedBreaks(approvedBreaksText);
