@@ -57,3 +57,12 @@ migration and no `_journal.json` change. `schema.ts` is in `ci-cd.md`'s security
   `origin/main`; this reviewer did not re-measure that claim.
 - Any real deployed environment's `__drizzle_migrations` table. The claim of no effect rests
   on the migrator source above, not on inspecting a live install.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `ae90fdf95e34648ae1977cb5b29e42e70965cac2`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git show --remerge-diff` empty; brings in already-reviewed
+main content (#394's check:tokens gate), zero overlap with this PR's own files.
