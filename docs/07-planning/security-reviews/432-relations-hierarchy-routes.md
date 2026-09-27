@@ -240,3 +240,41 @@ scoped to every file this PR touches is empty — this update-branch cycle merge
 no conflict (unlike the prior #430 collision), since #438 (project-engagement routes) never
 touches `work-item/**`. The intervening commit is #438's own already-reviewed merge,
 confirmed an ancestor of `origin/main`. No new, unreviewed logic reached this branch.
+
+---
+
+## Security review — second conflict-resolution verification (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a69cd965f090bb99a`
+
+**Reviewed head:** `fb4ff4d618d7b902b00e314e06f418c2e612d919`
+
+**Verdict: CLEAR.** Confirmed a real two-parent merge (`73d43ef` prior head, `b5aa86f`
+main tip after #433 merged). Verified two ways: diffed the PR's own pre-merge changes
+against its post-merge changes (leaving out generated files) and confirmed they're
+identical — the merge carried this PR's own content over completely unchanged, dropping
+nothing from main (confirmed #430's unassign route and #433's six routes both fully
+present). Read `index.ts` directly: 17 routes defined, 17 registered, each exactly once,
+no truncation or nesting. Confirmed published-event-count stays 29 (this PR's hierarchy
+routes publish only the existing `work_item.updated` key, no new one). Independently
+regenerated the permissions matrix (`REGEN_MATRIX=1`) and confirmed it's byte-identical to
+the committed one — all 147 routes across all three feature sets present, none altered.
+Confirmed the OpenAPI contract likewise matches real tooling output. Full suites
+reproduced on a fresh database: integration 104/104 files (1357/1357 tests, all three
+feature sets' own test files individually confirmed: hierarchy 12/12, unassign 8/8, and
+each of #433's six test files green), permissions 13/83. `tsc --noEmit` clean.
+`check-openapi.mjs`/`test-contract.mjs` both clean.
+
+**Note:** the branch has since advanced further (`3d0bb2c`, merging in #439 — packages/ui
+only, confirmed by this same reviewer to not touch anything relevant) via a clean
+automatic merge. See the reconfirmation below.
+
+## Re-confirmation after branch update (2026-09-27, third)
+
+**Reviewed head:** `3d0bb2c871b413bf9eaf6379b50ae99dd122ee45`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git diff fb4ff4d618d7b902b00e314e06f418c2e612d919..3d0bb2c871b413bf9eaf6379b50ae99dd122ee45`
+scoped to every file this PR touches is empty. The intervening commit is #439's own
+already-reviewed, docs/packages-ui-only merge — confirmed an ancestor of `origin/main` and
+confirmed by the prior verification pass itself to touch nothing relevant to this PR.
