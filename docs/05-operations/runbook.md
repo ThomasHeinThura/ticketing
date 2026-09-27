@@ -351,6 +351,38 @@ group by router_group
 order by requests_evaluated asc;
 ```
 
+**Coverage share, before vs after a cutover** (issue #324 acceptance criterion 6) — per
+router group, what fraction of requests actually got a full policy comparison
+(`agree`/`legacy_allow_policy_deny`/`legacy_deny_policy_allow`) rather than
+`unevaluated`/`evaluator_error`, split by a chosen cutover day (a deploy date, a slice
+boundary, or any other date worth comparing across). Substitute the literal date for
+`:cutover_day` — this is a documented query, not a bound parameter:
+
+```sql
+select
+  router_group,
+  round(100.0 * coalesce(sum(count) filter (
+    where day < :cutover_day
+      and outcome in ('agree', 'legacy_allow_policy_deny', 'legacy_deny_policy_allow')
+  ), 0) / nullif(sum(count) filter (where day < :cutover_day), 0), 1) as evaluated_pct_before,
+  sum(count) filter (where day < :cutover_day) as total_before,
+  round(100.0 * coalesce(sum(count) filter (
+    where day >= :cutover_day
+      and outcome in ('agree', 'legacy_allow_policy_deny', 'legacy_deny_policy_allow')
+  ), 0) / nullif(sum(count) filter (where day >= :cutover_day), 0), 1) as evaluated_pct_after,
+  sum(count) filter (where day >= :cutover_day) as total_after
+from policy_shadow_tally
+group by router_group
+order by router_group;
+```
+
+A blank `evaluated_pct_before`/`evaluated_pct_after` means that window has no rows at all
+for that router group (never exercised in that window), distinct from `0.0` (exercised, but
+nothing evaluated) — `nullif`/`coalesce` are load-bearing for exactly that distinction, not
+decoration. Verified against a scratch database seeded with known before/after counts per
+router group (mixed evaluated/unevaluated, one group with data only before the cutover, one
+only after) before this was committed.
+
 ## Useful commands
 
 ```bash
