@@ -60,3 +60,12 @@ Any later change to #404's head (rebase, base merge, code or test commit) invali
 - The worktree used symlinked `node_modules` from the main checkout. `tsc --noEmit` on `apps/api` reported 2 errors in `assign-work-item.ts` (`@taskdesk/domain` exports). They come from that symlink setup and are in no file this PR touches. CI `static` is green at this head.
 - The probe database was dropped afterwards. No probe or mutation was committed.
 - At review time CI was green on every required check except `integration - Postgres 18`, which was still pending. The PR body's ordinary-review section still reads PENDING. Both are outside this note.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `79d0093bc80e17ecd1eb964c031f9fb1f1ff6e9f`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git show --remerge-diff` empty; brings in already-reviewed
+main content (#394's check:tokens gate), zero overlap with this PR's own files.
