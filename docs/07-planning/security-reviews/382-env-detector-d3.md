@@ -65,3 +65,15 @@ The rule also flags `if (process)`, `(process) => …`, `function f(process)`, `
 **CLEAR WITH FINDINGS at `f2632ad08e03baca6c5838b7ba1d073a9a15b52f`.**
 
 This change is strictly more fail-closed than `main` and causes no regressions, so it may merge once its other required gates pass. The findings are not regressions and do not block this PR. H1, M1–M4 and L1 must be tracked on #342, and #342 must not be closed on this merge. Recommended next step: don't queue another round of lexer patches. Rebuild the detector on the TypeScript compiler API and fail on any parse error, as #361 did. Then treat every reference to the global `process`, `globalThis.process` or `import.meta` as unattributable unless it is a known safe member.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `a8a7e17345019aec9299c208355f60bc69e88748`
+**Previously reviewed head:** `f2632ad08e03baca6c5838b7ba1d073a9a15b52f`
+**Reviewer:** orchestrating session (mechanical verification — the merge changes no authority or gate-semantics invariant, per `AGENTS.md`'s review-tier table)
+**Verdict:** CLEAR WITH FINDINGS, unchanged. All findings above (H1, M1-M4, L1, L2) still stand, non-blocking.
+
+- `git show --remerge-diff a8a7e17` is empty — a clean automatic merge, no conflict-resolution content.
+- `git diff 1c183ad..a8a7e17 --stat` touches exactly two files: `docs/05-operations/runbook.md` (#380) and `docs/07-planning/status.md` (#384), both docs-only and outside security-review scope. `scripts/ci/lib/env-reads.mjs` and its test file are unchanged since the reviewed head.
