@@ -688,3 +688,92 @@ test("the monorepo boundary definition is pinned to the enforced edge matrix", a
       .sort(),
   );
 });
+
+test("an ambient module augmentation of a third-party package is not misattributed to whichever workspace declares it (#393)", async (t) => {
+  // #389/#390 each added packages/ui/src/test/a11y.ts with this exact `declare module
+  // "vitest"` shape (augmenting vitest's own Matchers interface for a custom
+  // `toHaveNoViolations` assertion). resolveWorkspaceTarget's checker-symbol fallback
+  // walked the "vitest" module symbol's declarations and returned the first one sitting
+  // inside a workspace — which was this augmentation, not vitest's own real declaration —
+  // so every OTHER package's `import ... from "vitest"` got misattributed to
+  // @taskdesk/ui, producing 69 false "outside the workspace edge matrix"/"pure leaf"
+  // violations. The augmentation's own PRs worked around the trigger by deleting it; this
+  // is the checker fix so the next ambient augmentation of any third-party module doesn't
+  // reproduce the same false-positive class.
+  //
+  // `packages/domain`'s own tsconfig "include" is widened to also cover
+  // `packages/ui/src/test/a11y.ts` directly. That's what actually gets both files'
+  // declarations merged into the SAME ts.Program for the "vitest" module symbol — the
+  // exact condition that mattered in production too (module augmentations merge program-
+  // wide once the augmenting file is part of the compilation), without depending on
+  // whichever project-assignment path put the real a11y.ts in the same program as an
+  // unrelated package's test file there.
+  const root = await mkdtemp(
+    path.join(os.tmpdir(), "taskdesk-deps-augmentation-"),
+  );
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  async function packageAt(relative, name, tsconfig) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    await writeFile(
+      path.join(directory, "tsconfig.json"),
+      JSON.stringify(tsconfig),
+    );
+    return directory;
+  }
+
+  const ui = await packageAt("packages/ui", "@taskdesk/ui", {
+    compilerOptions: { allowJs: true },
+  });
+  const domain = await packageAt("packages/domain", "@taskdesk/domain", {
+    compilerOptions: { allowJs: true },
+    include: ["src/**/*", "../ui/src/test/a11y.ts"],
+  });
+
+  // A real, physically resolvable third-party package (mirrors vitest being a real
+  // dependency in the original trigger, not a shorthand/unresolvable ambient module).
+  await mkdir(path.join(root, "node_modules/some-external-package"), {
+    recursive: true,
+  });
+  await writeFile(
+    path.join(root, "node_modules/some-external-package/package.json"),
+    JSON.stringify({ name: "some-external-package", types: "index.d.ts" }),
+  );
+  await writeFile(
+    path.join(root, "node_modules/some-external-package/index.d.ts"),
+    "export declare function thing(): void;\n",
+  );
+
+  // The ambient module augmentation of a third-party module, living in @taskdesk/ui —
+  // same shape as the real a11y.ts trigger.
+  await mkdir(path.join(ui, "src/test"), { recursive: true });
+  await writeFile(
+    path.join(ui, "src/test/a11y.ts"),
+    `declare module "some-external-package" {
+  export function extra(): void;
+}
+export {};
+`,
+  );
+
+  // A DIFFERENT workspace package — a documented pure leaf, no less — importing the
+  // same third-party module from a test file, same as packages/domain's real
+  // `import ... from "vitest"` in the original bug.
+  await writeFile(
+    path.join(domain, "src/index.test.ts"),
+    'import { thing } from "some-external-package";\n',
+  );
+
+  const { violations } = await analyzeDependencies(root);
+  const messages = violations.join("\n");
+  assert.doesNotMatch(
+    messages,
+    /packages\/domain\/src\/index\.test\.ts.*some-external-package/s,
+  );
+  assert.doesNotMatch(messages, /resolves to workspace "@taskdesk\/ui"/);
+});

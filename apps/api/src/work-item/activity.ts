@@ -280,6 +280,16 @@ const DIFFABLE_FIELDS: ReadonlyArray<{
 ];
 
 function valuesDiffer(a: unknown, b: unknown): boolean {
+  // S1 (issue #298, PR #292's Opus review): `null` vs. non-null is ALWAYS a change,
+  // checked before any date-specific comparison below. Without this, `null` (no date
+  // set) and the epoch instant `1970-01-01T00:00:00Z` compared equal once turned into
+  // `Date`s (`new Date(null).getTime()` is `0`, same as the epoch's own `getTime()`) --
+  // and the epoch is a normal, validatable value here (`date-bounds.ts`'s floor is
+  // 1900, well below it), so a real null<->epoch PATCH silently wrote no activity row
+  // and fired no event while still 200'ing and bumping `version`.
+  if ((a === null) !== (b === null)) {
+    return true;
+  }
   if (a instanceof Date || b instanceof Date) {
     return (
       new Date(a as Date | string).getTime() !==

@@ -13,11 +13,14 @@
  * path and prove nothing. `tests/permissions/git-baseline.test.ts` reached the same
  * conclusion for the same reason and says so at the top.
  *
- * The checker scripts derive `repoRoot` from `import.meta.url` — `scripts/ci/lib/../../..`
- * — so copying `scripts/ci/` into a temporary directory makes that directory the
- * repository root as far as they are concerned. Nothing here touches the real repository:
- * no checkout, no stash, no rebase, and the remote-tracking ref is faked with
- * `git update-ref`, the same plumbing a real `git fetch` leaves behind.
+ * The checker scripts derive `repoRoot` from `git rev-parse --show-toplevel` run against
+ * the CALLING process's cwd (#399), not from where `repo.mjs` itself lives — so copying
+ * `scripts/ci/` into a temporary directory and running it there (`runChecker`/
+ * `evaluateInRepo` both set `cwd: dir`) makes that directory the repository root as far as
+ * they are concerned, exactly as before, because `initRepo(dir)` makes it a real git work
+ * tree in its own right. Nothing here touches the real repository: no checkout, no stash,
+ * no rebase, and the remote-tracking ref is faked with `git update-ref`, the same plumbing
+ * a real `git fetch` leaves behind.
  */
 
 import { spawnSync } from "node:child_process";

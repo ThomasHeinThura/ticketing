@@ -223,6 +223,20 @@ Add to this as things are learned. It is the institutional memory that agents do
   Before adding a dispatch that re-emits the same event type a component (or a shared
   listener it feeds into) is itself listening for, trace who else is listening for that type
   and confirm the forward is actually load-bearing.
+- **A TypeScript symbol's `declarations` array is not ordered by "which one is real."**
+  #393 (following #389/#390): `check-deps.mjs`'s `resolveWorkspaceTarget` walked a bare
+  third-party import's checker symbol and returned the first declaration sitting inside
+  any workspace, trusting array order as a proxy for "where the module lives." TypeScript's
+  declaration merging attaches an ambient module augmentation (`declare module "some-pkg"
+  { ... }`) to the target module's symbol regardless of which file declares it, once that
+  file is part of the same compilation — so a workspace-owned augmentation can sort ahead
+  of the module's own real declaration, with nothing in the array marking which is which.
+  One `declare module "vitest" { ... }` in `packages/ui`'s test helpers misattributed every
+  OTHER package's `import ... from "vitest"` to `@taskdesk/ui`, 69 false violations from one
+  augmentation. The guard is structural, not per-caller: any code walking a module symbol's
+  declarations to prove ownership must skip `ts.SyntaxKind.ModuleDeclaration` entries —
+  they can never be a bare specifier's real home in that kind of fallback — rather than
+  re-excluding whichever specific module tripped it this time.
 
 ## Related
 
