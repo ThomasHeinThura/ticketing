@@ -64,7 +64,7 @@ const createTimeEntryRoute = createRoute({
     "Log time against a task. Omit endTime to start a running entry that can be closed later with an update.",
   middleware: [
     workspaceAccess.fromTaskId(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     body: {
@@ -77,7 +77,7 @@ const createTimeEntryRoute = createRoute({
     // #290: an unknown/out-of-reach task 404s via `workspaceAccess.fromTaskId()`
     // (below), before this route's own body validation runs.
     400: errorResponse("Invalid timestamps"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
   },
 });
@@ -92,7 +92,7 @@ const updateTimeEntryRoute = createRoute({
     "Replace a time entry's start, end, and description. Setting endTime closes a running entry and fills in its duration.",
   middleware: [
     workspaceAccess.fromTimeEntry(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     params: timeEntryParam,
@@ -104,7 +104,7 @@ const updateTimeEntryRoute = createRoute({
   responses: {
     200: jsonResponse("The updated time entry", timeEntrySchema),
     400: errorResponse("Invalid timestamps"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Time entry not found"),
   },
 });

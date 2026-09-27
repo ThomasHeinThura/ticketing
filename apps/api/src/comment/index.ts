@@ -48,7 +48,7 @@ const createTaskCommentRoute = createRoute({
     "Add a comment to a task. Mentions in the content notify the mentioned users, and the assignee is notified too. Returns the stored activity row, which carries no author object -- read the list route for that.",
   middleware: [
     workspaceAccess.fromTaskId(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     params: taskIdParam,
@@ -60,7 +60,7 @@ const createTaskCommentRoute = createRoute({
   responses: {
     200: jsonResponse("The created comment", activitySchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Missing task:update permission"),
+    403: errorResponse("Missing work_item:update permission"),
     404: errorResponse("Task not found"),
   },
 });
@@ -74,7 +74,7 @@ const updateTaskCommentRoute = createRoute({
   description: "Edit a comment. Only the comment's author may do this.",
   middleware: [
     workspaceAccess.fromComment(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: {
     params: commentParam,
@@ -86,7 +86,9 @@ const updateTaskCommentRoute = createRoute({
   responses: {
     200: jsonResponse("The updated comment", activitySchema),
     400: errorResponse("Invalid body"),
-    403: errorResponse("Not the author, or missing task:update permission"),
+    403: errorResponse(
+      "Not the author, or missing work_item:update permission",
+    ),
     404: errorResponse("Comment not found"),
   },
 });
@@ -100,13 +102,15 @@ const deleteTaskCommentRoute = createRoute({
   description: "Delete a comment. Only the comment's author may do this.",
   middleware: [
     workspaceAccess.fromComment(),
-    requireWorkspacePermission({ task: ["update"] }),
+    requireWorkspacePermission({ work_item: ["update"] }),
   ] as const,
   request: { params: commentParam },
   responses: {
     200: jsonResponse("The deleted comment", activitySchema),
     400: errorResponse("id must not contain a NUL (\\u0000) byte"),
-    403: errorResponse("Not the author, or missing task:update permission"),
+    403: errorResponse(
+      "Not the author, or missing work_item:update permission",
+    ),
     404: errorResponse("Comment not found"),
   },
 });

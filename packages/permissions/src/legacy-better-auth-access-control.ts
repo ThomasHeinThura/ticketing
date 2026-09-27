@@ -14,6 +14,15 @@
  *
  * The four role names it seeds — `viewer`, `member`, `admin`, `owner` — are kept for data
  * continuity and are re-declared properly in `roles.ts`.
+ *
+ * **The `work_item` statement key was `task` until issue #8's prerequisite rename** (2026-09-23
+ * decision log entry, "shadow until clean, then strict; rename `task:*` first"): every seeded
+ * `workspace_role` row, the compiled built-in roles here, and every
+ * `requireWorkspacePermission({ work_item: [...] })` call site across `apps/api/src` were
+ * re-keyed together, in the same change, so no caller is left checking a resource name this
+ * statement no longer has. This is a plain rename to match what the target `Capability` union
+ * calls `work_item:*` — it does not change what any role is granted, and it is a prerequisite
+ * for the `task`/work-item router's shadow-mode soak (issue #8), not that soak itself.
  */
 
 import { createAccessControl } from "better-auth/plugins/access";
@@ -27,7 +36,7 @@ import {
 export const statement = {
   ...defaultStatements,
   project: ["create", "read", "update", "delete", "share"],
-  task: ["create", "read", "update", "delete", "assign"],
+  work_item: ["create", "read", "update", "delete", "assign"],
   label: ["create", "read", "update", "delete"],
   workspace: ["read", "update", "delete", "manage_settings"],
 } as const;
@@ -37,7 +46,7 @@ export const ac = createAccessControl(statement);
 export const viewer = ac.newRole({
   ...memberAc.statements,
   project: ["read"],
-  task: ["read"],
+  work_item: ["read"],
   label: ["read"],
   workspace: ["read"],
 });
@@ -45,7 +54,7 @@ export const viewer = ac.newRole({
 export const member = ac.newRole({
   ...memberAc.statements,
   project: ["create", "read"],
-  task: ["create", "read", "update"],
+  work_item: ["create", "read", "update"],
   label: ["create", "read", "update", "delete"],
   workspace: ["read"],
 });
@@ -53,7 +62,7 @@ export const member = ac.newRole({
 export const admin = ac.newRole({
   ...adminAc.statements,
   project: ["create", "read", "update", "delete", "share"],
-  task: ["create", "read", "update", "delete", "assign"],
+  work_item: ["create", "read", "update", "delete", "assign"],
   label: ["create", "read", "update", "delete"],
   workspace: ["read", "update", "manage_settings"],
 });
@@ -61,7 +70,7 @@ export const admin = ac.newRole({
 export const owner = ac.newRole({
   ...ownerAc.statements,
   project: ["create", "read", "update", "delete", "share"],
-  task: ["create", "read", "update", "delete", "assign"],
+  work_item: ["create", "read", "update", "delete", "assign"],
   label: ["create", "read", "update", "delete"],
   workspace: ["read", "update", "delete", "manage_settings"],
 });

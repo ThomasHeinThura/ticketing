@@ -11,25 +11,29 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * line 783, the guard is at line 755) — verified directly rather than assumed, per H2 (#163):
  * none of these routes are constrained by registration order.
  *
- * **Capability strings are the TARGET vocabulary and do not name what actually gates the
- * route today** — same transitional shape `workspace/policy.ts` already documents for
- * `organization:update`/`workspace:update`. `packages/permissions/src/capabilities.ts` has
- * no `task:*` capability at all; the five capabilities used below (`work_item:read`,
- * `work_item:create`, `work_item:update`, `work_item:delete`, `work_item:assign`) are the
- * "Work items" group in `docs/01-architecture/rbac.md`. The RUNTIME check on every mutating
- * route is `requireWorkspacePermission({ task: [...] })`
- * (`apps/api/src/utils/require-workspace-permission.ts`) against the INHERITED `task`
+ * **Capability strings are the TARGET vocabulary; the runtime is still the legacy resource-map
+ * shape, now re-keyed to match it.** Same transitional shape `workspace/policy.ts` already
+ * documents for `organization:update`/`workspace:update`. `packages/permissions/src/
+ * capabilities.ts` has no `task:*` capability at all; the five capabilities used below
+ * (`work_item:read`, `work_item:create`, `work_item:update`, `work_item:delete`,
+ * `work_item:assign`) are the "Work items" group in `docs/01-architecture/rbac.md`. The
+ * RUNTIME check on every mutating route is `requireWorkspacePermission({ work_item: [...] })`
+ * (`apps/api/src/utils/require-workspace-permission.ts`) against the INHERITED `work_item`
  * resource the seeded `workspace_role` rows and the compiled built-in roles actually carry
- * (`packages/permissions/src/legacy-better-auth-access-control.ts`: `task: ["create", "read",
- * "update", "delete", "assign"]`). Re-keying seeded rows and this evaluator to `work_item:*`
- * is #7's capability migration, not this lane's — recorded here, not pretended away.
+ * (`packages/permissions/src/legacy-better-auth-access-control.ts`: `work_item: ["create", "read",
+ * "update", "delete", "assign"]`) — re-keyed from the inherited `task` name to `work_item`
+ * (2026-09-23 decision log entry, "shadow until clean, then strict; rename `task:*` first"),
+ * a prerequisite for this router's shadow-mode soak. The declaration and the runtime resource
+ * NAME now agree; the runtime is still this legacy resource-map shape, not the new
+ * capability-string evaluator — wiring the registry into the request path is #8's own,
+ * separately tracked runtime-integration obligation, not this rename's.
  *
  * **None of the three read routes (`GET /{id}`, `GET /tasks/{projectId}`, `GET
  * /export/{projectId}`) has an explicit `requireWorkspacePermission` call at all** — their
  * only middleware is `workspaceAccess.fromTask()` / `.fromProject("projectId")`, i.e. a bare
  * workspace-membership check. This is not a gap: every seeded role (including `viewer`)
- * holds `task: ["read"]` in the legacy statements above, so membership alone is exactly
- * equivalent to a `task:read` check today. `workspace/policy.ts` records the identical
+ * holds `work_item: ["read"]` in the legacy statements above, so membership alone is exactly
+ * equivalent to a `work_item:read` check today. `workspace/policy.ts` records the identical
  * pattern for `GET /api/workspace/{workspaceId}` (declared `workspace:read` despite no
  * explicit permission-check middleware, for the same reason) and `apps/api/src/project/
  * policy.ts` records it again for `GET /api/project/{id}` — this file follows the same,
@@ -115,8 +119,8 @@ export const taskPolicies = {
   // (`controllers/export-tasks.ts`). Runtime gate is membership only
   // (`workspaceAccess.fromProject("projectId")`) — structurally identical to the list route
   // above, not a distinct, separately-enforced capability. `work_item:export` (rbac.md) is
-  // deliberately NOT used here: the legacy `task` statement this route is actually gated by
-  // has no `export` action at all (`create`/`read`/`update`/`delete`/`assign` only), so
+  // deliberately NOT used here: the legacy `work_item` statement this route is actually gated
+  // by has no `export` action at all (`create`/`read`/`update`/`delete`/`assign` only), so
   // nothing in the runtime distinguishes this from a plain read, and declaring
   // `work_item:export` would claim a check that is not there.
   "GET /api/task/export/{projectId}": {
@@ -130,10 +134,10 @@ export const taskPolicies = {
   // project by path id (`workspaceAccess.fromProject`, which 400s if the project does not
   // exist); the task itself has no row yet, which is exactly why scope is `"project"`
   // (the addressed, existing container) rather than `"work_item"`. Runtime gate is
-  // `requireWorkspacePermission({ task: ["create"] })`.
+  // `requireWorkspacePermission({ work_item: ["create"] })`.
   //
   // NOTE, not a separate branch: the request body may set an initial `userId` (assignee).
-  // `create-task.ts` does not additionally require `task:assign` for that — assigning at
+  // `create-task.ts` does not additionally require `work_item:assign` for that — assigning at
   // creation time is bundled under create authority as this route is actually implemented.
   // There is no `orSelfTarget`/owner-branch shape that represents "this capability also
   // covers a body field," so this is recorded here in prose rather than in the policy
@@ -147,7 +151,7 @@ export const taskPolicies = {
 
   // Import tasks into a project, one outcome per task (`controllers/import-tasks.ts`). Same
   // shape as create above: addresses the existing project by path id, runtime gate is
-  // `requireWorkspacePermission({ task: ["create"] })`.
+  // `requireWorkspacePermission({ work_item: ["create"] })`.
   "POST /api/task/import/{projectId}": {
     capability: "work_item:create",
     scope: "project",
@@ -156,7 +160,7 @@ export const taskPolicies = {
   },
 
   // Delete a task and its comments, labels and time entries (`controllers/delete-task.ts`).
-  // Addresses one task by id; runtime gate is `requireWorkspacePermission({ task: ["delete"]
+  // Addresses one task by id; runtime gate is `requireWorkspacePermission({ work_item: ["delete"]
   // })`.
   "DELETE /api/task/{id}": {
     capability: "work_item:delete",
@@ -167,7 +171,7 @@ export const taskPolicies = {
 
   // Move a task to another project (optionally into a named column;
   // `controllers/move-task.ts`). Addresses the SOURCE task by id; runtime gate is
-  // `requireWorkspacePermission({ task: ["update"] })`. The controller separately loads both
+  // `requireWorkspacePermission({ work_item: ["update"] })`. The controller separately loads both
   // the source and destination project rows and 400s unless they share one workspace
   // (`sourceProject.workspaceId !== destinationProject.workspaceId`), so scope stays bound to
   // the addressed task's own (source) workspace — a caller cannot use the destination-project
@@ -180,12 +184,12 @@ export const taskPolicies = {
   },
 
   // Replace every field of a task (`controllers/update-task.ts`). Addresses one task by id;
-  // the ALWAYS-RUNNING gate is `requireWorkspacePermission({ task: ["update"] })`, so
+  // the ALWAYS-RUNNING gate is `requireWorkspacePermission({ work_item: ["update"] })`, so
   // `work_item:update` is the correct primary declaration.
   //
   // NOT fully captured by a single capability, and recorded here rather than guessed away:
   // `requireTaskAssigneePermission` (`controllers/require-task-permission.ts`) runs AFTER the
-  // update check and ADDITIONALLY requires `task:assign` whenever the request body's `userId`
+  // update check and ADDITIONALLY requires `work_item:assign` whenever the request body's `userId`
   // differs from the task's existing assignee — an AND, not an OR, and not representable by
   // `orOwner`/`orSelfTarget` (those are alternate-path branches, not "also requires this other
   // capability when this field changes"). `work_item:assign` does not imply `work_item:update`
@@ -201,9 +205,9 @@ export const taskPolicies = {
   // `member` is meant to need only `work_item:update` via an `orSelfTarget` predicate, not
   // `work_item:assign` — but that carve-out belongs to the not-yet-built `/api/work-items/
   // {key}/assign` routes. `requireTaskAssigneePermission` on THIS inherited route has no such
-  // carve-out: it requires `task:assign` for ANY reassignment, including a member assigning
+  // carve-out: it requires `work_item:assign` for ANY reassignment, including a member assigning
   // the task to themselves. Declaring `orSelfTarget` here would be dishonest — the runtime
-  // would still 403 a self-assigning `member` who lacks `task:assign` — so this file declares
+  // would still 403 a self-assigning `member` who lacks `work_item:assign` — so this file declares
   // the stricter, actually-enforced shape. This is a known product gap for a future change to
   // align with `assignment.md`'s intent, not a security hole (the current behaviour is
   // over-restrictive, not under-restrictive).
@@ -215,7 +219,7 @@ export const taskPolicies = {
   },
 
   // Move a task to another column in the same project (`controllers/update-task-status.ts`).
-  // Runtime gate is `requireWorkspacePermission({ task: ["update"] })`.
+  // Runtime gate is `requireWorkspacePermission({ work_item: ["update"] })`.
   "PUT /api/task/status/{id}": {
     capability: "work_item:update",
     scope: "work_item",
@@ -224,7 +228,7 @@ export const taskPolicies = {
   },
 
   // Set a task's priority (`controllers/update-task-priority.ts`). Runtime gate is
-  // `requireWorkspacePermission({ task: ["update"] })`.
+  // `requireWorkspacePermission({ work_item: ["update"] })`.
   "PUT /api/task/priority/{id}": {
     capability: "work_item:update",
     scope: "work_item",
@@ -234,7 +238,7 @@ export const taskPolicies = {
 
   // Assign a task to a workspace member, or unassign (null) it
   // (`controllers/update-task-assignee.ts`). This is the ONE task route whose sole runtime
-  // gate is `requireWorkspacePermission({ task: ["assign"] })` — `work_item:assign` is exact.
+  // gate is `requireWorkspacePermission({ work_item: ["assign"] })` — `work_item:assign` is exact.
   "PUT /api/task/assignee/{id}": {
     capability: "work_item:assign",
     scope: "work_item",
@@ -243,7 +247,7 @@ export const taskPolicies = {
   },
 
   // Set or clear a task's due date (`controllers/update-task-due-date.ts`). Runtime gate is
-  // `requireWorkspacePermission({ task: ["update"] })`.
+  // `requireWorkspacePermission({ work_item: ["update"] })`.
   "PUT /api/task/due-date/{id}": {
     capability: "work_item:update",
     scope: "work_item",
@@ -252,7 +256,7 @@ export const taskPolicies = {
   },
 
   // Rename a task (`controllers/update-task-title.ts`). Runtime gate is
-  // `requireWorkspacePermission({ task: ["update"] })`.
+  // `requireWorkspacePermission({ work_item: ["update"] })`.
   "PUT /api/task/title/{id}": {
     capability: "work_item:update",
     scope: "work_item",
@@ -262,7 +266,7 @@ export const taskPolicies = {
 
   // Mint a presigned URL for uploading an image used in a task description or comment
   // (`index.ts`'s `createTaskImageUploadRoute` handler — no separate controller file).
-  // Runtime gate is `requireWorkspacePermission({ task: ["update"] })`, same as the finalize
+  // Runtime gate is `requireWorkspacePermission({ work_item: ["update"] })`, same as the finalize
   // route below.
   "PUT /api/task/image-upload/{id}": {
     capability: "work_item:update",
@@ -272,7 +276,7 @@ export const taskPolicies = {
   },
 
   // Record an uploaded image as a private asset (`index.ts`'s `finalizeTaskImageUploadRoute`
-  // handler). Runtime gate is `requireWorkspacePermission({ task: ["update"] })`.
+  // handler). Runtime gate is `requireWorkspacePermission({ work_item: ["update"] })`.
   "POST /api/task/image-upload/{id}/finalize": {
     capability: "work_item:update",
     scope: "work_item",
@@ -281,7 +285,7 @@ export const taskPolicies = {
   },
 
   // Replace a task's description (`controllers/update-task-description.ts`). Runtime gate is
-  // `requireWorkspacePermission({ task: ["update"] })`.
+  // `requireWorkspacePermission({ work_item: ["update"] })`.
   "PUT /api/task/description/{id}": {
     capability: "work_item:update",
     scope: "work_item",
@@ -302,9 +306,9 @@ export const taskPolicies = {
   // real runtime gate, `requireBulkTaskPermission`
   // (`controllers/require-task-permission.ts`), is DYNAMIC: it reads `operation` from the
   // body and requires a DIFFERENT capability depending on its value —
-  // `delete` → `task:delete`, `updateAssignee` → `task:assign`, `addLabel`/`removeLabel` →
+  // `delete` → `work_item:delete`, `updateAssignee` → `work_item:assign`, `addLabel`/`removeLabel` →
   // `label:update`, everything else (`updateStatus`/`updatePriority`/`updateDueDate`) →
-  // `task:update`. `CapabilityPolicy` has exactly one `capability` field; there is no policy
+  // `work_item:update`. `CapabilityPolicy` has exactly one `capability` field; there is no policy
   // shape in `packages/permissions/src/policy.ts` for "one of N capabilities, selected by a
   // request-body field" (`orOwner`/`orSelfTarget` are alternate-path OR branches on the SAME
   // primary capability, not a capability-selector).
