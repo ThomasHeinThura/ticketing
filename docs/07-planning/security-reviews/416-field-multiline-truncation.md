@@ -124,3 +124,19 @@ commit is #327's already-reviewed merge (docs-only, no overlap with this PR's ow
 **Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
 reviewed head (`5cf9d2cb9b0c0310d684baae1c2b081a0034e9a2`) and this one — the intervening
 commit is #422's already-reviewed merge, zero overlap with this PR's own files.
+
+---
+
+## Formatting fix (2026-09-27)
+
+**Reviewed head:** `ef0be6916a21a57ab15f5e06d65da46b26f08ebf`
+**Reviewer:** orchestrating session (mechanical verification — formatting only, no logic
+change)
+**Verdict:** CLEAR, unchanged. CI's `static` check found a genuine `biome format` violation
+in `scripts/ci/lib/pr-body.test.mjs` (long `assert.equal(...)` calls not wrapped to the
+configured print width) — not a flake, confirmed by running `biome check` locally with a
+raised `--max-diagnostics` limit (the CI log's default diagnostic cap had hidden this real
+finding behind 75 unrelated pre-existing warnings elsewhere in the repo). Ran
+`biome format --write` on only this one file, confirmed the diff is purely whitespace/line-
+wrapping (no token/logic change — verified by direct diff read), and confirmed the full
+`pr-body.test.mjs` suite still passes (151/151) after.
