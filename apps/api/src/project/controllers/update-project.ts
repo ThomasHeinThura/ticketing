@@ -101,7 +101,12 @@ async function updateProject(
 
       return updatedProject;
     } catch (error) {
-      if (isUniqueViolation(error, "slug")) {
+      // Exact constraint name, not a substring match on `"slug"` (issue #269): the
+      // rename above can only raise `project`'s own `project_slug_unique` --
+      // `project_slug_claim`'s insert just above is `onConflictDoNothing`, so its
+      // PRIMARY KEY (`project_slug_claim_pkey`) never surfaces as an unhandled
+      // unique_violation here the way it can in `create-project.ts`.
+      if (isUniqueViolation(error, "project_slug_unique")) {
         throw new ProjectSlugTakenError(slug);
       }
       throw error;

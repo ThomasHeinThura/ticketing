@@ -45,7 +45,18 @@ async function createProject(
   try {
     return await createProjectRow(workspaceId, name, icon, slug);
   } catch (error) {
-    if (isUniqueViolation(error, "slug")) {
+    // Exact constraint names, not a substring match on `"slug"` (issue #269): this
+    // transaction's own inserts can raise EITHER `project`'s `project_slug_unique`
+    // (the live-projects check) OR `project_slug_claim`'s unnamed PRIMARY KEY on
+    // `slug`, `project_slug_claim_pkey` (the permanent-claim registry below, raced
+    // against a concurrent create past the pre-check) -- both confirmed live against
+    // the schema.
+    if (
+      isUniqueViolation(error, [
+        "project_slug_unique",
+        "project_slug_claim_pkey",
+      ])
+    ) {
       throw new ProjectSlugTakenError(slug);
     }
     throw error;
