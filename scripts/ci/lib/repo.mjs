@@ -1,11 +1,42 @@
+import { execFileSync } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * `scripts/ci/lib/../../..` — where the checkers live in THIS checkout. Used only as a
+ * fallback (see `resolveRepoRoot` below): correct when `git rev-parse` cannot run at all
+ * (no git binary, or the caller's cwd genuinely isn't inside a work tree), and relied on by
+ * `scratch-repo.mjs`'s red probes for the same reason it existed before this fix.
+ */
+const scriptOwnRoot = path.resolve(here, "../../..");
+
+/**
+ * The repository root, resolved against the CALLING process's cwd — `git rev-parse
+ * --show-toplevel` — not against where `repo.mjs` itself happens to live. A checker
+ * invoked via an absolute path into a different checkout (e.g. from a worktree at
+ * `/tmp/lane-x` while `repo.mjs`'s own file lives in `/home/ubuntu/ticketing.v2`) must
+ * resolve *that worktree's* root, or every git-backed check silently operates on the
+ * wrong repository state (#399).
+ */
+function resolveRepoRoot() {
+  try {
+    const output = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    if (output) return output;
+  } catch {
+    // Not a git work tree (or git isn't runnable) from this cwd — fall back below.
+  }
+  return scriptOwnRoot;
+}
+
 /** Absolute path to the repository root. */
-export const repoRoot = path.resolve(here, "../../..");
+export const repoRoot = resolveRepoRoot();
 
 /** Directories that never contain reviewable source. */
 export const ignoredDirectories = new Set([
