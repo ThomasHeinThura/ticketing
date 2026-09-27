@@ -283,5 +283,20 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
       { permission: memberRole!.permission },
     );
     expect(saveResponse.status).toBe(200);
+
+    // Step 4 (F2, Opus delta review of #392): update-workspace-role.ts REPLACES the stored
+    // permission with exactly what was sent — a future change to merge instead of replace
+    // would silently resurrect `task` from the row's prior state. Assert what actually landed
+    // in the database, not just the HTTP status.
+    const [savedRow] = await db
+      .select({ permission: schema.workspaceRoleTable.permission })
+      .from(schema.workspaceRoleTable)
+      .where(eq(schema.workspaceRoleTable.id, memberRole!.id));
+    const savedPermission = JSON.parse(savedRow?.permission ?? "{}") as Record<
+      string,
+      unknown
+    >;
+    expect(savedPermission.task).toBeUndefined();
+    expect(savedPermission.work_item).toEqual(["create", "read"]);
   });
 });

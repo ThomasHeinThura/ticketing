@@ -36,7 +36,7 @@ function parsePermission(raw: string): Record<string, string[]> {
       for (const [resource, actions] of Object.entries(
         value as Record<string, unknown>,
       )) {
-        if (!(resource in statement)) continue;
+        if (!Object.hasOwn(statement, resource)) continue;
         if (Array.isArray(actions)) {
           result[resource] = actions.filter(
             (action): action is string => typeof action === "string",
