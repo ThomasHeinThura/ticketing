@@ -118,3 +118,67 @@ this finding.
 
 B1 is required. B2 should be fixed in the same pass (same root-cause fix closes both). A
 fresh Opus delta pass is required on the new head.
+
+---
+
+## Security review — Opus delta 2 (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a000de76bd3810f04`
+
+**Reviewed head:** `9ea468b6e7d9ca27c452f04b143fc81020523d32`
+
+**Verdict: BLOCKING.** B1 and B2 are fixed. But the B1/B2 fix itself opens a new fail-open
+gap in the same class — the prior pass's own recommended fix is what created it, not the
+lane.
+
+**B3 (BLOCKING, introduced by the B1/B2 fix, live-reproduced): a route-scoped `.use()`
+middleware ahead of the real handler is itself picked as "the" attributed route.**
+`attributedMatchedRoute`'s "first matched entry that isn't a DECLARED catch-all" rule
+treats a scoped `.use()` middleware (e.g. `app.use("/api/foo/*", next)`) the same as a
+real terminal route — its own key is not one of the two declared catch-alls, so if that
+middleware's key happens to carry a registry entry, every UNCLASSIFIED route behind it
+passes the guard using the middleware's clearance instead of its own (missing) one.
+Live-verified: real `createApp()`, `app.use("/api/probe3/*", next)` then an unclassified
+`app.get("/api/probe3/x", LEAK)`, with a policy entry given to the middleware's own key by
+spying on `policyRegistry.get` — at `9ea468b`, 200 and the leak body served. The same gap
+would also mis-evaluate shadow mode (evaluating the middleware's policy instead of the
+real route's), though enforcement stays shadow-only today. Nothing is exposed in
+production: the real router has no route-level `.use()`/`.all()` registration beyond the
+two declared catch-alls, and no non-standard methods reach the registry as `ALL` keys —
+this is the same "backstop for the day the invariant breaks anyway" standard the guard's
+own B1 fix was held to.
+
+**Fix, matching the reviewer's own live-verified trial:** walk every matched entry in
+order, skipping only the two declared catch-alls; every `ALL`-method entry met along the
+way must itself be classified (it can gate the request same as the two declared ones),
+and the walk stops at — and also requires classified — the first non-`ALL` entry, the
+actual terminal route Hono dispatches to. `assertRouteIsClassified` now checks every entry
+the walk collects, not just the first. Implemented in commit `0a6c320`
+(`shadow-middleware.ts`'s new `attributedRoutesToClassify`, consumed by
+`route-classification-guard.ts`); `attributedMatchedRoute` (used by shadow-mode
+evaluation) now returns the walk's LAST entry — the genuine terminal route — fixing the
+same shadow-mode imprecision as a side effect. New regression test added
+(`route-classification-guard-real-app.test.ts`, B3 case): a classified `ALL`-method
+middleware ahead of an unclassified handler is refused (500); reproduced fail-then-pass by
+reverting just the two source files.
+
+**N1 (non-blocking, real, confirmed still present): `GET /api/invitation/{id}` now
+500s for every authenticated caller.** This route is on the inherited-uncovered list
+(`tests/permissions/inherited-uncovered.json`, `apps/api/src/invitation/policy.ts`'s own
+"could not be confidently classified" comment) and sits below the guard — it has been true
+since B1's own fix, not newly introduced by B3. The web app uses `/public/:id}` instead, so
+no screen breaks; an API-key/MCP caller could be affected. The route exposed invitation
+details (invitee email, workspace name, inviter name) to any logged-in user with no real
+access check, so refusing it is arguably the right fail-closed outcome, not a regression —
+but it settles a "needs a human decision" note that was previously left open, and makes
+the PR body's "no-op for every real request" framing inaccurate. Disclosed in the PR body
+below rather than silently left implicit.
+
+Full suites reproduced on this head (fresh database, `td-lane-pg`): unit 61 files/496
+tests, permissions 13/83, integration 104 files/1351 tests — all green. `tsc --noEmit`
+clean on all three `apps/api` tsconfigs. `check-openapi.mjs` clean, 133 operations, no
+drift.
+
+B3 is required (fixed above). A fresh Opus delta pass is required on the head that fixes
+it.
