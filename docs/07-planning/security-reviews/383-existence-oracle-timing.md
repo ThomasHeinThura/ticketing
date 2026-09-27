@@ -211,3 +211,15 @@ Each mutation was reverted afterwards, and `git diff --quiet HEAD` passed.
 
 - `git show --remerge-diff 3a001a2` is empty — clean automatic merge.
 - Brings in only `CLAUDE.md` (#387), docs-only, outside security-review scope, zero overlap with this PR's own files.
+
+---
+
+## Lightweight re-confirmation after eighth branch update (2026-09-27)
+
+**Reviewed head:** `3533a16502cc3ea1a4736ac7de81ef7a66f68c67`
+**Previously reviewed head:** `3a001a2a47a31cbf5cc8558004bad4f5101309bc`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR WITH FINDINGS, unchanged.
+
+- `git show --remerge-diff 3533a16` is empty — clean automatic merge.
+- Brings in only `deploy/compose.traefik.yml` and `docs/05-operations/traefik-and-domains.md` (#388), outside security-review scope (neither file is on `ci-cd.md`'s path list), zero overlap with this PR's own files.
