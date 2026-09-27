@@ -72,3 +72,14 @@ independently re-audited beyond the corpus-wide output comparison).
 update also refreshes the `pull_request` event payload that `check-pr-template.mjs` reads,
 clearing a stale-body false failure from a run that predated this PR body's `**Note:**` line
 being added.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `47f2164ab25bb4373e28d0e970a604c1d0376fe2`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
+reviewed head (`70d2bcdb6a5dd59b9c15ffba1ffb74d68d95513c`) and this one — the intervening
+commits bring in #410's and #412's already-reviewed merges, zero overlap with this PR's own
+files.
