@@ -3,6 +3,8 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -52,15 +54,21 @@ export function KeyboardShortcutsProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [shortcuts, setShortcuts] = useState<Map<string, ShortcutHandler>>(
-    new Map(),
-  );
-  const [sequentialShortcuts, setSequentialShortcuts] = useState<
+  // #407: these three registries used to be `useState`, so every
+  // register/unregister call was a real state change that re-rendered this
+  // Provider. That recreated the inline context `value` below, which
+  // re-rendered every consumer (including whichever one just registered),
+  // which rebuilt its own shortcutsConfig object, which re-ran
+  // `useRegisterShortcuts`'s effect (keyed on that object's identity) --
+  // register/unregister again, forever. None of these maps are ever read
+  // during render, only inside the `keydown` handler below, so they don't
+  // need to be React state at all -- a ref removes the state change (and
+  // the loop) at its source instead of requiring every caller to memoize.
+  const shortcutsRef = useRef<Map<string, ShortcutHandler>>(new Map());
+  const sequentialShortcutsRef = useRef<
     Map<string, Map<string, ShortcutHandler>>
   >(new Map());
-  const [modifierShortcuts, setModifierShortcuts] = useState<
-    Map<string, ShortcutHandler>
-  >(new Map());
+  const modifierShortcutsRef = useRef<Map<string, ShortcutHandler>>(new Map());
   const [activePrefix, setActivePrefix] = useState<string | null>(null);
   const [prefixTimeout, setPrefixTimeout] = useState<number | null>(null);
 
@@ -92,24 +100,17 @@ export function KeyboardShortcutsProvider({
 
   const registerShortcut = useCallback(
     (key: string, handler: ShortcutHandler) => {
-      setShortcuts((prev) => new Map(prev).set(key, handler));
+      shortcutsRef.current.set(key, handler);
     },
     [],
   );
 
   const registerSequentialShortcut = useCallback(
     (prefix: string, key: string, handler: ShortcutHandler) => {
-      setSequentialShortcuts((prev) => {
-        const newMap = new Map(prev);
-        if (!newMap.has(prefix)) {
-          newMap.set(prefix, new Map());
-        }
-        const prefixMap = newMap.get(prefix);
-        if (prefixMap) {
-          prefixMap.set(key, handler);
-        }
-        return newMap;
-      });
+      if (!sequentialShortcutsRef.current.has(prefix)) {
+        sequentialShortcutsRef.current.set(prefix, new Map());
+      }
+      sequentialShortcutsRef.current.get(prefix)?.set(key, handler);
     },
     [],
   );
@@ -117,34 +118,23 @@ export function KeyboardShortcutsProvider({
   const registerModifierShortcut = useCallback(
     (modifierKey: string, key: string, handler: ShortcutHandler) => {
       const shortcutKey = `${modifierKey}+${key.toLowerCase()}`;
-      setModifierShortcuts((prev) => new Map(prev).set(shortcutKey, handler));
+      modifierShortcutsRef.current.set(shortcutKey, handler);
     },
     [],
   );
 
   const unregisterShortcut = useCallback((key: string) => {
-    setShortcuts((prev) => {
-      const newMap = new Map(prev);
-      newMap.delete(key);
-      return newMap;
-    });
+    shortcutsRef.current.delete(key);
   }, []);
 
   const unregisterSequentialShortcut = useCallback(
     (prefix: string, key: string) => {
-      setSequentialShortcuts((prev) => {
-        const newMap = new Map(prev);
-        if (newMap.has(prefix)) {
-          const prefixMap = newMap.get(prefix);
-          if (prefixMap) {
-            prefixMap.delete(key);
-            if (prefixMap.size === 0) {
-              newMap.delete(prefix);
-            }
-          }
-        }
-        return newMap;
-      });
+      const prefixMap = sequentialShortcutsRef.current.get(prefix);
+      if (!prefixMap) return;
+      prefixMap.delete(key);
+      if (prefixMap.size === 0) {
+        sequentialShortcutsRef.current.delete(prefix);
+      }
     },
     [],
   );
@@ -152,11 +142,7 @@ export function KeyboardShortcutsProvider({
   const unregisterModifierShortcut = useCallback(
     (modifierKey: string, key: string) => {
       const shortcutKey = `${modifierKey}+${key.toLowerCase()}`;
-      setModifierShortcuts((prev) => {
-        const newMap = new Map(prev);
-        newMap.delete(shortcutKey);
-        return newMap;
-      });
+      modifierShortcutsRef.current.delete(shortcutKey);
     },
     [],
   );
@@ -190,49 +176,37 @@ export function KeyboardShortcutsProvider({
               : "Shift";
         const shortcutKey = `${modifierKey}+${key}`;
 
-        if (modifierShortcuts.has(shortcutKey)) {
+        const handler = modifierShortcutsRef.current.get(shortcutKey);
+        if (handler) {
           event.preventDefault();
-          const handler = modifierShortcuts.get(shortcutKey);
-          if (handler) {
-            handler();
-          }
-          return;
+          handler();
         }
         return;
       }
 
-      if (activePrefix && sequentialShortcuts.has(activePrefix)) {
-        const prefixMap = sequentialShortcuts.get(activePrefix);
-        if (prefixMap?.has(key)) {
+      if (activePrefix) {
+        const prefixMap = sequentialShortcutsRef.current.get(activePrefix);
+        const handler = prefixMap?.get(key);
+        if (handler) {
           event.preventDefault();
-          const handler = prefixMap.get(key);
-          if (handler) {
-            handler();
-          }
+          handler();
           resetPrefix();
           return;
         }
       }
 
-      if (shortcuts.has(key)) {
+      const handler = shortcutsRef.current.get(key);
+      if (handler) {
         event.preventDefault();
-        const handler = shortcuts.get(key);
-        if (handler) {
-          handler();
-        }
-      } else if (sequentialShortcuts.has(key)) {
+        handler();
+      } else if (sequentialShortcutsRef.current.has(key)) {
         event.preventDefault();
         setPrefixWithTimeout(key);
       }
     },
-    [
-      activePrefix,
-      shortcuts,
-      sequentialShortcuts,
-      modifierShortcuts,
-      resetPrefix,
-      setPrefixWithTimeout,
-    ],
+    // shortcutsRef/sequentialShortcutsRef/modifierShortcutsRef are refs (stable
+    // identity, read fresh on every call) so they don't belong in this list.
+    [activePrefix, resetPrefix, setPrefixWithTimeout],
   );
 
   useEffect(() => {
@@ -253,15 +227,31 @@ export function KeyboardShortcutsProvider({
     };
   }, [prefixTimeout]);
 
-  const value = {
-    registerShortcut,
-    registerSequentialShortcut,
-    registerModifierShortcut,
-    unregisterShortcut,
-    unregisterSequentialShortcut,
-    unregisterModifierShortcut,
-    activePrefix,
-  };
+  // All six register/unregister callbacks are `useCallback(..., [])`, so
+  // this only actually changes when `activePrefix` does -- consumers that
+  // don't care about `activePrefix` (nearly all of them; see the registries
+  // above) now see a stable context value across unrelated renders instead
+  // of a fresh object every time.
+  const value = useMemo(
+    () => ({
+      registerShortcut,
+      registerSequentialShortcut,
+      registerModifierShortcut,
+      unregisterShortcut,
+      unregisterSequentialShortcut,
+      unregisterModifierShortcut,
+      activePrefix,
+    }),
+    [
+      registerShortcut,
+      registerSequentialShortcut,
+      registerModifierShortcut,
+      unregisterShortcut,
+      unregisterSequentialShortcut,
+      unregisterModifierShortcut,
+      activePrefix,
+    ],
+  );
 
   return React.createElement(
     KeyboardShortcutsContext.Provider,

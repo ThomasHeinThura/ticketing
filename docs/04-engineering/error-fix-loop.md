@@ -174,6 +174,19 @@ Add to this as things are learned. It is the institutional memory that agents do
   every key is a flat, static identifier; nested or computed patterns remain unattributable.
   The guard belongs in the detector and its regression suite, not in a growing list of
   syntax-specific exemptions.
+- **A React context Provider whose register/unregister calls go through `setState` can
+  create an unbounded re-render loop with no built-in guard** (#407): registering
+  something real state → Provider re-renders → its inline context `value` object gets a
+  new identity → every consumer re-renders (including the one that just registered) →
+  a consumer whose own effect depends on a freshly-built config object sees a new identity
+  and re-registers → back to the first step, forever. Not a same-render `setState` loop
+  (React's "Maximum update depth exceeded" guard does not catch it — each commit is a
+  genuinely new one). The fix is structural, not caller-side: a registry that is only ever
+  read inside an event handler (never during render) does not need to be `useState` at
+  all — a `ref` breaks the cycle at its source, and the Provider's context `value` should
+  be memoized regardless, so an unrelated re-render doesn't cascade to every consumer.
+  Fixing only one caller (memoizing its config object) would have left every other
+  caller of the same hook exposed to the identical loop.
 - **A handler that re-dispatches the same event type it is registered under recurses if
   anything is still listening for that type.** #294: `command-palette/index.tsx` registered
   a shortcut for `"?"` whose handler did `document.dispatchEvent(new KeyboardEvent("keydown",
@@ -187,6 +200,8 @@ Add to this as things are learned. It is the institutional memory that agents do
   Before adding a dispatch that re-emits the same event type a component (or a shared
   listener it feeds into) is itself listening for, trace who else is listening for that type
   and confirm the forward is actually load-bearing.
+
+## Related
 
 - [SDLC](sdlc.md) · [Testing strategy](testing-strategy.md)
 - [Agent workflow](agent-workflow.md)
