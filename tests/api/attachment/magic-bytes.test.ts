@@ -22,6 +22,11 @@ const OLE_HEADER = Buffer.from([
 ]);
 const RTF_HEADER = Buffer.from("{\\rtf1\\ansi", "ascii");
 const ZIP_HEADER = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0]);
+const HEIC_HEADER = Buffer.concat([
+  Buffer.alloc(4),
+  Buffer.from("ftyp", "ascii"),
+  Buffer.from("heic", "ascii"),
+]);
 const PNG_HEADER = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
 ]);
@@ -67,6 +72,13 @@ describe("magicBytesMatchDeclaredMime", () => {
     }
   });
 
+  it("HEIC/HEIF: real ISO-BMFF ftyp box passes, garbage rejected", () => {
+    for (const mime of ["image/heic", "image/heif"]) {
+      expect(magicBytesMatchDeclaredMime(HEIC_HEADER, mime)).toBe(true);
+      expect(magicBytesMatchDeclaredMime(GARBAGE, mime)).toBe(false);
+    }
+  });
+
   it("plain-text MIME types (disclosed exception): accepted without any signature check", () => {
     for (const mime of [
       "text/plain",
@@ -86,6 +98,7 @@ describe("magicBytesMatchDeclaredMime", () => {
       "image/tiff",
       "application/rtf",
       "application/vnd.oasis.opendocument.text",
+      "image/heic",
     ]) {
       expect(magicBytesMatchDeclaredMime(PE_HEADER, mime)).toBe(false);
     }

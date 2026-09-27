@@ -28,6 +28,14 @@ const SIGNATURES: Record<string, Signature[]> = {
     { bytes: [0x49, 0x49, 0x2a, 0x00] }, // little-endian ("II")
     { bytes: [0x4d, 0x4d, 0x00, 0x2a] }, // big-endian ("MM")
   ],
+  // ISO base media file format's "ftyp" box at a fixed offset -- same "confirms the
+  // container family, not the exact subtype" heuristic already accepted for zip below.
+  // Real HEIC/HEIF-specific brand codes (heic/heix/mif1/...) live right after this at
+  // offset 8, but checking the box marker alone is enough to reject the disguised-
+  // executable class this module exists to catch, without hard-coding every current and
+  // future brand string.
+  "image/heic": [{ bytes: [0x66, 0x74, 0x79, 0x70], offset: 4 }],
+  "image/heif": [{ bytes: [0x66, 0x74, 0x79, 0x70], offset: 4 }],
   "application/pdf": [{ bytes: [0x25, 0x50, 0x44, 0x46] }],
   "application/rtf": [
     { bytes: [0x7b, 0x5c, 0x72, 0x74, 0x66, 0x31] }, // "{\rtf1"
