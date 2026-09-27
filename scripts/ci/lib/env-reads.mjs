@@ -53,9 +53,10 @@
  * `check-env.mjs`'s test-vs-application scope note for the one carve-out this gate has at all.
  *
  * Accepted limits, by design (documented so the next reviewer finds the answer here, not by
- * re-discovering it — Opus review of #423 pass 2, F5: a bare function argument, a
- * non-exported function's return, and a `.then(cb)` callback are now CAUGHT by the
- * default-flip above, not limits): rest-destructuring from `process`/`globalThis`
+ * re-discovering it — Opus review of #423 pass 2, F5: a bare function argument and a
+ * non-exported function's return are now CAUGHT by the default-flip above, not limits; a
+ * `.then(cb)` callback is caught too, but by the dedicated `.then` case in `visit()`, not by
+ * the default-flip): rest-destructuring from `process`/`globalThis`
  * (`const { ...rest } = process` — the rest element itself is not traced further);
  * `.default.env` reached through a dynamic/namespace import
  * (`(await import("./cfg")).default.env`); a bare condition test — `if (process.env)`,
@@ -361,7 +362,12 @@ function effectiveParent(node) {
  * `BinaryExpression` cases) already decides whether — and how — to charge it? Those three
  * sites are the only places a plain identifier/object/array binding target gets tracked
  * forward as an alias instead of charged as a bare escape right here; charging the generic
- * default there too would double-count every later use of the alias. */
+ * default there too would double-count every later use of the alias. For the
+ * `BinaryExpression` (plain assignment) case specifically, this only holds when the
+ * assignment is itself a bare standalone statement (Opus review of #423 pass 3, F3
+ * follow-up) — if the assignment's own value is consumed anywhere (an argument, chained
+ * into another assignment, a declaration initializer, a return/export value, ...), that is a
+ * real escape and is not exempted here. */
 function isTrackedAliasDeclarationSite(effNode, parent) {
   if (!parent) return false;
   // `ArrayBindingPattern` is deliberately NOT here (Opus review of #423 pass 2, F2):
@@ -384,7 +390,14 @@ function isTrackedAliasDeclarationSite(effNode, parent) {
     parent.kind === ts.SyntaxKind.BinaryExpression &&
     parent.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
     parent.right === effNode &&
-    parent.left.kind === ts.SyntaxKind.Identifier
+    parent.left.kind === ts.SyntaxKind.Identifier &&
+    // Opus review of #423 pass 3 (F3 follow-up): this exemption only holds when the
+    // assignment itself is thrown away as a bare standalone statement (`x = process;` on
+    // its own) — nothing consumes the assignment's own VALUE. If the assignment's result is
+    // itself used (an argument, chained into another assignment, a declaration initializer,
+    // a return/export value, ...), that use is a real escape and must fall through to the
+    // generic default charge below, not be silently exempted here.
+    effectiveParent(parent).parent?.kind === ts.SyntaxKind.ExpressionStatement
   )
     return true;
   return false;
