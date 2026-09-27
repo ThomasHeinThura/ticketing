@@ -3352,6 +3352,84 @@
           "version"
         ]
       },
+      "AttachmentPresignResult": {
+        "type": "object",
+        "properties": {
+          "attachmentId": {
+            "type": "string"
+          },
+          "uploadUrl": {
+            "type": "string"
+          },
+          "uploadHeaders": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "attachmentId",
+          "uploadUrl",
+          "uploadHeaders"
+        ]
+      },
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workItemId": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "state": {
+            "type": "string",
+            "description": "One of: pending, ready, deleted."
+          },
+          "customerVisible": {
+            "type": "boolean"
+          },
+          "uploadedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workItemId",
+          "filename",
+          "mimeType",
+          "size",
+          "state",
+          "customerVisible",
+          "uploadedBy",
+          "createdAt",
+          "deletedAt"
+        ]
+      },
       "UserAvatar": {
         "type": "object",
         "properties": {
@@ -3493,6 +3571,173 @@
           },
           "404": {
             "description": "The filesystem storage driver is not active",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/storage/filesystem-attachment-upload": {
+      "put": {
+        "operationId": "uploadFilesystemAttachmentObject",
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Upload attachment bytes to the filesystem storage driver",
+        "description": "The local equivalent of a presigned S3 PUT for an attachment, minted by POST /api/work-items/{key}/attachments/presign when TASKDESK_STORAGE_DRIVER is filesystem (the default). Not authenticated by a browser session -- the signed token in the query string, which also binds the exact size ceiling that was validated at presign time, is the credential.",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "key",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "required": true,
+            "name": "maxBytes",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "required": true,
+            "name": "expires",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "token",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Stored"
+          },
+          "400": {
+            "description": "Invalid key, expired or invalid token, or the upload exceeds the signed limit",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The filesystem storage driver is not active",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/storage/filesystem-download": {
+      "get": {
+        "operationId": "downloadFilesystemAttachmentObject",
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Download attachment bytes from the filesystem storage driver",
+        "description": "The local equivalent of a presigned S3 GET, minted by GET /api/attachments/{id} when TASKDESK_STORAGE_DRIVER is filesystem.",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "key",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "required": true,
+            "name": "expires",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "token",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "filename",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The attachment binary stream",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid key, or expired or invalid token",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The filesystem storage driver is not active, or the object is gone",
             "content": {
               "text/plain": {
                 "schema": {
@@ -13399,6 +13644,329 @@
           },
           "404": {
             "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/attachments/presign": {
+      "post": {
+        "operationId": "presignAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Presign an attachment upload",
+        "description": "AT-2: mints a presigned direct-PUT for a new attachment on this work item. The API never proxies the bytes themselves.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "filename": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "size": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "customerVisible": {
+                    "type": "boolean",
+                    "description": "AT-3: staff uploads default to false (not customer-visible); explicit true is honoured."
+                  }
+                },
+                "required": [
+                  "filename",
+                  "contentType",
+                  "size"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The presigned upload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentPresignResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, disallowed extension, oversized file, or per-item limit reached",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/attachments": {
+      "get": {
+        "operationId": "listWorkItemAttachments",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "List a work item's attachments",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The work item's attachments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Attachment"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachments/{id}/complete": {
+      "post": {
+        "operationId": "completeAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Complete an attachment upload",
+        "description": "AT-2's edge case: rejects a declared MIME that does not match the uploaded bytes' own magic bytes, deleting the object.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The completed attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Upload missing, or content does not match declared type",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Attachment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Attachment is not pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachments/{id}": {
+      "get": {
+        "operationId": "downloadAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Download an attachment",
+        "description": "AT-5/AT-6: redirects to a five-minute presigned download URL and writes an attachment.downloaded audit row.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to the presigned download URL"
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Attachment not found, or not ready",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Delete an attachment",
+        "description": "AT-7: soft delete. Only the attachment's own uploader may do this.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not the uploader, or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Attachment not found",
             "content": {
               "text/plain": {
                 "schema": {
