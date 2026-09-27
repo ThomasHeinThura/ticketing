@@ -44,7 +44,7 @@ const listWorkspaceAuditRoute = createRoute({
   tags: ["Audit"],
   summary: "List a workspace's audit log",
   description:
-    "Workspace administrators (`workspace:manage_settings`) see their own workspace's rows (AU-10); customers never see the audit log (AU-12). Each read is itself audited (AU-13). The tenant filter is applied unconditionally in the handler, independent of the middleware chain.",
+    "Workspace administrators (`workspace:manage_settings`) see their own workspace's rows (AU-10), reach-filtered to non-project rows plus the rows of projects they can reach (#344) -- never a project outside that; customers never see the audit log (AU-12). Each read is itself audited (AU-13). The tenant filter is applied unconditionally in the handler, independent of the middleware chain.",
   middleware: [
     workspaceAccess.fromParam("workspaceId"),
     requireWorkspaceMembership,
