@@ -78,6 +78,7 @@ describe("repoRoot resolves against the caller's cwd, not the script's own locat
     const scriptDir = scriptCheckout("a-script-owner"); // holds the code
     const callerDir = scratchDir("repo-root-b-caller"); // the worktree actually being operated on
     initRepo(callerDir);
+    installCheckers(callerDir); // a real worktree of this project carries the #414 marker too
     write(callerDir, "marker.txt", "b\n");
     commit(callerDir, "chore: bootstrap caller worktree");
 
@@ -101,6 +102,7 @@ describe("repoRoot resolves against the caller's cwd, not the script's own locat
 
     const callerDir = scratchDir("repo-root-b-diff");
     initRepo(callerDir);
+    installCheckers(callerDir); // a real worktree of this project carries the #414 marker too
     write(callerDir, "unrelated.txt", "base\n");
     const base = commit(callerDir, "chore: bootstrap caller worktree");
     setOriginMain(callerDir, base);
@@ -170,5 +172,48 @@ describe("repoRoot resolves against the caller's cwd, not the script's own locat
     );
 
     assert.match(stderr, /repo\.mjs: could not resolve the repository root/);
+  });
+
+  it("refuses a resolved root that is a real but UNRELATED git repository, instead of silently adopting it (#414)", () => {
+    const scriptDir = scriptCheckout("a-script-owner-unrelated-repo");
+    // A genuine, unrelated git repository -- NOT a worktree of this project, and never
+    // made to carry a copy of scripts/ci -- so `git rev-parse --show-toplevel` resolves
+    // cleanly to it, exactly the way it resolves cleanly to a real worktree of this
+    // project. The only thing distinguishing the two is the marker file.
+    const unrelatedRepo = scratchDir("repo-root-unrelated-repo");
+    initRepo(unrelatedRepo);
+    write(unrelatedRepo, "README.md", "some other project\n");
+    commit(unrelatedRepo, "chore: bootstrap an unrelated repository");
+
+    const repoModule = path.join(scriptDir, "scripts/ci/lib/repo.mjs");
+    const stderr = evaluateAcrossExpectingFailure(
+      unrelatedRepo,
+      `import ${JSON.stringify(repoModule)};`,
+    );
+
+    assert.match(
+      stderr,
+      /repo\.mjs: 'git rev-parse --show-toplevel'.*does not look like this project's checkout/s,
+    );
+  });
+
+  it("still resolves normally when the unrelated repository check would otherwise wrongly reject a real worktree of this project (#414 regression guard)", () => {
+    // Companion to the very first test in this file: re-assert that a genuine worktree of
+    // this project -- which DOES carry scripts/ci/lib/repo.mjs -- is unaffected by the
+    // #414 check added alongside it.
+    const scriptDir = scriptCheckout("a-script-owner-414-regression");
+    const callerDir = scratchDir("repo-root-414-regression-caller");
+    initRepo(callerDir);
+    installCheckers(callerDir); // this worktree carries the marker, same project
+    commit(callerDir, "chore: bootstrap a real worktree of this project");
+
+    const repoModule = path.join(scriptDir, "scripts/ci/lib/repo.mjs");
+    const { repoRoot } = evaluateAcross(
+      callerDir,
+      `import { repoRoot } from ${JSON.stringify(repoModule)};
+       console.log(JSON.stringify({ repoRoot }));`,
+    );
+
+    assert.equal(repoRoot, callerDir);
   });
 });
