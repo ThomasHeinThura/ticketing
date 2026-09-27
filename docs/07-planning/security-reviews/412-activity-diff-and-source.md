@@ -66,3 +66,14 @@ are the pre-transaction `eventSourceFor(actorType)` call and the post-transactio
 `publishEvent` call's `source` field — different variables, different control-flow paths,
 no shared state. `activity.ts` (this PR's other touched file) has no diff at all between the
 last reviewed head and this one.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `f3896db13291e43f3c8deed0fb9f858bf0be8c3b`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `apps/api/src/work-item/activity.ts` and
+`apps/api/src/work-item/controllers/create-work-item.ts` between the last reviewed head
+(`4f7277e0c0a5f55a935b4bf2424848ff58a585c2`) and this one — the intervening commits bring in
+#405's already-reviewed schema-drift fix, zero overlap with this PR's own files.
