@@ -144,3 +144,30 @@ Implements exactly Opus's own F1 and F2 findings, nothing else:
   security-review-scope path list.
 - `git diff --stat` against the previously reviewed head confirms exactly these 4 files
   changed, no code.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `1b635e56b001c75d8f8c7a2cc4bf65b741f6dc73`
+**Previously reviewed head:** `6334d37...` (the F1/F2 delta confirmation head)
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+- Merging `main` (bringing in #392 and #396, both already Opus-CLEARed) produced one real
+  conflict, in `docs/07-planning/decision-log.md` — both branches had independently
+  prepended a new entry at the same insertion point. Resolved by keeping both entries in
+  full, newest first; verified no content lost (`grep -c "^### 2026-09-27"` before/after
+  matches expected count).
+- The `Dockerfile` merged automatically with no conflict; confirmed this PR's own changes
+  (`ignore-unfixed`, the `libpcre2-8-0` upgrade, the npm removal) are all still present and
+  unchanged after the merge.
+- `git show --remerge-diff` on every OTHER file in the merge matches #392's or #396's own
+  already-reviewed content exactly — zero overlap with, or unexpected change to, this PR's
+  own files.
+- Caught and fixed my own mistake during this merge: an initial `git add -A` swept in two
+  unrelated, untracked files that happen to sit in this shared checkout
+  (`.sla-staging/types.ts`, `docs/07-planning/status-check-2026-09-18.md`, neither belonging
+  to this PR or session). Removed from the commit before pushing (amended the not-yet-reviewed
+  merge commit and force-pushed, since nothing had reviewed it yet); confirmed absent from the
+  final pushed commit.
