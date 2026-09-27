@@ -635,3 +635,15 @@ Then merged `origin/main` (`52c5aef`, six commits: #381, #382, #385, #386, #387,
 - `git diff` scope confirmed: only the one `.orderBy(...)` line changed beyond the clean main-merge.
 
 **Verdict: CLEAR — merge-ready.** A1 (blocking) and G1 (the merge-blocking test flake) are both closed. A6 (non-blocking, an optional same-holder no-op short-circuit) remains open as a disclosed, non-blocking follow-up, same as before.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `7978700a0d3ca801e32b62a2fa7c12cf8b20fc2e`
+**Previously reviewed head:** `bb795198882504d03919beb940291cfd813777c5`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged.
+
+- `git show --remerge-diff 7978700` is empty — clean automatic merge.
+- Brings in PR #383's already-reviewed changes (asset/websocket/invitation authorization, Opus CLEAR WITH FINDINGS) plus #391's decision-log entry. Zero overlap with this PR's own files (`assign-work-item.ts`, `work-item-assign.test.ts`).
