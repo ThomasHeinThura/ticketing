@@ -212,3 +212,23 @@ fully Opus-reviewed and merged before this branch picked them up.
 **Verdict:** CLEAR, unchanged. `git diff c3617a2a18d0e0c160f0ca4a7613b0dbc8ce4e9f..7d3e6ae69080623f3545af9ce39876850c5f4c00`
 scoped to every file this PR touches is empty. The intervening commit is #429's own
 already-reviewed docs-only merge into `main`, picked up via a routine branch update.
+
+---
+
+## Re-confirmation after branch update (2026-09-27, fourth)
+
+**Reviewed head:** `6d26dd295b23a845b20b4b0544ab3ee233b98689`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git diff 7d3e6ae69080623f3545af9ce39876850c5f4c00..6d26dd295b23a845b20b4b0544ab3ee233b98689`
+scoped to every file this PR touches is empty. The intervening commits are already-merged,
+already-reviewed content from #423 (env-reads.mjs AST rewrite), #417 (test-contract.mjs
+repoRoot fix), and #419 (check-deps vacuous-pass fix) landing via routine branch updates —
+confirmed each is an ancestor of `origin/main`. No new, unreviewed logic reached this
+branch.
+
+**Process note:** this reconfirmation is written from a worktree explicitly re-synced via
+`git reset --hard origin/<branch>` immediately before verification, after discovering a
+prior round of "local verification" in this session had silently run against a stale,
+unreset local checkout (fetched but not reset) — which produced a false "EXIT 0" that CI
+then correctly caught as still-stale. `git fetch` alone updates remote-tracking refs, not
+the working tree; every future reconfirmation in this session resets first.
