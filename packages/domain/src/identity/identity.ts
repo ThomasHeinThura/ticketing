@@ -21,7 +21,15 @@ const SCIM_ENTERPRISE_USER_SCHEMA =
   "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return false;
+  // Reject objects whose prototype carries injected fields (e.g. built via
+  // Object.assign({}, JSON.parse('{"__proto__":{...}}'))). Object.keys /
+  // Object.entries only see own keys, but ordinary property access (used
+  // below to read externalId/active) also sees inherited ones, so a
+  // polluted prototype can smuggle attributes past the own-key guards.
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
 }
 
 function normaliseEmail(value: unknown): string | undefined {
@@ -356,6 +364,14 @@ export function scimConflictResponse(
   };
 }
 
+const NAME_FIELD_BY_LOWER_PATH: Readonly<
+  Record<string, "givenName" | "familyName" | "formatted">
+> = {
+  "name.givenname": "givenName",
+  "name.familyname": "familyName",
+  "name.formatted": "formatted",
+};
+
 function normalisePatchOp(
   value: unknown,
 ): "add" | "replace" | "remove" | undefined {
@@ -416,10 +432,10 @@ export function applyScimPatchOps(
       if (path === "username") delete next.userName;
       else if (path === "title") delete next.title;
       else if (path === "preferredlanguage") delete next.preferredLanguage;
-      else if (next.name)
-        delete next.name[
-          path.slice("name.".length) as "givenName" | "familyName" | "formatted"
-        ];
+      else if (next.name) {
+        const field = NAME_FIELD_BY_LOWER_PATH[path];
+        if (field) delete next.name[field];
+      }
       continue;
     }
     if (typeof operation.value !== "string")
@@ -429,10 +445,11 @@ export function applyScimPatchOps(
     else if (path === "preferredlanguage")
       next.preferredLanguage = operation.value;
     else {
-      next.name ??= {};
-      next.name[
-        path.slice("name.".length) as "givenName" | "familyName" | "formatted"
-      ] = operation.value;
+      const field = NAME_FIELD_BY_LOWER_PATH[path];
+      if (field) {
+        next.name ??= {};
+        next.name[field] = operation.value;
+      }
     }
   }
   return { ok: true, value: next };

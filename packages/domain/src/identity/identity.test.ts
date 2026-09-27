@@ -323,6 +323,52 @@ describe("P3 identity core", () => {
     });
   });
 
+  it("security: rejects a pathless PATCH value whose prototype (not own keys) carries externalId/active", () => {
+    // Object.assign copies own enumerable keys via [[Set]], so assigning a
+    // parsed "__proto__" key here repoints the merged object's prototype to
+    // {externalId: "HIJACK", active: false} instead of creating an own key.
+    // Object.keys/Object.entries only see the merged object's own "title"
+    // key, but ordinary property access (input.externalId, input.active)
+    // also sees the inherited ones, so this must not slip past the guard.
+    const malicious = Object.assign(
+      {},
+      JSON.parse(
+        '{"__proto__":{"externalId":"HIJACK","active":false},"title":"t"}',
+      ),
+    );
+    expect((malicious as { externalId?: string }).externalId).toBe("HIJACK");
+    expect(Object.keys(malicious)).toEqual(["title"]);
+    expect(
+      applyScimPatchOps({ externalId: "original" }, [
+        { op: "replace", value: malicious },
+      ]),
+    ).toEqual({ ok: false, reason: "invalid_patch" });
+  });
+
+  it("closes N1: PATCH name.familyName/name.givenName act on the real camelCase key, not the lowercased path", () => {
+    expect(
+      applyScimPatchOps(
+        { userName: "person", name: { givenName: "Pat", familyName: "Doe" } },
+        [{ op: "replace", path: "name.familyName", value: "Smith" }],
+      ),
+    ).toEqual({
+      ok: true,
+      value: {
+        userName: "person",
+        name: { givenName: "Pat", familyName: "Smith" },
+      },
+    });
+    expect(
+      applyScimPatchOps(
+        { userName: "person", name: { givenName: "Pat", familyName: "Doe" } },
+        [{ op: "remove", path: "name.givenName" }],
+      ),
+    ).toEqual({
+      ok: true,
+      value: { userName: "person", name: { familyName: "Doe" } },
+    });
+  });
+
   it("IP-20/IP-21: maps only existing in-scope roles within the connection's rank ceiling", () => {
     const mappings: IdentityRoleMapping[] = [
       {
