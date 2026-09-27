@@ -58,3 +58,17 @@ real tokenizer — third review-found gap in this exact hand-rolled scanner).
 full, its full test file, `scripts/ci/check-skips.mjs` (confirmed live consumer),
 `scripts/ci/check-events.mjs` and a probe test (confirmed same-scanner consumers, not
 independently re-audited beyond the corpus-wide output comparison).
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `9003882e594d0cb93bdcbc594647ce2a8a1e4ed4`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `scripts/ci/lib/strip-code-comments.mjs` and
+`scripts/ci/lib/strip-code-comments.test.mjs` between the last reviewed head
+(`764800c120166b3a63b485471893b83042da5e23`) and this one — the intervening commits bring in
+#413's already-reviewed check-ui fix, zero overlap with this PR's own files. This branch
+update also refreshes the `pull_request` event payload that `check-pr-template.mjs` reads,
+clearing a stale-body false failure from a run that predated this PR body's `**Note:**` line
+being added.
