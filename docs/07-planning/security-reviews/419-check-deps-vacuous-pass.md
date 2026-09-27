@@ -49,3 +49,16 @@ between the two heads on that file is empty) — the original F1/F2 fix from pas
 unaffected.
 
 Clear to merge.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `d8e924294f3418dceb4570636fda4454d4a809e7`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git diff c2b54039dd936068a25bdf373f5d5dc486aaf1c2..d8e924294f3418dceb4570636fda4454d4a809e7`
+scoped to this PR's own files (`repo.mjs`, `check-deps-vacuous-pass.test.mjs`,
+`repo-root-cwd.test.mjs`) is empty. The intervening commits are #417's own already-reviewed
+merge into `main` (confirmed an ancestor of `origin/main`) plus routine branch-update
+merges — already fully Opus-reviewed and merged before this branch picked them up. No new,
+unreviewed logic reached this branch.
