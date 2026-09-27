@@ -3198,6 +3198,62 @@
           "currentAssigneeId"
         ]
       },
+      "WorkItemTree": {
+        "type": "object",
+        "properties": {
+          "root": {
+            "$ref": "#/components/schemas/WorkItemTreeNode"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the tree exceeded the server's size cap and this is a prefix, not the whole subtree. Real pagination is tracked separately (issue #434)."
+          }
+        },
+        "required": [
+          "root",
+          "truncated"
+        ]
+      },
+      "WorkItemTreeNode": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "stateName": {
+            "type": "string"
+          },
+          "stateCategory": {
+            "type": "string",
+            "description": "state_template.group: one of backlog, unstarted, started, completed, cancelled."
+          },
+          "isCurrent": {
+            "type": "boolean",
+            "description": "True for the one node matching the requested {key}."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkItemTreeNode"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "title",
+          "stateName",
+          "stateCategory",
+          "isCurrent",
+          "children"
+        ]
+      },
       "DeletedWorkItem": {
         "type": "object",
         "properties": {
@@ -13354,6 +13410,218 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WorkItemAssigneeConflict"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/parent": {
+      "post": {
+        "operationId": "setWorkItemParent",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Set work item parent",
+        "description": "Attach a work item into a hierarchy under `parentKey` (`relations-and-hierarchy.md` `RH-5`..`RH-8`). Rejected at 422 when the proposed parent is the item itself, is a descendant of it (a cycle, at any distance), or would exceed the maximum hierarchy depth of 5. Parent and child must be in the same project (`RH-6`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parentKey": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "parentKey"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The work item with its parent set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or the parent is not in the same project (RH-6)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item or parent work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A concurrent change affected this hierarchy -- reload and retry",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The proposed parent is the item itself, a descendant of it, or would exceed the maximum hierarchy depth of 5",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "detachWorkItemParent",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Detach work item parent",
+        "description": "Detach a work item from its parent (`RH-11`/`RH-12`). Idempotent when the item already has no parent. Detaching mutates the former parent's own roll-up too.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The work item with its parent cleared",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/tree": {
+      "get": {
+        "operationId": "getWorkItemTree",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Get work item hierarchy tree",
+        "description": "The full hierarchy tree containing this work item -- its true root and every descendant beneath it, with the requested item's own node flagged `isCurrent`. Capped in total size (`truncated: true` when the real subtree is larger than the response returned) -- see `get-work-item-tree.ts`'s own doc comment.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The hierarchy tree",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemTree"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
                 }
               }
             }

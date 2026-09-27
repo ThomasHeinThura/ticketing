@@ -41,12 +41,15 @@ import createComment from "./controllers/create-comment";
 import createWorkItem from "./controllers/create-work-item";
 import deleteComment from "./controllers/delete-comment";
 import deleteWorkItem from "./controllers/delete-work-item";
+import detachWorkItemParent from "./controllers/detach-work-item-parent";
 import getWorkItemByKey from "./controllers/get-work-item";
+import getWorkItemTree from "./controllers/get-work-item-tree";
 import listAssignablePeople from "./controllers/list-assignable-people";
 import listWorkItemActivity from "./controllers/list-work-item-activity";
 import listWorkItemTypes from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
 import rankWorkItem from "./controllers/rank-work-item";
+import setWorkItemParent from "./controllers/set-work-item-parent";
 import unassignWorkItem from "./controllers/unassign-work-item";
 import updateComment from "./controllers/update-comment";
 import updateWorkItem, {
@@ -67,6 +70,7 @@ import {
   workItemDetailSchema,
   workItemListResponseSchema,
   workItemSchema,
+  workItemTreeResponseSchema,
   workItemTypeListSchema,
   workItemVersionConflictSchema,
   workItemWatchStateSchema,
@@ -80,6 +84,7 @@ import {
   listWorkItemsQuery,
   projectIdParam,
   rankWorkItemBody,
+  setWorkItemParentBody,
   updateWorkItemBody,
   workItemKeyParam,
   workspaceIdParam,
@@ -459,6 +464,95 @@ const rankWorkItemRoute = createRoute({
     ),
     403: errorResponse(
       "No workspace access, or missing work_item:rank permission",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const setWorkItemParentRoute = createRoute({
+  method: "post",
+  operationId: "setWorkItemParent",
+  path: "/work-items/{key}/parent",
+  tags: ["Work items"],
+  summary: "Set work item parent",
+  description:
+    "Attach a work item into a hierarchy under `parentKey` (`relations-and-hierarchy.md` " +
+    "`RH-5`..`RH-8`). Rejected at 422 when the proposed parent is the item itself, is a " +
+    "descendant of it (a cycle, at any distance), or would exceed the maximum hierarchy " +
+    "depth of 5. Parent and child must be in the same project (`RH-6`).",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: setWorkItemParentBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The work item with its parent set", workItemSchema),
+    400: errorResponse(
+      "Invalid body, or the parent is not in the same project (RH-6)",
+    ),
+    403: errorResponse(
+      "No workspace access, or missing work_item:update permission",
+    ),
+    404: errorResponse("Work item or parent work item not found"),
+    409: errorResponse(
+      "A concurrent change affected this hierarchy -- reload and retry",
+    ),
+    422: errorResponse(
+      "The proposed parent is the item itself, a descendant of it, or would exceed the " +
+        "maximum hierarchy depth of 5",
+    ),
+  },
+});
+
+const detachWorkItemParentRoute = createRoute({
+  method: "delete",
+  operationId: "detachWorkItemParent",
+  path: "/work-items/{key}/parent",
+  tags: ["Work items"],
+  summary: "Detach work item parent",
+  description:
+    "Detach a work item from its parent (`RH-11`/`RH-12`). Idempotent when the item " +
+    "already has no parent. Detaching mutates the former parent's own roll-up too.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse("The work item with its parent cleared", workItemSchema),
+    403: errorResponse(
+      "No workspace access, or missing work_item:update permission",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const getWorkItemTreeRoute = createRoute({
+  method: "get",
+  operationId: "getWorkItemTree",
+  path: "/work-items/{key}/tree",
+  tags: ["Work items"],
+  summary: "Get work item hierarchy tree",
+  description:
+    "The full hierarchy tree containing this work item -- its true root and every " +
+    "descendant beneath it, with the requested item's own node flagged `isCurrent`. " +
+    "Capped in total size (`truncated: true` when the real subtree is larger than the " +
+    "response returned) -- see `get-work-item-tree.ts`'s own doc comment.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse("The hierarchy tree", workItemTreeResponseSchema),
+    403: errorResponse(
+      "No workspace access, or missing work_item:read permission",
     ),
     404: errorResponse("Work item not found"),
   },
@@ -907,6 +1001,46 @@ const workItem = apiRouter<
       }
       throw error;
     }
+  })
+  .openapi(setWorkItemParentRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { parentKey } = c.req.valid("json");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+
+    const updated = await setWorkItemParent(
+      key,
+      workspaceId,
+      parentKey,
+      actorId,
+      actorType,
+    );
+    return c.json(updated, 200);
+  })
+  .openapi(detachWorkItemParentRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+
+    const updated = await detachWorkItemParent(
+      key,
+      workspaceId,
+      actorId,
+      actorType,
+    );
+    return c.json(updated, 200);
+  })
+  .openapi(getWorkItemTreeRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const tree = await getWorkItemTree(key, workspaceId);
+    return c.json(tree, 200);
   })
   .openapi(deleteWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
