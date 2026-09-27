@@ -23,6 +23,30 @@ export const viteBuiltIns = new Set([
   "LEGACY",
 ]);
 
+/**
+ * Decodes one `\uXXXX` or `\u{X...}` identifier escape at `source[index]` (which must be
+ * the backslash). Returns `null` if it isn't a well-formed escape. JavaScript identifiers
+ * may contain these escapes (`process` is the identifier `process`), so the tokenizer
+ * decodes them rather than treating the backslash as ending the identifier — otherwise an
+ * escaped `process`/`env`/`global`/`require`/`import` reads as several unrelated tokens and
+ * every check below silently stops matching it (issue #342, D3).
+ */
+function readIdentifierUnicodeEscape(source, index) {
+  if (source[index] !== "\\" || source[index + 1] !== "u") return null;
+  if (source[index + 2] === "{") {
+    const close = source.indexOf("}", index + 3);
+    if (close < 0) return null;
+    const hex = source.slice(index + 3, close);
+    if (!/^[0-9a-fA-F]+$/.test(hex)) return null;
+    const codePoint = Number.parseInt(hex, 16);
+    if (!Number.isFinite(codePoint) || codePoint > 0x10ffff) return null;
+    return { char: String.fromCodePoint(codePoint), length: close + 1 - index };
+  }
+  const hex = source.slice(index + 2, index + 6);
+  if (!/^[0-9a-fA-F]{4}$/.test(hex)) return null;
+  return { char: String.fromCharCode(Number.parseInt(hex, 16)), length: 6 };
+}
+
 function tokenize(source) {
   const tokens = [];
   const comments = [];
@@ -285,10 +309,39 @@ function tokenize(source) {
         if (!hasInterpolation) add(value, "string", start, index);
         continue;
       }
-      if (/[A-Za-z_$]/.test(char)) {
-        const start = index++;
-        while (index < source.length && /[\w$]/.test(source[index])) index += 1;
-        add(source.slice(start, index), "id", start, index);
+      const leadingEscape =
+        char === "\\" ? readIdentifierUnicodeEscape(source, index) : null;
+      if (
+        /[A-Za-z_$]/.test(char) ||
+        (leadingEscape && /[A-Za-z_$]/.test(leadingEscape.char))
+      ) {
+        const start = index;
+        let value;
+        if (leadingEscape) {
+          value = leadingEscape.char;
+          index += leadingEscape.length;
+        } else {
+          value = char;
+          index += 1;
+        }
+        while (index < source.length) {
+          if (/[\w$]/.test(source[index])) {
+            value += source[index];
+            index += 1;
+            continue;
+          }
+          const idEscape =
+            source[index] === "\\"
+              ? readIdentifierUnicodeEscape(source, index)
+              : null;
+          if (idEscape && /[\w$]/.test(idEscape.char)) {
+            value += idEscape.char;
+            index += idEscape.length;
+            continue;
+          }
+          break;
+        }
+        add(value, "id", start, index);
         continue;
       }
       const operator = ["...", "?."].find((candidate) =>
@@ -353,9 +406,15 @@ function flatDestructuredEnvNames(tokens, closeIndex) {
   return names;
 }
 
+/** Node's global object, and the browser-global spelling some isomorphic code uses. */
+const GLOBAL_ROOT_NAMES = new Set(["global", "globalThis", "window"]);
+
 function collectTokenAliases(tokens) {
   const processAliases = new Set();
+  const globalThisAliases = new Set();
+  const metaAliases = new Set();
   const envAliases = new Set();
+  const metaEnvAliases = new Set();
   const envAliasDeclarations = new Set();
   for (let i = 0; i < tokens.length; i += 1) {
     if (tokens[i].value === "import" && tokens[i + 1]?.value !== "(") {
@@ -422,22 +481,69 @@ function collectTokenAliases(tokens) {
         }
       }
     }
+    // D3 (issue #342 follow-up): `const p = globalThis['process'];`, `const p = (process);`
+    // and `const p = require('process');` all put a live reference to the real `process`
+    // object in `p`, exactly as `const p = process;` and `const p = globalThis.process;`
+    // already did. Any of them followed by `.env` later is a real environment read.
+    const globalDotProcessRHS =
+      GLOBAL_ROOT_NAMES.has(tokens[i + 2]?.value) &&
+      (tokens[i + 3]?.value === "." || tokens[i + 3]?.value === "?.") &&
+      tokens[i + 4]?.value === "process";
+    const globalBracketProcessRHS =
+      GLOBAL_ROOT_NAMES.has(tokens[i + 2]?.value) &&
+      tokens[i + 3]?.value === "[" &&
+      tokens[i + 4]?.type === "string" &&
+      tokens[i + 4]?.value === "process" &&
+      tokens[i + 5]?.value === "]";
+    const parenProcessRHS =
+      tokens[i + 2]?.value === "(" &&
+      tokens[i + 3]?.value === "process" &&
+      tokens[i + 4]?.value === ")";
+    const requireProcessRHS =
+      tokens[i + 2]?.value === "require" &&
+      tokens[i + 3]?.value === "(" &&
+      ["process", "node:process"].includes(tokens[i + 4]?.value) &&
+      tokens[i + 5]?.value === ")";
     if (
       tokens[i].type === "id" &&
       tokens[i + 1]?.value === "=" &&
       (tokens[i + 2]?.value === "process" ||
-        ((tokens[i + 2]?.value === "globalThis" ||
-          tokens[i + 2]?.value === "global") &&
-          tokens[i + 3]?.value === "." &&
-          tokens[i + 4]?.value === "process"))
+        globalDotProcessRHS ||
+        globalBracketProcessRHS ||
+        parenProcessRHS ||
+        requireProcessRHS)
     ) {
       processAliases.add(tokens[i].value);
+    }
+    // D3: `const g = globalThis; g.process.env.X` — a bare alias of the global object
+    // itself, resolved wherever it is later dotted into `.process`. Scoped to a plain
+    // `NAME = globalThis;` statement so it cannot be confused with the alias-to-`process`
+    // forms above (those require `.process`/`['process']` right there in the RHS).
+    if (
+      tokens[i].type === "id" &&
+      tokens[i + 1]?.value === "=" &&
+      GLOBAL_ROOT_NAMES.has(tokens[i + 2]?.value) &&
+      tokens[i + 3]?.value === ";"
+    ) {
+      globalThisAliases.add(tokens[i].value);
+    }
+    // D3: `const m = import.meta;` then `m.env.X` — same idea, for `import.meta`.
+    if (
+      tokens[i].value === "meta" &&
+      tokens[i - 1]?.value === "." &&
+      tokens[i - 2]?.value === "import" &&
+      isRootIdentifier(tokens, i - 2) &&
+      tokens[i - 3]?.value === "=" &&
+      tokens[i - 4]?.type === "id" &&
+      tokens[i + 1]?.value === ";"
+    ) {
+      metaAliases.add(tokens[i - 4].value);
     }
     const destructuredFromProcess =
       (tokens[i].value === "process" &&
         ((tokens[i - 1]?.value === "=" && tokens[i - 2]?.value === "}") ||
-          (tokens[i - 1]?.value === "." &&
-            ["global", "globalThis"].includes(tokens[i - 2]?.value) &&
+          ((tokens[i - 1]?.value === "." || tokens[i - 1]?.value === "?.") &&
+            GLOBAL_ROOT_NAMES.has(tokens[i - 2]?.value) &&
             tokens[i - 3]?.value === "=" &&
             tokens[i - 4]?.value === "}"))) ||
       (tokens[i].value === "require" &&
@@ -458,8 +564,35 @@ function collectTokenAliases(tokens) {
         }
       }
     }
+    // D3: `const { env } = import.meta;` — the `import.meta.env` counterpart of the
+    // process-destructuring case above.
+    const destructuredFromImportMeta =
+      tokens[i].value === "meta" &&
+      tokens[i - 1]?.value === "." &&
+      tokens[i - 2]?.value === "import" &&
+      tokens[i - 3]?.value === "=" &&
+      tokens[i - 4]?.value === "}";
+    if (destructuredFromImportMeta) {
+      let open = i - 4;
+      while (open >= 0 && tokens[open].value !== "{") open -= 1;
+      for (let j = open + 1; open >= 0 && j < i - 4; j += 1) {
+        if (tokens[j].value === "env") {
+          const alias =
+            tokens[j + 1]?.value === ":" ? tokens[j + 2] : tokens[j];
+          metaEnvAliases.add(alias.value);
+          envAliasDeclarations.add(alias === tokens[j] ? j : j + 2);
+        }
+      }
+    }
   }
-  return { processAliases, envAliases, envAliasDeclarations };
+  return {
+    processAliases,
+    globalThisAliases,
+    metaAliases,
+    envAliases,
+    metaEnvAliases,
+    envAliasDeclarations,
+  };
 }
 
 function isRootIdentifier(tokens, index) {
@@ -468,17 +601,58 @@ function isRootIdentifier(tokens, index) {
   return tokens[index - 1]?.value !== "." && tokens[index - 1]?.value !== "?.";
 }
 
-function parseEnvObject(tokens, index, processAliases, envAliases) {
+/**
+ * Given the token index right before a possible `.env` / `?.env` / `['env']` / `?.['env']`
+ * accessor, returns the end index of that accessor, or `null` if none follows. Shared by
+ * every root form (`process`, an alias of it, `globalThis.process`, `import.meta`, an alias
+ * of that) so each gets the same optional-chaining and computed-bracket handling once.
+ */
+function matchEnvAccessor(tokens, beforeIndex) {
+  let accessIndex = beforeIndex + 1;
+  if (tokens[accessIndex]?.value === "!") accessIndex += 1;
+  const dot = tokens[accessIndex]?.value;
+  if ((dot === "." || dot === "?.") && tokens[accessIndex + 1]?.value === "env")
+    return accessIndex + 1;
+  let bracketIndex = null;
+  if (dot === "[") bracketIndex = accessIndex;
+  else if (dot === "?." && tokens[accessIndex + 1]?.value === "[")
+    bracketIndex = accessIndex + 1;
+  if (bracketIndex === null) return null;
+  if (
+    tokens[bracketIndex + 1]?.value === "env" &&
+    tokens[bracketIndex + 2]?.value === "]"
+  )
+    return bracketIndex + 2;
+  const member = tokens[bracketIndex + 1];
+  const close = tokens.findIndex(
+    (token, tokenIndex) => tokenIndex > bracketIndex + 1 && token.value === "]",
+  );
+  const simpleNonEnvLiteral =
+    member?.type === "string" && close === bracketIndex + 2;
+  const numericIndex = /^\d+$/.test(member?.value ?? "");
+  if (!simpleNonEnvLiteral && !numericIndex && close >= 0) return close;
+  return null;
+}
+
+function parseEnvObject(
+  tokens,
+  index,
+  processAliases,
+  envAliases,
+  globalThisAliases,
+  metaAliases,
+  metaEnvAliases,
+) {
   const value = tokens[index]?.value;
   const rootIdentifier = isRootIdentifier(tokens, index);
   const processName =
     rootIdentifier && (value === "process" || processAliases.has(value));
   const dottedGlobalProcess =
-    (value === "global" || value === "globalThis") &&
-    tokens[index + 1]?.value === "." &&
+    (GLOBAL_ROOT_NAMES.has(value) || globalThisAliases.has(value)) &&
+    (tokens[index + 1]?.value === "." || tokens[index + 1]?.value === "?.") &&
     tokens[index + 2]?.value === "process";
   const computedGlobalProcess =
-    (value === "global" || value === "globalThis") &&
+    (GLOBAL_ROOT_NAMES.has(value) || globalThisAliases.has(value)) &&
     tokens[index + 1]?.value === "[" &&
     tokens[index + 2]?.value === "process" &&
     tokens[index + 3]?.value === "]";
@@ -488,54 +662,48 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
   if (dottedGlobalProcess) processIndex = index + 2;
   if (computedGlobalProcess) processIndex = index + 2;
   if (processName || globalProcess) {
-    let accessIndex = processIndex + 1;
-    if (computedGlobalProcess) accessIndex = index + 4;
-    if (tokens[accessIndex]?.value === "!") accessIndex += 1;
-    if (tokens[index - 1]?.value === "(" && tokens[index + 1]?.value === ")") {
-      accessIndex = index + 2;
-    }
-    const dot = tokens[accessIndex]?.value;
-    if (
-      (dot === "." || dot === "?.") &&
-      tokens[accessIndex + 1]?.value === "env"
-    )
-      return { object: "process.env", end: accessIndex + 1 };
-    if (
-      dot === "[" &&
-      tokens[accessIndex + 1]?.value === "env" &&
-      tokens[accessIndex + 2]?.value === "]"
-    )
-      return { object: "process.env", end: accessIndex + 2 };
-    if (dot === "[") {
-      const member = tokens[accessIndex + 1];
-      const close = tokens.findIndex(
-        (token, tokenIndex) =>
-          tokenIndex > accessIndex + 1 && token.value === "]",
-      );
-      const simpleNonEnvLiteral =
-        member?.type === "string" && close === accessIndex + 2;
-      const numericIndex = /^\d+$/.test(member?.value ?? "");
-      if (!simpleNonEnvLiteral && !numericIndex && close >= 0) {
-        return { object: "process.env", end: close };
+    let beforeAccessor = processIndex;
+    if (computedGlobalProcess) beforeAccessor = index + 3;
+    // D3: `(process as any).env`, `(process satisfies T).env`, `(<T>process).env` — a
+    // parenthesized identifier immediately followed by `)` (the plain `(process)` case,
+    // or an old-style cast `(<T>process)`), or an opening `(` right before `process` with
+    // an assertion tail before the matching `)` (the `as`/`satisfies` cases). Scoped to
+    // `processName` only: the global-object forms above never need unwrapping here.
+    if (processName) {
+      if (tokens[index + 1]?.value === ")") {
+        beforeAccessor = index + 1;
+      } else if (
+        tokens[index - 1]?.value === "(" &&
+        (tokens[index + 1]?.value === "as" ||
+          tokens[index + 1]?.value === "satisfies")
+      ) {
+        // Only an actual TS assertion keyword right after `process` licenses scanning
+        // forward for its closing paren — an arbitrary enclosing call's `(`, such as
+        // `use(process!.env.X)`, must not be mistaken for a cast wrapper: its matching
+        // `)` sits at the end of the whole call, far past any `.env` access.
+        let depth = 1;
+        for (let cursor = index + 1; cursor < tokens.length; cursor += 1) {
+          if (tokens[cursor].value === "(") depth += 1;
+          else if (tokens[cursor].value === ")" && --depth === 0) {
+            beforeAccessor = cursor;
+            break;
+          }
+        }
       }
     }
-    return null;
+    const end = matchEnvAccessor(tokens, beforeAccessor);
+    return end === null ? null : { object: "process.env", end };
   }
-  if (
+  const importMetaLiteral =
     rootIdentifier &&
     value === "import" &&
     tokens[index + 1]?.value === "." &&
-    tokens[index + 2]?.value === "meta"
-  ) {
-    const dot = tokens[index + 3]?.value;
-    if ((dot === "." || dot === "?.") && tokens[index + 4]?.value === "env")
-      return { object: "import.meta.env", end: index + 4 };
-    if (
-      dot === "[" &&
-      tokens[index + 4]?.value === "env" &&
-      tokens[index + 5]?.value === "]"
-    )
-      return { object: "import.meta.env", end: index + 5 };
+    tokens[index + 2]?.value === "meta";
+  const importMetaAlias = rootIdentifier && metaAliases.has(value);
+  if (importMetaLiteral || importMetaAlias) {
+    const metaEnd = importMetaLiteral ? index + 2 : index;
+    const end = matchEnvAccessor(tokens, metaEnd);
+    if (end !== null) return { object: "import.meta.env", end };
   }
   if (
     rootIdentifier &&
@@ -549,6 +717,9 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
       index + 3,
       processAliases,
       envAliases,
+      globalThisAliases,
+      metaAliases,
+      metaEnvAliases,
     );
     if (source) return { object: source.object, end: index + 2 };
     if (
@@ -593,6 +764,8 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
   }
   if (rootIdentifier && envAliases.has(value))
     return { object: "process.env", end: index };
+  if (rootIdentifier && metaEnvAliases.has(value))
+    return { object: "import.meta.env", end: index };
   return null;
 }
 
@@ -611,8 +784,14 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
  */
 export function findEnvReads(source) {
   const { tokens } = tokenize(source);
-  const { processAliases, envAliases, envAliasDeclarations } =
-    collectTokenAliases(tokens);
+  const {
+    processAliases,
+    globalThisAliases,
+    metaAliases,
+    envAliases,
+    metaEnvAliases,
+    envAliasDeclarations,
+  } = collectTokenAliases(tokens);
   const reads = [];
   const tokenAccountedStarts = new Set();
   const lines = source.split("\n");
@@ -633,8 +812,8 @@ export function findEnvReads(source) {
     if (
       tokens[i].value === "process" &&
       ((tokens[i - 1]?.value === "=" && tokens[i - 2]?.value === "}") ||
-        (tokens[i - 1]?.value === "." &&
-          ["global", "globalThis"].includes(tokens[i - 2]?.value) &&
+        ((tokens[i - 1]?.value === "." || tokens[i - 1]?.value === "?.") &&
+          GLOBAL_ROOT_NAMES.has(tokens[i - 2]?.value) &&
           tokens[i - 3]?.value === "=" &&
           tokens[i - 4]?.value === "}"))
     ) {
@@ -648,8 +827,74 @@ export function findEnvReads(source) {
         }
       }
     }
-    const parsed = parseEnvObject(tokens, i, processAliases, envAliases);
-    if (!parsed) continue;
+    // D3 (issue #342 follow-up): `import("node:process").then((m) => m.env.X)` binds its
+    // result inside an arbitrary callback this detector cannot see into — unlike
+    // `await import(...)`, there is no name to resolve. Fail closed on the call itself.
+    if (
+      tokens[i].value === "import" &&
+      tokens[i + 1]?.value === "(" &&
+      ["process", "node:process"].includes(tokens[i + 2]?.value) &&
+      tokens[i + 3]?.value === ")" &&
+      tokens[i + 4]?.value === "." &&
+      tokens[i + 5]?.value === "then"
+    ) {
+      addRead(tokens[i], "process.env", "alias");
+    }
+    // D3: `with (process) { env.X }`. Strict-mode ES modules (this repository's `"type":
+    // "module"`) reject `with` outright, but fail closed anyway rather than assume every
+    // scanned file is one.
+    if (
+      tokens[i].value === "with" &&
+      tokens[i + 1]?.value === "(" &&
+      (tokens[i + 2]?.value === "process" ||
+        processAliases.has(tokens[i + 2]?.value)) &&
+      tokens[i + 3]?.value === ")"
+    ) {
+      addRead(tokens[i], "process.env", "alias");
+    }
+    const parsed = parseEnvObject(
+      tokens,
+      i,
+      processAliases,
+      envAliases,
+      globalThisAliases,
+      metaAliases,
+      metaEnvAliases,
+    );
+    if (!parsed) {
+      // D3: `f(process)` hands the whole object to code this detector cannot see into.
+      // Narrowly scoped to the literal `process` identifier used as a bare call argument —
+      // an already-tracked alias merely being passed around is not itself a new read (see
+      // the "processAlias" decoy case below), and the calls this file already resolves
+      // (`Reflect.get(process, "env")`, `require("process")`, `with (process)`) must not
+      // be double-counted here just because `process` is also their sole/first argument.
+      const precededByArgBoundary =
+        tokens[i - 1]?.value === "(" || tokens[i - 1]?.value === ",";
+      const followedByArgBoundary =
+        tokens[i + 1]?.value === ")" || tokens[i + 1]?.value === ",";
+      const calleeName =
+        tokens[i - 1]?.value === "(" ? tokens[i - 2]?.value : null;
+      const isRecognizedWrapperCallee =
+        calleeName === "with" ||
+        calleeName === "require" ||
+        (calleeName === "get" &&
+          tokens[i - 3]?.value === "." &&
+          tokens[i - 4]?.value === "Reflect") ||
+        (calleeName === "getOwnPropertyDescriptor" &&
+          tokens[i - 3]?.value === "." &&
+          tokens[i - 4]?.value === "Object");
+      if (
+        tokens[i].type === "id" &&
+        tokens[i].value === "process" &&
+        isRootIdentifier(tokens, i) &&
+        precededByArgBoundary &&
+        followedByArgBoundary &&
+        !isRecognizedWrapperCallee
+      ) {
+        addRead(tokens[i], "process.env", "alias");
+      }
+      continue;
+    }
     const token = tokens[i];
     let kind = "alias";
     let name = null;
@@ -709,7 +954,7 @@ export function findEnvReads(source) {
   // No raw match is exempted. This deliberately includes comment-like JSX text and
   // any other syntax the lightweight tokenizer could misclassify.
   const rawAccess =
-    /(?<![\w$.])(?:(?:globalThis|global)\s*\.\s*)?process\s*(?:\.\s*env|\?\.\s*env)|(?<![\w$.])import\s*\.\s*meta\s*(?:\.\s*env|\?\.\s*env)/g;
+    /(?<![\w$.])(?:(?:globalThis|global|window)\s*(?:\.|\?\.)\s*)?process\s*(?:\.\s*env|\?\.\s*env)|(?<![\w$.])import\s*\.\s*meta\s*(?:\.\s*env|\?\.\s*env)/g;
   rawAccess.lastIndex = 0;
   for (
     let match = rawAccess.exec(source);
