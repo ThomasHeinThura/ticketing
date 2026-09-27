@@ -168,6 +168,47 @@ adversarial probes run against both this head and the pre-#423 tokenizer on the 
 the shadow-scoping fix with its own additional variants; the real repo via
 `check-env.mjs --report`.
 
-A narrow fix for F1/F2/F3/F4 (each exact and specified above) plus F5's doc correction is
-being commissioned as a delta, per Opus's own note that these are one-line fixes needing
-only a short delta confirmation, not a fresh full round.
+A narrow fix for F1/F2/F3/F4 (each exact and specified above) plus F5's doc correction was
+commissioned as a delta; see pass 3 below.
+
+---
+
+## Security review — pass 3 (short delta on the F1-F5 fix)
+
+**Model:** Opus 5.5, fresh independent context (did not author or run passes 1/2)
+**Session:** subagent `a5c225b7baebb5639`
+
+**Reviewed head:** `6d9b83b32b5aefe20016b78d546f5462d86bbb01`
+
+**Verdict: BLOCKING.** F1, F2, and F4 confirmed correct. F3's right-hand-side exemption in
+`isTrackedAliasDeclarationSite` is too broad: it treats `x = <value>` as safe whenever `x`
+is a plain identifier, without checking whether the assignment's own value is actually
+consumed rather than thrown away as a standalone statement — a genuine sixth problem, a
+fail-open regression relative to pass 2's own cleared head (`871e16d`), confirmed by running
+41 hand-built probes against both heads: `f(x = process)`, `use((x = process).env.SECRET)`
+(a real named read, now silently dropped), `y = x = process; use(y.env.SECRET)`,
+`const y = (x = process); use(...)`, `return x = process;`, and
+`export default (x = process);` all silently returned `[]` at this head where `871e16d`
+correctly charged each one.
+
+**Exact fix specified and pre-tested in a throwaway copy:** in the `BinaryExpression` branch
+of `isTrackedAliasDeclarationSite` (~line 383), add a check that the assignment's own parent
+(through `effectiveParent`) is an `ExpressionStatement` — i.e., genuinely a standalone
+statement, not consumed as a value anywhere. Confirmed this restores all six probe shapes
+while keeping the original F3 cases correct. One accepted side effect noted: `f(x =
+process.env)` now double-charges rather than misses.
+
+**F1/F2/F4 independently re-verified correct**, including one further adjacent case the
+reviewer tested on its own initiative (`export { p as process }` where `p` is a tracked
+alias — correctly charges exactly once on the local name `p`).
+
+**F5:** mostly accurate; two small corrections requested (the `.then(cb)` callback's
+coverage is the dedicated `.then` case, not the default-flip; the exemption description
+should note the standalone-statement condition once F3 lands).
+
+**Noted, not blocking, pre-existing since `871e16d`:** `export { process } from "./x"` and
+`export { process as y } from "./x"` both charge even though neither is ever actually the
+real global — a false positive, safe direction, filed as a follow-up.
+
+**Surfaces examined:** the five fixes plus surrounding code; 41 hand-built probes against
+both this head and `871e16d`; the real repo via `check-env.mjs --report` (unchanged: 29/52).
