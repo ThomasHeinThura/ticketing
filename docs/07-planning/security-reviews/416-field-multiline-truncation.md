@@ -140,3 +140,13 @@ finding behind 75 unrelated pre-existing warnings elsewhere in the repo). Ran
 `biome format --write` on only this one file, confirmed the diff is purely whitespace/line-
 wrapping (no token/logic change — verified by direct diff read), and confirmed the full
 `pr-body.test.mjs` suite still passes (151/151) after.
+
+---
+
+## Re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `9ba23dc043be9b33230a31415fddcb90d9a80b2e`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on this PR's own reviewed files between the last
+reviewed head (`ef0be6916a21a57ab15f5e06d65da46b26f08ebf`) and this one — the intervening
+commit is #426's already-reviewed merge (docs-only, no overlap).
