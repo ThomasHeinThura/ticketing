@@ -187,3 +187,18 @@ mechanical note.
 between the last reviewed head (`4ee59e11336cf98f46eb88d77a8ab56d09efc682`) and this one —
 the intervening commits are #418's and other already-reviewed merges, zero overlap with
 this PR's own files.
+
+---
+
+## Re-confirmation after branch update (2026-09-27, second)
+
+**Reviewed head:** `c3617a2a18d0e0c160f0ca4a7613b0dbc8ce4e9f`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git diff c6b0ab157c482ae9967ad2aec520c33be752eb7e..c3617a2a18d0e0c160f0ca4a7613b0dbc8ce4e9f`
+scoped to every file this PR touches (`unassign-work-item.ts`, `work-item/index.ts`,
+`policy.ts`, `response.ts`, `rbac.md`, `assignment.md`, `evaluator.ts`/`.test.ts`,
+`policy.ts` (permissions), `check-events.test.mjs`, the OpenAPI contract fixture, the
+unassign integration/policy tests, and the permission matrix fixture) is empty. The
+intervening commits are #416's already-reviewed merge into `main` (`6403586`, confirmed an
+ancestor of `origin/main`) plus its own chain of routine branch-update merges — already
+fully Opus-reviewed and merged before this branch picked them up.
