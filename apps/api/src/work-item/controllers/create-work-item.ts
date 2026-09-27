@@ -198,8 +198,16 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     // nothing in the response to act on. Mapped here to a clean, understandable 409
     // instead (`app.onError`'s handling of a >=500 `HTTPException` is a pre-existing,
     // separately-scoped gap -- its own `if` block is empty -- so this alone does not add
-    // logging; it only stops the response itself from being opaque).
-    if (isUniqueViolation(error, "key")) {
+    // logging; it only stops the response itself from being opaque). Matched by the
+    // EXACT constraint name Postgres actually raises on `work_item_key_claim`'s
+    // unnamed PRIMARY KEY on `key` -- `work_item_key_claim_pkey` (Postgres's default
+    // naming convention, confirmed live against migration 0055's schema; the trigger's
+    // own `ON CONFLICT ("key", work_item_id) DO NOTHING` already absorbs the table's
+    // OTHER unique constraint, `work_item_key_claim_key_work_item_id_unique`, so that
+    // one is never reachable here) -- not a substring match on `"key"` (issue #269):
+    // a substring would also match any future unrelated `*_key_something` constraint
+    // added near this insert.
+    if (isUniqueViolation(error, "work_item_key_claim_pkey")) {
       throw new HTTPException(409, {
         message:
           "This work item's key is already claimed by another work item; the project's key range may be poisoned by a retired slug -- contact an administrator",
