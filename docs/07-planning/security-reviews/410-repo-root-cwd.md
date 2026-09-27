@@ -70,3 +70,15 @@ GIT_DIR, dubious ownership, bare repo, empty PATH, etc.) and confirmed the narro
 matches only git's two genuine "no repo anywhere in this path" wordings, correctly throwing
 on every broken-but-real-repo state. Confirmed both new tests fail for the right reason by
 selectively reverting each fix in turn. Full suite: 649/649 green with the real Node binary.
+
+---
+
+## Lightweight re-confirmation after branch update (2026-09-27)
+
+**Reviewed head:** `26e7dee705f65dbc27cf0a2e9a980e879cd598b1`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Empty diff on `scripts/ci/lib/repo.mjs`,
+`scripts/ci/lib/scratch-repo.mjs`, and `scripts/ci/probes/repo-root-cwd.test.mjs` between the
+last reviewed head (`2d411b67b3b931e4bade2888fa5b8cac7cd7223d`) and this one — the
+intervening commits bring in already-reviewed content from other merged PRs, zero overlap
+with this PR's own files.
