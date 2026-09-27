@@ -73,3 +73,73 @@
 - `check-pr-template.mjs` on the PR body: the `## Gates` table is clean (bare `pass`/`n/a`, no waived gate). The three remaining reported problems (this review-note file not existing yet, the `audit_log` box, the Opus checkbox) are the two known, correctly-disclosed out-of-scope blockers, not new issues.
 
 Outstanding at the time of this review (now resolved by the Opus review above, still open: the `audit_log` dependency on #344/PR #375).
+
+---
+
+## Delta review (Opus 5.5): the audit_log write
+
+**Reviewer:** Claude Opus 5.5 (`claude-opus-5-5[1m]`), a fresh independent context commissioned by the orchestrating session. It did not author, direct or remediate this change.
+**Reviewed head:** `5c7dad6587821f8e6ef5b63df726aed4ef84fb4f`
+**Range reviewed:** this PR's own commit `5c7dad6` (`unassign-work-item.ts` + `work-item-unassign.test.ts`), on top of `99d23c9` (merge of `feat/30-assign-action` at `cbd18fc`)
+**Date:** 2026-09-27
+**Verdict:** **CLEAR.** No blocking findings. Two LOW test gaps (L3, L4) and three non-blocking items carried over from #353 (A3, A4, A5).
+
+### Is #353's A1 bug here? No.
+
+The ordering in `unassign-work-item.ts`:
+
+- `:83-90`: if the item is already unassigned, return (no transaction).
+- `:95-97`: if `item.assigneeId !== expectedAssigneeId`, throw a 409. This check is unconditional.
+- `:99`: `previousAssigneeId = item.assigneeId`. At this point it equals `expectedAssigneeId` and is non-null.
+- `:115`: the UPDATE's WHERE clause uses that same variable.
+
+So when the UPDATE matches, `before` is the value it overwrote. #353's A1 came from `before` using the pre-read while the WHERE clause used a separately supplied value. That split does not exist here.
+
+### Probes
+
+Run on real Postgres 18, in a private worktree against a private database (`pr365auditopus_test`). Both were removed afterwards.
+
+| Probe | Result |
+| --- | --- |
+| P1: a rival holds `LOCK TABLE work_item IN SHARE MODE`, so the controller parks after its pre-read and check. The rival changes A to B and commits. | 409 carrying B. B keeps the item. No unassign audit row. |
+| P2: the rival changes A to B to A (ABA) while the controller is parked. | 200. `before = A`, which is the value the UPDATE overwrote. |
+| P3: as P1, but with a row lock (`FOR UPDATE`), so Postgres re-checks the WHERE clause. | 409. No audit row. |
+| P4: the controller's pre-read is stubbed to return a stale holder B, while the database and the handler hold A. | 409 from the check. No audit row. |
+| P5 / P6: one unassign, then 8 concurrent unassigns. | `verifyAuditChain` ok. Every `prev_hash` distinct. |
+
+### Mutations (each restored afterwards; `git status` clean)
+
+| Mutation | PR suite | Probes |
+| --- | --- | --- |
+| `projectId: null` | red | – |
+| `entityId: key` | red | – |
+| Drop the `appendAuditLog` call | red | – |
+| Drop the check at `:95-97` | red (F1) | – |
+| Drop `eq(assignee_id, previousAssigneeId)` from the UPDATE | **green** | red (P1, P3) |
+| #353's A1 shape (no check, WHERE on `expectedAssigneeId`, `before` from the pre-read) | **green** | red (P4 records B when A was overwritten) |
+| `actorId: "forged"` / `actorType: "system"` | **green** | – |
+
+### Other checks
+
+1. **Forgery:** none. `actorId` and `actorType` come from `resolveActor` (the session or API key). `workspaceId` comes from the reach check. `projectId` and `entityId` come from the loaded row. `after` is a literal `null`. The DELETE takes no body.
+2. **Hash chain:** compatible. `projectId` is stored but not hashed, per #375's precedent.
+3. **No-op case:** it writes zero audit rows, which the existing test asserts. A 409 also writes nothing, because the transaction rolls back.
+4. **Advisory lock:** row locks are taken first and the audit lock last, the same as the assign route. Audit-read holds no row locks. There is no deadlock path and no double lock.
+5. **`project_id` taken from the pre-read:** safe today, because no code changes `work_item.project_id`. A future work-item move must take it from `RETURNING` instead.
+
+### Findings
+
+- **L3 (LOW, test gap, non-blocking; extends L1 above).** No committed test catches the two regressions that matter here: dropping the UPDATE's assignee condition, or reintroducing #353's A1 shape. The code is correct today. Recommendation: commit P1 (the table-lock race) and P4 (the stale pre-read) as integration tests.
+- **L4 (LOW, test gap; the same as #353's A2).** `actorId` and `actorType` are not asserted on the audit row.
+- **Carried over from #353, non-blocking:** A3 (no `apiKeyId`, `actorIp`, `userAgent` or `traceId`), A4 (an audit-write failure rolls back the unassign, contrary to AU-14; one decision should cover both routes), and A5 (`.slice(-1)` without `orderBy(seq)`).
+
+### Evidence
+
+- `work-item-unassign.test.ts` + `work-item-assign.test.ts`: 24/24 passed.
+- Full API integration suite: 93 files, 1260/1260 passed.
+- `pnpm turbo typecheck`: 9/9 tasks passed.
+- Probe file: 14/14 passed at this head (not committed).
+
+### Base-branch dependency
+
+The base branch `feat/30-assign-action` (#353) is still CHANGES NEEDED for its own A1. Merging #353's fix into #365 changes #365's head, which invalidates this clearance, so that merge needs a delta check.
