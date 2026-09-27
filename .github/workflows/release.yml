@@ -187,25 +187,29 @@ jobs:
           echo "amd64_digest=$amd64" >> "$GITHUB_OUTPUT"
           echo "arm64_digest=$arm64" >> "$GITHUB_OUTPUT"
 
-      - name: Scan amd64 image — HIGH and CRITICAL block publication
+      # ignore-unfixed: true (Thomas, 2026-09-27, decision log) -- a HIGH/CRITICAL finding
+      # with no vendor-supplied fix at this pinned digest is not an actionable finding, and
+      # blocking on it indefinitely does not reduce risk. A finding WITH a fix available
+      # still blocks exactly as before -- severity and exit-code are unchanged.
+      - name: Scan amd64 image — HIGH and CRITICAL with a fix available block publication
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: ${{ steps.release.outputs.image }}@${{ steps.manifest.outputs.amd64_digest }}
           version: v0.73.0
           severity: HIGH,CRITICAL
-          ignore-unfixed: false
+          ignore-unfixed: true
           exit-code: '1'
           cache: false
 
-      - name: Scan arm64 image — HIGH and CRITICAL block publication
+      - name: Scan arm64 image — HIGH and CRITICAL with a fix available block publication
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: ${{ steps.release.outputs.image }}@${{ steps.manifest.outputs.arm64_digest }}
           version: v0.73.0
           severity: HIGH,CRITICAL
-          ignore-unfixed: false
+          ignore-unfixed: true
           exit-code: '1'
           cache: false
 

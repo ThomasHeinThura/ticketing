@@ -101,7 +101,9 @@ alpine, until measured otherwise.
 - Signed with cosign (keyless) and attested with build provenance
   ([ci-cd.md](../04-engineering/ci-cd.md) step 8); the same identity signs the release
   archive ([one-line-install.md](one-line-install.md)).
-- Trivy gate: high/critical fails the release. Target size under 250 MB compressed; the
+- Trivy gate: high/critical **with a fix available** fails the release (`ignore-unfixed:
+  true`, decision log 2026-09-27 — a finding with no vendor fix yet doesn't block). Target
+  size under 250 MB compressed; the
   `check:bundle-size` budget applies to the web bundles separately.
 
 ## Traceability

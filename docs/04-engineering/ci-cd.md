@@ -187,6 +187,8 @@ turbo.json                           pnpm-lock.yaml
 docs/04-engineering/ci-cd.md         pnpm-workspace.yaml
                                      .npmrc
                                      .pnpmfile.cjs
+trivy.yaml                           .trivyignore
+.trivyignore.yaml
 scripts/lib/**                       tests/api-integration/global-setup.ts
 **/vitest.config.*                   apps/web/playwright.config.ts
 **/vitest*.config.*
@@ -441,7 +443,9 @@ On merge:
 1. Everything above.
 2. Full E2E across Chrome, Firefox, Safari and Edge.
 3. Build the container image, multi-arch (amd64, arm64), under a run-specific candidate tag.
-4. Scan each platform image with Trivy — high or critical fails.
+4. Scan each platform image with Trivy — high or critical **with a vendor-supplied fix
+   available** fails (`ignore-unfixed: true`, decision log 2026-09-27 — a finding with no fix
+   to apply yet is not actionable, and blocking on it indefinitely does not reduce risk).
 5. Generate a CycloneDX SBOM for each platform image.
 6. **Sign the image** with cosign (keyless, using the CI job's OIDC identity) and publish a
   build-provenance attestation alongside it, so anyone — a customer, the marketplace
