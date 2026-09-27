@@ -175,3 +175,46 @@ real Zod schemas — both match. Confirmed the commit touches only the two inten
 no application logic changed. Full gate-checker suite: 788/788 tests, 102 suites.
 
 Clear to merge.
+
+---
+
+## Security review — conflict-resolution verification (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `abb6949622f4d1d9e`
+
+**Reviewed head:** `96905999a1b3dae3f65f36b34bfe5abee3c8b57b`
+
+**Scope:** a real merge conflict arose against `main` after PR #430 (unassign action,
+already merged) touched the same shared files this PR also touches, requiring a
+hand-reconstructed `.openapi()` handler chain (git's automatic merge interleaved the two
+sides' handler bodies around a coincidentally-identical shared `resolveActor(...)` call).
+This pass verifies the resolution preserved both sides correctly, not either PR's own
+design (already cleared separately).
+
+**Verdict: CLEAR.** Confirmed a real two-parent merge (`493015b` PR branch, `e6a4d95` #430's
+merge on main). Verified two ways: diffed the PR's own pre-merge head against the merge and
+confirmed it equals exactly the lines #430 independently added on main (nothing else);
+confirmed all 14 `createRoute`/`.openapi()` pairs are present, correctly scoped, no
+truncation, no duplication, no nesting — read the full chain directly, not just a green
+typecheck. `policy.ts` and `response.ts` confirmed as clean unions of both sides, no
+splitting typos remaining. `tsc --noEmit` clean, `biome ci` clean.
+
+**Published-event-count arithmetic independently re-derived, not just trusted**: ran
+`check-events.mjs` at the common ancestor (27), the PR's own pre-merge head (28, from
+`work_item.deleted`), #430's side on main (28, from `work_item.unassigned`), and the merge
+(29) — confirmed both keys are genuinely new `publishEvent` call sites absent at the
+ancestor, both already documented in `events.md` before either PR (no doc drift), and
+27+2=29 is the correct arithmetic, not a fudge. `check-events.test.mjs`: 34/34.
+
+Full suites reproduced on a fresh database: integration 99/99 files (1310/1310 tests),
+permissions 13/83, unit 60/494 — all green. OpenAPI contract confirmed regenerated from
+real code (118 operations, no hand-merge drift), `matrix.fixture.json` has all 9 work-item
+route keys.
+
+**Notes for the record, none a flaw in this merge:** `main` advanced again (#438 merged)
+after this resolution — needs another branch update, confirmed to merge cleanly with no
+conflict and no event-count change (#438 publishes no new keys) in a trial merge. The
+"unit + component" CI failure at this head was a >5s `drizzle-kit generate` timeout in an
+unrelated schema-drift test, unrelated to this PR's changes (confirmed: no schema/migration
+touched, same test passes locally) — a rerun, not a defect.
