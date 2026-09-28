@@ -14,6 +14,7 @@ const archiveName = `oasdiff_${version}_linux_amd64.tar.gz`;
 const archiveSha256 =
   "7c8939fc49b75ee11fec66a5b83b37a2fca6aee109fed85013b1ba2ac2a1ee7f";
 const approvedBreaksPath = "scripts/ci/openapi-approved-breaks.json";
+const redoclyApprovedFindingsPath = "scripts/ci/redocly-approved-findings.json";
 
 /**
  * Absolute path to the approved-breaks allowlist, resolved against `repoRoot`
@@ -23,6 +24,14 @@ const approvedBreaksPath = "scripts/ci/openapi-approved-breaks.json";
  */
 export function approvedBreaksFilePath() {
   return path.join(repoRoot, approvedBreaksPath);
+}
+
+/**
+ * Absolute path to the Redocly-lint-finding allowlist, same resolution reasoning as
+ * `approvedBreaksFilePath` above.
+ */
+export function redoclyApprovedFindingsFilePath() {
+  return path.join(repoRoot, redoclyApprovedFindingsPath);
 }
 
 const APPROVED_BREAK_KEYS = [
@@ -115,6 +124,183 @@ export function parseApprovedBreaks(text) {
   });
 
   return parsed;
+}
+
+const REDOCLY_APPROVED_FINDING_KEYS = [
+  "operation",
+  "rule",
+  "pointer",
+  "reason",
+  "decision",
+  "pr",
+];
+
+/**
+ * The identity of a Redocly-lint allowlist entry, or of a Redocly problem shaped the same
+ * way: the (rule, pointer) pair. The JSON pointer Redocly reports (e.g.
+ * `#/paths/~1attachments~1{id}/get/responses`) is already exact and stable per finding
+ * instance, unlike oasdiff's breaking-change output there is no separate opaque fingerprint
+ * to bind on — the pointer already is one.
+ *
+ * @param {{ rule: string, pointer: string }} record
+ */
+export function redoclyApprovedFindingIdentity(record) {
+  return `${record.rule}\u0000${record.pointer}`;
+}
+
+/**
+ * Validate and parse the Redocly-lint-finding allowlist — the same reviewed-exception
+ * shape as `openapi-approved-breaks.json`, for a different tool. This file is NOT for
+ * breaking changes (oasdiff's allowlist above still owns those, including the "closed for
+ * good past a stable v2.0.0+ tag" rule) — it is for a specific, deliberate design choice
+ * that a generic Redocly lint rule cannot recognize as intentional (e.g. an operation that
+ * is redirect-only by design, so `operation-2xx-response` is a false positive on it, not a
+ * missing response). `redoclyLint`'s shrink-only baseline still catches anything NOT
+ * listed here, on any path, exactly as before.
+ *
+ * Strict on purpose, same reasoning as `parseApprovedBreaks`: a malformed entry is a gate
+ * that silently passed a finding nobody actually reviewed.
+ *
+ * @param {string} text raw file contents
+ * @returns {{ operation: string, rule: string, pointer: string, pr: number, reason: string, decision: string }[]}
+ */
+export function parseApprovedRedoclyFindings(text) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    throw new Error(
+      `${redoclyApprovedFindingsPath} is not valid JSON: ${error.message}`,
+    );
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error(`${redoclyApprovedFindingsPath} must be a JSON array.`);
+  }
+
+  const seen = new Set();
+  parsed.forEach((entry, index) => {
+    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new Error(
+        `${redoclyApprovedFindingsPath}[${index}] must be an object with exactly the keys ` +
+          `${REDOCLY_APPROVED_FINDING_KEYS.join(", ")}.`,
+      );
+    }
+    const keys = Object.keys(entry).sort();
+    const expected = [...REDOCLY_APPROVED_FINDING_KEYS].sort();
+    if (
+      keys.length !== expected.length ||
+      keys.some((k, i) => k !== expected[i])
+    ) {
+      throw new Error(
+        `${redoclyApprovedFindingsPath}[${index}] has keys [${keys.join(", ")}]; expected ` +
+          `exactly [${expected.join(", ")}].`,
+      );
+    }
+    for (const field of [
+      "operation",
+      "rule",
+      "pointer",
+      "reason",
+      "decision",
+    ]) {
+      if (typeof entry[field] !== "string" || entry[field].trim() === "") {
+        throw new Error(
+          `${redoclyApprovedFindingsPath}[${index}].${field} must be a non-empty string.`,
+        );
+      }
+    }
+    if (!Number.isInteger(entry.pr)) {
+      throw new Error(
+        `${redoclyApprovedFindingsPath}[${index}].pr must be an integer.`,
+      );
+    }
+    const dedupeKey = redoclyApprovedFindingIdentity(entry);
+    if (seen.has(dedupeKey)) {
+      throw new Error(
+        `${redoclyApprovedFindingsPath} has a duplicate entry for rule "${entry.rule}" and ` +
+          `pointer "${entry.pointer}".`,
+      );
+    }
+    seen.add(dedupeKey);
+  });
+
+  return parsed;
+}
+
+/**
+ * The Redocly-lint allowlist entries `origin/main` already has, same reasoning as
+ * `readBaseApprovedBreaks`: an entry present there approves nothing on the current PR,
+ * only entries NEW relative to this copy can. A missing file at `origin/main` is `[]`; any
+ * other read failure fails closed.
+ *
+ * @param {(command: string, args: string[]) => { status: number|null, stdout: string, stderr: string }} runner
+ * @returns {Promise<{ operation: string, rule: string, pointer: string, pr: number, reason: string, decision: string }[]>}
+ */
+export async function readBaseApprovedRedoclyFindings(runner) {
+  let result;
+  try {
+    result = runner("git", [
+      "show",
+      `origin/main:${redoclyApprovedFindingsPath}`,
+    ]);
+  } catch (error) {
+    throw new Error(
+      `could not read origin/main's copy of ${redoclyApprovedFindingsPath} to find out ` +
+        `which entries are already merged: ${error.message}`,
+    );
+  }
+
+  if (result.status === 0) {
+    try {
+      return parseApprovedRedoclyFindings(result.stdout);
+    } catch (error) {
+      throw new Error(
+        `origin/main's copy of ${redoclyApprovedFindingsPath} is malformed, so which ` +
+          `entries are already merged cannot be computed: ${error.message}`,
+      );
+    }
+  }
+
+  if (isMissingBaseFileError(result.stderr)) {
+    return [];
+  }
+
+  throw new Error(
+    `could not read origin/main's copy of ${redoclyApprovedFindingsPath} (git show exited ` +
+      `${result.status ?? "unknown"}); refusing to guess which entries are already ` +
+      `merged.\n${result.stderr ?? ""}`,
+  );
+}
+
+/**
+ * Split Redocly problems into ones a set of NEW allowlist entries exactly covers and the
+ * rest, and report which of those new entries matched no problem at all — same shape as
+ * `partitionApprovedBreaks`, on (rule, pointer) instead of (operation, rule, fingerprint).
+ *
+ * @param {{ ruleId: string, location?: Array<{ pointer?: string }> }[]} problems
+ * @param {{ operation: string, rule: string, pointer: string, pr: number, reason: string, decision: string }[]} approved new entries only
+ */
+export function partitionApprovedRedoclyFindings(problems, approved) {
+  const approvedKeys = new Set(approved.map(redoclyApprovedFindingIdentity));
+  const usedKeys = new Set();
+  const matched = [];
+  const unmatched = [];
+  for (const problem of problems) {
+    const key = redoclyApprovedFindingIdentity({
+      rule: problem.ruleId,
+      pointer: problem.location?.[0]?.pointer ?? "",
+    });
+    if (approvedKeys.has(key)) {
+      matched.push(problem);
+      usedKeys.add(key);
+    } else {
+      unmatched.push(problem);
+    }
+  }
+  const unusedEntries = approved.filter(
+    (entry) => !usedKeys.has(redoclyApprovedFindingIdentity(entry)),
+  );
+  return { matched, unmatched, unusedEntries };
 }
 
 /**
@@ -499,7 +685,7 @@ function redoclyReport(specPath, label) {
   return null;
 }
 
-async function redoclyLint(baseSpec) {
+async function redoclyLint(baseSpec, newApprovedFindings) {
   const tempDir = await fs.mkdtemp(
     path.join(os.tmpdir(), "taskdesk-openapi-base-"),
   );
@@ -516,14 +702,42 @@ async function redoclyLint(baseSpec) {
   }
   if (!baseline || !current) return false;
 
-  const unexpected = unapprovedProblems(current.problems, baseline.problems);
-  if (unexpected.length > 0) {
-    process.stderr.write(
-      `Redocly lint found ${unexpected.length} new finding(s) beyond the shrink-only baseline:\n`,
+  const beyondBaseline = unapprovedProblems(
+    current.problems,
+    baseline.problems,
+  );
+  const { matched, unmatched, unusedEntries } =
+    partitionApprovedRedoclyFindings(beyondBaseline, newApprovedFindings);
+
+  for (const finding of matched) {
+    process.stdout.write(
+      `approved Redocly finding: ${finding.ruleId} ${finding.location?.[0]?.pointer ?? ""}\n`,
     );
-    for (const problem of unexpected) {
+  }
+
+  if (unmatched.length > 0) {
+    process.stderr.write(
+      `Redocly lint found ${unmatched.length} new finding(s) beyond the shrink-only baseline, ` +
+        `not covered by a NEW entry in ${redoclyApprovedFindingsPath} (an entry already on ` +
+        "origin/main approves nothing):\n",
+    );
+    for (const problem of unmatched) {
       process.stderr.write(
         `- ${problem.severity} ${problem.ruleId} ${problem.location?.[0]?.pointer ?? ""}: ${problem.message}\n`,
+      );
+    }
+    process.exitCode = 1;
+    return false;
+  }
+
+  if (unusedEntries.length > 0) {
+    process.stderr.write(
+      `${unusedEntries.length} new entry(ies) in ${redoclyApprovedFindingsPath} matched no ` +
+        "Redocly finding — a stale or typo'd entry:\n",
+    );
+    for (const entry of unusedEntries) {
+      process.stderr.write(
+        `- ${entry.rule} ${entry.pointer} (${entry.operation}, PR #${entry.pr})\n`,
       );
     }
     process.exitCode = 1;
@@ -533,7 +747,7 @@ async function redoclyLint(baseSpec) {
   const remaining = current.problems.length;
   const previous = baseline.problems.length;
   process.stdout.write(
-    `Redocly lint: ${remaining} finding(s) remain from origin/main's ${previous}; the baseline is derived from origin/main and can only shrink.\n`,
+    `Redocly lint: ${remaining} finding(s) remain from origin/main's ${previous}; the baseline is derived from origin/main and can only shrink (${matched.length} approved beyond it).\n`,
   );
   return true;
 }
@@ -610,7 +824,47 @@ async function main() {
     );
     return;
   }
-  if (!(await redoclyLint(baseSpec.stdout))) return;
+
+  let approvedRedoclyFindings;
+  try {
+    const approvedRedoclyFindingsText = await fs.readFile(
+      redoclyApprovedFindingsFilePath(),
+      "utf8",
+    );
+    approvedRedoclyFindings = parseApprovedRedoclyFindings(
+      approvedRedoclyFindingsText,
+    );
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
+  let baseApprovedRedoclyFindings;
+  try {
+    baseApprovedRedoclyFindings = await readBaseApprovedRedoclyFindings(run);
+  } catch (error) {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  const baseRedoclyIdentities = new Set(
+    baseApprovedRedoclyFindings.map(redoclyApprovedFindingIdentity),
+  );
+  const newRedoclyEntries = approvedRedoclyFindings.filter(
+    (entry) =>
+      !baseRedoclyIdentities.has(redoclyApprovedFindingIdentity(entry)),
+  );
+  for (const entry of approvedRedoclyFindings.filter((entry) =>
+    baseRedoclyIdentities.has(redoclyApprovedFindingIdentity(entry)),
+  )) {
+    process.stdout.write(
+      "stale Redocly allowlist entry (already on origin/main, approves nothing here — " +
+        `delete it): ${entry.rule} ${entry.pointer} (PR #${entry.pr})\n`,
+    );
+  }
+
+  if (!(await redoclyLint(baseSpec.stdout, newRedoclyEntries))) return;
 
   let approvedBreaks;
   try {
