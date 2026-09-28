@@ -184,6 +184,27 @@ exercised rather than being first tested in UAT.
 
 Add `files.localhost` too when running the `s3` profile locally.
 
+**Port conflict with an existing reverse proxy.** The bundled local Traefik publishes
+80/443, and a "clean machine" is the target, but plenty of real development hosts already
+run something else on those ports (Dokploy, nginx, another app). Compose fails the whole
+`up` when a published port is already bound, so `scripts/deploy.sh local` checks both ports
+before starting anything and fails with instructions rather than a bare Docker "address
+already in use". Fix: set `TASKDESK_LOCAL_HTTP_PORT` and/or `TASKDESK_LOCAL_HTTPS_PORT` in
+`.env` to free ports (e.g. `8080` / `8443`), and add the HTTPS port to `TASKDESK_AGENT_URL` /
+`TASKDESK_PORTAL_URL` and to the `/etc/hosts` line above if you use it, e.g.
+`https://ticket.localhost:8443`. `scripts/deploy.sh` prints this same reminder in its final
+URLs when a non-default port is in play ([configuration-reference.md](configuration-reference.md)).
+
+This check is a best-effort pre-flight, not exhaustive — every case below fails open to the
+same raw Docker error this exists to improve on, never to a silent skip of a real conflict:
+it only probes `127.0.0.1`, so a listener bound only to `::` (with no dual-stack) or to a
+specific non-loopback address is missed; and it does **not** catch a second checkout of
+*this same repository* — `compose.yml` pins `name: taskdesk`, so a second checkout's
+already-running local Traefik shares that Compose project, `docker compose port traefik`
+succeeds against it, and `up` reads it as this stack's own and adopts it rather than
+flagging a conflict (harmless — it only means `up` recreates that other checkout's
+containers, which was already true before this port check existed).
+
 `scripts/deploy.sh local` prints this. It creates a self-signed **leaf** certificate for
 the local routes in `deploy/local/certs/`; it is not a certificate authority. Trust
 `local.crt` on the development machine to stop browser warnings. `DOMAIN` must be a valid

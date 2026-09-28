@@ -12,6 +12,17 @@
 # deploy/traefik/dynamic/tls-local.yml. Trust local.crt in the OS keychain to
 # stop browser warnings.
 #
+# Host ports 80/443 are NOT hardcoded below. A machine that has never seen this
+# repo is the target ("clean machine"), but plenty of real development hosts
+# already run another reverse proxy (Dokploy, nginx, another app)
+# bound to 80/443 — and Compose fails the whole `up` if a published port is
+# already taken. TASKDESK_LOCAL_HTTP_PORT / TASKDESK_LOCAL_HTTPS_PORT (default
+# 80/443, unset on a genuinely clean machine) let that host override without
+# touching this file. scripts/deploy.sh checks these ports are free before
+# starting anything, and fails with the env vars to set rather than a bare
+# Docker "address already in use". See docs/05-operations/traefik-and-domains.md
+# § Local development.
+#
 # NOT PROVIDED, deliberately: an ACME/Let's Encrypt resolver for a standalone
 # production host that has no proxy of its own. It needs a contact email, and
 # there is no environment variable for one — configuration-reference.md's
@@ -59,8 +70,8 @@ services:
       - --accesslog.fields.headers.defaultmode=drop
       - --log.level=INFO
     ports:
-      - "80:80"
-      - "443:443"
+      - "${TASKDESK_LOCAL_HTTP_PORT:-80}:80"
+      - "${TASKDESK_LOCAL_HTTPS_PORT:-443}:443"
     volumes:
       # Read-only socket: Traefik discovers routers from container labels.
       - /var/run/docker.sock:/var/run/docker.sock:ro
