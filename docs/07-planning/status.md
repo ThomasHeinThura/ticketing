@@ -1,7 +1,30 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-28 orchestrator snapshot (7) — `main` at `3058c420` (#491, issue #490's fix,
-merged). Prior snapshot (6), immediately below, is stale and kept only as history.**
+**2026-09-28 orchestrator snapshot (8) — `main` at `b7ec505a` (#497, stale UAT-overlay header
+comment removed). Prior snapshot (7), immediately below, is stale and kept only as history.**
+
+**Merged since snapshot (7):** **#495** (the four Thomas decisions, decision log), **#496**
+(the Traefik naming-collision fix — live UAT was actually down for several minutes before this
+merged; the fix was applied live first, then landed here), **#497** (the stale UAT-overlay
+header). All three were docs/deploy-only, ordinary review only, no security-scope path.
+
+**Issue #493 (the shared liveness-helper consolidation) is PR #498**, not yet merged: ordinary
+review CLEAR WITH FINDINGS, Opus review **CLEAR WITH FINDINGS** after one blocker was found and
+fixed (a test-file-only TypeScript error, not a security defect — the orchestrating session
+fixed it directly and got a full clean re-run: 117 integration files/1473 tests). Consolidates
+six already-fixed call sites onto a shared `assertWorkItemStillLive`/`assertProjectStillLive`
+helper and closes the four remaining gaps PR #491's review found. The Opus sweep found three
+more same-class instances (`rank-work-item.ts`'s own project-liveness gap; the four
+newly-guarded writers still missing a project check; `claimWorkItemNumber` never re-checking
+the project's `deleted_at`) — **filed as issue #499**, not folded into #498, to keep it bounded.
+CI running as of this snapshot.
+
+**UAT status, reconfirmed:** live and healthy on both hostnames, running a locally-built image
+from `main@0b95ed08` with shadow mode on. `policy_shadow_event` remains at zero rows — real
+traffic, not health probes, is what populates it, and none has happened yet since the
+redeploy. The clock has started; no evidence exists yet.
+
+---
 
 **Merged since snapshot (6): #491** (issue #490, `transition-work-item.ts`/
 `assign-work-item.ts`/`unassign-work-item.ts` — ordinary review CLEAR WITH FINDINGS, Opus
