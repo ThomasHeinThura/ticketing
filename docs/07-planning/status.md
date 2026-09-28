@@ -40,9 +40,13 @@ started.
 - **Redeploy v2 UAT** with current `main` and `TASKDESK_POLICY_SHADOW=on`, to actually start
   #8's evidence clock (below).
 
-**PR #494** turns `TASKDESK_POLICY_SHADOW=on` into `deploy/compose.uat.yml`'s own standing
-default (ordinary review approve, CI green as of this snapshot, not yet merged) — once merged,
-every future UAT deploy collects evidence without a manual flag. The redeploy below already
+**PR #494** (merged) turns `TASKDESK_POLICY_SHADOW=on` into `deploy/compose.uat.yml`'s own
+standing default — every future UAT deploy now collects evidence without a manual flag.
+Three more small, ordinary-reviewed, CI-green deploy/docs PRs are in flight as of this
+snapshot, not yet merged: **#495** (the four decisions above, recorded in the decision log),
+**#496** (the Traefik naming-collision fix below), and **#497** (a stale "DO NOT APPLY"
+header removed from `compose.uat.yml` — issue #6, which it cited, closed long before this
+session; found as a drive-by while reviewing #494/#496). The redeploy below already
 set the flag by hand for this one deploy, ahead of that default landing.
 
 **UAT redeployed** with a locally-built image from `main@0b95ed08` (tagged
