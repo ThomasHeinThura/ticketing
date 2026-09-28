@@ -830,3 +830,74 @@ describe("S6a cancel (DELETE /api/invitation/{id})", () => {
     expect(response.status).toBe(400);
   });
 });
+
+// GET /api/invitation/{id}, deprecated and permanently disabled 2026-09-28 (see
+// apps/api/src/invitation/policy.ts's own comment for the full history): kept registered
+// per this API's post-v2.0.0 versioning policy, but its handler now unconditionally
+// refuses -- even a caller who holds the real `member:invite` authority its own
+// middleware chain checks (reused verbatim from cancel) never gets real invitation data
+// back. These tests are the regression guard for that "always refuses" property.
+describe("S6a deprecated read (GET /api/invitation/{id}) -- permanently disabled", () => {
+  it("refuses (403) an owner who holds member:invite -- passing the real authority check does not unlock data", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Deprecated Read",
+    );
+    const invited = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "deprecated-read@example.com", role: "member" },
+    );
+    const invitation = (await invited.json()) as { id: string };
+
+    const response = await app.request(`/api/invitation/${invitation.id}`, {
+      headers: { cookie: owner.cookie },
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.text()).toMatch(
+      /deprecated and permanently disabled/,
+    );
+  });
+
+  it("refuses (403) a plain member with no member:invite -- the same disabled answer, via the boundary check instead", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(
+      app,
+      owner.cookie,
+      "Deprecated Boundary",
+    );
+    const otherMember = await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      "member",
+    );
+    const invited = await inviteWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      { email: "deprecated-member@example.com", role: "member" },
+    );
+    const invitation = (await invited.json()) as { id: string };
+
+    const response = await app.request(`/api/invitation/${invitation.id}`, {
+      headers: { cookie: otherMember.cookie },
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("refuses (401) an unauthenticated caller", async () => {
+    const { app } = createApp();
+    const response = await app.request(
+      "/api/invitation/00000000-0000-0000-0000-000000000000",
+    );
+    expect(response.status).toBe(401);
+  });
+});
