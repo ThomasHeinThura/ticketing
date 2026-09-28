@@ -1,7 +1,70 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-28 orchestrator snapshot (6) — `main` at `0b95ed08` (#489, issue #488's fix, merged).
-Prior snapshot (5), immediately below, is stale by one merge and kept only as history.**
+**2026-09-28 orchestrator snapshot (7) — `main` at `3058c420` (#491, issue #490's fix,
+merged). Prior snapshot (6), immediately below, is stale and kept only as history.**
+
+**Merged since snapshot (6): #491** (issue #490, `transition-work-item.ts`/
+`assign-work-item.ts`/`unassign-work-item.ts` — ordinary review CLEAR WITH FINDINGS, Opus
+review CLEAR WITH FINDINGS, both recorded and reconfirmed past one intervening merge). **This
+closes the original TOCTOU sweep entirely** (#276, #480, #481, #486, #488, #490 all merged).
+The Opus review found two more instances of the same class (`presign-attachment.ts`/
+`complete-attachment.ts` have no liveness re-check; none of #490's three routes re-checks the
+work item's *project* soft-delete in-transaction) — filed as **issue #493**, recommending a
+shared `assertWorkItemStillLive(tx, item)` helper now that the count has passed five. Not yet
+started.
+
+**Two independent external status reports were triaged this session** (see snapshot (6) for
+the first round). A revised follow-up report claimed v2 UAT might already have shadow-mode
+evidence accumulating — **verified directly against the live containers and database rather
+than trusted**: UAT was genuinely deployed and healthy, but running image `v2.0.1` (410
+commits behind `main`) with `TASKDESK_POLICY_SHADOW` unset (defaults off) and zero rows in
+`policy_shadow_event`/`policy_shadow_tally`. The 7-day evidence clock had never actually
+started.
+
+**Four decisions Thomas made this session, now recorded** (`docs/07-planning/decision-log.md`,
+2026-09-28 entries; **PR #495**, merged):
+- **#10's gate-scope semantics**: a gate is required once its underlying capability exists;
+  a future-stage gate activates when its prerequisite lands. G4 (a11y)/G8 (visual
+  regression)/G11 (performance) are explicitly **not** future-gated — real UI/Storybook/
+  Playwright infrastructure already exists, so these three should be enabled, not left
+  indefinitely skipped. Recorded on issue #10 directly with a live-CI reconciliation of that
+  issue's own stale checklist (OpenAPI drift and `check:env` were both already done despite
+  unticked boxes).
+- **#329** (P1/P2 shared-surface ownership): AGREE posted and issue closed, unblocking the
+  first P2 migration batch, the audit-log read API, intake/request-type slices, portal
+  submission, and SLA policy CRUD/pause routes.
+- **`v2.0.1` GitHub release** marked `prerelease: true` — it was published as a normal stable
+  release despite P0 not being closed and the release plan saying TaskDesk should start at
+  `2.0.0-alpha.1`. `package.json`'s `2.22.0` vs. the release-plan numbering remains
+  unreconciled, deliberately deferred as a separate decision.
+- **Redeploy v2 UAT** with current `main` and `TASKDESK_POLICY_SHADOW=on`, to actually start
+  #8's evidence clock (below).
+
+**PR #494** turns `TASKDESK_POLICY_SHADOW=on` into `deploy/compose.uat.yml`'s own standing
+default (merged) — every future UAT deploy now collects evidence without a manual flag.
+
+**UAT redeployed** with a locally-built image from `main@0b95ed08` (tagged
+`ghcr.io/thomasheinthura/taskdesk:v2-uat-shadow-0b95ed08`, not a signed GHCR release — a
+deliberate scope call to start the evidence clock today rather than wait on a full release
+cut) and shadow mode on. Migrations ran clean against the existing UAT database (410 commits'
+worth, all forward-compatible). **A real deploy caused a real incident**, found and fixed the
+same session: `compose.uat.yml`'s Traefik service and two middlewares were named bare
+`taskdesk-uat`, colliding with v1's own, differently-configured Traefik objects of the exact
+same name on the shared host Traefik — Traefik disabled **both** sides' routers, taking
+`ticket-v2-uat.bimats.com`/`portal-v2-uat.bimats.com` down with a 404 for several minutes. Root
+cause: an incorrect assumption, stated in the file's own prior comment, that sharing v1's
+exact object names was harmless because "v1 does the same thing" — it wasn't; v1's actual
+label values differ. Fixed forward immediately (**PR #496**, ordinary review approve,
+verified live: both hostnames return 200 consistently, Traefik's API shows the renamed
+service `enabled` with real traffic routing through it) rather than leaving public UAT down
+while going through the full process first. `policy_shadow_event` is still at zero rows as of
+this snapshot — real user/API traffic, not health-check probes, is what populates it; the
+clock has started but no evidence exists yet.
+
+**Not done:** #10's own checklist still needs a full box-by-box reconciliation beyond the
+spot-corrections made in this session's comment; `package.json`/release-plan version
+reconciliation; #254 (invitation policy) — flagged to Thomas, deliberately deferred, not
+blocking anything currently in flight.
 
 Merged since snapshot (5): **#489** (issue #488, `detach-work-item-parent.ts`'s subject-item
 guard — ordinary review CLEAR, Opus review CLEAR WITH FINDINGS non-blocking, both reconfirmed
