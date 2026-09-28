@@ -44,6 +44,11 @@ export function requireAttachmentReach(idKey = "id") {
 
     // Same "soft-deleted project freezes its rows" invariant `requireWorkItemReach`
     // enforces for a work item's own key.
+    //
+    // Issue #480: the work item's OWN `deleted_at`/`archived_at` are checked too, not
+    // only its project's -- same gap `require-work-item-reach.ts` closed for #276, here
+    // for the attachment-reach path, which has its own local lookup rather than going
+    // through that middleware.
     const [row] = await db
       .select({
         id: schema.attachmentTable.id,
@@ -62,6 +67,8 @@ export function requireAttachmentReach(idKey = "id") {
       .where(
         and(
           eq(schema.attachmentTable.id, id),
+          isNull(schema.workItemTable.deletedAt),
+          isNull(schema.workItemTable.archivedAt),
           isNull(schema.projectTable.deletedAt),
         ),
       )
