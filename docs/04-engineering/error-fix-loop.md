@@ -251,6 +251,22 @@ Add to this as things are learned. It is the institutional memory that agents do
   declarations to prove ownership must skip `ts.SyntaxKind.ModuleDeclaration` entries —
   they can never be a bare specifier's real home in that kind of fallback — rather than
   re-excluding whichever specific module tripped it this time.
+- **`in` on a plain object also matches `Object.prototype`, not just the object's own
+  keys.** #424 (F3, Opus finding N1): a new membership check in `check-deps.mjs`,
+  `packageName in { ...four package.json dependency fields }`, silently treated a
+  specifier segment named `toString`, `constructor`, `valueOf`, `__proto__`, etc. as "a
+  declared dependency," because `in` walks the prototype chain and every plain object
+  inherits those names from `Object.prototype`. The same class of gap was already
+  live and pre-existing elsewhere in the same file: `FLAGGED_MESSAGES[imported.specifier]`
+  (a plain object keyed by specifier string) reads `FLAGGED_MESSAGES["__proto__"]` as
+  `Object.prototype` itself — truthy, not `undefined` — and then tries to call it,
+  crashing the whole checker with a `TypeError` instead of producing a violation or a
+  clean failure (filed as its own follow-up, #464, since it predates this PR and is out
+  of its scope). Fixed the new code with `Object.hasOwn(merged, key)`, which only
+  matches the object's own enumerable properties. Any specifier-keyed (or otherwise
+  attacker- or content-influenced-keyed) lookup against a plain object literal or a
+  spread-merged manifest should use `Object.hasOwn`/`Map`, never bare `in` or bracket
+  truthiness, for exactly this reason.
 
 ## Related
 
