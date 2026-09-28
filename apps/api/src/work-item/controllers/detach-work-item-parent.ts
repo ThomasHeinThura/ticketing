@@ -55,7 +55,12 @@ export async function detachWorkItemParent(
           )
           .for("update");
 
-        if (!item) {
+        // Issue #488: the same TOCTOU class #486 closed for `set-work-item-parent.ts`'s
+        // subject-item re-read. `delete-work-item.ts` sets `deletedAt` without bumping
+        // `version`, so a concurrent soft-delete landing between the shared middleware's
+        // reach-check and this transaction's own `FOR UPDATE` re-read would otherwise let
+        // this detach still succeed against a since-deleted/archived item.
+        if (!item || item.archivedAt || item.deletedAt) {
           throw new HTTPException(404, { message: "Work item not found" });
         }
 
