@@ -77,7 +77,10 @@ describe("check:reviews — MD_TOKEN extraction stays linear (#154)", () => {
 
     const marker = "**Spec:** n/a — CI infrastructure probe";
     const base = completeBody({});
-    assert.ok(base.includes(marker), "completeBody()'s default Spec line moved");
+    assert.ok(
+      base.includes(marker),
+      "completeBody()'s default Spec line moved",
+    );
     const body = bodyFile(base.replace(marker, `**Spec:** ${declared}`));
 
     const startedAt = process.hrtime.bigint();
