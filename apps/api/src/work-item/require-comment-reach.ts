@@ -45,6 +45,11 @@ export function requireCommentReach(idKey = "id") {
     // project's 30-day recovery window, so it must 404 here exactly like a nonexistent
     // comment id -- never distinguishing the two from the outside. Joined through
     // `workItemTable` to `projectTable` and filtered on `isNull(projectTable.deletedAt)`.
+    //
+    // Issue #480: the work item's OWN `deleted_at`/`archived_at` are checked too, not
+    // only its project's -- same gap `require-work-item-reach.ts` closed for #276, here
+    // for the comment-reach path, which has its own local lookup rather than going
+    // through that middleware.
     const [comment] = await db
       .select({
         workItemId: schema.commentTable.workItemId,
@@ -62,6 +67,8 @@ export function requireCommentReach(idKey = "id") {
       .where(
         and(
           eq(schema.commentTable.id, id),
+          isNull(schema.workItemTable.deletedAt),
+          isNull(schema.workItemTable.archivedAt),
           isNull(schema.projectTable.deletedAt),
         ),
       )

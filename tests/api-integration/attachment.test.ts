@@ -765,4 +765,112 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     );
     expect(deleteResponse.status).toBe(403);
   });
+
+  it("issue #480: 404s download and delete against an attachment whose work item is soft-deleted", async () => {
+    const { creator, project, type } = await setupProject();
+    await addPersonForUser(creator.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const presignResponse = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: "photo.png",
+          contentType: "image/png",
+          size: PNG_BYTES.length,
+        }),
+      },
+    );
+    const presigned = (await presignResponse.json()) as {
+      attachmentId: string;
+      uploadUrl: string;
+      uploadHeaders: Record<string, string>;
+    };
+    await app.request(presigned.uploadUrl, {
+      method: "PUT",
+      headers: presigned.uploadHeaders,
+      body: PNG_BYTES,
+    });
+    await app.request(`/api/attachments/${presigned.attachmentId}/complete`, {
+      method: "POST",
+    });
+
+    await db
+      .update(schema.workItemTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.workItemTable.key, key));
+
+    const downloadResponse = await app.request(
+      `/api/attachments/${presigned.attachmentId}`,
+      { redirect: "manual" },
+    );
+    expect(downloadResponse.status).toBe(404);
+
+    const deleteResponse = await app.request(
+      `/api/attachments/${presigned.attachmentId}`,
+      { method: "DELETE" },
+    );
+    expect(deleteResponse.status).toBe(404);
+
+    const [row] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+    expect(row?.state).toBe("ready");
+  });
+
+  it("issue #480: 404s download and delete against an attachment whose work item is archived", async () => {
+    const { creator, project, type } = await setupProject();
+    await addPersonForUser(creator.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const presignResponse = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: "photo.png",
+          contentType: "image/png",
+          size: PNG_BYTES.length,
+        }),
+      },
+    );
+    const presigned = (await presignResponse.json()) as {
+      attachmentId: string;
+      uploadUrl: string;
+      uploadHeaders: Record<string, string>;
+    };
+    await app.request(presigned.uploadUrl, {
+      method: "PUT",
+      headers: presigned.uploadHeaders,
+      body: PNG_BYTES,
+    });
+    await app.request(`/api/attachments/${presigned.attachmentId}/complete`, {
+      method: "POST",
+    });
+
+    await db
+      .update(schema.workItemTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.workItemTable.key, key));
+
+    const downloadResponse = await app.request(
+      `/api/attachments/${presigned.attachmentId}`,
+      { redirect: "manual" },
+    );
+    expect(downloadResponse.status).toBe(404);
+
+    const deleteResponse = await app.request(
+      `/api/attachments/${presigned.attachmentId}`,
+      { method: "DELETE" },
+    );
+    expect(deleteResponse.status).toBe(404);
+  });
 });
