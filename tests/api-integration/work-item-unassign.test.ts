@@ -228,6 +228,41 @@ async function assigneeActivityRows(workItemId: string) {
   ).filter((entry) => entry.field === "assigneeId");
 }
 
+/** Parks `call` inside its own conditional UPDATE by holding the target row's write lock
+ * via an uncommitted rival transaction that applies `concurrentSet` first -- same shape
+ * `work-item-assign.test.ts` uses for its own #490 race tests. */
+async function raceConcurrentMutationAgainstUnassign(
+  workItemId: string,
+  concurrentSet: Partial<typeof schema.workItemTable.$inferInsert>,
+  call: () => Promise<unknown>,
+) {
+  let releaseLock!: () => void;
+  const releaseLockGate = new Promise<void>((resolve) => {
+    releaseLock = resolve;
+  });
+  let lockHeld!: () => void;
+  const lockHeldGate = new Promise<void>((resolve) => {
+    lockHeld = resolve;
+  });
+  const rival = db.transaction(async (tx) => {
+    await tx
+      .update(schema.workItemTable)
+      .set(concurrentSet)
+      .where(eq(schema.workItemTable.id, workItemId));
+    lockHeld();
+    await releaseLockGate;
+  });
+  await lockHeldGate;
+
+  const racedCall = call();
+  // Give the racing call's own conditional UPDATE time to reach Postgres and start
+  // blocking on the still-open rival transaction above before it is released.
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  releaseLock();
+  await rival;
+  return racedCall;
+}
+
 describe("API integration: work item unassignment (#30, assignment.md)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
@@ -525,5 +560,88 @@ describe("API integration: work item unassignment (#30, assignment.md)", () => {
       method: "DELETE",
     });
     expect(anonymous.status).toBe(401);
+  });
+
+  it("#490: a concurrent soft-delete cannot slip past the conditional UPDATE and clear the assignment on a deleted item", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const holder = await addPersonOnRoster({ projectId: project.id });
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    await assignRequest(app, key, { assigneeId: holder.id });
+    publishEventMock.mockReset();
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItemId = requireRow([row], "row").id;
+
+    const racedCall = raceConcurrentMutationAgainstUnassign(
+      workItemId,
+      { deletedAt: new Date() },
+      () =>
+        unassignWorkItem(key, workspace.id, creator.id, "person", holder.id),
+    );
+
+    // Pre-fix (#490): the final UPDATE's WHERE only checked `id`/`assigneeId`, so once
+    // the concurrent soft-delete committed, this still matched and cleared the
+    // assignment on a deleted item. Post-fix: the WHERE also requires `deletedAt IS
+    // NULL`, so this hits the same conflict shape (`WorkItemAssigneeConflictError`, 409)
+    // the route already uses for a stale holder.
+    await expect(racedCall).rejects.toThrow(WorkItemAssigneeConflictError);
+
+    const [after] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemId));
+    expect(after?.assigneeId).toBe(holder.id);
+    expect(after?.deletedAt).not.toBeNull();
+    expect(
+      (await assigneeActivityRows(workItemId)).filter(
+        (entry) => entry.newValue === null,
+      ),
+    ).toHaveLength(0);
+    expect(publishEventMock).not.toHaveBeenCalled();
+  });
+
+  it("#490: a concurrent archive cannot slip past the conditional UPDATE and clear the assignment on an archived item", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const holder = await addPersonOnRoster({ projectId: project.id });
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    await assignRequest(app, key, { assigneeId: holder.id });
+    publishEventMock.mockReset();
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItemId = requireRow([row], "row").id;
+
+    const racedCall = raceConcurrentMutationAgainstUnassign(
+      workItemId,
+      { archivedAt: new Date() },
+      () =>
+        unassignWorkItem(key, workspace.id, creator.id, "person", holder.id),
+    );
+
+    await expect(racedCall).rejects.toThrow(WorkItemAssigneeConflictError);
+
+    const [after] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemId));
+    expect(after?.assigneeId).toBe(holder.id);
+    expect(after?.archivedAt).not.toBeNull();
+    expect(
+      (await assigneeActivityRows(workItemId)).filter(
+        (entry) => entry.newValue === null,
+      ),
+    ).toHaveLength(0);
+    expect(publishEventMock).not.toHaveBeenCalled();
   });
 });

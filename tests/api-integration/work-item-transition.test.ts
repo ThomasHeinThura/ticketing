@@ -963,4 +963,132 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
     // Blocked -- the parent never moved.
     expect(finalParentRow?.stateId).toBe(backlog.state.id);
   });
+
+  it("#490: a concurrent soft-delete cannot slip past the locked stateId check and complete a transition on a deleted item", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const done = await makeState(workspace.id, project.id, {
+      group: "completed",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: done.stateTemplate.id,
+        roleId: null,
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const [workItemRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItemId = requireRow([workItemRow], "workItemRow").id;
+
+    const raw = await openRawClient();
+    try {
+      await raw.query("BEGIN");
+      // Uncommitted: soft-deletes the subject item -- same shape `delete-work-item.ts`
+      // itself uses (sets `deleted_at`, never bumps `version`) -- and holds the row lock.
+      await raw.query("UPDATE work_item SET deleted_at = now() WHERE id = $1", [
+        workItemId,
+      ]);
+
+      const responsePromise = Promise.resolve(
+        transitionRequest(app, key, {
+          toStateTemplateId: done.stateTemplate.id,
+        }),
+      );
+      responsePromise.catch(() => {});
+
+      // Give the app's own `SELECT ... FOR UPDATE` time to reach Postgres and start
+      // blocking on the still-open transaction above before it is released.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await raw.query("COMMIT");
+
+      const response = await responsePromise;
+      // Pre-fix (#490): the locked read only fetched/checked `stateId`, so a soft-delete
+      // landing in this window did not stop the transition -- this returned 200 against a
+      // deleted item. Post-fix: the locked read also sees the now-committed `deleted_at`
+      // and refuses with the route's own conflict 409.
+      expect(response.status).toBe(409);
+    } finally {
+      await raw.end();
+    }
+
+    const [finalRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemId));
+    // Blocked -- the state never moved.
+    expect(finalRow?.stateId).toBe(backlog.state.id);
+    expect(finalRow?.deletedAt).not.toBeNull();
+  });
+
+  it("#490: a concurrent archive cannot slip past the locked stateId check and complete a transition on an archived item", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const done = await makeState(workspace.id, project.id, {
+      group: "completed",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: done.stateTemplate.id,
+        roleId: null,
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const [workItemRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItemId = requireRow([workItemRow], "workItemRow").id;
+
+    const raw = await openRawClient();
+    try {
+      await raw.query("BEGIN");
+      await raw.query(
+        "UPDATE work_item SET archived_at = now() WHERE id = $1",
+        [workItemId],
+      );
+
+      const responsePromise = Promise.resolve(
+        transitionRequest(app, key, {
+          toStateTemplateId: done.stateTemplate.id,
+        }),
+      );
+      responsePromise.catch(() => {});
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await raw.query("COMMIT");
+
+      const response = await responsePromise;
+      expect(response.status).toBe(409);
+    } finally {
+      await raw.end();
+    }
+
+    const [finalRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemId));
+    expect(finalRow?.stateId).toBe(backlog.state.id);
+    expect(finalRow?.archivedAt).not.toBeNull();
+  });
 });
