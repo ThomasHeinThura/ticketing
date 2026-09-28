@@ -46,7 +46,7 @@ export async function listWorkItemTransitions(
   personId: string | null,
 ): Promise<WorkItemTransitionOffer[]> {
   const ctx = await loadWorkflowTransitionContext(workItemId);
-  if (!ctx || !ctx.activeVersion) {
+  if (!ctx?.activeVersion) {
     return [];
   }
 
