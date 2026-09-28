@@ -2704,3 +2704,86 @@ describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping brea
     assert.doesNotThrow(() => wordBoundaryContentOf(`re${chr(0x200d)}viewed`));
   });
 });
+
+describe("meaningfulLines / declaredState — issue #473, the sibling of #152/#153 in a different function", () => {
+  // #470's mandatory Opus security review found that `declaredState`/`meaningfulLines`
+  // apply the identical by-hand INVISIBLE-deletion behaviour `contentOf` does, and
+  // `declaredState`'s own `NOT_APPLICABLE_OPENER` (`/^(?:n\s*\/\s*a|not\s+applicable)\b/i`)
+  // has the exact same dependency on a REAL word boundary between "not" and "applicable"
+  // that #152 was about — just reached through `check-pr-template.mjs`'s `##
+  // Screens opened` n/a detection instead of `check-reviews.mjs`'s Spec field. These tests
+  // reproduce that exposure fail-before/pass-after, the same way `wordBoundaryContentOf`'s
+  // own tests above do.
+
+  it('issue #152\'s own repro, in this sibling function: U+3000 between "not" and "applicable" is a real separator, not deletable content', () => {
+    const raw = `not${U_3000_IDEOGRAPHIC_SPACE}applicable — nothing visual`;
+    // Non-vacuity: contentOf's plain INVISIBLE deletion (meaningfulLines' OLD behaviour,
+    // before this fix) really does fuse the two words, which is exactly what made an
+    // honest n/a read as "provided" instead of "not-applicable". Reuses contentOf rather
+    // than re-deriving the INVISIBLE regex here, so this assertion cannot drift from it.
+    assert.equal(
+      contentOf(raw),
+      "notapplicable — nothing visual",
+      "non-vacuity: plain INVISIBLE deletion must still fuse the two words here",
+    );
+    assert.deepEqual(meaningfulLines(raw), ["not applicable — nothing visual"]);
+    assert.equal(declaredState(raw).state, "not-applicable");
+    assert.equal(effectivelyNotApplicable(raw), true);
+  });
+
+  it("issue #152, generalised: U+2800 between the two words is also masked to a space, not just U+3000", () => {
+    const raw = `not${chr(0x2800)}applicable — nothing visual`;
+    assert.equal(declaredState(raw).state, "not-applicable");
+  });
+
+  it("a section made up only of U+3000 is still EMPTY — the fix must not weaken blankness", () => {
+    assert.deepEqual(meaningfulLines(U_3000_IDEOGRAPHIC_SPACE.repeat(3)), []);
+    assert.equal(
+      declaredState(U_3000_IDEOGRAPHIC_SPACE.repeat(3)).state,
+      "empty",
+    );
+  });
+
+  it("still deletes every DEFAULT-IGNORABLE L6 filler, unchanged — does not mask U+3164/U+FFA0/U+115F/U+1160/U+17B4/U+17B5", () => {
+    for (const codepoint of [0x3164, 0xffa0, 0x115f, 0x1160, 0x17b4, 0x17b5]) {
+      const char = chr(codepoint);
+      assert.deepEqual(
+        meaningfulLines(`not${char}applicable-workflows.md`),
+        ["notapplicable-workflows.md"],
+        `expected U+${codepoint.toString(16).toUpperCase()} to still be deleted, not masked`,
+      );
+    }
+  });
+
+  it("issue #153's own class DOES apply here: a bidi override in the Screens-opened section refuses instead of silently vanishing", () => {
+    const raw = `n/a ${U_202E_RIGHT_TO_LEFT_OVERRIDE}not applicable${U_202C_POP_DIRECTIONAL_FORMATTING}`;
+    assert.throws(() => meaningfulLines(raw), BidiControlCharacterError);
+    assert.throws(() => declaredState(raw), BidiControlCharacterError);
+    assert.throws(
+      () => effectivelyNotApplicable(raw),
+      BidiControlCharacterError,
+    );
+  });
+
+  it("rejects every standard bidi control character in declaredState, not only U+202E", () => {
+    for (const [codepoint, name] of BIDI_CONTROL_CODEPOINTS_FOR_TESTS) {
+      assert.throws(
+        () => declaredState(`plain text ${chr(codepoint)} more text`),
+        BidiControlCharacterError,
+        `expected U+${codepoint.toString(16).toUpperCase()} (${name}) to be refused`,
+      );
+    }
+  });
+
+  it("catches a bidi character inside a bold-label-only line the scaffolding filter would otherwise drop whole", () => {
+    const labelLineOnly = `**No${U_202E_RIGHT_TO_LEFT_OVERRIDE}te:**\nn/a — no UI`;
+    assert.throws(
+      () => meaningfulLines(labelLineOnly),
+      BidiControlCharacterError,
+    );
+  });
+
+  it("does not reject a harmless Cf character (a zero-width joiner) that cannot reorder rendering", () => {
+    assert.doesNotThrow(() => declaredState(`n/a ${chr(0x200d)}— no UI`));
+  });
+});
