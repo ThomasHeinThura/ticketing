@@ -432,4 +432,72 @@ describe("API integration: work-item comments (#27)", () => {
       .where(eq(schema.commentTable.id, id));
     expect(after).toEqual(before);
   });
+
+  it("issue #480: 404s update/delete against a comment whose work item is soft-deleted, row unchanged", async () => {
+    const { app, workItem } = await setupWorkItem("member");
+    const created = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    const { id } = (await created.json()) as { id: string };
+
+    const [before] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    if (!before) throw new Error("expected comment row before soft delete");
+
+    await db
+      .update(schema.workItemTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.workItemTable.key, workItem.key));
+
+    const patchResponse = await patchComment(app, id, {
+      body: { type: "doc", content: [{ type: "paragraph" }] },
+    });
+    expect(patchResponse.status).toBe(404);
+
+    const deleteResponse = await deleteComment(app, id);
+    expect(deleteResponse.status).toBe(404);
+
+    const [after] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    expect(after).toEqual(before);
+  });
+
+  it("issue #480: 404s update/delete against a comment whose work item is archived, row unchanged", async () => {
+    const { app, workItem } = await setupWorkItem("member");
+    const created = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    const { id } = (await created.json()) as { id: string };
+
+    const [before] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    if (!before) throw new Error("expected comment row before archiving");
+
+    await db
+      .update(schema.workItemTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.workItemTable.key, workItem.key));
+
+    const patchResponse = await patchComment(app, id, {
+      body: { type: "doc", content: [{ type: "paragraph" }] },
+    });
+    expect(patchResponse.status).toBe(404);
+
+    const deleteResponse = await deleteComment(app, id);
+    expect(deleteResponse.status).toBe(404);
+
+    const [after] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    expect(after).toEqual(before);
+  });
 });
