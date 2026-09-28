@@ -251,3 +251,59 @@ fewer than before — the deleted `getInvitationDetails` operation), no drift.
 
 F4 is required (fixed above, including the invitation-route deletion Thomas approved). A
 fresh Opus delta pass is required on the head that fixes it.
+
+---
+
+## Security review — Opus delta 4 (2026-09-28)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a20763d81bfa2747e`
+
+**Reviewed head:** `81c71dbf416b5f12d55f34484c86bd3275ff09fb` (docs-only; the code under
+review is fix commit `8baa78f`)
+
+**Verdict: BLOCKING.** F4 is fixed and could not be broken by new adversarial shapes
+(overlapping routes, nested mounts, exotic HTTP methods including a real WebSocket
+upgrade, 300 concurrent requests). But a **fifth instance of the same class**, live-
+reproduced, no registry spy needed this time.
+
+**F5 (BLOCKING, live-reproduced): exempting a matched entry by its raw key string
+(`ALL /*` / `ALL /api/*`) assumed the key identifies the reviewed CORS/compress/static-
+serving/auth-guard middleware — it only identifies WHERE something is mounted, not WHAT
+runs there.** Five shapes, none classified, none needing a spy: a stray
+`app.all("/api/*", LEAK)` fallback; a `.use("/api/*", ...)` that itself answers a
+request; `app.mount("/api", handler)`; a sub-router's own `.all("*")` mounted at `/api`
+(the same shape a real router mounted via `api.route("/", ...)` would produce); a bare
+`app.all("*", LEAK)`. All five: 200, leak served. A control case, `app.get("/api/*",
+LEAK)` (a specific method, not `ALL`), correctly 500ed — confirming the gap was
+specifically about the KEY, not about method generally. Live exposure today: none (the
+real router has exactly the declared registrations; CI's route-coverage strict count
+independently catches an added `ALL`-method registration, confirmed by temporarily adding
+one and watching 5 coverage tests fail).
+
+**Fix (commit `085ebeb`), the recommended structural close, not another patch:** stop
+predicting which matched entry is safe to skip, entirely — check by IDENTITY. `createApp()`
+now calls a new `declareCatchAllMiddleware()` on the exact function reference of each of
+its four reviewed catch-all registrations (CORS, compress, the conditional static-serving
+fallback, and the auth guard itself) at the moment each is created, before `.use()`. A
+matched entry is exempted only when `r.handler` is one of those exact references —
+identity, which `app.route()` preserves, never a string, method or position anything else
+could coincidentally share. Shadow-mode's own bounded single-route prediction
+(`attributedMatchedRoute`) uses the same identity set, keeping its existing bounded
+(first-match) semantics — only the exemption TEST changed, not how far either function
+walks. Consolidated four stacked, increasingly-stale doc comments into one current
+description of the mechanism and its full B1→F5 history.
+
+New regression tests (F5-D1 through D5): all five shapes refused (500), fail-then-pass
+reproduced by reverting just the two source files. One pre-existing unit test
+(`route-classification-guard.test.ts`) needed its own minimal fixture updated to declare
+its own guard-wrapper middleware, the same way production now declares its four —
+otherwise the guard would refuse its OWN test harness as "an unclassified route."
+
+Full suites reproduced at commit `085ebeb`: unit 61 files/496 tests, permissions 13/83,
+integration 104 files/1360 tests — all green. `tsc --noEmit` clean on all three
+`apps/api` tsconfigs. `check-openapi.mjs` clean, 132 operations, no drift.
+
+F5 is required (fixed above). A fresh Opus delta pass is required on the head that fixes
+it — the fifth in a row on this one mechanism; if this pass finds nothing further, this
+closes issue #8's runtime-authorization-gateway obligation.
