@@ -225,3 +225,28 @@ and should become follow-up issues. N3-N5 are record, test-precision, and behavi
 Not checked: CI status checks, the PR body's `## Gates` table, and branch protection. The
 orchestrating session verifies those. The full integration suite was not run, only the four
 files listed in section 4.
+
+---
+
+## Mechanical reconfirmation after merging main past PR #489 (cbe78e03)
+
+**Confirmed by:** the orchestrating session, directly.
+
+**What happened:** `main` advanced to `0b95ed08` (PR #489, issue #488's fix to
+`detach-work-item-parent.ts`) after the reviewed head above. This branch was updated with
+`main` via GitHub's update-branch API (merge commit `cbe78e03`), reported no conflicts.
+
+**Verified directly:** `git diff` confirms this PR's own guards
+(`transition-work-item.ts`'s `locked.deletedAt !== null || locked.archivedAt !== null`,
+`assign-work-item.ts`'s/`unassign-work-item.ts`'s `isNull(archivedAt)`/`isNull(deletedAt)`)
+are intact and unchanged at the merged head. PR #489 touches only
+`detach-work-item-parent.ts` — a different file.
+
+**Verified beyond the diff:** ran the real, merged test suite (all four affected files —
+`work-item-transition.test.ts`, `work-item-assign.test.ts`, `work-item-unassign.test.ts`,
+`work-item-hierarchy.test.ts`) against a fresh private Postgres database at the merged head:
+**60/60 passed**.
+
+**Verdict:** the review above remains valid at `cbe78e03`.
+
+**Reviewed head:** `cbe78e03559b74bdfa9ad432a758d57ab81ec4b6`
