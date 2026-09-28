@@ -193,3 +193,21 @@ What was checked:
 - **Head.** `git log -1 --format=%H` reports `af3f21d4f2a21762c2636ef9164c6242867569b9`.
 
 N2, N3 (#464), and N4 stand as recorded above.
+
+## Mechanical reconfirmation after merging `main` past PR #463 (commit `44a499d`)
+
+**Reviewed head:** `44a499d0c860e91de8fef21e4da04e0339483939`
+
+`main` moved one PR ahead since this branch's own base: PR #463 (issue #427, the
+env-reads.mjs destructured-export tracking fix), touching `scripts/ci/lib/env-reads.mjs`
+and adding `scripts/ci/lib/env-reads-427.test.mjs` — entirely disjoint from
+`scripts/ci/check-deps.mjs`, the one file this PR changes. `git merge` resolved with no
+conflicts.
+
+Both suites re-run fresh after the merge: `check-deps.test.mjs` 18/18,
+`env-reads-427.test.mjs` (from the merge) 7/7 — all green. Per the same precedent used
+throughout this session for a trivial, disjoint main-merge, this is a mechanical
+reconfirmation, not a fresh Opus round: the round above (CLEAR WITH FINDINGS) still
+applies at `44a499d`.
+
+**Status: CLEAR WITH FINDINGS, merge-ready.**
