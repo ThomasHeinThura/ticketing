@@ -4,7 +4,9 @@
 session (via the `Agent` tool, `model: opus`). Did not author, direct, or remediate this
 change. The commit under review is authored by the implementing session (Claude Sonnet 5,
 per its `Co-Authored-By` trailer).
-**Reviewed head:** `577737eae12932c7e3b92869c98bd744a0c7efd6`
+**Current reviewed head:** `ec1f6517d908939fb58f5483977fa9f754414c59` (delta-confirmed; see
+"Delta review" at the end)
+**Reviewed head (full review):** `577737eae12932c7e3b92869c98bd744a0c7efd6`
 **Pull request:** #484 (closes #480), branch `fix/480-comment-attachment-deleted-guard`
 **Base:** `origin/main` at `d590cb60c7b6a777a2ba84dd8f71f3f2d0a4afff` (the reviewed head is
 one commit on top of it)
@@ -162,3 +164,67 @@ None of these is a hole in the fix. They are cheap follow-ups if the file is tou
   exact head.
 - Did not review the #276 branch's own diff beyond confirming what it changes in
   `require-work-item-reach.ts` and that it does not conflict with this PR.
+
+## Delta review
+
+**Reviewer:** Opus, a fresh independent context commissioned by the orchestrating session
+(via the `Agent` tool, `model: opus`). Did not author, direct, or remediate the delta.
+**Date:** 2026-09-28
+**Previous reviewed head:** `577737eae12932c7e3b92869c98bd744a0c7efd6`
+**New reviewed head:** `ec1f6517d908939fb58f5483977fa9f754414c59`
+
+**Verdict: CLEAR WITH FINDINGS, delta-confirmed at `ec1f6517`.** F1 and F2 are unchanged
+and still non-blocking. F3 is substantially closed.
+
+### What changed since `577737e`
+
+`git diff --stat 577737e ec1f6517` touches exactly three files:
+
+- this note (commit `e7607980`, docs only);
+- `tests/api-integration/attachment.test.ts` (+53);
+- `tests/api-integration/work-item-comment.test.ts` (+12).
+
+No file under `apps/api/src/**`, and no other production, config, CI or dependency file,
+changed. The two production files the full review certified are byte-identical at the new
+head. So the full review's scope and its F1/F2 analysis still apply as written.
+
+The test commit (`ec1f6517`) does exactly what F3 asked for, and nothing else:
+
+1. A new test, `issue #480 (F3)`: it presigns and uploads an attachment, soft-deletes the
+   work item, then calls `POST /api/attachments/{id}/complete`. It asserts a `404` and that
+   the row stays `pending`.
+2. The archived-attachment test now also asserts the row is still `ready` after the `DELETE`
+   404.
+3. The archived-comment test now snapshots the comment row before archiving and asserts
+   `after` equals `before` after the `PATCH`/`DELETE` 404s. It throws if the snapshot is
+   missing, so the equality check cannot pass by comparing nothing.
+
+### Verification (run by this reviewer)
+
+Private database `opus480delta_test` on `td-lane-pg`, dropped afterwards:
+
+- **At `ec1f6517`:** `attachment.test.ts` + `work-item-comment.test.ts` gave **2 files,
+  30/30 passed**. That is the full review's 29 plus the one new test.
+- **Fix reverted:** `apps/api/src/attachment/require-attachment-reach.ts` was checked out
+  from `577737e~1` and only the new test was run (`-t "F3"`). It **failed**:
+  `expected 200 to be 404` at the `complete` call. Before the fix, `complete` succeeded,
+  which also shows the test's upload step really wrote the object, so the setup is not
+  vacuous. The file was then restored. `git status` was clean and HEAD was still
+  `ec1f6517d908939fb58f5483977fa9f754414c59`.
+
+### What remains of F3
+
+The second-bullet point from F3 still stands: in each test, the `DELETE` assertion only runs
+after the first route's assertion passes. So fail-before evidence for `DELETE` still rests
+on the shared-predicate argument. The same applies to the two new row-unchanged assertions
+in the archived tests, which sit after the 404 checks. This is inherent to how the tests are
+laid out. It is not a hole in the fix, and it needs no action.
+
+### What this delta review did not do
+
+- Did not re-run the full integration suite or `test:permissions`.
+- Did not check GitHub status checks on the PR at `ec1f6517`. That is the merging session's
+  job.
+- Did not revert `require-comment-reach.ts` for the delta. The comment-test change only adds
+  assertions after assertions the full review already showed fail pre-fix, so a revert run
+  would stop at the same place.
