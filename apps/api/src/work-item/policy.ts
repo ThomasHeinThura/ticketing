@@ -321,4 +321,28 @@ export const workItemPolicies = {
       capability: "comment:delete_own",
     },
   },
+
+  // Issue #442 -- the state-transition EXECUTION route the persistence PR (#31/#443)
+  // deliberately left unbuilt. `WF-4`: "Without work_item:transition the request is
+  // 403". `requireWorkItemReach()` resolves the row by key before the handler runs, same
+  // shape as every other `{key}`-addressed route; the controller re-derives the row's
+  // own workspace/project id from the same lookup, so `scopeSource: "row"`.
+  "POST /api/work-items/{key}/transition": {
+    capability: "work_item:transition",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // The state-select feed (`workflows.md` § "The state select"). Deliberately
+  // `work_item:read`, not `work_item:transition` -- rbac.md's own table lists
+  // `work_item:read` for this route (`| ... | GET .../transitions | work_item:read |`
+  // style entry mirrored from the spec's API table): seeing what one COULD do is a read,
+  // same distinction `POST /assign` vs the roster-read route already draws.
+  "GET /api/work-items/{key}/transitions": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
 } as const satisfies PolicyMap;

@@ -15,9 +15,11 @@ import createWorkflowVersion from "./controllers/create-workflow-version";
 import getWorkflow from "./controllers/get-workflow";
 import listWorkflows from "./controllers/list-workflows";
 import publishWorkflowVersion from "./controllers/publish-workflow-version";
+import validateWorkflowVersion from "./controllers/validate-workflow-version";
 import {
   workflowListSchema,
   workflowVersionSchema,
+  workflowVersionValidationSchema,
   workflowWithVersionsSchema,
 } from "./response";
 import {
@@ -152,6 +154,37 @@ const publishWorkflowVersionRoute = createRoute({
   },
 });
 
+// Issue #442's validation-panel route -- the thin wrapper the create-version route's own
+// comment promised as a follow-up: `packages/domain`'s already-tested structural checks
+// (`noOutboundStateIds`/`unreachableStates`/`rolesWithNoLegalTransition`/
+// `validateProjectStateSelection`), reported rather than enforced (this route never
+// mutates anything -- see `validate-workflow-version.ts`'s own doc comment).
+const validateWorkflowVersionRoute = createRoute({
+  method: "post",
+  operationId: "validateWorkflowVersion",
+  path: "/{id}/versions/{number}/validate",
+  tags: ["Workflows"],
+  summary: "Validate workflow version",
+  description:
+    "Reports unreachable state templates, templates with no outbound transition, work " +
+    "items in any adopting project that would become stuck (WF-9), a project with no " +
+    "concrete state for a required template, and roles with no legal transition at " +
+    "all. Read-only -- never mutates the version or anything it references.",
+  middleware: [
+    workspaceAccess.fromWorkflow(),
+    requireWorkspaceCapability("workflow:manage"),
+  ] as const,
+  request: { params: workflowVersionParam },
+  responses: {
+    200: jsonResponse("The validation report", workflowVersionValidationSchema),
+    400: errorResponse("id must not contain a NUL (\\u0000) byte"),
+    403: errorResponse(
+      "No workspace access, or missing workflow:manage permission",
+    ),
+    404: errorResponse("Workflow or version not found"),
+  },
+});
+
 const workflow = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(listWorkflowsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
@@ -191,6 +224,11 @@ const workflow = apiRouter<BaseVariables & { workspaceId: string }>()
     const userId = c.get("userId");
     const published = await publishWorkflowVersion(id, number, userId);
     return c.json(workflowVersionSchema.parse(published), 200);
+  })
+  .openapi(validateWorkflowVersionRoute, async (c) => {
+    const { id, number } = c.req.valid("param");
+    const result = await validateWorkflowVersion(id, number);
+    return c.json(workflowVersionValidationSchema.parse(result), 200);
   });
 
 export default workflow;

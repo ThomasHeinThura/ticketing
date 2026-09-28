@@ -46,10 +46,16 @@ import getWorkItemByKey from "./controllers/get-work-item";
 import getWorkItemTree from "./controllers/get-work-item-tree";
 import listAssignablePeople from "./controllers/list-assignable-people";
 import listWorkItemActivity from "./controllers/list-work-item-activity";
+import listWorkItemTransitions from "./controllers/list-work-item-transitions";
 import listWorkItemTypes from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
 import rankWorkItem from "./controllers/rank-work-item";
 import setWorkItemParent from "./controllers/set-work-item-parent";
+import transitionWorkItem, {
+  NoMatchingTransitionError,
+  TransitionBlockedError,
+  TransitionConflictError,
+} from "./controllers/transition-work-item";
 import unassignWorkItem from "./controllers/unassign-work-item";
 import updateComment from "./controllers/update-comment";
 import updateWorkItem, {
@@ -64,12 +70,15 @@ import {
   bulkWorkItemsResponseSchema,
   deletedWorkItemSchema,
   rankWorkItemResponseSchema,
+  transitionedWorkItemSchema,
   unassignWorkItemResponseSchema,
   workItemActivityListResponseSchema,
   workItemAssigneeConflictSchema,
   workItemDetailSchema,
   workItemListResponseSchema,
   workItemSchema,
+  workItemTransitionBlockedSchema,
+  workItemTransitionsResponseSchema,
   workItemTreeResponseSchema,
   workItemTypeListSchema,
   workItemVersionConflictSchema,
@@ -85,6 +94,7 @@ import {
   projectIdParam,
   rankWorkItemBody,
   setWorkItemParentBody,
+  transitionWorkItemBody,
   updateWorkItemBody,
   workItemKeyParam,
   workspaceIdParam,
@@ -699,6 +709,83 @@ const unassignWorkItemRoute = createRoute({
   },
 });
 
+// Issue #442: the state-transition EXECUTION route the persistence PR (#31/#443)
+// deliberately left unbuilt.
+const transitionWorkItemRoute = createRoute({
+  method: "post",
+  operationId: "transitionWorkItem",
+  path: "/work-items/{key}/transition",
+  tags: ["Work items"],
+  summary: "Transition work item",
+  description:
+    "Move a work item to a new state through its type's active workflow version " +
+    "(`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see " +
+    "`GET .../transitions`). INTERIM, until issue #36 (approvals) lands: a transition " +
+    "whose `requires_approval` or `requires_cab` is set can never complete through this " +
+    "route -- both gates are treated as permanently unsatisfied. Guard resolution is " +
+    "also partial today: `no_open_blockers` (no `work_item_relation` table yet), " +
+    "`field_required` (no custom-field/satellite value store yet) and " +
+    "`change_risk_at_most` (no change-risk column yet) always fail closed (blocked), " +
+    "never fabricated as satisfied. `pause_sla`/`resume_sla`/`set_field` effects are " +
+    "silent no-ops (no backing table yet); `set_assignee`'s `'default'` always resolves " +
+    "to no assignee (no project/type default-assignee column yet).",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:transition"),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: transitionWorkItemBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The transitioned work item", transitionedWorkItemSchema),
+    400: errorResponse("Invalid body"),
+    403: errorResponse(
+      "No workspace access, or missing work_item:transition permission",
+    ),
+    404: errorResponse("Work item not found"),
+    409: errorResponse(
+      "No transition matches this actor/state/target, the target has no concrete " +
+        "state in this project, or the work item's state changed mid-request",
+    ),
+    422: jsonResponse(
+      "The matched transition is legal but not currently available (a guard, the " +
+        "approval/CAB gate, or a missing required note)",
+      workItemTransitionBlockedSchema,
+    ),
+  },
+});
+
+const listWorkItemTransitionsRoute = createRoute({
+  method: "get",
+  operationId: "listWorkItemTransitions",
+  path: "/work-items/{key}/transitions",
+  tags: ["Work items"],
+  summary: "List available transitions",
+  description:
+    "Exactly what this actor may do now, with reasons for anything blocked " +
+    '(`workflows.md` § "The state select"). An illegal transition is absent, never ' +
+    "shown disabled -- the UI never computes legality client-side.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse(
+      "The transitions this actor may take now",
+      workItemTransitionsResponseSchema,
+    ),
+    403: errorResponse(
+      "No workspace access, or missing work_item:read permission",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
 // `docs/03-features/comments-and-activity.md` (issue #27). `GET
 // /api/work-items/{key}/activity` and the portal read route are NOT here -- see this
 // PR's own body for what's built elsewhere (issue #23) and what has no portal-identity
@@ -1209,6 +1296,57 @@ const workItem = apiRouter<
       }
       throw error;
     }
+  })
+  .openapi(transitionWorkItemRoute, async (c) => {
+    const workItemId = c.get("workItemId");
+    const userId = c.get("userId");
+    const { toStateTemplateId, note } = c.req.valid("json");
+    const { actorId, actorType } = resolveActor(userId, c.get("apiKey"));
+
+    const [callerPerson] = await db
+      .select({ id: personTable.id })
+      .from(personTable)
+      .where(eq(personTable.userId, userId))
+      .limit(1);
+
+    try {
+      const transitioned = await transitionWorkItem(
+        workItemId,
+        callerPerson?.id ?? null,
+        actorId,
+        actorType,
+        { toStateTemplateId, note },
+      );
+      return c.json(transitioned, 200);
+    } catch (error) {
+      if (error instanceof NoMatchingTransitionError) {
+        throw new HTTPException(409, { message: error.message });
+      }
+      if (error instanceof TransitionConflictError) {
+        throw new HTTPException(409, { message: error.message });
+      }
+      if (error instanceof TransitionBlockedError) {
+        return c.json(
+          { message: error.message, blockedBy: error.blockedBy },
+          422,
+        );
+      }
+      throw error;
+    }
+  })
+  .openapi(listWorkItemTransitionsRoute, async (c) => {
+    const workItemId = c.get("workItemId");
+    const userId = c.get("userId");
+    const [callerPerson] = await db
+      .select({ id: personTable.id })
+      .from(personTable)
+      .where(eq(personTable.userId, userId))
+      .limit(1);
+    const offers = await listWorkItemTransitions(
+      workItemId,
+      callerPerson?.id ?? null,
+    );
+    return c.json(offers, 200);
   })
   .openapi(createCommentRoute, async (c) => {
     const workItemId = c.get("workItemId");

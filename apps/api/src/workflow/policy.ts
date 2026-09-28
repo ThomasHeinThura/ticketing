@@ -67,4 +67,17 @@ export const workflowPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+
+  // Issue #442's validation-panel route. Read-only (it reports, never mutates -- see
+  // `validate-workflow-version.ts`'s own doc comment), but gated on `workflow:manage`,
+  // matching the spec's own API table (`workflows.md`: every `/versions/...` route is
+  // `workflow:manage`) -- the validation panel is part of the "Workflow editor" screen,
+  // not a general read surface. Same `fromWorkflow()` row-derived scope as its sibling
+  // routes above.
+  "POST /api/workflows/{id}/versions/{number}/validate": {
+    capability: "workflow:manage",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
 } as const satisfies PolicyMap;
