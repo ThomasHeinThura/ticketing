@@ -2461,15 +2461,14 @@ describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping brea
     }
   });
 
-  it("issue #152, generalised to every L6 filler that is NOT a Unicode combining mark: U+2800/U+3164/U+FFA0/U+115F/U+1160 are masked to a space too, not just U+3000", () => {
-    // The split is the Unicode Character Database's own `General_Category` property, not
-    // a rendering guess -- see WORD_SEPARATING_BLANKS's own doc comment for the citable
-    // basis (checkable directly: Python's `unicodedata.category(chr(codepoint))`).
-    // U+115F/U+1160 were WRONGLY excluded in an earlier revision of this fix (assumed
-    // zero-width without checking the UCD; ordinary review pushed back on the missing
-    // source, and checking it showed the assumption was false: both are `Lo`, the same
-    // category as U+3164, not a combining mark).
-    for (const codepoint of [0x2800, 0x3164, 0xffa0, 0x115f, 0x1160]) {
+  it("issue #152, generalised to the one other L6 filler Unicode does NOT mark default-ignorable: U+2800 is masked to a space too, not just U+3000", () => {
+    // The split is Unicode's own `Default_Ignorable_Code_Point` derived property -- the
+    // one actually designed to answer "was this meant to render invisibly" -- not
+    // `General_Category`, which an earlier revision of this fix used and the Opus
+    // security review caught as the wrong property (a letter-vs-mark classification says
+    // nothing about rendered width). See WORD_SEPARATING_BLANKS's own doc comment for the
+    // full table and citation.
+    for (const codepoint of [0x2800]) {
       const char = chr(codepoint);
       const raw = `not${char}applicable-workflows.md`;
       assert.equal(
@@ -2484,14 +2483,19 @@ describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping brea
     }
   });
 
-  it("does NOT mask the two genuine Unicode COMBINING MARKS (U+17B4/U+17B5, General_Category Mn) to a space", () => {
-    // `Mn` (Nonspacing_Mark) is the one category in this closed list that Unicode itself
-    // defines as having NO independent advance width -- see WORD_SEPARATING_BLANKS's doc
-    // comment. Masking one to a space would make the PARSER see a word boundary that
-    // nothing in the rendered text shows (no gap was ever there to begin with), the exact
-    // class of mismatch issue #153 is about, via a different character family. These two
+  it("does NOT mask any DEFAULT-IGNORABLE L6 filler (U+3164/U+FFA0/U+115F/U+1160/U+17B4/U+17B5) to a space", () => {
+    // Unicode's `Default_Ignorable_Code_Point` property is `true` for all six of these --
+    // verified directly with `/\p{Default_Ignorable_Code_Point}/u`, not assumed. Unicode's
+    // own design intent is that a renderer show NOTHING for these unless a higher-level
+    // protocol specifically supports them, so masking one to a space would make the
+    // PARSER see a word boundary that nothing in the rendered text shows -- the exact
+    // class of mismatch issue #153 is about, via a different character family. These six
     // must still be deleted (contentOf's original, unchanged behaviour), not masked.
-    for (const codepoint of [0x17b4, 0x17b5]) {
+    // (An earlier revision of this fix used `General_Category` instead, which wrongly
+    // classified U+115F/U+1160 -- both are ordinary letters (`Lo`), not marks -- as safe
+    // to mask; `Default_Ignorable_Code_Point` is the property that actually answers the
+    // question this split needs answered, and it says `true` for both.)
+    for (const codepoint of [0x3164, 0xffa0, 0x115f, 0x1160, 0x17b4, 0x17b5]) {
       const char = chr(codepoint);
       const raw = `not${char}applicable-workflows.md`;
       assert.equal(

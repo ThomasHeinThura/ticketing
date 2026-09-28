@@ -417,38 +417,60 @@ const BIDI_CONTROL_CHARS = new RegExp(
 );
 
 /**
- * The blank-RENDERING characters `INVISIBLE` strips (see its own doc comment) that ALSO
- * have a genuine, non-zero advance width — a blank cell a human's eye registers as a gap
- * between two things, not merely "invisible." U+3000 IDEOGRAPHIC SPACE is the one issue
- * #152 actually reproduced: CJK input methods commit it as an ordinary space key
- * routinely, so `"not　applicable"` is two words to any human, but `contentOf` collapses
- * it to `"notapplicable"`.
+ * The blank-RENDERING characters `INVISIBLE` strips (see its own doc comment) that Unicode
+ * itself designates as NOT default-ignorable — i.e. intended to occupy a real, visible
+ * position, a blank cell a human's eye registers as a gap between two things, rather than
+ * being designed to vanish. U+3000 IDEOGRAPHIC SPACE is the one issue #152 actually
+ * reproduced: CJK input methods commit it as an ordinary space key routinely, so
+ * `"not　applicable"` is two words to any human, but `contentOf` collapses it to
+ * `"notapplicable"`.
  *
- * The split from `INVISIBLE`'s full L6 list is not a rendering guess (an earlier revision
- * of this comment asserted specific characters "render with no width" without a source,
- * flagged as unverifiable by ordinary review) — it is the Unicode Character Database's own
- * `General_Category` property, checkable directly (Python's `unicodedata.category(ch)`, or
- * the UCD's `UnicodeData.txt`/`DerivedGeneralCategory.txt`):
+ * The split from `INVISIBLE`'s full L6 list went through two wrong criteria before landing
+ * here, both found by adversarial review, kept in this history rather than silently
+ * smoothed over:
  *
- * - **`Mn` (Nonspacing_Mark) is EXCLUDED, by Unicode's own definition of the category**:
- *   the standard specifies a nonspacing mark as one written "without a change in the
- *   horizontal displacement of the following character" (The Unicode Standard, ch. 3,
- *   "Combining Marks") — i.e. it has NO independent advance width to begin with, so there
- *   is no gap to preserve by masking it. U+17B4/U+17B5 (KHMER VOWEL INHERENT AQ/AA) are
- *   `Mn` and stay excluded, covered by `INVISIBLE`'s plain deletion unchanged.
- * - **Every other category here DOES have a non-zero advance width**, verified per
- *   character: U+3000 (`Zs`, Fullwidth), U+2800 BRAILLE PATTERN BLANK (`So`), U+3164
- *   HANGUL FILLER (`Lo`, Wide), U+FFA0 HALFWIDTH HANGUL FILLER (`Lo`, Halfwidth), and —
- *   corrected from an earlier revision of this fix, which wrongly assumed these two were
- *   zero-width `Mn`-like fillers without checking — U+115F HANGUL CHOSEONG FILLER (`Lo`,
- *   Wide) and U+1160 HANGUL JUNGSEONG FILLER (`Lo`, Neutral). Neither is a combining mark;
- *   both are ordinary letter-category (`Lo`) code points exactly like U+3164, and the UCD
- *   gives no basis for treating them differently from it.
+ * 1. An unsourced assertion ("these specific characters render with no width") — flagged
+ *    by ordinary review as unverifiable, and correctly so.
+ * 2. `General_Category` (`Mn` excluded as a combining mark, everything else masked) —
+ *    checkable, but the WRONG property: `General_Category` classifies what KIND of
+ *    character something is (a letter, a mark, a symbol...), not whether it renders with
+ *    visible width. It let U+115F/U+1160 (`Lo`, an ordinary letter category) through as
+ *    "has width" purely because they are not `Mn`, which the Opus security review of this
+ *    fix caught as unsupported — `Lo` says nothing about rendering.
+ *
+ * The actual, purpose-built Unicode property for "was this code point DESIGNED to be
+ * invisible unless a renderer specifically opts to display it" is
+ * **`Default_Ignorable_Code_Point`** — a derived binary property in
+ * `DerivedCoreProperties.txt`, checkable directly with a Unicode property escape
+ * (`/\p{Default_Ignorable_Code_Point}/u.test(ch)`, supported by both Node's and every
+ * modern browser's regex engine — no external data file needed). Checked for every
+ * character in `INVISIBLE`'s L6 addition plus U+3000:
+ *
+ * | Character | `Default_Ignorable_Code_Point` |
+ * | --- | --- |
+ * | U+3000 IDEOGRAPHIC SPACE | `false` |
+ * | U+2800 BRAILLE PATTERN BLANK | `false` |
+ * | U+3164 HANGUL FILLER | `true` |
+ * | U+FFA0 HALFWIDTH HANGUL FILLER | `true` |
+ * | U+115F HANGUL CHOSEONG FILLER | `true` |
+ * | U+1160 HANGUL JUNGSEONG FILLER | `true` |
+ * | U+17B4 KHMER VOWEL INHERENT AQ | `true` |
+ * | U+17B5 KHMER VOWEL INHERENT AA | `true` |
+ *
+ * Only U+3000 and U+2800 are NOT default-ignorable — Unicode's own design intent is that
+ * they occupy a real, rendered position, so masking them to an ordinary space is safe and
+ * correct. Every other L6 character IS default-ignorable — by Unicode's own definition,
+ * text presented to a person should NOT display anything for it "unless the code point is
+ * used with an appropriate combination of other formatting or invisible characters, in the
+ * context of a particular higher-level protocol" — so masking one to a space would create a
+ * word boundary a human viewer would not perceive, the exact render/parse mismatch issue
+ * #153 is about, from a different character family. Those six stay covered by `INVISIBLE`'s
+ * plain deletion, unchanged from `contentOf`'s original behaviour.
  *
  * Masking to a space rather than deleting cannot weaken blankness: a section made only of
  * these characters still trims away to `""` once `INVISIBLE` runs afterward.
  */
-const WORD_SEPARATING_BLANKS = /[⠀ㅤᅟᅠﾠ　]/gu;
+const WORD_SEPARATING_BLANKS = /[⠀　]/gu;
 
 /**
  * Like `contentOf`, but for a caller that parses the result for WORD-BOUNDARY-SENSITIVE
