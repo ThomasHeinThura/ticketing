@@ -230,20 +230,43 @@ Add to this as things are learned. It is the institutional memory that agents do
   Before adding a dispatch that re-emits the same event type a component (or a shared
   listener it feeds into) is itself listening for, trace who else is listening for that type
   and confirm the forward is actually load-bearing.
-- **A TypeScript symbol's `declarations` array is not ordered by "which one is real."**
-  #393 (following #389/#390): `check-deps.mjs`'s `resolveWorkspaceTarget` walked a bare
-  third-party import's checker symbol and returned the first declaration sitting inside
-  any workspace, trusting array order as a proxy for "where the module lives." TypeScript's
-  declaration merging attaches an ambient module augmentation (`declare module "some-pkg"
-  { ... }`) to the target module's symbol regardless of which file declares it, once that
-  file is part of the same compilation — so a workspace-owned augmentation can sort ahead
-  of the module's own real declaration, with nothing in the array marking which is which.
-  One `declare module "vitest" { ... }` in `packages/ui`'s test helpers misattributed every
+- **A TypeScript symbol's `declarations` array can hold an ambient augmentation with a real
+  workspace path, indistinguishable from a real declaration by path alone.** #393 (following
+  #389/#390): `check-deps.mjs`'s `resolveWorkspaceTarget` walked a bare third-party import's
+  checker symbol and returned the first declaration whose path fell inside any workspace,
+  on the assumption that a real (non-workspace) declaration would always be found first.
+  Not an array-order bug: in both the real repro and a fresh one, the module's own true
+  declaration consistently comes first in `symbol.declarations` — order was never the
+  mechanism. The real cause is that this file resolves symbols through TypeScript 7's
+  native API (`typescript/unstable/sync`), where every declaration handle — a `SourceFile`,
+  a `ModuleDeclaration`, any kind — carries a real `.path` for its containing file. A
+  third-party module's own declaration lives under `node_modules`, so its path falls outside
+  every workspace and the loop harmlessly continues past it regardless of position; an
+  ambient module augmentation (`declare module "some-pkg" { ... }`) written into workspace
+  source, though, has a `.path` that *does* fall inside a workspace, making it the only
+  declaration that matches — and it wins regardless of where it sits in the array. One
+  `declare module "vitest" { ... }` in `packages/ui`'s test helpers misattributed every
   OTHER package's `import ... from "vitest"` to `@taskdesk/ui`, 69 false violations from one
   augmentation. The guard is structural, not per-caller: any code walking a module symbol's
   declarations to prove ownership must skip `ts.SyntaxKind.ModuleDeclaration` entries —
   they can never be a bare specifier's real home in that kind of fallback — rather than
   re-excluding whichever specific module tripped it this time.
+- **`in` on a plain object also matches `Object.prototype`, not just the object's own
+  keys.** #424 (F3, Opus finding N1): a new membership check in `check-deps.mjs`,
+  `packageName in { ...four package.json dependency fields }`, silently treated a
+  specifier segment named `toString`, `constructor`, `valueOf`, `__proto__`, etc. as "a
+  declared dependency," because `in` walks the prototype chain and every plain object
+  inherits those names from `Object.prototype`. The same class of gap was already
+  live and pre-existing elsewhere in the same file: `FLAGGED_MESSAGES[imported.specifier]`
+  (a plain object keyed by specifier string) reads `FLAGGED_MESSAGES["__proto__"]` as
+  `Object.prototype` itself — truthy, not `undefined` — and then tries to call it,
+  crashing the whole checker with a `TypeError` instead of producing a violation or a
+  clean failure (filed as its own follow-up, #464, since it predates this PR and is out
+  of its scope). Fixed the new code with `Object.hasOwn(merged, key)`, which only
+  matches the object's own enumerable properties. Any specifier-keyed (or otherwise
+  attacker- or content-influenced-keyed) lookup against a plain object literal or a
+  spread-merged manifest should use `Object.hasOwn`/`Map`, never bare `in` or bracket
+  truthiness, for exactly this reason.
 
 ## Related
 
