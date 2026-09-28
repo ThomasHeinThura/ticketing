@@ -19,6 +19,7 @@ import {
   projectSlugClaimTable,
   projectTable,
   roleTable,
+  scheduledTransitionTable,
   sessionTable,
   stakeholderTable,
   stateTable,
@@ -38,6 +39,9 @@ import {
   verificationTable,
   watcherTable,
   workflowRuleTable,
+  workflowTable,
+  workflowTransitionTable,
+  workflowVersionTable,
   workItemKeyAliasTable,
   workItemKeyClaimTable,
   workItemTable,
@@ -512,6 +516,10 @@ export const workItemTypeTableRelations = relations(
       fields: [workItemTypeTable.workspaceId],
       references: [workspaceTable.id],
     }),
+    workflow: one(workflowTable, {
+      fields: [workItemTypeTable.workflowId],
+      references: [workflowTable.id],
+    }),
     workItems: many(workItemTable),
   }),
 );
@@ -538,6 +546,85 @@ export const stateTableRelations = relations(stateTable, ({ one, many }) => ({
   }),
   workItems: many(workItemTable),
 }));
+
+export const workflowTableRelations = relations(
+  workflowTable,
+  ({ one, many }) => ({
+    workspace: one(workspaceTable, {
+      fields: [workflowTable.workspaceId],
+      references: [workspaceTable.id],
+    }),
+    activeVersion: one(workflowVersionTable, {
+      fields: [workflowTable.activeVersionId],
+      references: [workflowVersionTable.id],
+    }),
+    versions: many(workflowVersionTable),
+  }),
+);
+
+export const workflowVersionTableRelations = relations(
+  workflowVersionTable,
+  ({ one, many }) => ({
+    workflow: one(workflowTable, {
+      fields: [workflowVersionTable.workflowId],
+      references: [workflowTable.id],
+    }),
+    publishedByPerson: one(personTable, {
+      fields: [workflowVersionTable.publishedBy],
+      references: [personTable.id],
+    }),
+    transitions: many(workflowTransitionTable),
+  }),
+);
+
+export const workflowTransitionTableRelations = relations(
+  workflowTransitionTable,
+  ({ one, many }) => ({
+    version: one(workflowVersionTable, {
+      fields: [workflowTransitionTable.versionId],
+      references: [workflowVersionTable.id],
+    }),
+    fromStateTemplate: one(stateTemplateTable, {
+      fields: [workflowTransitionTable.fromStateTemplateId],
+      references: [stateTemplateTable.id],
+    }),
+    toStateTemplate: one(stateTemplateTable, {
+      fields: [workflowTransitionTable.toStateTemplateId],
+      references: [stateTemplateTable.id],
+    }),
+    role: one(roleTable, {
+      fields: [workflowTransitionTable.roleId],
+      references: [roleTable.id],
+    }),
+    scheduledTransitions: many(scheduledTransitionTable),
+  }),
+);
+
+export const scheduledTransitionTableRelations = relations(
+  scheduledTransitionTable,
+  ({ one }) => ({
+    project: one(projectTable, {
+      fields: [scheduledTransitionTable.projectId],
+      references: [projectTable.id],
+    }),
+    workItem: one(workItemTable, {
+      fields: [scheduledTransitionTable.workItemId],
+      references: [workItemTable.id],
+    }),
+    transition: one(workflowTransitionTable, {
+      fields: [scheduledTransitionTable.transitionId],
+      references: [workflowTransitionTable.id],
+    }),
+    fromState: one(stateTable, {
+      fields: [scheduledTransitionTable.fromStateId],
+      references: [stateTable.id],
+    }),
+    toState: one(stateTable, {
+      fields: [scheduledTransitionTable.toStateId],
+      references: [stateTable.id],
+    }),
+  }),
+);
 
 export const workItemTableRelations = relations(
   workItemTable,

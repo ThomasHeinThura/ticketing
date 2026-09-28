@@ -76,6 +76,7 @@ import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles"
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
 import workItem from "./work-item";
+import workflow from "./workflow";
 import workflowRule from "./workflow-rule";
 import workspace from "./workspace";
 import {
@@ -831,6 +832,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
   const taskRelationApi = api.route("/task-relation", taskRelation);
   const externalLinkApi = api.route("/external-link", externalLink);
   const workflowRuleApi = api.route("/workflow-rule", workflowRule);
+  const workflowApi = api.route("/workflows", workflow);
   const invitationApi = api.route("/invitation", invitation);
   const workspaceApi = api.route("/workspace", workspace);
   // #23 -- mounted at the api root, not a feature prefix: the spec's own API table names
@@ -1007,6 +1009,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     taskRelationApi,
     timeEntryApi,
     userApi,
+    workflowApi,
     workflowRuleApi,
     workItemApi,
     workspaceApi,
@@ -1227,6 +1230,7 @@ const {
   taskRelationApi,
   timeEntryApi,
   userApi,
+  workflowApi,
   workflowRuleApi,
   workItemApi,
   workspaceApi,
@@ -1283,6 +1287,7 @@ export type AppType =
   | typeof searchApi
   | typeof taskRelationApi
   | typeof externalLinkApi
+  | typeof workflowApi
   | typeof workflowRuleApi
   | typeof workItemApi
   | typeof invitationApi

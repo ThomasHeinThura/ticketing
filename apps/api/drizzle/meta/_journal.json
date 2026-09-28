@@ -516,15 +516,22 @@
 		{
 			"idx": 73,
 			"version": "7",
-			"when": 1790531569741,
-			"tag": "0073_rename_comment_to_task_comment",
+			"when": 1790531660668,
+			"tag": "0073_workflow_persistence",
 			"breakpoints": true
 		},
 		{
 			"idx": 74,
 			"version": "7",
+			"when": 1790531660669,
+			"tag": "0074_rename_comment_to_task_comment",
+			"breakpoints": true
+		},
+		{
+			"idx": 75,
+			"version": "7",
 			"when": 1790531999693,
-			"tag": "0074_comment_and_canned_response_tables",
+			"tag": "0075_comment_and_canned_response_tables",
 			"breakpoints": true
 		}
 	]
