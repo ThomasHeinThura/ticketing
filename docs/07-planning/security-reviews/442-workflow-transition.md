@@ -573,3 +573,129 @@ Not checked:
 CLOSED. There are no blocking findings. D3 is non-blocking, but its "handled" claim is false
 as shipped. Fix it or retract the claim before merge. Any later commit outside
 `docs/07-planning/security-reviews/` voids this note. No waiver was sought or used.
+
+---
+
+## Delta review 3 (2026-09-28): `dc5d5d8..18f0d74`, verdict CLEAR
+
+**Reviewed head:** `18f0d74051ea2bb30951d95c770479236e876e13`
+
+**Reviewer:** Opus 5.5, in a fresh, independent context. I did not write, direct or fix any
+part of this change or any of its fix rounds. I checked the head with `git rev-parse HEAD` in
+the PR worktree, and it matched `origin/feat/442-workflow-transition-route` and the PR's
+`headRefOid`. This round's scope was narrow: confirm D3 is closed. The range is one commit,
+`18f0d74`, and `git diff --stat dc5d5d8 HEAD` shows two files:
+`apps/api/src/work-item/controllers/transition-work-item.ts` and
+`tests/api/work-item/transition-deadlock.test.ts`.
+
+**Headline:**
+
+- **D3 is CLOSED.** A real, live-reproduced Postgres deadlock with the route as the victim now
+  returns **409** in 10 of 10 attempts, never 500.
+- No new findings.
+- No blocking finding is open anywhere in the chain.
+
+### The fix, read
+
+`isPostgresDeadlockError` (`transition-work-item.ts:99-120`) now walks the `.cause` chain with
+a bounded loop (`MAX_CAUSE_DEPTH = 5`, so at most 6 links). It checks `code === "40P01"` on
+each link and returns `false` on the first non-object. It is line-for-line the same shape as
+`utils/is-raise-exception.ts`, differing only in the SQLSTATE it matches. A self-referential
+cause chain terminates, because the depth bound ends the loop and it cannot recurse. It still
+matches only `40P01`. It is not a catch-all.
+
+The wrapper is unchanged and still correct. `runTransactionCatchingDeadlock` encloses the whole
+`db.transaction(...)` (`COMMIT` included). It maps only a matched deadlock to
+`TransitionConflictError` and rethrows everything else, and `work-item/index.ts:1325` maps that
+error to `HTTPException(409)`.
+
+The unit test now exercises the realistic shape:
+`new Error(..., {cause: Object.assign(new Error(...), {code: "40P01"})})`. It also covers an
+unwrapped driver error, a wrapped `23505` (negative), a wrapped code-less error (negative),
+non-object input and a self-referential chain.
+
+### Live reproduction (my own, independent of the fix round's claimed 8/8)
+
+This ran against a private `opus457_delta3_test` database on `td-lane-pg`, which I dropped
+afterwards. The probe was a scratch test file that I deleted afterwards and did not commit.
+
+**Probe H: a direct Drizzle deadlock.**
+
+- The caught error was `ctor=DrizzleQueryError top.code=undefined cause.code=40P01`.
+- `isPostgresDeadlockError` returned **`true`**. The same probe returned `false` at `23bd93a`.
+
+**Probe G ×10: the real route as the deadlock victim.** This is delta 2's shape, using a fresh
+project and fixtures for each attempt:
+
+1. P has children C and Q, both completed, and the transition has the `children_closed` guard.
+2. A raw session runs `SET deadlock_timeout = '20s'`, so that the route's backend is the one
+   that detects the deadlock. It then runs `BEGIN` and `SELECT ... FOR UPDATE` on C. That is
+   `set-work-item-parent.ts:106`'s lock.
+3. `POST /work-items/{P}/transition` fires.
+4. The probe waits until `pg_stat_activity` shows the route's `FOR SHARE` children read in
+   `wait_event_type = 'Lock'`.
+5. The raw session runs `UPDATE work_item SET parent_id = Q WHERE id = C`. The cycle trigger
+   walks Q, then P.
+
+Each attempt also checked that `pg_stat_database.deadlocks` went up by exactly 1. That shows a
+real `40P01` happened, not an ordinary lost-race 409.
+
+| Attempts | HTTP status | Deadlocks counted | Reparent outcome | P afterwards |
+| --- | --- | --- | --- | --- |
+| **10/10** | **409** "The work item's state changed while this request was in flight" | +1 each | committed (C under Q) | backlog, `version = 1` |
+
+**Negative control.** I temporarily restored `23bd93a`'s version of `transition-work-item.ts`
+in the working tree and re-ran the same probe:
+
+- Probe H gave `detected=false`.
+- Probe G gave **500** `{"message":"Internal Server Error"}`, again with deadlocks +1.
+
+I then restored the file with `git checkout`, and `git diff --quiet HEAD -- apps` confirmed it
+was clean. So the probe tells the fixed code from the broken code, and the 409 comes from this
+fix.
+
+### Tests I ran on this head
+
+| Check | Result |
+| --- | --- |
+| `tests/api/work-item/transition-deadlock.test.ts` | **6/6** |
+| `tests/api-integration/work-item-transition.test.ts` | **12/12** |
+| `tsc --noEmit` on apps/api `tsconfig.json`, `tsconfig.permissions.json` and `tsconfig.tests.json` | exit 0, all three |
+
+I did not re-run the full integration suite. Only D3's two files changed since delta 2, which
+ran the wider set at `23bd93a`. The CI rollup on this head showed `integration - Postgres 18`,
+`static`, `unit + component`, `contract - OpenAPI drift`, `gate checkers + red probes` and
+`build` green. "pull request template + security review" was failing, which is expected until
+this note lands.
+
+### Minor, non-blocking
+
+The unit test's header says the manual live reproduction's result is "in the security-review
+note's D3 section". The fix round did not add one. This section now records the post-fix live
+result, so the pointer holds. Nothing to change.
+
+### Still open, unchanged, as disclosed (all non-blocking)
+
+- **D2's underlying lock-order inversion** with `set-work-item-parent.ts`. It is now correctly
+  reported as a retryable 409 rather than removed.
+- **The latent `archived_at`/`deleted_at` filter gap** on the locked children read, from
+  delta 2's probe E.
+- **N1, N2, N3, N5, N6, N8, N10, N11.**
+
+I did not re-test any of these this round.
+
+Not checked:
+
+- the API-key caller path;
+- the web client;
+- the real `POST /work-items/{key}/parent` route as the other party (I drove its lock sequence
+  through raw SQL, as in delta 2);
+- the full integration suite.
+
+**Verdict: CLEAR.** D3 is CLOSED. Every blocking finding in this chain is CLOSED: B1 (both
+halves, via D1), B2 and D1. Everything still open is non-blocking and disclosed. Any later
+commit outside `docs/07-planning/security-reviews/` voids this note. No waiver was sought or
+used.
+
+**Final verdict for PR #457 at `18f0d74051ea2bb30951d95c770479236e876e13`: CLEAR. No open
+blocking findings.**
