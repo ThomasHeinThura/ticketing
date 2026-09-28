@@ -132,3 +132,24 @@ Five non-blocking notes (N1–N5):
 
 Every line of every diff on this branch was written directly by the orchestrating Claude
 Sonnet 5 session's own `Edit`/`Write` tool calls. No implementation step used `pal-mcp`.
+
+---
+
+## Mechanical reconfirmation after merging main past PR #479 (31549447)
+
+**Confirmed by:** the orchestrating session, directly.
+
+**What happened:** `main` advanced to `d590cb60` (PR #479, issue #473's declaredState fix)
+after the last Opus/ordinary review pass. This branch was updated with `main` (merge commit
+`31549447`).
+
+**Verified directly:** `git show d590cb60 --stat` touches exactly `scripts/ci/check-pr-template.mjs`,
+`scripts/ci/lib/pr-body.mjs`, `scripts/ci/lib/pr-body.test.mjs`, and
+`scripts/ci/probes/screens-opened-state.test.mjs` — none of which is
+`apps/api/src/work-item/controllers/set-work-item-parent.ts`,
+`detach-work-item-parent.ts`, or `parent-write-deadlock-retry.ts` — the files this review
+actually covers.
+
+**Verdict:** the Opus clearance at `09469a9c` remains valid at `31549447`.
+
+**Reviewed head:** `3154944777b672c51bf170bb1e2b8185b42bb58a`
