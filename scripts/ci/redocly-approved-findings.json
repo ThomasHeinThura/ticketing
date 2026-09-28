@@ -1,10 +1,1 @@
-[
-	{
-		"operation": "GET /attachments/{id}",
-		"rule": "operation-2xx-response",
-		"pointer": "#/paths/~1attachments~1{id}/get/responses",
-		"reason": "Redirect-only by design (AT-5/AT-6, docs/03-features/attachments.md): the handler unconditionally returns 302 to a five-minute presigned download URL and never a 2xx of its own -- the actual bytes are served from the URL it redirects to, not from this operation. Redocly's operation-2xx-response rule has no way to know a redirect-only success path is the complete, intended contract rather than a missing response.",
-		"decision": "docs/07-planning/decision-log.md, 2026-09-28, \"Redocly-lint-finding allowlist added for GET /attachments/{id}'s redirect-only response\"",
-		"pr": 450
-	}
-]
+[]

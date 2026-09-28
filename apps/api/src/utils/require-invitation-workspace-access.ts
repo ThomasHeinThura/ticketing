@@ -92,6 +92,9 @@ export function requireInvitationWorkspaceAccess(idParam = "id") {
     }
 
     c.set("workspaceId", row.workspaceId);
+    // #400 F1 (Opus review): row-derived, never from the caller's request -- label it
+    // so shadow mode's evidence gate keeps it instead of always nulling it.
+    c.set("workspaceIdSource", "row");
     return next();
   };
 }
