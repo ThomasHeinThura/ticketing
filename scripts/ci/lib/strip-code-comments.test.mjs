@@ -514,23 +514,275 @@ describe("issue #143 — regex after a keyword is not division", () => {
 });
 
 /**
- * Disclosed residual gap (see the file's own header comment): a `)` closing an `if` /
- * `while` / `for` / `switch` condition also puts a following `/` in regex position, but this
- * scanner cannot tell that `)` apart from one closing an ordinary call without matching it
- * back to its opening keyword — real paren-matching, not a previous-token lookback. This
- * pins the CURRENT (imperfect) behaviour so a future edit does not silently change it
- * without a reader noticing: it is accepted, not fixed, and accepting it again silently is
- * not the same as it never having been noticed.
+ * #421 — the exact pre-#421 shipped scanner (the multi-char-keyword-aware version #143's
+ * fixes left in place, unchanged in its handling of `)`), kept as the non-vacuity control
+ * for the disclosed-gap tests below, the same reason `braceCounted` and
+ * `preIssue143Scanner` are kept for their own fixes: without it, "the real call after the
+ * regex is visible" would be an assertion that happens to pass, not a demonstrated fix.
+ * `)` was never added to `REGEX_ALLOWED_BEFORE` in any #143-era revision, so this is
+ * byte-for-byte what shipped immediately before this rewrite.
  */
-describe("issue #143 — disclosed gap: `)` after a control-flow keyword", () => {
-  it("still misreads `/` as division right after a condition's `)`", () => {
-    // Pinned current behaviour, not desired behaviour: `if (x) /'/.test(y)` is valid code
-    // whose `/'/` is a real regex, but this scanner has no way to know the `)` closed an
-    // `if` rather than a call, so it still reads the `'` as a string open and blanks the
-    // rest of the line.
-    const out = stripCodeComments("if (x) /'/.test(y);", {
-      blankStrings: true,
+const PRE_421_REGEX_ALLOWED_BEFORE = new Set([
+  "(",
+  ",",
+  "=",
+  ":",
+  "[",
+  "!",
+  "&",
+  "|",
+  "?",
+  "{",
+  "}",
+  ";",
+  "\n",
+  "+",
+  "-",
+  "*",
+  "%",
+  "<",
+  ">",
+  "~",
+  "^",
+]);
+const PRE_421_REGEX_ALLOWED_KEYWORDS = new Set([
+  "return",
+  "typeof",
+  "delete",
+  "void",
+  "throw",
+  "new",
+  "in",
+  "instanceof",
+  "case",
+  "yield",
+  "do",
+  "else",
+  "await",
+  "default",
+]);
+const PRE_421_WORD_CHAR = /[A-Za-z0-9_$]/;
+
+function pre421PreviousMeaningful(out) {
+  let i = out.length - 1;
+  while (i >= 0 && (out[i] === " " || out[i] === "\t" || out[i] === "\r")) {
+    i -= 1;
+  }
+  if (i < 0) return "\n";
+  if (!PRE_421_WORD_CHAR.test(out[i])) return out[i];
+  let start = i;
+  while (start > 0 && PRE_421_WORD_CHAR.test(out[start - 1])) start -= 1;
+  if (start > 0 && (out[start - 1] === "." || out[start - 1] === "#")) {
+    return ".";
+  }
+  return out.slice(start, i + 1).join("");
+}
+
+function pre421AllowsRegex(token) {
+  return token.length === 1
+    ? PRE_421_REGEX_ALLOWED_BEFORE.has(token)
+    : PRE_421_REGEX_ALLOWED_KEYWORDS.has(token);
+}
+
+function preIssue421Scanner(source, options = {}) {
+  const blankStrings = options.blankStrings === true;
+  const out = [];
+  let i = 0;
+  const stack = [{ kind: "code", brace: 0 }];
+  const top = () => stack[stack.length - 1];
+
+  const readString = (quote) => {
+    out.push(quote);
+    i += 1;
+    while (i < source.length) {
+      if (source[i] === "\\") {
+        out.push(blankStrings ? "  " : `${source[i]}${source[i + 1] ?? ""}`);
+        i += 2;
+        continue;
+      }
+      const terminator = source[i] === quote || source[i] === "\n";
+      out.push(terminator || !blankStrings ? source[i] : " ");
+      if (terminator) {
+        i += 1;
+        return;
+      }
+      i += 1;
+    }
+  };
+
+  while (i < source.length) {
+    const frame = top();
+    if (frame.kind === "template") {
+      const char = source[i];
+      if (char === "\\") {
+        out.push(char, source[i + 1] ?? "");
+        i += 2;
+        continue;
+      }
+      if (char === "`") {
+        out.push(char);
+        i += 1;
+        stack.pop();
+        continue;
+      }
+      if (char === "$" && source[i + 1] === "{") {
+        out.push("$", "{");
+        i += 2;
+        stack.push({ kind: "code", brace: 0 });
+        continue;
+      }
+      out.push(blankStrings && char !== "\n" ? " " : char);
+      i += 1;
+      continue;
+    }
+
+    const char = source[i];
+    const next = source[i + 1];
+
+    if (char === "/" && next === "/") {
+      while (i < source.length && source[i] !== "\n") i += 1;
+      out.push(" ");
+      continue;
+    }
+    if (char === "/" && next === "*") {
+      i += 2;
+      out.push(" ");
+      while (
+        i < source.length &&
+        !(source[i] === "*" && source[i + 1] === "/")
+      ) {
+        if (source[i] === "\n") out.push("\n");
+        i += 1;
+      }
+      i += 2;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      readString(char);
+      continue;
+    }
+    if (char === "`") {
+      out.push(char);
+      i += 1;
+      stack.push({ kind: "template" });
+      continue;
+    }
+    if (char === "/" && pre421AllowsRegex(pre421PreviousMeaningful(out))) {
+      out.push(char);
+      i += 1;
+      let inClass = false;
+      while (i < source.length) {
+        if (source[i] === "\\") {
+          out.push(source[i], source[i + 1] ?? "");
+          i += 2;
+          continue;
+        }
+        if (source[i] === "[") inClass = true;
+        else if (source[i] === "]") inClass = false;
+        out.push(source[i]);
+        if ((source[i] === "/" && !inClass) || source[i] === "\n") {
+          i += 1;
+          break;
+        }
+        i += 1;
+      }
+      continue;
+    }
+    if (char === "{") {
+      frame.brace += 1;
+      out.push(char);
+      i += 1;
+      continue;
+    }
+    if (char === "}") {
+      if (frame.brace > 0) {
+        frame.brace -= 1;
+      } else if (stack.length > 1) {
+        out.push(char);
+        i += 1;
+        stack.pop();
+        continue;
+      }
+      out.push(char);
+      i += 1;
+      continue;
+    }
+    out.push(char);
+    i += 1;
+  }
+  return out.join("");
+}
+
+/**
+ * #421 — the disclosed gap the old hand-rolled scanner left open ON PURPOSE (see the
+ * previous version of this file's header, and git history): a `)` closing an
+ * `if`/`while`/`for`/`switch` condition also puts a following `/` in regex position
+ * (`if (x) /y/.test(z)` is legal), but a `)` closing an ordinary call puts it in division
+ * position — telling those apart needs real paren-matching back to whichever keyword (if
+ * any) opened the matching `(`, which a previous-token lookback cannot do. The real
+ * TypeScript parser this file now uses already does that paren-matching as part of
+ * ordinary parsing, so this gap closes for free rather than needing a fourth
+ * instance-patch. This block now asserts the CORRECT reading in both directions, replacing
+ * the old test that pinned the PRE-fix limitation as accepted behaviour — closing a
+ * previously-disclosed limitation is the improvement this rewrite exists to make, not a
+ * regression to guard against.
+ */
+describe("issue #143 / #421 — `)` after a control-flow keyword is real paren-matching now", () => {
+  it("reads `/` after a condition's `)` as a regex, not division", () => {
+    // `if (x) /'/.test(y);` is real code whose `/'/` is a genuine regex literal — the old
+    // scanner had no way to know the `)` closed an `if` rather than a call, so it used to
+    // read the `'` as a string open and blank the rest of the line (see git history for
+    // the pre-#421 version of this test, which pinned exactly that misreading). The real
+    // parser resolves this correctly by construction, so the regex — and the real call
+    // after it — must both survive untouched.
+    const source = "if (x) /'/.test(y);";
+    // NON-VACUITY: the pre-#421 scanner must still misread this exact case, or it is not
+    // the disclosed gap being closed.
+    assert.equal(
+      preIssue421Scanner(source, { blankStrings: true }),
+      "if (x) /'          ",
+      "the pre-#421 scanner's own pinned misreading must be reproduced here first",
+    );
+    const out = stripCodeComments(source, { blankStrings: true });
+    assert.equal(out, "if (x) /'/.test(y);");
+  });
+
+  // Only `if`/`while`/`for` can put a regex DIRECTLY after their condition's own `)` with
+  // no intervening token — `switch (x)`'s body is always a braced block, so its `)` is
+  // always followed by `{`, which the OLD scanner already read correctly (`{` was always
+  // in its allow-list for unrelated reasons); `switch` was never actually reachable by
+  // this specific gap and is not a discriminating case, so it is not asserted here.
+  for (const keyword of ["while", "for"]) {
+    it(`reads \`/\` after a \`${keyword}\`'s \`)\` as a regex too, not just \`if\``, () => {
+      const source =
+        keyword === "for"
+          ? "for (;;) /'/.test(y); it.skip('real', fn);"
+          : "while (x) /'/.test(y); it.skip('real', fn);";
+      // NON-VACUITY: the pre-#421 scanner must MISS this call (same shape as the `if`
+      // case above), or this case does not actually exercise the disclosed gap for
+      // this keyword.
+      assert.equal(
+        banned.test(preIssue421Scanner(source, { blankStrings: true })),
+        false,
+        `the pre-#421 scanner must MISS this call for ${keyword}, or this is not the gap`,
+      );
+      assert.equal(
+        scan(source),
+        true,
+        "the real call after the regex must still be visible",
+      );
     });
-    assert.equal(out, "if (x) /'          ");
+  }
+
+  it("still reads `/` after an ORDINARY call's `)` as division, not a regex", () => {
+    // The other half of the same fix: paren-matching must tell a control-flow `)` apart
+    // from a plain call's `)`, not just stop reading every `)` as division-blocking.
+    // `f(x) /y/` is really `f(x) / y /`, a division chain, exactly as before #421 — pinned
+    // as an exact string, not just "it.skip is still visible", since this particular shape
+    // is well-formed code either way a `)` could be read and so would not by itself expose
+    // a regression back to "every `)` opens a regex".
+    const source = 'f(x) /y/.exec(w); s = "/"; it.skip("a", fn);';
+    const out = stripCodeComments(source, { blankStrings: true });
+    assert.equal(out, 'f(x) /y/.exec(w); s = " "; it.skip(" ", fn);');
   });
 });
