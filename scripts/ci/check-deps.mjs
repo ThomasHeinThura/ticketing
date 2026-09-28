@@ -1171,14 +1171,21 @@ export async function analyzeDependencies(root = repoRoot) {
       }
 
       for (const imported of imports) {
-        if (
-          imported.specifier === DYNAMIC_SPECIFIER ||
-          FLAGGED_MESSAGES[imported.specifier]
-        ) {
+        // Object.hasOwn, not bracket-truthiness: a bare `FLAGGED_MESSAGES[specifier]` read
+        // matches `Object.prototype` own accessors like `__proto__` (returns the prototype
+        // itself, truthy but not callable) for specifiers this table never declared, which
+        // then throws when called as a function below instead of falling through cleanly.
+        const flaggedMessage = Object.hasOwn(
+          FLAGGED_MESSAGES,
+          imported.specifier,
+        )
+          ? FLAGGED_MESSAGES[imported.specifier]
+          : undefined;
+        if (imported.specifier === DYNAMIC_SPECIFIER || flaggedMessage) {
           violations.push(
             violation(
               relativeFile,
-              FLAGGED_MESSAGES[imported.specifier]?.(imported.line) ??
+              flaggedMessage?.(imported.line) ??
                 `line ${imported.line} uses a non-static module specifier; package boundaries cannot be proven`,
             ),
           );
