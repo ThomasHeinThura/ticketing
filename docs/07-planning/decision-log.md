@@ -16,6 +16,38 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-28 · All four P0 gate issues (#8, #9, #10, #11) audited against live code; #9 closed; #8/#10/#11 identified as needing an operational or scoping decision, not more implementation
+
+**Decision:** ran a read-only verification of every checklist item on #8, #9, #10 and #11
+against the actual code on `main` (not against each issue's own text, which had drifted in
+places). Closed #9. Left #8, #10 and #11 open, each with a comment naming exactly what still
+blocks it and why more code review will not close it. Corrected `CLAUDE.md`'s overstated claim
+about `scripts/deploy.sh local`'s own Traefik path (see below). Dispatched a bounded fix for
+that Traefik gap; did not attempt the real external UAT deployment #8 actually needs, since
+that needs Thomas's own authorization per the 2026-09-23 entry below it.
+
+**Why:** issue #9's own "done when" bullet (`apps/web/src/components/ui/` empty) was
+technically false but for a reason already fully documented and independently tracked in
+#403 — leaving #9 open served no purpose except duplicating #403. Issue #8's remaining gap is
+a ~7-day live-UAT shadow-mode soak the 2026-09-23 entry already designed for; issue #10's
+remaining gap is 12 of 38 CI gates each blocked on a named, unbuilt P1/P9 prerequisite, plus
+a stale CODEOWNERS scope line describing a mechanism decided against twice already; issue
+#11's remaining gap is that its own "done when" claim was verified through the host's
+pre-existing Traefik, not `deploy.sh local`'s bundled one. None of these three closes by
+another review round, so recording that plainly here rather than leaving each issue looking
+like ordinary unfinished work.
+
+**Alternatives considered:** close #8/#10/#11 anyway on the theory that P0's *code* is done —
+rejected, each issue's own "done when" text is explicit and hasn't been met, and silently
+redefining "done" without saying so is exactly the kind of drift this log exists to prevent.
+Leave #9 open pending a fresh #403 resolution — rejected, #403 already exists and re-litigating
+the same gap on two issues helps no one.
+
+**Decided by:** the orchestrating session, 2026-09-28, closing #9 as a reversible housekeeping
+call (falls within the standing "take the recommended, non-waiver option" authorization); the
+#8 UAT-deployment question and the #10 gate-scoping question are flagged to Thomas directly,
+not decided here.
+
 ### 2026-09-28 · `GET /api/invitation/{id}` (issue #8, PR #440) kept registered and permanently disabled, not deleted — the reviewed-allowlist breaking-change mechanism is closed for good now that v2.0.1 exists
 
 **Decision:** the route stays in the OpenAPI contract (`deprecated: true`), and its handler

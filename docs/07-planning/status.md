@@ -1,5 +1,72 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+**2026-09-28 orchestrator snapshot (3) — `main` at `3b434e85` (#465, check-deps comment-accuracy
+fix, merged). All four P0 gate issues (#8, #9, #10, #11) audited today against live code, not
+against their own (partly stale) checklist text — see the 2026-09-28 decision-log entry for the
+full evidence. Issue #9 is now closed (substantially complete; residual scope tracked in #403).
+Issues #8, #10 and #11 stay open, each for a real, named reason below — none of the three is
+blocked on more code review or another implementation round.**
+
+Merged since the previous snapshot (`64ec22a`), across this session and a parallel Codex GPT-6
+session, roughly forty pull requests landed — the full list is `gh pr list --state merged`, not
+repeated here. Notably for P0: **#440** (`e1c824a6`, issue #8's runtime-authorization wiring —
+`policyRegistry` now constructed and validated at API boot, an unclassified route refuses the
+request, six rounds of Opus review closed every fail-open case found); **#450**, **#457**,
+**#458**, **#459**, **#461** (attachments, workflow transitions, comment-activity merge, shadow
+middleware verified-workspace fix — P1/P2 work, each independently and Opus-reviewed where
+security-scope); **#460**, **#463**, **#465** (CI gate scripts — `strip-code-comments.mjs`,
+`env-reads.mjs`, `check-deps.mjs` — rebuilt on the real TypeScript compiler API instead of regex
+heuristics, per the standing "stop patching, change altitude" rule); **#456** (a real test flake,
+unordered `audit_log` select before `.slice(-1)`, fixed with an explicit `ORDER BY`); **#462**
+(`create-work-item.ts`'s two-message `typeId` check collapsed to one, matching the established
+pattern elsewhere).
+
+**P0 gate-by-gate, verified live today:**
+
+- **#8** — the enforcement *mechanism* is done and Opus-cleared (registry constructed at boot,
+  invalid registry refuses to boot, unclassified route refuses the request, the known
+  flat-target-fallback hazard #256 is closed). What's still open is the shadow-to-strict
+  *cutover* itself: per the 2026-09-23 decision, that requires about 7 days of clean shadow-mode
+  evidence from a **live UAT deployment**, and no v2 UAT deployment exists yet to generate that
+  evidence. This cannot be closed by further code review — it needs a real deployment running
+  for a real week. Standing up that UAT needs Thomas's own authorization (decision log,
+  2026-09-23: "the UAT redeploy needs Thomas's authorization, not implied by this entry").
+- **#9** — **CLOSED 2026-09-28.** Substantially complete (57/57 primitives moved with stories and
+  tests, tokens/check:ui/check:tokens all green, Storybook 10 spiked first). The one "done when"
+  criterion still literally unmet — `apps/web/src/components/ui/` is not actually empty, the
+  bullet's own requirement — is a deliberate, already-documented exception for 5 app-specific
+  files, tracked in #403, not an oversight.
+- **#10** — 12 of 38 declared CI gates are genuinely not yet enabled (`check:queries`,
+  `check:inventory`, `no-inherited-routes`, `check:bundle-purity`, `check:bundle-size`,
+  `test:mcp`, visual regression, `test:a11y`, `test:perf`, three E2E projects), each blocked
+  on a named, unbuilt P1/P9
+  prerequisite (repository-layer convention, routes registry, portal/agent bundle split, no MCP
+  surface yet, no Playwright a11y/visual/perf suite written). The route-policy safety boundary
+  that actually gated Throttle 1 has been done for a while. The issue's own CODEOWNERS scope line
+  is stale (describes a mechanism decided against on 2026-09-06 and reaffirmed 2026-09-26) —
+  flagged on the issue, not yet edited out of its body. Whether "#10 done" should mean "every one
+  of 38 gates enabled, however long the other stages take" or "every gate whose prerequisite
+  exists today" is a scoping call for Thomas, not yet made.
+- **#11** — closest to closeable. Multi-arch signed image, cosign verification, and the recent
+  CVE fixes are all done. The literal "done when" claim — `scripts/deploy.sh local` brings up
+  three hostnames from a clean machine, through its own bundled Traefik — has not actually been
+  exercised: the verification that did happen (PR #377) used the UAT compose file against this
+  **host's own pre-existing, unrelated Traefik**, and only 2 of 3 hostnames. `CLAUDE.md`'s
+  "Deployment status" section overstated this and needs its own correction. A bounded fix (make
+  `scripts/deploy.sh local`'s bundled Traefik not collide with the host's existing one, and
+  actually run all three hostnames through it end-to-end) is dispatched and in progress as of
+  this snapshot.
+
+**Operational note, unchanged and worth repeating:** the shared checkout at
+`/home/ubuntu/ticketing.v2` has, as of this snapshot, at least four other live processes running
+directly in it (not in isolated worktrees) from what appears to be a separate, long-running Codex
+GPT-6 session on `fix-p3-dedup` with large uncommitted edits to this file and other control-plane
+docs. This orchestrator session is treating that state as strictly read-only and is doing all of
+its own work in fresh worktrees from `origin/main`, exactly as this file has recommended before.
+The dirty state has not been touched, committed, or discarded.
+
+---
+
 **2026-09-27 orchestrator snapshot (2) — `main` at `64ec22a` (#375, `audit_log.project_id` +
 reach filter, merged). P0/P1/P2/P3 lanes running in parallel under Throttle 1; this session
 is continuing all of them per Thomas's "if not finished P0 then continue, and continue all."**
