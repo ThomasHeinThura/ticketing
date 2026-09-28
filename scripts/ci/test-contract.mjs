@@ -277,6 +277,15 @@ export async function readBaseApprovedRedoclyFindings(runner) {
  * rest, and report which of those new entries matched no problem at all — same shape as
  * `partitionApprovedBreaks`, on (rule, pointer) instead of (operation, rule, fingerprint).
  *
+ * Opus review F1 (2026-09-28, #450 round 7): binding on (rule, pointer) alone, with no
+ * per-finding fingerprint, means one entry approves EVERY problem at that exact (rule,
+ * pointer) — harmless today, since `operation-2xx-response` can only ever fire once per
+ * operation, but a future rule that can fire more than once at one pointer (e.g. a
+ * structural "spec" error) could have a second, unrelated finding silently ride along on
+ * the same entry. Binding on `message` too, or matching one entry to one finding, would
+ * close it — worth doing before a second entry is ever added to this file, not needed for
+ * the single entry it holds now.
+ *
  * @param {{ ruleId: string, location?: Array<{ pointer?: string }> }[]} problems
  * @param {{ operation: string, rule: string, pointer: string, pr: number, reason: string, decision: string }[]} approved new entries only
  */
