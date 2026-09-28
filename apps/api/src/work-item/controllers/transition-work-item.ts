@@ -22,6 +22,7 @@ import {
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
+import { projectNotDeletedClause } from "../assert-work-item-live";
 import { resolveAssigneeEligibility } from "../assignee-eligibility";
 import {
   loadWorkflowTransitionContext,
@@ -450,6 +451,14 @@ export async function transitionWorkItem(
             // the `stateId` re-check just above it in this same WHERE.
             isNull(workItemTable.deletedAt),
             isNull(workItemTable.archivedAt),
+            // Issue #493's project-freeze gap: the row lock above serialises writers of
+            // THIS row, but not a concurrent `UPDATE project SET deleted_at = ...` on the
+            // SEPARATE project row -- that write is not blocked by our lock at all. A zero-
+            // row result from this clause alone falls into the same `!updated` branch just
+            // below as every other reason this WHERE can fail to match, which is exactly
+            // this route's own established shape for the `stateId`/`deletedAt`/`archivedAt`
+            // re-checks right above.
+            projectNotDeletedClause,
           ),
         )
         .returning({

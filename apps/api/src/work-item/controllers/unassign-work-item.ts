@@ -9,6 +9,7 @@ import {
   type NewActivityInput,
   recordWorkItemActivity,
 } from "../activity";
+import { projectNotDeletedClause } from "../assert-work-item-live";
 // The 409 shape is the assign route's own (`assignment.md`'s conditional-write conflict:
 // "the assignee changed while this request was in flight"). One class, two action routes
 // that clear or move the same field -- the extraction the reviewers asked for when the
@@ -121,6 +122,13 @@ export async function unassignWorkItem(
           // `assigneeId` alone and clear the assignment on a deleted/archived item.
           isNull(workItemTable.deletedAt),
           isNull(workItemTable.archivedAt),
+          // Issue #493's project-freeze gap, same shape as `assign-work-item.ts`'s own
+          // fix: this route's pre-read never even checked the project at all, and even if
+          // it had, that read is unlocked and outside this transaction -- a concurrent
+          // project soft-delete in the window before this UPDATE would otherwise still
+          // match. Falls into the same `!updated` -> `WorkItemAssigneeConflictError`
+          // branch below as every other reason this WHERE can fail to match.
+          projectNotDeletedClause,
         ),
       )
       .returning({

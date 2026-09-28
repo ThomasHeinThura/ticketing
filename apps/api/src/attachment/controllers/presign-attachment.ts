@@ -7,10 +7,12 @@ import {
   instanceSettingTable,
   organisationTable,
   personTable,
+  workItemTable,
   workspaceTable,
 } from "../../database/schema";
 import { createAttachmentUploadUrl } from "../../storage";
 import { getFileExtension, sanitizePathSegment } from "../../storage/shared";
+import { assertWorkItemStillLive } from "../../work-item/assert-work-item-live";
 import { isMimeTypeAllowedForExtension } from "../magic-bytes";
 
 export type PresignAttachmentInput = {
@@ -180,22 +182,43 @@ export async function presignAttachment(input: PresignAttachmentInput) {
     sanitizedFilename,
   ].join("/");
 
-  const [inserted] = await db
-    .insert(attachmentTable)
-    .values({
-      id: attachmentId,
-      workspaceId,
-      organisationId,
-      workItemId,
-      objectKey,
-      filename: filename.slice(0, 255),
-      mimeType: contentType,
-      size,
-      state: "pending",
-      customerVisible,
-      uploadedBy: person?.id ?? null,
-    })
-    .returning({ id: attachmentTable.id });
+  // Issue #493: this route had NO in-transaction liveness re-check at all --
+  // `requireWorkItemReach()` checks `deletedAt`/`archivedAt` before this request reaches
+  // here, but a soft-delete/archive landing in the window between that check and this
+  // insert would otherwise still leave a `pending` attachment on a dead item. `.for("share")`
+  // locks the row so a concurrent soft-delete blocks until this transaction finishes,
+  // closing the same reach-check-to-write race #276 closed for `update-work-item.ts` --
+  // read-only here (nothing about the work item row is written), so a shared lock suffices.
+  const inserted = await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select({
+        deletedAt: workItemTable.deletedAt,
+        archivedAt: workItemTable.archivedAt,
+      })
+      .from(workItemTable)
+      .where(eq(workItemTable.id, workItemId))
+      .for("share");
+    assertWorkItemStillLive(locked);
+
+    const [row] = await tx
+      .insert(attachmentTable)
+      .values({
+        id: attachmentId,
+        workspaceId,
+        organisationId,
+        workItemId,
+        objectKey,
+        filename: filename.slice(0, 255),
+        mimeType: contentType,
+        size,
+        state: "pending",
+        customerVisible,
+        uploadedBy: person?.id ?? null,
+      })
+      .returning({ id: attachmentTable.id });
+
+    return row;
+  });
 
   if (!inserted) {
     throw new HTTPException(500, { message: "Failed to create attachment" });

@@ -242,6 +242,58 @@ describe("API integration: work-item comments (#27)", () => {
     expect(response.status).toBe(404);
   });
 
+  it("#493: a concurrent soft-delete landing after the reach check cannot slip past this route's own transaction and insert a comment on a dead item", async () => {
+    const { app, workItem } = await setupWorkItem("member");
+
+    let releaseLock!: () => void;
+    const releaseLockGate = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    let lockHeld!: () => void;
+    const lockHeldGate = new Promise<void>((resolve) => {
+      lockHeld = resolve;
+    });
+    // Holds the work item row's own write lock via an uncommitted rival transaction --
+    // `requireWorkItemReach()`'s own read is unlocked and so is not blocked by this (it
+    // sees the item still alive), but `createComment`'s new `.for("share")` read IS,
+    // parking the racing request exactly inside the transaction this issue adds.
+    const rival = db.transaction(async (tx) => {
+      await tx
+        .update(schema.workItemTable)
+        .set({ title: "Locked by rival" })
+        .where(eq(schema.workItemTable.id, workItem.id));
+      lockHeld();
+      await releaseLockGate;
+      await tx
+        .update(schema.workItemTable)
+        .set({ deletedAt: new Date() })
+        .where(eq(schema.workItemTable.id, workItem.id));
+    });
+    await lockHeldGate;
+
+    const racedCall = postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    // Give the racing request's own `.for("share")` read time to reach Postgres and
+    // start blocking on the still-open rival transaction above before it is released.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    releaseLock();
+    await rival;
+
+    const response = await racedCall;
+    // Pre-fix: this route had no in-transaction liveness re-check at all, so the insert
+    // landed anyway. Post-fix: the locked re-read sees the now-committed soft-delete and
+    // refuses with the same 404 `requireWorkItemReach()` itself would give.
+    expect(response.status).toBe(404);
+
+    const comments = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.workItemId, workItem.id));
+    expect(comments).toHaveLength(0);
+  });
+
   it("400s a body containing a NUL byte", async () => {
     const { app, workItem } = await setupWorkItem("member");
     const response = await postComment(app, workItem.key, {

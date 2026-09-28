@@ -1,6 +1,7 @@
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { commentTable } from "../../database/schema";
+import { commentTable, workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
 import {
@@ -8,6 +9,7 @@ import {
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
 import type { ActivityActorType } from "../activity";
+import { assertWorkItemStillLive } from "../assert-work-item-live";
 
 export type CreateCommentInput = {
   body: unknown;
@@ -49,17 +51,39 @@ export async function createComment(
     });
   }
 
-  const [created] = await db
-    .insert(commentTable)
-    .values({
-      workspaceId,
-      workItemId,
-      authorId: actorId,
-      actorType,
-      body: input.body,
-      visibility: input.visibility,
-    })
-    .returning();
+  // Issue #493: this route had NO in-transaction liveness re-check at all --
+  // `requireWorkItemReach()` checks `deletedAt`/`archivedAt` before this request reaches
+  // here, but a soft-delete/archive landing in the window between that check and this
+  // insert would otherwise still leave a comment (and its `work_item.commented` event) on
+  // a dead item. `.for("share")` locks the row so a concurrent soft-delete blocks until
+  // this transaction finishes, closing the same reach-check-to-write race #276 closed for
+  // `update-work-item.ts` -- read-only here (nothing about THIS row is written), so a
+  // shared lock is enough.
+  const created = await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select({
+        deletedAt: workItemTable.deletedAt,
+        archivedAt: workItemTable.archivedAt,
+      })
+      .from(workItemTable)
+      .where(eq(workItemTable.id, workItemId))
+      .for("share");
+    assertWorkItemStillLive(locked);
+
+    const [row] = await tx
+      .insert(commentTable)
+      .values({
+        workspaceId,
+        workItemId,
+        authorId: actorId,
+        actorType,
+        body: input.body,
+        visibility: input.visibility,
+      })
+      .returning();
+
+    return row;
+  });
 
   if (!created) {
     throw new HTTPException(500, { message: "Failed to create comment" });

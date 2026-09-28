@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -6,6 +6,7 @@ import {
   watcherTable,
   workItemTable,
 } from "../../database/schema";
+import { assertWorkItemStillLive } from "../assert-work-item-live";
 
 // #23's fourth slice: `POST`/`DELETE /api/work-items/{key}/watch` (`work_item:read` --
 // deliberate, `work-items.md` § Permissions: "WI-28 already lets anyone with read access
@@ -38,19 +39,35 @@ export type WorkItemWatchState = {
   watching: boolean;
 };
 
+type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Issue #493: this used to be a plain, unlocked `findFirst` checking only `deletedAt`, not
+ * `archivedAt` -- and, being unlocked, it could not have closed the reach-check-to-write
+ * race even if it checked both columns, since a concurrent soft-delete/archive commits
+ * freely between this read and the caller's own write with nothing serialising the two.
+ * Now takes `tx` and locks the row with `.for("share")` (read-only from this route's own
+ * point of view -- nothing here writes to `work_item` itself), so the caller must run this
+ * INSIDE the same transaction that goes on to write the `watcher` row, and a concurrent
+ * soft-delete blocks on the lock until that transaction finishes.
+ */
 async function resolveCallerPersonAndItem(
+  tx: DbOrTx,
   key: string,
   workspaceId: string,
   userId: string,
 ) {
-  const item = await db.query.workItemTable.findFirst({
-    where: and(eq(workItemTable.key, key), isNull(workItemTable.deletedAt)),
-  });
+  const [item] = await tx
+    .select()
+    .from(workItemTable)
+    .where(eq(workItemTable.key, key))
+    .for("share");
   if (!item || item.workspaceId !== workspaceId) {
     throw new HTTPException(404, { message: "Work item not found" });
   }
+  assertWorkItemStillLive(item);
 
-  const person = await db.query.personTable.findFirst({
+  const person = await tx.query.personTable.findFirst({
     where: eq(personTable.userId, userId),
   });
   if (!person) {
@@ -67,27 +84,30 @@ export async function watchWorkItem(
   workspaceId: string,
   userId: string,
 ): Promise<WorkItemWatchState> {
-  const { item, person } = await resolveCallerPersonAndItem(
-    key,
-    workspaceId,
-    userId,
-  );
+  return db.transaction(async (tx) => {
+    const { item, person } = await resolveCallerPersonAndItem(
+      tx,
+      key,
+      workspaceId,
+      userId,
+    );
 
-  await db
-    .insert(watcherTable)
-    .values({
-      workItemId: item.id,
-      personId: person.id,
-      source: "explicit",
-      muted: false,
-    })
-    .onConflictDoUpdate({
-      target: [watcherTable.workItemId, watcherTable.personId],
-      // Unmute only -- `source` is deliberately untouched on conflict (`WI-29`).
-      set: { muted: false },
-    });
+    await tx
+      .insert(watcherTable)
+      .values({
+        workItemId: item.id,
+        personId: person.id,
+        source: "explicit",
+        muted: false,
+      })
+      .onConflictDoUpdate({
+        target: [watcherTable.workItemId, watcherTable.personId],
+        // Unmute only -- `source` is deliberately untouched on conflict (`WI-29`).
+        set: { muted: false },
+      });
 
-  return { workItemId: item.id, watching: true };
+    return { workItemId: item.id, watching: true };
+  });
 }
 
 export async function unwatchWorkItem(
@@ -95,38 +115,41 @@ export async function unwatchWorkItem(
   workspaceId: string,
   userId: string,
 ): Promise<WorkItemWatchState> {
-  const { item, person } = await resolveCallerPersonAndItem(
-    key,
-    workspaceId,
-    userId,
-  );
+  return db.transaction(async (tx) => {
+    const { item, person } = await resolveCallerPersonAndItem(
+      tx,
+      key,
+      workspaceId,
+      userId,
+    );
 
-  const [existing] = await db
-    .select()
-    .from(watcherTable)
-    .where(
-      and(
-        eq(watcherTable.workItemId, item.id),
-        eq(watcherTable.personId, person.id),
-      ),
-    )
-    .limit(1);
+    const [existing] = await tx
+      .select()
+      .from(watcherTable)
+      .where(
+        and(
+          eq(watcherTable.workItemId, item.id),
+          eq(watcherTable.personId, person.id),
+        ),
+      )
+      .limit(1);
 
-  if (!existing) {
-    // Never watching: idempotent no-op.
+    if (!existing) {
+      // Never watching: idempotent no-op.
+      return { workItemId: item.id, watching: false };
+    }
+
+    if (existing.source === "implicit") {
+      // `WI-29`: opting out mutes, never deletes, so the implicit watch is not silently
+      // recreated the next time this person is (re-)assigned/requests the item.
+      await tx
+        .update(watcherTable)
+        .set({ muted: true })
+        .where(eq(watcherTable.id, existing.id));
+      return { workItemId: item.id, watching: false };
+    }
+
+    await tx.delete(watcherTable).where(eq(watcherTable.id, existing.id));
     return { workItemId: item.id, watching: false };
-  }
-
-  if (existing.source === "implicit") {
-    // `WI-29`: opting out mutes, never deletes, so the implicit watch is not silently
-    // recreated the next time this person is (re-)assigned/requests the item.
-    await db
-      .update(watcherTable)
-      .set({ muted: true })
-      .where(eq(watcherTable.id, existing.id));
-    return { workItemId: item.id, watching: false };
-  }
-
-  await db.delete(watcherTable).where(eq(watcherTable.id, existing.id));
-  return { workItemId: item.id, watching: false };
+  });
 }

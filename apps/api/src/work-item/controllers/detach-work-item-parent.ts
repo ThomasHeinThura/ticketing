@@ -1,13 +1,18 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { projectTable, workItemTable } from "../../database/schema";
+import { workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
   type ActivityActorType,
   recordWorkItemActivity,
   resolveVisibility,
 } from "../activity";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+  projectNotDeletedClause,
+} from "../assert-work-item-live";
 import { runWithParentWriteDeadlockRetry } from "../parent-write-deadlock-retry";
 
 /**
@@ -39,8 +44,6 @@ export async function detachWorkItemParent(
   actorId: string,
   actorType: ActivityActorType,
 ) {
-  const projectNotDeleted = sql`EXISTS (SELECT 1 FROM ${projectTable} WHERE ${projectTable.id} = ${workItemTable.projectId} AND ${projectTable.deletedAt} IS NULL)`;
-
   const { updated, oldParentId, changed } =
     await runWithParentWriteDeadlockRetry(() =>
       db.transaction(async (tx) => {
@@ -60,23 +63,8 @@ export async function detachWorkItemParent(
         // `version`, so a concurrent soft-delete landing between the shared middleware's
         // reach-check and this transaction's own `FOR UPDATE` re-read would otherwise let
         // this detach still succeed against a since-deleted/archived item.
-        if (!item || item.archivedAt || item.deletedAt) {
-          throw new HTTPException(404, { message: "Work item not found" });
-        }
-
-        const [projectAlive] = await tx
-          .select({ id: projectTable.id })
-          .from(projectTable)
-          .where(
-            and(
-              eq(projectTable.id, item.projectId),
-              isNull(projectTable.deletedAt),
-            ),
-          );
-
-        if (!projectAlive) {
-          throw new HTTPException(404, { message: "Work item not found" });
-        }
+        assertWorkItemStillLive(item);
+        await assertProjectStillLive(tx, item.projectId);
 
         if (item.parentId === null) {
           return { updated: item, oldParentId: null, changed: false };
@@ -89,7 +77,7 @@ export async function detachWorkItemParent(
             and(
               eq(workItemTable.id, item.id),
               eq(workItemTable.version, item.version),
-              projectNotDeleted,
+              projectNotDeletedClause,
             ),
           )
           .returning();

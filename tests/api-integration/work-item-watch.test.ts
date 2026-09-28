@@ -362,4 +362,60 @@ describe("API integration: work item watch/unwatch (#23 fourth slice)", () => {
     const response = await watchRequest(app, created.key);
     expect(response.status).toBe(404);
   });
+
+  it("#493: a concurrent ARCHIVE landing after the reach check cannot slip past this route's own transaction -- the gap this issue closes (only `deletedAt` was ever checked in-process before)", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    await givePersonProfile(creator.user.id);
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Watch target, then archived",
+      })
+    ).json()) as { key: string; id: string };
+
+    let releaseLock!: () => void;
+    const releaseLockGate = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    let lockHeld!: () => void;
+    const lockHeldGate = new Promise<void>((resolve) => {
+      lockHeld = resolve;
+    });
+    // Holds the work item row's own write lock via an uncommitted rival transaction --
+    // `requireWorkItemReach()`'s own read is unlocked and so is not blocked by this (it
+    // sees the item still alive), but `watchWorkItem`'s new `.for("share")` read IS,
+    // parking the racing request exactly inside the transaction this issue adds.
+    const rival = db.transaction(async (tx) => {
+      await tx
+        .update(schema.workItemTable)
+        .set({ title: "Locked by rival" })
+        .where(eq(schema.workItemTable.id, created.id));
+      lockHeld();
+      await releaseLockGate;
+      // `archivedAt`, deliberately, never `deletedAt` -- the exact column the OLD code
+      // never checked at all.
+      await tx
+        .update(schema.workItemTable)
+        .set({ archivedAt: new Date() })
+        .where(eq(schema.workItemTable.id, created.id));
+    });
+    await lockHeldGate;
+
+    const racedCall = watchRequest(app, created.key);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    releaseLock();
+    await rival;
+
+    const response = await racedCall;
+    expect(response.status).toBe(404);
+
+    const watchers = await db
+      .select()
+      .from(schema.watcherTable)
+      .where(eq(schema.watcherTable.workItemId, created.id));
+    expect(watchers).toHaveLength(0);
+  });
 });

@@ -10,6 +10,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
+import {
+  TransitionConflictError,
+  transitionWorkItem,
+} from "../../apps/api/src/work-item/controllers/transition-work-item";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -1090,5 +1094,81 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
       .where(eq(schema.workItemTable.id, workItemId));
     expect(finalRow?.stateId).toBe(backlog.state.id);
     expect(finalRow?.archivedAt).not.toBeNull();
+  });
+
+  it("#493: a concurrent project soft-delete cannot slip past the locked read and complete a transition on a work item whose project is gone", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const done = await makeState(workspace.id, project.id, {
+      group: "completed",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: done.stateTemplate.id,
+        roleId: null,
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const [workItemRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItemId = requireRow([workItemRow], "workItemRow").id;
+
+    const raw = await openRawClient();
+    try {
+      await raw.query("BEGIN");
+      // `transitionWorkItem`'s own pre-transaction steps (`loadWorkflowTransitionContext`,
+      // `resolveActorRoleIds`) never touch `project` at all, so an ACCESS EXCLUSIVE table
+      // lock parks the racing call exactly at its final conditional UPDATE's new
+      // `projectNotDeletedClause` -- the code this test exists for. Calls
+      // `transitionWorkItem` DIRECTLY, skipping `requireWorkItemReach`, the same reasoning
+      // `update-work-item.ts`'s own T3 test uses: going through the real HTTP route would
+      // let the MIDDLEWARE's own (pre-existing) project check block on this SAME lock and
+      // answer first, never exercising this route's own new guard at all.
+      await raw.query("LOCK TABLE project IN ACCESS EXCLUSIVE MODE");
+
+      const racedCall = transitionWorkItem(
+        workItemId,
+        null,
+        creator.id,
+        "person",
+        {
+          toStateTemplateId: done.stateTemplate.id,
+        },
+      );
+      racedCall.catch(() => {});
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await raw.query(
+        "UPDATE project SET deleted_at = now(), purge_after = now() WHERE id = $1",
+        [project.id],
+      );
+      await raw.query("COMMIT");
+
+      // Pre-fix: the final UPDATE's WHERE never checked the project at all, so once the
+      // concurrent soft-delete committed, the write still landed on a work item whose
+      // project was already gone. Post-fix: the same `projectNotDeletedClause`
+      // `update-work-item.ts` already used is folded in here too, falling into this
+      // route's own existing conflict shape.
+      await expect(racedCall).rejects.toThrow(TransitionConflictError);
+    } finally {
+      await raw.end();
+    }
+
+    const [finalRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemId));
+    expect(finalRow?.stateId).toBe(backlog.state.id);
   });
 });

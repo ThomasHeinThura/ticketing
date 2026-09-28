@@ -922,6 +922,75 @@ describe("API integration: work item assignment (#30, assignment.md)", () => {
     ).toHaveLength(0);
   });
 
+  it("#493: a concurrent project soft-delete landing after the pre-read cannot slip past the conditional UPDATE and assign a work item whose project is gone", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const target = await addPersonOnRoster({ projectId: project.id });
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItemId = requireRow([row], "row").id;
+
+    let releaseLock!: () => void;
+    const releaseLockGate = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    let lockHeld!: () => void;
+    const lockHeldGate = new Promise<void>((resolve) => {
+      lockHeld = resolve;
+    });
+    // Parks the call AFTER its own pre-read (which already saw the project alive) but
+    // BEFORE its final conditional UPDATE, by locking the table its own AS-5 roster
+    // check (`resolveAssigneeEligibility`) queries in between -- same technique as the
+    // A1 test above, applied to the work item's PROJECT rather than a rival reassignment.
+    // A row-level lock on the project row would not do this: a plain, unlocked read (what
+    // both the pre-read and `resolveAssigneeEligibility` use) never blocks on a
+    // concurrent writer's row lock -- only a table-level lock forces the wait this test
+    // needs.
+    const rival = db.transaction(async (tx) => {
+      await tx.execute(sql`LOCK TABLE membership IN ACCESS EXCLUSIVE MODE`);
+      lockHeld();
+      await releaseLockGate;
+      await tx
+        .update(schema.projectTable)
+        .set({ deletedAt: new Date(), purgeAfter: new Date() })
+        .where(eq(schema.projectTable.id, project.id));
+    });
+    await lockHeldGate;
+
+    const racedCall = assignWorkItem(
+      key,
+      workspace.id,
+      creator.id,
+      "person",
+      null,
+      {
+        assigneeId: target.id,
+      },
+    );
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    releaseLock();
+    await rival;
+
+    // Pre-fix: the final UPDATE's WHERE never checked the project at all, so once the
+    // concurrent soft-delete committed (after this call's own pre-read and eligibility
+    // check both already passed), the write still landed on a work item whose project
+    // was already gone. Post-fix: the same `projectNotDeletedClause`
+    // `update-work-item.ts` already used is folded in here too, so this hits the same
+    // conflict shape the route already uses for a stale holder.
+    await expect(racedCall).rejects.toThrow(WorkItemAssigneeConflictError);
+
+    const [after] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemId));
+    expect(after?.assigneeId).toBeNull();
+  });
+
   it("#490: a concurrent archive cannot slip past the conditional UPDATE and assign an archived item", async () => {
     const { creator, workspace, project, type } = await setupProject();
     const target = await addPersonOnRoster({ projectId: project.id });
