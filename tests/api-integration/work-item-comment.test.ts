@@ -227,6 +227,21 @@ describe("API integration: work-item comments (#27)", () => {
     expect(response.status).toBe(404);
   });
 
+  it("issue #276: 404s a comment posted to a soft-deleted work item, via the shared requireWorkItemReach guard", async () => {
+    const { app, workItem } = await setupWorkItem("member");
+
+    await db
+      .update(schema.workItemTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.workItemTable.key, workItem.key));
+
+    const response = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    expect(response.status).toBe(404);
+  });
+
   it("400s a body containing a NUL byte", async () => {
     const { app, workItem } = await setupWorkItem("member");
     const response = await postComment(app, workItem.key, {

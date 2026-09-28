@@ -947,4 +947,148 @@ describe("API integration: work item update (#23 second slice)", () => {
     expect(loserBody.assertedVersion).toBe(1);
     expect(loserBody.currentVersion).toBe(2);
   });
+
+  it("issue #276: PATCH 404s on a soft-deleted work item, and the row is unchanged", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Frozen by its own deletion",
+      priority: "low",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    await db
+      .update(schema.workItemTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.workItemTable.key, createdBody.key));
+
+    const response = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { title: "Should not be written", priority: "urgent" },
+      createdBody.version,
+    );
+    expect(response.status).toBe(404);
+    const body = await response.text();
+    expect(body).toBe("Work item not found");
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, createdBody.key));
+    expect(row?.title).toBe("Frozen by its own deletion");
+    expect(row?.priority).toBe("low");
+    expect(row?.version).toBe(1);
+  });
+
+  it("issue #276: PATCH 404s on an archived work item, and the row is unchanged (archived is blocked the same as deleted, matching rank/assign/unassign's existing archivedAt guard)", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Frozen by archiving",
+      priority: "low",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    await db
+      .update(schema.workItemTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.workItemTable.key, createdBody.key));
+
+    const response = await updateWorkItemRequest(
+      app,
+      createdBody.key,
+      { title: "Should not be written", priority: "urgent" },
+      createdBody.version,
+    );
+    expect(response.status).toBe(404);
+    const body = await response.text();
+    expect(body).toBe("Work item not found");
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, createdBody.key));
+    expect(row?.title).toBe("Frozen by archiving");
+    expect(row?.priority).toBe("low");
+    expect(row?.version).toBe(1);
+  });
+
+  it("issue #276: updateWorkItem itself refuses a soft-deleted/archived row directly, not only requireWorkItemReach (same probe shape as T3 above, for this row's own columns instead of its project's)", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "CAS-guarded directly (own columns)",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    await db
+      .update(schema.workItemTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.workItemTable.key, createdBody.key));
+
+    let deletedError: unknown;
+    try {
+      await updateWorkItem(
+        createdBody.key,
+        creator.workspace.id,
+        createdBody.version,
+        creator.user.id,
+        "person",
+        { title: "Should not land (deleted)" },
+      );
+    } catch (error) {
+      deletedError = error;
+    }
+    expect(deletedError).toBeInstanceOf(HTTPException);
+    expect((deletedError as HTTPException).status).toBe(404);
+
+    const created2 = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "CAS-guarded directly (archived)",
+    });
+    const created2Body = (await created2.json()) as {
+      key: string;
+      version: number;
+    };
+
+    await db
+      .update(schema.workItemTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.workItemTable.key, created2Body.key));
+
+    let archivedError: unknown;
+    try {
+      await updateWorkItem(
+        created2Body.key,
+        creator.workspace.id,
+        created2Body.version,
+        creator.user.id,
+        "person",
+        { title: "Should not land (archived)" },
+      );
+    } catch (error) {
+      archivedError = error;
+    }
+    expect(archivedError).toBeInstanceOf(HTTPException);
+    expect((archivedError as HTTPException).status).toBe(404);
+  });
 });
