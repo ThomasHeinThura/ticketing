@@ -378,6 +378,18 @@ function encodeCopySourceKey(key: string): string {
  * revoked once `complete` has validated the object, so the object is copied to a key that
  * was never presigned and the original is deleted, rather than trusting the presigned PUT
  * URL to stop working on its own.
+ *
+ * N2 security-review fix (2026-09-27, delta 2): this was already copy-then-delete
+ * internally, but `complete-attachment.ts` used to call it AFTER reading/checking the
+ * object at `oldKey` -- a PUT to the still-presigned `oldKey` landing in that gap could
+ * change what this then copied, so what got checked and what got served could differ.
+ * `complete-attachment.ts` now calls this FIRST and reads/checks only `newKey` afterwards:
+ * `CopyObjectCommand` takes an independent, immutable snapshot of whatever is at `oldKey`
+ * the instant it runs, and no later write to `oldKey` can retroactively change that
+ * snapshot. Deliberately not adding `CopySourceIfMatch` against a HEAD-observed ETag here
+ * -- that would only help detect (never prevent) an overwrite in a gap that no longer
+ * exists once the copy is the very first thing that touches the object, so it would add
+ * complexity without closing anything the reorder doesn't already close.
  */
 export async function finalizeAttachmentObject(
   oldKey: string,

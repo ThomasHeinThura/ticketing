@@ -417,6 +417,25 @@ export async function writeUploadedObject(params: {
   await writeStreamToFile(params.body, candidate, config.maxUploadBytes);
 }
 
+/**
+ * N1 security-review fix (2026-09-27, delta 2): this used to open `destPath` itself with
+ * `O_TRUNC` and stream straight into it. A `rename()` elsewhere (this module's own
+ * `finalizeAttachmentObject`) moves a *path*, not a file descriptor -- it does not close or
+ * otherwise affect a handle a slower request already has open on the same inode. So a slow
+ * upload still writing into `destPath` when `complete` renamed that path away kept writing
+ * into what was now the FINAL, already-"checked" file, landing arbitrary bytes at whatever
+ * offset the slow write had reached.
+ *
+ * The fix: every write lands in its own uniquely-named temp file first (`O_EXCL`, so nothing
+ * else can already be writing there), and is only published to `destPath` by an atomic
+ * `rename()` once the write itself has fully succeeded and the handle is closed. `destPath`
+ * therefore never has a live writer's handle on it -- at any instant it is either absent or a
+ * complete, fully-written file (whichever publish rename landed last). A slower, racing write
+ * that finishes after `destPath` has already been moved out from under it (by `complete`'s own
+ * finalize) just republishes to the now-vacated path, creating an orphan object nothing ever
+ * serves from again -- the accepted, non-blocking N4 finding -- rather than corrupting the
+ * file that is actually served.
+ */
 async function writeStreamToFile(
   webStream: ReadableStream<Uint8Array>,
   destPath: string,
@@ -445,23 +464,29 @@ async function writeStreamToFile(
     webStream as unknown as NodeWebReadableStream<Uint8Array>,
   );
 
+  const tempPath = `${destPath}.upload-${crypto.randomBytes(16).toString("hex")}.tmp`;
+
   let fileHandle: FileHandle | undefined;
   try {
     fileHandle = await fsp.open(
-      destPath,
-      // O_NOFOLLOW refuses to open through a symlink planted at the exact target path — the
-      // one case the ancestor-realpath check above does not cover, because it only resolves
-      // directories, not the final file component.
+      tempPath,
+      // O_EXCL: this exact temp name is never reused, so nothing else can already be
+      // writing (or symlinked) there. O_NOFOLLOW is defense in depth on top of that.
       fs.constants.O_WRONLY |
         fs.constants.O_CREAT |
-        fs.constants.O_TRUNC |
+        fs.constants.O_EXCL |
         fs.constants.O_NOFOLLOW,
       0o640,
     );
     const writeStream = fileHandle.createWriteStream();
     await pipeline(nodeStream, limiter, writeStream);
+    await fileHandle.close();
+    fileHandle = undefined;
+    // Same filesystem/root, so this is a plain atomic rename, not a copy — see the
+    // ponytail note on `finalizeAttachmentObject` below.
+    await fsp.rename(tempPath, destPath);
   } catch (error) {
-    await fsp.unlink(destPath).catch(() => {});
+    await fsp.unlink(tempPath).catch(() => {});
     if ((error as NodeJS.ErrnoException)?.code === "ELOOP") {
       throw new StoragePathError(
         "Storage path escapes the storage root via a symlink.",
@@ -774,6 +799,13 @@ export async function getObjectSizeAndHeader(
  * pending (presigned-writable) key to a final key nothing was ever presigned to write to.
  * Same path-safety checks as every other write path in this module -- `oldKey` and `newKey`
  * are both independently re-derived and re-verified, never trusted from a caller.
+ *
+ * N1 security-review fix (2026-09-27, delta 2): `complete-attachment.ts` now calls this
+ * BEFORE reading/checking the object at all, and reads only the moved copy afterwards.
+ * That ordering is only actually safe because `writeStreamToFile` above no longer opens
+ * `oldKey`'s path directly (an in-flight writer used to keep a live handle on the exact
+ * inode this rename moves) -- a rename here now always moves a complete, already-closed
+ * file, never one a slower request is still writing into.
  *
  * ponytail: plain `fs.rename`, which requires both paths on the same filesystem/device --
  * true for every path under one configured storage root. Add an EXDEV (cross-device)

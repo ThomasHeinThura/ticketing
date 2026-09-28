@@ -527,6 +527,95 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     expect(servedBytes.equals(MALICIOUS_REPLACEMENT)).toBe(false);
   });
 
+  it("a review finding (2026-09-27, N1 delta 2): a slow upload still writing to the pending key when complete finalizes cannot land its bytes in the served final file", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const presignResponse = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: "photo.png",
+          contentType: "image/png",
+          size: PNG_BYTES.length,
+        }),
+      },
+    );
+    const presigned = (await presignResponse.json()) as {
+      attachmentId: string;
+      uploadUrl: string;
+      uploadHeaders: Record<string, string>;
+    };
+
+    // A controllable request body: `enqueue`d chunks are delivered to the write route as
+    // soon as they arrive, and nothing closes the stream (so the upload never finishes)
+    // until this test explicitly says so -- the exact "slow PUT opens the pending file
+    // and stalls" shape the security review reproduced.
+    let releaseController!: ReadableStreamDefaultController<Uint8Array>;
+    const slowBody = new ReadableStream<Uint8Array>({
+      start(controller) {
+        releaseController = controller;
+      },
+    });
+    const slowPut = app.request(presigned.uploadUrl, {
+      method: "PUT",
+      headers: presigned.uploadHeaders,
+      body: slowBody,
+      duplex: "half",
+    } as RequestInit);
+
+    // Give the slow request's own handler a real turn of the event loop to start
+    // (open its temp file and begin awaiting stream data) before the fast request races
+    // past it -- otherwise the two requests would not actually be concurrent.
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    const fastPut = await app.request(presigned.uploadUrl, {
+      method: "PUT",
+      headers: presigned.uploadHeaders,
+      body: PNG_BYTES,
+    });
+    expect(fastPut.status).toBe(204);
+
+    const completeResponse = await app.request(
+      `/api/attachments/${presigned.attachmentId}/complete`,
+      { method: "POST" },
+    );
+    expect(completeResponse.status).toBe(200);
+    const completed = (await completeResponse.json()) as { state: string };
+    expect(completed.state).toBe("ready");
+
+    // Only NOW does the slow request finish -- its remaining bytes arrive after
+    // `complete` has already finalized and checked the object, exactly as the review
+    // reproduced it ("the stalled PUT then sends malicious bytes").
+    const MALICIOUS_PE_HEADER = Buffer.from([
+      0x4d, 0x5a, 0x90, 0x00, 0x03, 0x00,
+    ]);
+    releaseController.enqueue(MALICIOUS_PE_HEADER);
+    releaseController.close();
+    const slowResult = await slowPut;
+    expect(slowResult.status).toBe(204);
+
+    const downloadResponse = await app.request(
+      `/api/attachments/${presigned.attachmentId}`,
+      { redirect: "manual" },
+    );
+    expect(downloadResponse.status).toBe(302);
+    const location = downloadResponse.headers.get("location") ?? "";
+    const servedResponse = await app.request(location);
+    expect(servedResponse.status).toBe(200);
+    const servedBytes = Buffer.from(await servedResponse.arrayBuffer());
+
+    // The proof: the served bytes are still the checked PNG -- never the slow request's
+    // late-arriving bytes, regardless of the fact that both PUTs targeted the exact same
+    // presigned key.
+    expect(servedBytes.equals(PNG_BYTES)).toBe(true);
+    expect(servedBytes.equals(MALICIOUS_PE_HEADER)).toBe(false);
+  });
+
   it("a review finding (2026-09-27, B4): a custom role without work_item:read is refused the work item's attachment list, matching the single-attachment download route", async () => {
     const { creator, workspace, project, type } = await setupProject();
     mockAuthenticatedSession(creator);
