@@ -299,7 +299,7 @@ integration 111 files/1399 (1398 pass, 1 fails — see below). `tsc --noEmit` an
 
 ## R6-1 test added (commit `d0f6c79`, test-only)
 
-**Reviewed head for this addition:** `d0f6c796f5daae37d3a7e40f16a3b9ff1cd7ef30`
+**Reviewed head:** `d0f6c796f5daae37d3a7e40f16a3b9ff1cd7ef30`
 
 New test in `attachment-concurrent-complete.test.ts`'s S3 suite, following the
 reviewer's own suggested shape: one racer's copy snapshots valid PNG bytes, the pending
