@@ -345,6 +345,59 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     expect(list.map((a) => a.id)).not.toContain(presigned.attachmentId);
   });
 
+  it("#454 B1 regression: the uploader can delete their own PENDING (never completed) attachment", async () => {
+    const { creator, project, type } = await setupProject();
+    await addPersonForUser(creator.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    // Presign only -- never upload, never call `complete`. The row stays `pending`, same
+    // as a real abandoned upload (no cleanup job for stuck pending rows exists yet).
+    const presignResponse = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: "photo.png",
+          contentType: "image/png",
+          size: PNG_BYTES.length,
+        }),
+      },
+    );
+    const presigned = (await presignResponse.json()) as {
+      attachmentId: string;
+    };
+
+    const [pendingRow] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+    expect(pendingRow?.state).toBe("pending");
+
+    // Before the #454 fix over-narrowed the guarded UPDATE's WHERE clause to
+    // `state = 'ready'`, this returned a wrong 403 ("Only the attachment's own uploader
+    // may delete it") even though `creator` genuinely IS the uploader -- the guard simply
+    // didn't accept `pending` as a state its own UPDATE could match, despite the
+    // pre-transaction check a few lines above it explicitly allowing both `pending` and
+    // `ready` through (Opus security review, first pass: B1).
+    const deleteResponse = await app.request(
+      `/api/attachments/${presigned.attachmentId}`,
+      { method: "DELETE" },
+    );
+    expect(deleteResponse.status).toBe(200);
+    const deleted = (await deleteResponse.json()) as { state: string };
+    expect(deleted.state).toBe("deleted");
+
+    const [row] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+    expect(row?.state).toBe("deleted");
+    expect(row?.deletedAt).toBeInstanceOf(Date);
+  });
+
   it("a review finding (2026-09-27): complete rejects an object whose actual stored size exceeds attachment_max_bytes, and it is not left ready", async () => {
     const { creator, project, type } = await setupProject();
     mockAuthenticatedSession(creator);
