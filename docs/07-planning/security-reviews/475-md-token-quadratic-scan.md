@@ -147,3 +147,23 @@ stated methodology contains an inaccuracy (the nonexistent file), and it was rec
 without the implementing session's review or consent despite the attribution line. Both
 facts are recorded here for whoever adjudicates this PR to see; neither is hidden by the
 other.
+
+---
+
+## Mechanical reconfirmation — Biome formatting fix (ac1f0ac5)
+
+**Confirmed by:** the orchestrating session, directly.
+
+**What happened:** the `static` CI check's `biome ci .` failed on `620fdb1d`/`6576bf2d` with
+exactly one formatter error (not a lint rule): `scripts/ci/probes/md-token-scan-performance.test.mjs`
+content differed from Biome's formatting output (an `assert.ok(...)` call too long for one
+line). `biome format --write` reflowed it across multiple lines.
+
+**Verified beyond the fix's own claim:** stripped all whitespace from both file versions and
+compared character-for-character. The only remaining difference is one added trailing comma
+inside the reflowed call's argument list — syntactically inert in a JS call expression. This
+is a no-op reformat, not a logic change.
+
+**Verdict:** the Opus clearance at `86f19081` remains valid at `ac1f0ac5`.
+
+**Reviewed head:** `ac1f0ac5a92990be4bf9c7e1d3fa2f3ae3a716c3`
