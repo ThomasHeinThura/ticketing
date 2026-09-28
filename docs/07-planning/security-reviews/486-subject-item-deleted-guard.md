@@ -109,3 +109,20 @@ This is a stronger basis than the usual disjoint-file argument: it's a real, pas
 run of the actual merged code.
 
 **Reviewed head:** `9012c75c49acacb549df5ba16017c1a6f17cc1f0`
+
+---
+
+## Mechanical reconfirmation after merging main past PR #484 (9904cfe0)
+
+**Confirmed by:** the orchestrating session, directly.
+
+**What happened:** `main` advanced to `c503301a` (PR #484, issue #480's fix) after the last
+reconfirmation. This branch was updated with `main` (merge commit `9904cfe0`).
+
+**Verified directly:** `git show c503301a --stat` touches
+`require-attachment-reach.ts`, `require-comment-reach.ts`, and their test files — none of
+which is `set-work-item-parent.ts`, the file this review covers.
+
+**Verdict:** both reviews above remain valid at `9904cfe0`.
+
+**Reviewed head:** `9904cfe073dd9fbcecaf46db997b02b1d33182b0`
