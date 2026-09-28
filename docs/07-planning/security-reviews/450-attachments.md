@@ -181,3 +181,45 @@ operations, no drift. B1/B3/B4 re-confirmed unaffected.
 N3/N4 remain open, non-blocking, unchanged — not required for this round.
 
 A fresh Opus delta pass is required on this fix.
+
+---
+
+## Security review — Opus delta 3 (2026-09-28)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a88d77c82377184da`
+
+**Reviewed head:** `24406bbb1e14360a0f287259010175e900e57ca5` (merge of `1535bfe` with
+`origin/main`, past PR #451)
+
+**Verdict: BLOCKING.** The merge introduced no error (application code, migration
+renumbering, shared-file splices, routes/policies from both PRs all confirmed live —
+full suites 61/509 unit, 13/83 permissions, 110/1397 integration, all green, `tsc`/
+`check-openapi.mjs` clean at 155 operations). N1 and N2 are genuinely closed — in every
+race on both drivers, the object served as `ready` was always the one that was checked.
+
+**N5 (MEDIUM, blocking, introduced by the N1/N2 fix itself): a losing concurrent
+`complete` call deletes the winning call's already-checked final object.** Both
+`toFinalAttachmentObjectKey` calls on the same attachment derive the SAME deterministic
+final key, so two concurrent `complete` attempts both write to (and, on failure, both
+try to clean up) the identical destination. Reproduced on real MinIO: 2-3 concurrent
+`complete` calls, 30/30 runs ended with the row `ready` but the final object MISSING —
+a permanently broken attachment, no attacker required (an ordinary client retry or
+double-click triggers it; also reachable by any workspace member via the list route's
+own visibility into pending attachments). A related, narrower problem with the same
+cause: the row DELETE on a failed check has no `state='pending'` guard, so a losing call
+whose OWN check fails can delete a row a winning call already marked `ready` (seen 2/30
+times in mixed race runs).
+
+**Fix direction, validated by the reviewer on a scratch copy (30/30 held on both drivers,
+then reverted):** give each `complete` ATTEMPT its own unique final key (not
+deterministic from the pending key alone), so concurrent attempts never collide on the
+same destination; add `state='pending'` to both row-DELETE calls. One existing test
+hard-codes the old deterministic key shape and will need updating.
+
+Full suites reproduced: unit 61/509, permissions 13/83, integration 110 files/1397
+tests — all green. `tsc --noEmit` clean, `check-openapi.mjs` clean, 155 operations, no
+drift. B1/B3/B4 re-confirmed unaffected. N3/N4 unchanged, not made worse (N4 gains one
+new orphan shape — a crashed-mid-write filesystem temp file — still non-blocking).
+
+N5 is required before merge. A fresh Opus delta pass is required on the fix.
