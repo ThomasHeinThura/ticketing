@@ -33,6 +33,7 @@ import {
 } from "@taskdesk/permissions";
 import { activityPolicies } from "./activity/policy";
 import { assetPolicies } from "./asset/policy";
+import { attachmentPolicies } from "./attachment/policy";
 import { auditPolicies } from "./audit/policy";
 import { cannedResponsePolicies } from "./canned-response/policy";
 import { capabilitiesPolicies } from "./capabilities/policy";
@@ -140,6 +141,25 @@ export const platformPolicies = {
     reason:
       "no session applies to a direct-PUT upload; authorized instead by a short-lived, " +
       "key-scoped signed token in the query string, verified in writeUploadedObject",
+  },
+
+  // Issue #28 (attachments): the generic-key siblings of the task-image upload route
+  // above. Same reasoning -- the signed, short-lived token (which also binds the size
+  // ceiling on the upload side) is the credential, not a session; the real permission
+  // check already ran on `POST /api/work-items/{key}/attachments/presign` (mints the
+  // upload URL) and `GET /api/attachments/{id}` (mints the download URL) respectively.
+  "PUT /api/storage/filesystem-attachment-upload": {
+    public: true,
+    reason:
+      "no session applies to a direct-PUT upload; authorized instead by a short-lived, " +
+      "key-and-size-scoped signed token in the query string",
+  },
+  "GET /api/storage/filesystem-download": {
+    public: true,
+    reason:
+      "no session applies to a presigned-style download; authorized instead by a " +
+      "short-lived, key-scoped signed token minted by GET /api/attachments/{id} after " +
+      "its own policy check already ran",
   },
 
   // --- Issue #8 classification pass: inline routes in index.ts (below). GET /api/asset/{id}
@@ -265,6 +285,7 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/audit/policy.ts", policies: auditPolicies },
   { name: "apps/api/src/label/policy.ts", policies: labelPolicies },
   { name: "apps/api/src/asset/policy.ts", policies: assetPolicies },
+  { name: "apps/api/src/attachment/policy.ts", policies: attachmentPolicies },
   { name: "apps/api/src/workflow/policy.ts", policies: workflowPolicies },
 ];
 

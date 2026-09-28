@@ -56,6 +56,7 @@ import {
   applyKeyPrefix,
   buildObjectKey,
   buildObjectKeyPrefix,
+  DEFAULT_DOWNLOAD_URL_TTL_SECONDS,
   DEFAULT_MAX_IMAGE_UPLOAD_BYTES,
   DEFAULT_UPLOAD_URL_TTL_SECONDS,
   getFileExtension,
@@ -416,6 +417,25 @@ export async function writeUploadedObject(params: {
   await writeStreamToFile(params.body, candidate, config.maxUploadBytes);
 }
 
+/**
+ * N1 security-review fix (2026-09-27, delta 2): this used to open `destPath` itself with
+ * `O_TRUNC` and stream straight into it. A `rename()` elsewhere (this module's own
+ * `finalizeAttachmentObject`) moves a *path*, not a file descriptor -- it does not close or
+ * otherwise affect a handle a slower request already has open on the same inode. So a slow
+ * upload still writing into `destPath` when `complete` renamed that path away kept writing
+ * into what was now the FINAL, already-"checked" file, landing arbitrary bytes at whatever
+ * offset the slow write had reached.
+ *
+ * The fix: every write lands in its own uniquely-named temp file first (`O_EXCL`, so nothing
+ * else can already be writing there), and is only published to `destPath` by an atomic
+ * `rename()` once the write itself has fully succeeded and the handle is closed. `destPath`
+ * therefore never has a live writer's handle on it -- at any instant it is either absent or a
+ * complete, fully-written file (whichever publish rename landed last). A slower, racing write
+ * that finishes after `destPath` has already been moved out from under it (by `complete`'s own
+ * finalize) just republishes to the now-vacated path, creating an orphan object nothing ever
+ * serves from again -- the accepted, non-blocking N4 finding -- rather than corrupting the
+ * file that is actually served.
+ */
 async function writeStreamToFile(
   webStream: ReadableStream<Uint8Array>,
   destPath: string,
@@ -444,23 +464,29 @@ async function writeStreamToFile(
     webStream as unknown as NodeWebReadableStream<Uint8Array>,
   );
 
+  const tempPath = `${destPath}.upload-${crypto.randomBytes(16).toString("hex")}.tmp`;
+
   let fileHandle: FileHandle | undefined;
   try {
     fileHandle = await fsp.open(
-      destPath,
-      // O_NOFOLLOW refuses to open through a symlink planted at the exact target path — the
-      // one case the ancestor-realpath check above does not cover, because it only resolves
-      // directories, not the final file component.
+      tempPath,
+      // O_EXCL: this exact temp name is never reused, so nothing else can already be
+      // writing (or symlinked) there. O_NOFOLLOW is defense in depth on top of that.
       fs.constants.O_WRONLY |
         fs.constants.O_CREAT |
-        fs.constants.O_TRUNC |
+        fs.constants.O_EXCL |
         fs.constants.O_NOFOLLOW,
       0o640,
     );
     const writeStream = fileHandle.createWriteStream();
     await pipeline(nodeStream, limiter, writeStream);
+    await fileHandle.close();
+    fileHandle = undefined;
+    // Same filesystem/root, so this is a plain atomic rename, not a copy — see the
+    // ponytail note on `finalizeAttachmentObject` below.
+    await fsp.rename(tempPath, destPath);
   } catch (error) {
-    await fsp.unlink(destPath).catch(() => {});
+    await fsp.unlink(tempPath).catch(() => {});
     if ((error as NodeJS.ErrnoException)?.code === "ELOOP") {
       throw new StoragePathError(
         "Storage path escapes the storage root via a symlink.",
@@ -501,6 +527,306 @@ export async function getPrivateObject(key: string): Promise<AssetObject> {
     etag: `"${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}"`,
     lastModified: stat.mtime,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Issue #28 (attachments) -- generic, arbitrary-key upload/download tokens.
+//
+// `createTaskImageUploadUrl`/`writeUploadedObject` above are task-image-specific: the
+// key is minted FROM a `TaskImageUploadContext` (workspace/project/task/surface), and
+// the write route enforces a fixed `DEFAULT_MAX_IMAGE_UPLOAD_BYTES` ceiling regardless
+// of caller. An attachment's key is minted by the attachment module itself (not a task
+// image), and its size ceiling is the God Mode-configurable `attachment_max_bytes`, not
+// a fixed constant -- so the ceiling has to travel WITH the signed token, not be
+// re-read from a shared default at write time (a caller could otherwise not be held to
+// the exact limit that was actually validated when the presigned URL was minted).
+// Separate HKDF info strings from the task-image token above and from the download
+// token below, so a token minted for one purpose is not also a valid credential for a
+// different one.
+// ---------------------------------------------------------------------------
+
+const ATTACHMENT_UPLOAD_TOKEN_INFO =
+  "taskdesk:storage:attachment-upload-token:v1";
+const ATTACHMENT_DOWNLOAD_TOKEN_INFO =
+  "taskdesk:storage:attachment-download-token:v1";
+
+function deriveTokenKey(info: string): Buffer {
+  const authSecret = getAuthSecretEnv();
+  if (!authSecret) {
+    throw new Error(
+      "TASKDESK_AUTH_SECRET is required to mint filesystem storage tokens.",
+    );
+  }
+  return Buffer.from(
+    crypto.hkdfSync(
+      "sha256",
+      Buffer.from(authSecret, "utf8"),
+      Buffer.alloc(0),
+      Buffer.from(info, "utf8"),
+      32,
+    ),
+  );
+}
+
+function signAttachmentUploadToken(
+  key: string,
+  maxBytes: number,
+  expires: number,
+): string {
+  const hmac = crypto.createHmac(
+    "sha256",
+    deriveTokenKey(ATTACHMENT_UPLOAD_TOKEN_INFO),
+  );
+  hmac.update(`${key}\n${maxBytes}\n${expires}`);
+  return hmac.digest("base64url");
+}
+
+function verifyAttachmentUploadToken(
+  key: string,
+  maxBytes: number,
+  expires: number,
+  token: string,
+): boolean {
+  let expected: string;
+  try {
+    expected = signAttachmentUploadToken(key, maxBytes, expires);
+  } catch {
+    return false;
+  }
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const providedBuf = Buffer.from(token, "utf8");
+  if (expectedBuf.length !== providedBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, providedBuf);
+}
+
+function signDownloadToken(key: string, expires: number): string {
+  const hmac = crypto.createHmac(
+    "sha256",
+    deriveTokenKey(ATTACHMENT_DOWNLOAD_TOKEN_INFO),
+  );
+  hmac.update(`${key}\n${expires}`);
+  return hmac.digest("base64url");
+}
+
+function verifyDownloadToken(
+  key: string,
+  expires: number,
+  token: string,
+): boolean {
+  let expected: string;
+  try {
+    expected = signDownloadToken(key, expires);
+  } catch {
+    return false;
+  }
+  const expectedBuf = Buffer.from(expected, "utf8");
+  const providedBuf = Buffer.from(token, "utf8");
+  if (expectedBuf.length !== providedBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, providedBuf);
+}
+
+/**
+ * The local equivalent of `createTaskImageUploadUrl`, for a caller-supplied `key`
+ * instead of one built from a `TaskImageUploadContext`. `maxBytes` is signed INTO the
+ * token (see the section comment above), so `writeAttachmentUploadedObject` enforces
+ * exactly the ceiling that was validated when this URL was minted, not a shared
+ * default.
+ */
+export function createAttachmentUploadUrl(
+  key: string,
+  contentType: string,
+  maxBytes: number,
+  apiBaseUrl?: string,
+): TaskImageUploadUrl {
+  const uploadUrlTtlSeconds = DEFAULT_UPLOAD_URL_TTL_SECONDS;
+  const expires = Math.floor(Date.now() / 1000) + uploadUrlTtlSeconds;
+  const token = signAttachmentUploadToken(key, maxBytes, expires);
+  const base = normalizeApiServerUrl(apiBaseUrl || "http://localhost:1337");
+
+  const query = new URLSearchParams({
+    key,
+    maxBytes: String(maxBytes),
+    expires: String(expires),
+    token,
+  });
+
+  return {
+    key,
+    uploadUrl: `${base}/storage/filesystem-attachment-upload?${query.toString()}`,
+    headers: { "Content-Type": contentType },
+  };
+}
+
+/**
+ * Writes the request body to disk at `key`, verifying the attachment upload token
+ * (which binds `key`, `maxBytes` and `expires` together) before any I/O -- same path
+ * safety guarantees as `writeUploadedObject`, generalized to a caller-chosen ceiling.
+ */
+export async function writeAttachmentUploadedObject(params: {
+  key: string;
+  maxBytes: string;
+  expires: string;
+  token: string;
+  body: ReadableStream<Uint8Array> | null;
+}): Promise<void> {
+  const maxBytesNum = Number.parseInt(params.maxBytes, 10);
+  const expiresNum = Number.parseInt(params.expires, 10);
+  if (!Number.isFinite(maxBytesNum) || maxBytesNum <= 0) {
+    throw new StoragePathError("Invalid maxBytes.");
+  }
+  if (!Number.isFinite(expiresNum)) {
+    throw new StoragePathError("Invalid or missing upload expiry.");
+  }
+  if (Math.floor(Date.now() / 1000) > expiresNum) {
+    throw new StoragePathError("Upload URL has expired.");
+  }
+  if (
+    !verifyAttachmentUploadToken(
+      params.key,
+      maxBytesNum,
+      expiresNum,
+      params.token,
+    )
+  ) {
+    throw new StoragePathError("Invalid or missing upload token.");
+  }
+  if (!params.body) {
+    throw new StoragePathError("Missing upload body.");
+  }
+
+  const config = getFilesystemConfig();
+  const candidate = resolveWithinRoot(config.root, params.key);
+  const dir = path.dirname(candidate);
+
+  await assertNoSymlinkEscape(dir, config.root);
+  await fsp.mkdir(dir, { recursive: true });
+  await assertNoSymlinkEscape(dir, config.root);
+
+  await writeStreamToFile(params.body, candidate, maxBytesNum);
+}
+
+/**
+ * The local equivalent of a presigned S3 GET (`attachments.md` AT-5): a short-lived,
+ * key-scoped download token, verified the same way the upload token is. `filename` is
+ * carried through only to name the download when it is served (`GET
+ * /storage/filesystem-download`'s handler sets `Content-Disposition` from it) -- it is
+ * NOT part of the signed payload, so it does not need to match anything at read time.
+ */
+export function createAttachmentDownloadUrl(
+  key: string,
+  filename: string,
+  apiBaseUrl?: string,
+): string {
+  const expires =
+    Math.floor(Date.now() / 1000) + DEFAULT_DOWNLOAD_URL_TTL_SECONDS;
+  const token = signDownloadToken(key, expires);
+  const base = normalizeApiServerUrl(apiBaseUrl || "http://localhost:1337");
+
+  const query = new URLSearchParams({
+    key,
+    expires: String(expires),
+    token,
+    filename,
+  });
+
+  return `${base}/storage/filesystem-download?${query.toString()}`;
+}
+
+/**
+ * Verifies the download token and streams the object -- called from `GET
+ * /storage/filesystem-download` (`index.ts`). Reuses `getPrivateObject`'s own path
+ * safety (`resolveWithinRoot`/`assertFileWithinRoot`) rather than duplicating it.
+ */
+export async function readAttachmentDownloadObject(params: {
+  key: string;
+  expires: string;
+  token: string;
+}): Promise<AssetObject> {
+  const expiresNum = Number.parseInt(params.expires, 10);
+  if (!Number.isFinite(expiresNum)) {
+    throw new StoragePathError("Invalid or missing download expiry.");
+  }
+  if (Math.floor(Date.now() / 1000) > expiresNum) {
+    throw new StoragePathError("Download URL has expired.");
+  }
+  if (!verifyDownloadToken(params.key, expiresNum, params.token)) {
+    throw new StoragePathError("Invalid or missing download token.");
+  }
+  return getPrivateObject(params.key);
+}
+
+/**
+ * Issue #28 (attachments), B3 security-review fix (2026-09-27): returns the object's real
+ * stored size (from `fs.stat`, no body read at all) alongside only its first `headerBytes`
+ * bytes (a bounded partial read), instead of `getPrivateObject` + buffering the entire
+ * object into memory just to check a size and sniff a handful of magic bytes -- the
+ * previous shape let one `complete` call on a multi-GB object exhaust process memory.
+ */
+export async function getObjectSizeAndHeader(
+  key: string,
+  headerBytes: number,
+): Promise<{ contentLength: number; header: Buffer }> {
+  const config = getFilesystemConfig();
+  const candidate = resolveWithinRoot(config.root, key);
+  await assertFileWithinRoot(candidate, config.root);
+
+  const stat = await fsp.stat(candidate).catch((error) => {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new StorageNotFoundError("Storage object not found.");
+    }
+    throw error;
+  });
+  if (!stat.isFile()) {
+    throw new StorageNotFoundError("Storage object not found.");
+  }
+
+  const length = Math.min(headerBytes, stat.size);
+  const header = Buffer.alloc(length);
+  if (length > 0) {
+    const fileHandle = await fsp.open(candidate, "r");
+    try {
+      await fileHandle.read(header, 0, length, 0);
+    } finally {
+      await fileHandle.close();
+    }
+  }
+
+  return { contentLength: stat.size, header };
+}
+
+/**
+ * Issue #28 (attachments), B2 security-review fix (2026-09-27): moves the object from its
+ * pending (presigned-writable) key to a final key nothing was ever presigned to write to.
+ * Same path-safety checks as every other write path in this module -- `oldKey` and `newKey`
+ * are both independently re-derived and re-verified, never trusted from a caller.
+ *
+ * N1 security-review fix (2026-09-27, delta 2): `complete-attachment.ts` now calls this
+ * BEFORE reading/checking the object at all, and reads only the moved copy afterwards.
+ * That ordering is only actually safe because `writeStreamToFile` above no longer opens
+ * `oldKey`'s path directly (an in-flight writer used to keep a live handle on the exact
+ * inode this rename moves) -- a rename here now always moves a complete, already-closed
+ * file, never one a slower request is still writing into.
+ *
+ * ponytail: plain `fs.rename`, which requires both paths on the same filesystem/device --
+ * true for every path under one configured storage root. Add an EXDEV (cross-device)
+ * copy+unlink fallback if `TASKDESK_STORAGE_FILESYSTEM_ROOT` ever spans multiple mounts.
+ */
+export async function finalizeAttachmentObject(
+  oldKey: string,
+  newKey: string,
+): Promise<void> {
+  const config = getFilesystemConfig();
+  const oldCandidate = resolveWithinRoot(config.root, oldKey);
+  const newCandidate = resolveWithinRoot(config.root, newKey);
+
+  await assertFileWithinRoot(oldCandidate, config.root);
+
+  const newDir = path.dirname(newCandidate);
+  await assertNoSymlinkEscape(newDir, config.root);
+  await fsp.mkdir(newDir, { recursive: true });
+  await assertNoSymlinkEscape(newDir, config.root);
+
+  await fsp.rename(oldCandidate, newCandidate);
 }
 
 export async function deleteObject(key: string): Promise<void> {

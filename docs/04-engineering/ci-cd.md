@@ -116,6 +116,17 @@ the gate. "Stable" is looked up live from `git ls-remote --tags origin` (a tag m
 `package.json`'s `version` field, which tracks unrelated release history and is already
 past `2.0.0`.
 
+`scripts/ci/redocly-approved-findings.json` is the same reviewed-exception shape, for a
+Redocly LINT finding rather than an oasdiff breaking change — a specific, deliberate design
+choice a generic lint rule cannot recognize as intentional (e.g. an operation that is
+redirect-only by design, so `operation-2xx-response` is a false positive on it). Bound on
+`(rule, pointer)` instead of `(operation, rule, fingerprint)`: Redocly's own JSON pointer is
+already exact and stable per finding, so there is no separate fingerprint to invent. Same
+"new relative to `origin/main`" binding, same stale-entry warning, same "unmatched entry
+fails" rule. This file is **not** subject to the "closed past a stable `v2.0.0`+ tag" rule
+above — that rule is specific to breaking API changes, and a lint false-positive on an
+already-shipped, intentional design is not one (decision log, 2026-09-28).
+
 **`pnpm test:permissions` must run before `apps/web` is built, against a router that cannot
 see a built `apps/web/dist` (#165).** The Fast stage's ordering above already guarantees this
 — `route-policy` builds nothing and runs in its own job/runner, `Build`'s `pnpm build` is a

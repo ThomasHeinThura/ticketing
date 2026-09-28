@@ -686,6 +686,29 @@ export const instanceSettingTable = pgTable(
     // consumed, expired-and-regenerated, or once setup_completed_at is set.
     setupTokenHash: text("setup_token_hash"),
     setupTokenExpiresAt: timestamp("setup_token_expires_at", { mode: "date" }),
+    // Issue #28 (attachments). God Mode-configurable defaults, `attachments.md` §
+    // Limits — additive columns on the existing singleton row, so every pre-existing
+    // instance simply gets these three defaults applied via DEFAULT on migration, no
+    // backfill logic needed.
+    attachmentMaxBytes: integer("attachment_max_bytes")
+      .notNull()
+      .default(25 * 1024 * 1024),
+    attachmentMaxPerItem: integer("attachment_max_per_item")
+      .notNull()
+      .default(100),
+    // Judgment call on the exact default list (attachments.md says "images,
+    // documents, text, archives by default" without enumerating extensions) --
+    // flagged in the PR body. SVG and every archive format are deliberately excluded:
+    // attachments.md's own Limits section blocks SVG by default (a script vector) and
+    // treats archives as an instance-configurable opt-in, not a default member.
+    attachmentAllowedExtensions: text("attachment_allowed_extensions")
+      .array()
+      .notNull()
+      .default(sql`ARRAY[
+        'jpg','jpeg','png','gif','webp','heic','heif','bmp','tiff',
+        'pdf','doc','docx','xls','xlsx','ppt','pptx','odt','ods','odp',
+        'txt','csv','md','json','log','rtf'
+      ]::text[]`),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" })
       .defaultNow()
@@ -2863,6 +2886,103 @@ export const watcherTable = pgTable(
       "watcher_source_allowed",
       sql`${table.source} in ('explicit', 'implicit')`,
     ),
+  ],
+);
+
+// Issue #28 (attachments) -- `attachments.md`/`data-model.md` §4. Additive: no existing
+// table is altered, so this table carries no data before this migration.
+//
+// `workItemId | commentId | submissionId` is the three-way exclusive CHECK
+// `attachments.md`'s data section documents, but only `work_item_id` gets a real
+// foreign key today: neither the new-model `comment` table (`data-model.md` §4:
+// `work_item_id`, `author_id`, `body jsonb`, ...) nor `submission` exist in this
+// schema yet -- only the unrelated legacy `commentTable` (kaneo's `task_id`-keyed
+// table) does. `commentId`/`submissionId` are reserved, unreferenced columns for now;
+// wiring their FKs is that table's own future migration, not this one's. This PR's
+// routes therefore only ever populate `workItemId`, and `attachments.md`'s "or to a
+// submission"/portal-attach case is out of this slice's scope (see the PR body).
+export const attachmentTable = pgTable(
+  "attachment",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    // Denormalised at insert, same #192-style shape `work_item.workspace_id` and
+    // `activity.workspace_id` already use, for the same reason (attachment-gc's
+    // legal-hold check and the per-organisation storage-quota sum both need it without
+    // a join). Composite-FK'd to `work_item (workspace_id, id)` below, same technique
+    // `activityTable` uses.
+    workspaceId: text("workspace_id").notNull(),
+    // Null = internal (an internal-only workspace has no customer organisation).
+    organisationId: text("organisation_id").references(
+      () => organisationTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    workItemId: text("work_item_id"),
+    commentId: text("comment_id"),
+    submissionId: text("submission_id"),
+    objectKey: text("object_key").notNull(),
+    filename: text("filename").notNull(),
+    mimeType: text("mime_type").notNull(),
+    size: bigint("size", { mode: "number" }).notNull(),
+    state: text("state").notNull().default("pending"),
+    customerVisible: boolean("customer_visible").notNull().default(false),
+    uploadedBy: text("uploaded_by").references(() => personTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("attachment_workItemId_idx").on(table.workItemId),
+    index("attachment_workspaceId_idx").on(table.workspaceId),
+    // `attachments.md`: "A partial index on `state = 'pending'` backs the hourly
+    // cleanup" (`attachment-pending-cleanup`, background-jobs.md).
+    index("attachment_pending_idx")
+      .on(table.state)
+      .where(sql`${table.state} = 'pending'`),
+    // `data-model.md`'s own "Indexing" section for `attachment`: a `(workspace_id,
+    // state)` composite (workspace-scoped state listing) and `(organisation_id)` partial
+    // (the per-organisation storage-quota sum).
+    index("attachment_workspaceId_state_idx").on(
+      table.workspaceId,
+      table.state,
+    ),
+    index("attachment_organisationId_idx")
+      .on(table.organisationId)
+      .where(sql`${table.organisationId} is not null`),
+    check(
+      "attachment_state_allowed",
+      sql`${table.state} in ('pending', 'ready', 'deleted')`,
+    ),
+    // `attachments.md`'s data section: "`work_item_id` | `comment_id` | `submission_id`
+    // (CHECK exactly one)".
+    check(
+      "attachment_exactly_one_parent",
+      sql`(
+        (case when ${table.workItemId} is not null then 1 else 0 end) +
+        (case when ${table.commentId} is not null then 1 else 0 end) +
+        (case when ${table.submissionId} is not null then 1 else 0 end)
+      ) = 1`,
+    ),
+    // Tenant-safe composite FK, same `(workspace_id, id)` technique `activityTable`
+    // uses against the same target unique index (`work_item_workspace_id_id_unique`).
+    // `onUpdate("no action")`, never `"cascade"`, for the identical reason
+    // `activityTable`'s own comment gives (a composite FK whose referenced columns
+    // include the mutable `work_item.workspace_id` must not cascade an UPDATE across a
+    // tenant boundary). `onDelete("cascade")`: a work item's attachments do not
+    // survive its own hard delete, matching `activityTable`'s precedent exactly.
+    foreignKey({
+      columns: [table.workspaceId, table.workItemId],
+      foreignColumns: [workItemTable.workspaceId, workItemTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("no action"),
   ],
 );
 

@@ -17,6 +17,10 @@ import { createId } from "@paralleldrive/cuid2";
 
 export const DEFAULT_MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
 export const DEFAULT_UPLOAD_URL_TTL_SECONDS = 300;
+// `attachments.md` AT-5: "presigned with a five-minute lifetime". Same value as the
+// upload TTL above, named separately so the two are free to diverge later without one
+// constant secretly meaning two different things.
+export const DEFAULT_DOWNLOAD_URL_TTL_SECONDS = 300;
 
 const allowedImageMimeTypes = new Set([
   "image/apng",
@@ -172,6 +176,43 @@ export function matchesKeyContext(
 
   const suffix = key.slice(fullPrefix.length);
   return /^[A-Za-z0-9._-]+$/.test(suffix) && !suffix.startsWith(".");
+}
+
+/**
+ * Issue #28 (attachments), B2 security-review fix (2026-09-27): the presigned upload URL
+ * `complete` validated stays valid (same key, same token) for the rest of its TTL, so
+ * without this a second PUT after `complete` could silently replace already-checked bytes.
+ * The fix moves the object to a key nothing presigned ever named, once `complete` accepts
+ * it -- this is the pure, driver-independent derivation of that final key from the pending
+ * one, so both drivers (and `complete-attachment.ts`) agree on the same transform without
+ * duplicating it. A stray second PUT to the old presigned URL after this runs just creates
+ * an orphaned object at the vacated pending key -- nothing ever serves from that key again,
+ * since the attachment row's own `object_key` is updated to the new one in the same
+ * transaction that marks it `ready`.
+ *
+ * N5 security-review fix (2026-09-28): this used to be a pure, deterministic function of
+ * `pendingKey` alone, so two concurrent `complete` calls on the SAME attachment (same
+ * pending key -- the row's `object_key` column does not change until whichever call wins
+ * the transaction in `complete-attachment.ts`) derived the IDENTICAL final key. Both
+ * `finalizeStorageObject` calls (on S3, both `CopyObject`) then landed at the same
+ * destination: whichever call's own size/magic-byte check failed, or whichever lost the
+ * `state = 'pending'` row race, deleted "its own" final object -- but since both calls
+ * shared one key, that delete removed whatever was actually AT that key, which could be
+ * the OTHER call's already-validated, already-`ready` object (reproduced live on MinIO:
+ * a `ready` row with its object silently gone). A fresh random token per CALL (not per
+ * attachment) means concurrent attempts on the same attachment never collide on a
+ * destination key -- each call only ever copies/renames/checks/deletes an object nothing
+ * else ever touches.
+ */
+export function toFinalAttachmentObjectKey(pendingKey: string): string {
+  const lastSlash = pendingKey.lastIndexOf("/");
+  const dir = lastSlash === -1 ? "" : pendingKey.slice(0, lastSlash);
+  const filename =
+    lastSlash === -1 ? pendingKey : pendingKey.slice(lastSlash + 1);
+  const uniqueToken = createId();
+  return dir
+    ? `${dir}/final/${uniqueToken}-${filename}`
+    : `final/${uniqueToken}-${filename}`;
 }
 
 /**

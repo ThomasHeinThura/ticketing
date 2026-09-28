@@ -533,6 +533,13 @@
 			"when": 1790531999693,
 			"tag": "0075_comment_and_canned_response_tables",
 			"breakpoints": true
+		},
+		{
+			"idx": 76,
+			"version": "7",
+			"when": 1790563177795,
+			"tag": "0076_attachments",
+			"breakpoints": true
 		}
 	]
 }
