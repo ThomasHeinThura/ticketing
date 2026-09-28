@@ -264,3 +264,61 @@ re-confirmed unaffected.
 N3/N4 remain open, non-blocking, unchanged — out of scope for this round.
 
 A fresh Opus delta pass is required on this fix.
+
+## Round 6: independent Opus delta review at `fafc27c` — CLEAR WITH FINDINGS
+
+**Reviewed head:** `fafc27c075e5af26893257badb9fb4604ae98bcc`
+
+Fresh independent context (Opus 5.5), did not author, direct or fix any of this PR.
+Verified live against a throwaway MinIO container plus the real AWS SDK (no fake),
+across forced (copy-barrier) and natural races at N=2/3/5/10/20. N5 reproduced on the
+pre-fix code (every race scenario failed), then shown fixed (150 race runs, exactly one
+winner each time, byte-for-byte correct). B1–B4 re-checked live and still hold. The
+`state='pending'` guard covers all three attachment-lifecycle row writes in
+`complete-attachment.ts`. Fail-then-pass reproduced independently on both the committed
+test and the reviewer's own MinIO harness. Full suites: unit 61/510, permissions 13/83,
+integration 111 files/1399 (1398 pass, 1 fails — see below). `tsc --noEmit` and
+`check-openapi.mjs` both clean.
+
+**Findings (none blocking):**
+- **R6-1 (LOW, missing test):** the `state='pending'` guard on the two row DELETEs had
+  no committed regression test; removing it, the reviewer's MinIO harness caught a
+  winner's row being deleted by a loser's own cleanup (20/20 runs without the guard).
+  **Fixed after this round** — see "R6-1 test added" below.
+- **R6-2 (LOW, pre-existing, not introduced by this PR):** `delete-attachment.ts`'s
+  UPDATE has no `state <> 'deleted'` guard — concurrent deletes all return 200 and can
+  double-write the `attachment.deleted` activity row. No data loss, no security impact.
+  Filed as a follow-up issue rather than fixed in this PR (out of this PR's diff).
+- **R6-3 (LOW, cosmetic):** the 409 message on a since-deleted row still reads
+  `already "pending", not "pending"` — a 404 would be more accurate. No behavior or
+  security impact; left as disclosed, not fixed, to avoid re-touching reviewed code for
+  a message string.
+- Unrelated to this PR: `work-item-unassign.test.ts` is flaky against Postgres 18 (an
+  audit-row read with no `ORDER BY`, sensitive to which index the planner picks) —
+  pre-existing on `main`, not in this PR's diff. Filed as a follow-up issue.
+
+## R6-1 test added (commit `d0f6c79`, test-only)
+
+**Reviewed head for this addition:** `d0f6c796f5daae37d3a7e40f16a3b9ff1cd7ef30`
+
+New test in `attachment-concurrent-complete.test.ts`'s S3 suite, following the
+reviewer's own suggested shape: one racer's copy snapshots valid PNG bytes, the pending
+object is then swapped to garbage bytes before the other racer's own copy snapshots it,
+so exactly one racer fails its magic-byte check. A deterministic delete-gate (poll the
+row until the winner has committed `ready`, rather than relying on incidental timing)
+reproduces the exact ordering the guard exists for.
+
+Fail-then-pass confirmed directly by the orchestrating session: with the `state`
+guard temporarily removed from the magic-byte-check DELETE in
+`complete-attachment.ts`, the test failed (`expected undefined to be 'ready'` — the
+winner's row gone); restored, the test passes, and the full attachment integration
+suite (14 tests across 3 files) passes solo on a fresh isolated database.
+
+This is a test-only diff against the reviewed head (`fafc27c` → `d0f6c79`, zero
+application-code change — confirmed via `git diff --stat`), so per the precedent
+already established for PR #451's own migration-guard-test follow-up, this is a
+**mechanical reconfirmation, not a fresh Opus round**: the round 6 verdict above
+(CLEAR WITH FINDINGS) still applies at `d0f6c79`, with R6-1 now closed.
+
+**Status: CLEAR WITH FINDINGS, merge-ready.** R6-2 and the unrelated flaky test are
+tracked as follow-up issues; R6-3 is disclosed and accepted.
