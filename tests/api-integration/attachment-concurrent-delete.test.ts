@@ -10,8 +10,12 @@
  * its own `attachment.deleted` activity row, and `deleted_at` was overwritten by
  * whichever call happened to commit last.
  *
- * The fix adds `state = 'ready'` to the UPDATE's `WHERE` clause (mirroring
- * `complete-attachment.ts`'s pattern exactly) and only records the activity row when that
+ * The fix adds `state <> 'deleted'` to the UPDATE's `WHERE` clause (mirroring
+ * `complete-attachment.ts`'s own guarded-UPDATE pattern, widened to match this route's own
+ * pre-check, which accepts both `pending` and `ready` -- see `delete-attachment.ts`'s own
+ * comment on why `<> 'deleted'`, not the narrower `= 'ready'` a first pass at this fix used
+ * and an Opus security review caught as B1: it wrongly 403'd an uploader deleting their own
+ * still-`pending`, never-completed attachment) and only records the activity row when that
  * guarded UPDATE actually matched a row. This test fires N concurrent DELETE calls and
  * confirms: exactly one `attachment.deleted` activity row exists afterward, and the row
  * ends up `deleted` -- not that every call returns a distinct status, since DELETE is
@@ -35,7 +39,7 @@
  * blocks on another transaction's row lock under `READ COMMITTED`), and then time for
  * its own `UPDATE` to queue up waiting on that same row lock. When the delay elapses and
  * the lock holder commits, the next queued `UPDATE` re-evaluates its `WHERE` clause
- * against the now-committed row -- exactly the race `state = 'ready'` in the guard is
+ * against the now-committed row -- exactly the race `state <> 'deleted'` in the guard is
  * for. This is the DB-transaction-boundary equivalent of
  * `attachment-concurrent-complete.test.ts`'s own S3 `copyBarrier` (holding several
  * concurrent operations open at once to force the real interleaving), just applied to a
