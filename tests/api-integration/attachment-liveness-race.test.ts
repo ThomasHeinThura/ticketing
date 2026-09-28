@@ -120,7 +120,7 @@ function presignRequest(app: ReturnType<typeof createApp>["app"], key: string) {
  * that lock was protecting -- the racing call resumes against the now-dead item. */
 async function raceSoftDeleteAgainstWorkItemRow(
   workItemId: string,
-  call: () => Promise<unknown>,
+  call: () => unknown | Promise<unknown>,
 ) {
   let releaseLock!: () => void;
   const releaseLockGate = new Promise<void>((resolve) => {
