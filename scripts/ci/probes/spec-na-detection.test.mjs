@@ -646,6 +646,84 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
     );
   });
 
+  it("issue #152: a 'not applicable' opener separated by U+3000 IDEOGRAPHIC SPACE is still recognised", () => {
+    // CJK input methods commit U+3000 as an ordinary space key routinely -- not an
+    // exotic crafted character. `contentOf()` used to delete it outright (correct for
+    // deciding whether a SECTION is blank), and the deleted, word-boundary-destroying
+    // text was then reused for this file's word-boundary-sensitive opener detection,
+    // fusing "not" and "applicable" into "notapplicable" and defeating recognition
+    // entirely -- the real spec's open review findings were silently never checked.
+    const dir = scenario();
+    const result = runChecker(dir, "check-reviews.mjs", [
+      "--body",
+      bodyWithSpec("not　applicable — CI infrastructure probe, not a feature"),
+    ]);
+    assert.equal(
+      result.status,
+      0,
+      "expected the U+3000-separated 'not applicable' declaration to be recognised and " +
+        `exempt this PR, exited ${result.status}:\n${result.output}`,
+    );
+  });
+
+  it("issue #152's EXACT reproduction: 'not\\u3000applicable-workflows.md' must still resolve to the REAL 'workflows.md', not a corrupted 'notapplicable-workflows.md' that matches nothing", () => {
+    // This is the literal example from the issue body, byte for byte: a two-word
+    // "not applicable" opener glued via a hyphen to a real filename, separated by
+    // U+3000 instead of an ASCII space. The ASCII-space version of this exact shape
+    // ("not applicable-workflows.md") is already covered a few tests up ("checks the
+    // REAL filename... when a MULTI-WORD opener is glued to it") and correctly resolves
+    // to "workflows.md" with its open findings still caught. Before this fix, the
+    // U+3000 variant did NOT: contentOf() deleted the U+3000 outright (instead of
+    // masking it to a space the way the ASCII-space case's own masking logic expects),
+    // so openerMatch() never even recognised "not applicable" as an opener at all, and
+    // the whole corrupted "notapplicable-workflows.md" was extracted as if it were a
+    // literal filename -- which matches no real review-document heading, so the check
+    // exited 0 for the WRONG reason (nothing matched), never surfacing workflows.md's
+    // real, open findings.
+    const dir = scenario();
+    write(
+      dir,
+      "docs/07-planning/reviews/2026-09-05/consistency.md",
+      reviewDocWithOpenSection("workflows.md"),
+    );
+    commit(dir, "docs: retarget the open section at workflows.md");
+    const result = runChecker(dir, "check-reviews.mjs", [
+      "--body",
+      bodyWithSpec("not　applicable-workflows.md"),
+    ]);
+    assert.notEqual(
+      result.status,
+      0,
+      "expected 'not\\u3000applicable-workflows.md' to resolve to the real workflows.md " +
+        `and still fail on its open findings, exited ${result.status}:\n${result.output}`,
+    );
+    assert.match(
+      result.output,
+      /workflows\.md.*still has open review findings/s,
+      `expected the failure to name workflows.md specifically, got:\n${result.output}`,
+    );
+  });
+
+  it("issue #153: a bidi override character (U+202E) in the Spec field fails the check instead of being silently parsed around", () => {
+    // Found during the Opus security review of #148: contentOf() strips the WHOLE Cf
+    // category, including bidi control characters, so a body containing one used to
+    // render differently to a human reviewer (override in effect) than the stripped
+    // text this check actually parsed -- a Trojan-Source-class mismatch between what
+    // looks approved and what the gate checked. The fix refuses outright rather than
+    // silently deleting it.
+    const dir = scenario();
+    const result = runChecker(dir, "check-reviews.mjs", [
+      "--body",
+      bodyWithSpec("not applicable ‮workflows.md ‬see reasoning above"),
+    ]);
+    assert.notEqual(
+      result.status,
+      0,
+      `expected the bidi override to fail the check, exited ${result.status}:\n${result.output}`,
+    );
+    assert.match(result.output, /bidi control character/i);
+  });
+
   it("non-vacuity: the OLD exact-match guard really did misread the honest n/a explanation as a declaration", () => {
     const dir = scenario();
     const declared =

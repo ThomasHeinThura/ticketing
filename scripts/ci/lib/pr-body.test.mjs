@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import { describe, it } from "node:test";
 import {
+  BidiControlCharacterError,
   checklistPresenceProblems,
   checklistProblems,
   contentOf,
@@ -29,6 +30,7 @@ import {
   sections,
   stripComments,
   stripCommentsStepsForTests,
+  wordBoundaryContentOf,
 } from "./pr-body.mjs";
 
 /**
@@ -2388,5 +2390,78 @@ describe("contentOf — L6, blank-rendering NON-format characters are not conten
   it("still keeps real content that merely contains one of them", () => {
     assert.equal(contentOf("re⠀viewed"), "reviewed");
     assert.notEqual(contentOf("ㅤ/projects/1 — 1280x800 — clicked New"), "");
+  });
+});
+
+describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping breaks word-boundary-sensitive parsing", () => {
+  it("issue #152's own repro: U+3000 between two words is a real separator, not deletable content", () => {
+    const raw = "**Spec:** not　applicable-workflows.md";
+    // Non-vacuity: contentOf (the function this bug actually lived in) really does fuse
+    // the two words, which is exactly what corrupted `check-reviews.mjs`'s opener
+    // detection -- see check-reviews.mjs's own end-to-end reproduction below for the
+    // full failure this caused.
+    assert.equal(
+      contentOf(raw),
+      "**Spec:** notapplicable-workflows.md",
+      "non-vacuity: contentOf must still fuse the two words here for this to be the bug",
+    );
+    assert.equal(
+      wordBoundaryContentOf(raw),
+      "**Spec:** not applicable-workflows.md",
+      "wordBoundaryContentOf must keep U+3000 as a real space, preserving the boundary",
+    );
+  });
+
+  it("a section made up only of U+3000 is still BLANK -- the fix must not weaken blankness", () => {
+    assert.equal(wordBoundaryContentOf("　　"), "");
+    assert.equal(wordBoundaryContentOf("  　 \n 　  "), "");
+  });
+
+  it("still strips every other invisible character contentOf strips, identically", () => {
+    for (const char of ["​", "‌", "‍", "⁠", "﻿", "­", "᠎", "⠀", "ㅤ"]) {
+      assert.equal(wordBoundaryContentOf(char), "");
+      assert.equal(wordBoundaryContentOf(`re${char}viewed`), "reviewed");
+    }
+  });
+
+  it("issue #153's own repro: a bidi override refuses instead of silently vanishing", () => {
+    // U+202E RIGHT-TO-LEFT OVERRIDE: renders the text after it right-to-left on GitHub
+    // without changing the code points a parser (or contentOf) reads -- contentOf's
+    // \p{Cf} strip deletes it silently, so what a human reviewer SAW when the override
+    // was rendered and what the gate actually parsed could permanently disagree.
+    const raw = "**Spec:** not applicable ‮workflows.md";
+    assert.equal(
+      contentOf(raw).includes("‮"),
+      false,
+      "non-vacuity: contentOf really does delete the override silently",
+    );
+    assert.throws(() => wordBoundaryContentOf(raw), BidiControlCharacterError);
+  });
+
+  it("rejects every standard bidi control character, not only U+202E", () => {
+    for (const char of [
+      "؜", // ARABIC LETTER MARK
+      "‎", // LEFT-TO-RIGHT MARK
+      "‏", // RIGHT-TO-LEFT MARK
+      "‪", // LEFT-TO-RIGHT EMBEDDING
+      "‫", // RIGHT-TO-LEFT EMBEDDING
+      "‬", // POP DIRECTIONAL FORMATTING
+      "‭", // LEFT-TO-RIGHT OVERRIDE
+      "‮", // RIGHT-TO-LEFT OVERRIDE
+      "⁦", // LEFT-TO-RIGHT ISOLATE
+      "⁧", // RIGHT-TO-LEFT ISOLATE
+      "⁨", // FIRST STRONG ISOLATE
+      "⁩", // POP DIRECTIONAL ISOLATE
+    ]) {
+      assert.throws(
+        () => wordBoundaryContentOf(`plain text ${char} more text`),
+        BidiControlCharacterError,
+        `expected U+${char.codePointAt(0).toString(16).toUpperCase()} to be refused`,
+      );
+    }
+  });
+
+  it("does not reject a harmless Cf character (a zero-width joiner) that cannot reorder rendering", () => {
+    assert.doesNotThrow(() => wordBoundaryContentOf("re‍viewed"));
   });
 });

@@ -370,6 +370,72 @@ export function contentOf(markdown) {
     .trim();
 }
 
+/**
+ * Thrown by `wordBoundaryContentOf` when the text contains a bidi control character
+ * (issue #153) — see that function's doc comment for why this refuses rather than strips.
+ */
+export class BidiControlCharacterError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "BidiControlCharacterError";
+  }
+}
+
+/**
+ * The standard Unicode bidirectional-formatting control characters — the ones capable of
+ * changing how surrounding text RENDERS (left-to-right vs right-to-left, what visually
+ * comes "first") without changing the code points a parser reads. This is the exact,
+ * closed set flagged by the "Trojan Source" paper and Unicode TR36/UAX#9, not the whole
+ * `\p{Cf}` category `INVISIBLE` strips: a zero-width joiner is Cf too, but it cannot
+ * reorder how anything renders, so it stays silently stripped by `contentOf` for
+ * blankness purposes. Only the characters below get the fail-closed treatment.
+ */
+const BIDI_CONTROL_CHARS = /[؜‎‏‪-‮⁦-⁩]/u;
+
+/**
+ * Like `contentOf`, but for a caller that parses the result for WORD-BOUNDARY-SENSITIVE
+ * decisions — recognising a two-word opener like "not applicable", or extracting a
+ * filename — rather than merely testing whether a section is blank.
+ *
+ * `contentOf` is correct for its OWN purpose (issue #152's own framing): a section made
+ * up of nothing but U+3000 IDEOGRAPHIC SPACE should read as blank, so deleting it there is
+ * fine. The bug is in reusing that same deleted-not-masked text for parsing that needs the
+ * word boundary U+3000 was providing — CJK input methods commit it as an ordinary space
+ * key routinely, so `"not　applicable"` is two words to any human, but `contentOf`
+ * collapses it to `"notapplicable"`, which `check-reviews.mjs`'s opener detection no
+ * longer recognises as "not applicable" at all. Fixed here by turning U+3000 into a real
+ * space instead of deleting it — the word boundary survives, and a section made only of
+ * U+3000 still trims away to nothing, so blankness is unaffected.
+ *
+ * Every other invisible character `contentOf` strips (zero-width joiners, the blank-
+ * rendering fillers) is stripped identically here, with one exception: a bidi control
+ * character (issue #153) is refused outright — `BidiControlCharacterError` — instead of
+ * silently deleted. Deleting it would let a pull-request body RENDER one way to a human
+ * reviewer (the override in effect) while this function hands a parser a different,
+ * override-free string — a "Trojan Source" mismatch between what looks approved and what
+ * the gate actually checked. Fail-closed is the same choice `loadPullRequestHead` already
+ * makes for an unreadable event payload, for the identical reason: silently substituting
+ * something plausible is worse than stopping and saying so.
+ *
+ * @param {string} markdown
+ * @returns {string}
+ */
+export function wordBoundaryContentOf(markdown) {
+  const stripped = stripComments(markdown)
+    .split("\n")
+    .filter((line) => !/^\s*\*\*[^*]+:\*\*\s*$/.test(line))
+    .filter((line) => !/^\s*-{3,}\s*$/.test(line))
+    .join("\n");
+  if (BIDI_CONTROL_CHARS.test(stripped)) {
+    throw new BidiControlCharacterError(
+      "contains a bidi control character (e.g. U+202E RIGHT-TO-LEFT OVERRIDE), which can " +
+        "render differently to a human reviewer than the text this check actually parses. " +
+        "Remove it and resubmit.",
+    );
+  }
+  return stripped.replace(/　/gu, " ").replace(INVISIBLE, "").trim();
+}
+
 /** Compare headings without caring about dash flavour or case. */
 export function normaliseHeading(heading) {
   return heading
