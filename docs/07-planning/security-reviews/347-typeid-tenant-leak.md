@@ -42,3 +42,24 @@
 - `docker build` / container boot — the change touches only one controller's query and its message, nothing in the image layout.
 - Measured timing of I1; the assessment is from the query shape, not a benchmark.
 - Oracle classes outside `apps/api/src` controllers/middleware (e.g. realtime/WebSocket handlers), beyond the grep sweep above.
+
+## Mechanical reconfirmation after merging `main` past PR #452/#421/#400 (commit `eb19b2f`)
+
+**Reviewed head:** `eb19b2f86a70218c55cf63f795fa6a75dd74e2de`
+
+`main` had moved twenty-one commits ahead since this branch's own base: PR #452 (comment
+read-side route), PR #421 (CI tokenizer rewrite), and PR #400 (shadow-mode permissions),
+touching `apps/api/src/work-item/index.ts`/`policy.ts`/`response.ts`,
+`apps/api/src/permissions/**`, `scripts/ci/**`, and generated fixtures
+(`tests/api-contract/openapi.json`, `scripts/ci/redocly-approved-findings.json`) — none of
+it in `apps/api/src/work-item/controllers/create-work-item.ts`, the one file this PR
+changes. `git merge` resolved with no conflicts.
+
+Full solo suites re-run fresh after the merge (isolated database `pr462_merge_test`):
+unit 63 files/518 tests, permissions 13 files/83 tests, and this PR's own integration
+test (`work-item-create-read-list.test.ts`) 29/29 — all green. `tsc --noEmit` clean. Per
+the same precedent used throughout this session for a trivial, disjoint main-merge,
+this is a mechanical reconfirmation, not a fresh Opus round: the round above (CLEAR)
+still applies at `eb19b2f`.
+
+**Status: CLEAR, merge-ready.**
