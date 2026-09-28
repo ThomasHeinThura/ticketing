@@ -158,15 +158,37 @@ type ActivityStreamRow =
 // millisecond-precision) or a computed `SQL` expression (the comment query passes its
 // millisecond-truncated `commentCreatedAtMs` below, per the #452 delta doc comment
 // above) -- both satisfy `SQLWrapper`, which is all `lt`/`eq` actually require.
+//
+// #452 DELTA (Opus B2, blocking, found live): `lt`/`eq` bind their right-hand value
+// through the LEFT side's own driver-value encoder only when the left side is a real
+// `Column` (`BinaryOperator`'s first overload, `sql/expressions/conditions.d.ts`).
+// `createdAtExpr` is a real column for activity but a raw `SQL` expression
+// (`commentCreatedAtMs`) for comment -- so for comment, `cursorDate` (a plain JS `Date`)
+// fell through to the THIRD overload instead, which does not encode it through any
+// column, ever. node-postgres then serialised that bare `Date` in the SERVER PROCESS'S
+// OWN LOCAL TIMEZONE, and `comment.created_at` is `timestamp` WITHOUT time zone, so
+// Postgres silently dropped whatever offset that local time carried. Reproduced live:
+// 11/11 green under `TZ=UTC`, but repeated/skipped rows under `TZ=Asia/Yangon` and
+// `TZ=America/New_York` -- a real, silent landmine for any non-UTC deployment, invisible
+// to a CI runner that happens to run UTC. `createdAtColumnForEncoding` is the fix: it is
+// ALWAYS a genuine table column (never the computed truncation expression), passed
+// separately from `createdAtExpr` purely so `sql.param(cursorDate,
+// createdAtColumnForEncoding)` can bind `cursorDate` through that column's own encoder
+// explicitly -- the same encoding a plain `eq(column, value)` comparison gets for free,
+// now forced regardless of what the LEFT side of the comparison actually is.
 function cursorContinuationOn(
   createdAtExpr: SQLWrapper,
+  createdAtColumnForEncoding:
+    | typeof activityTable.createdAt
+    | typeof commentTable.createdAt,
   idColumn: typeof activityTable.id | typeof commentTable.id,
   cursorDate: Date,
   cursorId: string,
 ): SQL | undefined {
+  const cursorParam = sql.param(cursorDate, createdAtColumnForEncoding);
   return or(
-    lt(createdAtExpr, cursorDate),
-    and(eq(createdAtExpr, cursorDate), lt(idColumn, cursorId)),
+    lt(createdAtExpr, cursorParam),
+    and(eq(createdAtExpr, cursorParam), lt(idColumn, cursorId)),
   );
 }
 
@@ -202,6 +224,7 @@ export async function listWorkItemActivity(
   if (cursor && cursorDate) {
     const activityContinuation = cursorContinuationOn(
       activityTable.createdAt,
+      activityTable.createdAt,
       activityTable.id,
       cursorDate,
       cursor.id,
@@ -209,6 +232,7 @@ export async function listWorkItemActivity(
     if (activityContinuation) activityConditions.push(activityContinuation);
     const commentContinuation = cursorContinuationOn(
       commentCreatedAtMs,
+      commentTable.createdAt,
       commentTable.id,
       cursorDate,
       cursor.id,

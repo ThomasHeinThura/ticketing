@@ -127,6 +127,43 @@ function deleteCommentRequest(
   return app.request(`/api/comments/${id}`, { method: "DELETE" });
 }
 
+// Pages through the whole stream at `limit=1`, asserting no id repeats across pages
+// (a repeat is exactly as real a bug as a skip), and returns every id seen in order.
+// Shared by the #452 B1/B2 regression tests below, which both need this exact walk.
+async function pageThroughAll(
+  app: ReturnType<typeof createApp>["app"],
+  key: string,
+): Promise<string[]> {
+  const seen: string[] = [];
+  const seenSet = new Set<string>();
+  let cursor: string | null = null;
+  let hasMore = true;
+  let pages = 0;
+  while (hasMore) {
+    pages += 1;
+    expect(pages).toBeLessThan(10); // safety valve against an infinite loop
+    const query = cursor
+      ? `?limit=1&cursor=${encodeURIComponent(cursor)}`
+      : "?limit=1";
+    const response = await activityRequest(app, key, query);
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      data: Array<{ id: string }>;
+      page: { hasMore: boolean; nextCursor: string | null };
+    };
+    expect(body.data).toHaveLength(1);
+    const row = body.data[0];
+    if (row) {
+      expect(seenSet.has(row.id)).toBe(false);
+      seenSet.add(row.id);
+      seen.push(row.id);
+    }
+    hasMore = body.page.hasMore;
+    cursor = body.page.nextCursor;
+  }
+  return seen;
+}
+
 describe("API integration: work item activity read (#23 fourth slice)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
@@ -472,33 +509,7 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
         );
       }
 
-      const seenIds = new Set<string>();
-      let cursor: string | null = null;
-      let hasMore = true;
-      let pages = 0;
-      while (hasMore) {
-        pages += 1;
-        expect(pages).toBeLessThan(10); // safety valve against an infinite loop
-        const query = cursor
-          ? `?limit=1&cursor=${encodeURIComponent(cursor)}`
-          : "?limit=1";
-        const response = await activityRequest(app, created.key, query);
-        expect(response.status).toBe(200);
-        const body = (await response.json()) as {
-          data: Array<{ id: string }>;
-          page: { hasMore: boolean; nextCursor: string | null };
-        };
-        expect(body.data).toHaveLength(1);
-        const row = body.data[0];
-        if (row) {
-          // No duplicates across pages: a row reappearing would be as real a bug as
-          // one being skipped, and the merge-pagination proof promises neither.
-          expect(seenIds.has(row.id)).toBe(false);
-          seenIds.add(row.id);
-        }
-        hasMore = body.page.hasMore;
-        cursor = body.page.nextCursor;
-      }
+      const seenIds = new Set(await pageThroughAll(app, created.key));
 
       // EXACT count, not >= : the bug silently dropped rows sharing a millisecond
       // bucket, so a >= assertion would not have caught it. 3 comments (forced into
@@ -507,6 +518,56 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
       expect(seenIds.size).toBe(4);
       for (const id of commentIds) {
         expect(seenIds.has(id)).toBe(true);
+      }
+    });
+
+    it("#452 delta (Opus B2): pagination is correct under a non-UTC server timezone", async () => {
+      // B2: the cursor's `createdAt` used to bind through node-postgres's DEFAULT
+      // Date serialisation whenever the comment side compared against the truncated
+      // `date_trunc('milliseconds', ...)` expression rather than a real column --
+      // and that default serialisation reflects the SERVER PROCESS's own local
+      // timezone, silently dropped by `comment.created_at`'s `timestamp` (no time
+      // zone) column. Invisible under UTC (this whole suite's default), so this test
+      // deliberately runs under a real non-UTC zone and restores `process.env.TZ`
+      // afterward -- mutating it at runtime takes effect immediately in this Node
+      // version (verified separately), so this reproduces the bug in-process rather
+      // than needing a subprocess.
+      const originalTz = process.env.TZ;
+      process.env.TZ = "America/New_York";
+      try {
+        const { creator, project, type } = await setupProjectWithDefaultState();
+        mockAuthenticatedSession(creator.user);
+        const { app } = createApp();
+
+        const created = (await (
+          await createWorkItemRequest(app, project.id, {
+            typeId: type.id,
+            title: "Non-UTC timezone comments",
+          })
+        ).json()) as { key: string };
+
+        const commentIds: string[] = [];
+        for (let i = 0; i < 3; i++) {
+          const response = await postCommentRequest(app, created.key, {
+            body: { type: "doc", content: [] },
+            visibility: "internal",
+          });
+          const comment = (await response.json()) as { id: string };
+          commentIds.push(comment.id);
+        }
+
+        const seenIds = new Set(await pageThroughAll(app, created.key));
+
+        // 3 comments + 1 `created` activity row = 4, deterministically -- same
+        // shape as the B1 test, but here the bug was in the cursor's TIMEZONE
+        // handling, not its precision, so ordinary (non-same-millisecond) comments
+        // are enough to reproduce it.
+        expect(seenIds.size).toBe(4);
+        for (const id of commentIds) {
+          expect(seenIds.has(id)).toBe(true);
+        }
+      } finally {
+        process.env.TZ = originalTz;
       }
     });
 
