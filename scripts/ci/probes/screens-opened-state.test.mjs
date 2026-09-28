@@ -42,6 +42,15 @@ import {
 
 after(cleanUpScratchRepos);
 
+/**
+ * Built from a numeric code point, never a literal in this file's own source — same
+ * reasoning `pr-body.test.mjs`'s own `chr` helper documents: a bidi control character (or
+ * a blank-rendering filler) embedded as a raw literal renders oddly in every diff viewer,
+ * editor and `git blame`, which is the one thing a test for issues #152/#153's class
+ * should not itself do.
+ */
+const chr = (codepoint) => String.fromCodePoint(codepoint);
+
 const CI_CD = [
   "# CI/CD",
   "",
@@ -232,6 +241,61 @@ describe("F9 residual — Screens opened state, not token matching", () => {
       declaredState("<!-- instructions -->\n**Note:**\n---\nn/a — no UI").state,
       "not-applicable",
     );
+  });
+
+  it('issue #473 (sibling of #152): a fullwidth-space "not applicable" is RED, not silently accepted as a real answer', () => {
+    // U+3000 IDEOGRAPHIC SPACE is a real word separator CJK input methods commit
+    // routinely -- issue #152's own repro, reached here through declaredState's
+    // NOT_APPLICABLE_OPENER instead of check-reviews.mjs's Spec field. Before the fix,
+    // meaningfulLines deleted (not masked) U+3000, fusing "not" and "applicable" into
+    // "notapplicable" -- NOT_APPLICABLE_OPENER never matches that, so the section read as
+    // state "provided" (a real answer) and the check exited 0, silently letting an honest
+    // n/a claim through as though real screens had been documented. Non-vacuity for the
+    // underlying deletion-fuses-words behaviour is proven directly, against the real
+    // INVISIBLE regex, in pr-body.test.mjs; this probe only needs to prove the end-to-end
+    // consequence through the real check-pr-template.mjs binary.
+    const declaration = `not${chr(0x3000)}applicable — nothing visual`;
+    const dir = webChangeScenario();
+    const run = check(dir, declaration);
+    assert.equal(
+      run.status,
+      1,
+      'an honest "not<U+3000>applicable" must be recognised as n/a and rejected ' +
+        `(apps/web changed), not silently read as a real answer. Exited ${run.status}:\n` +
+        run.output,
+    );
+    assert.match(run.output, SCREENS_FAILURE);
+    assert.match(run.output, /may not be\s+n\/a/);
+  });
+
+  it("issue #153's class applies here too: a genuine Trojan-Source repro (bidi override + reversed text) flips from silently ACCEPTED to correctly REJECTED", () => {
+    // Found by the mandatory Opus security review of this PR: the previous version of
+    // this test used `n/a <RLO>— no UI`, which OLD code (pre-#473) already rejects with
+    // exit 1 for an unrelated reason -- INVISIBLE deletes the bidi character, leaving
+    // "n/a — no UI", which the opener regex recognises as not-applicable, and apps/web
+    // being touched forbids n/a regardless of bidi handling. So only the FAILURE
+    // MESSAGE half of that assertion discriminated old from new; the exit code did not.
+    //
+    // The real exploit is the other direction: U+202E RIGHT-TO-LEFT OVERRIDE makes
+    // GitHub RENDER the reversed characters that follow it in forward reading order, so
+    // reversing "not applicable" first and wrapping it in RLO...PDF makes it RENDER as
+    // "not applicable" to a human reviewer. But the literal, logical character sequence
+    // -- what OLD code parses once it silently deletes the invisible RLO/PDF markers --
+    // is "elbacilppa ton", which the opener regex does NOT recognise as n/a. That reads
+    // as state "provided" (a real answer), which apps/web-touched does not complain
+    // about, so OLD code passed this (exit 0) -- an author's PR visually declaring an
+    // honest n/a while the machine silently treated it as documented screen evidence.
+    const reverse = (s) => [...s].reverse().join("");
+    const declaration = `${chr(0x202e)}${reverse("not applicable")}${chr(0x202c)} — nothing visual`;
+    const dir = webChangeScenario();
+    const run = check(dir, declaration);
+    assert.equal(
+      run.status,
+      1,
+      "a bidi-disguised declaration must fail the check rather than be silently parsed " +
+        `around. Exited ${run.status}:\n${run.output}`,
+    );
+    assert.match(run.output, /bidi control character/);
   });
 
   it("does not apply when apps/web/** was not touched", () => {
