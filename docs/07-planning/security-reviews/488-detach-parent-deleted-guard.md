@@ -120,3 +120,32 @@ as additions to open issue #490; N3 is style. None blocks merge.
 Not checked: CI status checks, the PR body `## Gates` table, and branch protection -- the
 orchestrator verifies those. The full integration suite was not run; only
 `work-item-hierarchy.test.ts`, the only test file this diff touches.
+
+---
+
+## Mechanical reconfirmation after merging main past PR #487 (9891d4a9)
+
+**Confirmed by:** the orchestrating session, directly.
+
+**What happened:** `main` advanced to `78b99076` (PR #487, issue #486's fix to
+`set-work-item-parent.ts`'s own subject-item guard) after the reviewed head above. This
+branch was updated with `main` (merge commit `9891d4a9`) to clear a "BEHIND"/branch-protection
+block. Unlike the prior #484 reconfirmation, this one was **not** purely disjoint: both PR #487
+and this branch add their own new test to the same file
+(`tests/api-integration/work-item-hierarchy.test.ts`), producing a real one-line import-only
+merge conflict (each branch imports its own controller function at the same location).
+
+**Resolved by hand:** kept both imports (`detachWorkItemParent` and `setWorkItemParent`) — no
+other conflict markers in the file. `set-work-item-parent.ts` itself (PR #487's production
+change) merged with no conflict; this branch's own `detach-work-item-parent.ts` is untouched by
+PR #487.
+
+**Verified beyond the diff, not just by arguing disjointness:** ran the real, merged
+`work-item-hierarchy.test.ts` against a fresh private Postgres database at the merged head:
+**17/17 passed** (the 16 tests this file already had, plus #486's own new test now present via
+the merge).
+
+**Verdict:** both reviews above remain valid at `9891d4a9` — the merge conflict was
+resolution-only (which import line to keep), not a change to either fix's own logic.
+
+**Reviewed head:** `9891d4a921d884fcab22654b8e29fa1b5bf2282d`
