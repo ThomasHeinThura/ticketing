@@ -184,6 +184,18 @@ exercised rather than being first tested in UAT.
 
 Add `files.localhost` too when running the `s3` profile locally.
 
+**Port conflict with an existing reverse proxy.** The bundled local Traefik publishes
+80/443, and a "clean machine" is the target, but plenty of real development hosts already
+run another reverse proxy on those ports (Dokploy, another TaskDesk checkout, nginx). Compose
+fails the whole `up` when a published port is already bound, so `scripts/deploy.sh local`
+checks both ports before starting anything and fails with instructions rather than a bare
+Docker "address already in use". Fix: set `TASKDESK_LOCAL_HTTP_PORT` and/or
+`TASKDESK_LOCAL_HTTPS_PORT` in `.env` to free ports (e.g. `8080` / `8443`), and add the
+HTTPS port to `TASKDESK_AGENT_URL` / `TASKDESK_PORTAL_URL` and to the `/etc/hosts` line
+above if you use it, e.g. `https://ticket.localhost:8443`. `scripts/deploy.sh` prints this
+same reminder in its final URLs when a non-default port is in play
+([configuration-reference.md](configuration-reference.md)).
+
 `scripts/deploy.sh local` prints this. It creates a self-signed **leaf** certificate for
 the local routes in `deploy/local/certs/`; it is not a certificate authority. Trust
 `local.crt` on the development machine to stop browser warnings. `DOMAIN` must be a valid

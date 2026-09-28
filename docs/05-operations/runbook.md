@@ -41,6 +41,7 @@ of an instance's whole life happens.
 | Setup page says setup is already complete | Someone else claimed the first administrator. Sign in as them, or use break-glass below |
 | Headless install created no administrator | `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` was unset. Set it and restart, or use the setup page |
 | Certificate not issued on the first `up` | DNS did not point here when ACME ran. Fix the record and restart Traefik; the installer's pre-flight exists to catch exactly this ([one-line-install.md](one-line-install.md)) |
+| `scripts/deploy.sh local` dies with "port 80/443 is already bound" | The host already runs another reverse proxy (Dokploy, another TaskDesk checkout, nginx). Set `TASKDESK_LOCAL_HTTP_PORT` / `TASKDESK_LOCAL_HTTPS_PORT` in `.env` to free ports and re-run — see [traefik-and-domains.md § Local development](traefik-and-domains.md#local-development) |
 
 ### Site is down
 

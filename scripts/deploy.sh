@@ -167,9 +167,39 @@ case "${TASKDESK_HSTS_PRELOAD:-}" in
 esac
 
 # ---------------------------------------------------------------------------
+# The bundled local Traefik must not collide with a proxy the host already
+# runs (Dokploy, another TaskDesk checkout, nginx…) — Compose fails the whole
+# `up` if a published port is already bound, and the raw Docker error ("address
+# already in use") does not say what to do about it. Checked before anything
+# starts so a conflict never leaves a half-started stack behind.
+# ---------------------------------------------------------------------------
+assert_local_ports_free() {
+  local pair container_port host_port
+  for pair in "80:${TASKDESK_LOCAL_HTTP_PORT:-80}" "443:${TASKDESK_LOCAL_HTTPS_PORT:-443}"; do
+    container_port="${pair%%:*}"
+    host_port="${pair#*:}"
+    # Our OWN already-running local Traefik owning this port is fine — the
+    # script is documented as idempotent and safe to re-run against its own
+    # prior run (e.g. adding --profile s3 later). Only a port bound by
+    # something else is a real conflict.
+    dc port traefik "$container_port" >/dev/null 2>&1 && continue
+    # fd 3 is opened and closed inside the subshell above; nothing to close here.
+    if (exec 3<>"/dev/tcp/127.0.0.1/${host_port}") 2>/dev/null; then
+      die "port ${host_port} is already bound on this host — the bundled local Traefik can't publish it.
+     This host likely runs another reverse proxy already (Dokploy, another TaskDesk
+     checkout, nginx…). Set TASKDESK_LOCAL_HTTP_PORT and/or TASKDESK_LOCAL_HTTPS_PORT
+     in .env to free ports (e.g. 8080 / 8443), update TASKDESK_AGENT_URL /
+     TASKDESK_PORTAL_URL to include that port, and re-run.
+     docs/05-operations/traefik-and-domains.md § Local development"
+    fi
+  done
+}
+
+# ---------------------------------------------------------------------------
 # 2 · Self-signed certificate — local only
 # ---------------------------------------------------------------------------
 if [ "$MODE" = "local" ]; then
+  assert_local_ports_free
   DOMAIN="${DOMAIN:-localhost}"
   # shellcheck source=scripts/lib/local-certificate.sh
   . "$REPO_ROOT/scripts/lib/local-certificate.sh"
@@ -362,12 +392,20 @@ print_urls() {
   printf '    agent   %s\n' "${TASKDESK_AGENT_URL:-https://ticket.${domain}}"
   printf '    portal  %s\n' "${TASKDESK_PORTAL_URL:-https://portal.${domain}}"
   if [ "$MODE" = "local" ]; then
-    printf '    mail    https://mail.%s\n' "$domain"
-    [ "$PROFILE_S3" -eq 1 ] && printf '    files   https://files.%s\n' "$domain"
+    local https_port="${TASKDESK_LOCAL_HTTPS_PORT:-443}"
+    local port_suffix=""
+    [ "$https_port" = "443" ] || port_suffix=":${https_port}"
+    printf '    mail    https://mail.%s%s\n' "$domain" "$port_suffix"
+    [ "$PROFILE_S3" -eq 1 ] && printf '    files   https://files.%s%s\n' "$domain" "$port_suffix"
     echo
     printf '    *.localhost resolves to 127.0.0.1 in most browsers. Where it does not, add:\n'
     printf '      127.0.0.1  ticket.%s portal.%s mail.%s\n' "$domain" "$domain" "$domain"
     [ "$PROFILE_S3" -eq 1 ] && printf '      127.0.0.1  files.%s\n' "$domain"
+    if [ -n "$port_suffix" ]; then
+      printf '    local Traefik is on a non-default port (TASKDESK_LOCAL_HTTPS_PORT=%s) —\n' "$https_port"
+      printf '      the URLs above need %s appended, and so does TASKDESK_AGENT_URL /\n' "$port_suffix"
+      printf '      TASKDESK_PORTAL_URL in .env if they do not already include it.\n'
+    fi
   fi
   echo
   printf '    Everything else — storage, mail, identity providers, branding — is\n'
