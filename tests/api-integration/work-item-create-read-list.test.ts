@@ -287,6 +287,50 @@ describe("API integration: work item create/read/list (#23)", () => {
     expect(response.status).toBe(400);
   });
 
+  it("issue #347: an unknown typeId and a real-but-foreign-workspace typeId answer byte-identically, not a distinguishing message", async () => {
+    const { creator, project } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app: unknownApp } = createApp();
+
+    const unknownResponse = await createWorkItemRequest(
+      unknownApp,
+      project.id,
+      { typeId: "does-not-exist", title: "Unknown type" },
+    );
+
+    // A type that genuinely exists, but in a DIFFERENT workspace.
+    const otherCreator = await createWorkspaceMember({ role: "member" });
+    const otherType = await makeWorkItemType(otherCreator.workspace.id);
+    const { app: foreignApp } = createApp();
+
+    const foreignResponse = await createWorkItemRequest(
+      foreignApp,
+      project.id,
+      { typeId: otherType.id, title: "Foreign-workspace type" },
+    );
+
+    // Before #347, the unknown case answered "Unknown work item type" and the
+    // foreign-workspace case answered "Work item type does not belong to the
+    // project's workspace" -- a cross-tenant existence bit for `work_item_type` ids
+    // (an attacker could tell "this id doesn't exist" from "this id belongs to
+    // someone else"), the same class #290/#307 closed in
+    // `workspace-access-middleware.ts`. Both now answer identically.
+    expect(unknownResponse.status).toBe(400);
+    expect(foreignResponse.status).toBe(400);
+    await expect(unknownResponse.text()).resolves.toBe(
+      "Work item type does not belong to the project's workspace",
+    );
+    await expect(foreignResponse.text()).resolves.toBe(
+      "Work item type does not belong to the project's workspace",
+    );
+
+    const rows = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, project.id));
+    expect(rows).toHaveLength(0);
+  });
+
   it("WI-3: rejects an empty title", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);
