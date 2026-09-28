@@ -45,6 +45,7 @@ import {
 import { verifyWaiver } from "./lib/gate-waiver.mjs";
 import { headAgreesWithPayload } from "./lib/head-binding.mjs";
 import {
+  BidiControlCharacterError,
   checklistPresenceProblems,
   checklistProblems,
   DuplicateSectionError,
@@ -502,9 +503,25 @@ async function main() {
     );
   }
   if (webTouched && screensOpened) {
-    const declared = declaredState(screensOpened.text);
-    const complaint =
-      declared.state === "not-applicable"
+    // declaredState/meaningfulLines (issues #152/#153, tracked here as #473) can throw
+    // BidiControlCharacterError -- the identical word-boundary/render-parse exposure
+    // check-reviews.mjs's wordBoundaryContentOf already refuses on, in the sibling
+    // function that reads this section's own opener. Report it as an ordinary template
+    // failure and skip the rest of THIS section's checks; every other section still gets
+    // checked below.
+    let declared;
+    try {
+      declared = declaredState(screensOpened.text);
+    } catch (error) {
+      if (!(error instanceof BidiControlCharacterError)) throw error;
+      failures.push(
+        violation("## Screens opened", `the section ${error.message}`),
+      );
+      declared = null;
+    }
+    const complaint = !declared
+      ? null
+      : declared.state === "not-applicable"
         ? `it declares "${declared.first}". apps/web/** changed, so this section may not be ` +
           "n/a — with or without a reason. List every screen you actually opened and " +
           "used: route — viewport — what was clicked — screenshot (AGENTS.md do-not 18). " +
@@ -523,7 +540,7 @@ async function main() {
 
     if (complaint !== null) {
       failures.push(violation("## Screens opened", complaint));
-    } else if (declared.state === "blocked") {
+    } else if (declared && declared.state === "blocked") {
       // Accepted by the parser, and said out loud so nobody reads it as readiness.
       warnings.push(
         "## Screens opened declares BLOCKED with an explanation, which this check " +

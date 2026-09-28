@@ -1123,15 +1123,45 @@ const BLOCKED_EXPLANATION_MINIMUM = 40;
 
 /**
  * The lines of a section that carry content — comments stripped, template scaffolding and
- * invisible-only lines dropped. Shares its rules with `contentOf` so the two cannot drift.
+ * invisible-only lines dropped. Shares `contentOf`'s rules for what counts as blank, with
+ * the same two WORD-BOUNDARY-SENSITIVE exceptions `wordBoundaryContentOf` makes for
+ * `check-reviews.mjs` (issues #152/#153) — this function feeds `declaredState`'s own
+ * opener detection (`NOT_APPLICABLE_OPENER` needs real whitespace between "not" and
+ * "applicable"), the identical dependency in a sibling function, found by the mandatory
+ * Opus security review of #470 and tracked as #473:
+ *
+ * 1. `WORD_SEPARATING_BLANKS` (issue #152) is masked to an ordinary space instead of
+ *    deleted, so `"not　applicable"` (U+3000 IDEOGRAPHIC SPACE, routine from CJK input
+ *    methods) reads as two words instead of silently fusing into "notapplicable" — which
+ *    `NOT_APPLICABLE_OPENER` would never recognise, so an honest n/a declaration reads as
+ *    `state: "provided"` instead of `"not-applicable"`.
+ * 2. A bidi control character (issue #153) is refused outright — `BidiControlCharacterError`
+ *    — instead of silently deleted, for the same Trojan-Source-class reason
+ *    `wordBoundaryContentOf` refuses one: deleting it could make a PR body render one way to
+ *    a human reviewer and parse a different way to this gate. Checked on the
+ *    comment-stripped text before the scaffolding-line filters below, for the same reason
+ *    `wordBoundaryContentOf` does — a bidi character sitting on a line those filters would
+ *    otherwise drop whole (a bare `**Label:**` line, a `---` rule) still renders as part of
+ *    the same paragraph on GitHub.
  *
  * @param {string} markdown
  * @returns {string[]}
+ * @throws {BidiControlCharacterError} if the text contains a bidi control character.
  */
 export function meaningfulLines(markdown) {
-  return stripComments(markdown)
+  const commentsStripped = stripComments(markdown);
+  if (BIDI_CONTROL_CHARS.test(commentsStripped)) {
+    throw new BidiControlCharacterError(
+      "contains a bidi control character (e.g. U+202E RIGHT-TO-LEFT OVERRIDE), which can " +
+        "render differently to a human reviewer than the text this check actually parses. " +
+        "Remove it and resubmit.",
+    );
+  }
+  return commentsStripped
     .split("\n")
-    .map((line) => line.replace(INVISIBLE, "").trim())
+    .map((line) =>
+      line.replace(WORD_SEPARATING_BLANKS, " ").replace(INVISIBLE, "").trim(),
+    )
     .filter(
       (line) =>
         line !== "" &&
@@ -1151,6 +1181,7 @@ export function meaningfulLines(markdown) {
 /**
  * @param {string} text a section's raw markdown
  * @returns {SectionState}
+ * @throws {BidiControlCharacterError} propagated from `meaningfulLines` — see there.
  */
 export function declaredState(text) {
   const lines = meaningfulLines(text);
@@ -1194,6 +1225,8 @@ export function declaredState(text) {
  *
  * Used for `## Screens opened` when apps/web/** changed, where AGENTS.md do-not 18 asks
  * for the screens you actually opened and no reason substitutes for that.
+ *
+ * @throws {BidiControlCharacterError} propagated from `declaredState` — see there.
  */
 export function effectivelyNotApplicable(text) {
   const { state } = declaredState(text);

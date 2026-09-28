@@ -42,6 +42,15 @@ import {
 
 after(cleanUpScratchRepos);
 
+/**
+ * Built from a numeric code point, never a literal in this file's own source — same
+ * reasoning `pr-body.test.mjs`'s own `chr` helper documents: a bidi control character (or
+ * a blank-rendering filler) embedded as a raw literal renders oddly in every diff viewer,
+ * editor and `git blame`, which is the one thing a test for issues #152/#153's class
+ * should not itself do.
+ */
+const chr = (codepoint) => String.fromCodePoint(codepoint);
+
 const CI_CD = [
   "# CI/CD",
   "",
@@ -232,6 +241,44 @@ describe("F9 residual — Screens opened state, not token matching", () => {
       declaredState("<!-- instructions -->\n**Note:**\n---\nn/a — no UI").state,
       "not-applicable",
     );
+  });
+
+  it('issue #473 (sibling of #152): a fullwidth-space "not applicable" is RED, not silently accepted as a real answer', () => {
+    // U+3000 IDEOGRAPHIC SPACE is a real word separator CJK input methods commit
+    // routinely -- issue #152's own repro, reached here through declaredState's
+    // NOT_APPLICABLE_OPENER instead of check-reviews.mjs's Spec field. Before the fix,
+    // meaningfulLines deleted (not masked) U+3000, fusing "not" and "applicable" into
+    // "notapplicable" -- NOT_APPLICABLE_OPENER never matches that, so the section read as
+    // state "provided" (a real answer) and the check exited 0, silently letting an honest
+    // n/a claim through as though real screens had been documented. Non-vacuity for the
+    // underlying deletion-fuses-words behaviour is proven directly, against the real
+    // INVISIBLE regex, in pr-body.test.mjs; this probe only needs to prove the end-to-end
+    // consequence through the real check-pr-template.mjs binary.
+    const declaration = `not${chr(0x3000)}applicable — nothing visual`;
+    const dir = webChangeScenario();
+    const run = check(dir, declaration);
+    assert.equal(
+      run.status,
+      1,
+      'an honest "not<U+3000>applicable" must be recognised as n/a and rejected ' +
+        `(apps/web changed), not silently read as a real answer. Exited ${run.status}:\n` +
+        run.output,
+    );
+    assert.match(run.output, SCREENS_FAILURE);
+    assert.match(run.output, /may not be\s+n\/a/);
+  });
+
+  it("issue #153's class applies here too: a bidi control character in Screens opened fails closed, not silently stripped", () => {
+    const declaration = `n/a ${chr(0x202e)}— no UI`;
+    const dir = webChangeScenario();
+    const run = check(dir, declaration);
+    assert.equal(
+      run.status,
+      1,
+      "a bidi control character must fail the check rather than be silently deleted. " +
+        `Exited ${run.status}:\n${run.output}`,
+    );
+    assert.match(run.output, /bidi control character/);
   });
 
   it("does not apply when apps/web/** was not touched", () => {
