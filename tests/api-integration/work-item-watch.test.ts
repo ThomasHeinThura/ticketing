@@ -340,4 +340,26 @@ describe("API integration: work item watch/unwatch (#23 fourth slice)", () => {
     const response = await watchRequest(app, `${project.slug}-999999`);
     expect(response.status).toBe(404);
   });
+
+  it("issue #276: 404s on a soft-deleted work item -- watchWorkItem's own resolveCallerPersonAndItem already checked deletedAt directly (unaffected by this diff), but not archivedAt, and now the shared requireWorkItemReach guard 404s before either runs", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    await givePersonProfile(creator.user.id);
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Watch target, then deleted",
+      })
+    ).json()) as { key: string };
+
+    await db
+      .update(schema.workItemTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.workItemTable.key, created.key));
+
+    const response = await watchRequest(app, created.key);
+    expect(response.status).toBe(404);
+  });
 });
