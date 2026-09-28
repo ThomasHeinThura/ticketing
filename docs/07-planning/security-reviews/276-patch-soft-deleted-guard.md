@@ -83,3 +83,51 @@ touches only two test files (the F4 title fix and the Low body-assertion fix abo
 lines total, no application code) — confirmed byte-for-byte by fetching and diffing the
 branch directly, not from a pasted copy. Both changed test files re-run in a fresh worktree
 against a fresh database: 32/32 pass. Verdict confirmed to still hold at this head.
+
+---
+
+## Additional, independently-commissioned Opus review
+
+**Confirmed by:** the orchestrating session commissioned a second, fully independent Opus
+subagent (with real `git`/`Bash` access, fetching the actual branch rather than working from
+a pasted description) to review this fix at its exact head, `8d1a290dd00b9cbf52973aa8a90bfb1036fc8fa8`.
+This was done to obtain a review whose independent execution the orchestrating session could
+personally vouch for, rather than relying solely on the earlier review recorded above.
+
+**Verdict: CLEAR WITH FINDINGS** — same substantive conclusion as the review above, reached
+independently:
+- Confirmed both commits' diffs are purely additive `isNull(deletedAt)`/`isNull(archivedAt)`
+  guards, no authorization/tenant logic touched.
+- Confirmed `requireWorkItemReach()` is mounted at 15 real call sites (grepped and
+  hand-filtered), spot-checked PATCH, watch and comment-create directly.
+- Verified the race-window closure analytically against Postgres's real `EvalPlanQual`
+  re-evaluation semantics for a blocked `SELECT ... FOR UPDATE`, and confirmed the test suite
+  independently backs this: `work-item-update.test.ts`'s new test calls `updateWorkItem()`
+  directly, bypassing the middleware entirely, and still gets 404 — proving the
+  transaction-level check is a real independent defense, not a duplicate.
+- Confirmed `watch-work-item.ts`'s own `deletedAt`-only check (missing `archivedAt`) is now
+  closed by the shared middleware running first.
+- Independently re-derived the same adjacent-gap shape found in `require-comment-reach.ts`/
+  `require-attachment-reach.ts`, matching issues #480/#481 (PRs #484/#483), confirmed as real
+  open issues with PRs in flight — correctly out of this fix's own file scope.
+
+**Reviewed head:** `8d1a290dd00b9cbf52973aa8a90bfb1036fc8fa8`
+
+---
+
+## Mechanical reconfirmation after merging main past PR #476/#479 (a3f85997)
+
+**Confirmed by:** the orchestrating session, directly.
+
+**What happened:** `main` advanced through `11f328e1` (PR #476) and `d590cb60` (PR #479)
+while this branch was open. This branch was updated with `main` (merge commit `a3f85997`).
+
+**Verified directly:** `git show 11f328e1 --stat` touches only `pr-body.mjs`/`pr-body.test.mjs`
+plus its own review note; `git show d590cb60 --stat` touches only `check-pr-template.mjs`,
+`pr-body.mjs`/`pr-body.test.mjs`, `screens-opened-state.test.mjs` plus its own review note.
+None of these is `require-work-item-reach.ts` or `update-work-item.ts` — the files this
+review covers.
+
+**Verdict:** both Opus clearances above remain valid at `a3f85997`.
+
+**Reviewed head:** `a3f859971361cda8161164a153416ed20c0a50ed`
