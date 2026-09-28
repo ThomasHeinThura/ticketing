@@ -5,6 +5,79 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-28 · #10's gate-scope semantics decided: applicable-now gates required, future-stage gates activate with their prerequisite
+
+**Decision:** #10 ("all 38 declared gates enabled" vs. "every gate whose prerequisite exists
+today") is resolved as: **a gate is required, enabled and green once the capability it
+protects actually exists in the codebase; a gate for a capability that does not exist yet
+(`test:mcp`, portal bundle purity before the agent/portal bundle split, a future-feature's own
+E2E) becomes mandatory in the same pull request or workstream that introduces that
+capability — not before.** This does not weaken the safety property (nothing is ever
+permanently exempted), it only sequences *when* a gate must exist relative to what it
+protects.
+
+**Why:** requiring all 38 gates to exist before P0 can close would make P0 logically depend on
+P3/P4 features (MCP, the portal/agent bundle split) that the project's own stage definitions
+say do not exist yet — an incoherent gate. Requiring nothing until some later stage risks the
+opposite failure (a gate perpetually deferred past the point its prerequisite actually
+landed). Two independent external status reviews, read and cross-checked against live
+GitHub/git state rather than trusted at face value, both converged on the same rule
+independently; Thomas confirmed it directly.
+
+**Scope note, also confirmed by Thomas the same day:** G4 (accessibility), G8 (visual
+regression) and G11 (performance budgets) are **not** treated as future-gated under this rule.
+A real web application, Storybook, and Playwright infrastructure already exist, so their
+prerequisite is already present — these three should be enabled, not left indefinitely
+skipped, under the rule above. This is a direct consequence of the rule, not an exception to
+it.
+
+**Alternatives:** "all 38 gates must exist" (rejected — makes P0 depend on P3/P4-only
+features); "P0 closes on the currently-enabled subset regardless of what's missing" (rejected
+— no forcing function to ever enable a gate once its prerequisite lands).
+
+**Decided by:** Thomas, 2026-09-28.
+
+### 2026-09-28 · P1/P2 shared-surface ownership (#329) — acknowledged as proposed
+
+**Decision:** the ownership proposal on issue #329 (P1/Copilot-DeepSeek lane owns
+`work_item*`/`project*`/`workspace*`/etc.; P2 owns its own tables when it migrates them;
+listed shared files are sequential-only — land, push, announce, never concurrent) is accepted
+as written, unblocking the P2 migration batch, the audit-log read API, intake/request-type
+API slices, the portal submission route, and SLA policy CRUD/pause routes.
+
+**Why:** the proposal had sat unacknowledged since 2026-09-22 despite being cheap to accept,
+and was blocking a real, growing queue of P2 work. An external status review flagged it as one
+of the cheapest wins available; verified the issue was still open and the proposal
+unretracted before acting.
+
+**Alternatives:** amend the proposal (not needed — it was judged sound as written).
+
+**Decided by:** Thomas, 2026-09-28. Recorded on issue #329 directly (closing comment) and
+closed there.
+
+### 2026-09-28 · `v2.0.1` GitHub release marked prerelease
+
+**Decision:** the published GitHub release `TaskDesk v2.0.1` (2026-09-27, target `ed250723`)
+is now marked `prerelease: true`. It was previously published as a normal stable release
+despite the project's own release plan saying the TaskDesk product history should start at
+`2.0.0-alpha.1` (P0), with P0 itself not yet closed, and despite `package.json` still
+carrying kaneo's inherited `2.22.0` version string — three simultaneous, conflicting version
+stories.
+
+**Why:** an unlabeled stable release publicly implies production readiness the project has
+not reached. Marking it prerelease is a minimal, reversible correction that doesn't require
+deleting release history or reconciling `package.json`/the release plan in the same action.
+
+**Not done, still open:** reconciling `package.json`'s `2.22.0` against the release plan's
+`2.0.0-alpha/beta/rc` numbering, and whether future releases should follow the plan's numbering
+starting now or from P0's actual close. Left for a dedicated release-governance decision, not
+folded into this one.
+
+**Alternatives:** leave it alone (rejected — actively misleading given P0 isn't closed);
+delete it (rejected — destructive, and the release may already be referenced/pulled by
+something).
+
+**Decided by:** Thomas, 2026-09-28.
 
 ## Format
 
