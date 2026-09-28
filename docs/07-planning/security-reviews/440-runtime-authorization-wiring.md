@@ -307,3 +307,64 @@ integration 104 files/1360 tests — all green. `tsc --noEmit` clean on all thre
 F5 is required (fixed above). A fresh Opus delta pass is required on the head that fixes
 it — the fifth in a row on this one mechanism; if this pass finds nothing further, this
 closes issue #8's runtime-authorization-gateway obligation.
+
+---
+
+## Security review — Opus delta 5 (2026-09-28)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a18c8e169446787e6`
+
+**Reviewed head:** `6ee5aca2dd7ecb52f96573ec78f28594414d6dbe` (docs-only; the code under
+review is fix commit `085ebeb`)
+
+**Verdict: CLEAR WITH FINDINGS.** Nothing blocking. The identity-based fix is structurally
+sound — no sixth instance of the fail-open class found, despite an adversarial pass
+specifically designed to find one (a second fresh `cors()` instance, a wrapper around the
+real auth-guard reference, a declared reference reused in front of a leaking handler,
+sub-apps with their own `onError` mounted at various positions, `basePath().all("*")`,
+`app.on("ALL", ...)`, `mount()` with `replaceRequest: false`, `app.get("*")`, edge-case
+paths). All correctly refused (500) or, where refusal would be wrong (re-registering a
+declared reference at a NEW path), correctly behaved as a genuine 404.
+
+**Why the fix holds, verified against Hono 4.13.5's own source, not just black-box
+testing:** the same handler object Hono stores at registration is what `matchedRoutes`
+reports and what dispatch actually runs — the list the guard walks is exactly the set of
+handlers that will run, not a derived proxy for it. Wrapping (e.g. a sub-app with its own
+`onError`) can only ever make a legitimate middleware LOSE its exemption (a loud 500,
+fail-closed), never grant one to something unreviewed.
+
+**Full mechanism read fresh, end to end** (not just this round's own diff) — confirmed
+sound as a whole, not merely patch-by-patch.
+
+Full suites reproduced: unit 61/496, permissions (api) 13/83, permissions (package)
+13/262, integration 104 files/1360 tests — all green. `tsc --noEmit` clean on all three
+tsconfigs. `check-openapi.mjs` clean, 132 operations, no drift. Static-serving verified
+correct both with and without a build present. Shadow-mode attribution unchanged and
+correct. Prior regressions (B1a/b, B2, B3, F4a/b/c, happy path, genuine 404, `/pending`,
+deleted `/invitation/{id}`) all still pass.
+
+**Five non-blocking findings, all LOW or informational:**
+- **Two stale/wrong doc comments** (`shadow-middleware.ts`'s "the mounted sub-app has its
+  own `onError`" claim is backwards — `api` has NO `onError`, which is WHY identity
+  survives; several comments still reference the removed `DECLARED_CATCH_ALL_KEYS` or
+  describe F4-era single-entry/no-early-exit behaviour superseded by F5). Worth a
+  docs-only follow-up; deliberately not fixed in this same round to avoid triggering
+  another STALE reconfirmation cycle for a comment-only change.
+- **Informational:** `declareCatchAllMiddleware` is exported with no access restriction —
+  any code, anywhere, can call it to exempt a handler. All four real call sites are
+  inside `createApp()` and any new one is a plainly visible review diff; a CI grep
+  pinning call sites to `index.ts` would be a cheap hardening, optional.
+- **Informational, explicitly out of this guard's scope:** a custom `app.notFound(...)`
+  can answer a request that matched NOTHING at all, which the guard structurally cannot
+  see (it walks matched entries). The real app uses the default `notFound`. This is "no
+  route matched" territory, a different class from "a route mistaken for infrastructure,"
+  which is what this mechanism exists to close.
+- **Negligible:** the declared set grows by four per `createApp()` call — irrelevant in
+  production (called once) but worth knowing if a test suite creates very many app
+  instances.
+
+Nothing blocking remains. This closes issue #8's runtime-authorization-gateway obligation
+for this PR's scope, after five review rounds on one mechanism — B1→B2→B3→F4→F5, each
+closing a real, live-reproduced hole the previous round's own fix left open, until this
+one found none. Clear to merge.
