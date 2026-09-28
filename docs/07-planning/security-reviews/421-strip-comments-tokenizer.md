@@ -89,3 +89,24 @@
 
 This review does not cover CI status, PR-body gates, or branch protection. The
 merging session verifies those itself at merge time.
+
+## Mechanical reconfirmation after merging `main` past PR #461 (commit `ed427cc`)
+
+**Reviewed head:** `ed427cc96cf1c1aba1fe09a142cf5d09823b1e1b`
+
+`main` had moved five commits ahead since this branch's own base: PR #461 (issue #400,
+the shadow-mode admin `workspace_id` verification fix), touching
+`apps/api/src/permissions/**`, four unrelated middleware files, and its own
+security-review doc. `git diff --stat` confirmed the merge itself touches exactly those
+files plus this PR's own `docs/07-planning/security-reviews/400-shadow-admin-workspace.md`
+copy — nothing under `scripts/ci/**`, nothing this PR's own review examined. The two
+changes are in entirely disjoint subsystems (CI-gate tooling vs. runtime shadow-mode
+permissions).
+
+Full solo suites re-run fresh after the merge (isolated database
+`pr460_merge_test`): unit 63 files/518 tests, permissions 13 files/83 tests, both
+green. `tsc --noEmit` clean. Per the same precedent used throughout this session for a
+trivial, disjoint main-merge, this is a mechanical reconfirmation, not a fresh Opus
+round: the round above (CLEAR WITH FINDINGS) still applies at `ed427cc`.
+
+**Status: CLEAR WITH FINDINGS, merge-ready.**
