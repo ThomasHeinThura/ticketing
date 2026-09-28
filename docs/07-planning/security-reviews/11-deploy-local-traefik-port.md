@@ -216,3 +216,24 @@ whose own diff from `790aeae6` stays confined to non-reviewed-scope files. This 
 review round — it is a reconfirmation that nothing reviewable changed.
 
 **Reviewed head:** `790aeae6686a07bd4f3937035288c90567e69c0d`
+
+---
+
+## Mechanical reconfirmation after merging main past PR #467 (f0e5eeb9)
+
+**Confirmed by:** the orchestrating session, directly, same basis as the reconfirmation above.
+
+**What happened:** `main` advanced to `402ec7de` (PR #467, merged after the prior
+reconfirmation). This branch was updated with `main` again (merge commit `f0e5eeb9`).
+
+**Verified directly:** `git show 402ec7de --stat` touches exactly three files:
+`scripts/ci/check-deps.mjs`, `scripts/ci/check-deps.test.mjs`, and
+`docs/07-planning/security-reviews/464-check-deps-proto-crash.md`. None of these is
+`scripts/deploy.sh`, `deploy/compose.traefik.yml`, `deploy/.env.example`, or any other file
+this review's security scope covers. `git diff 578cc8bc f0e5eeb9 --stat` confirms the merge
+brought in only those same three files.
+
+**Verdict:** the Opus clearance remains valid at `f0e5eeb9` and any later commit whose own
+diff from `f0e5eeb9` stays confined to non-reviewed-scope files.
+
+**Reviewed head:** `f0e5eeb908d8ef7406db7d80aafed95ed6c6cfdc`
