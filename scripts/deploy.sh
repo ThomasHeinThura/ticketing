@@ -182,8 +182,8 @@ esac
 # ---------------------------------------------------------------------------
 assert_local_port_free() {
   local var_name="$1" container_port="$2" host_port="$3"
-  [[ "$host_port" =~ ^[0-9]{1,5}$ ]] \
-    || die "$var_name must be a plain port number (got '${host_port}')."
+  [[ "$host_port" =~ ^[0-9]{1,5}$ ]] && (( 10#$host_port >= 1 && 10#$host_port <= 65535 )) \
+    || die "$var_name must be a TCP port number, 1-65535 (got '${host_port}')."
   # Our OWN already-running local Traefik owning this port is fine — the
   # script is documented as idempotent and safe to re-run against its own
   # prior run (e.g. adding --profile s3 later). Only a port bound by
@@ -201,8 +201,16 @@ assert_local_port_free() {
 }
 
 assert_local_ports_free() {
-  assert_local_port_free TASKDESK_LOCAL_HTTP_PORT  80  "${TASKDESK_LOCAL_HTTP_PORT:-80}"
-  assert_local_port_free TASKDESK_LOCAL_HTTPS_PORT 443 "${TASKDESK_LOCAL_HTTPS_PORT:-443}"
+  local http_port="${TASKDESK_LOCAL_HTTP_PORT:-80}" https_port="${TASKDESK_LOCAL_HTTPS_PORT:-443}"
+  assert_local_port_free TASKDESK_LOCAL_HTTP_PORT  80  "$http_port"
+  assert_local_port_free TASKDESK_LOCAL_HTTPS_PORT 443 "$https_port"
+  # Both individually free is not enough: Compose still fails trying to publish
+  # the same host port for two different container ports (80 and 443) if a
+  # copy-paste set them equal — reproducing the exact bare bind error this
+  # preflight exists to replace, just from a config typo instead of a real
+  # external collision.
+  [ "$http_port" != "$https_port" ] \
+    || die "TASKDESK_LOCAL_HTTP_PORT and TASKDESK_LOCAL_HTTPS_PORT are both '${http_port}' — they must be different ports."
 }
 
 # ---------------------------------------------------------------------------
