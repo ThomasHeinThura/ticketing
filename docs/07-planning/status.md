@@ -1,6 +1,56 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-28 orchestrator snapshot (4) — `main` at `0a5dc368` (#469, Traefik environment-label
+**2026-09-28 orchestrator snapshot (5) — `main` at `78b99076` (#487, issue #486's fix, merged).
+Prior snapshot (4), immediately below, is stale by 8 merges and kept only as history — do not
+act on its "open PRs" list.**
+
+Merged since snapshot (4), each with every required check green, ordinary + Opus review
+recorded at the merged head: **#470/#475/#476/#479** (four small CI-script fixes — word-boundary
+`contentOf`, linear `.md`-token scan, empty-HTML-comment handling, `declaredState` fusion —
+ordinary review only, no security-scope path touched), **#482** (issue #295, a `40P01`
+deadlock-retry wrapper for `set-work-item-parent.ts`'s write transaction), **#485** (issue #276,
+closed the soft-deleted/archived-item reach gap at the shared `requireWorkItemReach()`
+middleware root — every single-item work-item route affected at once — plus a matching guard in
+`update-work-item.ts`'s own locked re-read; found two further instances of the same class in
+review, filed as #480 and #481), **#483** (issue #481, `set-work-item-parent.ts`'s
+proposed-PARENT lookup gains the same guard; a real merge conflict against #482 in the same file
+resolved by hand, verified by diff and by running both PRs' real tests), **#484** (issue #480,
+the same guard on `require-comment-reach.ts`/`require-attachment-reach.ts`), **#487** (issue
+#486, `set-work-item-parent.ts`'s own SUBJECT-item lookup gains the guard too — the last
+unguarded read in that file; a mechanical CI-template bug found and fixed along the way, below).
+
+**Recurring bug class, now closed everywhere it was found:** a TOCTOU gap where
+`require-work-item-reach.ts` (and its comment/attachment siblings) check `deletedAt`/`archivedAt`
+before a controller's own transaction opens, but nothing re-checks a row read again inside that
+transaction's own `FOR UPDATE` lock. Closed in `update-work-item.ts` (#276), both lookups in
+`set-work-item-parent.ts` (#481, #486), `detach-work-item-parent.ts` (#488, PR #489, in flight —
+see below), and the comment/attachment reach middlewares (#480). **Not yet closed:**
+`transition-work-item.ts`/`assign-work-item.ts`/`unassign-work-item.ts` (issue #490, a lane is
+implementing and self-reviewing it now). The #489 Opus review additionally found two
+lower-severity, previously untracked instances — `create-comment.ts` has no in-controller
+liveness re-check at all, and `watch-work-item.ts` checks `deletedAt` but not `archivedAt` —
+suggested as additions to #490's scope rather than a new issue.
+
+**Currently open, both from this same bug-class sweep:**
+- **PR #489** (issue #488, `detach-work-item-parent.ts`'s own subject-item guard): ordinary
+  review CLEAR, Opus review CLEAR WITH FINDINGS (non-blocking; see above), both recorded and
+  reconfirmed past two intervening `main` merges (#484, then #487 — the latter a real
+  import-only conflict in the shared `work-item-hierarchy.test.ts` file, resolved by hand,
+  re-verified by running the real merged test file: 17/17). CI running at the reconfirmed head
+  as of this snapshot.
+- **Issue #490** (`transition-work-item.ts`/`assign-work-item.ts`/`unassign-work-item.ts`): a
+  lane has implemented the fix and its own tests, and is now dispatching its own ordinary +
+  Opus reviews. Not yet reported back as of this snapshot.
+
+**Mechanical CI bug found and fixed in passing, worth knowing for every future PR body:**
+`check-pr-template.mjs`'s `## Gates` table validator only accepts a cell that is *exactly*
+`pass`, `n/a`, or `waived` (case-insensitive) — `"n/a — no UI touched"` or `"pass — no new
+route"` fails the `pull request template + security review` required check, even though the
+row's *substance* is correct. This is not a new or stricter check; it has been in place since
+#79/#81. Both #487 and #489 had inherited this pattern from their originating lane sessions and
+both failed CI on it until fixed (put the explanation in prose below the table instead of in the
+cell). Worth a template-authoring reminder, not a decision-log entry — the rule was already
+correct and already documented in the template's own header comment.
 fix, merged). Two of P0's four gate issues are now CLOSED — #9 (closed earlier today, see
 snapshot (3) below) and #11 (closed just now, evidence below). #464 (check-deps `__proto__`
 crash), #342 (env-read detection gaps, already resolved by earlier merges), #269
