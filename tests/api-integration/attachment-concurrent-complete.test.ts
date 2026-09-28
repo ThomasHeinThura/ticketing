@@ -270,6 +270,25 @@ const s3Fakes = vi.hoisted(() => {
     copyReleases = [];
   }
 
+  // R6-1 (450-attachments.md round 6): lets a test react to each copy's 1-based arrival
+  // order (not identity -- concurrent requests don't have a stable "which one is first")
+  // to mutate the pending object BETWEEN two copies, so one racer's own snapshot is valid
+  // and the other's is not.
+  let onCopyArrival: ((arrival: number) => void) | null = null;
+  function setOnCopyArrival(fn: ((arrival: number) => void) | null) {
+    onCopyArrival = fn;
+  }
+
+  // R6-1: holds a "delete" command (the losing racer's own cleanup, after its magic-byte
+  // check fails) until this resolves -- lets a test force the real ordering the
+  // `state = 'pending'` guard exists for (the winner's row already committed `ready`
+  // before the loser's guarded delete runs) deterministically, instead of hoping real
+  // timing lands on it.
+  let deleteGate: (() => Promise<void>) | null = null;
+  function setDeleteGate(fn: (() => Promise<void>) | null) {
+    deleteGate = fn;
+  }
+
   function fakeCommand(kind: string) {
     return class {
       kind = kind;
@@ -335,6 +354,7 @@ const s3Fakes = vi.hoisted(() => {
         const snapshot = Buffer.from(obj);
 
         copyArrivals += 1;
+        onCopyArrival?.(copyArrivals);
         if (copyArrivals <= copyBarrierSize) {
           await new Promise<void>((resolve) => {
             copyReleases.push(resolve);
@@ -352,6 +372,7 @@ const s3Fakes = vi.hoisted(() => {
       }
 
       if (kind === "delete") {
+        if (deleteGate) await deleteGate();
         fakeStore.delete(input.Key as string);
         return {};
       }
@@ -360,7 +381,14 @@ const s3Fakes = vi.hoisted(() => {
     }
   }
 
-  return { fakeStore, fakeCommand, FakeS3Client, setCopyBarrier };
+  return {
+    fakeStore,
+    fakeCommand,
+    FakeS3Client,
+    setCopyBarrier,
+    setOnCopyArrival,
+    setDeleteGate,
+  };
 });
 
 vi.mock(resolvedAwsPaths.clientS3, () => ({
@@ -388,6 +416,8 @@ describe("N5 regression (#28, 450-attachments.md round 5): concurrent complete -
     await resetTestDatabase();
     s3Fakes.fakeStore.clear();
     s3Fakes.setCopyBarrier(0);
+    s3Fakes.setOnCopyArrival(null);
+    s3Fakes.setDeleteGate(null);
     process.env.TASKDESK_STORAGE_DRIVER = "s3";
     process.env.S3_ENDPOINT = "https://fake-s3.example.test";
     process.env.S3_BUCKET = "taskdesk-test";
@@ -479,6 +509,89 @@ describe("N5 regression (#28, 450-attachments.md round 5): concurrent complete -
 
     // The actual point of N5: the winner's object must still be there, with the right
     // bytes -- not deleted by a loser's own cleanup racing on what used to be the same key.
+    const survivingObject = s3Fakes.fakeStore.get(finalKey);
+    expect(survivingObject).toBeDefined();
+    expect(survivingObject?.equals(PNG_BYTES)).toBe(true);
+  });
+
+  it("R6-1 (450-attachments.md round 6): a losing complete's own magic-byte-failure cleanup cannot delete a row a concurrent complete already marked ready", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const presignResponse = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: "photo.png",
+          contentType: "image/png",
+          size: PNG_BYTES.length,
+        }),
+      },
+    );
+    expect(presignResponse.status).toBe(200);
+    const presigned = (await presignResponse.json()) as {
+      attachmentId: string;
+    };
+
+    const [pendingRow] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+    const pendingKey = pendingRow?.objectKey as string;
+    s3Fakes.fakeStore.set(pendingKey, PNG_BYTES);
+
+    const INVALID_BYTES = Buffer.from("not a png, just plain bytes");
+
+    // Let copy #1 (whichever physical request arrives first -- identity doesn't matter)
+    // snapshot the real PNG bytes, then swap the pending object to garbage before copy #2
+    // takes its own snapshot: one racer's magic-byte check will pass, the other's won't.
+    s3Fakes.setCopyBarrier(2);
+    s3Fakes.setOnCopyArrival((arrival) => {
+      if (arrival === 1) {
+        s3Fakes.fakeStore.set(pendingKey, INVALID_BYTES);
+      }
+    });
+
+    // Force the real ordering the guard exists for: the loser's own cleanup delete must
+    // not run until the winner's row has actually committed `ready`. Real S3/network
+    // latency is what gave the review's original repro this ordering; polling the row
+    // here reproduces it deterministically instead of relying on incidental timing.
+    s3Fakes.setDeleteGate(async () => {
+      for (let attempt = 0; attempt < 200; attempt++) {
+        const [row] = await db
+          .select()
+          .from(schema.attachmentTable)
+          .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+        if (row?.state === "ready") return;
+        await new Promise((resolve) => setTimeout(resolve, 5));
+      }
+    });
+
+    const statuses = await raceConcurrentCompletes(
+      app,
+      presigned.attachmentId,
+      2,
+    );
+
+    const wins = statuses.filter((status) => status === 200);
+    const losses = statuses.filter((status) => status !== 200);
+    expect(wins).toHaveLength(1);
+    expect(losses).toHaveLength(1);
+    // A real magic-byte rejection, not a race-lost 409 -- this racer's own bytes were bad.
+    expect(losses[0]).toBe(400);
+
+    // The actual point of R6-1: the loser's guarded delete found the row no longer
+    // `pending` (the winner had already committed) and left it alone.
+    const [readyRow] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+    expect(readyRow?.state).toBe("ready");
+    const finalKey = readyRow?.objectKey as string;
     const survivingObject = s3Fakes.fakeStore.get(finalKey);
     expect(survivingObject).toBeDefined();
     expect(survivingObject?.equals(PNG_BYTES)).toBe(true);
