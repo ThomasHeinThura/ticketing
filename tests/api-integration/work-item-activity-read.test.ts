@@ -374,6 +374,27 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
       expect(commentRow?.workItemId).toBe(created.id);
       expect(commentRow?.visibility).toBe("internal");
 
+      // Wire-compatibility shape (issue #452 v2, post-CI oasdiff finding): a
+      // comment-kind row is a flat extension of the pre-existing `WorkItemActivityRow`
+      // shape, not a second variant of a `oneOf` -- every pre-existing, previously
+      // REQUIRED field is still present and non-null, with `verb` a real, honest
+      // "commented" (matching this table's own existing verb vocabulary) rather than
+      // a fabricated placeholder, and the field-diff columns null (a comment carries
+      // no field-level diff).
+      expect(commentRow?.verb).toBe("commented");
+      expect(commentRow?.field).toBeNull();
+      expect(commentRow?.oldValue).toBeNull();
+      expect(commentRow?.newValue).toBeNull();
+      expect(commentRow?.payload).toBeNull();
+      expect(commentRow?.workflowVersionId).toBeNull();
+
+      // An activity-kind row carries no comment-only data (it should never appear
+      // populated -- either absent or null, never leaking a stray value).
+      const activityRow = body.data.find((row) => row.kind === "activity");
+      expect(activityRow).toBeDefined();
+      expect(activityRow?.body ?? null).toBeNull();
+      expect(activityRow?.activityId ?? null).toBeNull();
+
       // Newest first, across both sources: the comment was posted after the title
       // edit, so it comes first in the merged stream.
       expect(body.data[0]?.id).toBe(comment.id);

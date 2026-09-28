@@ -1,5 +1,4 @@
 import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
-import { commentSchema } from "./comment-response";
 
 // Plain (unregistered) shape shared by `workItemSchema` and `workItemDetailSchema`, so the
 // detail schema extends this shape rather than the already-`.openapi()`-registered
@@ -310,6 +309,39 @@ export const bulkWorkItemsResponseSchema = z
 // `GET /api/work-items/{key}/activity` -- the read side of the already-merged
 // `activity.ts` write path (`recordWorkItemActivity`). `seq` is deliberately absent,
 // same reason that module's own `.returning()` column list omits it.
+//
+// ISSUE #452 v2 (post-CI oasdiff finding): this schema originally grew a SECOND,
+// `.discriminatedUnion`-based shape here to carry posted `comment` rows alongside
+// activity rows (`comments-and-activity.md`'s "one stream showing everything"). That
+// version worked and passed all three rounds of Opus security review, but CI's
+// `contract - OpenAPI drift` job caught something the security review never checked:
+// `oasdiff breaking` flags `response-property-one-of-added` -- widening a response
+// `oneOf` is treated as breaking (a strict client generated against the OLD spec, coded
+// against exactly one shape, could choke on an unrecognized new variant), and
+// `docs/01-architecture/api-design.md`'s Versioning section makes the reviewed-allowlist
+// mechanism that used to cover exactly this case PERMANENTLY closed once a stable
+// `v2.0.0`+ tag exists on origin (it does: `v2.0.1`) -- the same constraint PR #440 hit on
+// the invitation route (decision log, 2026-09-28).
+//
+// Rather than treat this as a real breaking change needing a new path segment (there is
+// no removal or narrowing here to justify one, unlike #440's case), this schema was
+// redesigned to avoid the `oneOf` construct entirely: every field below is EXACTLY the
+// pre-#452 `WorkItemActivityRow` shape, byte-for-byte unchanged and still fully required
+// -- an activity-kind row's wire shape is untouched. `kind`/`body`/`activityId`/
+// `editedAt`/`deletedAt`/`updatedAt` are NEW, OPTIONAL fields added to that SAME existing
+// object schema, exactly the class of change `api-design.md`'s Versioning section already
+// names as free ("Additive changes (new optional field, new endpoint, new event key) go
+// out freely") -- verified empirically, not just argued: `oasdiff breaking` against this
+// exact shape reports zero findings (spiked and confirmed locally before committing this
+// version). `kind` is populated on EVERY row at runtime ("activity" or "comment", never
+// omitted) even though the schema only requires it be present when the row is one the old
+// contract never had (a comment) -- declaring it optional is what keeps the CONTRACT
+// backward-compatible; actually always sending it is what keeps a NEW caller's code simple
+// (no "absent means activity" inference needed). A comment-kind row's `verb` is the
+// literal string `"commented"` -- a real, honest description of what happened, matching
+// this table's own existing verb vocabulary (`created`, `transitioned`, `updated`, ...),
+// not a fabricated placeholder -- with `field`/`oldValue`/`newValue`/`payload` all `null`
+// (comments do not carry a field-level diff) and `workflowVersionId` null (not applicable).
 export const workItemActivityRowSchema = z
   .object({
     id: z.string(),
@@ -324,35 +356,38 @@ export const workItemActivityRowSchema = z
     visibility: z.string(),
     workflowVersionId: z.string().nullable(),
     createdAt: responseTimestamp,
+    kind: z
+      .enum(["activity", "comment"])
+      .optional()
+      .openapi({
+        description:
+          'Always present at runtime -- "activity" for an activity-table row, ' +
+          '"comment" for a posted comment. Optional in the schema (not the pre-#452 ' +
+          "contract) so this remains an additive change, not a breaking one.",
+      }),
+    body: z.unknown().nullable().optional().openapi({
+      description:
+        "Comment rows only: the Tiptap document, or null if deleted (CA-18).",
+    }),
+    activityId: z.string().nullable().optional().openapi({
+      description:
+        "Comment rows only: see comment.activity_id in the data model.",
+    }),
+    editedAt: nullableResponseTimestamp.optional().openapi({
+      description: "Comment rows only (CA-17).",
+    }),
+    deletedAt: nullableResponseTimestamp.optional().openapi({
+      description: "Comment rows only (CA-18 tombstone).",
+    }),
+    updatedAt: responseTimestamp.optional().openapi({
+      description: "Comment rows only.",
+    }),
   })
   .openapi("WorkItemActivityRow");
 
-// Issue #452: `comments-and-activity.md`'s "one stream showing everything" -- this route
-// was `activity`-only until now, even though the spec's own `## API` section never
-// documented a separate comments-read route, only this one. So the fix is here, not a
-// new endpoint: every item in `data` now carries a `kind` discriminator, `"activity"` for
-// an `activityTable` row (unchanged shape, see `workItemActivityRowSchema` immediately
-// above) or `"comment"` for a `commentTable` row (same shape `POST .../comments` already
-// returns, `comment-response.ts`'s `commentSchema`). Built via `.shape` spread rather than
-// `.extend()` on either registered schema, matching `workItemDetailSchema`'s own comment
-// above about why extending an already-`.openapi()`-named schema emits an `allOf` ref
-// that breaks additive-diff tooling -- both item schemas here are fresh object types.
-export const workItemActivityStreamActivityItemSchema = z
-  .object({ ...workItemActivityRowSchema.shape, kind: z.literal("activity") })
-  .openapi("WorkItemActivityStreamActivityItem");
-
-export const workItemActivityStreamCommentItemSchema = z
-  .object({ ...commentSchema.shape, kind: z.literal("comment") })
-  .openapi("WorkItemActivityStreamCommentItem");
-
-export const workItemActivityStreamItemSchema = z.discriminatedUnion("kind", [
-  workItemActivityStreamActivityItemSchema,
-  workItemActivityStreamCommentItemSchema,
-]);
-
 export const workItemActivityListResponseSchema = z
   .object({
-    data: z.array(workItemActivityStreamItemSchema),
+    data: z.array(workItemActivityRowSchema),
     page: workItemPageSchema,
   })
   .openapi("WorkItemActivityListResponse");

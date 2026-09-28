@@ -3818,21 +3818,7 @@
           "data": {
             "type": "array",
             "items": {
-              "oneOf": [
-                {
-                  "$ref": "#/components/schemas/WorkItemActivityStreamActivityItem"
-                },
-                {
-                  "$ref": "#/components/schemas/WorkItemActivityStreamCommentItem"
-                }
-              ],
-              "discriminator": {
-                "propertyName": "kind",
-                "mapping": {
-                  "activity": "#/components/schemas/WorkItemActivityStreamActivityItem",
-                  "comment": "#/components/schemas/WorkItemActivityStreamCommentItem"
-                }
-              }
+              "$ref": "#/components/schemas/WorkItemActivityRow"
             }
           },
           "page": {
@@ -3844,7 +3830,7 @@
           "page"
         ]
       },
-      "WorkItemActivityStreamActivityItem": {
+      "WorkItemActivityRow": {
         "type": "object",
         "properties": {
           "id": {
@@ -3890,8 +3876,41 @@
           "kind": {
             "type": "string",
             "enum": [
-              "activity"
-            ]
+              "activity",
+              "comment"
+            ],
+            "description": "Always present at runtime -- \"activity\" for an activity-table row, \"comment\" for a posted comment. Optional in the schema (not the pre-#452 contract) so this remains an additive change, not a breaking one."
+          },
+          "body": {
+            "description": "Comment rows only: the Tiptap document, or null if deleted (CA-18)."
+          },
+          "activityId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Comment rows only: see comment.activity_id in the data model."
+          },
+          "editedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Comment rows only (CA-17)."
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Comment rows only (CA-18 tombstone)."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Comment rows only."
           }
         },
         "required": [
@@ -3903,87 +3922,7 @@
           "field",
           "visibility",
           "workflowVersionId",
-          "createdAt",
-          "kind"
-        ]
-      },
-      "WorkItemActivityStreamCommentItem": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "workItemId": {
-            "type": "string"
-          },
-          "workspaceId": {
-            "type": "string"
-          },
-          "authorId": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "actorType": {
-            "type": "string",
-            "description": "One of: person, automation, system, api_key."
-          },
-          "body": {
-            "description": "Tiptap document. Null once the comment is deleted (CA-18)."
-          },
-          "visibility": {
-            "type": "string",
-            "description": "One of: public, internal."
-          },
-          "activityId": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "editedAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
-          },
-          "deletedAt": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "comment"
-            ]
-          }
-        },
-        "required": [
-          "id",
-          "workItemId",
-          "workspaceId",
-          "authorId",
-          "actorType",
-          "visibility",
-          "activityId",
-          "editedAt",
-          "deletedAt",
-          "createdAt",
-          "updatedAt",
-          "kind"
+          "createdAt"
         ]
       },
       "WorkItemUnassignment": {

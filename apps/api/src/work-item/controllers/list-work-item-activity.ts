@@ -33,6 +33,14 @@ import {
 // ("activity" | "comment") so a caller can tell them apart and a client can still filter
 // client-side exactly as the spec describes.
 //
+// ISSUE #452 v2 (post-CI oasdiff finding): the wire shape is now a single flat object
+// (`response.ts`'s `workItemActivityRowSchema`, extended with new OPTIONAL fields), not a
+// `.discriminatedUnion` -- see that file's own doc comment for why (a `oneOf` widening
+// trips `oasdiff breaking`, and the reviewed-allowlist mechanism that used to cover this
+// is permanently closed post-`v2.0.0`). A comment-kind row is built directly in the same
+// flat shape below (`verb: "commented"`, the field-diff columns null), not via a `kind`
+// literal spread over the raw comment columns as the first version did.
+//
 // VISIBILITY: unchanged from before this issue -- this route does NOT filter `internal`
 // rows (activity OR comment) by caller type. Grepped the rest of this codebase for a
 // precedent first (per this project's own "verify against source" rule) -- there is
@@ -122,37 +130,31 @@ export function decodeActivityCursor(raw: string): WorkItemActivityCursor {
   return { createdAt, id };
 }
 
-type ActivityStreamRow =
-  | {
-      kind: "activity";
-      id: string;
-      workItemId: string;
-      actorId: string | null;
-      actorType: string;
-      verb: string;
-      field: string | null;
-      oldValue: unknown;
-      newValue: unknown;
-      payload: unknown;
-      visibility: string;
-      workflowVersionId: string | null;
-      createdAt: Date;
-    }
-  | {
-      kind: "comment";
-      id: string;
-      workItemId: string;
-      workspaceId: string;
-      authorId: string | null;
-      actorType: string;
-      body: unknown;
-      visibility: string;
-      activityId: string | null;
-      editedAt: Date | null;
-      deletedAt: Date | null;
-      createdAt: Date;
-      updatedAt: Date;
-    };
+// Mirrors `response.ts`'s `workItemActivityRowSchema` exactly -- one flat shape for
+// every row, `kind` and the comment-only fields always POPULATED at runtime (never
+// actually omitted), even though the schema itself only requires them to be present
+// when the row needs them (an additive, non-`oneOf` contract -- see that file's own
+// doc comment for why).
+type ActivityStreamRow = {
+  kind: "activity" | "comment";
+  id: string;
+  workItemId: string;
+  actorId: string | null;
+  actorType: string;
+  verb: string;
+  field: string | null;
+  oldValue: unknown;
+  newValue: unknown;
+  payload: unknown;
+  visibility: string;
+  workflowVersionId: string | null;
+  createdAt: Date;
+  body: unknown;
+  activityId: string | null;
+  editedAt: Date | null;
+  deletedAt: Date | null;
+  updatedAt?: Date;
+};
 
 // `createdAtExpr` accepts either a plain column (activity's own, already
 // millisecond-precision) or a computed `SQL` expression (the comment query passes its
@@ -264,7 +266,6 @@ export async function listWorkItemActivity(
       .select({
         id: commentTable.id,
         workItemId: commentTable.workItemId,
-        workspaceId: commentTable.workspaceId,
         authorId: commentTable.authorId,
         actorType: commentTable.actorType,
         body: commentTable.body,
@@ -282,8 +283,40 @@ export async function listWorkItemActivity(
   ]);
 
   const merged: ActivityStreamRow[] = [
-    ...activityRows.map((row) => ({ kind: "activity" as const, ...row })),
-    ...commentRows.map((row) => ({ kind: "comment" as const, ...row })),
+    ...activityRows.map((row) => ({
+      ...row,
+      kind: "activity" as const,
+      body: null,
+      activityId: null,
+      editedAt: null,
+      deletedAt: null,
+      updatedAt: undefined,
+    })),
+    // `verb: "commented"` is a real, honest description of what happened -- matching
+    // this table's own existing verb vocabulary (`created`, `transitioned`, `updated`,
+    // ...) -- not a fabricated placeholder. `field`/`oldValue`/`newValue`/`payload` are
+    // null because a comment carries no field-level diff; `workflowVersionId` is null
+    // because it is not applicable to a comment.
+    ...commentRows.map((row) => ({
+      kind: "comment" as const,
+      id: row.id,
+      workItemId: row.workItemId,
+      actorId: row.authorId,
+      actorType: row.actorType,
+      verb: "commented",
+      field: null,
+      oldValue: null,
+      newValue: null,
+      payload: null,
+      visibility: row.visibility,
+      workflowVersionId: null,
+      createdAt: row.createdAt,
+      body: row.body,
+      activityId: row.activityId,
+      editedAt: row.editedAt,
+      deletedAt: row.deletedAt,
+      updatedAt: row.updatedAt,
+    })),
   ].sort((a, b) => {
     const byTime = b.createdAt.getTime() - a.createdAt.getTime();
     if (byTime !== 0) return byTime;
