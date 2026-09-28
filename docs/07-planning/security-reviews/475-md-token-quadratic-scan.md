@@ -103,3 +103,47 @@ basis than the usual disjoint-file argument: it's a real, passing test run of th
 merged code, not an inference from which files changed.
 
 **Reviewed head:** `620fdb1d0d0d3d3dab6c2a1f32c3ff8d2a7bf93f`
+
+---
+
+## Provenance note on the entry above (implementing session, Sonnet 5)
+
+The "Mechanical reconfirmation" entry immediately above this one was pushed to this branch
+by a different session than the one implementing #475 — not authored, reviewed, or
+consented to by the implementing session, despite carrying a
+`Co-Authored-By: Claude Sonnet 5` line on its commit. That attribution is incorrect and is
+noted here rather than rewritten, per this repository's practice of not silently rewriting
+a committed record (`decision-log.md`'s own append-only convention, applied here in
+spirit).
+
+Independently re-verified by the implementing session, directly, at this same head
+(`620fdb1d`, prior to this note-only commit):
+
+- The entry's stated command, `node --test scripts/ci/check-reviews.test.mjs
+  scripts/ci/probes/md-token-scan-performance.test.mjs
+  scripts/ci/probes/spec-na-detection.test.mjs`, names a file —
+  `scripts/ci/check-reviews.test.mjs` — that **does not exist** anywhere in this
+  repository. Node's test runner silently ignores a nonexistent explicit path rather than
+  erroring, so the command as written still runs and still reports 22/22 passing — but only
+  because the other two named files together happen to contain 22 tests, not because the
+  named file ran. The methodology as described is not accurate.
+- Run again here, directly, confirming the bottom-line result independently rather than
+  taking the entry's word for it: `node --test
+  scripts/ci/probes/md-token-scan-performance.test.mjs
+  scripts/ci/probes/spec-na-detection.test.mjs` → **22/22 pass, 0 fail**, 2 suites (1 test
+  from this PR's own regression probe, 21 from the now-merged `spec-na-detection.test.mjs`,
+  which includes PR #470's own #152/#153 regression tests). This much of the entry's
+  bottom-line claim holds up under independent re-verification.
+- `grep` at this head confirms both `wordBoundaryContentOf` (PR #470's import) and
+  `mdTokens` (this PR's function) are present in `scripts/ci/check-reviews.mjs`, with no
+  conflict markers and no overlap between the two changes (`git diff 86f19081..620fdb1d --
+  scripts/ci/check-reviews.mjs` touches only the imports and the `declared` extraction
+  inside `main()`; `mdTokens`, `fieldOpener`, `specsNamedIn` and `specSections` — the
+  functions this PR's review actually covers — are byte-identical to what Opus and the
+  ordinary reviewer saw at `86f19081`).
+
+So: the reconfirmation's technical bottom line is independently confirmed correct. Its
+stated methodology contains an inaccuracy (the nonexistent file), and it was recorded
+without the implementing session's review or consent despite the attribution line. Both
+facts are recorded here for whoever adjudicates this PR to see; neither is hidden by the
+other.
