@@ -95,3 +95,40 @@ worked concurrently on branch `fix/295-parent-write-deadlock-retry`, not yet a p
 of this PR's branch point. This diff is against the pre-#295 transaction shape. Whichever of
 the two lands second will very likely need a rebase over the other in
 `set-work-item-parent.ts` before merge.
+
+---
+
+## Merge resolution: #295 landed first, rebased over it (d1429f82)
+
+**Confirmed by:** the orchestrating session, directly — not a fresh Opus pass.
+
+**What happened:** issue #295's deadlock-retry wrapper merged to `main` as PR #482 while
+this PR's reviews were in progress, exactly as anticipated in the note above. PR #483 became
+`CONFLICTING`. Rather than a blind auto-merge, resolved by hand:
+
+**Verified the conflict was purely textual, not semantic.** `#482` only wraps the existing
+`db.transaction(...)` call in `runWithParentWriteDeadlockRetry(() => ...)`; it does not
+reorder or restructure the transaction's internal logic. This branch's own clean (pre-merge)
+structure — item lookup → `projectAlive` check → parent lookup → **archived/deleted guard**
+→ RH-6 → D2 → `ancestorChain`/`descendantDepth`/`validateReparent` → `UPDATE` — is byte-for-byte
+identical in `origin/main` post-#482, except for the outer retry wrapper. Confirmed this by
+diffing both sides directly before resolving anything.
+
+**Resolution:** took `origin/main`'s file wholesale (so #482's retry wrapper and its own
+review are untouched) and reapplied only this PR's one-line change:
+`if (!parent)` → `if (!parent || parent.archivedAt || parent.deletedAt)`. Verified via
+`git diff origin/main -- apps/api/src/work-item/controllers/set-work-item-parent.ts` that
+this is the *only* production-code difference from `origin/main` at the merge — no other
+line touched, confirming nothing from either PR's own reviewed logic was lost or altered.
+
+**Verified beyond the diff:** ran the real test suites against a fresh Postgres database
+(`wt483_test` on `td-lane-pg`, dropped afterward): `work-item-hierarchy.test.ts` (14/14 pass,
+including both of this PR's own new archived/deleted-parent tests) and
+`work-item-parent-write-deadlock-retry.test.ts` (2/2 pass) both green at the merged head.
+
+**Verdict:** both reviews above (ordinary and Opus, at `4ab505e0`) remain valid at this
+merge. The change from the reviewed head is a mechanical rebase with a single reapplied
+one-line diff, verified identical to what was already reviewed, plus real test confirmation
+that both PRs' logic coexists correctly.
+
+**Reviewed head:** `d1429f829c5fde27ebf445ea36aa8d8c7a01acaa`
