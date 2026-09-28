@@ -8,6 +8,7 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import type { Session, User } from "better-auth/types";
 import { and, eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import type { Context, Next } from "hono";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
 import { cors } from "hono/cors";
@@ -46,7 +47,10 @@ import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
 // all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
 // comparison, off by default. See the call sites below and each file's own header comment.
 import { assertRouteIsClassified } from "./permissions/route-classification-guard";
-import { runNextWithPolicyShadow } from "./permissions/shadow-middleware";
+import {
+  declareCatchAllMiddleware,
+  runNextWithPolicyShadow,
+} from "./permissions/shadow-middleware";
 import { initializePlugins } from "./plugins";
 // Importing this constructs and validates the registry at module load, so an invalid policy
 // refuses boot (#8 Slice 0). Keep the import even if its one use below moves: without a use,
@@ -246,7 +250,15 @@ function registerStaticServing(
   const serveAsset = serveStatic({ root: staticRoot });
   const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
 
-  app.use("*", async (c, next) => {
+  // Named (not inline in `.use()`) so its exact function reference can be declared to
+  // `permissions/shadow-middleware.ts` (Opus delta F5) as reviewed catch-all
+  // infrastructure -- the classification guard runs from inside a DIFFERENT catch-all
+  // (the auth guard, below) and would otherwise have no way to tell this middleware's own
+  // matched entry apart from a real, unclassified feature route sharing the same key.
+  const serveStaticOrSpaShell = async (
+    c: Context<AppVariables>,
+    next: Next,
+  ) => {
     if (
       (c.req.method !== "GET" && c.req.method !== "HEAD") ||
       isApiRequestPath(c.req.path)
@@ -278,7 +290,9 @@ function registerStaticServing(
       return next();
     }
     return serveIndex(c, next);
-  });
+  };
+  declareCatchAllMiddleware(serveStaticOrSpaShell);
+  app.use("*", serveStaticOrSpaShell);
 }
 
 export function createApp(options: { staticRoot?: string } = {}) {
@@ -318,30 +332,35 @@ export function createApp(options: { staticRoot?: string } = {}) {
     );
   }
 
-  app.use(
-    "*",
-    cors({
-      credentials: true,
-      origin: (origin) => {
-        // Reflecting an arbitrary origin alongside credentials lets any site
-        // read authenticated responses, so it stays a development convenience.
-        if (!corsOrigins) {
-          return reflectUnconfiguredOrigins ? origin || "*" : null;
-        }
+  const corsMiddleware = cors({
+    credentials: true,
+    origin: (origin) => {
+      // Reflecting an arbitrary origin alongside credentials lets any site
+      // read authenticated responses, so it stays a development convenience.
+      if (!corsOrigins) {
+        return reflectUnconfiguredOrigins ? origin || "*" : null;
+      }
 
-        if (!origin) {
-          return null;
-        }
+      if (!origin) {
+        return null;
+      }
 
-        return corsOrigins.includes(origin) ? origin : null;
-      },
-    }),
-  );
+      return corsOrigins.includes(origin) ? origin : null;
+    },
+  });
+  // Declared to shadow-middleware.ts's classification guard (Opus delta F5) as reviewed
+  // catch-all infrastructure -- see that module's own doc comment for why identity, not
+  // this registration's `"ALL /*"` key, is what tells it apart from an unclassified route
+  // that happened to share the key.
+  declareCatchAllMiddleware(corsMiddleware);
+  app.use("*", corsMiddleware);
 
   // Large boards return multi-MB JSON (board/task list responses embed
   // labels and external links per task); gzip cuts that by 85-95% since
   // JSON with repeated keys compresses extremely well.
-  app.use(compress());
+  const compressMiddleware = compress();
+  declareCatchAllMiddleware(compressMiddleware);
+  app.use(compressMiddleware);
 
   const api = new OpenAPIHono<ApiVariables>();
 
@@ -697,7 +716,12 @@ export function createApp(options: { staticRoot?: string } = {}) {
     return auth.handler(buildAuthRequest(c));
   });
 
-  api.use("*", async (c, next) => {
+  // Named (not inline in `.use()`) so its exact function reference can be declared to
+  // shadow-middleware.ts (Opus delta F5) as reviewed catch-all infrastructure --
+  // `assertRouteIsClassified` runs FROM INSIDE this very function, so `c.req.matchedRoutes`
+  // always includes this guard's own entry, and it must be exempted from its own check the
+  // same identity-based way CORS/compress/static-serving are.
+  const authGuard = async (c: Context<ApiVariables>, next: Next) => {
     // No prefix exemptions. kaneo exempted /api/mcp, /api/.well-known/ and
     // /api/billing/webhook; all three surfaces are removed in issue #6, so
     // every route mounted below this guard is authenticated without exception.
@@ -735,7 +759,9 @@ export function createApp(options: { staticRoot?: string } = {}) {
       }
       throw error;
     }
-  });
+  };
+  declareCatchAllMiddleware(authGuard);
+  api.use("*", authGuard);
 
   // Registered below the app-wide auth guard (issue #8, H2 fix, `docs/07-planning/
   // security-reviews/21-policy-registry.md`): `loadReachableAsset` requires a real

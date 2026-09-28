@@ -9,6 +9,8 @@
  * own presence check, not about which of the real ~85 production routes are classified
  * (that is `tests/permissions/route-coverage.test.ts`'s job).
  */
+
+import type { Context, Next } from "hono";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { describe, expect, it, vi } from "vitest";
@@ -30,6 +32,9 @@ vi.mock("../../../apps/api/src/policy-registry", () => ({
 const { assertRouteIsClassified } = await import(
   "../../../apps/api/src/permissions/route-classification-guard"
 );
+const { declareCatchAllMiddleware } = await import(
+  "../../../apps/api/src/permissions/shadow-middleware"
+);
 
 function buildApp() {
   const app = new Hono();
@@ -39,10 +44,17 @@ function buildApp() {
     }
     throw error;
   });
-  app.use("*", async (c, next) => {
+  // Opus delta F5: the guard now exempts a matched entry by HANDLER IDENTITY, not by its
+  // "ALL /*" key -- so this fixture's own wrapper (the one that CALLS
+  // assertRouteIsClassified, same shape as the real app's auth guard in
+  // `apps/api/src/index.ts`) must declare itself too, or the guard would refuse its own
+  // wrapping middleware as "an unclassified route" before ever reaching `/classified`.
+  const guardWrapper = async (c: Context, next: Next) => {
     assertRouteIsClassified(c);
     await next();
-  });
+  };
+  declareCatchAllMiddleware(guardWrapper);
+  app.use("*", guardWrapper);
   app.get("/classified", (c) => c.text("served"));
   app.get("/unclassified", (c) => c.text("should never be reached"));
   return app;

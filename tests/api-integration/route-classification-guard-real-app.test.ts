@@ -241,4 +241,83 @@ describe("assertRouteIsClassified against the real createApp()", () => {
 
     expect(response.status).toBe(200);
   });
+
+  // F5, fourth Opus delta pass, live-reproduced: exempting a matched entry by its KEY
+  // STRING ("ALL /*" / "ALL /api/*") assumed the key identifies the reviewed CORS/
+  // compress/static-serving/auth-guard middleware -- it only identifies where something
+  // is MOUNTED. None of these five shapes needs a policyRegistry spy (unlike B3/F4): each
+  // one registers an UNCLASSIFIED handler directly at one of the two declared catch-all
+  // keys, which the old key-based exemption let straight through.
+  it("refuses (500) an unclassified app.all() fallback registered directly at ALL /api/* (F5-D1)", async () => {
+    await resetTestDatabase();
+    const member = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(member.user);
+
+    const { app } = createApp();
+    app.all("/api/*", (c) => c.text("should never be reached"));
+
+    const response = await app.request("/api/__test_f5_d1_anything__");
+
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toBe("should never be reached");
+  });
+
+  it("refuses (500) an unclassified .use('/api/*', ...) that itself answers a request (F5-D2)", async () => {
+    await resetTestDatabase();
+    const member = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(member.user);
+
+    const { app } = createApp();
+    app.use("/api/*", async (c) => c.text("should never be reached"));
+
+    const response = await app.request("/api/__test_f5_d2_anything__");
+
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toBe("should never be reached");
+  });
+
+  it("refuses (500) an unclassified handler reached via .mount() at ALL /api/* (F5-D3)", async () => {
+    await resetTestDatabase();
+    const member = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(member.user);
+
+    const { app } = createApp();
+    app.mount("/api", async () => new Response("should never be reached"));
+
+    const response = await app.request("/api/__test_f5_d3_anything__");
+
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toBe("should never be reached");
+  });
+
+  it("refuses (500) an unclassified sub-router's own .all('*') mounted at /api (F5-D4)", async () => {
+    await resetTestDatabase();
+    const member = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(member.user);
+
+    const { app } = createApp();
+    const { Hono } = await import("hono");
+    const sub = new Hono();
+    sub.all("*", (c) => c.text("should never be reached"));
+    app.route("/api", sub);
+
+    const response = await app.request("/api/__test_f5_d4_anything__");
+
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toBe("should never be reached");
+  });
+
+  it("refuses (500) an unclassified app.all('*', ...) registered directly at ALL /* (F5-D5)", async () => {
+    await resetTestDatabase();
+    const member = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(member.user);
+
+    const { app } = createApp();
+    app.all("*", (c) => c.text("should never be reached"));
+
+    const response = await app.request("/api/__test_f5_d5_anything__");
+
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toBe("should never be reached");
+  });
 });
