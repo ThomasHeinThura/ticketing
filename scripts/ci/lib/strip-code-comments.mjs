@@ -88,10 +88,14 @@
  * and just checks the raw character, which happens to get this right instead. See
  * `strip-code-comments.test.mjs`'s dedicated regression test for this.
  *
- * **Public signature is unchanged**: `stripCodeComments(source, options)` still takes a
- * plain string and returns a plain string, synchronously — `check:skips`, `check:events`,
- * and `workflow-alias-table.test.mjs` all call it exactly as before with no changes needed
- * on their end. Internally, this now needs a real (synchronous) parse per call, which needs
+ * **Public signature is additive, not broken**: `stripCodeComments(source, options)` still
+ * takes a plain string and returns a plain string, synchronously, and every existing call
+ * without the new `fileName` option keeps working (now defaulting to non-JSX parsing,
+ * strictly safer than this file's first #421 revision's always-`.tsx` default — see
+ * above). `check:skips` and `check:events` were updated to pass their real file path
+ * through `fileName`, which they already had; `workflow-alias-table.test.mjs` scans a
+ * plain `.mjs` file and needs no change, since non-JSX is already the right mode for it.
+ * Internally, this now needs a real (synchronous) parse per call, which needs
  * a file on disk — `typescript/unstable/sync`'s `API` parses files, not in-memory strings,
  * the same restriction `check-ui.mjs`'s `parseAdHoc`/`env-reads.mjs`'s
  * `parseAdHocSourceFile` already work around for their own ad-hoc/test parsing. Reusing
@@ -108,15 +112,33 @@
  * call, the naive alternative, costs ~40ms/call — the child-process spawn, not the parse,
  * is what dominates, which is exactly what a single shared instance amortizes away).
  *
- * **Every source is parsed as `.tsx`**, regardless of the real file's own extension —
- * this function only ever receives a bare string, never a file name, so there is no
- * extension to parse it AS. JSX parsing is a strict superset of ordinary TS/JS syntax
- * except for one shape: the legacy angle-bracket type assertion (`<Type>expr`), which reads
- * as a JSX opening tag instead when JSX is enabled. This is the same accepted, documented
- * limitation `env-reads.mjs`'s own `parseAdHocSourceFile` already carries for its ad-hoc
- * parsing (see that function's comment) — real files in this repository do not use that
- * legacy cast form (this repo's own established convention is `as`/`satisfies`), so this
- * is a theoretical limitation, not an observed detection gap.
+ * **JSX mode is opt-in via an optional `fileName`, and the default is NON-JSX — this was
+ * NOT the first shipped version of this rewrite, and the difference matters (Opus security
+ * review, #421).** The first version always parsed as `.tsx`, reasoning that JSX parsing
+ * is a strict superset of ordinary TS/JS syntax except for the legacy angle-bracket type
+ * assertion (`<Type>expr`), which this repository doesn't use. That reasoning MISSED a far
+ * more common shape: an ordinary generic arrow function, `const pick = <T>(xs: T[]) =>
+ * xs[0]`, is READ AS a JSX opening tag once JSX is enabled — not a rare legacy cast, but
+ * routine modern TypeScript. Once misread that way, the rest of the file parses as JSX
+ * TEXT, and a later string containing `//`/`/*`-shaped characters (an ordinary glob or URL,
+ * `"src/*.ts"`) was then misread as a real comment, silently blanking a real
+ * `it.only(`/`it.skip(` call sitting after it — a worse failure mode than the hand-rolled
+ * scanner this file replaced, found by the mandatory Opus pass and fixed before merge, not
+ * a theoretical risk. `stripCodeComments(source, { fileName })` now derives JSX-vs-non-JSX
+ * from `fileName`'s own extension (`.tsx`/`.jsx` → JSX, anything else → non-JSX) when a
+ * caller supplies one — `check:skips` and `check:events` both do, passing the real file
+ * path they already have — and defaults to non-JSX (not JSX) when `fileName` is omitted,
+ * which is the safer default given the shape above is common and the legacy-cast shape it
+ * was trying to accommodate is not used in this repository at all. `env-reads.mjs`'s own
+ * `parseAdHocSourceFile` already defaults the same way for the identical reason. Two
+ * further defenses, in case some other shape this class hasn't been named yet turns up the
+ * same way the generic-arrow shape did: `ts.SyntaxKind.JsxText` is now itself a tracked
+ * literal kind (JSX text is displayed content, not code, the same reasoning `blankStrings`
+ * already applies to string content, and treating it that way stops it from being misread
+ * as a comment inside a genuine `.tsx` file); and the main loop below fails CLOSED — throws
+ * rather than silently continuing — the moment its own bookkeeping and the real parser's
+ * literal boundaries disagree, which is exactly the shape of failure both of the above
+ * incidents took.
  */
 
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -126,7 +148,13 @@ import * as ts from "typescript/unstable/ast";
 import { API } from "typescript/unstable/sync";
 
 /** Node kinds whose source range is comment/string/regex-adjacent content this function
- * cares about — everything else is left as plain code, untouched either way. */
+ * cares about — everything else is left as plain code, untouched either way. `JsxText`
+ * (Opus security review, #421) is DISPLAYED text between JSX tags, not executable code —
+ * the same "test data, not a real call" reasoning `blankStrings` already applies to string
+ * content — and, same as a string, must be excluded from the free-code comment scan below:
+ * without it, JSX text containing `//`/`/*`-looking characters (a glob or URL shown in a
+ * `<code>` block, say) is misread as a real comment, and the desync guard further down
+ * would refuse to run rather than silently mis-scan the rest of the file. */
 const LITERAL_KINDS = new Set([
   ts.SyntaxKind.StringLiteral,
   ts.SyntaxKind.NoSubstitutionTemplateLiteral,
@@ -134,6 +162,7 @@ const LITERAL_KINDS = new Set([
   ts.SyntaxKind.TemplateMiddle,
   ts.SyntaxKind.TemplateTail,
   ts.SyntaxKind.RegularExpressionLiteral,
+  ts.SyntaxKind.JsxText,
 ]);
 
 /** How many characters at the START and END of each literal kind's own token text are
@@ -150,6 +179,13 @@ const DELIM_WIDTH = {
   [ts.SyntaxKind.NoSubstitutionTemplateLiteral]: [1, 1], // ` ... `
   [ts.SyntaxKind.StringLiteral]: [1, 1], // " ... " (or ')
 };
+
+/** True for a file name ending `.tsx`/`.jsx` (case-insensitive) — the one case that needs
+ * JSX-mode parsing. See `stripCodeComments`'s own doc comment for why the DEFAULT (no
+ * `fileName`, or any other extension) is deliberately non-JSX rather than always-JSX. */
+function isJsxFileName(fileName) {
+  return /\.[jt]sx$/i.test(fileName);
+}
 
 let singleton = null;
 
@@ -179,15 +215,16 @@ function getApiState() {
 
 /**
  * Parse `source` with the real TypeScript parser and return the exact source ranges of
- * every string/template/regex literal in it, sorted by start position. See the file
- * header for why every call gets a brand-new file path rather than reusing one.
+ * every string/template/regex/JSX-text literal in it, sorted by start position. See the
+ * file header for why every call gets a brand-new file path rather than reusing one.
  *
  * @param {string} source
+ * @param {boolean} jsx parse as `.tsx` (JSX-enabled) when true, `.ts` otherwise
  * @returns {{ kind: number, start: number, end: number }[]}
  */
-function parseLiteralRanges(source) {
+function parseLiteralRanges(source, jsx) {
   const state = getApiState();
-  const file = path.join(state.dir, `f${state.counter}.tsx`);
+  const file = path.join(state.dir, `f${state.counter}.${jsx ? "tsx" : "ts"}`);
   state.counter += 1;
   writeFileSync(file, source);
   const snapshot = state.api.updateSnapshot({
@@ -246,21 +283,27 @@ function parseLiteralRanges(source) {
 
 /**
  * @param {string} source
- * @param {{ blankStrings?: boolean }} [options] `blankStrings` also blanks the CONTENTS
- *   of string and template literals, keeping the delimiters and the line count. Test DATA
- *   is the other false-positive class: a probe asserting on the text `it.skip(` is not a
- *   skipped test. A genuinely disabled test cannot hide inside a string literal and still
- *   execute, so blanking them removes the class without weakening the gate.
+ * @param {{ blankStrings?: boolean, fileName?: string }} [options] `blankStrings` also
+ *   blanks the CONTENTS of string and template literals, keeping the delimiters and the
+ *   line count. Test DATA is the other false-positive class: a probe asserting on the
+ *   text `it.skip(` is not a skipped test. A genuinely disabled test cannot hide inside a
+ *   string literal and still execute, so blanking them removes the class without
+ *   weakening the gate. `fileName` (optional) is used ONLY to decide JSX-vs-non-JSX
+ *   parsing mode from its extension (`.tsx`/`.jsx` → JSX; anything else, or omitted →
+ *   non-JSX) — see the file header for why the DEFAULT is non-JSX, a change from this
+ *   file's first #421 revision.
  */
 export function stripCodeComments(source, options = {}) {
   const blankStrings = options.blankStrings === true;
-  const ranges = parseLiteralRanges(source);
+  const jsx = options.fileName ? isJsxFileName(options.fileName) : false;
+  const ranges = parseLiteralRanges(source, jsx);
   const out = [];
   let i = 0;
   let r = 0;
 
   while (i < source.length) {
-    // ── a string / template / regex literal, exactly where the real parser found one ──
+    // ── a string / template / regex / JSX-text literal, exactly where the real parser
+    // found one ──────────────────────────────────────────────────────────────────────
     if (r < ranges.length && ranges[r].start === i) {
       const { kind, end } = ranges[r];
       r += 1;
@@ -290,6 +333,24 @@ export function stripCodeComments(source, options = {}) {
       out.push(source.slice(end - tailWidth, end));
       i = end;
       continue;
+    }
+
+    // Fail CLOSED, not open (Opus security review, #421): if a pending literal's start
+    // is BEHIND the current position, the scan below has already run past it without
+    // landing on it exactly — which can only mean this file's model of "everywhere a
+    // literal can start" disagrees with the real parser's. Continuing would treat that
+    // literal's own text as ordinary code for the rest of the file: exactly the "real
+    // code quietly blanked away" failure this whole rewrite exists to close. Reproduced
+    // directly, before `JsxText` was added to `LITERAL_KINDS` above: JSX text containing
+    // `//`-shaped characters (`<code>src/*.ts</code>`) let the line-comment scan below
+    // run straight through a real string literal's own start a few characters later,
+    // silently disabling string-awareness for everything after it in the file.
+    if (r < ranges.length && ranges[r].start < i) {
+      throw new Error(
+        `stripCodeComments: internal desync — a literal at ${ranges[r].start} was passed ` +
+          `over by the comment scan (now at ${i}) without being recognised. Refusing to ` +
+          "continue with a scanner and parser that disagree about where literals start.",
+      );
     }
 
     // ── everything else: comments are unambiguous once literals are excluded ──────────

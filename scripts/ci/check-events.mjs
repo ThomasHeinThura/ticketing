@@ -492,13 +492,19 @@ function publishedKeysIn(rawSource, location) {
   // Comments blanked (replaced with same-length whitespace, newlines kept) BEFORE any
   // scan runs, so a comment can never fake a declaration or a call site — case J was
   // exactly a comment ending in the word `function` disabling the declaration-site skip
-  // for the real call sitting beneath it.
-  const code = stripCodeComments(rawSource);
+  // for the real call sitting beneath it. `location` (a `rel(absolute)` path — see
+  // `main()` below) doubles as the JSX-vs-non-JSX hint stripCodeComments needs from its
+  // real extension (#421 Opus security review: an ordinary generic arrow function reads
+  // as JSX once JSX parsing is on, so this file's own extension must decide it).
+  const code = stripCodeComments(rawSource, { fileName: location });
   // A second copy with string CONTENTS also blanked, used only to decide whether a bare
   // identifier occurrence is real code — an import, an alias, an unrecognised usage — or
   // sits inside a string literal (example source embedded as test/doc fixture text does
   // not execute and must not be read as a real call).
-  const structural = stripCodeComments(rawSource, { blankStrings: true });
+  const structural = stripCodeComments(rawSource, {
+    blankStrings: true,
+    fileName: location,
+  });
 
   const { names, explainedSpans } = callNamesIn(structural);
   const callRegex = buildCallRegex(names);

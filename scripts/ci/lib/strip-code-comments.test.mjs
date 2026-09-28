@@ -810,3 +810,87 @@ describe("issue #143 / #421 — `)` after a control-flow keyword is real paren-m
     assert.equal(out, 'f(x) /y/.exec(w); s = " "; it.skip(" ", fn);');
   });
 });
+
+/**
+ * #421's mandatory Opus security review found a REGRESSION in this rewrite's own first
+ * revision, worse than the scanner it replaced: every source was parsed as `.tsx`
+ * unconditionally, reasoning that JSX parsing is a strict superset of ordinary TS/JS
+ * syntax except for the legacy angle-bracket cast (`<Type>expr`), which this repository
+ * doesn't use. That reasoning missed a far more common shape: an ordinary generic arrow
+ * function (`const pick = <T>(xs: T[]) => xs[0]`) is read as a JSX opening tag once JSX
+ * parsing is on — not a rare legacy cast, routine modern TypeScript. Once misread that
+ * way, the rest of the file parsed as JSX TEXT, and a later string containing
+ * `//`/`/*`-shaped characters (an ordinary glob or URL) was misread as a real comment,
+ * silently blanking a real `it.only(`/`it.skip(` call sitting after it on the same or a
+ * later line. The fix, verified below: JSX mode is now opt-in via `fileName`'s own
+ * extension, defaulting to non-JSX (which the shape below needs); and `ts.SyntaxKind.
+ * JsxText` is itself now a tracked literal kind, so even a genuine `.tsx` file with JSX
+ * text that looks like a comment cannot trigger the same class of "real code quietly
+ * blanked" failure.
+ */
+describe("#421 Opus security review — JSX-mode parsing cannot hide real code", () => {
+  it("a generic arrow function does not get misread as JSX, by default", () => {
+    // No `fileName` at all — the DEFAULT must be safe, since not every caller of this
+    // function can supply one.
+    const source = [
+      "const pick = <T>(xs: T[]) => xs[0];",
+      'const a = globby("src/*.ts");',
+      'it.only("runs alone", fn);',
+      'const b = globby("lib/**/x.js");',
+    ].join("\n");
+    const out = stripCodeComments(source, { blankStrings: true });
+    assert.match(
+      out,
+      /it\.only\(/,
+      "a real it.only( after a generic arrow function must still be visible",
+    );
+    assert.equal(
+      out,
+      [
+        "const pick = <T>(xs: T[]) => xs[0];",
+        'const a = globby("        ");',
+        'it.only("          ", fn);',
+        'const b = globby("           ");',
+      ].join("\n"),
+      "the generic arrow itself is ordinary code and must pass through untouched; only " +
+        "the string CONTENTS around it are blanked",
+    );
+  });
+
+  it("the same generic arrow function is safe with an explicit `.ts` fileName too", () => {
+    const source = [
+      "const pick = <T>(xs: T[]) => xs[0];",
+      'it.skip("real", fn);',
+    ].join("\n");
+    const out = stripCodeComments(source, {
+      blankStrings: true,
+      fileName: "apps/api/src/util.ts",
+    });
+    assert.match(out, /it\.skip\(/);
+  });
+
+  it("a real .tsx file's JSX text cannot hide a real call after it, even though the file genuinely needs JSX mode", () => {
+    // Same shape check-events.mjs's own real callers hit: JSX display text that merely
+    // LOOKS like a comment or a glob (`<code>src/*.ts</code>`) must not desync the
+    // scanner for the rest of the file the way it did before JsxText was tracked.
+    const source = [
+      "render(<code>src/*.ts</code>);",
+      'const c = "lib/**/x";',
+      'const u = "http://x"; it.only("y", fn);',
+    ].join("\n");
+    const out = stripCodeComments(source, {
+      blankStrings: true,
+      fileName: "apps/web/src/Component.tsx",
+    });
+    assert.match(
+      out,
+      /it\.only\(/,
+      "a real call after genuine JSX text must still be visible",
+    );
+    assert.match(
+      out,
+      /^render\(<code>\s+<\/code>\);/,
+      "the JSX text itself is blanked as display content, not left executing as a comment",
+    );
+  });
+});
