@@ -310,11 +310,13 @@ async function main() {
         : "";
     } catch (error) {
       if (!(error instanceof BidiControlCharacterError)) throw error;
+      // "the Task section", not "the Spec field" -- wordBoundaryContentOf checks
+      // task.raw as a whole (the bidi test must run before the Spec field is even
+      // extracted, see that function's own doc comment), so the character can be
+      // anywhere in Task, not necessarily inside the Spec field itself. Found by the
+      // Opus security review of this fix: the original wording named the wrong scope.
       failures.push(
-        violation(
-          "pull request body",
-          `the **Task** section's **Spec** field ${error.message}`,
-        ),
+        violation("pull request body", `the **Task** section ${error.message}`),
       );
       finish({ name: NAME, failures, ok: "unreachable" });
       return;

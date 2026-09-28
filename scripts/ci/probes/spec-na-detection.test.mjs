@@ -37,6 +37,17 @@ import {
 
 after(cleanUpScratchRepos);
 
+/**
+ * Built from a CODE POINT, never embedded as a raw literal -- found by the Opus security
+ * review of this fix's own first draft: a source file (this one included) is not the right
+ * place to carry a raw bidi override character, since it renders in every diff viewer,
+ * editor and `git blame` exactly like the pull-request bodies issue #153 is about.
+ */
+const chr = (codepoint) => String.fromCodePoint(codepoint);
+const U_3000_IDEOGRAPHIC_SPACE = chr(0x3000);
+const U_202E_RIGHT_TO_LEFT_OVERRIDE = chr(0x202e);
+const U_202C_POP_DIRECTIONAL_FORMATTING = chr(0x202c);
+
 /** A review document with one OPEN section, keyed by a backtick-quoted filename — the
  * same shape `docs/07-planning/reviews/2026-09-05/consistency.md`'s real "4d" section
  * uses for `status.md` today. */
@@ -656,7 +667,9 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
     const dir = scenario();
     const result = runChecker(dir, "check-reviews.mjs", [
       "--body",
-      bodyWithSpec("not　applicable — CI infrastructure probe, not a feature"),
+      bodyWithSpec(
+        `not${U_3000_IDEOGRAPHIC_SPACE}applicable — CI infrastructure probe, not a feature`,
+      ),
     ]);
     assert.equal(
       result.status,
@@ -689,7 +702,7 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
     commit(dir, "docs: retarget the open section at workflows.md");
     const result = runChecker(dir, "check-reviews.mjs", [
       "--body",
-      bodyWithSpec("not　applicable-workflows.md"),
+      bodyWithSpec(`not${U_3000_IDEOGRAPHIC_SPACE}applicable-workflows.md`),
     ]);
     assert.notEqual(
       result.status,
@@ -714,7 +727,10 @@ describe("check:reviews — an honest n/a explanation must not be read as a spec
     const dir = scenario();
     const result = runChecker(dir, "check-reviews.mjs", [
       "--body",
-      bodyWithSpec("not applicable ‮workflows.md ‬see reasoning above"),
+      bodyWithSpec(
+        `not applicable ${U_202E_RIGHT_TO_LEFT_OVERRIDE}workflows.md` +
+          `${U_202C_POP_DIRECTIONAL_FORMATTING} see reasoning above`,
+      ),
     ]);
     assert.notEqual(
       result.status,

@@ -382,58 +382,103 @@ export class BidiControlCharacterError extends Error {
 }
 
 /**
- * The standard Unicode bidirectional-formatting control characters — the ones capable of
- * changing how surrounding text RENDERS (left-to-right vs right-to-left, what visually
- * comes "first") without changing the code points a parser reads. This is the exact,
- * closed set flagged by the "Trojan Source" paper and Unicode TR36/UAX#9, not the whole
- * `\p{Cf}` category `INVISIBLE` strips: a zero-width joiner is Cf too, but it cannot
- * reorder how anything renders, so it stays silently stripped by `contentOf` for
- * blankness purposes. Only the characters below get the fail-closed treatment.
+ * The standard Unicode bidirectional-formatting control characters, as CODE POINTS rather
+ * than embedded literal characters — found by the Opus security review of this very fix:
+ * a source file is not the right place to carry a raw bidi override character, even inside
+ * a regex meant to detect one. A raw literal renders in every diff viewer, editor and
+ * `git blame` exactly like the pull-request bodies this check exists to catch, which is the
+ * one thing a file fixing issue #153 should not itself do. Building the pattern from
+ * `String.fromCodePoint` keeps the tracked SOURCE TEXT free of any bidi character while the
+ * compiled regex still matches all twelve at runtime.
+ *
+ * This is the exact, closed set flagged by the "Trojan Source" paper and Unicode TR36/UAX#9
+ * (`Bidi_Control=Yes`) — not the whole `\p{Cf}` category `INVISIBLE` strips: a zero-width
+ * joiner is Cf too, but it cannot reorder how anything renders, so it stays silently
+ * stripped by `contentOf` for blankness purposes. Only these twelve get the fail-closed
+ * treatment.
  */
-const BIDI_CONTROL_CHARS = /[؜‎‏‪-‮⁦-⁩]/u;
+const BIDI_CONTROL_CODEPOINTS = [
+  0x061c, // ARABIC LETTER MARK
+  0x200e, // LEFT-TO-RIGHT MARK
+  0x200f, // RIGHT-TO-LEFT MARK
+  0x202a, // LEFT-TO-RIGHT EMBEDDING
+  0x202b, // RIGHT-TO-LEFT EMBEDDING
+  0x202c, // POP DIRECTIONAL FORMATTING
+  0x202d, // LEFT-TO-RIGHT OVERRIDE
+  0x202e, // RIGHT-TO-LEFT OVERRIDE
+  0x2066, // LEFT-TO-RIGHT ISOLATE
+  0x2067, // RIGHT-TO-LEFT ISOLATE
+  0x2068, // FIRST STRONG ISOLATE
+  0x2069, // POP DIRECTIONAL ISOLATE
+];
+const BIDI_CONTROL_CHARS = new RegExp(
+  `[${BIDI_CONTROL_CODEPOINTS.map((cp) => String.fromCodePoint(cp)).join("")}]`,
+  "u",
+);
+
+/**
+ * The blank-RENDERING characters `INVISIBLE` strips (U+3000 and the L6 fillers — see
+ * `INVISIBLE`'s own doc comment) that can also be a legitimate WORD SEPARATOR in real
+ * input, not just decoration. U+3000 IDEOGRAPHIC SPACE is the one issue #152 actually
+ * reproduced: CJK input methods commit it as an ordinary space key routinely, so
+ * `"not　applicable"` is two words to any human, but `contentOf` collapses it to
+ * `"notapplicable"`. The Opus security review of this fix generalised the finding: every
+ * other non-format blank-renderer `INVISIBLE` lists (U+2800, U+3164, U+115F, U+1160,
+ * U+FFA0, U+17B4, U+17B5) shares the identical deletion-fuses-words exposure in principle,
+ * so all of them are masked to an ordinary space here rather than deleted — the same
+ * closed-list treatment `INVISIBLE` itself already uses, not a new decision about which
+ * characters are blank.
+ *
+ * Masking to a space rather than deleting cannot weaken blankness: a section made only of
+ * these characters still trims away to `""` once `INVISIBLE` runs afterward.
+ */
+const WORD_SEPARATING_BLANKS = /[⠀ㅤᅟᅠﾠ឴឵　]/gu;
 
 /**
  * Like `contentOf`, but for a caller that parses the result for WORD-BOUNDARY-SENSITIVE
  * decisions — recognising a two-word opener like "not applicable", or extracting a
  * filename — rather than merely testing whether a section is blank.
  *
- * `contentOf` is correct for its OWN purpose (issue #152's own framing): a section made
- * up of nothing but U+3000 IDEOGRAPHIC SPACE should read as blank, so deleting it there is
- * fine. The bug is in reusing that same deleted-not-masked text for parsing that needs the
- * word boundary U+3000 was providing — CJK input methods commit it as an ordinary space
- * key routinely, so `"not　applicable"` is two words to any human, but `contentOf`
- * collapses it to `"notapplicable"`, which `check-reviews.mjs`'s opener detection no
- * longer recognises as "not applicable" at all. Fixed here by turning U+3000 into a real
- * space instead of deleting it — the word boundary survives, and a section made only of
- * U+3000 still trims away to nothing, so blankness is unaffected.
+ * Every invisible character `contentOf` strips is still stripped here, with two
+ * differences:
  *
- * Every other invisible character `contentOf` strips (zero-width joiners, the blank-
- * rendering fillers) is stripped identically here, with one exception: a bidi control
- * character (issue #153) is refused outright — `BidiControlCharacterError` — instead of
- * silently deleted. Deleting it would let a pull-request body RENDER one way to a human
- * reviewer (the override in effect) while this function hands a parser a different,
- * override-free string — a "Trojan Source" mismatch between what looks approved and what
- * the gate actually checked. Fail-closed is the same choice `loadPullRequestHead` already
- * makes for an unreadable event payload, for the identical reason: silently substituting
- * something plausible is worse than stopping and saying so.
+ * 1. `WORD_SEPARATING_BLANKS` (issue #152) is masked to an ordinary space instead of
+ *    deleted, so a real word boundary survives instead of silently fusing two words.
+ * 2. A bidi control character (issue #153) is refused outright — `BidiControlCharacterError`
+ *    — instead of silently deleted. Deleting it would let a pull-request body RENDER one
+ *    way to a human reviewer (the override in effect) while this function hands a parser a
+ *    different, override-free string — a "Trojan Source" mismatch between what looks
+ *    approved and what the gate actually checked. Fail-closed is the same choice
+ *    `loadPullRequestHead` already makes for an unreadable event payload, for the identical
+ *    reason: silently substituting something plausible is worse than stopping and saying so.
+ *
+ * The bidi check runs on the COMMENT-STRIPPED text, before the template-scaffolding line
+ * filters below — found by the Opus security review of this fix: a bidi character sitting
+ * on a line the scaffolding filter would otherwise drop (a bare `**Label:**` line, or a
+ * `---` rule) still renders as part of the same paragraph on GitHub once adjacent lines are
+ * joined, so it must be caught even though that exact line never reaches the returned text.
  *
  * @param {string} markdown
  * @returns {string}
  */
 export function wordBoundaryContentOf(markdown) {
-  const stripped = stripComments(markdown)
-    .split("\n")
-    .filter((line) => !/^\s*\*\*[^*]+:\*\*\s*$/.test(line))
-    .filter((line) => !/^\s*-{3,}\s*$/.test(line))
-    .join("\n");
-  if (BIDI_CONTROL_CHARS.test(stripped)) {
+  const commentsStripped = stripComments(markdown);
+  if (BIDI_CONTROL_CHARS.test(commentsStripped)) {
     throw new BidiControlCharacterError(
       "contains a bidi control character (e.g. U+202E RIGHT-TO-LEFT OVERRIDE), which can " +
         "render differently to a human reviewer than the text this check actually parses. " +
         "Remove it and resubmit.",
     );
   }
-  return stripped.replace(/　/gu, " ").replace(INVISIBLE, "").trim();
+  const stripped = commentsStripped
+    .split("\n")
+    .filter((line) => !/^\s*\*\*[^*]+:\*\*\s*$/.test(line))
+    .filter((line) => !/^\s*-{3,}\s*$/.test(line))
+    .join("\n");
+  return stripped
+    .replace(WORD_SEPARATING_BLANKS, " ")
+    .replace(INVISIBLE, "")
+    .trim();
 }
 
 /** Compare headings without caring about dash flavour or case. */

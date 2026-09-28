@@ -2393,9 +2393,38 @@ describe("contentOf — L6, blank-rendering NON-format characters are not conten
   });
 });
 
+/**
+ * Every character this suite exercises is built from its CODE POINT, never embedded as a
+ * raw literal — found by the Opus security review of this fix's own first draft: a source
+ * file (this one included) is not the right place to carry a raw bidi override character,
+ * since it renders in every diff viewer, editor and `git blame` exactly like the pull-
+ * request bodies issue #153 is about. `chr` keeps the tracked SOURCE TEXT free of any bidi
+ * or blank-rendering character while the tests still exercise the real ones at runtime.
+ */
+const chr = (codepoint) => String.fromCodePoint(codepoint);
+
+const U_3000_IDEOGRAPHIC_SPACE = chr(0x3000);
+const U_202E_RIGHT_TO_LEFT_OVERRIDE = chr(0x202e);
+const U_202C_POP_DIRECTIONAL_FORMATTING = chr(0x202c);
+
+const BIDI_CONTROL_CODEPOINTS_FOR_TESTS = [
+  [0x061c, "ARABIC LETTER MARK"],
+  [0x200e, "LEFT-TO-RIGHT MARK"],
+  [0x200f, "RIGHT-TO-LEFT MARK"],
+  [0x202a, "LEFT-TO-RIGHT EMBEDDING"],
+  [0x202b, "RIGHT-TO-LEFT EMBEDDING"],
+  [0x202c, "POP DIRECTIONAL FORMATTING"],
+  [0x202d, "LEFT-TO-RIGHT OVERRIDE"],
+  [0x202e, "RIGHT-TO-LEFT OVERRIDE"],
+  [0x2066, "LEFT-TO-RIGHT ISOLATE"],
+  [0x2067, "RIGHT-TO-LEFT ISOLATE"],
+  [0x2068, "FIRST STRONG ISOLATE"],
+  [0x2069, "POP DIRECTIONAL ISOLATE"],
+];
+
 describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping breaks word-boundary-sensitive parsing", () => {
   it("issue #152's own repro: U+3000 between two words is a real separator, not deletable content", () => {
-    const raw = "**Spec:** not　applicable-workflows.md";
+    const raw = `**Spec:** not${U_3000_IDEOGRAPHIC_SPACE}applicable-workflows.md`;
     // Non-vacuity: contentOf (the function this bug actually lived in) really does fuse
     // the two words, which is exactly what corrupted `check-reviews.mjs`'s opener
     // detection -- see check-reviews.mjs's own end-to-end reproduction below for the
@@ -2413,14 +2442,44 @@ describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping brea
   });
 
   it("a section made up only of U+3000 is still BLANK -- the fix must not weaken blankness", () => {
-    assert.equal(wordBoundaryContentOf("　　"), "");
-    assert.equal(wordBoundaryContentOf("  　 \n 　  "), "");
+    assert.equal(wordBoundaryContentOf(U_3000_IDEOGRAPHIC_SPACE.repeat(2)), "");
+    assert.equal(
+      wordBoundaryContentOf(
+        `  ${U_3000_IDEOGRAPHIC_SPACE} \n ${U_3000_IDEOGRAPHIC_SPACE}  `,
+      ),
+      "",
+    );
   });
 
   it("still strips every other invisible character contentOf strips, identically", () => {
-    for (const char of ["​", "‌", "‍", "⁠", "﻿", "­", "᠎", "⠀", "ㅤ"]) {
+    for (const codepoint of [
+      0x200b, 0x200c, 0x200d, 0x2060, 0xfeff, 0x00ad, 0x180e,
+    ]) {
+      const char = chr(codepoint);
       assert.equal(wordBoundaryContentOf(char), "");
       assert.equal(wordBoundaryContentOf(`re${char}viewed`), "reviewed");
+    }
+  });
+
+  it("issue #152, generalised (found by the Opus security review): every OTHER blank-rendering, non-format filler is masked to a space too, not just U+3000", () => {
+    // L6 (contentOf's own history): U+2800/U+3164/U+115F/U+1160/U+FFA0/U+17B4/U+17B5 all
+    // render blank on GitHub without being Cf, and share U+3000's exact
+    // deletion-fuses-words exposure in principle -- not reported by either issue directly,
+    // but the same root cause, so closed the same way rather than left for the next report.
+    for (const codepoint of [
+      0x2800, 0x3164, 0x115f, 0x1160, 0xffa0, 0x17b4, 0x17b5,
+    ]) {
+      const char = chr(codepoint);
+      const raw = `not${char}applicable-workflows.md`;
+      assert.equal(
+        wordBoundaryContentOf(raw),
+        "not applicable-workflows.md",
+        `expected U+${codepoint.toString(16).toUpperCase()} to be masked to a space, ` +
+          "preserving the word boundary",
+      );
+      // Still blank on its own -- masking to a space cannot weaken blankness, since
+      // INVISIBLE strips the space-adjacent-to-nothing result down to "" via trim().
+      assert.equal(wordBoundaryContentOf(char.repeat(3)), "");
     }
   });
 
@@ -2429,9 +2488,11 @@ describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping brea
     // without changing the code points a parser (or contentOf) reads -- contentOf's
     // \p{Cf} strip deletes it silently, so what a human reviewer SAW when the override
     // was rendered and what the gate actually parsed could permanently disagree.
-    const raw = "**Spec:** not applicable ‮workflows.md";
+    const raw =
+      `**Spec:** not applicable ${U_202E_RIGHT_TO_LEFT_OVERRIDE}workflows.md` +
+      U_202C_POP_DIRECTIONAL_FORMATTING;
     assert.equal(
-      contentOf(raw).includes("‮"),
+      contentOf(raw).includes(U_202E_RIGHT_TO_LEFT_OVERRIDE),
       false,
       "non-vacuity: contentOf really does delete the override silently",
     );
@@ -2439,29 +2500,43 @@ describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping brea
   });
 
   it("rejects every standard bidi control character, not only U+202E", () => {
-    for (const char of [
-      "؜", // ARABIC LETTER MARK
-      "‎", // LEFT-TO-RIGHT MARK
-      "‏", // RIGHT-TO-LEFT MARK
-      "‪", // LEFT-TO-RIGHT EMBEDDING
-      "‫", // RIGHT-TO-LEFT EMBEDDING
-      "‬", // POP DIRECTIONAL FORMATTING
-      "‭", // LEFT-TO-RIGHT OVERRIDE
-      "‮", // RIGHT-TO-LEFT OVERRIDE
-      "⁦", // LEFT-TO-RIGHT ISOLATE
-      "⁧", // RIGHT-TO-LEFT ISOLATE
-      "⁨", // FIRST STRONG ISOLATE
-      "⁩", // POP DIRECTIONAL ISOLATE
-    ]) {
+    for (const [codepoint, name] of BIDI_CONTROL_CODEPOINTS_FOR_TESTS) {
       assert.throws(
-        () => wordBoundaryContentOf(`plain text ${char} more text`),
+        () => wordBoundaryContentOf(`plain text ${chr(codepoint)} more text`),
         BidiControlCharacterError,
-        `expected U+${char.codePointAt(0).toString(16).toUpperCase()} to be refused`,
+        `expected U+${codepoint.toString(16).toUpperCase()} (${name}) to be refused`,
       );
     }
   });
 
+  it("issue #153, found by the Opus security review: a bidi character INSIDE a bold-label-only line (which the scaffolding filter would otherwise DROP whole) is still caught", () => {
+    // The bidi check must run on the comment-stripped text BEFORE the bold-label-only line
+    // filter (`/^\s*\*\*[^*]+:\*\*\s*$/`) -- the label's own `[^*]+` swallows any non-`*`
+    // character, bidi controls included, so a label line carrying one *inside* the label
+    // text ("**No<U+202E>te:**", not after the closing "**") still matches that filter and
+    // is dropped WHOLE by the old ordering. GitHub still renders it as part of the same
+    // paragraph as the line after it, so the override is not actually invisible to a human
+    // reviewer just because this function would otherwise discard that exact line -- the
+    // bidi test must see the text before the filter removes it, not after.
+    const labelLineOnly = `**No${U_202E_RIGHT_TO_LEFT_OVERRIDE}te:**\n**Spec:** n/a`;
+    // Non-vacuity: confirm the label-only filter really does match (and would drop) this
+    // exact line, so the fix is proven against the shape Opus actually found, not a
+    // near-miss that never reached the filter either way.
+    assert.match(
+      labelLineOnly.split("\n")[0],
+      /^\s*\*\*[^*]+:\*\*\s*$/,
+      "the probe line must match contentOf's own label-only filter for this test to mean " +
+        "anything",
+    );
+    assert.throws(
+      () => wordBoundaryContentOf(labelLineOnly),
+      BidiControlCharacterError,
+      "expected a bidi character embedded in an otherwise-dropped label-only line to still " +
+        "be refused",
+    );
+  });
+
   it("does not reject a harmless Cf character (a zero-width joiner) that cannot reorder rendering", () => {
-    assert.doesNotThrow(() => wordBoundaryContentOf("re‍viewed"));
+    assert.doesNotThrow(() => wordBoundaryContentOf(`re${chr(0x200d)}viewed`));
   });
 });
