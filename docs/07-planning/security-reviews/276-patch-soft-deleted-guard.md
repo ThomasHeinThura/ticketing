@@ -131,3 +131,21 @@ review covers.
 **Verdict:** both Opus clearances above remain valid at `a3f85997`.
 
 **Reviewed head:** `a3f859971361cda8161164a153416ed20c0a50ed`
+
+---
+
+## Mechanical reconfirmation after merging main past PR #482 (d8447907)
+
+**Confirmed by:** the orchestrating session, directly.
+
+**What happened:** `main` advanced to `a3e6432b` (PR #482, issue #295's deadlock-retry fix)
+after the last reconfirmation. This branch was updated with `main` (merge commit `d8447907`).
+
+**Verified directly:** `git show a3e6432b --stat` touches
+`set-work-item-parent.ts`, `detach-work-item-parent.ts`, `parent-write-deadlock-retry.ts`,
+and their test files — none of which is `require-work-item-reach.ts` or `update-work-item.ts`,
+the files this review covers.
+
+**Verdict:** both Opus clearances above remain valid at `d8447907`.
+
+**Reviewed head:** `d84479076a4fb19aadd22d753f116f0ff597f4b0`
