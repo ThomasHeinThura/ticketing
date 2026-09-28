@@ -129,3 +129,24 @@ properly-scoped work rather than expanding this PR's diff.
 
 Every line of every diff on this branch was written directly by the orchestrating Claude
 Sonnet 5 session's own `Edit`/`Write` tool calls. No implementation step used `pal-mcp`.
+
+---
+
+## Mechanical reconfirmation after merging main past PR #475 (546d2d0f)
+
+**Confirmed by:** the orchestrating session, directly.
+
+**What happened:** `main` advanced to `bbdc027e` (PR #475, #154's linear MD_TOKEN scan) after
+the last Opus/ordinary review pass. This branch was updated with `main` (merge commit
+`546d2d0f`). The merge's own union-of-parent-diffs attribution lists this PR's own reviewed
+files (`pr-body.mjs`, `pr-body.test.mjs`) alongside #475's files, purely as an artifact of
+the diff computation against two different parents — not new content in either file.
+
+**Verified directly:** `git show bbdc027e --stat` touches exactly
+`scripts/ci/check-reviews.mjs`, `scripts/ci/probes/md-token-scan-performance.test.mjs`, and
+its own security-review note. None of these is `scripts/ci/lib/pr-body.mjs` or
+`scripts/ci/lib/pr-body.test.mjs` — the two files this review actually covers.
+
+**Verdict:** the Opus clearance at `7e202830` remains valid at `546d2d0f`.
+
+**Reviewed head:** `546d2d0f699e48c8f6f84906c59451bffb75643d`
