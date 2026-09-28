@@ -47,6 +47,11 @@ export function requireCannedResponseReach(idKey = "id") {
     }
 
     c.set("workspaceId", row.workspaceId);
+    // #400 F1 (Opus review): this id is read straight from the canned response's own
+    // row, never from the caller's request -- label it so shadow mode's evidence gate
+    // (`workspaceIdForShadowEvidence`, `shadow-context.ts`) keeps it instead of always
+    // nulling it, the same as every other row-derived source already does.
+    c.set("workspaceIdSource", "row");
     return next();
   };
 }
