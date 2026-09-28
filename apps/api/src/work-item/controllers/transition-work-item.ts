@@ -9,7 +9,7 @@ import {
   resolveStateTemplateForProject,
   type TransitionOfferContext,
 } from "@taskdesk/domain";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
@@ -17,6 +17,7 @@ import {
   commentTable,
   scheduledTransitionTable,
   stateTable,
+  stateTemplateTable,
   workItemTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
@@ -82,6 +83,46 @@ export class TransitionConflictError extends Error {
   constructor(public readonly currentStateId: string) {
     super("The work item's state changed while this request was in flight");
     this.name = "TransitionConflictError";
+  }
+}
+
+/**
+ * `pg`'s driver attaches Postgres's own SQLSTATE to `.code` on the error it throws.
+ * `40P01` is `deadlock_detected` -- narrow, deliberate detection of exactly that one
+ * condition, never a catch-all for "any database error."
+ */
+export function isPostgresDeadlockError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "40P01"
+  );
+}
+
+/**
+ * Opus security review of PR #457, D2 (non-blocking, handled anyway, not merely
+ * disclosed): this route's own lock ordering (the parent row, then its children) is the
+ * OPPOSITE of `set-work-item-parent.ts`'s (the child row, then the new parent's
+ * ancestors, via the cycle-check trigger's own locking walk) -- reproduced live, moving a
+ * child within the same parent's subtree concurrently with that parent transitioning can
+ * deadlock, and Postgres aborts exactly one side with a real `40P01`. Re-ordering every
+ * lock both this route and `set-work-item-parent.ts` take is a much larger, riskier
+ * change for a transient, retry-safe condition, so a genuine deadlock is caught here and
+ * reported as the same 409 an ordinary lost race already gets -- never a raw, unhandled
+ * 500 for a condition the client can simply retry.
+ */
+async function runTransactionCatchingDeadlock<T>(
+  currentStateId: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (isPostgresDeadlockError(error)) {
+      throw new TransitionConflictError(currentStateId);
+    }
+    throw error;
   }
 }
 
@@ -249,272 +290,301 @@ export async function transitionWorkItem(
     }
   }
 
-  const result = await db.transaction(async (tx) => {
-    // B1: lock the row FIRST, before deciding anything guard-shaped. Every fact below is
-    // read from THIS locked row, never from `ctx`'s earlier, unlocked read.
-    const [locked] = await tx
-      .select({
-        stateId: workItemTable.stateId,
-        assigneeId: workItemTable.assigneeId,
-      })
-      .from(workItemTable)
-      .where(eq(workItemTable.id, ctx.workItem.id))
-      .for("update");
-
-    if (!locked || locked.stateId !== fromStateId) {
-      throw new TransitionConflictError(locked?.stateId ?? fromStateId);
-    }
-
-    // `children_closed`: read children `FOR SHARE` in the SAME transaction, so a
-    // concurrent reopen of a child is either already committed (visible here) or blocks
-    // behind this lock (never silently invisible).
-    const children = await tx
-      .select({ stateTemplateId: stateTable.stateTemplateId })
-      .from(workItemTable)
-      .innerJoin(stateTable, eq(workItemTable.stateId, stateTable.id))
-      .where(
-        and(
-          eq(workItemTable.parentId, ctx.workItem.id),
-          isNull(workItemTable.archivedAt),
-          isNull(workItemTable.deletedAt),
-        ),
-      )
-      .for("share");
-    const allChildrenClosed = children.every((child) => {
-      const group = ctx.templateGroups.get(
-        asStateTemplateId(child.stateTemplateId),
-      );
-      return group === "completed" || group === "cancelled";
-    });
-
-    const offerContext: TransitionOfferContext = {
-      allChildrenClosed,
-      // `no_open_blockers`/`field_required`/`change_risk_at_most` fail closed
-      // unconditionally -- no schema exists yet to resolve them for real. See
-      // `buildGuardContext`'s own doc comment (`../workflow-transition-context.ts`),
-      // which the read-only `GET /transitions` feed still uses for these same three
-      // constants; kept static here too rather than pulled from a helper that would
-      // also re-run its OWN unlocked, redundant children query this function already
-      // did correctly, under lock, above.
-      hasOpenBlockers: true,
-      fieldValues: {},
-      changeRiskLevel: null,
-      assigneePresent: locked.assigneeId !== null,
-      approvalSatisfied: false,
-      cabSatisfied: false,
-      hasNote,
-    };
-    const offer = offerTransition(match, offerContext);
-    if (!offer.available) {
-      throw new TransitionBlockedError(offer.blockedBy);
-    }
-
-    // B2: a `set_assignee` target must pass the SAME roster/active eligibility check
-    // `assign-work-item.ts` enforces -- refuse the WHOLE transition, state change
-    // included, rather than write an ineligible assignee.
-    if (assigneeIdPatch !== undefined && assigneeIdPatch !== null) {
-      const eligibility = await resolveAssigneeEligibility(
-        tx,
-        ctx.workItem.projectId,
-        assigneeIdPatch,
-      );
-      if (!eligibility.eligible) {
-        throw new TransitionBlockedError([
-          { kind: "assignee", reasonCode: `assignee.${eligibility.reason}` },
-        ]);
-      }
-    }
-
-    const previousAssigneeId = locked.assigneeId;
-
-    const updateValues: Partial<typeof workItemTable.$inferInsert> = {
-      stateId: toStateId,
-      version: sql`${workItemTable.version} + 1` as unknown as number,
-      updatedAt: new Date(),
-    };
-    if (assigneeIdPatch !== undefined) {
-      updateValues.assigneeId = assigneeIdPatch;
-    }
-    if (resolvedAtPatch !== undefined) {
-      updateValues.resolvedAt = resolvedAtPatch;
-    }
-
-    const [updated] = await tx
-      .update(workItemTable)
-      .set(updateValues)
-      .where(
-        and(
-          eq(workItemTable.id, ctx.workItem.id),
-          eq(workItemTable.stateId, fromStateId),
-        ),
-      )
-      .returning({
-        key: workItemTable.key,
-        version: workItemTable.version,
-        assigneeId: workItemTable.assigneeId,
-        resolvedAt: workItemTable.resolvedAt,
-      });
-
-    if (!updated) {
-      // Defence in depth only -- the `FOR UPDATE` lock above already makes this
-      // unreachable in practice, since nothing can change `state_id` between that lock
-      // and this write without first taking the same lock.
-      const [current] = await tx
-        .select({ stateId: workItemTable.stateId })
+  const result = await runTransactionCatchingDeadlock(fromStateId, () =>
+    db.transaction(async (tx) => {
+      // B1: lock the row FIRST, before deciding anything guard-shaped. Every fact below is
+      // read from THIS locked row, never from `ctx`'s earlier, unlocked read.
+      const [locked] = await tx
+        .select({
+          stateId: workItemTable.stateId,
+          assigneeId: workItemTable.assigneeId,
+        })
         .from(workItemTable)
         .where(eq(workItemTable.id, ctx.workItem.id))
-        .limit(1);
-      throw new TransitionConflictError(current?.stateId ?? fromStateId);
-    }
+        .for("update");
 
-    for (const schedule of scheduleEffects) {
-      const scheduleResolution = resolveStateTemplateForProject(
-        asStateTemplateId(schedule.toStateTemplateId),
-        ctx.adoptedStates,
-      );
-      if (!scheduleResolution.ok) {
-        // Structurally the validation panel's own job to catch before publish
-        // (`WF-9`-adjacent) -- skipped here rather than failing an otherwise-legal
-        // transition over a workflow-authoring gap in an unrelated effect.
-        continue;
+      if (!locked || locked.stateId !== fromStateId) {
+        throw new TransitionConflictError(locked?.stateId ?? fromStateId);
       }
-      // Opus security review of PR #457, N7: `afterMinutes` carries no schema upper
-      // bound (see `workflow/schema.ts`'s own comment on why it is not tightened there),
-      // so a large enough authored value overflows `Date`'s valid range here and would
-      // otherwise hand Postgres an invalid timestamp -- a 500 on every future execution
-      // of this edge, not a 4xx. Validated at the one place the value actually turns into
-      // a `Date`, skipped the same way an unresolvable target already is above, rather
-      // than failing an otherwise-legal transition over one unrelated effect.
-      const dueAt = new Date(Date.now() + schedule.afterMinutes * 60_000);
-      if (Number.isNaN(dueAt.getTime())) {
-        continue;
-      }
-      await tx.insert(scheduledTransitionTable).values({
-        projectId: ctx.workItem.projectId,
-        workItemId: ctx.workItem.id,
-        transitionId: match.id,
-        fromStateId: toStateId,
-        toStateId: scheduleResolution.stateId,
-        dueAt,
-        state: "pending",
+
+      // `children_closed` (Opus security review of PR #457, D1 -- the remaining half of
+      // B1 the first fix round missed): lock children with a SINGLE-TABLE query first --
+      // `parent_id = ?` alone, no join -- then resolve each locked row's state in a
+      // SEPARATE second step. A `FOR SHARE` query that JOINS to `state` was proven live to
+      // return a STALE row for a child whose `state_id` changed while this transaction
+      // waited on the lock: Postgres's `EvalPlanQual` re-check re-verifies the join
+      // condition against the query's original snapshot of the OTHER side of the join, not
+      // a live re-fetch, so the just-committed new `state_id` silently dropped the row out
+      // of the result entirely (an empty `children` array reads as vacuously
+      // "all children closed" -- exactly backwards). Locking `work_item` alone guarantees
+      // the `stateId` this step reads back is the true, post-commit value; state templates
+      // are effectively static reference data, so resolving THEIR group in a second,
+      // unlocked query is safe.
+      const lockedChildren = await tx
+        .select({ id: workItemTable.id, stateId: workItemTable.stateId })
+        .from(workItemTable)
+        .where(
+          and(
+            eq(workItemTable.parentId, ctx.workItem.id),
+            isNull(workItemTable.archivedAt),
+            isNull(workItemTable.deletedAt),
+          ),
+        )
+        .for("share");
+      const childStateIds = [...new Set(lockedChildren.map((c) => c.stateId))];
+      const childStateGroups =
+        childStateIds.length === 0
+          ? new Map<string, string>()
+          : new Map(
+              (
+                await tx
+                  .select({
+                    id: stateTable.id,
+                    group: stateTemplateTable.group,
+                  })
+                  .from(stateTable)
+                  .innerJoin(
+                    stateTemplateTable,
+                    eq(stateTable.stateTemplateId, stateTemplateTable.id),
+                  )
+                  .where(inArray(stateTable.id, childStateIds))
+              ).map((row) => [row.id, row.group]),
+            );
+      const allChildrenClosed = lockedChildren.every((child) => {
+        const group = childStateGroups.get(child.stateId);
+        return group === "completed" || group === "cancelled";
       });
-    }
 
-    const [transitionActivity] = await recordWorkItemActivity(tx, [
-      {
-        workspaceId: ctx.workItem.workspaceId,
-        workItemId: ctx.workItem.id,
-        actorId,
-        actorType,
-        verb: "transitioned",
-        oldValue: fromStateId,
-        newValue: toStateId,
-        workflowVersionId: ctx.activeVersion?.id ?? null,
-      },
-    ]);
+      const offerContext: TransitionOfferContext = {
+        allChildrenClosed,
+        // `no_open_blockers`/`field_required`/`change_risk_at_most` fail closed
+        // unconditionally -- no schema exists yet to resolve them for real. See
+        // `buildGuardContext`'s own doc comment (`../workflow-transition-context.ts`),
+        // which the read-only `GET /transitions` feed still uses for these same three
+        // constants; kept static here too rather than pulled from a helper that would
+        // also re-run its OWN unlocked, redundant children query this function already
+        // did correctly, under lock, above.
+        hasOpenBlockers: true,
+        fieldValues: {},
+        changeRiskLevel: null,
+        assigneePresent: locked.assigneeId !== null,
+        approvalSatisfied: false,
+        cabSatisfied: false,
+        hasNote,
+      };
+      const offer = offerTransition(match, offerContext);
+      if (!offer.available) {
+        throw new TransitionBlockedError(offer.blockedBy);
+      }
 
-    // `assigneeEventKind` decides which of `work_item.assigned`/`work_item.unassigned`
-    // (AS-16/AS-17) to publish after commit, mirroring `assign-work-item.ts`'s own
-    // activity + audit + event shape exactly -- not a narrower inline copy (Opus review,
-    // B2's fix instruction).
-    let assigneeEventKind: "assigned" | "unassigned" | null = null;
-    if (
-      assigneeIdPatch !== undefined &&
-      assigneeIdPatch !== previousAssigneeId
-    ) {
-      await recordWorkItemActivity(tx, [
+      // B2: a `set_assignee` target must pass the SAME roster/active eligibility check
+      // `assign-work-item.ts` enforces -- refuse the WHOLE transition, state change
+      // included, rather than write an ineligible assignee.
+      if (assigneeIdPatch !== undefined && assigneeIdPatch !== null) {
+        const eligibility = await resolveAssigneeEligibility(
+          tx,
+          ctx.workItem.projectId,
+          assigneeIdPatch,
+        );
+        if (!eligibility.eligible) {
+          throw new TransitionBlockedError([
+            { kind: "assignee", reasonCode: `assignee.${eligibility.reason}` },
+          ]);
+        }
+      }
+
+      const previousAssigneeId = locked.assigneeId;
+
+      const updateValues: Partial<typeof workItemTable.$inferInsert> = {
+        stateId: toStateId,
+        version: sql`${workItemTable.version} + 1` as unknown as number,
+        updatedAt: new Date(),
+      };
+      if (assigneeIdPatch !== undefined) {
+        updateValues.assigneeId = assigneeIdPatch;
+      }
+      if (resolvedAtPatch !== undefined) {
+        updateValues.resolvedAt = resolvedAtPatch;
+      }
+
+      const [updated] = await tx
+        .update(workItemTable)
+        .set(updateValues)
+        .where(
+          and(
+            eq(workItemTable.id, ctx.workItem.id),
+            eq(workItemTable.stateId, fromStateId),
+          ),
+        )
+        .returning({
+          key: workItemTable.key,
+          version: workItemTable.version,
+          assigneeId: workItemTable.assigneeId,
+          resolvedAt: workItemTable.resolvedAt,
+        });
+
+      if (!updated) {
+        // Defence in depth only -- the `FOR UPDATE` lock above already makes this
+        // unreachable in practice, since nothing can change `state_id` between that lock
+        // and this write without first taking the same lock.
+        const [current] = await tx
+          .select({ stateId: workItemTable.stateId })
+          .from(workItemTable)
+          .where(eq(workItemTable.id, ctx.workItem.id))
+          .limit(1);
+        throw new TransitionConflictError(current?.stateId ?? fromStateId);
+      }
+
+      for (const schedule of scheduleEffects) {
+        const scheduleResolution = resolveStateTemplateForProject(
+          asStateTemplateId(schedule.toStateTemplateId),
+          ctx.adoptedStates,
+        );
+        if (!scheduleResolution.ok) {
+          // Structurally the validation panel's own job to catch before publish
+          // (`WF-9`-adjacent) -- skipped here rather than failing an otherwise-legal
+          // transition over a workflow-authoring gap in an unrelated effect.
+          continue;
+        }
+        // Opus security review of PR #457, N7: `afterMinutes` carries no schema upper
+        // bound (see `workflow/schema.ts`'s own comment on why it is not tightened there),
+        // so a large enough authored value overflows `Date`'s valid range here and would
+        // otherwise hand Postgres an invalid timestamp -- a 500 on every future execution
+        // of this edge, not a 4xx. Validated at the one place the value actually turns into
+        // a `Date`, skipped the same way an unresolvable target already is above, rather
+        // than failing an otherwise-legal transition over one unrelated effect.
+        const dueAt = new Date(Date.now() + schedule.afterMinutes * 60_000);
+        if (Number.isNaN(dueAt.getTime())) {
+          continue;
+        }
+        await tx.insert(scheduledTransitionTable).values({
+          projectId: ctx.workItem.projectId,
+          workItemId: ctx.workItem.id,
+          transitionId: match.id,
+          fromStateId: toStateId,
+          toStateId: scheduleResolution.stateId,
+          dueAt,
+          state: "pending",
+        });
+      }
+
+      const [transitionActivity] = await recordWorkItemActivity(tx, [
         {
           workspaceId: ctx.workItem.workspaceId,
           workItemId: ctx.workItem.id,
           actorId,
           actorType,
-          verb: "updated",
-          field: "assigneeId",
-          oldValue: previousAssigneeId,
-          newValue: assigneeIdPatch,
+          verb: "transitioned",
+          oldValue: fromStateId,
+          newValue: toStateId,
+          workflowVersionId: ctx.activeVersion?.id ?? null,
         },
       ]);
+
+      // `assigneeEventKind` decides which of `work_item.assigned`/`work_item.unassigned`
+      // (AS-16/AS-17) to publish after commit, mirroring `assign-work-item.ts`'s own
+      // activity + audit + event shape exactly -- not a narrower inline copy (Opus review,
+      // B2's fix instruction).
+      let assigneeEventKind: "assigned" | "unassigned" | null = null;
+      if (
+        assigneeIdPatch !== undefined &&
+        assigneeIdPatch !== previousAssigneeId
+      ) {
+        await recordWorkItemActivity(tx, [
+          {
+            workspaceId: ctx.workItem.workspaceId,
+            workItemId: ctx.workItem.id,
+            actorId,
+            actorType,
+            verb: "updated",
+            field: "assigneeId",
+            oldValue: previousAssigneeId,
+            newValue: assigneeIdPatch,
+          },
+        ]);
+        await appendAuditLog(tx, {
+          actorId,
+          actorType,
+          workspaceId: ctx.workItem.workspaceId,
+          projectId: ctx.workItem.projectId,
+          action:
+            assigneeIdPatch === null
+              ? "work_item.unassigned"
+              : "work_item.assigned",
+          entityType: "work_item",
+          entityId: ctx.workItem.id,
+          before: { assigneeId: previousAssigneeId },
+          after: { assigneeId: assigneeIdPatch },
+        });
+        assigneeEventKind =
+          assigneeIdPatch === null ? "unassigned" : "assigned";
+      }
+
+      // `WF-10`/`WF-11`/`WF-12`: a supplied note is stored as a comment, visibility from
+      // the transition's own `note_visibility`, linked to the `transitioned` activity row
+      // so the activity stream renders both as one entry.
+      //
+      // KNOWN, DISCLOSED AMBIGUITY (ordinary review of PR #457, F2): `commentTable.body`
+      // is a `jsonb` column that every OTHER writer (`create-comment.ts`) fills with
+      // whatever Tiptap-document-shaped object the browser editor composed; this writes a
+      // bare JS string instead. `apps/web` has no live renderer for THIS table's
+      // `body` at all yet (its comment UI still reads the legacy, unrelated
+      // `task_comment` table -- confirmed by reading `apps/web/src/components/activity/
+      // comment-card.tsx`, which takes a plain `content: string` prop from that older
+      // system), so nothing breaks today. But `create-comment.ts` itself never validates
+      // or normalises `body`'s shape either, so a bare string here is consistent with what
+      // this table already tolerates from any other caller, not a new class of gap this
+      // route introduces. Deliberately NOT wrapped in a hand-rolled Tiptap doc structure
+      // that could not be verified against `apps/web`'s actual editor schema -- guessing
+      // at that shape risked being wrong in a way a real reviewer with e2e access to the
+      // web app could catch and this session could not. Flagged in the PR body as a real,
+      // open, disclosed risk rather than a "fix" this session could not actually verify.
+      if (hasNote && input.note !== undefined && transitionActivity) {
+        await tx.insert(commentTable).values({
+          workspaceId: ctx.workItem.workspaceId,
+          workItemId: ctx.workItem.id,
+          authorId: actorId,
+          actorType,
+          body: input.note,
+          visibility: match.noteVisibility,
+          activityId: transitionActivity.id,
+        });
+      }
+
+      // N4 (ordinary/Opus non-blocking): the audit row now carries every field this
+      // transaction can change, not `stateId` alone -- an assignee or `resolved_at` change
+      // made by an effect is otherwise invisible to an audit read of this one row.
       await appendAuditLog(tx, {
         actorId,
         actorType,
         workspaceId: ctx.workItem.workspaceId,
         projectId: ctx.workItem.projectId,
-        action:
-          assigneeIdPatch === null
-            ? "work_item.unassigned"
-            : "work_item.assigned",
+        action: "work_item.transitioned",
         entityType: "work_item",
         entityId: ctx.workItem.id,
-        before: { assigneeId: previousAssigneeId },
-        after: { assigneeId: assigneeIdPatch },
+        before: {
+          stateId: fromStateId,
+          assigneeId: previousAssigneeId,
+          resolvedAt: ctx.workItem.resolvedAt?.toISOString() ?? null,
+        },
+        after: {
+          stateId: toStateId,
+          assigneeId: updated.assigneeId,
+          resolvedAt: updated.resolvedAt?.toISOString() ?? null,
+        },
       });
-      assigneeEventKind = assigneeIdPatch === null ? "unassigned" : "assigned";
-    }
 
-    // `WF-10`/`WF-11`/`WF-12`: a supplied note is stored as a comment, visibility from
-    // the transition's own `note_visibility`, linked to the `transitioned` activity row
-    // so the activity stream renders both as one entry.
-    //
-    // KNOWN, DISCLOSED AMBIGUITY (ordinary review of PR #457, F2): `commentTable.body`
-    // is a `jsonb` column that every OTHER writer (`create-comment.ts`) fills with
-    // whatever Tiptap-document-shaped object the browser editor composed; this writes a
-    // bare JS string instead. `apps/web` has no live renderer for THIS table's
-    // `body` at all yet (its comment UI still reads the legacy, unrelated
-    // `task_comment` table -- confirmed by reading `apps/web/src/components/activity/
-    // comment-card.tsx`, which takes a plain `content: string` prop from that older
-    // system), so nothing breaks today. But `create-comment.ts` itself never validates
-    // or normalises `body`'s shape either, so a bare string here is consistent with what
-    // this table already tolerates from any other caller, not a new class of gap this
-    // route introduces. Deliberately NOT wrapped in a hand-rolled Tiptap doc structure
-    // that could not be verified against `apps/web`'s actual editor schema -- guessing
-    // at that shape risked being wrong in a way a real reviewer with e2e access to the
-    // web app could catch and this session could not. Flagged in the PR body as a real,
-    // open, disclosed risk rather than a "fix" this session could not actually verify.
-    if (hasNote && input.note !== undefined && transitionActivity) {
-      await tx.insert(commentTable).values({
-        workspaceId: ctx.workItem.workspaceId,
-        workItemId: ctx.workItem.id,
-        authorId: actorId,
-        actorType,
-        body: input.note,
-        visibility: match.noteVisibility,
-        activityId: transitionActivity.id,
-      });
-    }
-
-    // N4 (ordinary/Opus non-blocking): the audit row now carries every field this
-    // transaction can change, not `stateId` alone -- an assignee or `resolved_at` change
-    // made by an effect is otherwise invisible to an audit read of this one row.
-    await appendAuditLog(tx, {
-      actorId,
-      actorType,
-      workspaceId: ctx.workItem.workspaceId,
-      projectId: ctx.workItem.projectId,
-      action: "work_item.transitioned",
-      entityType: "work_item",
-      entityId: ctx.workItem.id,
-      before: {
-        stateId: fromStateId,
-        assigneeId: previousAssigneeId,
-        resolvedAt: ctx.workItem.resolvedAt?.toISOString() ?? null,
-      },
-      after: {
+      return {
+        key: updated.key,
         stateId: toStateId,
         assigneeId: updated.assigneeId,
-        resolvedAt: updated.resolvedAt?.toISOString() ?? null,
-      },
-    });
-
-    return {
-      key: updated.key,
-      stateId: toStateId,
-      assigneeId: updated.assigneeId,
-      resolvedAt: updated.resolvedAt,
-      version: updated.version,
-      previousAssigneeId,
-      assigneeEventKind,
-    };
-  });
+        resolvedAt: updated.resolvedAt,
+        version: updated.version,
+        previousAssigneeId,
+        assigneeEventKind,
+      };
+    }),
+  );
 
   await publishEvent("work_item.transitioned", {
     workItemId: ctx.workItem.id,

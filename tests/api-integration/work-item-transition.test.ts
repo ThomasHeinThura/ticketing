@@ -866,4 +866,101 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
       .where(eq(schema.workItemTable.key, key));
     expect(workItemRow?.resolvedAt).toBeNull();
   });
+
+  it("D1 (Opus delta review of PR #457): a concurrent child reopen cannot slip past a children_closed guard", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const childDone = await makeState(workspace.id, project.id, {
+      group: "completed",
+    });
+    const childReopened = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const parentDone = await makeState(workspace.id, project.id, {
+      group: "completed",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: parentDone.stateTemplate.id,
+        roleId: null,
+        guards: [{ type: "children_closed" }],
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key: parentKey } = await createWorkItem(app, project.id, type.id);
+    const { key: childKey } = await createWorkItem(app, project.id, type.id);
+
+    const [parentRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, parentKey));
+    const [childRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, childKey));
+    const parentId = requireRow([parentRow], "parentRow").id;
+    const childId = requireRow([childRow], "childRow").id;
+
+    // The child starts already "completed" and parented -- set directly, bypassing the
+    // hierarchy route entirely (this test is only about the guard's own race, not
+    // set-parent's cycle machinery).
+    await db
+      .update(schema.workItemTable)
+      .set({ parentId, stateId: childDone.state.id })
+      .where(eq(schema.workItemTable.id, childId));
+
+    const raw = await openRawClient();
+    try {
+      await raw.query("BEGIN");
+      // Uncommitted: reopens the child (the exact fact `children_closed` needs), and
+      // holds the child's own row lock.
+      await raw.query("UPDATE work_item SET state_id = $1 WHERE id = $2", [
+        childReopened.state.id,
+        childId,
+      ]);
+
+      const responsePromise = Promise.resolve(
+        transitionRequest(app, parentKey, {
+          toStateTemplateId: parentDone.stateTemplate.id,
+        }),
+      );
+      responsePromise.catch(() => {});
+
+      // Give the app's own locked children read time to reach Postgres and start
+      // blocking on the still-open transaction above before it is released.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await raw.query("COMMIT");
+
+      const response = await responsePromise;
+      // Pre-fix (D1): the locked read JOINED to `state`, and Postgres's EvalPlanQual
+      // re-check returned a STALE, empty result for the just-reopened child -- an empty
+      // array reads as vacuously "all children closed," and this returned 200. Post-fix:
+      // the lock is taken on `work_item` alone, then the child's (now-fresh)
+      // `state_id` is resolved in a separate step, so the guard correctly sees the child
+      // as reopened and blocks.
+      expect(response.status).toBe(422);
+      const body = (await response.json()) as {
+        blockedBy: { kind: string; reasonCode: string }[];
+      };
+      expect(body.blockedBy).toEqual([
+        { kind: "guard", reasonCode: "guard.children_closed" },
+      ]);
+    } finally {
+      await raw.end();
+    }
+
+    const [finalParentRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, parentId));
+    // Blocked -- the parent never moved.
+    expect(finalParentRow?.stateId).toBe(backlog.state.id);
+  });
 });
