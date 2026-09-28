@@ -223,3 +223,44 @@ drift. B1/B3/B4 re-confirmed unaffected. N3/N4 unchanged, not made worse (N4 gai
 new orphan shape — a crashed-mid-write filesystem temp file — still non-blocking).
 
 N5 is required before merge. A fresh Opus delta pass is required on the fix.
+
+## Fix applied after round 3 (commit `089dbe4`)
+
+**Root cause confirmed:** `toFinalAttachmentObjectKey` was a pure, deterministic function
+of the pending key alone — two concurrent `complete` calls on the same attachment always
+derived the identical final key. On S3, `CopyObject` doesn't consume its source, so both
+concurrent copies could land at that one destination; whichever call lost the DB-level
+`state='pending'` race then deleted "its own" final object, which was actually the
+winner's. On filesystem, plain `rename()` already made this specific data-loss impossible
+(a source can only move once) — confirmed by the fix's own filesystem regression test
+passing even before the fix, consistent with this being an S3/MinIO-specific bug.
+
+**Fix:** each CALL to `toFinalAttachmentObjectKey` now appends a fresh random token into
+the final filename (`.../final/<token>-<original-filename>`), not a fixed transform of
+the pending key — two concurrent attempts on the same attachment now always get distinct
+destination keys, so neither's cleanup can ever touch the other's object. Applied via the
+shared driver-agnostic helper (`storage/shared.ts`), so both filesystem and S3 drivers get
+it automatically. Also added the `state='pending'` guard to both previously-unconditional
+row-DELETE calls in `complete-attachment.ts` (size-check and magic-byte-check failure
+branches), matching the guard the `ready` UPDATE already had.
+
+New regression test file (`attachment-concurrent-complete.test.ts`): 3 concurrent
+`complete` calls race on the same attachment via an S3 fake client's own "copy barrier"
+(forcing all 3 copies to succeed before any delete runs, rather than relying on timing
+luck) — exactly 1 of 3 wins (200), the other 2 get 409, and the winner's object survives
+with byte-for-byte correct content. Fail-then-pass reproduced: reverting just the two fix
+files reproduces the exact reported bug (`AssertionError: expected undefined to be
+defined` — the winning object genuinely gone).
+
+Independently spot-checked by the orchestrating session: both fix diffs read and
+confirmed correct; the new test file passes (1 file, 2 tests) on a fresh isolated
+database.
+
+Full suites reproduced by the fixing lane: unit 61 files/510 tests, permissions 13/83,
+integration 111 files/1399 tests — all green. `tsc --noEmit` clean on all three
+tsconfigs. `check-openapi.mjs` clean, 155 operations, no drift. B1-B4/N1/N2/L5
+re-confirmed unaffected.
+
+N3/N4 remain open, non-blocking, unchanged — out of scope for this round.
+
+A fresh Opus delta pass is required on this fix.
