@@ -117,7 +117,13 @@ export async function setWorkItemParent(
         )
         .for("update");
 
-      if (!item) {
+      // Issue #486: the same TOCTOU class #276 closed for `update-work-item.ts`.
+      // `require-work-item-reach.ts` already checks `archivedAt`/`deletedAt` on this same
+      // key before this transaction starts, but a concurrent soft-delete landing in the
+      // window between that check and this `FOR UPDATE` re-read would otherwise let this
+      // transaction still succeed against a since-deleted item -- belt-and-suspenders,
+      // matching #481's own guard on the parent lookup just below.
+      if (!item || item.archivedAt || item.deletedAt) {
         throw new HTTPException(404, { message: "Work item not found" });
       }
 
