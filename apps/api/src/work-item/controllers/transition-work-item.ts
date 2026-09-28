@@ -317,12 +317,25 @@ export async function transitionWorkItem(
         .select({
           stateId: workItemTable.stateId,
           assigneeId: workItemTable.assigneeId,
+          deletedAt: workItemTable.deletedAt,
+          archivedAt: workItemTable.archivedAt,
         })
         .from(workItemTable)
         .where(eq(workItemTable.id, ctx.workItem.id))
         .for("update");
 
-      if (!locked || locked.stateId !== fromStateId) {
+      // Issue #490: the same TOCTOU class #276/#486/#488 closed elsewhere.
+      // `require-work-item-reach.ts` already checked `deletedAt`/`archivedAt` on this same
+      // id before this transaction started, but `delete-work-item.ts`'s soft-delete does
+      // not bump `version`, so a concurrent soft-delete landing in the window between that
+      // check and this locked re-read would otherwise slip through the `stateId` check
+      // below unnoticed and transition an item that no longer exists.
+      if (
+        !locked ||
+        locked.stateId !== fromStateId ||
+        locked.deletedAt !== null ||
+        locked.archivedAt !== null
+      ) {
         throw new TransitionConflictError(locked?.stateId ?? fromStateId);
       }
 
@@ -433,6 +446,10 @@ export async function transitionWorkItem(
           and(
             eq(workItemTable.id, ctx.workItem.id),
             eq(workItemTable.stateId, fromStateId),
+            // Issue #490: belt-and-suspenders with the locked check above, same shape as
+            // the `stateId` re-check just above it in this same WHERE.
+            isNull(workItemTable.deletedAt),
+            isNull(workItemTable.archivedAt),
           ),
         )
         .returning({
