@@ -214,3 +214,87 @@ OpenAPI file touched — round 3's B1/B2 verdict above is otherwise unaffected.
 N2 remains disclosed-only, unchanged, no code action taken — same reasoning as round 3
 above: a forged cursor only moves the caller's own page position within a work item it can
 already read.
+
+---
+
+## Round 4 (2026-09-28): flat-schema redesign after the oasdiff finding — CLEAR (non-blocking notes)
+
+**Reviewer:** Claude Opus 5.5, fresh independent context (did not author, direct, or fix
+this change).
+
+**Reviewed head:** `29287e787f2267230df0af1aab74781f4b342ed8`
+
+**Why this round:** after round 3 cleared, CI's `contract - OpenAPI drift` job flagged
+`response-property-one-of-added`. The reviewed-allowlist route is closed now that `v2.0.1`
+exists. So commit `29287e7` replaces the `discriminatedUnion` with one flat
+`WorkItemActivityRow` that has six new optional fields. None of the three earlier rounds
+checked the oasdiff contract. This round did.
+
+**Verified:**
+
+- **The change is really additive.** I compared `tests/api-contract/openapi.json` at
+  `origin/main` and at this head. `WorkItemActivityRow.required` is the same list on both:
+  `id, workItemId, actorId, actorType, verb, field, visibility, workflowVersionId,
+  createdAt`. No existing property was removed, made optional, or made nullable when it
+  was not nullable before. `WorkItemActivityListResponse.data.items` is still
+  `$ref: WorkItemActivityRow`, the same as on main. In `response.ts`, all six new fields
+  are `.optional()`: `kind`, `body`, `activityId`, `editedAt`, `deletedAt`, `updatedAt`.
+- **The oasdiff claim holds.** I ran `node ./scripts/ci/test-contract.mjs` myself at this
+  head. Result: "oasdiff: no unapproved breaking API changes against origin/main (0
+  approved)". `check:openapi` drift is clean, and Redocly shows 17 findings, the same as
+  origin/main's 17.
+- **`verb: "commented"` is safe.** No code treats `verb` as a closed enum. The response
+  schema uses `z.string()`, and the DB column is `text`. The only readers of this route
+  are the integration tests. The web app's activity UI reads kaneo's separate task-activity
+  route, not this one. `"commented"` is never written to `activity`, so no real activity
+  row could duplicate or be confused with a comment row. It is not in CA-7's verb table.
+  Any future portal code that works out visibility from the verb would therefore treat it
+  as `internal`. That fails closed, so it cannot leak anything.
+- **`actorId` comes from `comment.author_id`, and that is correct.** Both columns are
+  plain text, and each is paired with the same `actor_type` vocabulary
+  (`person | automation | system | api_key`). Both write paths fill them from the same
+  `actorId` value. In `transition-work-item.ts`, one variable fills both the activity row
+  and its note-as-comment row. So the IDs mean the same thing in both places.
+- **Nothing leaks.** `delete-comment.ts` sets `body: null` in the database when it writes
+  the tombstone (CA-18), so a deleted comment cannot return its old text. `workspaceId`
+  was dropped from the selected comment columns, so the response has fewer fields. On an
+  activity row, the comment-only fields are always `null`, or left out in the case of
+  `updatedAt`.
+- **Round 1–3 results still hold.** `apps/api/src/work-item/index.ts` has no diff since
+  round 3. Middleware is still `requireWorkItemReach()` plus
+  `requireWorkspaceCapability("work_item:read")`. Tenant scoping is unchanged: the work
+  item lookup checks `workspaceId`, and both source queries filter on that item's id.
+  Visibility behaviour is unchanged, which matches the documented precedent. The logic of
+  `cursorContinuationOn` (with `sql.param(cursorDate, createdAtColumnForEncoding)`),
+  `commentCreatedAtMs` (`date_trunc('milliseconds', …)` in both `ORDER BY` and the
+  continuation filter), the `limit + 1` per-source fetch, the merge sort, and cursor
+  encoding is all unchanged. Only the per-row mapping into the flat shape changed.
+- **Tests cover the new shape.** New assertions check `verb === "commented"`. They check
+  that `field`, `oldValue`, `newValue`, `payload` and `workflowVersionId` are null on a
+  comment row, and that `body` and `activityId` are null or absent on an activity row. I
+  ran `work-item-activity-read.test.ts` on a private `_test` database and got 12/12 under
+  UTC and 12/12 under `TZ=Asia/Yangon`. `tsc --noEmit -p apps/api` is clean.
+
+**Non-blocking notes:**
+
+- **N3: the `redocly-approved-findings.json` entry is removed, and the commit message
+  describes it wrongly.** The branch deletes PR #450's `GET /attachments/{id}` entry. The
+  commit says it "duplicated an entry PR #450 already merged". That is not what happened.
+  This is the only copy, and after this merges it is gone from main too. I restored main's
+  copy and ran the script again. It exits 0, and it prints its own advisory: "stale Redocly
+  allowlist entry (already on origin/main, approves nothing here — delete it)". So the
+  removal is the cleanup the tooling asks for, not a required fix. It does not weaken the
+  gate: the finding is still in the shrink-only baseline taken from origin/main, and the
+  decision-log entry still records why it was approved. Worth knowing when reading the
+  history. No action needed.
+- **N4: `"commented"` is a verb used only on the read side, and the spec does not
+  mention it.** Consider adding one line to `comments-and-activity.md` saying the
+  activity read stream shows comments as `verb: "commented"` with `kind: "comment"`, and
+  that clients should use `kind` and `visibility` to tell rows apart, never the verb. This
+  is a docs follow-up, not needed for this PR.
+- N2 from round 3 (a forged cursor with no timezone offset) is still disclosed only and
+  unchanged.
+
+**Verdict: CLEAR.** No blocking findings at `29287e787f2267230df0af1aab74781f4b342ed8`. This
+closes the mandatory Opus security review for #452 at this head. Any new commit, rebase,
+or merge of main needs a fresh reviewed-head confirmation.
