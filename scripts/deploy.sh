@@ -168,31 +168,41 @@ esac
 
 # ---------------------------------------------------------------------------
 # The bundled local Traefik must not collide with a proxy the host already
-# runs (Dokploy, another TaskDesk checkout, nginx…) — Compose fails the whole
-# `up` if a published port is already bound, and the raw Docker error ("address
-# already in use") does not say what to do about it. Checked before anything
-# starts so a conflict never leaves a half-started stack behind.
+# runs (Dokploy, nginx, another app…) — Compose fails the whole `up` if a
+# published port is already bound, and the raw Docker error ("address already
+# in use") does not say what to do about it. Checked before anything starts so
+# a conflict never leaves a half-started stack behind.
+#
+# Best-effort, not exhaustive (docs/05-operations/traefik-and-domains.md §
+# Local development has the full list of what this does not catch): it only
+# probes 127.0.0.1, and it does not detect a second checkout of THIS repo —
+# `compose.yml` pins `name: taskdesk`, so a second checkout's already-running
+# local Traefik shares that project name, `dc port traefik` succeeds against
+# it, and it reads as this stack's own rather than a conflict.
 # ---------------------------------------------------------------------------
-assert_local_ports_free() {
-  local pair container_port host_port
-  for pair in "80:${TASKDESK_LOCAL_HTTP_PORT:-80}" "443:${TASKDESK_LOCAL_HTTPS_PORT:-443}"; do
-    container_port="${pair%%:*}"
-    host_port="${pair#*:}"
-    # Our OWN already-running local Traefik owning this port is fine — the
-    # script is documented as idempotent and safe to re-run against its own
-    # prior run (e.g. adding --profile s3 later). Only a port bound by
-    # something else is a real conflict.
-    dc port traefik "$container_port" >/dev/null 2>&1 && continue
-    # fd 3 is opened and closed inside the subshell above; nothing to close here.
-    if (exec 3<>"/dev/tcp/127.0.0.1/${host_port}") 2>/dev/null; then
-      die "port ${host_port} is already bound on this host — the bundled local Traefik can't publish it.
-     This host likely runs another reverse proxy already (Dokploy, another TaskDesk
-     checkout, nginx…). Set TASKDESK_LOCAL_HTTP_PORT and/or TASKDESK_LOCAL_HTTPS_PORT
+assert_local_port_free() {
+  local var_name="$1" container_port="$2" host_port="$3"
+  [[ "$host_port" =~ ^[0-9]{1,5}$ ]] \
+    || die "$var_name must be a plain port number (got '${host_port}')."
+  # Our OWN already-running local Traefik owning this port is fine — the
+  # script is documented as idempotent and safe to re-run against its own
+  # prior run (e.g. adding --profile s3 later). Only a port bound by
+  # something else is a real conflict.
+  dc port traefik "$container_port" >/dev/null 2>&1 && return 0
+  # fd 3 is opened and closed inside the subshell above; nothing to close here.
+  if (exec 3<>"/dev/tcp/127.0.0.1/${host_port}") 2>/dev/null; then
+    die "port ${host_port} is already bound on this host — the bundled local Traefik can't publish it.
+     This host likely runs something else already bound there (Dokploy, nginx,
+     another app…). Set TASKDESK_LOCAL_HTTP_PORT and/or TASKDESK_LOCAL_HTTPS_PORT
      in .env to free ports (e.g. 8080 / 8443), update TASKDESK_AGENT_URL /
      TASKDESK_PORTAL_URL to include that port, and re-run.
      docs/05-operations/traefik-and-domains.md § Local development"
-    fi
-  done
+  fi
+}
+
+assert_local_ports_free() {
+  assert_local_port_free TASKDESK_LOCAL_HTTP_PORT  80  "${TASKDESK_LOCAL_HTTP_PORT:-80}"
+  assert_local_port_free TASKDESK_LOCAL_HTTPS_PORT 443 "${TASKDESK_LOCAL_HTTPS_PORT:-443}"
 }
 
 # ---------------------------------------------------------------------------
