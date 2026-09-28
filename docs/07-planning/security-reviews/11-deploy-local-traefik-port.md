@@ -214,3 +214,5 @@ those same three files — no conflict resolution touched anything else.
 **Verdict:** the Opus clearance at `bd37de5e` remains valid at `790aeae6` and any later commit
 whose own diff from `790aeae6` stays confined to non-reviewed-scope files. This is not a new
 review round — it is a reconfirmation that nothing reviewable changed.
+
+**Reviewed head:** `790aeae6686a07bd4f3937035288c90567e69c0d`
