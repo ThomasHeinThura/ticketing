@@ -63,6 +63,20 @@ export function stripCommentsStepsForTests() {
  * direction for a gate — a section whose content hides behind an unclosed
  * comment reads as empty and the check fails, rather than counting text that a
  * reviewer cannot see.
+ *
+ * **`<!-->` and `<!--->` are complete, self-closing EMPTY comments on their
+ * own** — not an opener that waits for the next `-->` anywhere later in the
+ * string (issue #474). Verified against both the CommonMark spec and GitHub's
+ * own `cmark-gfm` test suite: everything after one of these two short forms
+ * is ordinary visible text on GitHub, never comment content. Before this fix,
+ * `stripComments("<!-->real text-->")` returned `""` — it detected the `<!--`
+ * opener inside `<!-->`, then scanned forward to the FAR `-->` at the end and
+ * deleted everything in between, silently swallowing "real text" as if it
+ * were hidden, when a human reviewer sees it rendered in plain sight. That
+ * was a genuine gate bypass: `sections()` reattaches text a comment appears
+ * to hide to whatever section is still open, so a real, later `## heading`
+ * placed after a bare `<!-->` could fold its content backward into an
+ * earlier, otherwise-blank required section.
  */
 export function stripComments(markdown) {
   const out = [];
@@ -95,6 +109,23 @@ export function stripComments(markdown) {
       out[end - 1] === "-"
     ) {
       out.length = end - 4;
+
+      // `<!-->` (this opener immediately followed by `>`) or `<!--->` (this
+      // opener immediately followed by `->`) is already a COMPLETE, empty
+      // comment — see the doc comment above. Consume just the closing
+      // characters and keep scanning from there, rather than treating this
+      // as an opener still waiting for a later `-->`.
+      if (markdown[i] === ">") {
+        i += 1;
+        stripCommentsSteps += 1;
+        continue;
+      }
+      if (markdown[i] === "-" && markdown[i + 1] === ">") {
+        i += 2;
+        stripCommentsSteps += 2;
+        continue;
+      }
+
       const close = findClose(i);
       if (close !== -1) stripCommentsSteps += 3; // the closing marker itself
       i = close === -1 ? markdown.length : close + 3;
@@ -142,6 +173,22 @@ function stripCommentsWithPositions(markdown) {
     ) {
       out.length = end - 4;
       positions.length = end - 4;
+
+      // Same complete-empty-comment special case as `stripComments` — see
+      // its doc comment (issue #474). This function backs `sections()`'s and
+      // `headingBlocks()`'s comment-visibility checks via `survivedRawIndices`,
+      // so the same fix closes the gap for both the `##` and the `###`
+      // heading variants at their one shared root, rather than patching each
+      // caller separately.
+      if (markdown[i] === ">") {
+        i += 1;
+        continue;
+      }
+      if (markdown[i] === "-" && markdown[i + 1] === ">") {
+        i += 2;
+        continue;
+      }
+
       const close = markdown.indexOf("-->", i);
       i = close === -1 ? markdown.length : close + 3;
     }
@@ -417,6 +464,17 @@ const BIDI_CONTROL_CHARS = new RegExp(
 );
 
 /**
+ * Shared verbatim between every `BidiControlCharacterError` thrown in this file
+ * (`wordBoundaryContentOf` and `meaningfulLines`) — found by ordinary review as
+ * duplicated-by-hand text that could silently drift between the two call sites if either
+ * were edited alone. One string, one place to keep it accurate.
+ */
+const BIDI_CONTROL_CHARACTER_MESSAGE =
+  "contains a bidi control character (e.g. U+202E RIGHT-TO-LEFT OVERRIDE), which can " +
+  "render differently to a human reviewer than the text this check actually parses. " +
+  "Remove it and resubmit.";
+
+/**
  * The blank-RENDERING characters `INVISIBLE` strips (see its own doc comment) that Unicode
  * itself designates as NOT default-ignorable — i.e. intended to occupy a real, visible
  * position, a blank cell a human's eye registers as a gap between two things, rather than
@@ -502,11 +560,7 @@ const WORD_SEPARATING_BLANKS = /[⠀　]/gu;
 export function wordBoundaryContentOf(markdown) {
   const commentsStripped = stripComments(markdown);
   if (BIDI_CONTROL_CHARS.test(commentsStripped)) {
-    throw new BidiControlCharacterError(
-      "contains a bidi control character (e.g. U+202E RIGHT-TO-LEFT OVERRIDE), which can " +
-        "render differently to a human reviewer than the text this check actually parses. " +
-        "Remove it and resubmit.",
-    );
+    throw new BidiControlCharacterError(BIDI_CONTROL_CHARACTER_MESSAGE);
   }
   const stripped = commentsStripped
     .split("\n")
@@ -1123,15 +1177,41 @@ const BLOCKED_EXPLANATION_MINIMUM = 40;
 
 /**
  * The lines of a section that carry content — comments stripped, template scaffolding and
- * invisible-only lines dropped. Shares its rules with `contentOf` so the two cannot drift.
+ * invisible-only lines dropped. Shares `contentOf`'s rules for what counts as blank, with
+ * the same two WORD-BOUNDARY-SENSITIVE exceptions `wordBoundaryContentOf` makes for
+ * `check-reviews.mjs` (issues #152/#153) — this function feeds `declaredState`'s own
+ * opener detection (`NOT_APPLICABLE_OPENER` needs real whitespace between "not" and
+ * "applicable"), the identical dependency in a sibling function, found by the mandatory
+ * Opus security review of #470 and tracked as #473:
+ *
+ * 1. `WORD_SEPARATING_BLANKS` (issue #152) is masked to an ordinary space instead of
+ *    deleted, so `"not　applicable"` (U+3000 IDEOGRAPHIC SPACE, routine from CJK input
+ *    methods) reads as two words instead of silently fusing into "notapplicable" — which
+ *    `NOT_APPLICABLE_OPENER` would never recognise, so an honest n/a declaration reads as
+ *    `state: "provided"` instead of `"not-applicable"`.
+ * 2. A bidi control character (issue #153) is refused outright — `BidiControlCharacterError`
+ *    — instead of silently deleted, for the same Trojan-Source-class reason
+ *    `wordBoundaryContentOf` refuses one: deleting it could make a PR body render one way to
+ *    a human reviewer and parse a different way to this gate. Checked on the
+ *    comment-stripped text before the scaffolding-line filters below, for the same reason
+ *    `wordBoundaryContentOf` does — a bidi character sitting on a line those filters would
+ *    otherwise drop whole (a bare `**Label:**` line, a `---` rule) still renders as part of
+ *    the same paragraph on GitHub.
  *
  * @param {string} markdown
  * @returns {string[]}
+ * @throws {BidiControlCharacterError} if the text contains a bidi control character.
  */
 export function meaningfulLines(markdown) {
-  return stripComments(markdown)
+  const commentsStripped = stripComments(markdown);
+  if (BIDI_CONTROL_CHARS.test(commentsStripped)) {
+    throw new BidiControlCharacterError(BIDI_CONTROL_CHARACTER_MESSAGE);
+  }
+  return commentsStripped
     .split("\n")
-    .map((line) => line.replace(INVISIBLE, "").trim())
+    .map((line) =>
+      line.replace(WORD_SEPARATING_BLANKS, " ").replace(INVISIBLE, "").trim(),
+    )
     .filter(
       (line) =>
         line !== "" &&
@@ -1151,6 +1231,7 @@ export function meaningfulLines(markdown) {
 /**
  * @param {string} text a section's raw markdown
  * @returns {SectionState}
+ * @throws {BidiControlCharacterError} propagated from `meaningfulLines` — see there.
  */
 export function declaredState(text) {
   const lines = meaningfulLines(text);
@@ -1194,6 +1275,8 @@ export function declaredState(text) {
  *
  * Used for `## Screens opened` when apps/web/** changed, where AGENTS.md do-not 18 asks
  * for the screens you actually opened and no reason substitutes for that.
+ *
+ * @throws {BidiControlCharacterError} propagated from `declaredState` — see there.
  */
 export function effectivelyNotApplicable(text) {
   const { state } = declaredState(text);
