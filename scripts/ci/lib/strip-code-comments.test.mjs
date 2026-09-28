@@ -84,6 +84,30 @@ describe("stripCodeComments — the contexts a `//` hides in", () => {
     const out = stripCodeComments('const s = "unterminated\nit.skip("x");');
     assert.equal(typeof out, "string");
   });
+
+  /**
+   * #421 ordinary review, finding 4 — a real embedded newline inside a string (a
+   * backslash-newline LINE CONTINUATION, valid in an ordinary quoted string, not just a
+   * template literal) is now preserved as a real newline under `blankStrings`, keeping
+   * line numbers correct. The pre-#421 scanner's `readString` blanked every backslash-
+   * escape PAIR to two spaces unconditionally, including when the escaped character was
+   * this embedded newline — so a multi-line string with a line continuation used to
+   * silently lose a line, undercounting anything reported after it. Disclosing this
+   * explicitly rather than folding it silently into "the contract is unchanged": it IS a
+   * behaviour difference from the pre-#421 scanner, and it is a genuine improvement (line
+   * numbers is the one property this whole file exists to keep correct), not a
+   * regression to guard against.
+   */
+  it("preserves a real embedded newline from a string's line-continuation escape, so line numbers past it stay correct", () => {
+    const source = 'const s = "a\\\nb"; it.skip("x");';
+    const out = stripCodeComments(source, { blankStrings: true });
+    const line = out.slice(0, out.search(banned)).split("\n").length;
+    assert.equal(
+      line,
+      2,
+      `expected the skip on line 2 (matching the source's real line 2), got ${line}`,
+    );
+  });
 });
 
 /**

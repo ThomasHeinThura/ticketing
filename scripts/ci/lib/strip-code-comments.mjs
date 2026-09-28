@@ -69,16 +69,24 @@
  * parser that already has to answer it correctly to produce a parseable program at all,
  * and everything downstream of that (finding comments) is unambiguous.
  *
- * **The contract, unchanged from before this rewrite** (byte offsets stay CLOSE, not
- * necessarily identical, and reported LINE NUMBERS stay meaningful — this is the
- * load-bearing property `check:skips`/`check:events` depend on, not exact byte-length
- * preservation): a line comment collapses to a single space; a block comment collapses to
- * a single space for its opener, with any embedded newlines kept (so line counts survive)
- * and everything else — including its own closer — dropped; with `{ blankStrings: true }`,
- * a string/template literal's DELIMITERS are kept and its CONTENT is blanked one
- * character per character (preserving any embedded real newline, e.g. a backslash-newline
- * line continuation), which IS exact-length-preserving for that literal; a regex literal is
- * never touched, ever, regardless of `blankStrings`.
+ * **The contract, preserved from before this rewrite in every respect that matters to its
+ * callers** (byte offsets stay CLOSE, not necessarily identical, and reported LINE NUMBERS
+ * stay meaningful — this is the load-bearing property `check:skips`/`check:events` depend
+ * on, not exact byte-length preservation): a line comment collapses to a single space; a
+ * block comment collapses to a single space for its opener, with any embedded newlines
+ * kept (so line counts survive) and everything else — including its own closer — dropped;
+ * with `{ blankStrings: true }`, a string/template literal's DELIMITERS are kept and its
+ * CONTENT is blanked one character per character, which IS exact-length-preserving for
+ * that literal; a regex literal is never touched, ever, regardless of `blankStrings`. **One
+ * disclosed, deliberate improvement, not strictly "unchanged" (ordinary review finding,
+ * #421):** a real embedded newline inside a STRING (not just a template) — a
+ * backslash-newline line continuation, valid and rare in an ordinary quoted string — is
+ * now preserved as a real newline. The old `readString` blanked every backslash-escape
+ * PAIR to two spaces unconditionally under `blankStrings`, including when the escaped
+ * character was this newline, so a multi-line string with a line continuation used to
+ * silently undercount every line after it; this version has no escape-pair concept at all
+ * and just checks the raw character, which happens to get this right instead. See
+ * `strip-code-comments.test.mjs`'s dedicated regression test for this.
  *
  * **Public signature is unchanged**: `stripCodeComments(source, options)` still takes a
  * plain string and returns a plain string, synchronously — `check:skips`, `check:events`,
@@ -186,11 +194,38 @@ function parseLiteralRanges(source) {
     openFiles: [file],
     closeFiles: state.previousFile ? [state.previousFile] : undefined,
   });
+  // `closeFiles` above only releases the API's own in-memory reference; the scratch file
+  // on disk is ours to remove once the API no longer needs it (ordinary review finding,
+  // #421) — otherwise a long CI run scanning hundreds of files leaves hundreds of small
+  // leftover files until process exit's directory-wide cleanup.
+  if (state.previousFile) {
+    try {
+      rmSync(state.previousFile, { force: true });
+    } catch {
+      // best-effort only; the exit handler's directory-wide cleanup still catches this
+    }
+  }
   state.previousFile = file;
   try {
     const project = snapshot.getDefaultProjectForFile(file);
     const sourceFile = project?.program.getSourceFile(file);
-    if (!sourceFile) return [];
+    // Fail CLOSED, not open (ordinary review finding, #421): a real parser failure here
+    // (a project/path resolution problem, never actual malformed JS/TS content — the real
+    // parser's own error recovery already produces a best-effort tree for every malformed
+    // input this file was tested against, unterminated strings/templates/regexes and pure
+    // garbage included) must not silently degrade to "no literal ranges at all", which
+    // would be a WORSE failure mode than the scanner this file replaced: a `//` sitting
+    // inside an actual string literal would then misread as a real comment. Throwing
+    // matches this repo's own established convention for this class of gate (check-events.mjs's
+    // own header: "fails CLOSED, never silently, on a call it cannot read").
+    if (!sourceFile) {
+      throw new Error(
+        "stripCodeComments: the real TypeScript parser produced no source file for a " +
+          `${source.length}-character input via a fresh scratch path (${file}) — refusing ` +
+          "to fall back to zero literal-range awareness, which would silently treat every " +
+          "string/template/regex boundary in this input as ordinary code.",
+      );
+    }
     const ranges = [];
     (function visit(node) {
       if (LITERAL_KINDS.has(node.kind)) {
