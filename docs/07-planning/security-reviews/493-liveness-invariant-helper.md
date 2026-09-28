@@ -135,10 +135,34 @@ None of N1-N7 blocks this PR.
 117/117 files and 1473/1473 tests passing at this exact head).
 
 All seven fixes close their READ COMMITTED race in every interleaving. The shared `sql`
-constant is safe to reuse. The five-call-site refactor preserves behaviour exactly. There is
+constant is safe to reuse. The six-call-site refactor preserves behaviour exactly. There is
 no new authorization, SQL-injection or information surface, and no new lock-order deadlock.
 N1-N3 are same-class instances, filed as issue #499 rather than folded in here. N4-N7 are
 notes.
 
 Not checked by the original review pass: the PR body's `## Gates` table, branch protection —
 the orchestrating session verifies those before merge.
+
+---
+
+## Reconfirmation after fixing B1 and merging past PRs #495/#496
+
+**Confirmed by:** the orchestrating session, directly, immediately after the fix.
+
+**What happened:** the review above found one blocker, B1 — a TypeScript type error confined
+to the new test file. The orchestrating session fixed it directly: widened
+`raceSoftDeleteAgainstWorkItemRow`'s `call` parameter type in
+`tests/api-integration/attachment-liveness-race.test.ts` from `() => Promise<unknown>` to
+`() => unknown | Promise<unknown>`, matching `app.request()`'s real return type — no
+production (`apps/api/src/**`) file touched by this specific fix commit. The same push also
+merged `origin/main` past PRs #495/#496 (`git diff` confirmed both disjoint — decision-log
+and Traefik compose config, neither overlapping any file this PR's own diff touches).
+
+**Verified beyond the diff:** `tsc --noEmit` clean on both `tsconfig.json` and
+`tsconfig.tests.json` at the new head; the full `apps/api` integration suite re-run — 117/117
+files, 1473/1473 tests, including both `attachment-liveness-race.test.ts` tests specifically.
+
+**Verdict:** the review above remains valid at the new head — B1 is resolved, and the merged-in
+commits from #495/#496 touch nothing this review examined.
+
+**Reviewed head:** `73fb5ea73095d0ae7717434cda3ae9fe6dd219a4`

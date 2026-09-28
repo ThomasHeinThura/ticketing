@@ -1,13 +1,14 @@
 # ===========================================================================
-#  DO NOT APPLY THIS OVERLAY YET.
+#  APPLIED AND LIVE. Issue #6 (inherited kaneo auth defaults — anonymous
+#  sign-in among them) closed before this overlay was first brought up, and
+#  is CLOSED as of this comment. `ticket-v2-uat.bimats.com` and
+#  `portal-v2-uat.bimats.com` are both running this overlay in production
+#  right now, on this host.
 #
-#  Applying it publishes TaskDesk v2 on public hostnames. Issue #6 has not
-#  merged, so the tree still carries the inherited authentication defaults from
-#  the kaneo import — anonymous sign-in among them. Public exposure before #6
-#  merges is forbidden (docs/07-planning/status.md, Blocked).
-#
-#  Nothing in scripts/deploy.sh loads this file. Bringing it up is a deliberate
-#  manual act, and it is not one to take before #6.
+#  Nothing in scripts/deploy.sh loads this file — bringing it up (or updating
+#  the running stack, e.g. `docker compose --env-file .env -f compose.yml
+#  -f deploy/compose.uat.yml up -d --wait`) is still a deliberate manual act,
+#  same as it always was; it is just no longer a BLOCKED one.
 # ===========================================================================
 #
 # Overlay — UAT on the bimats.com host. As production, different hostnames, and
