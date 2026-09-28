@@ -196,3 +196,32 @@ authority change, or gate-semantics change is introduced by this pull request �
 CI-script parsing fix, narrowly scoped to one function's one caller.
 
 This commit (adding this note) is docs-only. It moves the PR head but changes no code.
+
+---
+
+## Mechanical reconfirmation after merging main past PR #469/#472 (1f9d07d7)
+
+**Confirmed by:** the orchestrating session, directly — not a fresh Opus pass, per the
+established practice of self-declaring continued validity when the only intervening commits
+are entirely disjoint from the reviewed files.
+
+**What happened:** `main` advanced to `8446252a` (PR #472, docs-only) after `0a5dc368`
+(PR #469, Traefik labels) while this branch was open. This branch was then updated with
+`main` (merge commit `1f9d07d7`). The mechanical `check:pr-template` STALE detector flags
+the merge commit because its own union-of-parent-diffs attribution includes every file that
+differs between the merge and EACH parent — which necessarily includes this PR's own
+already-reviewed files (they exist in this branch's parent but not in `main`'s parent), not
+because any of them changed again.
+
+**Verified directly:**
+- `git show 0a5dc368 --stat` touches exactly `deploy/compose.{local,prod,uat}.yml` and
+  `docs/05-operations/traefik-and-domains.md`.
+- `git show 8446252a --stat` touches exactly `docs/07-planning/status.md`.
+- Neither touches `scripts/ci/lib/pr-body.mjs`, `scripts/ci/lib/pr-body.test.mjs`,
+  `scripts/ci/check-reviews.mjs`, or `scripts/ci/probes/spec-na-detection.test.mjs` — the
+  four files this review's clearance actually covers.
+
+**Verdict:** the Opus clearance at `386f787c` remains valid at `1f9d07d7` and any later
+commit whose own diff from `1f9d07d7` stays confined to non-reviewed files.
+
+**Reviewed head:** `1f9d07d7b7c6aee26882913ee9e12cabbe36fde5`
