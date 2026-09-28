@@ -186,19 +186,27 @@ export type AttributedRoute = {
 };
 
 /**
- * Fresh Opus delta pass on this PR (B3, live-reproduced): the previous "first matched
- * entry that isn't a DECLARED catch-all" rule fails open for a route-scoped `.use()`
- * middleware registered before the real handler (e.g. `app.use("/api/foo/*", next)`) --
- * that middleware's own key is not one of the two DECLARED_CATCH_ALL_KEYS, so it was
- * itself returned as "the" attributed route, and its own (possibly permissive) registry
- * entry gated every unclassified route behind it instead of the real handler's.
+ * Opus delta pass B3 (live-reproduced): the previous "first matched entry that isn't a
+ * DECLARED catch-all" rule fails open for a route-scoped `.use()` middleware registered
+ * before the real handler (e.g. `app.use("/api/foo/*", next)`) -- that middleware's own
+ * key is not one of the two DECLARED_CATCH_ALL_KEYS, so it was itself returned as "the"
+ * attributed route, and its own (possibly permissive) registry entry gated every
+ * unclassified route behind it instead of the real handler's.
  *
- * Fix, live-verified by the reviewer: walk `matchedRoutes` in order, skipping only the
- * two DECLARED catch-alls; every OTHER `ALL`-method entry met along the way must still be
- * classified (it could itself gate the request, same as the two declared ones), and the
- * walk stops at -- and includes -- the first non-`ALL` entry, which is the actual
- * terminal route Hono will dispatch to. Returns every entry the caller must check;
- * empty only when nothing but the two declared catch-alls matched (a genuine 404).
+ * **Opus delta pass F4 (live-reproduced): stopping the walk at the first non-`ALL` entry
+ * was ITSELF still a prediction, and the prediction had a hole.** A GET/POST/other
+ * specific-method handler can call `next()` and hand the request on, exactly like
+ * `.use()` does -- Hono does not require a route to be the terminal handler just because
+ * its own method matches. Three shapes proved this live: a GET pass-through handler, a
+ * multi-method (`app.on(["GET","POST"], ...)`) pass-through, and a parameter route that
+ * conditionally calls `next()` -- each classified, each fronting an unclassified route
+ * that then served 200 with a leak. This guard cannot correctly PREDICT which matched
+ * entry Hono will end up running (this is the third time trying has produced a hole), so
+ * it stops predicting: every matched entry except the two declared catch-alls must be
+ * classified, full stop, no early exit. `route-classification-guard.ts`'s
+ * `assertRouteIsClassified` is the only caller of this unbounded form -- see
+ * `attributedMatchedRoute` below for the (deliberately still-bounded) single-route
+ * prediction shadow-mode attribution needs instead.
  */
 export function attributedRoutesToClassify(c: Context): AttributedRoute[] {
   const result: AttributedRoute[] = [];
@@ -207,18 +215,24 @@ export function attributedRoutesToClassify(c: Context): AttributedRoute[] {
       continue;
     }
     result.push({ method: r.method, path: r.path });
-    if (r.method !== "ALL") {
-      break;
-    }
   }
   return result;
 }
 
 /**
- * The actual terminal route Hono will dispatch to -- the last entry
- * `attributedRoutesToClassify` collects (its walk stops there precisely because it is the
- * first non-`ALL` match), or `null` when nothing but the two declared catch-alls matched
- * (a genuine 404, nothing dispatched).
+ * The FIRST matched entry that is not one of the framework's own declared catch-all
+ * middleware registrations (`DECLARED_CATCH_ALL_KEYS`). `null` only for a genuinely
+ * unmatched request.
+ *
+ * **Deliberately NOT the unbounded walk `attributedRoutesToClassify` uses** (F4's own
+ * finding): shadow-mode attribution predicts the single route a request's outcome should
+ * be compared against, and the LAST entry of an unbounded walk can be a sibling parameter
+ * route that never actually runs -- `GET /api/invitation/pending` also matches
+ * `GET /api/invitation/{id}`'s parameter pattern, and taking the last (parameter) entry
+ * would misattribute every `/pending` request to the wrong policy. The first non-catch-all
+ * entry is Hono's own literal-before-parameter dispatch order (#323's S2 finding) and
+ * remains the correct single-route prediction for telemetry, even though it is not a safe
+ * enforcement boundary (that's exactly why the guard itself no longer uses it).
  *
  * Exported separately from `attributedRouteKey` so a caller that needs to distinguish "no
  * route matched" (a real 404, nothing to check) from "a route matched but its key could not
@@ -226,8 +240,10 @@ export function attributedRoutesToClassify(c: Context): AttributedRoute[] {
  * be swallowed into the same `null` as an unmatched request) can tell them apart.
  */
 export function attributedMatchedRoute(c: Context): AttributedRoute | null {
-  const routes = attributedRoutesToClassify(c);
-  return routes.length > 0 ? (routes[routes.length - 1] ?? null) : null;
+  const matched = c.req.matchedRoutes.find(
+    (r) => !DECLARED_CATCH_ALL_KEYS.has(`${r.method} ${r.path}`),
+  );
+  return matched ? { method: matched.method, path: matched.path } : null;
 }
 
 export function attributedRouteKey(c: Context): string | null {

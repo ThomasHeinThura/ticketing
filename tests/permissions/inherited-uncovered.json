@@ -17,13 +17,11 @@
 		"1 on 2026-09-22 when the five #8 classification lanes (task, board-structure,",
 		"comms-discovery, identity-access, platform-inline) plus the GET /api/asset/{id}",
 		"registration-order fix landed together, classifying every remaining route except one.",
-		"The sole survivor, GET /api/invitation/{id}, is left deliberately: it returns the same",
-		"invitation fields (invitee email, workspace name, inviter name) as the fully public",
-		"GET /api/invitation/public/{id}, with no recipient or workspace-membership check on the",
-		"path, so none of the five policy kinds fits it honestly without a design decision on",
-		"whether it should gain a recipient check, be merged with its public sibling, or needs a",
-		"kind this registry does not yet name -- see apps/api/src/invitation/policy.ts's own",
-		"comment for the full reasoning."
+		"Shrunk from 1 to 0 on 2026-09-27 (PR #440's Opus delta pass F4): the sole survivor,",
+		"GET /api/invitation/{id}, was deleted rather than classified -- it had no recipient or",
+		"workspace-membership check of its own, returned the same fields as the fully public",
+		"GET /api/invitation/public/{id}, and had zero real callers. See",
+		"docs/07-planning/security-reviews/440-runtime-authorization-wiring.md for the decision."
 	],
-	"uncovered": ["GET /api/invitation/{id}"]
+	"uncovered": []
 }

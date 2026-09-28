@@ -18,32 +18,6 @@ export const pendingInvitationSchema = z
 
 export const pendingInvitationListSchema = z.array(pendingInvitationSchema);
 
-export const invitationDetailsSchema = z
-  .object({
-    valid: z.boolean().openapi({
-      description: "True only when the invitation can still be accepted.",
-    }),
-    invitation: z
-      .object({
-        id: z.string(),
-        email: z.string(),
-        workspaceName: z.string(),
-        inviterName: z.string(),
-        expiresAt: responseTimestamp,
-        status: z.string(),
-        expired: z.boolean(),
-      })
-      .optional()
-      .openapi({
-        description:
-          "Omitted when the invitation does not exist, was already accepted, or was canceled -- the details are withheld rather than leaked.",
-      }),
-    error: z.string().optional().openapi({
-      description: "Why the invitation is unusable, when valid is false.",
-    }),
-  })
-  .openapi("InvitationDetails");
-
 // S6a -- native invitation-action write routes (issue #6, retrofit plan §3,
 // S6a row): accept, reject, cancel.
 

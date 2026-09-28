@@ -12,7 +12,6 @@ import { requireWorkspacePermission } from "../utils/require-workspace-permissio
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
 import acceptInvitationCtrl from "./controllers/accept-invitation";
 import cancelInvitationCtrl from "./controllers/cancel-invitation";
-import getInvitationDetailsController from "./controllers/get-invitation-details";
 import getUserPendingInvitations from "./controllers/get-user-pending-invitations";
 import {
   AlreadyWorkspaceMemberError,
@@ -25,7 +24,6 @@ import rejectInvitationCtrl from "./controllers/reject-invitation";
 import {
   acceptedInvitationSchema,
   canceledInvitationSchema,
-  invitationDetailsSchema,
   pendingInvitationListSchema,
   rejectedInvitationSchema,
 } from "./response";
@@ -48,19 +46,15 @@ const getPendingRoute = createRoute({
   },
 });
 
-const getInvitationRoute = createRoute({
-  method: "get",
-  operationId: "getInvitationDetails",
-  path: "/{id}",
-  tags: ["Invitations"],
-  summary: "Get invitation details",
-  description:
-    "Look up an invitation by ID. Always 200 -- an unusable invitation is reported with valid: false and a reason rather than an error status.",
-  request: { params: invitationParam },
-  responses: {
-    200: jsonResponse("Invitation details", invitationDetailsSchema),
-  },
-});
+// `GET /api/invitation/{id}` (formerly here) is removed, not merely reclassified: it had
+// zero real callers (checked `apps/web` -- only the `/{id}/accept|reject` and `DELETE
+// /{id}` siblings are ever fetched), returned the same invitee-email/workspace-name/
+// inviter-name `GET /api/invitation/public/{id}` already serves, with no recipient or
+// workspace-membership check of its own (any authenticated user could look up ANY
+// invitation by id). `invitation/policy.ts` had flagged this exact route as needing a
+// human decision on delete-vs-restrict-vs-declare-open; deleted per that decision
+// (2026-09-27, Opus delta pass F4 on PR #440's route-classification guard fix -- see
+// docs/07-planning/security-reviews/440-runtime-authorization-wiring.md).
 
 // ── S6a: the native invitation-action write routes ───────────────────────
 // Issue #6, retrofit plan §3 (S6a row). Accept and reject are actions the
@@ -162,9 +156,6 @@ const invitation = apiRouter()
     }
     return c.json(await getUserPendingInvitations(c.get("userEmail")), 200);
   })
-  .openapi(getInvitationRoute, async (c) =>
-    c.json(await getInvitationDetailsController(c.req.valid("param").id), 200),
-  )
   .openapi(acceptInvitationRoute, async (c) => {
     try {
       const accepted = await acceptInvitationCtrl(

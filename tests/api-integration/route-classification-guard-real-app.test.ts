@@ -135,4 +135,110 @@ describe("assertRouteIsClassified against the real createApp()", () => {
       getSpy.mockRestore();
     }
   });
+
+  // F4, fresh Opus delta pass (third round on this same mechanism), live-reproduced:
+  // stopping the walk at the first non-ALL matched entry was ITSELF still a prediction --
+  // a specific-method handler can call `next()` and hand the request on, exactly like
+  // `.use()` does. `assertRouteIsClassified` no longer predicts a terminal route at all;
+  // it checks every matched entry except the two declared catch-alls, unconditionally.
+  function spyRegistryFor(classifiedKey: string) {
+    const realEntry = policyRegistry.get("get /api/project");
+    if (!realEntry) {
+      throw new Error("expected a real registry entry to reuse for the spy");
+    }
+    const originalGet = policyRegistry.get.bind(policyRegistry);
+    return vi
+      .spyOn(policyRegistry, "get")
+      .mockImplementation((routeKey: string) =>
+        routeKey === classifiedKey ? realEntry : originalGet(routeKey),
+      );
+  }
+
+  it("refuses (500) an unclassified route behind a classified GET pass-through handler that calls next() (F4a)", async () => {
+    await resetTestDatabase();
+    const member = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(member.user);
+
+    const { app } = createApp();
+    const getSpy = spyRegistryFor("GET /api/__test_f4a__/*");
+
+    try {
+      app.get("/api/__test_f4a__/*", async (_c, next) => {
+        await next();
+      });
+      app.get("/api/__test_f4a__/x", (c) => c.text("should never be reached"));
+
+      const response = await app.request("/api/__test_f4a__/x");
+
+      expect(response.status).toBe(500);
+      expect(await response.text()).not.toBe("should never be reached");
+    } finally {
+      getSpy.mockRestore();
+    }
+  });
+
+  it("refuses (500) an unclassified route behind a classified multi-method pass-through handler (F4b)", async () => {
+    await resetTestDatabase();
+    const member = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(member.user);
+
+    const { app } = createApp();
+    const getSpy = spyRegistryFor("POST /api/__test_f4b__/*");
+
+    try {
+      app.on(["GET", "POST"], "/api/__test_f4b__/*", async (_c, next) => {
+        await next();
+      });
+      app.post("/api/__test_f4b__/x", (c) => c.text("should never be reached"));
+
+      const response = await app.request("/api/__test_f4b__/x", {
+        method: "POST",
+      });
+
+      expect(response.status).toBe(500);
+      expect(await response.text()).not.toBe("should never be reached");
+    } finally {
+      getSpy.mockRestore();
+    }
+  });
+
+  it("refuses (500) an unclassified literal route behind a classified parameter route that conditionally calls next() (F4c)", async () => {
+    await resetTestDatabase();
+    const member = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(member.user);
+
+    const { app } = createApp();
+    const getSpy = spyRegistryFor("GET /api/__test_f4c__/{id}");
+
+    try {
+      app.get("/api/__test_f4c__/:id", async (c, next) => {
+        if (c.req.param("id") === "special") {
+          await next();
+          return;
+        }
+        return c.text("param handler ran");
+      });
+      app.get("/api/__test_f4c__/special", (c) =>
+        c.text("should never be reached"),
+      );
+
+      const response = await app.request("/api/__test_f4c__/special");
+
+      expect(response.status).toBe(500);
+      expect(await response.text()).not.toBe("should never be reached");
+    } finally {
+      getSpy.mockRestore();
+    }
+  });
+
+  it("GET /api/invitation/pending still returns 200 after F4's fix (the sibling route it used to be confused with, GET /api/invitation/{id}, is deleted)", async () => {
+    await resetTestDatabase();
+    const member = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(member.user);
+
+    const { app } = createApp();
+    const response = await app.request("/api/invitation/pending");
+
+    expect(response.status).toBe(200);
+  });
 });
