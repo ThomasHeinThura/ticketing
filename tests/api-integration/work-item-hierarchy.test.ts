@@ -478,6 +478,74 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     expect(response.status).toBe(400);
   });
 
+  it("#481: rejects setting a parent to a soft-deleted work item at 404, and does not mutate parent_id", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const item = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Item",
+      })
+    ).json()) as CreatedWorkItem;
+    const deletedParent = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Soon deleted",
+      })
+    ).json()) as CreatedWorkItem;
+
+    await db
+      .update(schema.workItemTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.workItemTable.key, deletedParent.key));
+
+    const response = await setParentRequest(app, item.key, deletedParent.key);
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("Parent work item not found");
+
+    const [row] = await db
+      .select({ parentId: schema.workItemTable.parentId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, item.key));
+    expect(row?.parentId).toBeNull();
+  });
+
+  it("#481: rejects setting a parent to an archived work item at 404, and does not mutate parent_id", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const item = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Item",
+      })
+    ).json()) as CreatedWorkItem;
+    const archivedParent = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Soon archived",
+      })
+    ).json()) as CreatedWorkItem;
+
+    await db
+      .update(schema.workItemTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.workItemTable.key, archivedParent.key));
+
+    const response = await setParentRequest(app, item.key, archivedParent.key);
+    expect(response.status).toBe(404);
+    expect(await response.text()).toBe("Parent work item not found");
+
+    const [row] = await db
+      .select({ parentId: schema.workItemTable.parentId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, item.key));
+    expect(row?.parentId).toBeNull();
+  });
+
   it("cross-workspace: setting a parent to a key from another workspace 404s (never a cross-tenant leak)", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);
