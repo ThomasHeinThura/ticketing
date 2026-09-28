@@ -1175,7 +1175,10 @@ export async function analyzeDependencies(root = repoRoot) {
         // matches `Object.prototype` own accessors like `__proto__` (returns the prototype
         // itself, truthy but not callable) for specifiers this table never declared, which
         // then throws when called as a function below instead of falling through cleanly.
-        const flaggedMessage = Object.hasOwn(FLAGGED_MESSAGES, imported.specifier)
+        const flaggedMessage = Object.hasOwn(
+          FLAGGED_MESSAGES,
+          imported.specifier,
+        )
           ? FLAGGED_MESSAGES[imported.specifier]
           : undefined;
         if (imported.specifier === DYNAMIC_SPECIFIER || flaggedMessage) {
