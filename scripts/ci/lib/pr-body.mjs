@@ -417,22 +417,31 @@ const BIDI_CONTROL_CHARS = new RegExp(
 );
 
 /**
- * The blank-RENDERING characters `INVISIBLE` strips (U+3000 and the L6 fillers — see
- * `INVISIBLE`'s own doc comment) that can also be a legitimate WORD SEPARATOR in real
- * input, not just decoration. U+3000 IDEOGRAPHIC SPACE is the one issue #152 actually
+ * The blank-RENDERING characters `INVISIBLE` strips (see its own doc comment) that ALSO
+ * render with visible WIDTH — a blank cell a human's eye registers as a gap between two
+ * things, not merely "invisible." U+3000 IDEOGRAPHIC SPACE is the one issue #152 actually
  * reproduced: CJK input methods commit it as an ordinary space key routinely, so
  * `"not　applicable"` is two words to any human, but `contentOf` collapses it to
- * `"notapplicable"`. The Opus security review of this fix generalised the finding: every
- * other non-format blank-renderer `INVISIBLE` lists (U+2800, U+3164, U+115F, U+1160,
- * U+FFA0, U+17B4, U+17B5) shares the identical deletion-fuses-words exposure in principle,
- * so all of them are masked to an ordinary space here rather than deleted — the same
- * closed-list treatment `INVISIBLE` itself already uses, not a new decision about which
- * characters are blank.
+ * `"notapplicable"`. U+2800 BRAILLE PATTERN BLANK, U+3164 HANGUL FILLER and U+FFA0
+ * HALFWIDTH HANGUL FILLER share that same width-renders-as-a-gap property in principle
+ * (the first Opus security review of this fix generalised the finding to them), so they
+ * are masked to an ordinary space here too, rather than deleted.
+ *
+ * Deliberately NOT every character `INVISIBLE`'s own L6 addition lists: U+115F/U+1160 (the
+ * HANGUL CHOSEONG/JUNGSEONG FILLERS, conjoining jamo that render with no width outside a
+ * composed syllable block) and U+17B4/U+17B5 (the KHMER INHERENT VOWELS, explicitly
+ * invisible marks with no glyph of their own) do NOT render as a visible gap — masking
+ * THOSE to a space would reopen this exact bug from the other direction (a **second**
+ * Opus delta review of this fix found it): a reviewer sees no gap at all, so a masked
+ * space there creates a word boundary the parser now honours that no human perceived,
+ * the identical render/parse mismatch issue #153 is about, just via a different
+ * character family. Those four stay covered by `INVISIBLE`'s plain deletion, unchanged
+ * from `contentOf`'s own behaviour.
  *
  * Masking to a space rather than deleting cannot weaken blankness: a section made only of
  * these characters still trims away to `""` once `INVISIBLE` runs afterward.
  */
-const WORD_SEPARATING_BLANKS = /[⠀ㅤᅟᅠﾠ឴឵　]/gu;
+const WORD_SEPARATING_BLANKS = /[⠀ㅤﾠ　]/gu;
 
 /**
  * Like `contentOf`, but for a caller that parses the result for WORD-BOUNDARY-SENSITIVE

@@ -2461,14 +2461,12 @@ describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping brea
     }
   });
 
-  it("issue #152, generalised (found by the Opus security review): every OTHER blank-rendering, non-format filler is masked to a space too, not just U+3000", () => {
-    // L6 (contentOf's own history): U+2800/U+3164/U+115F/U+1160/U+FFA0/U+17B4/U+17B5 all
-    // render blank on GitHub without being Cf, and share U+3000's exact
-    // deletion-fuses-words exposure in principle -- not reported by either issue directly,
-    // but the same root cause, so closed the same way rather than left for the next report.
-    for (const codepoint of [
-      0x2800, 0x3164, 0x115f, 0x1160, 0xffa0, 0x17b4, 0x17b5,
-    ]) {
+  it("issue #152, generalised to the WIDTH-RENDERING L6 fillers only: U+2800/U+3164/U+FFA0 are masked to a space too, not just U+3000", () => {
+    // L6 (contentOf's own history): U+2800/U+3164/U+FFA0 all render as a visible blank
+    // CELL on GitHub without being Cf, sharing U+3000's exact deletion-fuses-words
+    // exposure in principle -- not reported by either issue directly, but the same root
+    // cause, so closed the same way rather than left for the next report.
+    for (const codepoint of [0x2800, 0x3164, 0xffa0]) {
       const char = chr(codepoint);
       const raw = `not${char}applicable-workflows.md`;
       assert.equal(
@@ -2479,6 +2477,28 @@ describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping brea
       );
       // Still blank on its own -- masking to a space cannot weaken blankness, since
       // INVISIBLE strips the space-adjacent-to-nothing result down to "" via trim().
+      assert.equal(wordBoundaryContentOf(char.repeat(3)), "");
+    }
+  });
+
+  it("does NOT mask the ZERO-WIDTH L6 fillers (U+115F/U+1160/U+17B4/U+17B5) to a space — a second Opus delta review found masking them would reopen the render/parse mismatch from the other direction", () => {
+    // These four render with NO visible width (conjoining Hangul jamo fillers outside a
+    // composed block; Khmer inherent vowels with no glyph of their own) -- a reviewer
+    // sees no gap at all between the two words, so masking one to a space would make the
+    // PARSER see a word boundary that nothing in the RENDERED text shows, which is
+    // exactly the class of mismatch issue #153 is about, just via a different character
+    // family. They must still be deleted (contentOf's original, unchanged behaviour),
+    // not masked.
+    for (const codepoint of [0x115f, 0x1160, 0x17b4, 0x17b5]) {
+      const char = chr(codepoint);
+      const raw = `not${char}applicable-workflows.md`;
+      assert.equal(
+        wordBoundaryContentOf(raw),
+        "notapplicable-workflows.md",
+        `expected U+${codepoint.toString(16).toUpperCase()} to still be DELETED, not ` +
+          "masked to a space that no rendering shows",
+      );
+      // Still blank on its own.
       assert.equal(wordBoundaryContentOf(char.repeat(3)), "");
     }
   });
