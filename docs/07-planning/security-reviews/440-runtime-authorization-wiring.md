@@ -368,3 +368,71 @@ Nothing blocking remains. This closes issue #8's runtime-authorization-gateway o
 for this PR's scope, after five review rounds on one mechanism — B1→B2→B3→F4→F5, each
 closing a real, live-reproduced hole the previous round's own fix left open, until this
 one found none. Clear to merge.
+
+---
+
+## Security review — Opus delta 6 (2026-09-28)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a5bf9251df25f4771`
+
+**Reviewed head:** `b1260781f52673ab24dea8bdc0de501539b04e49`
+
+**Verdict: CLEAR WITH FINDINGS.** Nothing blocking. Covers commit `b126078` — the
+route-restoration fix (`GET /api/invitation/{id}` kept registered and permanently
+disabled per Thomas's decision, rather than deleted, once the versioning policy's
+post-v2.0.0 deprecation-window requirement surfaced) and the clean merge past PR #451.
+
+**Live-verified, real `createApp()`, real Postgres:** no caller in any state gets
+invitation data back — owner, admin, plain member, a member of another workspace, an
+instance admin with no membership, an unauthenticated caller, an API-key/Bearer caller,
+HEAD requests, a NUL-byte id, a query string, upper-case id, trailing slash, and after
+cancelling the invitation — all correctly refused, with a real vs. nonexistent invitation
+id giving byte-identical responses within the caller's own reach boundary (the #317 S3
+protection inherited correctly through the shared middleware). The OpenAPI contract
+carries `deprecated: true`, is otherwise byte-identical to main's own `InvitationDetails`
+schema (148 operations, matching), and `test:contract`'s oasdiff check reports zero
+unapproved breaking changes. The declared policy (`capability: "member:invite"`, matching
+cancel) is confirmed genuinely enforced — none of the four reused middleware functions
+read route path or method, so the chain behaves identically to the cancel route it was
+copied from. The merge past #451 is byte-identical to `git merge-tree`'s own computed
+result, confirming no manual edit occurred; every file in the diff outside this PR's own
+`b126078` matches `origin/main` exactly. The F4/F5 guard mechanism itself is unaffected
+and fully re-verified (F5-D1 through D5, all F4 cases, HEAD, happy path, genuine 404,
+`/pending`).
+
+Full suites: unit 61/496, permissions (api) 13/83, permissions (package) 13/262,
+integration 109 files/1404 tests — all green, run solo. `tsc --noEmit` clean on all three
+tsconfigs.
+
+**Two non-blocking findings:** a LOW doc-only inaccuracy in the route's own OpenAPI
+description (claims the data isn't available "any other way," but the fully public
+`GET /invitation/public/{id}` sibling serves the same fields with no credential at all —
+worth a later contract-text fix, no security effect); an informational note that the
+permission-matrix fixture shows several roles as "allow" for this route (the declared
+capability check, correctly recorded) while the handler always 403s on top — shadow mode
+correctly reads this as "unknown," not a false divergence, since the declared policy is
+the outer limit and the handler's own unconditional refusal is an additional, undeclared
+restriction layered on it, exactly as intended.
+
+**Process note:** the branch was `BEHIND` main by PR #453 (the decision-log entry itself,
+docs-only) at review time — resolved by the orchestrating session via a mechanical
+merge (empty diff on every application file this PR touches, confirmed at the new head
+below), not a fresh review round.
+
+---
+
+## Re-confirmation after branch update (2026-09-28)
+
+**Reviewed head:** `e831bbc4e31511b3a132068917d931f3fc7ae98f`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. Real two-parent merge with `origin/main` (which had
+advanced with PR #453's own decision-log entry — the very decision this PR's route
+restoration is built on). `git diff b1260781f52673ab24dea8bdc0de501539b04e49..e831bbc4e31511b3a132068917d931f3fc7ae98f`
+scoped to `apps/api/**` and `tests/**` (every application file this PR touches) is empty
+— only `docs/07-planning/decision-log.md` changed, and only by addition. `tsc --noEmit`
+and `check-openapi.mjs` unaffected by a docs-only merge; both already verified clean at
+the immediately-prior head.
+
+Combined with delta 6's CLEAR WITH FINDINGS, this closes issue #8's runtime-authorization-
+gateway obligation for this PR's full scope. Clear to merge.
