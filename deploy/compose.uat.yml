@@ -49,24 +49,34 @@ services:
       # ---------------------------------------------------------------
       TASKDESK_TRUST_PROXY: "2"
     labels:
+      # Service/router/middleware names are prefixed `taskdesk-uat` (not the
+      # bare `taskdesk` this overlay's service used before) because Traefik's
+      # Docker provider discovers every `traefik.enable=true` container on the
+      # Docker host it runs against — it is not scoped to one Compose project
+      # or network. A stray `taskdesk` container from another stack on the
+      # same host (this one included: v2 UAT and local dev have both run on
+      # this box at once) would otherwise merge into this overlay's Traefik
+      # service, load-balancing into a backend unreachable from that Traefik's
+      # own network. docs/05-operations/traefik-and-domains.md § Environment-
+      # prefixed names
       - traefik.enable=true
       - traefik.docker.network=dokploy-network
-      - traefik.http.services.taskdesk.loadbalancer.server.port=${TASKDESK_PORT:-5173}
-      - traefik.http.services.taskdesk.loadbalancer.healthcheck.path=/api/public/health/ready
+      - traefik.http.services.taskdesk-uat.loadbalancer.server.port=${TASKDESK_PORT:-5173}
+      - traefik.http.services.taskdesk-uat.loadbalancer.healthcheck.path=/api/public/health/ready
       # `web`, not `websecure`, and no certresolver: CloudFront terminates TLS
       # and reaches this Traefik over plain HTTP on :80. A `websecure` router
       # here would never be matched, and an ACME challenge would never be
       # answered, because port 443 on this host is not what the browser talks
       # to. Measured: entryPointName "web", RequestScheme "http", in the
       # Traefik access log for a real request to ticket-uat.bimats.com.
-      - traefik.http.routers.taskdesk-v2-agent.rule=Host(`ticket-v2-uat.${DOMAIN:?DOMAIN is required}`)
-      - traefik.http.routers.taskdesk-v2-agent.entrypoints=web
-      - traefik.http.routers.taskdesk-v2-agent.service=taskdesk
-      - traefik.http.routers.taskdesk-v2-agent.middlewares=taskdesk-v2-uat-headers@docker,taskdesk-v2-uat-compress@docker,taskdesk-v2-uat-ratelimit@docker
-      - traefik.http.routers.taskdesk-v2-portal.rule=Host(`portal-v2-uat.${DOMAIN:?DOMAIN is required}`)
-      - traefik.http.routers.taskdesk-v2-portal.entrypoints=web
-      - traefik.http.routers.taskdesk-v2-portal.service=taskdesk
-      - traefik.http.routers.taskdesk-v2-portal.middlewares=taskdesk-v2-uat-headers@docker,taskdesk-v2-uat-compress@docker,taskdesk-v2-uat-ratelimit@docker
+      - traefik.http.routers.taskdesk-uat-agent.rule=Host(`ticket-v2-uat.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.taskdesk-uat-agent.entrypoints=web
+      - traefik.http.routers.taskdesk-uat-agent.service=taskdesk-uat
+      - traefik.http.routers.taskdesk-uat-agent.middlewares=taskdesk-uat-headers@docker,taskdesk-uat-compress@docker,taskdesk-uat-ratelimit@docker
+      - traefik.http.routers.taskdesk-uat-portal.rule=Host(`portal-v2-uat.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.taskdesk-uat-portal.entrypoints=web
+      - traefik.http.routers.taskdesk-uat-portal.service=taskdesk-uat
+      - traefik.http.routers.taskdesk-uat-portal.middlewares=taskdesk-uat-headers@docker,taskdesk-uat-compress@docker,taskdesk-uat-ratelimit@docker
       # `@docker`, not `@file`: this overlay attaches to the HOST'S EXISTING
       # Dokploy-managed Traefik (dokploy-network), which loads its own dynamic
       # file-provider config, not this repo's deploy/traefik/dynamic/middlewares.yml.
@@ -78,19 +88,19 @@ services:
       # sync by hand — there is no way to reference a file-provider middleware
       # from a container attached to someone else's Traefik) is what v1's own
       # taskdesk-uat stack already does, proven working on this exact host.
-      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.stsSeconds=63072000
-      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.stsIncludeSubdomains=false
-      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.stsPreload=false
-      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.contentTypeNosniff=true
-      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.frameDeny=true
-      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.referrerPolicy=strict-origin-when-cross-origin
-      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.permissionsPolicy=geolocation=(), camera=(), microphone=(), payment=()
-      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.customResponseHeaders.Cross-Origin-Opener-Policy=same-origin
-      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.customResponseHeaders.X-Powered-By=
-      - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.customResponseHeaders.Server=
-      - traefik.http.middlewares.taskdesk-v2-uat-compress.compress=true
-      - traefik.http.middlewares.taskdesk-v2-uat-ratelimit.ratelimit.average=100
-      - traefik.http.middlewares.taskdesk-v2-uat-ratelimit.ratelimit.burst=200
+      - traefik.http.middlewares.taskdesk-uat-headers.headers.stsSeconds=63072000
+      - traefik.http.middlewares.taskdesk-uat-headers.headers.stsIncludeSubdomains=false
+      - traefik.http.middlewares.taskdesk-uat-headers.headers.stsPreload=false
+      - traefik.http.middlewares.taskdesk-uat-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.taskdesk-uat-headers.headers.frameDeny=true
+      - traefik.http.middlewares.taskdesk-uat-headers.headers.referrerPolicy=strict-origin-when-cross-origin
+      - traefik.http.middlewares.taskdesk-uat-headers.headers.permissionsPolicy=geolocation=(), camera=(), microphone=(), payment=()
+      - traefik.http.middlewares.taskdesk-uat-headers.headers.customResponseHeaders.Cross-Origin-Opener-Policy=same-origin
+      - traefik.http.middlewares.taskdesk-uat-headers.headers.customResponseHeaders.X-Powered-By=
+      - traefik.http.middlewares.taskdesk-uat-headers.headers.customResponseHeaders.Server=
+      - traefik.http.middlewares.taskdesk-uat-compress.compress=true
+      - traefik.http.middlewares.taskdesk-uat-ratelimit.ratelimit.average=100
+      - traefik.http.middlewares.taskdesk-uat-ratelimit.ratelimit.burst=200
     networks:
       - taskdesk
       - dokploy-network
