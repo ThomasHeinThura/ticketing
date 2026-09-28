@@ -16,6 +16,52 @@ Newest first.
 **Decided by:** who
 ```
 
+### 2026-09-28 · `GET /api/invitation/{id}` (issue #8, PR #440) kept registered and permanently disabled, not deleted — the reviewed-allowlist breaking-change mechanism is closed for good now that v2.0.1 exists
+
+**Decision:** the route stays in the OpenAPI contract (`deprecated: true`), and its handler
+now unconditionally refuses (403) — including for a caller who holds the real
+`member:invite` authority its own middleware chain (reused verbatim from
+`DELETE /api/invitation/{id}`, the cancel route) checks. It was NOT deleted outright, and
+`scripts/ci/openapi-approved-breaks.json` was NOT used to approve its removal.
+
+**Why:** PR #440's Opus delta pass F4 found and fixed a route-classification-guard
+fail-open that, applied strictly, required this route to be classified rather than left
+"deliberately uncovered" — the state it had been in since 2026-09-22, because none of the
+registry's five policy kinds fit its old shape honestly (it returned invitee
+email/workspace name/inviter name to any authenticated caller, with no recipient or
+workspace-membership check at all — the same data `GET /api/invitation/public/{id}`
+already serves, but this one required a credential first). The first plan was to delete
+it outright (zero real callers in `apps/web`, an info-leak already). Before that landed,
+PR #440's own `test:contract` gate (`oasdiff` against `origin/main`) caught something the
+deletion plan missed: a stable `v2.0.1` tag already exists on origin, so
+`docs/01-architecture/api-design.md`'s Versioning section requires a real deprecation
+window (a new path segment, the old one kept for two minor releases with `Deprecation`/
+`Sunset` headers) for a breaking removal, not the reviewed allowlist — that allowlist is
+explicitly closed, permanently, from the first stable `v2.0.0`+ tag on. Asked Thomas
+directly given this new constraint; he chose to keep the route registered and disable it
+in place, rather than build a full deprecation-header mechanism (no existing precedent in
+this codebase) or wait out a real deprecation window for a route that was never safe.
+
+**Alternatives considered:** (1) waive the versioning policy for this one route and delete
+it anyway — rejected, a real policy waiver only Thomas may authorize, and he chose not to;
+(2) build the actual versioned-path-segment mechanism this policy describes, as the first
+real instance of it — rejected as disproportionate scope for closing one already-known
+info-leak in an unused route.
+
+**How this is enforced:** `apps/api/src/invitation/policy.ts` declares
+`"GET /api/invitation/{id}": { capability: "member:invite", scope: "workspace",
+scopeSource: "row", reach: "required", sessionOnly: true }` — identical to cancel's own
+declaration, and genuinely enforced (same middleware chain runs). The handler still
+throws 403 after that middleware passes; the declared capability check is a real,
+additional gate in front of an always-refusing handler, not a mismatch between what's
+declared and what runs.
+
+**Decided by:** Thomas, 2026-09-28, asked directly (a tight two-option-plus-status-quo
+question) after the versioning-policy constraint surfaced mid-fix. See
+`docs/07-planning/security-reviews/440-runtime-authorization-wiring.md` for the full
+five-round review history on the route-classification-guard mechanism this decision grew
+out of.
+
 ### 2026-09-27 · `pal-mcp` FULLY UNSUSPENDED for all reading/ordinary-review/audit/analysis, all branches, all scope — the Opus final security/critical review remains the sole, unreplaced gate
 
 **Supersedes:** the entry immediately below (same day) — that entry's non-security-scope-only
