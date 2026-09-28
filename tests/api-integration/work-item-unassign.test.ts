@@ -364,7 +364,8 @@ describe("API integration: work item unassignment (#30, assignment.md)", () => {
     const auditRows = await db
       .select()
       .from(schema.auditLogTable)
-      .where(eq(schema.auditLogTable.entityId, itemRow?.id ?? ""));
+      .where(eq(schema.auditLogTable.entityId, itemRow?.id ?? ""))
+      .orderBy(schema.auditLogTable.seq);
     expect(auditRows).toHaveLength(2);
     const [unassignAuditRow] = auditRows.slice(-1);
     expect(unassignAuditRow?.action).toBe("work_item.unassigned");
