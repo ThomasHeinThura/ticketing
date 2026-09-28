@@ -133,7 +133,7 @@ export async function setWorkItemParent(
         ),
       );
 
-    if (!parent) {
+    if (!parent || parent.archivedAt || parent.deletedAt) {
       throw new HTTPException(404, { message: "Parent work item not found" });
     }
 
