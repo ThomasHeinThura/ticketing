@@ -49,6 +49,96 @@ resolved by rebuilding the package) — not a real regression, confirmed and fix
 
 ## Security review
 
-**Model:** PENDING — Opus, mandatory (this PR adds a migration and new permission-gated
-routes)
-**Session:** PENDING
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a15b177e354ac7ba1`
+
+**Reviewed head:** `811c5175c804b09a7cf7872dee5bec2b31b394f7`
+
+**Verdict: BLOCKING.** Four problems, live-verified against the real `createApp()`, a real
+Postgres database on `td-lane-pg`, the real `filesystem` driver, and a throwaway MinIO
+container for the S3 path.
+
+**B1 (HIGH):** the declared `contentType`, not the extension, gated the magic-byte check —
+declaring any of the 4 no-signature-check plain-text types skipped the byte check
+entirely regardless of the actual file extension (six reproduced bypass shapes, including
+a PE executable declared `malware.doc` + `text/plain`).
+
+**B2 (HIGH):** the presigned upload URL kept accepting writes after `complete` had already
+validated and marked the row `ready` — a second PUT silently replaced the checked bytes
+for as long as the URL's TTL lasted (reproduced on both filesystem, which opens with
+`O_TRUNC`, and S3/MinIO).
+
+**B3 (MEDIUM, DoS):** `complete` read the entire object into memory before checking size;
+nothing bounds a raw S3 PUT's size.
+
+**B4 (MEDIUM):** `GET /api/work-items/{key}/attachments` had no permission check at all,
+despite its own policy declaring `work_item:read`.
+
+Six non-blocking LOW findings (L1-L6) also recorded: unsigned filesystem-download
+filename parameter, S3 not pinning Content-Type, `S3_KEY_PREFIX` breaking attachments
+entirely, deleted/abandoned uploads counting toward per-item limits, `complete`'s UPDATE
+lacking a `WHERE state='pending'` guard, control characters in filenames.
+
+Migrations (0073/0074) re-confirmed additive and existing-row-safe. Full suites
+reproduced: integration 105/1363, unit 61/503, permissions 13/83 — all green. `tsc
+--noEmit` clean, `check-openapi.mjs` clean, 143 operations.
+
+B1-B4 required before merge. A fresh Opus delta pass required on the fix.
+
+---
+
+## Security review — Opus delta 2 (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context
+**Session:** subagent `a689169c36912e279` (a first attempt, session `ac7f2b286031f9922`,
+was interrupted mid-review by a safety classifier and produced no verdict — discarded,
+not counted as a review round)
+
+**Reviewed head:** `f28b503329e7745ca9f1f7058c930ca4de5ba721`
+
+**Verdict: BLOCKING.** B1, B3 and B4 fixes hold up in live tests. **B2 is not closed** —
+the replay it was meant to guard against still works, through a timing gap, on both
+storage drivers. Reproduced live: a PE executable ended up served as a `ready`
+`image/png` attachment.
+
+**N1 (HIGH, filesystem): B2 still open through an upload request already in progress.**
+The upload writer (`writeStreamToFile`) opens the pending path with
+`O_WRONLY|O_CREAT|O_TRUNC`. A rename (the B2 fix) moves the file but does not close file
+handles already open on it — an upload already in flight when `complete` runs keeps
+writing into the file that is now the served one. Reproduced step by step, no timing luck
+needed: a slow PUT opens the pending file and stalls; a fast PUT with real PNG bytes
+completes and gets renamed to final; the stalled PUT's PE bytes then land at position 0 of
+the RENAMED (final) file. Both PUTs return success; the served download starts `MZ`.
+
+**N2 (HIGH, S3/MinIO): B2 still open through a race between the check and the copy.**
+`complete` checks the object at the pending key (HEAD + ranged GET), then runs a separate
+`CopyObject` of that same key — the presigned PUT can still write in between. Reproduced
+by racing 6 malicious PUTs with 0-14ms start delays against `complete`: one landed inside
+the gap, and the resulting `ready`, `image/png`-declared object starts with a PE header.
+Also exposes B3's size limit through the same gap (S3 presigned PUTs have no size bound;
+demonstrated a 300MB raw PUT accepted).
+
+**Fix direction (one structural change for both):** check the bytes that will actually be
+served, at the FINAL location, after the move — never at the pending location. S3:
+`CopyObject` to the final key first, then HEAD + ranged GET the final key (no presigned
+URL can write there); delete on failure. Filesystem: either make the writer publish
+atomically (write to a unique `O_EXCL` temp file, rename onto the final key, so no
+request ever holds a handle on a live served file) or have `complete` copy (not rename) to
+a new file and check the copy.
+
+**Verified clean:** B1 (all 6 bypass shapes plus new adversarial ones — mixed case,
+charset suffix, whitespace, multi-value contentType — all correctly rejected at presign;
+legitimate combinations accepted; extension table covers all 25 allowed extensions, not
+24 as briefed). B3 (size checked before any body read; 300MB object on both drivers
+returns 400 with no memory growth; MinIO ranged GET confirmed genuinely ranged over the
+wire). B4 (list/single/download all correctly gated by role in a 3-role matrix).
+
+**Non-blocking:** N3 (LOW) — a crash between the storage move and the DB update leaves
+orphaned/inconsistent state (no transaction spans both); N4 (LOW) — a replay PUT after
+`complete` leaves an orphan object at the pending key on both drivers, uncleaned. L5
+confirmed closed; L1-L4/L6 unchanged, not made worse.
+
+Full suites reproduced: integration 105/1366, unit 61/509, permissions 13/83 — all green.
+`tsc --noEmit` clean, `check-openapi.mjs` clean, 143 operations, no drift.
+
+B2 (via N1+N2) is required before merge. A fresh Opus delta pass is required on the fix.
