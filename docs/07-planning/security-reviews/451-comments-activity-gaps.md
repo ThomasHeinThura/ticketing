@@ -127,3 +127,48 @@ prefix. Verified live against a fresh scratch database migrated through 0073+007
 pass. Full integration suite re-verified after: 107 files, 1378 tests, all green.
 
 Nothing blocking remains. Clear to merge pending final CI confirmation on this head.
+
+---
+
+## Independent verification after a second, substantive branch update (2026-09-28)
+
+**Reviewed head:** `76491fb2591aa7ff23466e67aedbfe6f920496af`
+**Reviewer:** Opus 5.5, fresh independent context (subagent `a03177945f3cb1059`) — a
+genuine independent pass, not a self-declared mechanical reconfirmation, because this
+merge was NOT a no-op: `main` had advanced past PR #443 (workflow persistence), which
+independently generated its own migrations numbered `0073`/`0074`, colliding with this
+branch's own `0073_rename_comment_to_task_comment.sql`/
+`0074_comment_and_canned_response_tables.sql`. The orchestrating session resolved this by
+renumbering this branch's two migrations to `0074`/`0075` and manually reconstructing the
+cumulative snapshot chain (main's own workflow tables plus this branch's own rename/new
+tables) — a process that surfaced and required fixing two real mistakes along the way (a
+migration file corrupted by an unredirected git-error message, and a stale phantom
+journal entry from an earlier failed attempt) before landing on the final, verified state.
+
+**Verdict: CLEAR WITH FINDINGS.** The merge and the hand-fixes introduced no error.
+Confirmed live: the feature's own application code has an EMPTY diff from the last-
+reviewed head (`7c96193`) across every file this PR touches. Confirmed PR #443's own
+content survived whole (git's own three-way merge result on every shared file matches
+what was committed, byte-for-byte, on six shared files — none were hand-edited despite
+having no conflict markers). Confirmed the migration renumbering and snapshot
+reconstruction are sound: applied 0000-0075 fresh via BOTH the real app migration path
+(`TASKDESK_ROLE=migrate tsx src/index.ts`) and plain `drizzle-orm` `migrate()` — both
+succeed and produce an identical schema; `drizzle-kit generate` confirms no drift; a
+table-by-table `pg_dump` comparison confirms only the expected tables differ between
+main/reviewed-head/merge-head. Re-ran the existing-row test AT THE NEW POSITION: 3 real
+`comment` rows inserted after main's own 0073, migrated through 0074/0075, survived
+byte-for-byte under `task_comment` with every constraint/index correctly renamed (no `_1`
+collision suffix).
+
+Full suites reproduced: unit 60 files/494 tests, permissions 13/83, integration 108
+files/1386 tests — all green. `tsc --noEmit` clean on all three tsconfigs.
+`check-openapi.mjs` clean, 148 operations, no drift.
+
+**One cosmetic, non-blocking finding (F1):** because the renamed migration files were
+kept byte-identical to their already-reviewed originals, a few in-file comments and one
+test's `describe` title now say the wrong migration number (e.g. the rename SQL's own
+comment still says "migration 0074" for what is now 0075). Left as-is deliberately —
+editing the SQL file's own comment would change reviewed bytes for a purely cosmetic fix;
+worth a follow-up docs pass, not a merge blocker.
+
+Clear to merge.
