@@ -624,9 +624,11 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
         workItemId,
       ]);
 
-      const responsePromise = transitionRequest(app, key, {
-        toStateTemplateId: done.stateTemplate.id,
-      });
+      const responsePromise = Promise.resolve(
+        transitionRequest(app, key, {
+          toStateTemplateId: done.stateTemplate.id,
+        }),
+      );
       responsePromise.catch(() => {});
 
       // Give the app's own `SELECT ... FOR UPDATE` time to reach Postgres and start
