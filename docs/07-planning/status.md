@@ -1,5 +1,33 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+**2026-09-28 orchestrator snapshot (4) — `main` at `0a5dc368` (#469, Traefik environment-label
+fix, merged). Two of P0's four gate issues are now CLOSED — #9 (closed earlier today, see
+snapshot (3) below) and #11 (closed just now, evidence below). #464 (check-deps `__proto__`
+crash), #342 (env-read detection gaps, already resolved by earlier merges), #269
+(unique-violation exact-match, already resolved by earlier merges), and #251 (workspace-role
+unique-constraint Drizzle tracking, already resolved by earlier merges) also closed today. #8
+and #10 remain open, each for a real, named reason — see snapshot (3) below and the
+2026-09-28 decision-log entries; neither closes by more code review.**
+
+Merged since snapshot (3): **#467** (`402ec7de`, #464's `check-deps.mjs` `__proto__` crash,
+Opus CLEAR WITH FINDINGS, one lint-only finding fixed), **#468** (`c77f994b`, #11's
+`scripts/deploy.sh local` bundled-Traefik port conflict — three Opus rounds, CLEAR WITH FINDINGS,
+only informational notes remain), **#469** (`0a5dc368`, a second real defect found while
+verifying #468: all three Compose overlays shared a bare `taskdesk` Traefik service name,
+silently merging into one load-balanced pool on any host running two TaskDesk stacks at once —
+fixed by environment-prefixing every router/service/middleware name, ordinary review only, no
+security-scope path touched). Issue #11 is now **closed** — see its closing comment for the
+full evidence chain. New issue **#471** filed (F2 from PR #404's Opus review: `update-project.ts`
+can silently leave a slug-claim row pointing at the wrong project after a rename race —
+`ON CONFLICT DO NOTHING` where `create-project.ts`'s equivalent path correctly rejects).
+
+One more bounded lane dispatched and in flight as of this snapshot: #154 (bound
+`check-reviews.mjs`'s quadratic Spec-field scan cost — low priority, tracking-only, not a live
+defect). #251 was dispatched as a lane too, but turned out to already be resolved by an
+earlier-merged PR (#405) before the lane got to it — see above.
+
+---
+
 **2026-09-28 orchestrator snapshot (3) — `main` at `3b434e85` (#465, check-deps comment-accuracy
 fix, merged). All four P0 gate issues (#8, #9, #10, #11) audited today against live code, not
 against their own (partly stale) checklist text — see the 2026-09-28 decision-log entry for the
