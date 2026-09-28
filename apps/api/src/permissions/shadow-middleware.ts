@@ -324,36 +324,46 @@ async function runShadowEvaluation(
   const userId = (c.get("userId") as string | undefined) || undefined;
   const credential = credentialKindFor(apiKey);
   const identityKind: string | null = userId ? credential : null;
+  // Evidence-only, deliberately decoupled from `workspaceIdSource` above (#400, Opus R1 on
+  // #381): that variable also feeds `buildShadowPolicySide`'s policy-side comparison below,
+  // where promoting it to "row" for a `scopeSource: "request"` policy would turn a correct
+  // agreement into a false `scope_source_mismatch` disagreement (#323 Opus S1). This flag
+  // answers a narrower question — "is this exact id backed by a real workspace row" — and is
+  // the only thing shadow evidence trusts. A legacy path saying "allowed" is never treated as
+  // proof by itself: an instance-admin bypass (`validateWorkspaceAccess`'s admin early
+  // return, `hasWorkspacePermission`'s `isInstanceAdmin` shortcut, and any future one) says
+  // "allowed" without ever checking the workspace exists.
+  let workspaceIdVerified = workspaceIdSource === "row";
   const evidenceWorkspaceId = () =>
-    workspaceIdForShadowEvidence(
-      workspaceId,
-      workspaceIdSource,
-      legacy.known ? legacy.allowed : null,
-    );
+    workspaceIdForShadowEvidence(workspaceId, workspaceIdVerified);
 
   let policySide: ReturnType<typeof buildShadowPolicySide>;
   try {
-    // Some workspace routes declare row provenance because their handler reads the
-    // workspace row, while the reach middleware starts from a path/query value. On
-    // denied requests that handler never runs, so resolve the declared target after
-    // the response (inside the bounded shadow queue) before deciding its provenance.
-    // A missing row stays unevaluated; a caller-supplied id is never promoted to row
-    // evidence without this authoritative lookup.
-    if (
-      workspaceId !== null &&
-      workspaceIdSource === "request" &&
-      entry !== undefined &&
-      isCapabilityPolicy(entry.policy) &&
-      entry.policy.scope === "workspace" &&
-      entry.policy.scopeSource === "row"
-    ) {
+    // A request-sourced id (query/body/param) is never itself a loaded row. Confirm it
+    // against a real `workspace` row before trusting it as evidence, for EVERY
+    // request-sourced id, regardless of the route's own policy shape and regardless of
+    // whether legacy authorization allowed or denied the request (#400 widens this beyond
+    // the `scopeSource: "row"`-only check #381 shipped). A missing row stays unverified;
+    // nothing here ever substitutes "some legacy path allowed it" for this check.
+    if (workspaceId !== null && workspaceIdSource === "request") {
       const [workspace] = await db
         .select({ id: schema.workspaceTable.id })
         .from(schema.workspaceTable)
         .where(eq(schema.workspaceTable.id, workspaceId))
         .limit(1);
       if (workspace) {
-        workspaceIdSource = "row";
+        workspaceIdVerified = true;
+        // Only promote the POLICY-side source when the route's own policy declares row
+        // provenance — promoting it for a `scopeSource: "request"` policy would make the
+        // evaluator refuse a correct agreement as `scope_source_mismatch` (#323 Opus S1).
+        if (
+          entry !== undefined &&
+          isCapabilityPolicy(entry.policy) &&
+          entry.policy.scope === "workspace" &&
+          entry.policy.scopeSource === "row"
+        ) {
+          workspaceIdSource = "row";
+        }
       }
     }
 
