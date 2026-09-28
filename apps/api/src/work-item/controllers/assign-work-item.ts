@@ -182,6 +182,13 @@ export async function assignWorkItem(
           expected === null
             ? isNull(workItemTable.assigneeId)
             : eq(workItemTable.assigneeId, expected),
+          // Issue #490: same TOCTOU class #276/#486/#488 closed elsewhere. The liveness
+          // check above is an unlocked pre-read outside this transaction, and
+          // `delete-work-item.ts`'s soft-delete does not bump `version`, so a concurrent
+          // soft-delete landing between that pre-read and this conditional UPDATE would
+          // otherwise still match on `assigneeId` alone and assign a deleted/archived item.
+          isNull(workItemTable.deletedAt),
+          isNull(workItemTable.archivedAt),
         ),
       )
       .returning({
