@@ -149,6 +149,20 @@ pre-merge branch's own old `0073_saved_view` migration would, under drizzle's ow
 timestamp-ordering rule, skip main's `0073_workflow` and fail applying `0074` — no
 deployed environment ran the unmerged branch, so nothing is actually affected.
 
+---
+
+## Re-confirmation after a CI-gate-only fix (2026-09-27)
+
+**Reviewed head:** `2c5c178b47920f75ea6b2578e871e2e7971e106c`
+**Reviewer:** orchestrating session (mechanical verification)
+**Verdict:** CLEAR, unchanged. `git diff 014b5250bfbfb57a42acc2a41dc0e2890a0bda23..2c5c178`
+touches exactly two files — `scripts/ci/probes/check-events.test.mjs` (bumped a hardcoded
+published-event-key count 29→33 for this PR's own four `saved_view.*` keys, stale after
+the #443 merge added its own workflow content to the same `main` history) and
+`scripts/ci/vocabulary-baseline.json` (pruned `workspace_role`, already documented on
+`main` independently of this PR) — zero application/migration/schema files changed. Full
+`node --test scripts/ci/**/*.test.mjs` re-run: 788/788 green.
+
 Clear to merge.
 
 Clear to merge.
