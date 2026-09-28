@@ -524,6 +524,43 @@ describe("#324 — denied param workspace scope is checked against a verified ro
     expect(event.workspaceId).toBeNull();
   });
 
+  it("does not persist an unverified caller-supplied id when the caller is an instance admin (#400, Opus R1 on #381)", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const instanceAdminUser = {
+      id: "user-instance-admin-workspace-id-shadow-test",
+      email: "instance-admin-workspace-id-shadow-test@example.com",
+      name: "Instance Admin",
+      emailVerified: true,
+      role: "admin",
+    };
+    await fresh.db.insert(fresh.schema.userTable).values(instanceAdminUser);
+    await backfillPersons();
+    fresh.mockUser(instanceAdminUser);
+    const untrustedWorkspaceId = `attacker-${"x".repeat(6_000)}`;
+    expect(untrustedWorkspaceId).toHaveLength(6_009);
+
+    // `validateWorkspaceAccess` returns early for `role === "admin"` (never checking the
+    // workspace exists), so legacy authorization here is "allowed" purely from the admin
+    // bypass — the exact case #381's own fix (relying on `legacyAllowed === true` as proof
+    // of verification) missed.
+    const response = await fresh.app.request(
+      `/api/workspace/${untrustedWorkspaceId}`,
+    );
+    expect(response.status).toBe(404);
+
+    const event = await waitForShadowEvidence(async () => {
+      const rows = await shadowEventsFor(
+        WORKSPACE_DETAIL_ROUTE_KEY,
+        "unevaluated",
+      );
+      return rows.find((row) => row.reasonCode === "scope_source_unavailable");
+    });
+    expect(event.legacyAllowed).toBe(true);
+    expect(event.workspaceId).toBeNull();
+  });
+
   it("preserves a request-sourced workspace id when legacy authorization allowed it", {
     timeout: 60_000,
   }, async () => {
@@ -681,6 +718,84 @@ describe("#324 — denied param workspace scope is checked against a verified ro
           row.reasonCode === "scope_source_unavailable",
       ),
     ).toBe(false);
+  });
+});
+
+describe("#400 F1 (Opus review) — a row-derived id with no source label is still attributed", () => {
+  it("PATCH /api/canned-responses/{id} keeps its real workspace id on a non-agree event", {
+    timeout: 60_000,
+  }, async () => {
+    // `requireCannedResponseReach` resolves `workspaceId` from the canned response's own
+    // row -- a genuine database lookup, exactly like `requireWorkItemReach` and
+    // `requireAttachmentReach` -- but (before #400's F1 fix) never labelled it
+    // `workspaceIdSource: "row"` the way those two do. `workspaceIdForShadowEvidence`'s
+    // widened lookup (#400) only runs for `source === "request"`, so an unlabelled id
+    // (`source === null`) was never promoted either -- it was always recorded as `NULL`
+    // on any non-`agree` event, real id or not. #400 labels this middleware's id `"row"`
+    // so it is trusted like every other row-derived source.
+    const fresh = await createAppWithShadow("on");
+    const owner = await createWorkspaceMember({ role: "owner" });
+    await backfillPersons();
+    fresh.mockUser(owner.user);
+    const [cannedResponse] = await fresh.db
+      .insert(fresh.schema.cannedResponseTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        name: "Greeting",
+        body: { type: "doc", content: [] },
+      })
+      .returning();
+    if (!cannedResponse)
+      throw new Error("canned response fixture insert failed");
+
+    // Force a shadow disagreement independent of the caller's real capability, the same
+    // mocked-registry technique the sibling tests above use: the route's real policy is
+    // workspace-scoped, so declaring `scope: "project"` here can never resolve (this
+    // route carries no project id at all), landing reliably on an `unevaluated` outcome
+    // -- any non-`agree` outcome writes an event row and exercises the same
+    // `evidenceWorkspaceId()` gate a real disagreement would.
+    const registry = await import("../../apps/api/src/policy-registry");
+    const originalGet = registry.policyRegistry.get.bind(
+      registry.policyRegistry,
+    );
+    const CANNED_RESPONSE_UPDATE_ROUTE_KEY = "PATCH /api/canned-responses/{id}";
+    vi.spyOn(registry.policyRegistry, "get").mockImplementation((routeKey) => {
+      const entry = originalGet(routeKey);
+      if (routeKey !== CANNED_RESPONSE_UPDATE_ROUTE_KEY || !entry) return entry;
+      return {
+        routeKey: entry.routeKey,
+        kind: "capability",
+        source: entry.source,
+        policy: {
+          capability: "workspace:manage_settings",
+          scope: "project",
+          reach: "required",
+          scopeSource: "row",
+        },
+      };
+    });
+
+    const response = await fresh.app.request(
+      `/api/canned-responses/${cannedResponse.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Greeting v2" }),
+      },
+    );
+    expect(response.status).toBe(200);
+
+    const events = await waitForShadowEvidence(async () => {
+      const rows = await shadowEventsFor(
+        CANNED_RESPONSE_UPDATE_ROUTE_KEY,
+        "unevaluated",
+      );
+      return rows.length > 0 ? rows : undefined;
+    });
+    expect(events.length).toBeGreaterThan(0);
+    expect(
+      events.every((event) => event.workspaceId === owner.workspace.id),
+    ).toBe(true);
   });
 });
 
