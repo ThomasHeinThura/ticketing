@@ -2607,6 +2607,59 @@
           "status"
         ]
       },
+      "InvitationDetails": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "description": "True only when the invitation can still be accepted."
+          },
+          "invitation": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "workspaceName": {
+                "type": "string"
+              },
+              "inviterName": {
+                "type": "string"
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "status": {
+                "type": "string"
+              },
+              "expired": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "workspaceName",
+              "inviterName",
+              "expiresAt",
+              "status",
+              "expired"
+            ],
+            "description": "Omitted when the invitation does not exist, was already accepted, or was canceled -- the details are withheld rather than leaked."
+          },
+          "error": {
+            "type": "string",
+            "description": "Why the invitation is unusable, when valid is false."
+          }
+        },
+        "required": [
+          "valid"
+        ]
+      },
       "AcceptedInvitation": {
         "type": "object",
         "properties": {
@@ -11940,6 +11993,139 @@
         }
       }
     },
+    "/invitation/{id}": {
+      "get": {
+        "operationId": "getInvitationDetails",
+        "tags": [
+          "Invitations"
+        ],
+        "summary": "Get invitation details",
+        "description": "Deprecated and permanently disabled (2026-09-28): always refuses, even for a caller who holds the workspace authority its own middleware checks. Previously looked up an invitation by id with no recipient or workspace-membership check of its own -- the same data is not available any other way that lacks that check. Kept registered, not removed, per this API's versioning policy.",
+        "deprecated": true,
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitation details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This operation is deprecated and permanently disabled, or the caller lacks workspace access",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No invitation with this id",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "cancelInvitation",
+        "tags": [
+          "Invitations"
+        ],
+        "summary": "Cancel an invitation",
+        "description": "Cancel a pending invitation. Native replacement for authClient.organization.cancelInvitation().",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The canceled invitation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CanceledInvitation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The invitation is no longer pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "An API key or impersonation session (session_required), no workspace access, or missing invitation:cancel permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No invitation with this id",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invitation/{id}/accept": {
       "post": {
         "operationId": "acceptInvitation",
@@ -12073,78 +12259,6 @@
           },
           "403": {
             "description": "An API key or impersonation session (session_required), or the caller is not this invitation's recipient",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "No invitation with this id",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/invitation/{id}": {
-      "delete": {
-        "operationId": "cancelInvitation",
-        "tags": [
-          "Invitations"
-        ],
-        "summary": "Cancel an invitation",
-        "description": "Cancel a pending invitation. Native replacement for authClient.organization.cancelInvitation().",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string"
-            },
-            "required": true,
-            "name": "id",
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The canceled invitation",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CanceledInvitation"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The invitation is no longer pending",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "No credential at all",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "An API key or impersonation session (session_required), no workspace access, or missing invitation:cancel permission",
             "content": {
               "text/plain": {
                 "schema": {

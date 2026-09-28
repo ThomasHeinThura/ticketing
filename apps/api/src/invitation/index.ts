@@ -24,6 +24,7 @@ import rejectInvitationCtrl from "./controllers/reject-invitation";
 import {
   acceptedInvitationSchema,
   canceledInvitationSchema,
+  invitationDetailsSchema,
   pendingInvitationListSchema,
   rejectedInvitationSchema,
 } from "./response";
@@ -46,15 +47,52 @@ const getPendingRoute = createRoute({
   },
 });
 
-// `GET /api/invitation/{id}` (formerly here) is removed, not merely reclassified: it had
-// zero real callers (checked `apps/web` -- only the `/{id}/accept|reject` and `DELETE
-// /{id}` siblings are ever fetched), returned the same invitee-email/workspace-name/
-// inviter-name `GET /api/invitation/public/{id}` already serves, with no recipient or
-// workspace-membership check of its own (any authenticated user could look up ANY
-// invitation by id). `invitation/policy.ts` had flagged this exact route as needing a
-// human decision on delete-vs-restrict-vs-declare-open; deleted per that decision
-// (2026-09-27, Opus delta pass F4 on PR #440's route-classification guard fix -- see
-// docs/07-planning/security-reviews/440-runtime-authorization-wiring.md).
+// `GET /api/invitation/{id}` had zero real callers (checked `apps/web` -- only the
+// `/{id}/accept|reject` and `DELETE /{id}` siblings are ever fetched), returned the same
+// invitee-email/workspace-name/inviter-name `GET /api/invitation/public/{id}` already
+// serves, with no recipient or workspace-membership check of its own (any authenticated
+// user could look up ANY invitation by id). `invitation/policy.ts` had flagged this exact
+// route as needing a human decision on delete-vs-restrict-vs-declare-open (Opus delta
+// pass F4 on PR #440's route-classification guard fix -- see
+// docs/07-planning/security-reviews/440-runtime-authorization-wiring.md). Thomas's
+// decision (2026-09-28): keep the operation registered (deleting it outright would be a
+// breaking removal without a deprecation window, which `docs/01-architecture/
+// api-design.md`'s Versioning section forbids once a stable v2.0.0+ tag exists, as one
+// already does), marked `deprecated: true`, but make the handler unconditionally refuse
+// -- closing the info-leak today without waiting out a deprecation window a route that
+// never did anything safe doesn't deserve.
+// Classification (issue #8): reuses `cancelInvitationRoute`'s own real middleware chain
+// below rather than a bare unconditional throw, so the DECLARED policy
+// (`invitation/policy.ts`) matches what actually runs, not a guess -- `capability:
+// "member:invite"` is enforced here exactly as it is for cancel, and the handler still
+// refuses even a caller who passes it, because the actual decision was "nobody gets real
+// data from this operation again," not "only non-admins are refused."
+const getInvitationRoute = createRoute({
+  method: "get",
+  operationId: "getInvitationDetails",
+  path: "/{id}",
+  tags: ["Invitations"],
+  summary: "Get invitation details",
+  description:
+    "Deprecated and permanently disabled (2026-09-28): always refuses, even for a caller who holds the workspace authority its own middleware checks. Previously looked up an invitation by id with no recipient or workspace-membership check of its own -- the same data is not available any other way that lacks that check. Kept registered, not removed, per this API's versioning policy.",
+  deprecated: true,
+  middleware: [
+    requireSessionOnly(),
+    requireInvitationWorkspaceAccess(),
+    requireWorkspaceMembership,
+    requireWorkspacePermission({ invitation: ["cancel"] }),
+    requireWorkspaceRoleAuthority({ invitation: ["cancel"] }),
+  ] as const,
+  request: { params: invitationParam },
+  responses: {
+    200: jsonResponse("Invitation details", invitationDetailsSchema),
+    401: errorResponse("No credential at all"),
+    403: errorResponse(
+      "This operation is deprecated and permanently disabled, or the caller lacks workspace access",
+    ),
+    404: errorResponse("No invitation with this id"),
+  },
+});
 
 // ── S6a: the native invitation-action write routes ───────────────────────
 // Issue #6, retrofit plan §3 (S6a row). Accept and reject are actions the
@@ -155,6 +193,17 @@ const invitation = apiRouter()
       return c.json([], 200);
     }
     return c.json(await getUserPendingInvitations(c.get("userEmail")), 200);
+  })
+  .openapi(getInvitationRoute, () => {
+    // Deprecated and permanently disabled -- see this route's own `createRoute` comment
+    // above. The middleware chain above already resolved workspace access and the
+    // `invitation:cancel` authority (a real 401/403/404 for a caller who fails any of
+    // that); this still refuses even a caller who PASSES it, because the decision was
+    // "nobody gets real invitation data from this operation again," not "only
+    // non-admins are refused."
+    throw new HTTPException(403, {
+      message: "This operation is deprecated and permanently disabled",
+    });
   })
   .openapi(acceptInvitationRoute, async (c) => {
     try {

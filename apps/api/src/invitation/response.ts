@@ -18,6 +18,37 @@ export const pendingInvitationSchema = z
 
 export const pendingInvitationListSchema = z.array(pendingInvitationSchema);
 
+// Retained for `getInvitationRoute`'s own `200` response shape (`invitation/index.ts`) --
+// that route is deprecated and its handler now always refuses (F4/F5 security review,
+// issue #8), never actually returns this shape, but api-design.md's Versioning section
+// requires a breaking removal post-2.0.0 to go through a real deprecation window, not an
+// outright delete -- see that route's own comment for the full reasoning.
+export const invitationDetailsSchema = z
+  .object({
+    valid: z.boolean().openapi({
+      description: "True only when the invitation can still be accepted.",
+    }),
+    invitation: z
+      .object({
+        id: z.string(),
+        email: z.string(),
+        workspaceName: z.string(),
+        inviterName: z.string(),
+        expiresAt: responseTimestamp,
+        status: z.string(),
+        expired: z.boolean(),
+      })
+      .optional()
+      .openapi({
+        description:
+          "Omitted when the invitation does not exist, was already accepted, or was canceled -- the details are withheld rather than leaked.",
+      }),
+    error: z.string().optional().openapi({
+      description: "Why the invitation is unusable, when valid is false.",
+    }),
+  })
+  .openapi("InvitationDetails");
+
 // S6a -- native invitation-action write routes (issue #6, retrofit plan §3,
 // S6a row): accept, reject, cancel.
 

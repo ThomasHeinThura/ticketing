@@ -4,9 +4,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * Invitation route policies.
  *
  * Covers the three native S6a action routes this batch adds (retrofit plan §3, issue #6):
- * accept, reject, cancel. `GET /api/invitation/pending` is S3's pre-existing read,
- * classified below by #8. `GET /api/invitation/{id}` (also S3's) was deleted rather than
- * classified -- see the note lower in this comment. `GET /api/invitation/public/{id}` is a
+ * accept, reject, cancel. `GET /api/invitation/pending` and `GET /api/invitation/{id}` are
+ * S3's pre-existing reads, classified below by #8. `GET /api/invitation/public/{id}` is a
  * DIFFERENT route, registered inline in `apps/api/src/index.ts` itself (not in this
  * sub-router, `apps/api/src/invitation/index.ts`), above the app-wide auth guard -- it is out
  * of this lane's scope as briefed (the brief's route count for this router, "2 of 5 routes
@@ -37,23 +36,31 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * declared-and-inert shape `packages/permissions/src/policy.ts`'s own doc comment says this
  * registry exists to refuse.
  *
- * **`GET /api/invitation/{id}` was DELETED (2026-09-27), not classified.** It called the
- * exact same `getInvitationDetails(id)` util (`apps/api/src/utils/
- * check-registration-allowed.ts`) as the fully PUBLIC `GET /api/invitation/public/{id}`
- * above -- same query, same fields returned (invitee email, workspace name, inviter name),
- * same total absence of any recipient or workspace-membership check. The only difference
- * between the two routes was that this one sat below the app-wide auth guard, so it 401ed
- * a caller with no credential at all -- but once a caller had ANY credential (session,
- * personal API key, MCP key), the controller did nothing with it: no `c.get("userId")`, no
- * `c.get("user")`, no filtering, no scope. None of the five kinds fit that shape honestly.
- * Left flagged (not guessed) for a full session, until PR #440's Opus delta pass F4 forced
- * the question: the guard's own fix (checking every matched route, not predicting a
- * terminal one) meant this route's continued absence from the registry would 500 it for
- * everyone regardless, and `apps/web` was confirmed to have zero callers for it (only the
- * `/{id}/accept`, `/{id}/reject` and `DELETE /{id}` siblings are ever fetched) -- so it was
- * removed outright rather than invented a policy kind for, closing the same info-leak the
- * classification question had been circling. See
- * `docs/07-planning/security-reviews/440-runtime-authorization-wiring.md` for the decision.
+ * **`GET /api/invitation/{id}` is DEPRECATED and PERMANENTLY DISABLED (2026-09-28), not
+ * deleted, and its own runtime shape changed to make a real, honest classification
+ * possible.** It used to call the exact same `getInvitationDetails(id)` util
+ * (`apps/api/src/utils/check-registration-allowed.ts`) as the fully PUBLIC
+ * `GET /api/invitation/public/{id}` above -- same query, same fields returned (invitee
+ * email, workspace name, inviter name), same total absence of any recipient or
+ * workspace-membership check -- which fit none of the five kinds honestly (flagged, not
+ * guessed, for a full session). PR #440's Opus delta pass F4 forced the question: the
+ * guard's own fix (checking every matched route, not predicting a terminal one) meant this
+ * route's continued absence from the registry would 500 it for everyone regardless.
+ * Deleting it outright was the first plan, but `docs/01-architecture/api-design.md`'s
+ * Versioning section forbids a breaking removal without a deprecation window once a stable
+ * `v2.0.0`+ tag exists (one already does) -- so Thomas's actual decision (2026-09-28) was
+ * to keep the OPERATION registered (`deprecated: true`, satisfying the versioning policy --
+ * this is not a contract removal) but change its own HANDLER to reuse
+ * `cancelInvitationRoute`'s exact middleware chain and then still refuse unconditionally,
+ * even for a caller who passes it. That reuse is what makes `capability: "member:invite"`
+ * below an HONEST declaration, not a guess: the runtime now genuinely enforces it (same
+ * middleware, same capability, same scope resolution as cancel), the handler's own
+ * unconditional throw is simply an ADDITIONAL restriction beyond what's declared here, not
+ * a mismatch with it -- a caller who is refused for lacking `member:invite` and a caller who
+ * has it but still gets refused both see the same class of response (403), so no capability
+ * ever actually unlocks real data through this operation again. See
+ * `docs/07-planning/security-reviews/440-runtime-authorization-wiring.md` for the fuller
+ * history.
  *
  * **Accept and reject are `self`, kind 2 -- not a capability check against a scope.** Both
  * act ONLY on the calling user's own invitation and (for accept) the membership row it
@@ -128,6 +135,18 @@ export const invitationPolicies = {
   },
 
   "DELETE /api/invitation/{id}": {
+    capability: "member:invite",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+    sessionOnly: true,
+  },
+
+  // Deprecated, permanently disabled -- see this file's own top comment for the full
+  // reasoning. Declared identically to cancel (same middleware chain, same capability),
+  // because that is genuinely what the runtime now enforces; the handler's own
+  // unconditional refusal is an additional restriction on top, not a mismatch with this.
+  "GET /api/invitation/{id}": {
     capability: "member:invite",
     scope: "workspace",
     scopeSource: "row",

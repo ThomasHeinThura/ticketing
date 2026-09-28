@@ -231,7 +231,7 @@ describe("assertRouteIsClassified against the real createApp()", () => {
     }
   });
 
-  it("GET /api/invitation/pending still returns 200 after F4's fix (the sibling route it used to be confused with, GET /api/invitation/{id}, is deleted)", async () => {
+  it("GET /api/invitation/pending still returns 200 after F4's fix (its former sibling GET /api/invitation/{id} is now deprecated/permanently disabled, not deleted, but still a genuinely different, classified route)", async () => {
     await resetTestDatabase();
     const member = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(member.user);
