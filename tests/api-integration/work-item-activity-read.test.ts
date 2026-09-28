@@ -567,7 +567,15 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
           expect(seenIds.has(id)).toBe(true);
         }
       } finally {
-        process.env.TZ = originalTz;
+        // N1 (Opus round-3 delta review of #452): assigning `undefined` here would
+        // store the literal string `"undefined"`, not unset the variable -- harmless
+        // (falls back to UTC) but leaks a bogus TZ into every later test in this
+        // process. Delete outright when there was nothing to restore.
+        if (originalTz === undefined) {
+          delete process.env.TZ;
+        } else {
+          process.env.TZ = originalTz;
+        }
       }
     });
 
