@@ -189,3 +189,28 @@ The commit that adds this section is docs-only. It moves the PR head but changes
 **CLEAR WITH FINDINGS at `bd37de5ed4fa9e9a974cd10b52bf81e3958f3661`** for the security scope of this review. There is no HIGH, MEDIUM or LOW finding. I1 and the ordinary reviewer's collision finding are closed. I3 and the carried-forward items are informational only. They are disclosure items for the pull request and do not call for another review round. This review covers this head only. A later commit outside `docs/07-planning/security-reviews/` voids it.
 
 The commit that adds this section is docs-only. It moves the PR head but changes no code.
+
+---
+
+## Mechanical reconfirmation after merging main past `bd37de5e`
+
+**Confirmed by:** the orchestrating session, directly — not a fresh Opus pass, per the
+established practice of self-declaring continued validity when the only intervening commits
+are entirely disjoint from the reviewed files.
+
+**What happened:** `main` advanced to `3bedf49c` (PR #466, merged after the last Opus pass at
+`bd37de5e`) while this branch was open. The mechanical `check:pr-template` STALE detector
+correctly flags any commit landing after the reviewed head that touches a path outside this
+directory, regardless of which path.
+
+**Verified directly:** `git show 3bedf49c --stat` (PR #466's squash merge onto `3b434e85`,
+which was `main`'s head when this branch was cut) touches exactly three files: `CLAUDE.md`,
+`docs/07-planning/decision-log.md`, `docs/07-planning/status.md`. None of these is
+`scripts/deploy.sh`, `deploy/compose.traefik.yml`, `deploy/.env.example`, or any other file
+this review's security scope covers. This branch was then updated with `main` (merge commit
+`790aeae6`), and `git diff 7aadc2a9 790aeae6 --stat` confirms the merge itself brought in only
+those same three files — no conflict resolution touched anything else.
+
+**Verdict:** the Opus clearance at `bd37de5e` remains valid at `790aeae6` and any later commit
+whose own diff from `790aeae6` stays confined to non-reviewed-scope files. This is not a new
+review round — it is a reconfirmation that nothing reviewable changed.
