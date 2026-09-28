@@ -316,8 +316,8 @@ version of this note overstated this next part): both default hostnames (`ticket
 `portal.`) have been verified healthy through a real Traefik (#377), but that verification
 ran `deploy/compose.uat.yml` against this **host's own pre-existing, unrelated Traefik** — not
 `scripts/deploy.sh local`'s own bundled Traefik, which has never actually completed an
-end-to-end run (it hit a port conflict against that same pre-existing Traefik, unresolved as
-of the 2026-09-27 note). A fix for `deploy.sh local`'s own Traefik path is in progress; until
+end-to-end run — it hits a port conflict against that same pre-existing Traefik. The
+2026-09-27 note incorrectly stated this had been verified; it had not. A fix for `deploy.sh local`'s own Traefik path is in progress; until
 it lands, do not assume "clean machine, never seen this repo" deployability is proven — only
 the UAT-compose path is. The `--profile s3` third hostname (`files.<domain>`) remains
 untested end-to-end either way. Re-verify this note's own claims each session rather than

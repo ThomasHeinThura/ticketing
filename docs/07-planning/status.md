@@ -32,12 +32,14 @@ pattern elsewhere).
   for a real week. Standing up that UAT needs Thomas's own authorization (decision log,
   2026-09-23: "the UAT redeploy needs Thomas's authorization, not implied by this entry").
 - **#9** — **CLOSED 2026-09-28.** Substantially complete (57/57 primitives moved with stories and
-  tests, tokens/check:ui/check:tokens all green, Storybook 10 spiked first). The one literally
-  unmet "done when" bullet (`apps/web/src/components/ui/` non-empty) is a deliberate, already-
-  documented exception for 5 app-specific files, tracked in #403, not an oversight.
+  tests, tokens/check:ui/check:tokens all green, Storybook 10 spiked first). The one "done when"
+  criterion still literally unmet — `apps/web/src/components/ui/` is not actually empty, the
+  bullet's own requirement — is a deliberate, already-documented exception for 5 app-specific
+  files, tracked in #403, not an oversight.
 - **#10** — 12 of 38 declared CI gates are genuinely not yet enabled (`check:queries`,
-  `check:inventory`, `check:bundle-purity`, `check:bundle-size`, `test:mcp`, visual regression,
-  `test:a11y`, `test:perf`, three E2E projects), each blocked on a named, unbuilt P1/P9
+  `check:inventory`, `no-inherited-routes`, `check:bundle-purity`, `check:bundle-size`,
+  `test:mcp`, visual regression, `test:a11y`, `test:perf`, three E2E projects), each blocked
+  on a named, unbuilt P1/P9
   prerequisite (repository-layer convention, routes registry, portal/agent bundle split, no MCP
   surface yet, no Playwright a11y/visual/perf suite written). The route-policy safety boundary
   that actually gated Throttle 1 has been done for a while. The issue's own CODEOWNERS scope line
