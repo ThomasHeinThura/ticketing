@@ -345,3 +345,61 @@ export const unassignWorkItemResponseSchema = z
     version: z.number(),
   })
   .openapi("WorkItemUnassignment");
+
+// Issue #442. One stable reason a blocked transition is not currently available
+// (`WF-16`): `kind` names which gate ("guard" | "approval" | "cab" | "note"), `reasonCode`
+// is the stable code (`guard.<type>`, `approval.pending`, `cab.pending`, `note.required`)
+// -- never free text, so a client can render an explanation without parsing prose.
+export const workItemBlockReasonSchema = z
+  .object({
+    kind: z.string(),
+    reasonCode: z.string(),
+  })
+  .openapi("WorkItemTransitionBlockReason");
+
+// `GET /api/work-items/{key}/transitions` (`workflows.md` § "The state select"): exactly
+// what the actor may do now, with reasons for anything blocked. An illegal transition
+// (wrong role/state, CAB-gated on a non-change type, or no concrete state in this
+// project) is simply absent from this array -- never returned with `available: false`.
+export const workItemTransitionOfferSchema = z
+  .object({
+    transitionId: z.string(),
+    toStateTemplateId: z.string(),
+    toStateId: z.string(),
+    notePolicy: z.enum(["none", "optional", "required"]),
+    noteVisibility: z.enum(["public", "internal"]),
+    requiresApproval: z.boolean(),
+    requiresCab: z.boolean(),
+    isReopen: z.boolean(),
+    available: z.boolean(),
+    blockedBy: z.array(workItemBlockReasonSchema),
+  })
+  .openapi("WorkItemTransitionOffer");
+
+export const workItemTransitionsResponseSchema = z.array(
+  workItemTransitionOfferSchema,
+);
+
+// `POST /api/work-items/{key}/transition`. The work item's own new state, exactly the
+// facts this route's own effects can change -- `assigneeId`/`resolvedAt` only move when
+// the executed transition actually carries a `set_assignee`/`clear_assignee` effect or
+// crosses the `completed` group boundary (`WF-17`/`WF-18`).
+export const transitionedWorkItemSchema = z
+  .object({
+    key: z.string(),
+    stateId: z.string(),
+    assigneeId: z.string().nullable(),
+    resolvedAt: nullableResponseTimestamp,
+    version: z.number(),
+  })
+  .openapi("TransitionedWorkItem");
+
+// The 422 "not currently available" response: the matched transition is legal, but
+// blocked by a guard, the (interim, always-unsatisfied) approval/CAB gate, or a missing
+// required note.
+export const workItemTransitionBlockedSchema = z
+  .object({
+    message: z.string(),
+    blockedBy: z.array(workItemBlockReasonSchema),
+  })
+  .openapi("WorkItemTransitionBlocked");
