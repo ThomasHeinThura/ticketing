@@ -415,4 +415,22 @@ reconfirmation, not a fresh Opus round: round 7's verdict (CLEAR WITH FINDINGS) 
 applies at `93558ec`, with F1 and F4 now closed and F2/F3 disclosed as pre-existing,
 non-blocking, deferred.
 
+## Mechanical reconfirmation after merging `main` past PR #456 (commit `b690c18`)
+
+**Reviewed head:** `b690c18a2d4cf6dc8f7941c3e2c6bf40f8b5e932`
+
+`main` moved one PR ahead since round 7's own merge (past #440): PR #456
+(`e115612`), a one-line test-only fix to `tests/api-integration/work-item-unassign.test.ts`
+(the previously-disclosed, unrelated #455 flake — an unordered `audit_log` read
+before a `slice(-1)`, fixed by ordering on `seq`), already independently reviewed
+(`pal-reviewer`) and merged to `main` in this same session. `git log --oneline
+origin/feat/28-attachments..origin/main` confirmed exactly this one commit before
+merging; `git diff --stat` confirmed the merge itself touches only that same test
+file. No attachment code, no CI-gate file, nothing under `scripts/ci/**` — this
+change is unrelated to everything this PR reviews. `pnpm test:contract` re-run clean
+(unchanged: 17 findings, 1 approved, 0 unapproved breaking changes). Per the same
+precedent used for every other trivial main-merge this PR has needed, this is a
+mechanical reconfirmation: round 7's verdict (CLEAR WITH FINDINGS) still applies at
+`b690c18`.
+
 **Status: CLEAR WITH FINDINGS, merge-ready.**
