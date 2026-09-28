@@ -322,3 +322,25 @@ already established for PR #451's own migration-guard-test follow-up, this is a
 
 **Status: CLEAR WITH FINDINGS, merge-ready.** R6-2 and the unrelated flaky test are
 tracked as follow-up issues; R6-3 is disclosed and accepted.
+
+## Mechanical reconfirmation after merging `main` (commit `9f876bd`)
+
+**Reviewed head:** `9f876bdfe23a15762352b47942208121705894cf`
+
+`main` had moved two commits ahead since this branch's own merge-base (`90388ef`, the
+#451 merge already covered by round 6): `359bc7e` and its merge commit `0d86d05`,
+together touching only `docs/07-planning/decision-log.md` (PR #453 — one dated entry
+recording Thomas's decision on the unrelated `GET /api/invitation/{id}` route, issue
+#8). `git log --oneline origin/feat/28-attachments..origin/main` confirmed exactly
+these two commits, both docs-only, before merging. The `state = 'pending'` up-to-date
+requirement on this repo's ruleset (`strict_required_status_checks_policy`) requires
+this branch be current with `main` before its required checks count, hence the merge.
+
+The security-review STALE detector (`check-pr-template.mjs`/`security-review-note.mjs`)
+correctly flags any merge-into-branch commit against its `main` parent, since that
+diff always includes the branch's own full accumulated change — that is by design, not
+a new finding here (see that file's own doc comment). This entry is the orchestrator's
+mechanical reconfirmation, per the same precedent already used for #451's own
+post-#443 main-merge: `main`'s two new commits are verified docs-only above, so
+nothing new needs Opus's eyes. The round 6 verdict (CLEAR WITH FINDINGS) still applies
+at `9f876bd`.
