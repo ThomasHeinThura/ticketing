@@ -35,6 +35,7 @@ import { activityPolicies } from "./activity/policy";
 import { assetPolicies } from "./asset/policy";
 import { attachmentPolicies } from "./attachment/policy";
 import { auditPolicies } from "./audit/policy";
+import { cannedResponsePolicies } from "./canned-response/policy";
 import { capabilitiesPolicies } from "./capabilities/policy";
 import { columnPolicies } from "./column/policy";
 import { commentPolicies } from "./comment/policy";
@@ -53,6 +54,7 @@ import { taskRelationPolicies } from "./task-relation/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
 import { userPolicies } from "./user/policy";
 import { workItemPolicies } from "./work-item/policy";
+import { workflowPolicies } from "./workflow/policy";
 import { workflowRulePolicies } from "./workflow-rule/policy";
 import { workspacePolicies } from "./workspace/policy";
 
@@ -265,6 +267,10 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/comment/policy.ts", policies: commentPolicies },
   { name: "apps/api/src/activity/policy.ts", policies: activityPolicies },
   {
+    name: "apps/api/src/canned-response/policy.ts",
+    policies: cannedResponsePolicies,
+  },
+  {
     name: "apps/api/src/notification/policy.ts",
     policies: notificationPolicies,
   },
@@ -280,6 +286,7 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/label/policy.ts", policies: labelPolicies },
   { name: "apps/api/src/asset/policy.ts", policies: assetPolicies },
   { name: "apps/api/src/attachment/policy.ts", policies: attachmentPolicies },
+  { name: "apps/api/src/workflow/policy.ts", policies: workflowPolicies },
 ];
 
 /**

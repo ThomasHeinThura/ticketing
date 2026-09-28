@@ -16,6 +16,7 @@ import activity from "./activity";
 import attachment from "./attachment";
 import audit from "./audit";
 import { auth } from "./auth";
+import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
 import column from "./column";
 import comment from "./comment";
@@ -81,6 +82,7 @@ import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles"
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
 import workItem from "./work-item";
+import workflow from "./workflow";
 import workflowRule from "./workflow-rule";
 import workspace from "./workspace";
 import {
@@ -976,6 +978,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
   const taskApi = api.route("/task", task);
   const columnApi = api.route("/column", column);
   const activityApi = api.route("/activity", activity);
+  const cannedResponseApi = api.route("/canned-responses", cannedResponse);
   const commentApi = api.route("/comment", comment);
   const timeEntryApi = api.route("/time-entry", timeEntry);
   const labelApi = api.route("/label", label);
@@ -991,6 +994,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
   const taskRelationApi = api.route("/task-relation", taskRelation);
   const externalLinkApi = api.route("/external-link", externalLink);
   const workflowRuleApi = api.route("/workflow-rule", workflowRule);
+  const workflowApi = api.route("/workflows", workflow);
   const invitationApi = api.route("/invitation", invitation);
   const workspaceApi = api.route("/workspace", workspace);
   // #23 -- mounted at the api root, not a feature prefix: the spec's own API table names
@@ -1151,6 +1155,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     activityApi,
     attachmentApi,
     auditApi,
+    cannedResponseApi,
     capabilitiesApi,
     columnApi,
     commentApi,
@@ -1168,6 +1173,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     taskRelationApi,
     timeEntryApi,
     userApi,
+    workflowApi,
     workflowRuleApi,
     workItemApi,
     workspaceApi,
@@ -1371,6 +1377,7 @@ const {
   activityApi,
   attachmentApi,
   auditApi,
+  cannedResponseApi,
   capabilitiesApi,
   columnApi,
   commentApi,
@@ -1388,6 +1395,7 @@ const {
   taskRelationApi,
   timeEntryApi,
   userApi,
+  workflowApi,
   workflowRuleApi,
   workItemApi,
   workspaceApi,
@@ -1436,6 +1444,7 @@ export type AppType =
   | typeof activityApi
   | typeof attachmentApi
   | typeof auditApi
+  | typeof cannedResponseApi
   | typeof commentApi
   | typeof timeEntryApi
   | typeof labelApi
@@ -1444,6 +1453,7 @@ export type AppType =
   | typeof searchApi
   | typeof taskRelationApi
   | typeof externalLinkApi
+  | typeof workflowApi
   | typeof workflowRuleApi
   | typeof workItemApi
   | typeof invitationApi

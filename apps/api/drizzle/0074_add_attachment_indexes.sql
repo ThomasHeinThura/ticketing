@@ -1,2 +1,0 @@
-CREATE INDEX "attachment_workspaceId_state_idx" ON "attachment" USING btree ("workspace_id","state");--> statement-breakpoint
-CREATE INDEX "attachment_organisationId_idx" ON "attachment" USING btree ("organisation_id") WHERE "attachment"."organisation_id" is not null;

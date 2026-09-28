@@ -1,6 +1,6 @@
 {
-	"id": "c2caab74-5ed1-4f2a-ab46-ae8a81561680",
-	"prevId": "4e556bb4-ecd5-49c2-bee3-cddbfdc41dd7",
+	"id": "e0a3a2fb-2e1e-4fda-9b72-94ef1f6ac4e8",
+	"prevId": "b25e44ba-c124-4792-8046-a58132810a9c",
 	"version": "7",
 	"dialect": "postgresql",
 	"tables": {
@@ -1071,107 +1071,6 @@
 					"tableFrom": "column",
 					"tableTo": "project",
 					"columnsFrom": ["project_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "cascade"
-				}
-			},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
-			"policies": {},
-			"checkConstraints": {},
-			"isRLSEnabled": false
-		},
-		"public.comment": {
-			"name": "comment",
-			"schema": "",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "text",
-					"primaryKey": true,
-					"notNull": true
-				},
-				"task_id": {
-					"name": "task_id",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"user_id": {
-					"name": "user_id",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"content": {
-					"name": "content",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"created_at": {
-					"name": "created_at",
-					"type": "timestamp",
-					"primaryKey": false,
-					"notNull": true,
-					"default": "now()"
-				},
-				"updated_at": {
-					"name": "updated_at",
-					"type": "timestamp",
-					"primaryKey": false,
-					"notNull": true,
-					"default": "now()"
-				}
-			},
-			"indexes": {
-				"comment_task_idx": {
-					"name": "comment_task_idx",
-					"columns": [
-						{
-							"expression": "task_id",
-							"isExpression": false,
-							"asc": true,
-							"nulls": "last"
-						}
-					],
-					"isUnique": false,
-					"concurrently": false,
-					"method": "btree",
-					"with": {}
-				},
-				"comment_user_idx": {
-					"name": "comment_user_idx",
-					"columns": [
-						{
-							"expression": "user_id",
-							"isExpression": false,
-							"asc": true,
-							"nulls": "last"
-						}
-					],
-					"isUnique": false,
-					"concurrently": false,
-					"method": "btree",
-					"with": {}
-				}
-			},
-			"foreignKeys": {
-				"comment_task_id_task_id_fk": {
-					"name": "comment_task_id_task_id_fk",
-					"tableFrom": "comment",
-					"tableTo": "task",
-					"columnsFrom": ["task_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "cascade"
-				},
-				"comment_user_id_user_id_fk": {
-					"name": "comment_user_id_user_id_fk",
-					"tableFrom": "comment",
-					"tableTo": "user",
-					"columnsFrom": ["user_id"],
 					"columnsTo": ["id"],
 					"onDelete": "cascade",
 					"onUpdate": "cascade"
@@ -6863,6 +6762,445 @@
 			"uniqueConstraints": {},
 			"policies": {},
 			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.task_comment": {
+			"name": "task_comment",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"task_id": {
+					"name": "task_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"user_id": {
+					"name": "user_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"content": {
+					"name": "content",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"task_comment_task_idx": {
+					"name": "task_comment_task_idx",
+					"columns": [
+						{
+							"expression": "task_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"task_comment_user_idx": {
+					"name": "task_comment_user_idx",
+					"columns": [
+						{
+							"expression": "user_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"task_comment_task_id_task_id_fk": {
+					"name": "task_comment_task_id_task_id_fk",
+					"tableFrom": "task_comment",
+					"tableTo": "task",
+					"columnsFrom": ["task_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				},
+				"task_comment_user_id_user_id_fk": {
+					"name": "task_comment_user_id_user_id_fk",
+					"tableFrom": "task_comment",
+					"tableTo": "user",
+					"columnsFrom": ["user_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.comment": {
+			"name": "comment",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"work_item_id": {
+					"name": "work_item_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"author_id": {
+					"name": "author_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"actor_type": {
+					"name": "actor_type",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"body": {
+					"name": "body",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"visibility": {
+					"name": "visibility",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'internal'"
+				},
+				"activity_id": {
+					"name": "activity_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"edited_at": {
+					"name": "edited_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"deleted_at": {
+					"name": "deleted_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"deleted_by": {
+					"name": "deleted_by",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"comment_work_item_id_created_at_idx": {
+					"name": "comment_work_item_id_created_at_idx",
+					"columns": [
+						{
+							"expression": "work_item_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "created_at",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"comment_workspaceId_idx": {
+					"name": "comment_workspaceId_idx",
+					"columns": [
+						{
+							"expression": "workspace_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"comment_activity_id_activity_id_fk": {
+					"name": "comment_activity_id_activity_id_fk",
+					"tableFrom": "comment",
+					"tableTo": "activity",
+					"columnsFrom": ["activity_id"],
+					"columnsTo": ["id"],
+					"onDelete": "set null",
+					"onUpdate": "cascade"
+				},
+				"comment_workspace_id_work_item_id_work_item_workspace_id_id_fk": {
+					"name": "comment_workspace_id_work_item_id_work_item_workspace_id_id_fk",
+					"tableFrom": "comment",
+					"tableTo": "work_item",
+					"columnsFrom": ["workspace_id", "work_item_id"],
+					"columnsTo": ["workspace_id", "id"],
+					"onDelete": "cascade",
+					"onUpdate": "no action"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"comment_visibility_allowed": {
+					"name": "comment_visibility_allowed",
+					"value": "\"comment\".\"visibility\" in ('public', 'internal')"
+				}
+			},
+			"isRLSEnabled": false
+		},
+		"public.comment_version": {
+			"name": "comment_version",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"comment_id": {
+					"name": "comment_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"number": {
+					"name": "number",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"body": {
+					"name": "body",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"edited_by": {
+					"name": "edited_by",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"comment_version_comment_id_idx": {
+					"name": "comment_version_comment_id_idx",
+					"columns": [
+						{
+							"expression": "comment_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"comment_version_comment_id_comment_id_fk": {
+					"name": "comment_version_comment_id_comment_id_fk",
+					"tableFrom": "comment_version",
+					"tableTo": "comment",
+					"columnsFrom": ["comment_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"comment_version_comment_id_number_unique": {
+					"name": "comment_version_comment_id_number_unique",
+					"nullsNotDistinct": false,
+					"columns": ["comment_id", "number"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.canned_response": {
+			"name": "canned_response",
+			"schema": "",
+			"columns": {
+				"id": {
+					"name": "id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"name": {
+					"name": "name",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"body": {
+					"name": "body",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"visibility_default": {
+					"name": "visibility_default",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'internal'"
+				},
+				"created_by": {
+					"name": "created_by",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"created_at": {
+					"name": "created_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"updated_at": {
+					"name": "updated_at",
+					"type": "timestamp",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				}
+			},
+			"indexes": {
+				"canned_response_workspaceId_idx": {
+					"name": "canned_response_workspaceId_idx",
+					"columns": [
+						{
+							"expression": "workspace_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {
+				"canned_response_workspace_id_workspace_id_fk": {
+					"name": "canned_response_workspace_id_workspace_id_fk",
+					"tableFrom": "canned_response",
+					"tableTo": "workspace",
+					"columnsFrom": ["workspace_id"],
+					"columnsTo": ["id"],
+					"onDelete": "cascade",
+					"onUpdate": "cascade"
+				}
+			},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {
+				"canned_response_workspace_id_name_unique": {
+					"name": "canned_response_workspace_id_name_unique",
+					"nullsNotDistinct": false,
+					"columns": ["workspace_id", "name"]
+				}
+			},
+			"policies": {},
+			"checkConstraints": {
+				"canned_response_visibility_default_allowed": {
+					"name": "canned_response_visibility_default_allowed",
+					"value": "\"canned_response\".\"visibility_default\" in ('public', 'internal')"
+				}
+			},
 			"isRLSEnabled": false
 		}
 	},

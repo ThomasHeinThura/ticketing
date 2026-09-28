@@ -35,4 +35,6 @@ ALTER TABLE "attachment" ADD CONSTRAINT "attachment_uploaded_by_person_id_fk" FO
 ALTER TABLE "attachment" ADD CONSTRAINT "attachment_workspace_id_work_item_id_work_item_workspace_id_id_fk" FOREIGN KEY ("workspace_id","work_item_id") REFERENCES "public"."work_item"("workspace_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "attachment_workItemId_idx" ON "attachment" USING btree ("work_item_id");--> statement-breakpoint
 CREATE INDEX "attachment_workspaceId_idx" ON "attachment" USING btree ("workspace_id");--> statement-breakpoint
-CREATE INDEX "attachment_pending_idx" ON "attachment" USING btree ("state") WHERE "attachment"."state" = 'pending';
+CREATE INDEX "attachment_pending_idx" ON "attachment" USING btree ("state") WHERE "attachment"."state" = 'pending';--> statement-breakpoint
+CREATE INDEX "attachment_workspaceId_state_idx" ON "attachment" USING btree ("workspace_id","state");--> statement-breakpoint
+CREATE INDEX "attachment_organisationId_idx" ON "attachment" USING btree ("organisation_id") WHERE "attachment"."organisation_id" is not null;

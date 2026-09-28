@@ -5,7 +5,6 @@ import {
   apikeyTable,
   assetTable,
   columnTable,
-  commentTable,
   documentLinkTable,
   externalLinkTable,
   invitationTable,
@@ -20,11 +19,13 @@ import {
   projectSlugClaimTable,
   projectTable,
   roleTable,
+  scheduledTransitionTable,
   sessionTable,
   stakeholderTable,
   stateTable,
   stateTemplateTable,
   taskActivityTable,
+  taskCommentTable,
   taskRelationTable,
   taskReminderSentTable,
   taskTable,
@@ -38,6 +39,9 @@ import {
   verificationTable,
   watcherTable,
   workflowRuleTable,
+  workflowTable,
+  workflowTransitionTable,
+  workflowVersionTable,
   workItemKeyAliasTable,
   workItemKeyClaimTable,
   workItemTable,
@@ -55,7 +59,7 @@ export const userTableRelations = relations(userTable, ({ many, one }) => ({
   assignedTasks: many(taskTable),
   timeEntries: many(timeEntryTable),
   activities: many(taskActivityTable),
-  comments: many(commentTable),
+  comments: many(taskCommentTable),
   assets: many(assetTable),
   notifications: many(notificationTable),
   notificationPreference: one(userNotificationPreferenceTable),
@@ -222,7 +226,7 @@ export const taskTableRelations = relations(taskTable, ({ one, many }) => ({
   }),
   timeEntries: many(timeEntryTable),
   activities: many(taskActivityTable),
-  comments: many(commentTable),
+  comments: many(taskCommentTable),
   assets: many(assetTable),
   labels: many(labelTable),
   externalLinks: many(externalLinkTable),
@@ -433,16 +437,19 @@ export const taskReminderSentTableRelations = relations(
   }),
 );
 
-export const commentTableRelations = relations(commentTable, ({ one }) => ({
-  task: one(taskTable, {
-    fields: [commentTable.taskId],
-    references: [taskTable.id],
+export const taskCommentTableRelations = relations(
+  taskCommentTable,
+  ({ one }) => ({
+    task: one(taskTable, {
+      fields: [taskCommentTable.taskId],
+      references: [taskTable.id],
+    }),
+    user: one(userTable, {
+      fields: [taskCommentTable.userId],
+      references: [userTable.id],
+    }),
   }),
-  user: one(userTable, {
-    fields: [commentTable.userId],
-    references: [userTable.id],
-  }),
-}));
+);
 
 // P1 foundational identity schema (data-model.md §2) -- see schema.ts for the full note.
 
@@ -509,6 +516,10 @@ export const workItemTypeTableRelations = relations(
       fields: [workItemTypeTable.workspaceId],
       references: [workspaceTable.id],
     }),
+    workflow: one(workflowTable, {
+      fields: [workItemTypeTable.workflowId],
+      references: [workflowTable.id],
+    }),
     workItems: many(workItemTable),
   }),
 );
@@ -535,6 +546,85 @@ export const stateTableRelations = relations(stateTable, ({ one, many }) => ({
   }),
   workItems: many(workItemTable),
 }));
+
+export const workflowTableRelations = relations(
+  workflowTable,
+  ({ one, many }) => ({
+    workspace: one(workspaceTable, {
+      fields: [workflowTable.workspaceId],
+      references: [workspaceTable.id],
+    }),
+    activeVersion: one(workflowVersionTable, {
+      fields: [workflowTable.activeVersionId],
+      references: [workflowVersionTable.id],
+    }),
+    versions: many(workflowVersionTable),
+  }),
+);
+
+export const workflowVersionTableRelations = relations(
+  workflowVersionTable,
+  ({ one, many }) => ({
+    workflow: one(workflowTable, {
+      fields: [workflowVersionTable.workflowId],
+      references: [workflowTable.id],
+    }),
+    publishedByPerson: one(personTable, {
+      fields: [workflowVersionTable.publishedBy],
+      references: [personTable.id],
+    }),
+    transitions: many(workflowTransitionTable),
+  }),
+);
+
+export const workflowTransitionTableRelations = relations(
+  workflowTransitionTable,
+  ({ one, many }) => ({
+    version: one(workflowVersionTable, {
+      fields: [workflowTransitionTable.versionId],
+      references: [workflowVersionTable.id],
+    }),
+    fromStateTemplate: one(stateTemplateTable, {
+      fields: [workflowTransitionTable.fromStateTemplateId],
+      references: [stateTemplateTable.id],
+    }),
+    toStateTemplate: one(stateTemplateTable, {
+      fields: [workflowTransitionTable.toStateTemplateId],
+      references: [stateTemplateTable.id],
+    }),
+    role: one(roleTable, {
+      fields: [workflowTransitionTable.roleId],
+      references: [roleTable.id],
+    }),
+    scheduledTransitions: many(scheduledTransitionTable),
+  }),
+);
+
+export const scheduledTransitionTableRelations = relations(
+  scheduledTransitionTable,
+  ({ one }) => ({
+    project: one(projectTable, {
+      fields: [scheduledTransitionTable.projectId],
+      references: [projectTable.id],
+    }),
+    workItem: one(workItemTable, {
+      fields: [scheduledTransitionTable.workItemId],
+      references: [workItemTable.id],
+    }),
+    transition: one(workflowTransitionTable, {
+      fields: [scheduledTransitionTable.transitionId],
+      references: [workflowTransitionTable.id],
+    }),
+    fromState: one(stateTable, {
+      fields: [scheduledTransitionTable.fromStateId],
+      references: [stateTable.id],
+    }),
+    toState: one(stateTable, {
+      fields: [scheduledTransitionTable.toStateId],
+      references: [stateTable.id],
+    }),
+  }),
+);
 
 export const workItemTableRelations = relations(
   workItemTable,

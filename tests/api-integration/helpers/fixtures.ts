@@ -20,8 +20,17 @@ export type SeededMemberContext = {
  * absence means the insert itself failed — so this throws a clear, attributable error
  * instead of letting every caller re-derive the same "possibly undefined" narrowing, or
  * silently propagate `| undefined` into a type that does not expect it.
+ *
+ * Accepts `readonly (T | undefined)[]`, not `readonly T[]`: a caller that destructures
+ * first (`const [backlog] = await db.insert(...).returning()`) hands this an array whose
+ * element type is already `Row | undefined` (`noUncheckedIndexedAccess` on the
+ * destructure), and inferring `T` from a `T[]` parameter against that array would infer
+ * `T = Row | undefined` right back, defeating the narrowing this function exists to do.
  */
-export function requireRow<T>(rows: readonly T[], context: string): T {
+export function requireRow<T>(
+  rows: readonly (T | undefined)[],
+  context: string,
+): T {
   const [row] = rows;
   if (row === undefined) {
     throw new Error(`${context}: insert returned no row`);
