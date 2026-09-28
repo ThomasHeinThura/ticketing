@@ -62,6 +62,45 @@ question) after the versioning-policy constraint surfaced mid-fix. See
 five-round review history on the route-classification-guard mechanism this decision grew
 out of.
 
+### 2026-09-28 · Redocly-lint-finding allowlist added (`scripts/ci/redocly-approved-findings.json`) for `GET /attachments/{id}`'s redirect-only response
+
+**Decision:** `test:contract`'s Redocly shrink-only baseline correctly flagged
+`operation-2xx-response` as a NEW finding on `GET /attachments/{id}` (PR #450, issue #28)
+the first time that check ran to completion on the branch — the route only ever returns
+302 (redirect to a five-minute presigned download URL, AT-5/AT-6), never a 2xx of its
+own. Rather than silence this with Redocly's own informal `.redocly.lint-ignore.yaml`
+mechanism (which `test-contract.mjs`'s own `parseRedoclyReport` explicitly rejects —
+`ignored !== 0` fails closed, on purpose), a new reviewed-exception allowlist was added:
+`scripts/ci/redocly-approved-findings.json`, the same shape as the existing
+`openapi-approved-breaks.json` (operation/rule/reason/decision/pr) but keyed on
+`(rule, pointer)` — Redocly's own JSON pointer, unlike oasdiff's output, is already exact
+and stable per finding, so there is no separate fingerprint to invent. One entry recorded
+for this exact finding.
+
+**Why:** the route's redirect-only design is deliberate and already shipped (attachment
+download has worked this way since #450 was first written; `attachment.test.ts` and
+`attachment-s3-finalize-race.test.ts` both already assert the 302). A generic Redocly
+lint rule cannot distinguish "an operation forgot to document its success response" from
+"an operation's only success response is a redirect, and that's the whole contract" — this
+is the latter. Changing the actual route to return `200` + a JSON body instead of a real
+redirect, purely to satisfy the linter, would be a real protocol change late in an
+already-multi-round-reviewed PR, touching every existing test that asserts 302 — a much
+larger and riskier change than recording a scoped, reviewed exception for a known false
+positive. Asked Thomas directly given the fork (build the allowlist vs. change the
+protocol); he chose the allowlist.
+
+**Alternatives considered:** (1) `redocly lint --generate-ignore-file` — rejected, the
+project's own tooling hard-fails on any non-zero `ignored` count from Redocly itself, by
+design, and the generated file would have silently bundled in all 16 OTHER pre-existing,
+already-tolerated findings across the whole spec, not just this one; (2) change
+`GET /attachments/{id}` to return `200` with a JSON body containing the presigned URL
+instead of a real redirect — rejected as the larger, riskier change, see "Why" above.
+
+**Decided by:** Thomas, 2026-09-28, asked directly (a tight two-option question) after
+the finding surfaced on PR #450's first completed `contract - OpenAPI drift` run. See
+`scripts/ci/redocly-approved-findings.json` and
+`docs/07-planning/security-reviews/450-attachments.md` for the finding and its fix.
+
 ### 2026-09-27 · `pal-mcp` FULLY UNSUSPENDED for all reading/ordinary-review/audit/analysis, all branches, all scope — the Opus final security/critical review remains the sole, unreplaced gate
 
 **Supersedes:** the entry immediately below (same day) — that entry's non-security-scope-only
