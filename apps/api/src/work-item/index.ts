@@ -27,23 +27,36 @@ import {
   workspaceMemberRoles,
 } from "../utils/workspace-member-roles";
 import type { ActivityActorType } from "./activity";
+import { commentSchema } from "./comment-response";
+import {
+  commentIdParam,
+  createCommentBody,
+  updateCommentBody,
+} from "./comment-schema";
 import assignWorkItem, {
   WorkItemAssigneeConflictError,
 } from "./controllers/assign-work-item";
 import bulkWorkItems from "./controllers/bulk-work-items";
+import createComment from "./controllers/create-comment";
 import createWorkItem from "./controllers/create-work-item";
+import deleteComment from "./controllers/delete-comment";
 import deleteWorkItem from "./controllers/delete-work-item";
+import detachWorkItemParent from "./controllers/detach-work-item-parent";
 import getWorkItemByKey from "./controllers/get-work-item";
+import getWorkItemTree from "./controllers/get-work-item-tree";
 import listAssignablePeople from "./controllers/list-assignable-people";
 import listWorkItemActivity from "./controllers/list-work-item-activity";
 import listWorkItemTypes from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
 import rankWorkItem from "./controllers/rank-work-item";
+import setWorkItemParent from "./controllers/set-work-item-parent";
 import unassignWorkItem from "./controllers/unassign-work-item";
+import updateComment from "./controllers/update-comment";
 import updateWorkItem, {
   WorkItemVersionConflictError,
 } from "./controllers/update-work-item";
 import { unwatchWorkItem, watchWorkItem } from "./controllers/watch-work-item";
+import { requireCommentReach } from "./require-comment-reach";
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
   assignablePeopleSchema,
@@ -57,6 +70,7 @@ import {
   workItemDetailSchema,
   workItemListResponseSchema,
   workItemSchema,
+  workItemTreeResponseSchema,
   workItemTypeListSchema,
   workItemVersionConflictSchema,
   workItemWatchStateSchema,
@@ -70,6 +84,7 @@ import {
   listWorkItemsQuery,
   projectIdParam,
   rankWorkItemBody,
+  setWorkItemParentBody,
   updateWorkItemBody,
   workItemKeyParam,
   workspaceIdParam,
@@ -454,6 +469,95 @@ const rankWorkItemRoute = createRoute({
   },
 });
 
+const setWorkItemParentRoute = createRoute({
+  method: "post",
+  operationId: "setWorkItemParent",
+  path: "/work-items/{key}/parent",
+  tags: ["Work items"],
+  summary: "Set work item parent",
+  description:
+    "Attach a work item into a hierarchy under `parentKey` (`relations-and-hierarchy.md` " +
+    "`RH-5`..`RH-8`). Rejected at 422 when the proposed parent is the item itself, is a " +
+    "descendant of it (a cycle, at any distance), or would exceed the maximum hierarchy " +
+    "depth of 5. Parent and child must be in the same project (`RH-6`).",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: setWorkItemParentBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The work item with its parent set", workItemSchema),
+    400: errorResponse(
+      "Invalid body, or the parent is not in the same project (RH-6)",
+    ),
+    403: errorResponse(
+      "No workspace access, or missing work_item:update permission",
+    ),
+    404: errorResponse("Work item or parent work item not found"),
+    409: errorResponse(
+      "A concurrent change affected this hierarchy -- reload and retry",
+    ),
+    422: errorResponse(
+      "The proposed parent is the item itself, a descendant of it, or would exceed the " +
+        "maximum hierarchy depth of 5",
+    ),
+  },
+});
+
+const detachWorkItemParentRoute = createRoute({
+  method: "delete",
+  operationId: "detachWorkItemParent",
+  path: "/work-items/{key}/parent",
+  tags: ["Work items"],
+  summary: "Detach work item parent",
+  description:
+    "Detach a work item from its parent (`RH-11`/`RH-12`). Idempotent when the item " +
+    "already has no parent. Detaching mutates the former parent's own roll-up too.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse("The work item with its parent cleared", workItemSchema),
+    403: errorResponse(
+      "No workspace access, or missing work_item:update permission",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const getWorkItemTreeRoute = createRoute({
+  method: "get",
+  operationId: "getWorkItemTree",
+  path: "/work-items/{key}/tree",
+  tags: ["Work items"],
+  summary: "Get work item hierarchy tree",
+  description:
+    "The full hierarchy tree containing this work item -- its true root and every " +
+    "descendant beneath it, with the requested item's own node flagged `isCurrent`. " +
+    "Capped in total size (`truncated: true` when the real subtree is larger than the " +
+    "response returned) -- see `get-work-item-tree.ts`'s own doc comment.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse("The hierarchy tree", workItemTreeResponseSchema),
+    403: errorResponse(
+      "No workspace access, or missing work_item:read permission",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
 const watchWorkItemRoute = createRoute({
   method: "post",
   operationId: "watchWorkItem",
@@ -595,7 +699,92 @@ const unassignWorkItemRoute = createRoute({
   },
 });
 
-const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
+// `docs/03-features/comments-and-activity.md` (issue #27). `GET
+// /api/work-items/{key}/activity` and the portal read route are NOT here -- see this
+// PR's own body for what's built elsewhere (issue #23) and what has no portal-identity
+// path to build against yet.
+const createCommentRoute = createRoute({
+  method: "post",
+  operationId: "createWorkItemComment",
+  path: "/work-items/{key}/comments",
+  tags: ["Comments"],
+  summary: "Create comment",
+  description:
+    "Add a comment to a work item (`CA-1`..`CA-11`). `visibility` is required, chosen " +
+    "explicitly at composition -- `public` requires `comment:create`, `internal` requires " +
+    "`comment:create_internal`.",
+  middleware: [requireWorkItemReach()] as const,
+  request: {
+    params: workItemKeyParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: createCommentBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The created comment", commentSchema),
+    400: errorResponse("Invalid body -- oversized, malformed, or a NUL byte"),
+    403: errorResponse(
+      "No workspace access, or missing comment:create/comment:create_internal " +
+        "(depending on the chosen visibility)",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const updateCommentRoute = createRoute({
+  method: "patch",
+  operationId: "updateWorkItemComment",
+  path: "/comments/{id}",
+  tags: ["Comments"],
+  summary: "Update comment",
+  description:
+    "Edit a comment's body (`CA-17`). The author may edit within 15 minutes of " +
+    "posting (`comment:update_own`); `comment:update_any` edits anyone's, any time. " +
+    "Visibility cannot be changed (`CA-4`) -- this route has no `visibility` field.",
+  middleware: [requireCommentReach()] as const,
+  request: {
+    params: commentIdParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateCommentBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The updated comment", commentSchema),
+    400: errorResponse("Invalid body -- oversized, malformed, or a NUL byte"),
+    403: errorResponse(
+      "Not the author within the edit window, or missing comment:update_own/" +
+        "comment:update_any",
+    ),
+    404: errorResponse("Comment not found"),
+  },
+});
+
+const deleteCommentRoute = createRoute({
+  method: "delete",
+  operationId: "deleteWorkItemComment",
+  path: "/comments/{id}",
+  tags: ["Comments"],
+  summary: "Delete comment",
+  description:
+    "Delete a comment (`CA-18`): sets a tombstone, clears the body, keeps the row. " +
+    "`comment:delete_own` deletes the author's own; `comment:delete_any` deletes " +
+    "anyone's. Idempotent on an already-deleted comment.",
+  middleware: [requireCommentReach()] as const,
+  request: { params: commentIdParam },
+  responses: {
+    200: jsonResponse("The deleted (tombstoned) comment", commentSchema),
+    403: errorResponse(
+      "Not the author, or missing comment:delete_own/comment:delete_any",
+    ),
+    404: errorResponse("Comment not found"),
+  },
+});
+
+const workItem = apiRouter<
+  BaseVariables & { workspaceId: string; workItemId: string }
+>()
   .openapi(createWorkItemRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
@@ -813,6 +1002,46 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
       throw error;
     }
   })
+  .openapi(setWorkItemParentRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { parentKey } = c.req.valid("json");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+
+    const updated = await setWorkItemParent(
+      key,
+      workspaceId,
+      parentKey,
+      actorId,
+      actorType,
+    );
+    return c.json(updated, 200);
+  })
+  .openapi(detachWorkItemParentRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+
+    const updated = await detachWorkItemParent(
+      key,
+      workspaceId,
+      actorId,
+      actorType,
+    );
+    return c.json(updated, 200);
+  })
+  .openapi(getWorkItemTreeRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const tree = await getWorkItemTree(key, workspaceId);
+    return c.json(tree, 200);
+  })
   .openapi(deleteWorkItemRoute, async (c) => {
     const { key } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
@@ -980,6 +1209,36 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
       }
       throw error;
     }
+  })
+  .openapi(createCommentRoute, async (c) => {
+    const workItemId = c.get("workItemId");
+    const workspaceId = c.get("workspaceId");
+    const { body, visibility } = c.req.valid("json");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+    const created = await createComment(
+      workItemId,
+      workspaceId,
+      actorId,
+      actorType,
+      { body, visibility },
+    );
+    return c.json(created, 200);
+  })
+  .openapi(updateCommentRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { body } = c.req.valid("json");
+    const updated = await updateComment(id, workspaceId, c.get("userId"), body);
+    return c.json(updated, 200);
+  })
+  .openapi(deleteCommentRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const deleted = await deleteComment(id, workspaceId, c.get("userId"));
+    return c.json(deleted, 200);
   });
 
 export default workItem;

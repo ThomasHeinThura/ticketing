@@ -68,7 +68,9 @@ const RESOURCE_NOT_FOUND_MESSAGE: Record<
   | "activity"
   | "comment"
   | "column"
-  | "workflowRule",
+  | "workflowRule"
+  | "workflow"
+  | "workflowVersion",
   string
 > = {
   task: "Task not found",
@@ -78,6 +80,9 @@ const RESOURCE_NOT_FOUND_MESSAGE: Record<
   comment: "Comment not found",
   column: "Column not found",
   workflowRule: "Workflow rule not found",
+  // #31 -- workflow persistence (see `workflow/policy.ts` for the routes these back).
+  workflow: "Workflow not found",
+  workflowVersion: "Workflow version not found",
 };
 
 type WorkspaceIdSource =
@@ -94,7 +99,9 @@ type WorkspaceIdSource =
         | "activity"
         | "comment"
         | "column"
-        | "workflowRule";
+        | "workflowRule"
+        | "workflow"
+        | "workflowVersion";
       idKey: string;
     }
   | {
@@ -393,7 +400,9 @@ async function lookupWorkspaceId(
     | "activity"
     | "comment"
     | "column"
-    | "workflowRule",
+    | "workflowRule"
+    | "workflow"
+    | "workflowVersion",
   id: string,
   userId: string,
   apiKeyId?: string,
@@ -639,6 +648,53 @@ async function lookupWorkspaceId(
           : null;
       }
 
+      // #31 -- `workflow` carries its own `workspaceId` directly, same shape as `label`.
+      case "workflow": {
+        const [workflow] = await db
+          .select({ workspaceId: schema.workflowTable.workspaceId })
+          .from(schema.workflowTable)
+          .where(
+            and(
+              eq(schema.workflowTable.id, id),
+              reachableWorkspacePredicate(
+                schema.workflowTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
+            ),
+          )
+          .limit(1);
+        return workflow?.workspaceId
+          ? { workspaceId: workflow.workspaceId }
+          : null;
+      }
+
+      // #31 -- a version's own row carries no `workspaceId`; join to its workflow, same
+      // shape as `workflowRule`'s join to `project`.
+      case "workflowVersion": {
+        const [version] = await db
+          .select({ workspaceId: schema.workflowTable.workspaceId })
+          .from(schema.workflowVersionTable)
+          .innerJoin(
+            schema.workflowTable,
+            eq(schema.workflowVersionTable.workflowId, schema.workflowTable.id),
+          )
+          .where(
+            and(
+              eq(schema.workflowVersionTable.id, id),
+              reachableWorkspacePredicate(
+                schema.workflowTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
+            ),
+          )
+          .limit(1);
+        return version?.workspaceId
+          ? { workspaceId: version.workspaceId }
+          : null;
+      }
+
       default:
         return null;
     }
@@ -719,5 +775,16 @@ export const workspaceAccess = {
   fromWorkflowRule: (idKey = "id") =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "workflowRule", idKey }],
+    }),
+
+  // #31 -- workflow persistence.
+  fromWorkflow: (idKey = "id") =>
+    workspaceAccessMiddleware({
+      sources: [{ type: "lookup", resource: "workflow", idKey }],
+    }),
+
+  fromWorkflowVersion: (idKey = "id") =>
+    workspaceAccessMiddleware({
+      sources: [{ type: "lookup", resource: "workflowVersion", idKey }],
     }),
 };

@@ -1317,6 +1317,48 @@
           "externalUrl"
         ]
       },
+      "CannedResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "body": {},
+          "visibilityDefault": {
+            "type": "string",
+            "description": "One of: public, internal."
+          },
+          "createdBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspaceId",
+          "name",
+          "visibilityDefault",
+          "createdBy",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
       "Comment": {
         "type": "object",
         "properties": {
@@ -2132,6 +2174,393 @@
           "integrationType",
           "eventType",
           "columnId",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "Workflow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "activeVersionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspaceId",
+          "key",
+          "name",
+          "activeVersionId",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "WorkflowVersion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workflowId": {
+            "type": "string"
+          },
+          "number": {
+            "type": "number"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publishedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "transitions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowTransition"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "workflowId",
+          "number",
+          "publishedAt",
+          "publishedBy",
+          "createdAt",
+          "updatedAt",
+          "transitions"
+        ]
+      },
+      "WorkflowTransition": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "versionId": {
+            "type": "string"
+          },
+          "fromStateTemplateId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "toStateTemplateId": {
+            "type": "string"
+          },
+          "roleId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "notePolicy": {
+            "type": "string",
+            "enum": [
+              "none",
+              "optional",
+              "required"
+            ]
+          },
+          "noteVisibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "internal"
+            ]
+          },
+          "requiresApproval": {
+            "type": "boolean"
+          },
+          "approvalPolicy": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "any",
+              "all",
+              null
+            ]
+          },
+          "requiresCab": {
+            "type": "boolean"
+          },
+          "isReopen": {
+            "type": "boolean"
+          },
+          "guards": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "children_closed"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "no_open_blockers"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "assignee_present"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "field_required"
+                      ]
+                    },
+                    "field": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "field"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "change_risk_at_most"
+                      ]
+                    },
+                    "level": {
+                      "type": "string",
+                      "enum": [
+                        "low",
+                        "medium",
+                        "high"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "level"
+                  ]
+                }
+              ]
+            }
+          },
+          "effects": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "set_assignee"
+                      ]
+                    },
+                    "personId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "string",
+                          "enum": [
+                            "default"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "personId"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "clear_assignee"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "pause_sla"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "resume_sla"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "set_field"
+                      ]
+                    },
+                    "field": {
+                      "type": "string"
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "kind",
+                    "field"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "schedule_transition"
+                      ]
+                    },
+                    "afterMinutes": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "toStateTemplateId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "afterMinutes",
+                    "toStateTemplateId"
+                  ]
+                }
+              ]
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "versionId",
+          "fromStateTemplateId",
+          "toStateTemplateId",
+          "roleId",
+          "notePolicy",
+          "noteVisibility",
+          "requiresApproval",
+          "approvalPolicy",
+          "requiresCab",
+          "isReopen",
+          "guards",
+          "effects",
           "createdAt",
           "updatedAt"
         ]
@@ -3101,6 +3530,62 @@
           "message",
           "key",
           "currentAssigneeId"
+        ]
+      },
+      "WorkItemTree": {
+        "type": "object",
+        "properties": {
+          "root": {
+            "$ref": "#/components/schemas/WorkItemTreeNode"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the tree exceeded the server's size cap and this is a prefix, not the whole subtree. Real pagination is tracked separately (issue #434)."
+          }
+        },
+        "required": [
+          "root",
+          "truncated"
+        ]
+      },
+      "WorkItemTreeNode": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "stateName": {
+            "type": "string"
+          },
+          "stateCategory": {
+            "type": "string",
+            "description": "state_template.group: one of backlog, unstarted, started, completed, cancelled."
+          },
+          "isCurrent": {
+            "type": "boolean",
+            "description": "True for the one node matching the requested {key}."
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkItemTreeNode"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "title",
+          "stateName",
+          "stateCategory",
+          "isCurrent",
+          "children"
         ]
       },
       "DeletedWorkItem": {
@@ -7879,6 +8364,304 @@
         }
       }
     },
+    "/canned-responses": {
+      "get": {
+        "operationId": "listCannedResponses",
+        "tags": [
+          "Canned responses"
+        ],
+        "summary": "List canned responses",
+        "description": "A workspace's reusable composer snippets (`CA-19`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The workspace's canned responses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CannedResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createCannedResponse",
+        "tags": [
+          "Canned responses"
+        ],
+        "summary": "Create canned response",
+        "description": "Requires `workspace:manage_settings` (`CA-19`).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "body": {},
+                  "visibilityDefault": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "internal"
+                    ]
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created canned response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CannedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A canned response with this name already exists",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/canned-responses/{id}": {
+      "patch": {
+        "operationId": "updateCannedResponse",
+        "tags": [
+          "Canned responses"
+        ],
+        "summary": "Update canned response",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "body": {},
+                  "visibilityDefault": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "internal"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated canned response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CannedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Canned response not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A canned response with this name already exists",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteCannedResponse",
+        "tags": [
+          "Canned responses"
+        ],
+        "summary": "Delete canned response",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted canned response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CannedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Canned response not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/comment/{taskId}": {
       "get": {
         "operationId": "getTaskComments",
@@ -10457,6 +11240,678 @@
         }
       }
     },
+    "/workflows": {
+      "get": {
+        "operationId": "listWorkflows",
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "List workflows",
+        "description": "List a workspace's workflows.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of workflows",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Workflow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No access to the workspace, or missing workflow:read",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWorkflow",
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Create workflow",
+        "description": "Create a new workflow in a workspace.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string"
+                  },
+                  "key": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "key",
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created workflow",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Workflow"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "versions": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/WorkflowVersion"
+                          }
+                        }
+                      },
+                      "required": [
+                        "versions"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workflow:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "That workflow key is already taken in this workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workflows/{id}": {
+      "get": {
+        "operationId": "getWorkflow",
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Get workflow",
+        "description": "Get a single workflow by id, with every version and its transitions.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workflow details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Workflow"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "versions": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/WorkflowVersion"
+                          }
+                        }
+                      },
+                      "required": [
+                        "versions"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id must not contain a NUL (\\u0000) byte",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No access to the workspace, or missing workflow:read",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workflow not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workflows/{id}/versions": {
+      "post": {
+        "operationId": "createWorkflowVersion",
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Create workflow version",
+        "description": "Create a new draft version under an existing workflow. Validated structurally (packages/domain's validateWorkflowVersion) against this workspace's state templates before it is persisted.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "transitions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "fromStateTemplateId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "default": null
+                        },
+                        "toStateTemplateId": {
+                          "type": "string"
+                        },
+                        "roleId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "default": null
+                        },
+                        "notePolicy": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "optional",
+                            "required"
+                          ],
+                          "default": "none"
+                        },
+                        "noteVisibility": {
+                          "type": "string",
+                          "enum": [
+                            "public",
+                            "internal"
+                          ],
+                          "default": "internal"
+                        },
+                        "requiresApproval": {
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "approvalPolicy": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "enum": [
+                            "any",
+                            "all",
+                            null
+                          ],
+                          "default": null
+                        },
+                        "requiresCab": {
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "isReopen": {
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "guards": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "children_closed"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "type"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "no_open_blockers"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "type"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "assignee_present"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "type"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "field_required"
+                                    ]
+                                  },
+                                  "field": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "field"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "change_risk_at_most"
+                                    ]
+                                  },
+                                  "level": {
+                                    "type": "string",
+                                    "enum": [
+                                      "low",
+                                      "medium",
+                                      "high"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "type",
+                                  "level"
+                                ]
+                              }
+                            ]
+                          },
+                          "default": []
+                        },
+                        "effects": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "set_assignee"
+                                    ]
+                                  },
+                                  "personId": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "default"
+                                        ]
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "personId"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "clear_assignee"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "pause_sla"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "resume_sla"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "set_field"
+                                    ]
+                                  },
+                                  "field": {
+                                    "type": "string"
+                                  },
+                                  "value": {}
+                                },
+                                "required": [
+                                  "kind",
+                                  "field"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "schedule_transition"
+                                    ]
+                                  },
+                                  "afterMinutes": {
+                                    "type": "integer",
+                                    "exclusiveMinimum": 0
+                                  },
+                                  "toStateTemplateId": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "afterMinutes",
+                                  "toStateTemplateId"
+                                ]
+                              }
+                            ]
+                          },
+                          "default": []
+                        }
+                      },
+                      "required": [
+                        "toStateTemplateId"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "transitions"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created draft version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowVersion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, structurally invalid workflow version, or workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workflow:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workflow not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workflows/{id}/versions/{number}/publish": {
+      "post": {
+        "operationId": "publishWorkflowVersion",
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Publish workflow version",
+        "description": "Publish a draft version: it becomes active for new transitions (WF-7). In-flight work items are not migrated.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "required": true,
+            "name": "number",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The published version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowVersion"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id must not contain a NUL (\\u0000) byte",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workflow:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workflow or version not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invitation/pending": {
       "get": {
         "operationId": "getUserPendingInvitations",
@@ -12935,6 +14390,218 @@
         }
       }
     },
+    "/work-items/{key}/parent": {
+      "post": {
+        "operationId": "setWorkItemParent",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Set work item parent",
+        "description": "Attach a work item into a hierarchy under `parentKey` (`relations-and-hierarchy.md` `RH-5`..`RH-8`). Rejected at 422 when the proposed parent is the item itself, is a descendant of it (a cycle, at any distance), or would exceed the maximum hierarchy depth of 5. Parent and child must be in the same project (`RH-6`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parentKey": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "parentKey"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The work item with its parent set",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or the parent is not in the same project (RH-6)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item or parent work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A concurrent change affected this hierarchy -- reload and retry",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The proposed parent is the item itself, a descendant of it, or would exceed the maximum hierarchy depth of 5",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "detachWorkItemParent",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Detach work item parent",
+        "description": "Detach a work item from its parent (`RH-11`/`RH-12`). Idempotent when the item already has no parent. Detaching mutates the former parent's own roll-up too.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The work item with its parent cleared",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/tree": {
+      "get": {
+        "operationId": "getWorkItemTree",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Get work item hierarchy tree",
+        "description": "The full hierarchy tree containing this work item -- its true root and every descendant beneath it, with the requested item's own node flagged `isCurrent`. Capped in total size (`truncated: true` when the real subtree is larger than the response returned) -- see `get-work-item-tree.ts`'s own doc comment.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The hierarchy tree",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemTree"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/work-items/{key}/rank": {
       "post": {
         "operationId": "rankWorkItem",
@@ -13313,6 +14980,227 @@
           },
           "404": {
             "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/comments": {
+      "post": {
+        "operationId": "createWorkItemComment",
+        "tags": [
+          "Comments"
+        ],
+        "summary": "Create comment",
+        "description": "Add a comment to a work item (`CA-1`..`CA-11`). `visibility` is required, chosen explicitly at composition -- `public` requires `comment:create`, `internal` requires `comment:create_internal`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {},
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "internal"
+                    ]
+                  }
+                },
+                "required": [
+                  "visibility"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created comment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body -- oversized, malformed, or a NUL byte",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing comment:create/comment:create_internal (depending on the chosen visibility)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/comments/{id}": {
+      "patch": {
+        "operationId": "updateWorkItemComment",
+        "tags": [
+          "Comments"
+        ],
+        "summary": "Update comment",
+        "description": "Edit a comment's body (`CA-17`). The author may edit within 15 minutes of posting (`comment:update_own`); `comment:update_any` edits anyone's, any time. Visibility cannot be changed (`CA-4`) -- this route has no `visibility` field.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated comment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body -- oversized, malformed, or a NUL byte",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not the author within the edit window, or missing comment:update_own/comment:update_any",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteWorkItemComment",
+        "tags": [
+          "Comments"
+        ],
+        "summary": "Delete comment",
+        "description": "Delete a comment (`CA-18`): sets a tombstone, clears the body, keeps the row. `comment:delete_own` deletes the author's own; `comment:delete_any` deletes anyone's. Idempotent on an already-deleted comment.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted (tombstoned) comment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not the author, or missing comment:delete_own/comment:delete_any",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comment not found",
             "content": {
               "text/plain": {
                 "schema": {

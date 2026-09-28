@@ -142,6 +142,40 @@ export const workItemPolicies = {
     },
   },
 
+  // Set a work item's parent (`relations-and-hierarchy.md` § API, `RH-5`..`RH-8`).
+  // `requireWorkItemReach()` resolves `{key}` by row before the handler runs; the
+  // controller (`set-work-item-parent.ts`) re-scopes its own write by the same
+  // key+workspaceId pair -- `scopeSource: "row"`, identical shape to `PATCH
+  // /api/work-items/{key}` above. rbac.md declares this "Required on both ends, including
+  // detach" -- see that controller's own doc comment for why this is ONE capability check
+  // under this codebase's current workspace-role-based permission model, not two.
+  "POST /api/work-items/{key}/parent": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // Detach a work item from its parent (`RH-11`/`RH-12`'s "detach"). Same reach/capability
+  // shape as set-parent above -- `detach-work-item-parent.ts`.
+  "DELETE /api/work-items/{key}/parent": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // The hierarchy tree rooted at (or containing) this work item (`relations-and-
+  // hierarchy.md` § API/Screens). Read-only, same reach shape as `GET
+  // /api/work-items/{key}` above -- see `get-work-item-tree.ts`'s own doc comment for why
+  // the whole returned tree is covered by this one row's reach check.
+  "GET /api/work-items/{key}/tree": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
   // Clear a work item's assignment (`assignment.md` § API; `AS-2`). PRIMARY is
   // `work_item:assign` -- clearing a colleague's work is the same authority as moving it.
   // The alternate branch is `orOwner` on the LOADED ROW (the spec's
@@ -175,6 +209,21 @@ export const workItemPolicies = {
   // handler runs.
   "DELETE /api/work-items/{key}": {
     capability: "work_item:delete",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // Issue #27, `docs/03-features/comments-and-activity.md`. `requireWorkItemReach()`
+  // resolves the target work item by key before the handler runs; the actual capability
+  // decision (`comment:create` vs `comment:create_internal`) is data-dependent (the
+  // BODY's `visibility` field, not parsed until the handler -- same reason
+  // `work_item:set_priority` is checked in `PATCH /api/work-items/{key}`'s own handler,
+  // not `middleware`), so `capability` below names the PRIMARY, public-comment path;
+  // `./controllers/create-comment.ts` checks whichever of the two the request actually
+  // needs.
+  "POST /api/work-items/{key}/comments": {
+    capability: "comment:create",
     scope: "work_item",
     scopeSource: "row",
     reach: "required",
@@ -237,5 +286,39 @@ export const workItemPolicies = {
     scope: "work_item",
     scopeSource: "row",
     reach: "required",
+  },
+
+  // `rbac.md`'s own worked example for this exact route: ownership is
+  // `row.person_id === identity.personId` (the comment's `author_id`), `orOwner` with
+  // `withinMinutes: 15` matching `CA-17`'s edit window -- `packages/permissions`'s
+  // `OwnerBranch.withinMinutes` exists specifically for this row. `requireCommentReach()`
+  // resolves the comment by id via a genuine DB lookup, so `scopeSource: "row"`. Nothing
+  // here calls the declarative evaluator at runtime (issue #8's runtime-integration work,
+  // out of this slice's scope) -- `./controllers/update-comment.ts` enforces the
+  // identical conjunction by hand, the same "declared target, `requireWorkspaceCapability`-
+  // family runtime check" split every other route in this codebase already uses.
+  "PATCH /api/comments/{id}": {
+    capability: "comment:update_any",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+    orOwner: {
+      predicate: "row.person_id === identity.personId",
+      capability: "comment:update_own",
+      withinMinutes: 15,
+    },
+  },
+
+  // Same shape as the update route above, minus the time window -- rbac.md's table names
+  // no `withinMinutes` for either delete capability.
+  "DELETE /api/comments/{id}": {
+    capability: "comment:delete_any",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+    orOwner: {
+      predicate: "row.person_id === identity.personId",
+      capability: "comment:delete_own",
+    },
   },
 } as const satisfies PolicyMap;

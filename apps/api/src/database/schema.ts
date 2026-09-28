@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { relations, sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   check,
@@ -1099,8 +1100,16 @@ export const externalLinkTable = pgTable(
   ],
 );
 
-export const commentTable = pgTable(
-  "comment",
+// Kaneo's original, unmodified task/comment table -- renamed off the `comment` name
+// (issue #27, following the `activity`/`task_activity` precedent set by decision log
+// 2026-09-23 and migration 0066) so the new work-item-scoped `comment` table below can
+// be created under the name `data-model.md` §4 actually gives it. Still keyed on
+// `task_id`, not `work_item_id`; still backs every legacy task/comment route
+// (`apps/api/src/comment/`, `apps/api/src/activity/`). Not part of the work-item
+// journal, and not documented further here -- inherited-and-frozen, matching
+// `data-model.md`'s own `task_activity` row.
+export const taskCommentTable = pgTable(
+  "task_comment",
   {
     id: text("id")
       .$defaultFn(() => createId())
@@ -1125,8 +1134,8 @@ export const commentTable = pgTable(
       .notNull(),
   },
   (table) => [
-    index("comment_task_idx").on(table.taskId),
-    index("comment_user_idx").on(table.userId),
+    index("task_comment_task_idx").on(table.taskId),
+    index("task_comment_user_idx").on(table.userId),
   ],
 );
 
@@ -1517,10 +1526,22 @@ export const workItemTypeTable = pgTable(
     name: text("name").notNull(),
     icon: text("icon"),
     category: text("category").notNull(),
-    // `workflow` and `sla_policy` (data-model.md §6/§7) are P2/P5 scope and do not exist
-    // in this schema yet -- plain nullable columns, NO foreign key constraint, until
-    // those tables land. Add the real `.references()` in the PR that creates them.
-    workflowId: text("workflow_id"),
+    // #31 -- `workflow` (data-model.md §6) now exists, defined below (after `stateTable`,
+    // for file-ordering reasons -- see that table's own comment); this is the promised
+    // real `.references()`, a genuine forward reference resolved lazily via the
+    // `AnyPgColumn`-typed thunk this codebase already established for exactly this shape
+    // (see `workItemTable.parentId`'s comment on the old inline self-FK workaround).
+    // `onDelete: "restrict"` -- WF-1's "attached to one or more work item types" means a
+    // workflow in use by a type cannot vanish out from under it, matching this schema's
+    // existing "a referenced entity in active use cannot be deleted" convention
+    // (`state.state_template_id`, `membership.role_id`).
+    //
+    // `sla_policy` (§7) is still P5 scope and does not exist yet -- plain nullable
+    // column, no FK, unchanged from before.
+    workflowId: text("workflow_id").references(
+      (): AnyPgColumn => workflowTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
     slaPolicyId: text("sla_policy_id"),
     isEpic: boolean("is_epic").default(false).notNull(),
     isChange: boolean("is_change").default(false).notNull(),
@@ -1665,6 +1686,274 @@ export const stateTable = pgTable(
     uniqueIndex("state_project_default_unique")
       .on(table.projectId)
       .where(sql`${table.isDefault}`),
+  ],
+);
+
+// #31 -- Workflow: the lifecycle engine (data-model.md §6, docs/03-features/workflows.md,
+// ADR 0011). **Persistence only in this PR** (decision log: option (b) of #31's scope
+// question) -- the four tables below match `packages/domain/src/workflow/types.ts`'s own
+// already-reviewed shape exactly. This PR also adds just enough admin CRUD to create a
+// workflow/version/transition set for testing (`workflow/index.ts`). It deliberately does
+// NOT build the state-transition EXECUTION route (`POST /api/work-items/{key}/transition`)
+// or `GET /transitions` -- that is a follow-up issue, and depends on the not-yet-built
+// `approval` table (#36) for full `requires_approval`/`requires_cab` semantics. This PR's
+// `requires_approval`/`approval_policy`/`requires_cab` columns are therefore schema-only:
+// persisted correctly, never read or gated on by any code this PR ships.
+//
+// Defined here, after `stateTable`, deliberately: `workflow_transition` references
+// `state_template` (below), and `work_item_type.workflow_id`'s own forward `.references()`
+// (above) needs this table to exist by the time drizzle-kit resolves it -- which, being a
+// lazily-invoked thunk (`AnyPgColumn`), it does regardless of file order, but keeping the
+// workflow tables adjacent to the state tables they reference keeps the file's grouping
+// readable.
+export const workflowTable = pgTable(
+  "workflow",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    // `WF-6`/`WF-7`: a brand-new workflow may exist with only a draft version, so this is
+    // nullable. Circular by nature -- `workflow_version.workflow_id` (below) is NOT NULL
+    // back to this row -- resolved via the same `AnyPgColumn`-typed lazy thunk this
+    // codebase already uses for a genuine forward/circular reference (see
+    // `work_item_type.workflow_id`'s comment above), even though `workflowVersionTable`
+    // is declared a few tables below: the callback is not invoked until drizzle-kit
+    // actually builds the FK, by which point the whole module has finished evaluating.
+    // `onDelete: "set null"`: deleting the active version (in practice this should never
+    // happen -- versions are immutable, `WF-6` -- but nothing here forbids a hard delete)
+    // clears the pointer rather than cascading into deleting the workflow itself.
+    activeVersionId: text("active_version_id").references(
+      (): AnyPgColumn => workflowVersionTable.id,
+      { onDelete: "set null", onUpdate: "cascade" },
+    ),
+    // data-model.md §6: "`workflow` ... **v**" -- optimistic concurrency.
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("workflow_workspaceId_idx").on(table.workspaceId),
+    uniqueIndex("workflow_workspace_key_unique").on(
+      table.workspaceId,
+      table.key,
+    ),
+  ],
+);
+
+export const workflowVersionTable = pgTable(
+  "workflow_version",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workflowId: text("workflow_id")
+      .notNull()
+      .references(() => workflowTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    number: integer("number").notNull(),
+    // `WF-6`: null while still a draft; set the moment it is published.
+    publishedAt: timestamp("published_at", { mode: "date" }),
+    // data-model.md §6's `published_by` -- "people are deactivated, never deleted"
+    // (§4's own convention, applied here for the same reason `work_item.assignee_id`/
+    // `requester_id` are RESTRICT): a published version's own record of who published it
+    // must not silently disappear.
+    publishedBy: text("published_by").references(() => personTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("workflow_version_workflowId_idx").on(table.workflowId),
+    // `WF-6`: version numbers are per-workflow, monotonic, never reused (mirrors
+    // `work_item.number`'s own per-project sequence -- see that column's comment).
+    uniqueIndex("workflow_version_workflow_number_unique").on(
+      table.workflowId,
+      table.number,
+    ),
+  ],
+);
+
+export const workflowTransitionTable = pgTable(
+  "workflow_transition",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    versionId: text("version_id")
+      .notNull()
+      .references(() => workflowVersionTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    // `WF-5`: null means "from any state template" (used for Cancel). `onDelete:
+    // "restrict"` -- matches `state.state_template_id`'s own convention: a template a
+    // transition still names cannot vanish out from under it.
+    fromStateTemplateId: text("from_state_template_id").references(
+      () => stateTemplateTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    toStateTemplateId: text("to_state_template_id")
+      .notNull()
+      .references(() => stateTemplateTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    // `WF-3`: null means all roles.
+    roleId: text("role_id").references(() => roleTable.id, {
+      onDelete: "restrict",
+      onUpdate: "cascade",
+    }),
+    // `WF-10`. Default `none`, the least surprising choice for a hand-authored row with
+    // no note policy specified.
+    notePolicy: text("note_policy").notNull().default("none"),
+    // `WF-11`. Default `internal` -- the conservative choice: a note is hidden from a
+    // customer unless a workflow designer deliberately marks it `public`. Judgment call,
+    // flagged in the PR body (spec states no default for either enum).
+    noteVisibility: text("note_visibility").notNull().default("internal"),
+    requiresApproval: boolean("requires_approval").notNull().default(false),
+    // `WF-13`: meaningful only when `requiresApproval` is true; nullable otherwise.
+    approvalPolicy: text("approval_policy"),
+    requiresCab: boolean("requires_cab").notNull().default(false),
+    // `WF-21`: at most one per workflow version -- see the partial unique index below.
+    isReopen: boolean("is_reopen").notNull().default(false),
+    // `WF-15`/`WF-19`: closed vocabularies owned by workflows.md, not re-validated by a DB
+    // CHECK here -- `validateWorkflowVersion` (packages/domain) is the fail-closed check
+    // for both, run by the admin CRUD before a version is ever persisted.
+    guards: jsonb("guards").notNull().default(sql`'[]'::jsonb`),
+    effects: jsonb("effects").notNull().default(sql`'[]'::jsonb`),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("workflow_transition_versionId_idx").on(table.versionId),
+    index("workflow_transition_fromStateTemplateId_idx").on(
+      table.fromStateTemplateId,
+    ),
+    index("workflow_transition_toStateTemplateId_idx").on(
+      table.toStateTemplateId,
+    ),
+    // `WF-21`: "at most one per workflow version."
+    uniqueIndex("workflow_transition_version_reopen_unique")
+      .on(table.versionId)
+      .where(sql`${table.isReopen}`),
+    check(
+      "workflow_transition_note_policy_allowed",
+      sql`${table.notePolicy} in ('none', 'optional', 'required')`,
+    ),
+    check(
+      "workflow_transition_note_visibility_allowed",
+      sql`${table.noteVisibility} in ('public', 'internal')`,
+    ),
+    // Nullable -- NULL passes (Postgres treats a NULL CHECK result as passing), matching
+    // this schema's existing convention for a nullable enum column (`work_item.priority`).
+    check(
+      "workflow_transition_approval_policy_allowed",
+      sql`${table.approvalPolicy} is null or ${table.approvalPolicy} in ('any', 'all')`,
+    ),
+  ],
+);
+
+// `WF-19`'s `schedule_transition` effect -- the "pending until" pattern. Carries a
+// denormalised `project_id` (from the work item's own `project_id` at write time) purely
+// so `from_state_id`/`to_state_id` can be composite-FK'd to `state(project_id, id)` --
+// the same "a state reference must share its work item's own project" guarantee
+// `work_item.state_id` itself enforces (see that column's comment; #186 S2 proved a plain
+// single-column FK to `state.id` cannot see which project a state belongs to). Both
+// concrete, project-scoped rows: `from_state_id` is the item's state at the moment the
+// effect fired, `to_state_id` is the effect's own `to_state_template_id` already resolved
+// against the item's project when the row was written (`WF-19`, `WF-2`'s resolution
+// reused verbatim) -- `reminder-scan` never does a template lookup at fire time.
+export const scheduledTransitionTable = pgTable(
+  "scheduled_transition",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    // See the table comment: denormalised from `work_item.project_id`, used only to pin
+    // the two composite FKs below to the same project as `workItemId`.
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projectTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    workItemId: text("work_item_id").notNull(),
+    transitionId: text("transition_id")
+      .notNull()
+      .references(() => workflowTransitionTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    fromStateId: text("from_state_id").notNull(),
+    toStateId: text("to_state_id").notNull(),
+    dueAt: timestamp("due_at", { mode: "date" }).notNull(),
+    state: text("state").notNull().default("pending"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    // data-model.md §6: "Index on `(due_at) where state = 'pending'`" -- `reminder-scan`'s
+    // own scan predicate.
+    index("scheduled_transition_dueAt_pending_idx")
+      .on(table.dueAt)
+      .where(sql`${table.state} = 'pending'`),
+    index("scheduled_transition_workItemId_idx").on(table.workItemId),
+    check(
+      "scheduled_transition_state_allowed",
+      sql`${table.state} in ('pending', 'fired', 'cancelled')`,
+    ),
+    // #186 S2's own lesson, applied here: a plain single-column FK on `from_state_id`/
+    // `to_state_id` alone cannot see which project a `state` row belongs to, so it cannot
+    // stop this row from naming a state that belongs to a DIFFERENT project than
+    // `workItemId`'s own. Composite FK, same `(project_id, state_id) -> state(project_id,
+    // id)` technique `work_item.state_id` itself uses -- see that column's comment for
+    // the full incident this pattern was proven against. `onUpdate: "no action"` for the
+    // identical #191 O1 reason: the referenced column set includes `state.project_id`,
+    // which is mutable.
+    foreignKey({
+      columns: [table.projectId, table.fromStateId],
+      foreignColumns: [stateTable.projectId, stateTable.id],
+    })
+      .onDelete("restrict")
+      .onUpdate("no action"),
+    foreignKey({
+      columns: [table.projectId, table.toStateId],
+      foreignColumns: [stateTable.projectId, stateTable.id],
+    })
+      .onDelete("restrict")
+      .onUpdate("no action"),
+    // Same technique, pinning `workItemId` to a work item that shares this row's own
+    // `projectId` -- `workItemTable` is declared much later in this file, but (like every
+    // other extra-config array in this schema) this whole callback is stored and invoked
+    // lazily by drizzle, not evaluated at this `pgTable()` call, so the forward reference
+    // resolves fine once the module has fully loaded. `onDelete: "cascade"` -- a deleted
+    // work item takes its own pending scheduled transitions with it.
+    foreignKey({
+      columns: [table.projectId, table.workItemId],
+      foreignColumns: [workItemTable.projectId, workItemTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("no action"),
   ],
 );
 
@@ -2314,6 +2603,163 @@ export const activityTable = pgTable(
     })
       .onDelete("cascade")
       .onUpdate("no action"),
+  ],
+);
+
+// `data-model.md` §4, issue #27: the work-item-scoped comment stream (`comments-and-
+// activity.md`). Created under the name `comment` -- freed by the rename of kaneo's
+// original table to `task_comment` immediately above -- following the same "own table,
+// own name" precedent `activity`/`task_activity` set (decision log 2026-09-23, migration
+// 0066).
+//
+// `author_id`/`actor_type` carry NO foreign key, deliberately mirroring `activityTable`'s
+// own `actor_id`/`actor_type` columns immediately above: `person` (P1's foundational
+// identity schema, decision log 2026-09-16) is "deliberately NOT wired to any
+// route/policy/resolveIdentity yet", and no route in this codebase resolves a `person`
+// row from a request today -- every write path here (`work-item/index.ts`'s
+// `resolveActor`) uses the raw `userId` (or, for a system/automation actor, no user at
+// all) as the actor identity. Adding a real FK here, before that wiring lands, would
+// either force this table to reference `user` instead of `person` (wrong target once
+// identity IS wired) or reference `person` for an id that is not actually a `person.id`
+// today (a live constraint violation on every insert). Matches the same judgment call
+// this codebase already made once, in the same file, for the same reason.
+export const commentTable = pgTable(
+  "comment",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    // Same #192-style denormalisation `activityTable.workspaceId` uses immediately
+    // above, for the same reason: reach-filtering and purge without a join, and a
+    // DB-level guarantee (the composite FK below) that this can never drift from the
+    // work item's own `workspace_id`.
+    workspaceId: text("workspace_id").notNull(),
+    workItemId: text("work_item_id").notNull(),
+    authorId: text("author_id"),
+    // data-model.md Conventions: "`actor_type` accompanies every `actor_id`" -- same
+    // vocabulary as `activity.actor_type` (`person | automation | system | api_key`).
+    actorType: text("actor_type").notNull(),
+    // CA-18: "Deleting ... clears the body" -- nullable so the delete path can null it
+    // out while keeping the row, its author and its position (the tombstone). `NOT NULL`
+    // at the application layer for every LIVE (non-deleted) comment; only the delete path
+    // is ever allowed to null it.
+    body: jsonb("body"),
+    // CA-1: "Visibility is chosen explicitly at composition" -- `NOT NULL`, no
+    // application-level default (a caller must always say which). The `'internal'`
+    // column default is the same fail-closed backstop `activity.visibility` carries for
+    // a writer that bypasses the normal application path (e.g. a future raw-SQL import),
+    // never a value the normal create-comment path is allowed to rely on.
+    visibility: text("visibility").default("internal").notNull(),
+    // CA-6: "links a transition note to its transition" -- nullable, no value on an
+    // ordinary comment. `ON DELETE SET NULL`: the comment (and the customer-facing text
+    // it carries) must survive even if its linked activity row is ever removed (e.g. a
+    // future purge of a narrower class of activity row) -- unlike `activity` itself,
+    // which cascades with its work item, a comment's own lifecycle is independent of any
+    // one activity row it happens to reference.
+    activityId: text("activity_id").references(() => activityTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    editedAt: timestamp("edited_at", { mode: "date" }),
+    // CA-18's tombstone: the row, its author and its position survive; the body is not
+    // rendered once `deletedAt` is set. `deletedBy` carries no FK, same reasoning as
+    // `authorId` above.
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+    deletedBy: text("deleted_by"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("comment_work_item_id_created_at_idx").on(
+      table.workItemId,
+      table.createdAt,
+    ),
+    index("comment_workspaceId_idx").on(table.workspaceId),
+    check(
+      "comment_visibility_allowed",
+      sql`${table.visibility} in ('public', 'internal')`,
+    ),
+    // Same composite-FK technique as `activityTable.workspaceId`/`.workItemId` above,
+    // for the identical cross-tenant reason (a plain single-column FK on `work_item_id`
+    // cannot see a `workspace_id` mismatch). `ON DELETE CASCADE` matches `activity`'s own
+    // precedent -- a hard-deleted work item takes its comments with it, the same as its
+    // journal.
+    foreignKey({
+      columns: [table.workspaceId, table.workItemId],
+      foreignColumns: [workItemTable.workspaceId, workItemTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("no action"),
+  ],
+);
+
+// CA-17: one row per edit, rendering the "edited" hover history. `number` is the
+// per-comment edit sequence (1, 2, 3, ...), assigned by the writer, not the database --
+// no identity/sequence column of its own, unlike `activity.seq`, because this number IS
+// meant to be user-facing (edit 1, edit 2, ...), unlike that internal tiebreak.
+export const commentVersionTable = pgTable(
+  "comment_version",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    commentId: text("comment_id")
+      .notNull()
+      .references(() => commentTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    number: integer("number").notNull(),
+    body: jsonb("body").notNull(),
+    editedBy: text("edited_by"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("comment_version_comment_id_idx").on(table.commentId),
+    unique("comment_version_comment_id_number_unique").on(
+      table.commentId,
+      table.number,
+    ),
+  ],
+);
+
+// CA-19/CA-20: reusable composer snippets. Workspace-scoped -- `data-model.md` §4 names
+// no project scope for this table.
+export const cannedResponseTable = pgTable(
+  "canned_response",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    body: jsonb("body").notNull(),
+    visibilityDefault: text("visibility_default").default("internal").notNull(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("canned_response_workspaceId_idx").on(table.workspaceId),
+    unique("canned_response_workspace_id_name_unique").on(
+      table.workspaceId,
+      table.name,
+    ),
+    check(
+      "canned_response_visibility_default_allowed",
+      sql`${table.visibilityDefault} in ('public', 'internal')`,
+    ),
   ],
 );
 
