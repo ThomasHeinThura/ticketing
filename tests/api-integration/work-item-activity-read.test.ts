@@ -9,6 +9,7 @@
  * unchanged from #292.
  */
 import { randomUUID } from "node:crypto";
+import { sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -434,6 +435,79 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
       expect(seenIds.size).toBeGreaterThanOrEqual(5);
       expect(seenKinds.has("activity")).toBe(true);
       expect(seenKinds.has("comment")).toBe(true);
+    });
+
+    it("#452 delta (Opus B1): comments microseconds apart in the same millisecond page correctly, no rows skipped", async () => {
+      const { creator, project, type } = await setupProjectWithDefaultState();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const created = (await (
+        await createWorkItemRequest(app, project.id, {
+          typeId: type.id,
+          title: "Same-millisecond comments",
+        })
+      ).json()) as { key: string };
+
+      const commentIds: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        const response = await postCommentRequest(app, created.key, {
+          body: { type: "doc", content: [] },
+          visibility: "internal",
+        });
+        const comment = (await response.json()) as { id: string };
+        commentIds.push(comment.id);
+      }
+
+      // Force all three comments into the EXACT same millisecond, at distinct
+      // microsecond offsets -- reproduces #452's B1 (Opus delta review): `comment.
+      // created_at` is stored to the microsecond, but the old continuation filter
+      // compared it against a millisecond-precision cursor, so every comment but the
+      // first written in a shared millisecond bucket was silently skipped on every
+      // subsequent page.
+      const baseTimestamp = "2030-01-01 00:00:00.500";
+      for (const [index, id] of commentIds.entries()) {
+        await db.execute(
+          sql`update comment set created_at = ${baseTimestamp}::timestamp + (${index} * interval '1 microsecond') where id = ${id}`,
+        );
+      }
+
+      const seenIds = new Set<string>();
+      let cursor: string | null = null;
+      let hasMore = true;
+      let pages = 0;
+      while (hasMore) {
+        pages += 1;
+        expect(pages).toBeLessThan(10); // safety valve against an infinite loop
+        const query = cursor
+          ? `?limit=1&cursor=${encodeURIComponent(cursor)}`
+          : "?limit=1";
+        const response = await activityRequest(app, created.key, query);
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as {
+          data: Array<{ id: string }>;
+          page: { hasMore: boolean; nextCursor: string | null };
+        };
+        expect(body.data).toHaveLength(1);
+        const row = body.data[0];
+        if (row) {
+          // No duplicates across pages: a row reappearing would be as real a bug as
+          // one being skipped, and the merge-pagination proof promises neither.
+          expect(seenIds.has(row.id)).toBe(false);
+          seenIds.add(row.id);
+        }
+        hasMore = body.page.hasMore;
+        cursor = body.page.nextCursor;
+      }
+
+      // EXACT count, not >= : the bug silently dropped rows sharing a millisecond
+      // bucket, so a >= assertion would not have caught it. 3 comments (forced into
+      // the same millisecond) + the work item's own single `created` activity row
+      // (this work item has no other activity) = 4, deterministically.
+      expect(seenIds.size).toBe(4);
+      for (const id of commentIds) {
+        expect(seenIds.has(id)).toBe(true);
+      }
     });
 
     it("cross-workspace 404 still applies once comments exist on the item", async () => {

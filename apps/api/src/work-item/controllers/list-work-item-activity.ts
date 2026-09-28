@@ -1,4 +1,13 @@
-import { and, desc, eq, lt, or, type SQL } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  lt,
+  or,
+  type SQL,
+  type SQLWrapper,
+  sql,
+} from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -54,6 +63,31 @@ import {
 // under `limit`, the sum fetched equals the true sum; the moment either remainder alone
 // reaches `limit + 1`, the fetched sum already exceeds `limit` on its own, and the true
 // total does too since it is at least that one table's remainder).
+//
+// #452 DELTA (Opus B1, blocking, found live): this proof depends on the database's own
+// `ORDER BY`/continuation-filter order agreeing EXACTLY with the in-memory merge's
+// `(createdAt.getTime(), id)` order -- and for comments, it didn't. `comment.created_at`
+// is a DB-set `DEFAULT now()` column, stored to the MICROSECOND (both write paths,
+// `create-comment.ts` and `transition-work-item.ts`'s note-as-comment path, rely on the
+// column default). `activity.created_at` is written from a JS `Date` in application code
+// (`activity.ts`), already millisecond-precision at the source -- no fix needed there.
+// A JS `Date` cannot hold more than millisecond precision, so the in-memory sort key and
+// the opaque cursor (`lastRow.createdAt.toISOString()`) are BOTH already truncated to
+// milliseconds -- but the old code compared that millisecond-precision cursor value
+// directly against the RAW, microsecond-precision `comment.created_at` column in SQL. Two
+// comments in the same millisecond then broke the `eq(...)` tie-break outright: it could
+// never match a column value carrying nonzero microseconds, so every comment but the
+// first written in that millisecond silently never reappeared on ANY page -- reproduced
+// live (3 comments microseconds apart in the same millisecond, `limit=1`: only 1 of 3 was
+// ever returned). Fixed by truncating `comment.created_at` to milliseconds with
+// `date_trunc('milliseconds', ...)` in both the comment query's `ORDER BY` and its
+// continuation filter (`commentCreatedAtMs` below) -- this makes the database's chosen
+// top-`fetchLimit` comment rows, and their ordering within that set, agree exactly with
+// the millisecond-precision order the in-memory merge already assumed. The SELECTed
+// `createdAt` field itself is left as the raw column (unchanged): node-postgres already
+// parses a `timestamp` column into a JS `Date`, which itself cannot represent more than
+// millisecond precision, so the value returned to the caller and encoded into the next
+// cursor was never the bug -- only the SQL-side comparison was.
 
 export const DEFAULT_WORK_ITEM_ACTIVITY_LIMIT = 50;
 export const MAX_WORK_ITEM_ACTIVITY_LIMIT = 200;
@@ -120,19 +154,28 @@ type ActivityStreamRow =
       updatedAt: Date;
     };
 
+// `createdAtExpr` accepts either a plain column (activity's own, already
+// millisecond-precision) or a computed `SQL` expression (the comment query passes its
+// millisecond-truncated `commentCreatedAtMs` below, per the #452 delta doc comment
+// above) -- both satisfy `SQLWrapper`, which is all `lt`/`eq` actually require.
 function cursorContinuationOn(
-  createdAtColumn:
-    | typeof activityTable.createdAt
-    | typeof commentTable.createdAt,
+  createdAtExpr: SQLWrapper,
   idColumn: typeof activityTable.id | typeof commentTable.id,
   cursorDate: Date,
   cursorId: string,
 ): SQL | undefined {
   return or(
-    lt(createdAtColumn, cursorDate),
-    and(eq(createdAtColumn, cursorDate), lt(idColumn, cursorId)),
+    lt(createdAtExpr, cursorDate),
+    and(eq(createdAtExpr, cursorDate), lt(idColumn, cursorId)),
   );
 }
+
+// #452 delta (Opus B1): see the controller's own doc comment. `date_trunc('milliseconds',
+// ...)` on `comment.created_at`'s raw, microsecond-precision value -- used for THIS
+// query's own `ORDER BY` and continuation filter only, never for what is SELECTed (the
+// raw column is still what's returned to the caller; a JS `Date` cannot represent more
+// than millisecond precision anyway, so nothing is lost by selecting the raw column).
+const commentCreatedAtMs = sql`date_trunc('milliseconds', ${commentTable.createdAt})`;
 
 export async function listWorkItemActivity(
   key: string,
@@ -165,7 +208,7 @@ export async function listWorkItemActivity(
     );
     if (activityContinuation) activityConditions.push(activityContinuation);
     const commentContinuation = cursorContinuationOn(
-      commentTable.createdAt,
+      commentCreatedAtMs,
       commentTable.id,
       cursorDate,
       cursor.id,
@@ -210,7 +253,7 @@ export async function listWorkItemActivity(
       })
       .from(commentTable)
       .where(and(...commentConditions))
-      .orderBy(desc(commentTable.createdAt), desc(commentTable.id))
+      .orderBy(desc(commentCreatedAtMs), desc(commentTable.id))
       .limit(fetchLimit),
   ]);
 
