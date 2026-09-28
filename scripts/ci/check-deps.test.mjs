@@ -840,3 +840,60 @@ export {};
     /packages\/a\/src\/index\.ts.*cross-workspace-injected.*not declared as a dependency in @taskdesk\/a\/package\.json/s,
   );
 });
+
+test("an import specifier named after an Object.prototype own property does not crash the checker (#464)", async (t) => {
+  // `FLAGGED_MESSAGES[imported.specifier]` used to be a bare bracket read on a plain object
+  // literal. `FLAGGED_MESSAGES["__proto__"]` doesn't miss — `__proto__` is special-cased on
+  // object literals and returns the object's own prototype (`Object.prototype`), which is
+  // truthy, so the code then tried to call it as `Object.prototype?.(line)` and threw
+  // `TypeError: ... is not a function`, crashing the whole `analyzeDependencies()` run
+  // instead of producing a normal violation. Same class of gap for any other
+  // `Object.prototype` own name. Guarded with `Object.hasOwn`; this proves the fix is
+  // class-level (several prototype names), not just the one reported name.
+  const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-deps-proto-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  async function packageAt(relative, name) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    await writeFile(
+      path.join(directory, "tsconfig.json"),
+      JSON.stringify({ compilerOptions: { allowJs: true } }),
+    );
+    return directory;
+  }
+
+  const libs = await packageAt("packages/libs", "@taskdesk/libs");
+
+  await writeFile(
+    path.join(libs, "src/proto.ts"),
+    [
+      'import "__proto__";',
+      'import "constructor";',
+      'import "hasOwnProperty";',
+      'import "toString";',
+    ].join("\n"),
+  );
+
+  await assert.doesNotReject(() => analyzeDependencies(root));
+  const { violations } = await analyzeDependencies(root);
+  const messages = violations.join("\n");
+  for (const specifier of [
+    "__proto__",
+    "constructor",
+    "hasOwnProperty",
+    "toString",
+  ]) {
+    assert.match(
+      messages,
+      new RegExp(
+        `packages/libs/src/proto\\.ts.*imports "${specifier}".*not declared as a dependency`,
+        "s",
+      ),
+    );
+  }
+});
