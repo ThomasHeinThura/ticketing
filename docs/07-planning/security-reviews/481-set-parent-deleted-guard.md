@@ -132,3 +132,21 @@ one-line diff, verified identical to what was already reviewed, plus real test c
 that both PRs' logic coexists correctly.
 
 **Reviewed head:** `d1429f829c5fde27ebf445ea36aa8d8c7a01acaa`
+
+---
+
+## Mechanical reconfirmation after merging main past PR #485 (8d284933)
+
+**Confirmed by:** the orchestrating session, directly.
+
+**What happened:** `main` advanced to `74239ddbf` (PR #485, issue #276's fix) after the
+merge-resolution reconfirmation above. This branch was updated with `main` (merge commit
+`8d284933`).
+
+**Verified directly:** `git show 74239ddbf --stat` touches
+`update-work-item.ts`, `require-work-item-reach.ts`, and test files for comment/delete/update/
+watch — none of which is `set-work-item-parent.ts`, the file this review covers.
+
+**Verdict:** the reviews above remain valid at `8d284933`.
+
+**Reviewed head:** `8d284933b5f3c2d6fdbde17a4bcb11a70f6f91e2`
