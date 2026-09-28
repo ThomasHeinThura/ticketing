@@ -1021,15 +1021,18 @@ function resolveWorkspaceTarget(
   // needing to reconstruct what the shim was hiding.
   if (!sawRealDeclaration && !isBuiltin(specifier)) {
     const packageName = packageNameForSpecifier(specifier);
+    const dependencyFields = {
+      ...owner.manifest.dependencies,
+      ...owner.manifest.devDependencies,
+      ...owner.manifest.optionalDependencies,
+      ...owner.manifest.peerDependencies,
+    };
+    // Object.hasOwn, not the `in` operator: `in` also matches inherited Object.prototype
+    // properties (toString, constructor, __proto__, ...), so a specifier literally named
+    // "toString" would otherwise read as "declared" without ever appearing in any
+    // package.json.
     const declared =
-      packageName &&
-      packageName in
-        {
-          ...owner.manifest.dependencies,
-          ...owner.manifest.devDependencies,
-          ...owner.manifest.optionalDependencies,
-          ...owner.manifest.peerDependencies,
-        };
+      packageName && Object.hasOwn(dependencyFields, packageName);
     if (packageName && !declared) return { undeclaredDependency: true };
   }
   return null;
