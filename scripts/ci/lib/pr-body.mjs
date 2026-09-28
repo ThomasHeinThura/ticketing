@@ -418,30 +418,37 @@ const BIDI_CONTROL_CHARS = new RegExp(
 
 /**
  * The blank-RENDERING characters `INVISIBLE` strips (see its own doc comment) that ALSO
- * render with visible WIDTH — a blank cell a human's eye registers as a gap between two
- * things, not merely "invisible." U+3000 IDEOGRAPHIC SPACE is the one issue #152 actually
- * reproduced: CJK input methods commit it as an ordinary space key routinely, so
- * `"not　applicable"` is two words to any human, but `contentOf` collapses it to
- * `"notapplicable"`. U+2800 BRAILLE PATTERN BLANK, U+3164 HANGUL FILLER and U+FFA0
- * HALFWIDTH HANGUL FILLER share that same width-renders-as-a-gap property in principle
- * (the first Opus security review of this fix generalised the finding to them), so they
- * are masked to an ordinary space here too, rather than deleted.
+ * have a genuine, non-zero advance width — a blank cell a human's eye registers as a gap
+ * between two things, not merely "invisible." U+3000 IDEOGRAPHIC SPACE is the one issue
+ * #152 actually reproduced: CJK input methods commit it as an ordinary space key
+ * routinely, so `"not　applicable"` is two words to any human, but `contentOf` collapses
+ * it to `"notapplicable"`.
  *
- * Deliberately NOT every character `INVISIBLE`'s own L6 addition lists: U+115F/U+1160 (the
- * HANGUL CHOSEONG/JUNGSEONG FILLERS, conjoining jamo that render with no width outside a
- * composed syllable block) and U+17B4/U+17B5 (the KHMER INHERENT VOWELS, explicitly
- * invisible marks with no glyph of their own) do NOT render as a visible gap — masking
- * THOSE to a space would reopen this exact bug from the other direction (a **second**
- * Opus delta review of this fix found it): a reviewer sees no gap at all, so a masked
- * space there creates a word boundary the parser now honours that no human perceived,
- * the identical render/parse mismatch issue #153 is about, just via a different
- * character family. Those four stay covered by `INVISIBLE`'s plain deletion, unchanged
- * from `contentOf`'s own behaviour.
+ * The split from `INVISIBLE`'s full L6 list is not a rendering guess (an earlier revision
+ * of this comment asserted specific characters "render with no width" without a source,
+ * flagged as unverifiable by ordinary review) — it is the Unicode Character Database's own
+ * `General_Category` property, checkable directly (Python's `unicodedata.category(ch)`, or
+ * the UCD's `UnicodeData.txt`/`DerivedGeneralCategory.txt`):
+ *
+ * - **`Mn` (Nonspacing_Mark) is EXCLUDED, by Unicode's own definition of the category**:
+ *   the standard specifies a nonspacing mark as one written "without a change in the
+ *   horizontal displacement of the following character" (The Unicode Standard, ch. 3,
+ *   "Combining Marks") — i.e. it has NO independent advance width to begin with, so there
+ *   is no gap to preserve by masking it. U+17B4/U+17B5 (KHMER VOWEL INHERENT AQ/AA) are
+ *   `Mn` and stay excluded, covered by `INVISIBLE`'s plain deletion unchanged.
+ * - **Every other category here DOES have a non-zero advance width**, verified per
+ *   character: U+3000 (`Zs`, Fullwidth), U+2800 BRAILLE PATTERN BLANK (`So`), U+3164
+ *   HANGUL FILLER (`Lo`, Wide), U+FFA0 HALFWIDTH HANGUL FILLER (`Lo`, Halfwidth), and —
+ *   corrected from an earlier revision of this fix, which wrongly assumed these two were
+ *   zero-width `Mn`-like fillers without checking — U+115F HANGUL CHOSEONG FILLER (`Lo`,
+ *   Wide) and U+1160 HANGUL JUNGSEONG FILLER (`Lo`, Neutral). Neither is a combining mark;
+ *   both are ordinary letter-category (`Lo`) code points exactly like U+3164, and the UCD
+ *   gives no basis for treating them differently from it.
  *
  * Masking to a space rather than deleting cannot weaken blankness: a section made only of
  * these characters still trims away to `""` once `INVISIBLE` runs afterward.
  */
-const WORD_SEPARATING_BLANKS = /[⠀ㅤﾠ　]/gu;
+const WORD_SEPARATING_BLANKS = /[⠀ㅤᅟᅠﾠ　]/gu;
 
 /**
  * Like `contentOf`, but for a caller that parses the result for WORD-BOUNDARY-SENSITIVE

@@ -2461,12 +2461,15 @@ describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping brea
     }
   });
 
-  it("issue #152, generalised to the WIDTH-RENDERING L6 fillers only: U+2800/U+3164/U+FFA0 are masked to a space too, not just U+3000", () => {
-    // L6 (contentOf's own history): U+2800/U+3164/U+FFA0 all render as a visible blank
-    // CELL on GitHub without being Cf, sharing U+3000's exact deletion-fuses-words
-    // exposure in principle -- not reported by either issue directly, but the same root
-    // cause, so closed the same way rather than left for the next report.
-    for (const codepoint of [0x2800, 0x3164, 0xffa0]) {
+  it("issue #152, generalised to every L6 filler that is NOT a Unicode combining mark: U+2800/U+3164/U+FFA0/U+115F/U+1160 are masked to a space too, not just U+3000", () => {
+    // The split is the Unicode Character Database's own `General_Category` property, not
+    // a rendering guess -- see WORD_SEPARATING_BLANKS's own doc comment for the citable
+    // basis (checkable directly: Python's `unicodedata.category(chr(codepoint))`).
+    // U+115F/U+1160 were WRONGLY excluded in an earlier revision of this fix (assumed
+    // zero-width without checking the UCD; ordinary review pushed back on the missing
+    // source, and checking it showed the assumption was false: both are `Lo`, the same
+    // category as U+3164, not a combining mark).
+    for (const codepoint of [0x2800, 0x3164, 0xffa0, 0x115f, 0x1160]) {
       const char = chr(codepoint);
       const raw = `not${char}applicable-workflows.md`;
       assert.equal(
@@ -2481,15 +2484,14 @@ describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping brea
     }
   });
 
-  it("does NOT mask the ZERO-WIDTH L6 fillers (U+115F/U+1160/U+17B4/U+17B5) to a space — a second Opus delta review found masking them would reopen the render/parse mismatch from the other direction", () => {
-    // These four render with NO visible width (conjoining Hangul jamo fillers outside a
-    // composed block; Khmer inherent vowels with no glyph of their own) -- a reviewer
-    // sees no gap at all between the two words, so masking one to a space would make the
-    // PARSER see a word boundary that nothing in the RENDERED text shows, which is
-    // exactly the class of mismatch issue #153 is about, just via a different character
-    // family. They must still be deleted (contentOf's original, unchanged behaviour),
-    // not masked.
-    for (const codepoint of [0x115f, 0x1160, 0x17b4, 0x17b5]) {
+  it("does NOT mask the two genuine Unicode COMBINING MARKS (U+17B4/U+17B5, General_Category Mn) to a space", () => {
+    // `Mn` (Nonspacing_Mark) is the one category in this closed list that Unicode itself
+    // defines as having NO independent advance width -- see WORD_SEPARATING_BLANKS's doc
+    // comment. Masking one to a space would make the PARSER see a word boundary that
+    // nothing in the rendered text shows (no gap was ever there to begin with), the exact
+    // class of mismatch issue #153 is about, via a different character family. These two
+    // must still be deleted (contentOf's original, unchanged behaviour), not masked.
+    for (const codepoint of [0x17b4, 0x17b5]) {
       const char = chr(codepoint);
       const raw = `not${char}applicable-workflows.md`;
       assert.equal(
