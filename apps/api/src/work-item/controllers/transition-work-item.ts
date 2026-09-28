@@ -86,18 +86,37 @@ export class TransitionConflictError extends Error {
   }
 }
 
+// Same "walk the `cause` chain, never match on a message string" shape as
+// `utils/is-unique-violation.ts`/`utils/is-raise-exception.ts` -- for the identical
+// reason: Drizzle 0.45.2 does not rethrow the driver's error unchanged, it wraps it in
+// its own `DrizzleQueryError` and hangs the real `pg` error off `.cause`, so the real
+// SQLSTATE is one or more links down the chain, never on the wrapper's own `.code`
+// (confirmed live, third-round Opus delta review of PR #457, D3: the FIRST version of
+// this function checked only the top-level `.code`, which is `undefined` on the wrapper
+// -- a genuine deadlock still surfaced as an unhandled 500, exactly the bug D2's own fix
+// claimed to close but never actually did).
+const MAX_CAUSE_DEPTH = 5;
+
 /**
- * `pg`'s driver attaches Postgres's own SQLSTATE to `.code` on the error it throws.
- * `40P01` is `deadlock_detected` -- narrow, deliberate detection of exactly that one
- * condition, never a catch-all for "any database error."
+ * `40P01` is Postgres's own `deadlock_detected` SQLSTATE -- narrow, deliberate detection
+ * of exactly that one condition, never a catch-all for "any database error."
  */
 export function isPostgresDeadlockError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: unknown }).code === "40P01"
-  );
+  let candidate = error;
+
+  for (let depth = 0; depth <= MAX_CAUSE_DEPTH; depth++) {
+    if (typeof candidate !== "object" || candidate === null) {
+      return false;
+    }
+    const { code, cause } = candidate as { code?: unknown; cause?: unknown };
+
+    if (code === "40P01") {
+      return true;
+    }
+    candidate = cause;
+  }
+
+  return false;
 }
 
 /**
