@@ -1,11 +1,13 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
 **2026-09-28 orchestrator snapshot (4) — `main` at `0a5dc368` (#469, Traefik environment-label
-fix, merged). Two of P0's four gate issues are now CLOSED: #9 and #11. #464 (check-deps
-`__proto__` crash), #342 (env-read detection gaps, already resolved by earlier merges), and #269
-(unique-violation exact-match, already resolved by earlier merges) also closed today. #8 and #10
-remain open, each for a real, named reason — see snapshot (3) below and the 2026-09-28
-decision-log entries; neither closes by more code review.**
+fix, merged). Two of P0's four gate issues are now CLOSED — #9 (closed earlier today, see
+snapshot (3) below) and #11 (closed just now, evidence below). #464 (check-deps `__proto__`
+crash), #342 (env-read detection gaps, already resolved by earlier merges), #269
+(unique-violation exact-match, already resolved by earlier merges), and #251 (workspace-role
+unique-constraint Drizzle tracking, already resolved by earlier merges) also closed today. #8
+and #10 remain open, each for a real, named reason — see snapshot (3) below and the
+2026-09-28 decision-log entries; neither closes by more code review.**
 
 Merged since snapshot (3): **#467** (`402ec7de`, #464's `check-deps.mjs` `__proto__` crash,
 Opus CLEAR WITH FINDINGS, one lint-only finding fixed), **#468** (`c77f994b`, #11's
@@ -19,10 +21,10 @@ full evidence chain. New issue **#471** filed (F2 from PR #404's Opus review: `u
 can silently leave a slug-claim row pointing at the wrong project after a rename race —
 `ON CONFLICT DO NOTHING` where `create-project.ts`'s equivalent path correctly rejects).
 
-Two more bounded lanes dispatched and in flight as of this snapshot: #251 (track
-`workspace_role_workspace_id_role_unique` in Drizzle's own schema, currently invisible to
-`drizzle-kit check`) and #154 (bound `check-reviews.mjs`'s quadratic Spec-field scan cost — low
-priority, tracking-only, not a live defect).
+One more bounded lane dispatched and in flight as of this snapshot: #154 (bound
+`check-reviews.mjs`'s quadratic Spec-field scan cost — low priority, tracking-only, not a live
+defect). #251 was dispatched as a lane too, but turned out to already be resolved by an
+earlier-merged PR (#405) before the lane got to it — see above.
 
 ---
 
