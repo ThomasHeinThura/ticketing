@@ -79,6 +79,23 @@ export function requireWorkItemReach(idKey = "key") {
     // `getProjectWorkspaceId`, which takes a project id, not a work-item key) -- a
     // soft-deleted project's work item now 404s exactly like a nonexistent key, never
     // distinguishing the two from the outside, consistent with F2 above.
+    // Issue #276: the work item's OWN `deleted_at`/`archived_at` are checked here too,
+    // not only its project's. Filed before #23's delete slice existed ("nothing sets
+    // those columns today"), it became live once PR #433 added `DELETE
+    // /api/work-items/{key}` (a real soft-delete). Every route mounted with this
+    // middleware -- `GET`/`PATCH /work-items/{key}`, assign/unassign, rank, parent
+    // attach/detach, the tree, watch/unwatch, transitions, comment create, and the
+    // attachment routes -- shares this one lookup, so the guard is added here once
+    // rather than in each caller. `archived_at` is included alongside `deleted_at` even
+    // though nothing writes it for `work_item` yet (no archive route exists) -- several
+    // sibling controllers that bypass this middleware already treat the two identically
+    // (`assign-work-item.ts`, `rank-work-item.ts`'s `target.archivedAt || target.deletedAt`,
+    // `unassign-work-item.ts`'s inline check in `index.ts`), so this keeps every
+    // single-item route answering the same way once an archive mechanism does land,
+    // instead of leaving this one entry point to be remembered later. No route today
+    // needs to reach a soft-deleted/archived work item through this middleware -- there
+    // is no undelete/restore route for `work_item` in this codebase (grepped) -- so
+    // nothing legitimate is broken by tightening it.
     // Issue #8, Slice 2: `id` and `projectId` are added to this SAME select -- no new
     // query, no new round trip -- so the shadow middleware's `RowScope` construction can
     // see a genuine, already-loaded work-item/project scope for this route. Read only by
@@ -98,6 +115,8 @@ export function requireWorkItemReach(idKey = "key") {
       .where(
         and(
           eq(schema.workItemTable.key, key),
+          isNull(schema.workItemTable.deletedAt),
+          isNull(schema.workItemTable.archivedAt),
           isNull(schema.projectTable.deletedAt),
         ),
       )
