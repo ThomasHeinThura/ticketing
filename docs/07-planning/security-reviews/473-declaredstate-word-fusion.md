@@ -6,7 +6,7 @@ confirmation; subagent id `aa901604ef3a7d059` for the first full round). Did not
 direct, or remediate this change — every code edit in this pull request was made directly
 by the orchestrating Claude Sonnet 5 session (see `## Implemented by` on the PR).
 **Reviewed head:** `2361b3fe1e0acbc1cf81d1290b341731d2560c1c`
-**Pull request:** (closes #473), branch `fix/473-declaredstate-word-fusion`
+**Pull request:** #479 (closes #473), branch `fix/473-declaredstate-word-fusion`
 **Date:** 2026-09-28
 
 ## Scope
