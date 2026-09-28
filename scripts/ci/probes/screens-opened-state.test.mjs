@@ -268,15 +268,32 @@ describe("F9 residual — Screens opened state, not token matching", () => {
     assert.match(run.output, /may not be\s+n\/a/);
   });
 
-  it("issue #153's class applies here too: a bidi control character in Screens opened fails closed, not silently stripped", () => {
-    const declaration = `n/a ${chr(0x202e)}— no UI`;
+  it("issue #153's class applies here too: a genuine Trojan-Source repro (bidi override + reversed text) flips from silently ACCEPTED to correctly REJECTED", () => {
+    // Found by the mandatory Opus security review of this PR: the previous version of
+    // this test used `n/a <RLO>— no UI`, which OLD code (pre-#473) already rejects with
+    // exit 1 for an unrelated reason -- INVISIBLE deletes the bidi character, leaving
+    // "n/a — no UI", which the opener regex recognises as not-applicable, and apps/web
+    // being touched forbids n/a regardless of bidi handling. So only the FAILURE
+    // MESSAGE half of that assertion discriminated old from new; the exit code did not.
+    //
+    // The real exploit is the other direction: U+202E RIGHT-TO-LEFT OVERRIDE makes
+    // GitHub RENDER the reversed characters that follow it in forward reading order, so
+    // reversing "not applicable" first and wrapping it in RLO...PDF makes it RENDER as
+    // "not applicable" to a human reviewer. But the literal, logical character sequence
+    // -- what OLD code parses once it silently deletes the invisible RLO/PDF markers --
+    // is "elbacilppa ton", which the opener regex does NOT recognise as n/a. That reads
+    // as state "provided" (a real answer), which apps/web-touched does not complain
+    // about, so OLD code passed this (exit 0) -- an author's PR visually declaring an
+    // honest n/a while the machine silently treated it as documented screen evidence.
+    const reverse = (s) => [...s].reverse().join("");
+    const declaration = `${chr(0x202e)}${reverse("not applicable")}${chr(0x202c)} — nothing visual`;
     const dir = webChangeScenario();
     const run = check(dir, declaration);
     assert.equal(
       run.status,
       1,
-      "a bidi control character must fail the check rather than be silently deleted. " +
-        `Exited ${run.status}:\n${run.output}`,
+      "a bidi-disguised declaration must fail the check rather than be silently parsed " +
+        `around. Exited ${run.status}:\n${run.output}`,
     );
     assert.match(run.output, /bidi control character/);
   });

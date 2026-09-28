@@ -417,6 +417,17 @@ const BIDI_CONTROL_CHARS = new RegExp(
 );
 
 /**
+ * Shared verbatim between every `BidiControlCharacterError` thrown in this file
+ * (`wordBoundaryContentOf` and `meaningfulLines`) — found by ordinary review as
+ * duplicated-by-hand text that could silently drift between the two call sites if either
+ * were edited alone. One string, one place to keep it accurate.
+ */
+const BIDI_CONTROL_CHARACTER_MESSAGE =
+  "contains a bidi control character (e.g. U+202E RIGHT-TO-LEFT OVERRIDE), which can " +
+  "render differently to a human reviewer than the text this check actually parses. " +
+  "Remove it and resubmit.";
+
+/**
  * The blank-RENDERING characters `INVISIBLE` strips (see its own doc comment) that Unicode
  * itself designates as NOT default-ignorable — i.e. intended to occupy a real, visible
  * position, a blank cell a human's eye registers as a gap between two things, rather than
@@ -502,11 +513,7 @@ const WORD_SEPARATING_BLANKS = /[⠀　]/gu;
 export function wordBoundaryContentOf(markdown) {
   const commentsStripped = stripComments(markdown);
   if (BIDI_CONTROL_CHARS.test(commentsStripped)) {
-    throw new BidiControlCharacterError(
-      "contains a bidi control character (e.g. U+202E RIGHT-TO-LEFT OVERRIDE), which can " +
-        "render differently to a human reviewer than the text this check actually parses. " +
-        "Remove it and resubmit.",
-    );
+    throw new BidiControlCharacterError(BIDI_CONTROL_CHARACTER_MESSAGE);
   }
   const stripped = commentsStripped
     .split("\n")
@@ -1151,11 +1158,7 @@ const BLOCKED_EXPLANATION_MINIMUM = 40;
 export function meaningfulLines(markdown) {
   const commentsStripped = stripComments(markdown);
   if (BIDI_CONTROL_CHARS.test(commentsStripped)) {
-    throw new BidiControlCharacterError(
-      "contains a bidi control character (e.g. U+202E RIGHT-TO-LEFT OVERRIDE), which can " +
-        "render differently to a human reviewer than the text this check actually parses. " +
-        "Remove it and resubmit.",
-    );
+    throw new BidiControlCharacterError(BIDI_CONTROL_CHARACTER_MESSAGE);
   }
   return commentsStripped
     .split("\n")
