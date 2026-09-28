@@ -78,16 +78,30 @@ const OLD_REGEX_OUTPUT = {
  */
 function referenceStripComments(input) {
   let text = input;
-  // Each iteration removes one "<!--"..."-->" pair or returns, so it cannot
-  // loop more than `input.length` times for a well-formed run. The bound
-  // exists only so a reasoning error here fails loudly instead of hanging
-  // the suite — see the two tests below for the same idea applied to their
-  // own fuzz generators ("if this reaches zero the fuzz has stopped...").
+  // Each iteration removes one "<!--"..."-->" pair (or one complete empty
+  // `<!-->`/`<!--->`) or returns, so it cannot loop more than `input.length`
+  // times for a well-formed run. The bound exists only so a reasoning error
+  // here fails loudly instead of hanging the suite — see the two tests below
+  // for the same idea applied to their own fuzz generators ("if this reaches
+  // zero the fuzz has stopped...").
   for (let guard = 0; guard < input.length + 1; guard += 1) {
     const openIdx = text.indexOf("<!--");
     if (openIdx === -1) return text;
     const before = text.slice(0, openIdx);
     const rest = text.slice(openIdx + 4);
+    // `<!-->` and `<!--->` are complete, self-closing empty comments on their
+    // own (issue #474) — not an opener waiting for a LATER "-->". Handled
+    // here too so this oracle keeps modelling the same corrected spec
+    // `stripComments` implements, rather than the old buggy "scan to the
+    // next -->  anywhere" behaviour.
+    if (rest.startsWith(">")) {
+      text = before + rest.slice(1);
+      continue;
+    }
+    if (rest.startsWith("->")) {
+      text = before + rest.slice(2);
+      continue;
+    }
     const closeIdx = rest.indexOf("-->");
     if (closeIdx === -1) return before; // fails closed, same as stripComments
     text = before + rest.slice(closeIdx + 3);
@@ -135,6 +149,47 @@ describe("stripComments", () => {
       OLD_REGEX_OUTPUT["abc<!-- unterminated"],
       "abc<!-- unterminated",
     );
+  });
+
+  describe("issue #474 — `<!-->` and `<!--->` are COMPLETE, self-closing empty comments, not an opener waiting for a later `-->`", () => {
+    // Verified against both the CommonMark spec and GitHub's own `cmark-gfm`
+    // test suite: everything after one of these two short forms is ordinary
+    // visible text on GitHub. Before the fix, `stripComments` detected the
+    // 4-char opener "<!--" inside "<!-->" and then scanned forward to the
+    // NEXT "-->" anywhere later in the string, deleting everything in
+    // between as if it were hidden — even though a human reviewer sees it
+    // rendered in plain sight.
+    it("`<!-->` on its own consumes only itself", () => {
+      assert.equal(stripComments("<!-->"), "");
+      assert.equal(stripComments("before <!-->after"), "before after");
+    });
+
+    it("`<!--->` on its own consumes only itself", () => {
+      assert.equal(stripComments("<!--->"), "");
+      assert.equal(stripComments("before <!--->after"), "before after");
+    });
+
+    it("does not swallow real, visible text up to a LATER, unrelated `-->`", () => {
+      // The exact shape that made this a gate bypass, not just a stripping
+      // quirk: real text between the empty comment and a later, unrelated
+      // closer used to vanish entirely.
+      assert.equal(
+        stripComments("<!-->required text-->after"),
+        "required text-->after",
+      );
+      assert.equal(
+        stripComments("before <!--> required text-->after"),
+        "before  required text-->after",
+      );
+    });
+
+    it("does not regress the reconstitution-attack defense", () => {
+      // A short empty comment must not create a new opportunity to
+      // reconstitute "<!--" from a retained prefix and later text — the
+      // exact CodeQL alert #4 shape this file already defends against.
+      assert.equal(stripComments("<!<!-->--"), "");
+      assert.ok(!stripComments("<!<!-->--").includes("<!--"));
+    });
   });
 
   it("leaves no opener behind, over a fuzz of hostile inputs", () => {
@@ -701,6 +756,54 @@ describe("sections", () => {
     it("field(text, 'Model') reads the real model, not the comment-hidden fake", () => {
       const security = sections(body).get("security review");
       assert.equal(field(security.text, "Model"), REAL_MODEL);
+    });
+  });
+
+  // Issue #474: `stripComments`/`stripCommentsWithPositions` used to treat a bare
+  // `<!-->` as an OPENER that only closes at the NEXT `-->` anywhere later in the
+  // document — but `<!-->` is a complete, self-closing empty comment on its own
+  // (CommonMark/GFM). `sections()` derives its heading-visibility check from the
+  // same buggy scan, so a blank required section followed by `<!-->`, a genuine
+  // later `##` heading, an unrelated inner HTML comment, and then that heading's
+  // real prose, got misparsed: the inner comment's own `-->` was mistaken for the
+  // fake opener's closer, which hid the real heading (so it was never recognised
+  // as a section boundary) while leaving its real prose to survive the isolated
+  // per-section re-strip and fold backward into the still-open earlier section —
+  // reading as filled in, while the real section vanished entirely. On GitHub this
+  // renders exactly as an honest author would expect; a human reviewer sees
+  // nothing wrong. Reproduced directly against this exact shape before the fix
+  // (`git show HEAD:scripts/ci/lib/pr-body.mjs`, prior to this branch): `sections()`
+  // returned only `["screens opened", "gates"]`, with `"screens opened".content`
+  // equal to `"Ran the integration suite locally against a fresh database."` —
+  // "Testing notes" content, not its own.
+  describe("issue #474 — a bare `<!-->` must not fold a later real heading's content backward into an earlier, blank section", () => {
+    const body = [
+      "## Screens opened",
+      "",
+      "<!-->",
+      "## Testing notes",
+      "",
+      "<!-- optional -->",
+      "Ran the integration suite locally against a fresh database.",
+      "",
+      "## Gates",
+      "",
+      "n/a",
+      "",
+    ].join("\n");
+
+    it("keeps all three sections distinct, each with its own real content", () => {
+      const found = sections(body);
+      assert.deepEqual(
+        [...found.keys()],
+        ["screens opened", "testing notes", "gates"],
+      );
+      assert.equal(found.get("screens opened").content, "");
+      assert.equal(
+        found.get("testing notes").content,
+        "Ran the integration suite locally against a fresh database.",
+      );
+      assert.equal(found.get("gates").content, "n/a");
     });
   });
 
@@ -1415,6 +1518,41 @@ describe("checklistProblems — applicability is per ITEM, not per block", () =>
       large < small * 12,
       `non-linear: ${small} steps -> ${large} steps`,
     );
+  });
+});
+
+// Issue #474's `###`-checklist variant. `headingBlocks()`/`visibleHeadingName()`
+// derive heading visibility from the exact same `survivedRawIndices` ->
+// `stripCommentsWithPositions` mechanism `sections()` uses for `##` headings — so
+// the same bare-`<!-->` bug applies here too: a genuinely blank required block
+// (no checklist at all) followed by `<!-->`, a real later `### ` heading, an
+// unrelated inner comment, and that heading's own prose folds the prose backward
+// into the earlier, still-open block. Since the folded-in prose has no checkboxes,
+// `checklistProblems` treats the block as "prose, not empty" and moves on —
+// silently reporting ZERO problems for a block that is, in truth, entirely blank.
+// Reproduced directly against this exact shape before the fix (`git show
+// HEAD:scripts/ci/lib/pr-body.mjs`, prior to this branch): `checklistProblems`
+// returned `[]`.
+describe("issue #474 (### variant) — a bare `<!-->` must not fold a later block's prose backward, hiding a genuinely blank required block", () => {
+  const raw = [
+    "### Backend change",
+    "",
+    "<!-->",
+    "### Frontend change",
+    "",
+    "<!-- optional -->",
+    "Everything backend-related was already covered elsewhere.",
+    "",
+    "### New feature",
+    "",
+    "n/a",
+    "",
+  ].join("\n");
+
+  it("flags 'Backend change' as blank instead of silently passing it", () => {
+    const problems = checklistProblems(raw);
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /"Backend change" is blank/);
   });
 });
 
