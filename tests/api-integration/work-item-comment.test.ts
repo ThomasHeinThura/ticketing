@@ -460,6 +460,12 @@ describe("API integration: work-item comments (#27)", () => {
     });
     const { id } = (await created.json()) as { id: string };
 
+    const [before] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    if (!before) throw new Error("expected comment row before archiving");
+
     await db
       .update(schema.workItemTable)
       .set({ archivedAt: new Date() })
@@ -472,5 +478,11 @@ describe("API integration: work-item comments (#27)", () => {
 
     const deleteResponse = await deleteComment(app, id);
     expect(deleteResponse.status).toBe(404);
+
+    const [after] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    expect(after).toEqual(before);
   });
 });

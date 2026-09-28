@@ -872,5 +872,58 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       { method: "DELETE" },
     );
     expect(deleteResponse.status).toBe(404);
+
+    const [row] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+    expect(row?.state).toBe("ready");
+  });
+
+  it("issue #480 (F3): 404s POST /api/attachments/{id}/complete against a soft-deleted work item, and the row stays pending", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const presignResponse = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: "photo.png",
+          contentType: "image/png",
+          size: PNG_BYTES.length,
+        }),
+      },
+    );
+    const presigned = (await presignResponse.json()) as {
+      attachmentId: string;
+      uploadUrl: string;
+      uploadHeaders: Record<string, string>;
+    };
+    await app.request(presigned.uploadUrl, {
+      method: "PUT",
+      headers: presigned.uploadHeaders,
+      body: PNG_BYTES,
+    });
+
+    await db
+      .update(schema.workItemTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.workItemTable.key, key));
+
+    const completeResponse = await app.request(
+      `/api/attachments/${presigned.attachmentId}/complete`,
+      { method: "POST" },
+    );
+    expect(completeResponse.status).toBe(404);
+
+    const [row] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+    expect(row?.state).toBe("pending");
   });
 });
