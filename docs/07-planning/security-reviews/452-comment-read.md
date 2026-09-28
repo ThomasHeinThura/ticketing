@@ -185,3 +185,32 @@ assumes the Postgres session timezone is UTC (`now()` into `timestamp` without t
 read back as `+0000`). That assumption is repo-wide and existed before this PR, and it
 holds on this host (`Etc/UTC`). It should be written down as a deployment requirement at
 some point. #452 does not change it.
+
+---
+
+## Round 3 mechanical reconfirmation: N1 fixed (note-only, no fourth Opus round)
+
+**Reviewed head:** `39ced42d83326528c21fb51988de416dbf4b005e`
+
+N1 above (`process.env.TZ = originalTz` storing the literal string `"undefined"` instead of
+deleting the variable when there was nothing to restore) is fixed in this commit: the B2
+test's `finally` block now branches — `delete process.env.TZ` when
+`originalTz === undefined`, otherwise restores it as before. This is a trivial,
+already-disclosed, non-blocking finding with an obvious one-line fix (the reviewer's own
+suggested diff, applied verbatim) — per this session's standing guidance not to queue a
+full extra Opus round for a narrower instance of an already-reviewed class of issue, this
+is recorded here as a mechanical reconfirmation rather than a fourth review round.
+
+**Diff:** test-only, one file (`tests/api-integration/work-item-activity-read.test.ts`,
++9/-1, the `finally` block in the B2 test only). No route, controller, policy, schema, or
+OpenAPI file touched — round 3's B1/B2 verdict above is otherwise unaffected.
+
+**Re-verified at this head:**
+- `pnpm --filter @taskdesk/api typecheck` — clean (all three `apps/api` tsconfigs).
+- `tests/api-integration/work-item-activity-read.test.ts` — 12/12 passed under `TZ` unset
+  (UTC), `TZ=Asia/Yangon`, and `TZ=America/New_York`.
+- `pnpm test:permissions` — 83/83 passed (route coverage + permission matrix unaffected).
+
+N2 remains disclosed-only, unchanged, no code action taken — same reasoning as round 3
+above: a forged cursor only moves the caller's own page position within a work item it can
+already read.
