@@ -108,4 +108,47 @@ scoped to every application file this PR touches (`apps/api/src/view/**`, `data-
 suite 13/83, `tsc --noEmit` clean, `check-openapi.mjs` clean (142 operations, contract
 auto-merged correctly with no drift).
 
+---
+
+## Independent verification after a second, substantive branch update (2026-09-27)
+
+**Reviewed head:** `014b5250bfbfb57a42acc2a41dc0e2890a0bda23`
+**Reviewer:** Opus 5.5, fresh independent context (subagent `a8a07d35efcee0133`) — a
+genuine independent pass, not a self-declared mechanical reconfirmation, because this
+merge was NOT a no-op: `main` had advanced past PR #443 (workflow persistence), which
+independently generated its own migration numbered `0073`, colliding with this branch's
+own `0073_saved_view_user_preference.sql`. The orchestrating session resolved this by
+renumbering this branch's migration to `0074` (regenerated fresh via `drizzle-kit
+generate` against the merged `schema.ts`, confirmed byte-identical to the original
+`0073_saved_view_user_preference.sql`) and combining both sides' additions in five
+shared files (`database/index.ts`, `relations.ts`, `src/index.ts`, `policy-registry.ts`,
+`workspace-access-middleware.ts`).
+
+**Verdict: CLEAR.** Confirmed live: the view feature's own application code
+(`apps/api/src/view/**`, `tests/api-integration/view.test.ts`, `data-model.md`) has an
+EMPTY diff from the last-reviewed head (`46fff92`) — the merge changed nothing about the
+reviewed feature itself. Confirmed PR #443's own content survived whole (every diff
+between main's tip and this merge head is an addition, nothing altered or dropped).
+Confirmed the migration renumbering is sound: the regenerated `0074` migration and its
+snapshot are byte-identical to the original; migrating a fresh database through 0000-0074
+and, separately, upgrading a database already at main's tip through just 0074, produce
+byte-identical `saved_view`/`user_preference` schemas (4 check constraints, 2 primary
+keys, 4 foreign keys, 6 indexes, including both partial unique indexes); `drizzle-kit
+generate`/`check` both confirm no drift. Confirmed the five hand-spliced shared files have
+zero cross-wiring (the `savedView` case queries only `savedViewTable`, `workflow`/
+`workflowVersion` cases query only their own tables; both `viewApi` and `workflowApi` are
+correctly mounted, destructured and exported; both policy sources are registered).
+
+Full suites reproduced on this head: unit 60 files/494 tests, permissions 13 files/83
+tests, integration 106 files/1374 tests — all green, including `view.test.ts` and
+`workflow.test.ts` together. `tsc --noEmit` clean on all three tsconfigs. `check-openapi.mjs`
+clean, 147 operations, no drift. `check-events.mjs` clean, 33 keys.
+
+One informational note (not a finding): a throwaway lane database that already ran the
+pre-merge branch's own old `0073_saved_view` migration would, under drizzle's own
+timestamp-ordering rule, skip main's `0073_workflow` and fail applying `0074` — no
+deployed environment ran the unmerged branch, so nothing is actually affected.
+
+Clear to merge.
+
 Clear to merge.
