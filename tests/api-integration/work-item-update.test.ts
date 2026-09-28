@@ -1014,6 +1014,8 @@ describe("API integration: work item update (#23 second slice)", () => {
       createdBody.version,
     );
     expect(response.status).toBe(404);
+    const body = await response.text();
+    expect(body).toBe("Work item not found");
 
     const [row] = await db
       .select()

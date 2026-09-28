@@ -341,7 +341,7 @@ describe("API integration: work item watch/unwatch (#23 fourth slice)", () => {
     expect(response.status).toBe(404);
   });
 
-  it("issue #276: 404s on a soft-deleted work item, via the shared requireWorkItemReach guard (this route has no independent guard of its own)", async () => {
+  it("issue #276: 404s on a soft-deleted work item -- watchWorkItem's own resolveCallerPersonAndItem already checked deletedAt directly (unaffected by this diff), but not archivedAt, and now the shared requireWorkItemReach guard 404s before either runs", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     await givePersonProfile(creator.user.id);
     mockAuthenticatedSession(creator.user);
