@@ -3818,7 +3818,21 @@
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/WorkItemActivityRow"
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/WorkItemActivityStreamActivityItem"
+                },
+                {
+                  "$ref": "#/components/schemas/WorkItemActivityStreamCommentItem"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "kind",
+                "mapping": {
+                  "activity": "#/components/schemas/WorkItemActivityStreamActivityItem",
+                  "comment": "#/components/schemas/WorkItemActivityStreamCommentItem"
+                }
+              }
             }
           },
           "page": {
@@ -3830,7 +3844,7 @@
           "page"
         ]
       },
-      "WorkItemActivityRow": {
+      "WorkItemActivityStreamActivityItem": {
         "type": "object",
         "properties": {
           "id": {
@@ -3872,6 +3886,12 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "activity"
+            ]
           }
         },
         "required": [
@@ -3883,7 +3903,87 @@
           "field",
           "visibility",
           "workflowVersionId",
-          "createdAt"
+          "createdAt",
+          "kind"
+        ]
+      },
+      "WorkItemActivityStreamCommentItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workItemId": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "authorId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "actorType": {
+            "type": "string",
+            "description": "One of: person, automation, system, api_key."
+          },
+          "body": {
+            "description": "Tiptap document. Null once the comment is deleted (CA-18)."
+          },
+          "visibility": {
+            "type": "string",
+            "description": "One of: public, internal."
+          },
+          "activityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "editedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "comment"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "workItemId",
+          "workspaceId",
+          "authorId",
+          "actorType",
+          "visibility",
+          "activityId",
+          "editedAt",
+          "deletedAt",
+          "createdAt",
+          "updatedAt",
+          "kind"
         ]
       },
       "WorkItemUnassignment": {
@@ -15548,7 +15648,7 @@
           "Work items"
         ],
         "summary": "List work item activity",
-        "description": "The work item's activity journal (`WI-6`), newest first, cursor-paginated. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet.",
+        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet.",
         "parameters": [
           {
             "schema": {

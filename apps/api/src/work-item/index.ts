@@ -652,9 +652,13 @@ const listWorkItemActivityRoute = createRoute({
   tags: ["Work items"],
   summary: "List work item activity",
   description:
-    "The work item's activity journal (`WI-6`), newest first, cursor-paginated. Every " +
-    "row is returned regardless of `visibility` -- see the controller's own doc " +
-    "comment for why no caller-type filtering is applied yet.",
+    "The work item's combined activity/comment stream (`WI-6`, `comments-and-" +
+    'activity.md`\'s "one stream showing everything"), newest first, cursor-' +
+    'paginated. Each row in `data` carries `kind`: `"activity"` for an `activity` ' +
+    'table row (issue #292) or `"comment"` for a posted `comment` row (issue #452) -- ' +
+    "merged and sorted together, not two separate lists. Every row is returned " +
+    "regardless of `visibility` -- see the controller's own doc comment for why no " +
+    "caller-type filtering is applied yet.",
   middleware: [
     requireWorkItemReach(),
     requireWorkspaceCapability("work_item:read"),

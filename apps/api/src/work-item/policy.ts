@@ -277,9 +277,13 @@ export const workItemPolicies = {
     reach: "required",
   },
 
-  // Read a work item's activity (`WI-6`, issue #292). Same reach/capability shape as
-  // the plain `GET /api/work-items/{key}` route above -- an activity row's visibility
-  // (`CA-7`) is not filtered by this route today; see
+  // Read a work item's combined activity/comment stream (`WI-6`, issue #292; merged
+  // with posted `comment` rows by issue #452 -- see `comments-and-activity.md`'s "one
+  // stream showing everything", which this route's own capability/reach shape already
+  // matched before #452, since `rbac.md`'s Comments table has no capability of its own
+  // for reading either). Same reach/capability shape as the plain
+  // `GET /api/work-items/{key}` route above -- neither an activity row's nor a comment
+  // row's visibility (`CA-7`) is filtered by this route today; see
   // `controllers/list-work-item-activity.ts`'s own doc comment for why.
   "GET /api/work-items/{key}/activity": {
     capability: "work_item:read",

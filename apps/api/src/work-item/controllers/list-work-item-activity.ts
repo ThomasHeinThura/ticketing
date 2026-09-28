@@ -1,7 +1,11 @@
 import { and, desc, eq, lt, or, type SQL } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { activityTable, workItemTable } from "../../database/schema";
+import {
+  activityTable,
+  commentTable,
+  workItemTable,
+} from "../../database/schema";
 
 // #23's fourth slice: `GET /api/work-items/{key}/activity` (`work_item:read`, plus
 // reach). Issue #292 / the merged `activity.ts` module already built the WRITE side
@@ -9,31 +13,47 @@ import { activityTable, workItemTable } from "../../database/schema";
 // is purely the READ over already-recorded rows the task description pointed at, no new
 // write path.
 //
-// VISIBILITY: this route does NOT filter `internal` rows by caller type. Grepped the
-// rest of this codebase for a precedent first (per this project's own "verify against
-// source" rule) -- there is none: `comment/controllers/get-comments.ts` (the closest
-// analogous read, inherited from kaneo) returns every row unfiltered too, and no route
-// anywhere assembles a live customer-portal caller identity yet (`work-item/index.ts`'s
-// own file comment already notes this same gap for reach). `activity.visibility` exists
-// precisely so a FUTURE portal-facing read can filter by it (`CA-7`) -- this route is
-// gated by `requireWorkspaceCapability("work_item:read")`, today reachable only by a
-// staff workspace member, so there is no live caller for whom hiding `internal` rows
-// would currently matter. Flagged in the PR body as a narrower slice than a full
-// portal-safe projection, not a silent gap.
+// ISSUE #452: `comments-and-activity.md`'s "one stream showing everything" was never
+// actually true here -- this route only ever queried `activityTable`, never `comment`,
+// even though the spec's own `## API` section documents exactly one read route for the
+// combined stream (no separate `GET .../comments` is listed anywhere in that section) and
+// the "Screens" section already describes a single stream with a client-side filter
+// between "everything", "comments only" and "public only". So this is the fix, not a new
+// endpoint: every row below now also queries `commentTable` for the same work item and
+// merges the two result sets by `(created_at desc, id desc)`, tagging each with `kind`
+// ("activity" | "comment") so a caller can tell them apart and a client can still filter
+// client-side exactly as the spec describes.
 //
-// PAGINATION: opaque cursor over `(created_at desc, id desc)` -- NOT `(created_at desc,
-// seq desc)`, even though that is the schema's own declared index order
-// (`activity_work_item_id_created_at_idx`) and what the write side's own doc comment
-// most naturally continues -- `recordWorkItemActivity`'s doc comment is explicit that
-// `seq` must never appear in an API response (a deliberate exception to "surrogate ids
-// are never sequential" that depends entirely on that premise holding), and encoding it
-// even inside an opaque cursor token risks becoming exactly the leak that comment warns
-// against being tightened later. `id` (cuid2, globally unique) is not perfectly
-// correlated with insertion order the way `seq` is, but it IS a legitimate, collision-
-// free tie-break for two rows sharing one `created_at` -- correctness (no duplicate/gap
-// across a page boundary) holds either way; only the tie-break's ORDER differs from the
-// index's own, which does not change what a caller ever sees, only how millisecond-tied
-// rows interleave against each other within one page.
+// VISIBILITY: unchanged from before this issue -- this route does NOT filter `internal`
+// rows (activity OR comment) by caller type. Grepped the rest of this codebase for a
+// precedent first (per this project's own "verify against source" rule) -- there is
+// none: `comment/controllers/get-comments.ts` (the closest analogous read, inherited
+// from kaneo) returns every row unfiltered too, and no route anywhere assembles a live
+// customer-portal caller identity yet (`work-item/index.ts`'s own file comment already
+// notes this same gap for reach). `visibility` exists on both tables precisely so a
+// FUTURE portal-facing read can filter by it (`CA-7`/the visibility table in
+// `comments-and-activity.md`) -- this route is gated by
+// `requireWorkspaceCapability("work_item:read")`, today reachable only by a staff
+// workspace member, so there is no live caller for whom hiding `internal` rows would
+// currently matter. Flagged in the PR body as a narrower slice than a full portal-safe
+// projection, not a silent gap -- exactly the same call this route's own prior version
+// already made for activity rows alone.
+//
+// PAGINATION: opaque cursor over the MERGED `(created_at desc, id desc)` order --
+// unchanged shape from before (`WorkItemActivityCursor`), but the id tie-break may now
+// belong to either table's own cuid2 id space. Correctness of the merge: this fetches up
+// to `limit + 1` rows from EACH table (both filtered by the same cursor continuation,
+// both already sorted `created_at desc, id desc`), merge-sorts the two fetched sets by
+// that same order, and takes the first `limit` as the page. This is the standard
+// top-K-of-a-union-of-sorted-streams pattern: the true top-`limit` merged rows can
+// include at most `limit` rows from either single source, so fetching `limit + 1` from
+// each is always a superset of what the page needs, and `hasMore` (`mergedPool.length >
+// limit`) is exactly correct -- for any split of the remaining counts between the two
+// tables, `min(remainingA, limit+1) + min(remainingB, limit+1) > limit` if and only if
+// `remainingA + remainingB > limit` (proof: if both remainders individually stay at or
+// under `limit`, the sum fetched equals the true sum; the moment either remainder alone
+// reaches `limit + 1`, the fetched sum already exceeds `limit` on its own, and the true
+// total does too since it is at least that one table's remainder).
 
 export const DEFAULT_WORK_ITEM_ACTIVITY_LIMIT = 50;
 export const MAX_WORK_ITEM_ACTIVITY_LIMIT = 200;
@@ -68,6 +88,52 @@ export function decodeActivityCursor(raw: string): WorkItemActivityCursor {
   return { createdAt, id };
 }
 
+type ActivityStreamRow =
+  | {
+      kind: "activity";
+      id: string;
+      workItemId: string;
+      actorId: string | null;
+      actorType: string;
+      verb: string;
+      field: string | null;
+      oldValue: unknown;
+      newValue: unknown;
+      payload: unknown;
+      visibility: string;
+      workflowVersionId: string | null;
+      createdAt: Date;
+    }
+  | {
+      kind: "comment";
+      id: string;
+      workItemId: string;
+      workspaceId: string;
+      authorId: string | null;
+      actorType: string;
+      body: unknown;
+      visibility: string;
+      activityId: string | null;
+      editedAt: Date | null;
+      deletedAt: Date | null;
+      createdAt: Date;
+      updatedAt: Date;
+    };
+
+function cursorContinuationOn(
+  createdAtColumn:
+    | typeof activityTable.createdAt
+    | typeof commentTable.createdAt,
+  idColumn: typeof activityTable.id | typeof commentTable.id,
+  cursorDate: Date,
+  cursorId: string,
+): SQL | undefined {
+  return or(
+    lt(createdAtColumn, cursorDate),
+    and(eq(createdAtColumn, cursorDate), lt(idColumn, cursorId)),
+  );
+}
+
 export async function listWorkItemActivity(
   key: string,
   workspaceId: string,
@@ -81,51 +147,85 @@ export async function listWorkItemActivity(
   }
 
   const limit = options.limit ?? DEFAULT_WORK_ITEM_ACTIVITY_LIMIT;
+  const fetchLimit = limit + 1;
 
-  const conditions: SQL[] = [eq(activityTable.workItemId, item.id)];
-  if (options.cursor) {
-    const cursor = decodeActivityCursor(options.cursor);
-    const cursorDate = new Date(cursor.createdAt);
-    // Continuation clause matching this query's own order (`created_at desc, id
-    // desc`): strictly older rows, or same-instant rows with a strictly smaller id
-    // (the descending tie-break) -- the OR-expansion, same shape
-    // `list-query.ts`'s `nonDueDateCursorCondition` uses and explains why a row-value
-    // tuple compare would be wrong here (the tie-break's direction cannot be assumed
-    // to match the primary column's).
-    const continuation = or(
-      lt(activityTable.createdAt, cursorDate),
-      and(
-        eq(activityTable.createdAt, cursorDate),
-        lt(activityTable.id, cursor.id),
-      ),
+  const cursor = options.cursor
+    ? decodeActivityCursor(options.cursor)
+    : undefined;
+  const cursorDate = cursor ? new Date(cursor.createdAt) : undefined;
+
+  const activityConditions: SQL[] = [eq(activityTable.workItemId, item.id)];
+  const commentConditions: SQL[] = [eq(commentTable.workItemId, item.id)];
+  if (cursor && cursorDate) {
+    const activityContinuation = cursorContinuationOn(
+      activityTable.createdAt,
+      activityTable.id,
+      cursorDate,
+      cursor.id,
     );
-    if (continuation) {
-      conditions.push(continuation);
-    }
+    if (activityContinuation) activityConditions.push(activityContinuation);
+    const commentContinuation = cursorContinuationOn(
+      commentTable.createdAt,
+      commentTable.id,
+      cursorDate,
+      cursor.id,
+    );
+    if (commentContinuation) commentConditions.push(commentContinuation);
   }
 
-  const rows = await db
-    .select({
-      id: activityTable.id,
-      workItemId: activityTable.workItemId,
-      actorId: activityTable.actorId,
-      actorType: activityTable.actorType,
-      verb: activityTable.verb,
-      field: activityTable.field,
-      oldValue: activityTable.oldValue,
-      newValue: activityTable.newValue,
-      payload: activityTable.payload,
-      visibility: activityTable.visibility,
-      workflowVersionId: activityTable.workflowVersionId,
-      createdAt: activityTable.createdAt,
-    })
-    .from(activityTable)
-    .where(and(...conditions))
-    .orderBy(desc(activityTable.createdAt), desc(activityTable.id))
-    .limit(limit + 1);
+  const [activityRows, commentRows] = await Promise.all([
+    db
+      .select({
+        id: activityTable.id,
+        workItemId: activityTable.workItemId,
+        actorId: activityTable.actorId,
+        actorType: activityTable.actorType,
+        verb: activityTable.verb,
+        field: activityTable.field,
+        oldValue: activityTable.oldValue,
+        newValue: activityTable.newValue,
+        payload: activityTable.payload,
+        visibility: activityTable.visibility,
+        workflowVersionId: activityTable.workflowVersionId,
+        createdAt: activityTable.createdAt,
+      })
+      .from(activityTable)
+      .where(and(...activityConditions))
+      .orderBy(desc(activityTable.createdAt), desc(activityTable.id))
+      .limit(fetchLimit),
+    db
+      .select({
+        id: commentTable.id,
+        workItemId: commentTable.workItemId,
+        workspaceId: commentTable.workspaceId,
+        authorId: commentTable.authorId,
+        actorType: commentTable.actorType,
+        body: commentTable.body,
+        visibility: commentTable.visibility,
+        activityId: commentTable.activityId,
+        editedAt: commentTable.editedAt,
+        deletedAt: commentTable.deletedAt,
+        createdAt: commentTable.createdAt,
+        updatedAt: commentTable.updatedAt,
+      })
+      .from(commentTable)
+      .where(and(...commentConditions))
+      .orderBy(desc(commentTable.createdAt), desc(commentTable.id))
+      .limit(fetchLimit),
+  ]);
 
-  const hasMore = rows.length > limit;
-  const page = hasMore ? rows.slice(0, limit) : rows;
+  const merged: ActivityStreamRow[] = [
+    ...activityRows.map((row) => ({ kind: "activity" as const, ...row })),
+    ...commentRows.map((row) => ({ kind: "comment" as const, ...row })),
+  ].sort((a, b) => {
+    const byTime = b.createdAt.getTime() - a.createdAt.getTime();
+    if (byTime !== 0) return byTime;
+    if (a.id === b.id) return 0;
+    return a.id < b.id ? 1 : -1; // descending id tie-break, matching each source query
+  });
+
+  const hasMore = merged.length > limit;
+  const page = hasMore ? merged.slice(0, limit) : merged;
   const lastRow = page.at(-1);
 
   return {

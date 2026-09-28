@@ -1,4 +1,5 @@
 import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
+import { commentSchema } from "./comment-response";
 
 // Plain (unregistered) shape shared by `workItemSchema` and `workItemDetailSchema`, so the
 // detail schema extends this shape rather than the already-`.openapi()`-registered
@@ -326,9 +327,32 @@ export const workItemActivityRowSchema = z
   })
   .openapi("WorkItemActivityRow");
 
+// Issue #452: `comments-and-activity.md`'s "one stream showing everything" -- this route
+// was `activity`-only until now, even though the spec's own `## API` section never
+// documented a separate comments-read route, only this one. So the fix is here, not a
+// new endpoint: every item in `data` now carries a `kind` discriminator, `"activity"` for
+// an `activityTable` row (unchanged shape, see `workItemActivityRowSchema` immediately
+// above) or `"comment"` for a `commentTable` row (same shape `POST .../comments` already
+// returns, `comment-response.ts`'s `commentSchema`). Built via `.shape` spread rather than
+// `.extend()` on either registered schema, matching `workItemDetailSchema`'s own comment
+// above about why extending an already-`.openapi()`-named schema emits an `allOf` ref
+// that breaks additive-diff tooling -- both item schemas here are fresh object types.
+export const workItemActivityStreamActivityItemSchema = z
+  .object({ ...workItemActivityRowSchema.shape, kind: z.literal("activity") })
+  .openapi("WorkItemActivityStreamActivityItem");
+
+export const workItemActivityStreamCommentItemSchema = z
+  .object({ ...commentSchema.shape, kind: z.literal("comment") })
+  .openapi("WorkItemActivityStreamCommentItem");
+
+export const workItemActivityStreamItemSchema = z.discriminatedUnion("kind", [
+  workItemActivityStreamActivityItemSchema,
+  workItemActivityStreamCommentItemSchema,
+]);
+
 export const workItemActivityListResponseSchema = z
   .object({
-    data: z.array(workItemActivityRowSchema),
+    data: z.array(workItemActivityStreamItemSchema),
     page: workItemPageSchema,
   })
   .openapi("WorkItemActivityListResponse");

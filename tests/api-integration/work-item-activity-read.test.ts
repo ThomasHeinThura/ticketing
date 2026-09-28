@@ -2,6 +2,11 @@
  * `GET /api/work-items/{key}/activity` (`docs/03-features/work-items.md` `WI-6`, issue
  * #292) -- #23's fourth slice, the READ side over the already-merged write path
  * (`activity.ts`, wired into create/update/assign).
+ *
+ * Issue #452 extended this same route to also merge in posted `comment` rows (see
+ * `docs/03-features/comments-and-activity.md`'s "one stream showing everything") -- the
+ * tests below that name #452 cover that merge specifically; everything above them is
+ * unchanged from #292.
  */
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -100,6 +105,25 @@ function activityRequest(
   query = "",
 ) {
   return app.request(`/api/work-items/${key}/activity${query}`);
+}
+
+function postCommentRequest(
+  app: ReturnType<typeof createApp>["app"],
+  key: string,
+  body: Record<string, unknown>,
+) {
+  return app.request(`/api/work-items/${key}/comments`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+function deleteCommentRequest(
+  app: ReturnType<typeof createApp>["app"],
+  id: string,
+) {
+  return app.request(`/api/comments/${id}`, { method: "DELETE" });
 }
 
 describe("API integration: work item activity read (#23 fourth slice)", () => {
@@ -263,5 +287,176 @@ describe("API integration: work item activity read (#23 fourth slice)", () => {
 
     const response = await activityRequest(app, created.key);
     expect(response.status).toBe(404);
+  });
+
+  // Issue #452: `GET /api/work-items/{key}/activity` merges in posted `comment` rows,
+  // matching `comments-and-activity.md`'s "one stream showing everything" -- there is no
+  // separate `GET .../comments` route (the spec's own `## API` section never documented
+  // one), so the fix lives here.
+  describe("#452: comment rows merged into the activity stream", () => {
+    it("returns a posted comment tagged kind: comment, interleaved with activity by time", async () => {
+      const { creator, project, type } = await setupProjectWithDefaultState();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const created = (await (
+        await createWorkItemRequest(app, project.id, {
+          typeId: type.id,
+          title: "Original",
+        })
+      ).json()) as { key: string; id: string; version: number };
+
+      await updateWorkItemRequest(
+        app,
+        created.key,
+        { title: "Edited" },
+        created.version,
+      );
+
+      const commentResponse = await postCommentRequest(app, created.key, {
+        body: { type: "doc", content: [] },
+        visibility: "internal",
+      });
+      expect(commentResponse.status).toBe(200);
+      const comment = (await commentResponse.json()) as { id: string };
+
+      const response = await activityRequest(app, created.key);
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        data: Array<Record<string, unknown>>;
+      };
+
+      const activityKinds = new Set(body.data.map((row) => row.kind));
+      expect(activityKinds.has("activity")).toBe(true);
+      expect(activityKinds.has("comment")).toBe(true);
+
+      const commentRow = body.data.find((row) => row.id === comment.id);
+      expect(commentRow).toBeDefined();
+      expect(commentRow?.kind).toBe("comment");
+      expect(commentRow?.workItemId).toBe(created.id);
+      expect(commentRow?.visibility).toBe("internal");
+
+      // Newest first, across both sources: the comment was posted after the title
+      // edit, so it comes first in the merged stream.
+      expect(body.data[0]?.id).toBe(comment.id);
+    });
+
+    it("a tombstoned (deleted) comment still appears, body null", async () => {
+      const { creator, project, type } = await setupProjectWithDefaultState();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const created = (await (
+        await createWorkItemRequest(app, project.id, {
+          typeId: type.id,
+          title: "Has a deleted comment",
+        })
+      ).json()) as { key: string };
+
+      const commentResponse = await postCommentRequest(app, created.key, {
+        body: { type: "doc", content: [] },
+        visibility: "internal",
+      });
+      const comment = (await commentResponse.json()) as { id: string };
+      await deleteCommentRequest(app, comment.id);
+
+      const response = await activityRequest(app, created.key);
+      const body = (await response.json()) as {
+        data: Array<Record<string, unknown>>;
+      };
+      const commentRow = body.data.find((row) => row.id === comment.id);
+      expect(commentRow).toBeDefined();
+      expect(commentRow?.kind).toBe("comment");
+      expect(commentRow?.body).toBeNull();
+      expect(commentRow?.deletedAt).not.toBeNull();
+    });
+
+    it("pagination: limit=1 pages through a mix of activity and comment rows without duplicates or gaps", async () => {
+      const { creator, project, type } = await setupProjectWithDefaultState();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const created = (await (
+        await createWorkItemRequest(app, project.id, {
+          typeId: type.id,
+          title: "Mixed stream",
+        })
+      ).json()) as { key: string; version: number };
+
+      await updateWorkItemRequest(
+        app,
+        created.key,
+        { title: "Edit 1" },
+        created.version,
+      );
+      await postCommentRequest(app, created.key, {
+        body: { type: "doc", content: [] },
+        visibility: "internal",
+      });
+      await updateWorkItemRequest(
+        app,
+        created.key,
+        { title: "Edit 2" },
+        created.version + 1,
+      );
+      await postCommentRequest(app, created.key, {
+        body: { type: "doc", content: [] },
+        visibility: "public",
+      });
+
+      const seenIds = new Set<string>();
+      const seenKinds = new Set<string>();
+      let cursor: string | null = null;
+      let hasMore = true;
+      let pages = 0;
+      while (hasMore) {
+        pages += 1;
+        expect(pages).toBeLessThan(30); // safety valve against an infinite loop
+        const query = cursor
+          ? `?limit=1&cursor=${encodeURIComponent(cursor)}`
+          : "?limit=1";
+        const response = await activityRequest(app, created.key, query);
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as {
+          data: Array<{ id: string; kind: string }>;
+          page: { hasMore: boolean; nextCursor: string | null };
+        };
+        expect(body.data).toHaveLength(1);
+        for (const row of body.data) {
+          expect(seenIds.has(row.id)).toBe(false);
+          seenIds.add(row.id);
+          seenKinds.add(row.kind);
+        }
+        hasMore = body.page.hasMore;
+        cursor = body.page.nextCursor;
+      }
+      // created + 2 title edits (activity) + 2 comments = 5 rows minimum.
+      expect(seenIds.size).toBeGreaterThanOrEqual(5);
+      expect(seenKinds.has("activity")).toBe(true);
+      expect(seenKinds.has("comment")).toBe(true);
+    });
+
+    it("cross-workspace 404 still applies once comments exist on the item", async () => {
+      const { creator, project, type } = await setupProjectWithDefaultState();
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+
+      const created = (await (
+        await createWorkItemRequest(app, project.id, {
+          typeId: type.id,
+          title: "Not yours, with a comment",
+        })
+      ).json()) as { key: string };
+      await postCommentRequest(app, created.key, {
+        body: { type: "doc", content: [] },
+        visibility: "internal",
+      });
+
+      const stranger = await createWorkspaceMember({ role: "admin" });
+      mockAuthenticatedSession(stranger.user);
+
+      const response = await activityRequest(app, created.key);
+      expect(response.status).toBe(404);
+    });
   });
 });
