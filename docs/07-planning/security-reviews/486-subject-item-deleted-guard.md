@@ -83,3 +83,29 @@ behavior described in the review prompt. Not independently re-run in a fresh che
 this Opus session; the orchestrating session's own local test run (13/13 pass with the fix,
 confirmed to fail without it) was taken as given and cross-checked for internal consistency
 rather than re-executed.
+
+---
+
+## Mechanical reconfirmation after merging main past PR #483 (9012c75c)
+
+**Confirmed by:** the orchestrating session, directly — not a fresh Opus pass.
+
+**Why this needed more than a disjoint-file check:** PR #483 (issue #481's parent-side
+guard, merged `bbc50708`) touches the same file this PR changes,
+`apps/api/src/work-item/controllers/set-work-item-parent.ts` — a real content overlap, not
+just two branches touching unrelated files. This branch was updated with `main` (merge
+commit `9012c75c`); the merge was automatic, no textual conflict (the two guards sit on
+different lines of the same function).
+
+**Verified beyond a diff check:** confirmed via direct grep that both guards are present in
+the merged file — `if (!item || item.archivedAt || item.deletedAt)` (this PR's subject-item
+guard, line 126) and `if (!parent || parent.archivedAt || parent.deletedAt)` (PR #483's
+parent guard, line 154). Ran the real test suite in a fresh worktree against a private
+Postgres database (`wt487_test` on `td-lane-pg`, dropped afterward):
+`work-item-hierarchy.test.ts` — **15/15 pass**, covering both PRs' regression tests together.
+
+**Verdict:** both reviews above (ordinary and Opus, at `44f4548f`) remain valid at `9012c75c`.
+This is a stronger basis than the usual disjoint-file argument: it's a real, passing test
+run of the actual merged code.
+
+**Reviewed head:** `9012c75c49acacb549df5ba16017c1a6f17cc1f0`
