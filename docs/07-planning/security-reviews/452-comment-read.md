@@ -298,3 +298,24 @@ checked the oasdiff contract. This round did.
 **Verdict: CLEAR.** No blocking findings at `29287e787f2267230df0af1aab74781f4b342ed8`. This
 closes the mandatory Opus security review for #452 at this head. Any new commit, rebase,
 or merge of main needs a fresh reviewed-head confirmation.
+
+## Mechanical reconfirmation after merging `main` past PR #460 and PR #461 (commit `e8930b1`)
+
+**Reviewed head:** `e8930b16e47939bab610df41561bacfcc456df2c`
+
+`main` had moved twelve commits ahead since this branch's own base: PR #461 (issue #400,
+shadow-mode permissions) and PR #460 (issue #421, the CI comment-stripping tokenizer
+rewrite), touching `apps/api/src/permissions/**`, four unrelated middleware files, and
+`scripts/ci/**` — none of it under `apps/api/src/work-item/controllers/**` or anything
+this PR's own four review rounds examined. `git diff --stat` confirmed the merge itself
+touches exactly those files plus both PRs' own security-review docs; nothing in the
+route this PR built.
+
+Full solo suites re-run fresh after the merge (isolated database `pr459_merge_test`):
+unit 63 files/518 tests, permissions 13 files/83 tests, and this PR's own integration
+suite (`work-item-activity-read.test.ts`) 12/12 — all green. `tsc --noEmit` clean. Per
+the same precedent used throughout this session for a trivial, disjoint main-merge,
+this is a mechanical reconfirmation, not a fresh Opus round: the round above (CLEAR)
+still applies at `e8930b1`.
+
+**Status: CLEAR, merge-ready.**
