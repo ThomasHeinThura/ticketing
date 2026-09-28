@@ -25,20 +25,28 @@ services:
       NODE_ENV: development
       TASKDESK_BOOTSTRAP_ADMIN_EMAIL: ${TASKDESK_BOOTSTRAP_ADMIN_EMAIL:-}
     labels:
+      # Service/router names are prefixed `taskdesk-local` (not the bare
+      # `taskdesk` reused across every overlay before this) because Traefik's
+      # Docker provider discovers every `traefik.enable=true` container on the
+      # Docker host it runs against — it is not scoped to one Compose project
+      # or network. Two stacks on the same host that both defined a service
+      # named `taskdesk` would merge into one Traefik service with both
+      # containers as backends, load-balancing into an unreachable one.
+      # docs/05-operations/traefik-and-domains.md § Environment-prefixed names
       - traefik.enable=true
       - traefik.docker.network=taskdesk
-      - traefik.http.services.taskdesk.loadbalancer.server.port=${TASKDESK_PORT:-5173}
-      - traefik.http.services.taskdesk.loadbalancer.healthcheck.path=/api/public/health/ready
-      - traefik.http.routers.taskdesk-agent.rule=Host(`ticket.${DOMAIN:-localhost}`)
-      - traefik.http.routers.taskdesk-agent.entrypoints=websecure
-      - traefik.http.routers.taskdesk-agent.tls=true
-      - traefik.http.routers.taskdesk-agent.service=taskdesk
-      - traefik.http.routers.taskdesk-agent.middlewares=security-headers@file,compress@file,rate-limit@file
-      - traefik.http.routers.taskdesk-portal.rule=Host(`portal.${DOMAIN:-localhost}`)
-      - traefik.http.routers.taskdesk-portal.entrypoints=websecure
-      - traefik.http.routers.taskdesk-portal.tls=true
-      - traefik.http.routers.taskdesk-portal.service=taskdesk
-      - traefik.http.routers.taskdesk-portal.middlewares=security-headers@file,compress@file,rate-limit@file
+      - traefik.http.services.taskdesk-local.loadbalancer.server.port=${TASKDESK_PORT:-5173}
+      - traefik.http.services.taskdesk-local.loadbalancer.healthcheck.path=/api/public/health/ready
+      - traefik.http.routers.taskdesk-local-agent.rule=Host(`ticket.${DOMAIN:-localhost}`)
+      - traefik.http.routers.taskdesk-local-agent.entrypoints=websecure
+      - traefik.http.routers.taskdesk-local-agent.tls=true
+      - traefik.http.routers.taskdesk-local-agent.service=taskdesk-local
+      - traefik.http.routers.taskdesk-local-agent.middlewares=security-headers@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-local-portal.rule=Host(`portal.${DOMAIN:-localhost}`)
+      - traefik.http.routers.taskdesk-local-portal.entrypoints=websecure
+      - traefik.http.routers.taskdesk-local-portal.tls=true
+      - traefik.http.routers.taskdesk-local-portal.service=taskdesk-local
+      - traefik.http.routers.taskdesk-local-portal.middlewares=security-headers@file,compress@file,rate-limit@file
 
   postgres:
     # Published so psql, a GUI client and the integration tests can reach it.
@@ -74,12 +82,12 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=taskdesk
-      - traefik.http.services.taskdesk-files.loadbalancer.server.port=8333
-      - traefik.http.routers.taskdesk-files.rule=Host(`files.${DOMAIN:-localhost}`)
-      - traefik.http.routers.taskdesk-files.entrypoints=websecure
-      - traefik.http.routers.taskdesk-files.tls=true
-      - traefik.http.routers.taskdesk-files.service=taskdesk-files
-      - traefik.http.routers.taskdesk-files.middlewares=files-headers@file
+      - traefik.http.services.taskdesk-local-files.loadbalancer.server.port=8333
+      - traefik.http.routers.taskdesk-local-files.rule=Host(`files.${DOMAIN:-localhost}`)
+      - traefik.http.routers.taskdesk-local-files.entrypoints=websecure
+      - traefik.http.routers.taskdesk-local-files.tls=true
+      - traefik.http.routers.taskdesk-local-files.service=taskdesk-local-files
+      - traefik.http.routers.taskdesk-local-files.middlewares=files-headers@file
 
 volumes:
   mailpit-data:

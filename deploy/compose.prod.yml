@@ -35,24 +35,33 @@ services:
       # ---------------------------------------------------------------
       TASKDESK_TRUST_PROXY: "1"
     labels:
+      # Service/router names are prefixed `taskdesk-prod` (not the bare
+      # `taskdesk` reused across every overlay before this) because Traefik's
+      # Docker provider discovers every `traefik.enable=true` container on the
+      # Docker host it runs against — it is not scoped to one Compose project
+      # or network. A stray container from another stack (local dev, UAT)
+      # sharing this same host's Traefik would otherwise merge into one
+      # Traefik service with both containers as backends, load-balancing into
+      # one that is unreachable from this Traefik's own network.
+      # docs/05-operations/traefik-and-domains.md § Environment-prefixed names
       - traefik.enable=true
       - traefik.docker.network=proxy
-      - traefik.http.services.taskdesk.loadbalancer.server.port=${TASKDESK_PORT:-5173}
-      - traefik.http.services.taskdesk.loadbalancer.healthcheck.path=/api/public/health/ready
+      - traefik.http.services.taskdesk-prod.loadbalancer.server.port=${TASKDESK_PORT:-5173}
+      - traefik.http.services.taskdesk-prod.loadbalancer.healthcheck.path=/api/public/health/ready
       # agent
-      - traefik.http.routers.taskdesk-agent.rule=Host(`ticket.${DOMAIN:?DOMAIN is required}`)
-      - traefik.http.routers.taskdesk-agent.entrypoints=websecure
-      - traefik.http.routers.taskdesk-agent.tls=true
-      - traefik.http.routers.taskdesk-agent.tls.certresolver=letsencrypt
-      - traefik.http.routers.taskdesk-agent.service=taskdesk
-      - traefik.http.routers.taskdesk-agent.middlewares=security-headers${TASKDESK_HSTS_PRELOAD:+-preload}@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-prod-agent.rule=Host(`ticket.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.taskdesk-prod-agent.entrypoints=websecure
+      - traefik.http.routers.taskdesk-prod-agent.tls=true
+      - traefik.http.routers.taskdesk-prod-agent.tls.certresolver=letsencrypt
+      - traefik.http.routers.taskdesk-prod-agent.service=taskdesk-prod
+      - traefik.http.routers.taskdesk-prod-agent.middlewares=security-headers${TASKDESK_HSTS_PRELOAD:+-preload}@file,compress@file,rate-limit@file
       # portal — separate cookie scope, separate identity providers, no agent code
-      - traefik.http.routers.taskdesk-portal.rule=Host(`portal.${DOMAIN:?DOMAIN is required}`)
-      - traefik.http.routers.taskdesk-portal.entrypoints=websecure
-      - traefik.http.routers.taskdesk-portal.tls=true
-      - traefik.http.routers.taskdesk-portal.tls.certresolver=letsencrypt
-      - traefik.http.routers.taskdesk-portal.service=taskdesk
-      - traefik.http.routers.taskdesk-portal.middlewares=security-headers${TASKDESK_HSTS_PRELOAD:+-preload}@file,compress@file,rate-limit@file
+      - traefik.http.routers.taskdesk-prod-portal.rule=Host(`portal.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.taskdesk-prod-portal.entrypoints=websecure
+      - traefik.http.routers.taskdesk-prod-portal.tls=true
+      - traefik.http.routers.taskdesk-prod-portal.tls.certresolver=letsencrypt
+      - traefik.http.routers.taskdesk-prod-portal.service=taskdesk-prod
+      - traefik.http.routers.taskdesk-prod-portal.middlewares=security-headers${TASKDESK_HSTS_PRELOAD:+-preload}@file,compress@file,rate-limit@file
     networks:
       - taskdesk
       - proxy
@@ -87,13 +96,13 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      - traefik.http.services.taskdesk-files.loadbalancer.server.port=8333
-      - traefik.http.routers.taskdesk-files.rule=Host(`files.${DOMAIN:?DOMAIN is required}`)
-      - traefik.http.routers.taskdesk-files.entrypoints=websecure
-      - traefik.http.routers.taskdesk-files.tls=true
-      - traefik.http.routers.taskdesk-files.tls.certresolver=letsencrypt
-      - traefik.http.routers.taskdesk-files.service=taskdesk-files
-      - traefik.http.routers.taskdesk-files.middlewares=files-headers@file
+      - traefik.http.services.taskdesk-prod-files.loadbalancer.server.port=8333
+      - traefik.http.routers.taskdesk-prod-files.rule=Host(`files.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.taskdesk-prod-files.entrypoints=websecure
+      - traefik.http.routers.taskdesk-prod-files.tls=true
+      - traefik.http.routers.taskdesk-prod-files.tls.certresolver=letsencrypt
+      - traefik.http.routers.taskdesk-prod-files.service=taskdesk-prod-files
+      - traefik.http.routers.taskdesk-prod-files.middlewares=files-headers@file
     networks:
       - taskdesk
       - proxy
