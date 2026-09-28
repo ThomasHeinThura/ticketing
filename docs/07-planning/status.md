@@ -1,8 +1,53 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-28 orchestrator snapshot (5) — `main` at `78b99076` (#487, issue #486's fix, merged).
-Prior snapshot (4), immediately below, is stale by 8 merges and kept only as history — do not
-act on its "open PRs" list.**
+**2026-09-28 orchestrator snapshot (6) — `main` at `0b95ed08` (#489, issue #488's fix, merged).
+Prior snapshot (5), immediately below, is stale by one merge and kept only as history.**
+
+Merged since snapshot (5): **#489** (issue #488, `detach-work-item-parent.ts`'s subject-item
+guard — ordinary review CLEAR, Opus review CLEAR WITH FINDINGS non-blocking, both reconfirmed
+past two intervening `main` merges including one real one-line test-file import conflict,
+resolved by hand and re-verified: 17/17). This closes the last of #276/#480/#481/#486/#488 in
+the original TOCTOU sweep.
+
+**Issue #490** (`transition-work-item.ts`/`assign-work-item.ts`/`unassign-work-item.ts`) is
+implemented as **PR #491**: ordinary review CLEAR WITH FINDINGS, Opus review CLEAR WITH
+FINDINGS, both recorded; CI running as of this snapshot, not yet merged.
+
+**New issue #493 filed**, consolidating five-plus TOCTOU/liveness instances the #490 Opus
+review swept up (`presign-attachment.ts`/`complete-attachment.ts` have no liveness re-check;
+none of #490's three routes re-checks the work item's *project* soft-delete in-transaction,
+unlike `update-work-item.ts`'s #202 freeze) plus the two `create-comment.ts`/`watch-work-item.ts`
+instances #489's review already found — recommending a shared `assertWorkItemStillLive(tx,
+item)` helper now that the count has passed five, per the "stop patching, change altitude"
+rule. Not yet started.
+
+**Two independent external status/reviewer reports were received and triaged this session**
+(pasted by Thomas, one broad executive-status report and one detailed follow-up with specific
+recommendations). Cross-checked against live GitHub/git state rather than trusted at face
+value. Findings: the broad report's facts were accurate as of its own timestamp but had
+already gone stale by the time it was read (it predates PR #487's merge); the detailed
+follow-up's specific claims (PR #491's CI state and why, the #489/#491 review states, the
+`v2.0.1` release's `prerelease: false` flag, issues #329/#254/#10 all still open) were verified
+directly and are real. **Real, undecided items surfaced and put to Thomas** (not decided
+unilaterally — see `## Blocked` and the newest decision-log entries once recorded):
+
+- **#10's gate-scope semantics** — the report's proposed rule ("a gate applicable to
+  functionality that exists now must be enabled; a future-stage gate activates when its
+  prerequisite lands") is a reasonable default, but is a scope decision this file's own control-
+  plane rules reserve for Thomas, not an orchestrator judgment call.
+- **#329** — a cheap, already-drafted ownership acknowledgement blocking every P2 API slice.
+  Asked Thomas directly rather than assumed.
+- **#254** — the one route with no honest policy-kind fit; needs Thomas's design call, not a
+  best-guess classification.
+- **Release/version governance** — `package.json` says `2.22.0` (kaneo's own numbering, never
+  reset), the release plan says TaskDesk should start at `2.0.0-alpha.1`, and GitHub has a
+  published, non-prerelease `v2.0.1` — three different version stories running at once, on a
+  product that has not passed its P0 gates. Modifying a public GitHub release is a "publish/
+  modify public content" action this session does not take without explicit sign-off, so this
+  was surfaced, not touched.
+
+**Not changed by this snapshot:** the Oct 3 roadmap date — Thomas confirmed in chat the
+calendar isn't strict and to keep going; no document edit was requested or made for that.
 
 Merged since snapshot (4), each with every required check green, ordinary + Opus review
 recorded at the merged head: **#470/#475/#476/#479** (four small CI-script fixes — word-boundary

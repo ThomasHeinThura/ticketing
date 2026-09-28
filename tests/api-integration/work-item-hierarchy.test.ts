@@ -11,6 +11,7 @@ import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import detachWorkItemParent from "../../apps/api/src/work-item/controllers/detach-work-item-parent";
 import setWorkItemParent from "../../apps/api/src/work-item/controllers/set-work-item-parent";
 import {
   ancestorChain,
@@ -914,5 +915,109 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
       const chain = await ancestorChain(db, row.id);
       expect(chain.length).toBeLessThanOrEqual(5);
     }
+  });
+
+  it("#488: detachWorkItemParent itself refuses a soft-deleted SUBJECT item directly, not only requireWorkItemReach (same probe shape as #486's own test for set-work-item-parent.ts)", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const parent = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Parent",
+      })
+    ).json()) as CreatedWorkItem;
+    const deletedItem = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Soon deleted (subject)",
+      })
+    ).json()) as CreatedWorkItem;
+
+    await setParentRequest(app, deletedItem.key, parent.key);
+
+    const [rowBeforeDelete] = await db
+      .select({ parentId: schema.workItemTable.parentId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, deletedItem.key));
+    expect(rowBeforeDelete?.parentId).not.toBeNull();
+
+    await db
+      .update(schema.workItemTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(schema.workItemTable.key, deletedItem.key));
+
+    let deletedError: unknown;
+    try {
+      await detachWorkItemParent(
+        deletedItem.key,
+        creator.workspace.id,
+        creator.user.id,
+        "person",
+      );
+    } catch (error) {
+      deletedError = error;
+    }
+    expect(deletedError).toBeInstanceOf(HTTPException);
+    expect((deletedError as HTTPException).status).toBe(404);
+
+    const [deletedRow] = await db
+      .select({ parentId: schema.workItemTable.parentId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, deletedItem.key));
+    expect(deletedRow?.parentId).toBe(rowBeforeDelete?.parentId);
+  });
+
+  it("#488: detachWorkItemParent itself refuses an archived SUBJECT item directly, not only requireWorkItemReach", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const parent = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Parent",
+      })
+    ).json()) as CreatedWorkItem;
+    const archivedItem = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Soon archived (subject)",
+      })
+    ).json()) as CreatedWorkItem;
+
+    await setParentRequest(app, archivedItem.key, parent.key);
+
+    const [rowBeforeArchive] = await db
+      .select({ parentId: schema.workItemTable.parentId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, archivedItem.key));
+    expect(rowBeforeArchive?.parentId).not.toBeNull();
+
+    await db
+      .update(schema.workItemTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.workItemTable.key, archivedItem.key));
+
+    let archivedError: unknown;
+    try {
+      await detachWorkItemParent(
+        archivedItem.key,
+        creator.workspace.id,
+        creator.user.id,
+        "person",
+      );
+    } catch (error) {
+      archivedError = error;
+    }
+    expect(archivedError).toBeInstanceOf(HTTPException);
+    expect((archivedError as HTTPException).status).toBe(404);
+
+    const [archivedRow] = await db
+      .select({ parentId: schema.workItemTable.parentId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, archivedItem.key));
+    expect(archivedRow?.parentId).toBe(rowBeforeArchive?.parentId);
   });
 });
