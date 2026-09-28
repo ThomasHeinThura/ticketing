@@ -494,7 +494,11 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       .where(eq(schema.attachmentTable.id, presigned.attachmentId));
     expect(readyRow?.state).toBe("ready");
     expect(readyRow?.objectKey).not.toBe(undefined);
-    expect(readyRow?.objectKey?.endsWith("/final/photo.png")).toBe(true);
+    // N5 security-review fix (2026-09-28): the final key now embeds a fresh per-call
+    // token (`toFinalAttachmentObjectKey`), so it is no longer a fixed, predictable
+    // filename -- only the shape (a sibling "final" directory, original filename kept
+    // as a suffix) is guaranteed.
+    expect(readyRow?.objectKey).toMatch(/\/final\/[A-Za-z0-9]+-photo\.png$/);
 
     // The exact replay the review used: the presigned URL (same key, same HMAC token)
     // has not expired, so the write route itself still accepts a second PUT -- what

@@ -107,9 +107,20 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
   // ever reading its bytes.
   if (contentLength === undefined || contentLength > maxBytes) {
     await deleteStorageObject(finalObjectKey).catch(() => {});
+    // N5 security-review fix (2026-09-28): guard this DELETE the same way the `ready`
+    // UPDATE below is guarded -- without `state = 'pending'`, a losing call whose own
+    // check fails here could delete the ROW a concurrent call already marked `ready`
+    // (the final object key is unique per call as of the fix above, so this no longer
+    // touches another call's object, but it could still erase another call's already-
+    // successful row without this).
     await db
       .delete(attachmentTable)
-      .where(eq(attachmentTable.id, attachmentId));
+      .where(
+        and(
+          eq(attachmentTable.id, attachmentId),
+          eq(attachmentTable.state, "pending"),
+        ),
+      );
     throw new HTTPException(400, {
       message:
         contentLength === undefined
@@ -120,9 +131,15 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
 
   if (!magicBytesMatchDeclaredMime(header, attachment.mimeType)) {
     await deleteStorageObject(finalObjectKey).catch(() => {});
+    // N5 security-review fix (2026-09-28): same guard as the size-check delete above.
     await db
       .delete(attachmentTable)
-      .where(eq(attachmentTable.id, attachmentId));
+      .where(
+        and(
+          eq(attachmentTable.id, attachmentId),
+          eq(attachmentTable.state, "pending"),
+        ),
+      );
     throw new HTTPException(400, {
       message: `The uploaded file's content does not match its declared type (${attachment.mimeType}).`,
     });

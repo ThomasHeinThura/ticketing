@@ -152,17 +152,26 @@ describe("storage driver selector", () => {
   });
 });
 
-describe("toFinalAttachmentObjectKey (B2 security-review fix, 2026-09-27)", () => {
-  it("moves the final path segment under a sibling 'final' directory, leaving the rest of the key alone", () => {
+describe("toFinalAttachmentObjectKey (B2 security-review fix, 2026-09-27; N5 fix, 2026-09-28)", () => {
+  it("moves the final path segment under a sibling 'final' directory, keeping the original filename as a suffix", () => {
     expect(
       toFinalAttachmentObjectKey(
         "workspace/w1/work-item/wi1/attachment/a1/photo.png",
       ),
-    ).toBe("workspace/w1/work-item/wi1/attachment/a1/final/photo.png");
+    ).toMatch(
+      /^workspace\/w1\/work-item\/wi1\/attachment\/a1\/final\/[A-Za-z0-9]+-photo\.png$/,
+    );
   });
 
   it("never equals the pending key it was derived from", () => {
     const pending = "workspace/w1/work-item/wi1/attachment/a1/notes.txt";
     expect(toFinalAttachmentObjectKey(pending)).not.toBe(pending);
+  });
+
+  it("N5: two calls for the SAME pending key never collide on the same final key -- the root cause of the delete-your-winner's-object race", () => {
+    const pending = "workspace/w1/work-item/wi1/attachment/a1/photo.png";
+    const first = toFinalAttachmentObjectKey(pending);
+    const second = toFinalAttachmentObjectKey(pending);
+    expect(first).not.toBe(second);
   });
 });

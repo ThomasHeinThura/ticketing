@@ -189,11 +189,30 @@ export function matchesKeyContext(
  * an orphaned object at the vacated pending key -- nothing ever serves from that key again,
  * since the attachment row's own `object_key` is updated to the new one in the same
  * transaction that marks it `ready`.
+ *
+ * N5 security-review fix (2026-09-28): this used to be a pure, deterministic function of
+ * `pendingKey` alone, so two concurrent `complete` calls on the SAME attachment (same
+ * pending key -- the row's `object_key` column does not change until whichever call wins
+ * the transaction in `complete-attachment.ts`) derived the IDENTICAL final key. Both
+ * `finalizeStorageObject` calls (on S3, both `CopyObject`) then landed at the same
+ * destination: whichever call's own size/magic-byte check failed, or whichever lost the
+ * `state = 'pending'` row race, deleted "its own" final object -- but since both calls
+ * shared one key, that delete removed whatever was actually AT that key, which could be
+ * the OTHER call's already-validated, already-`ready` object (reproduced live on MinIO:
+ * a `ready` row with its object silently gone). A fresh random token per CALL (not per
+ * attachment) means concurrent attempts on the same attachment never collide on a
+ * destination key -- each call only ever copies/renames/checks/deletes an object nothing
+ * else ever touches.
  */
 export function toFinalAttachmentObjectKey(pendingKey: string): string {
   const lastSlash = pendingKey.lastIndexOf("/");
-  if (lastSlash === -1) return `final/${pendingKey}`;
-  return `${pendingKey.slice(0, lastSlash)}/final${pendingKey.slice(lastSlash)}`;
+  const dir = lastSlash === -1 ? "" : pendingKey.slice(0, lastSlash);
+  const filename =
+    lastSlash === -1 ? pendingKey : pendingKey.slice(lastSlash + 1);
+  const uniqueToken = createId();
+  return dir
+    ? `${dir}/final/${uniqueToken}-${filename}`
+    : `final/${uniqueToken}-${filename}`;
 }
 
 /**
