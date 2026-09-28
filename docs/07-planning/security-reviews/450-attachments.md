@@ -344,3 +344,75 @@ mechanical reconfirmation, per the same precedent already used for #451's own
 post-#443 main-merge: `main`'s two new commits are verified docs-only above, so
 nothing new needs Opus's eyes. The round 6 verdict (CLEAR WITH FINDINGS) still applies
 at `9f876bd`.
+
+## Round 7: independent Opus review at `0174829` — CLEAR WITH FINDINGS
+
+**Reviewed head:** `017482980f31604e6b27fe3293d0cd7b5205142b`
+
+Since round 6's `9f876bd`: `main` was merged past PR #440 (issue #8's own six-round
+Opus-reviewed route-classification-guard fix, already fully independent of this PR —
+verified here only for its INTEGRATION effect on this PR's own attachment routes, not
+re-reviewed from scratch), and a new CI-gate mechanism was added: a reviewed
+Redocly-lint-finding allowlist (`scripts/ci/redocly-approved-findings.json` +
+supporting functions in `scripts/ci/test-contract.mjs`), closing a real, permanent
+`operation-2xx-response` false positive on `GET /attachments/{id}` (redirect-only by
+design, AT-5/AT-6 — see the decision log's 2026-09-28 entry). A separate ordinary
+review (`pal-reviewer`, fell back to a direct Sonnet read-through) ran on just the
+allowlist mechanism and returned CLEAR with three low/nit findings, all also caught
+independently by this round.
+
+Fresh independent context (Opus 5.5), did not author, direct or fix any of this PR.
+Verified live: built a synthetic base commit to prove "an entry already on
+`origin/main` approves nothing" beyond the unit test's own coverage; ran adversarial
+parse probes against the allowlist file (extra/missing keys, `__proto__` as a key,
+string/float `pr`, whitespace-only fields, duplicates, `null`, nested arrays, an
+object instead of an array, an empty file) — all correctly rejected. Confirmed the
+security-path classifier already covers the new allowlist file through `scripts/ci/**`
+(future edits need the Opus pass same as this one did). Confirmed no attachment code
+changed since round 6, no new middleware reaches attachment routes, and live-probed
+all 5 routes with the real `createApp()` (spied on `policyRegistry.get` and the
+guard's own error log) — each looked up only its own declared policy key, no foreign
+or sibling key, no guard refusal. Full suites: unit 62 files/512, permissions 13/83,
+integration 112 files/1418 — all green (the pre-existing, already-filed #455 flake did
+not even reproduce in this run). `tsc --noEmit` clean on all three tsconfigs.
+`node --test scripts/ci/test-contract.test.mjs`: 50/50. `pnpm test:contract`: exit 0.
+
+**Findings (none blocking):**
+- **F1 (LOW):** the new allowlist's `(rule, pointer)` binding (no per-finding
+  fingerprint) means one entry approves every problem at that exact location,
+  whatever its message — harmless today (`operation-2xx-response` fires at most once
+  per operation) but worth tightening before a second entry is ever added. **Disclosed
+  after this round** as a code comment on `partitionApprovedRedoclyFindings` (commit
+  `93558ec`) rather than fixed now — no second entry exists yet to motivate the extra
+  binding precision.
+- **F2 (nit):** `operation` is a label never cross-checked against `pointer`; `pr`
+  accepts 0/negative; a duplicate JSON key resolves last-wins; the NUL-joined identity
+  string has a theoretical collision for a rule containing an escaped NUL. All four
+  already exist in the pre-existing `parseApprovedBreaks`/oasdiff-allowlist code this
+  mechanism mirrors — not new, not blocking.
+- **F3 (test gap, non-blocking):** the "base entry approves nothing" unit test copies
+  `main()`'s own filtering logic inline rather than exercising `main()` itself — a
+  regression there wouldn't be caught by that unit test alone. Same pre-existing
+  pattern as the equivalent oasdiff-allowlist test (Opus's own words: not unique to
+  this addition). This round's own live `pnpm test:contract` run covers the real path
+  at this exact head. Left as disclosed, not restructured, given the pre-existing
+  precedent and this PR's already-long review history.
+- **F4 (docs, non-blocking):** `ci-cd.md` didn't document the new allowlist file, only
+  the security-path glob covered it. **Fixed after this round** (commit `a2c5458`).
+
+## Mechanical reconfirmation after Opus F1/F4 follow-ups (commits `a2c5458`, `93558ec`)
+
+**Reviewed head:** `93558ecdb6e96b21874b4876a325b315417f4214`
+
+Two commits landed after round 7's reviewed head, both exactly the non-blocking,
+disclosed follow-ups that review itself recommended: a documentation addition to
+`ci-cd.md` (F4) and a code-comment-only disclosure in `test-contract.mjs` (F1) — zero
+behavior change in either (confirmed via `git diff --stat 0174829 HEAD`: `ci-cd.md`
++11 lines, `test-contract.mjs` +9 lines, both prose/comments only; re-ran
+`node --test scripts/ci/test-contract.test.mjs`, still 50/50). Per the same precedent
+used for every other docs/comment-only follow-up this PR has had, this is a mechanical
+reconfirmation, not a fresh Opus round: round 7's verdict (CLEAR WITH FINDINGS) still
+applies at `93558ec`, with F1 and F4 now closed and F2/F3 disclosed as pre-existing,
+non-blocking, deferred.
+
+**Status: CLEAR WITH FINDINGS, merge-ready.**
