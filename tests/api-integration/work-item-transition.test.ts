@@ -5,6 +5,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
+import { Client } from "pg";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -188,6 +189,61 @@ async function makePerson(userId: string) {
       .returning(),
     "makePerson",
   );
+}
+
+/** A standalone `person` row for use as a pure assignee target -- no login, no `user_id`.
+ * `onRoster` inserts a `membership` row scoped to `projectId` (any role -- eligibility
+ * only checks presence, per `assignee-eligibility.ts`). */
+async function makeAssigneePerson(options: {
+  projectId?: string;
+  active?: boolean;
+}) {
+  const organisation = await ensureInternalOrganisation();
+  const now = new Date();
+  const person = requireRow(
+    await db
+      .insert(schema.personTable)
+      .values({
+        organisationId: organisation.id,
+        side: "staff",
+        active: options.active ?? true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning(),
+    "makeAssigneePerson",
+  );
+  if (options.projectId) {
+    const role = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "project",
+          key: `role-${randomUUID()}`,
+          name: "Project Member",
+          rank: 1,
+        })
+        .returning(),
+      "makeAssigneePerson: role",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId: person.id,
+      scope: "project",
+      scopeId: options.projectId,
+      roleId: role.id,
+    });
+  }
+  return person;
+}
+
+/** A second, independent raw connection for a genuinely concurrent, uncommitted
+ * transaction -- same pattern as `work-item-parent-cycle-guard.test.ts`. */
+async function openRawClient(): Promise<Client> {
+  const client = new Client({
+    connectionString: process.env.TASKDESK_DATABASE_URL,
+  });
+  await client.connect();
+  return client;
 }
 
 async function setupProject() {
@@ -524,5 +580,288 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
       toStateTemplateId: inProgress.stateTemplate.id,
     });
     expect(withRole.status).toBe(200);
+  });
+
+  it("B1 (Opus security review of PR #457): a concurrent write clearing the assignee cannot slip past an assignee_present guard", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const done = await makeState(workspace.id, project.id, {
+      group: "completed",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: done.stateTemplate.id,
+        roleId: null,
+        guards: [{ type: "assignee_present" }],
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const assignee = await makeAssigneePerson({ projectId: project.id });
+    const [workItemRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItemId = requireRow([workItemRow], "workItemRow").id;
+    await db
+      .update(schema.workItemTable)
+      .set({ assigneeId: assignee.id })
+      .where(eq(schema.workItemTable.id, workItemId));
+
+    const raw = await openRawClient();
+    try {
+      await raw.query("BEGIN");
+      // Uncommitted: clears the assignee this guard needs, and holds the row lock.
+      await raw.query("UPDATE work_item SET assignee_id = NULL WHERE id = $1", [
+        workItemId,
+      ]);
+
+      const responsePromise = transitionRequest(app, key, {
+        toStateTemplateId: done.stateTemplate.id,
+      });
+      responsePromise.catch(() => {});
+
+      // Give the app's own `SELECT ... FOR UPDATE` time to reach Postgres and start
+      // blocking on the still-open transaction above before it is released.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await raw.query("COMMIT");
+
+      const response = await responsePromise;
+      // Pre-fix (B1): this returned 200, having evaluated the guard against the STALE,
+      // pre-transaction read that still saw an assignee. Post-fix: the locked read sees
+      // the now-committed `assignee_id = NULL`, so the guard blocks.
+      expect(response.status).toBe(422);
+      const body = (await response.json()) as {
+        blockedBy: { kind: string; reasonCode: string }[];
+      };
+      expect(body.blockedBy).toEqual([
+        { kind: "guard", reasonCode: "guard.assignee_present" },
+      ]);
+    } finally {
+      await raw.end();
+    }
+
+    const [finalRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemId));
+    // Blocked -- the state never moved.
+    expect(finalRow?.stateId).toBe(backlog.state.id);
+  });
+
+  it("B2 (Opus security review of PR #457): set_assignee refuses an off-roster/inactive target and leaves the whole transition unapplied", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const inProgress = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const ineligible = await makeAssigneePerson({ active: true }); // no roster row at all
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: inProgress.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "set_assignee", personId: ineligible.id }],
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const response = await transitionRequest(app, key, {
+      toStateTemplateId: inProgress.stateTemplate.id,
+    });
+    // Pre-fix (B2): this returned 200 and wrote `ineligible.id` straight into
+    // `assignee_id`, with no roster/active/tenant check at all.
+    expect(response.status).toBe(422);
+    const body = (await response.json()) as {
+      blockedBy: { kind: string; reasonCode: string }[];
+    };
+    expect(body.blockedBy).toEqual([
+      { kind: "assignee", reasonCode: "assignee.not_on_roster" },
+    ]);
+
+    const [workItemRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    // The WHOLE transition is refused -- state doesn't move either, matching the
+    // review's own instruction ("fail the whole transition closed").
+    expect(workItemRow?.assigneeId).toBeNull();
+    expect(workItemRow?.stateId).toBe(backlog.state.id);
+  });
+
+  it("set_assignee applies for an eligible target and publishes work_item.assigned", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const inProgress = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const eligible = await makeAssigneePerson({ projectId: project.id });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: inProgress.stateTemplate.id,
+        roleId: null,
+        effects: [{ kind: "set_assignee", personId: eligible.id }],
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    publishEventMock.mockReset();
+
+    const response = await transitionRequest(app, key, {
+      toStateTemplateId: inProgress.stateTemplate.id,
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as { assigneeId: string | null };
+    expect(body.assigneeId).toBe(eligible.id);
+
+    expect(publishEventMock).toHaveBeenCalledWith(
+      "work_item.assigned",
+      expect.objectContaining({
+        key,
+        assigneeId: eligible.id,
+        previousAssigneeId: null,
+      }),
+    );
+
+    const [workItemRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const activityRows = await db
+      .select()
+      .from(schema.activityTable)
+      .where(
+        and(
+          eq(schema.activityTable.workItemId, workItemRow?.id ?? ""),
+          eq(schema.activityTable.field, "assigneeId"),
+        ),
+      );
+    expect(activityRows).toHaveLength(1);
+  });
+
+  it("schedule_transition inserts a pending scheduled_transition row", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const inProgress = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const later = await makeState(workspace.id, project.id, {
+      group: "completed",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: inProgress.stateTemplate.id,
+        roleId: null,
+        effects: [
+          {
+            kind: "schedule_transition",
+            afterMinutes: 60,
+            toStateTemplateId: later.stateTemplate.id,
+          },
+        ],
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const response = await transitionRequest(app, key, {
+      toStateTemplateId: inProgress.stateTemplate.id,
+    });
+    expect(response.status).toBe(200);
+
+    const [workItemRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const scheduled = await db
+      .select()
+      .from(schema.scheduledTransitionTable)
+      .where(
+        eq(schema.scheduledTransitionTable.workItemId, workItemRow?.id ?? ""),
+      );
+    expect(scheduled).toHaveLength(1);
+    expect(scheduled[0]?.toStateId).toBe(later.state.id);
+    expect(scheduled[0]?.state).toBe("pending");
+  });
+
+  it("WF-18: leaving the completed group clears resolved_at", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const done = await makeState(workspace.id, project.id, {
+      group: "completed",
+    });
+    const reopened = await makeState(workspace.id, project.id, {
+      group: "started",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: done.stateTemplate.id,
+        roleId: null,
+      },
+      {
+        fromStateTemplateId: done.stateTemplate.id,
+        toStateTemplateId: reopened.stateTemplate.id,
+        roleId: null,
+        isReopen: true,
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const toDone = await transitionRequest(app, key, {
+      toStateTemplateId: done.stateTemplate.id,
+    });
+    expect(toDone.status).toBe(200);
+    let [workItemRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    expect(workItemRow?.resolvedAt).not.toBeNull();
+
+    const toReopened = await transitionRequest(app, key, {
+      toStateTemplateId: reopened.stateTemplate.id,
+    });
+    expect(toReopened.status).toBe(200);
+    [workItemRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    expect(workItemRow?.resolvedAt).toBeNull();
   });
 });

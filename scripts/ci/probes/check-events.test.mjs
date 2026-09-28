@@ -110,7 +110,9 @@ describe("check:events — the shipped tree", () => {
     // in; merging both together for real is what pushes it to 29. A non-vacuity guard:
     // it proves the checker actually saw the shipped keys, rather than passing on an
     // empty scan. #451 added a 30th: work_item.commented (comment POST on a work item).
-    assert.match(result.output, /30 published event key/);
+    // #442/PR #457 added a 31st: work_item.transitioned (POST .../transition) --
+    // events.md already documented this key, but nothing published it until this route.
+    assert.match(result.output, /31 published event key/);
   });
 });
 
