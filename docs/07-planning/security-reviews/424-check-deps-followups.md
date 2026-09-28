@@ -127,3 +127,38 @@ new test, run against both implementations; the real repository, with the fallba
 instrumented; 20 adversarial fixtures against both implementations. Not examined: other CI
 gates' handling of `link:`/`file:` protocols (for N2), and CI's configured Node version (for
 N4).
+
+## Delta security review — N1 fix (2026-09-28)
+
+**Model:** Opus 5.5, fresh independent context (same review lineage as the section above;
+did not author the fix)
+
+**Reviewed head:** `565652c34b8e19ba18b4397763f616ef97605604`
+
+**Verdict: CLEAR — N1 resolved**, at head `565652c34b8e19ba18b4397763f616ef97605604`.
+This is a scoped delta review of this one commit only, not a re-review of the whole PR.
+
+What was checked (run, not just read):
+
+- **Diff scope.** `git show --stat` of the commit: one file, `scripts/ci/check-deps.mjs`,
+  11+/8-, all inside `resolveWorkspaceTarget`'s F3 block. The four-field spread merge is
+  unchanged. It is hoisted into a `dependencyFields` const, and `packageName in {...}` is
+  replaced with `Object.hasOwn(dependencyFields, packageName)`, plus a comment. Nothing else
+  changed.
+- **Semantics, empirically.** A standalone Node 24 script built the merged object exactly
+  as the code does, from a `JSON.parse`d manifest:
+  - Declared names (`foo`, scoped `@s/bar`, a devDependency) still return `true`.
+  - `toString`, `constructor`, `hasOwnProperty`, `valueOf` and `isPrototypeOf` now return
+    `false`, including against an empty merge of all-undefined fields. The old `in` check
+    returned `true` for every one of them.
+  - `__proto__` returns `false` unless a manifest literally declares it. In that case
+    `JSON.parse` and the spread both create it as an own data property, so it correctly
+    reads as declared.
+  - So no legitimately declared dependency changes behavior.
+- **Tests.** `node --test scripts/ci/check-deps.test.mjs` passed 18/18, 0 failed.
+
+Not in this commit, unchanged: N3 (the pre-existing prototype-chain lookup on
+`FLAGGED_MESSAGES` in `analyzeDependencies`), which is tracked separately as a follow-up. N2
+and N4 also stand as recorded above. No regression test pins a prototype-named specifier for
+F3. That is acceptable for a one-call stdlib swap, but it is cheap to add if this block is
+touched again.
