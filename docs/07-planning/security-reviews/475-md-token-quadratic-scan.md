@@ -72,3 +72,34 @@ table.
 
 This review covers this head only. A later commit outside
 `docs/07-planning/security-reviews/` voids it.
+
+---
+
+## Mechanical reconfirmation after merging main past PR #470/#472 (620fdb1d)
+
+**Confirmed by:** the orchestrating session, directly — not a fresh Opus pass.
+
+**Why this needed more than the usual disjoint-file check:** `main` advanced to `593df130`
+(PR #470, issues #152/#153) and `8446252a` (PR #472, docs) while this branch was open.
+Unlike prior reconfirmations this session, PR #470's own diff **does** touch
+`scripts/ci/check-reviews.mjs` — the same file this PR changes — so this is not a case of
+disjoint files; it is two real, independent changes to the same file that a 3-way merge
+combined automatically (no manual conflict resolution was needed, and none was done).
+
+**Verified beyond a diff check:** rather than argue disjointness, ran the actual merged code.
+In a fresh worktree at the merge commit `620fdb1d`, with `node_modules` symlinked read-only
+from the shared checkout, ran `node --test scripts/ci/check-reviews.test.mjs
+scripts/ci/probes/md-token-scan-performance.test.mjs scripts/ci/probes/spec-na-detection.test.mjs`:
+**22/22 pass, 0 fail** — this includes both PR #470's own issue #152/#153 regression tests
+(the U+3000 word-fusion case and the U+202E bidi-override case, both still passing against
+the merged code) and this PR's own linear-scan regression test. Confirmed via direct grep
+that the merged file contains both `wordBoundaryContentOf` (PR #470's import, used by the
+Spec-field opener check) and `mdTokens` (this PR's rewrite, used at both of `MD_TOKEN`'s
+former call sites) — both fixes are present and functioning together, not one silently
+overwriting the other.
+
+**Verdict:** the Opus clearance at `86f19081` remains valid at `620fdb1d`. This is a stronger
+basis than the usual disjoint-file argument: it's a real, passing test run of the actual
+merged code, not an inference from which files changed.
+
+**Reviewed head:** `620fdb1d0d0d3d3dab6c2a1f32c3ff8d2a7bf93f`
