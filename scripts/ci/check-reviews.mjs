@@ -20,12 +20,13 @@
 import path from "node:path";
 import { changedPaths } from "./lib/diff.mjs";
 import {
-  contentOf,
+  BidiControlCharacterError,
   DuplicateSectionError,
   field,
   loadBody,
   normaliseHeading,
   sections,
+  wordBoundaryContentOf,
 } from "./lib/pr-body.mjs";
 import {
   finish,
@@ -295,9 +296,31 @@ async function main() {
     const task = bodySections.get(normaliseHeading("Task"));
     // multiLine: true (issue #150) -- the one field() caller where a longer captured
     // value is never unsafe: it can only add more .md paths to check, never fewer.
-    const declared = task
-      ? field(contentOf(task.raw), "Spec", { multiLine: true })
-      : "";
+    //
+    // wordBoundaryContentOf, not contentOf (issues #152/#153): this value feeds
+    // WORD-BOUNDARY-SENSITIVE parsing below (specsNamedIn/fieldOpener/openerMatch
+    // recognising the two-word "not applicable" opener) -- contentOf's own aggressive
+    // stripping is for deciding whether a whole SECTION is blank, and reusing it here
+    // silently welded "not" to "applicable" whenever the gap was a real word-separating
+    // character (U+3000, routine from CJK input methods) rather than an ASCII space.
+    let declared;
+    try {
+      declared = task
+        ? field(wordBoundaryContentOf(task.raw), "Spec", { multiLine: true })
+        : "";
+    } catch (error) {
+      if (!(error instanceof BidiControlCharacterError)) throw error;
+      // "the Task section", not "the Spec field" -- wordBoundaryContentOf checks
+      // task.raw as a whole (the bidi test must run before the Spec field is even
+      // extracted, see that function's own doc comment), so the character can be
+      // anywhere in Task, not necessarily inside the Spec field itself. Found by the
+      // Opus security review of this fix: the original wording named the wrong scope.
+      failures.push(
+        violation("pull request body", `the **Task** section ${error.message}`),
+      );
+      finish({ name: NAME, failures, ok: "unreachable" });
+      return;
+    }
     // Not a bare `/^n\/a$/i` exact match — found adversarially, while
     // shepherding PR #144: that exact-match guard only recognised a Spec
     // field that was LITERALLY the two characters "n/a", not the "n/a —
