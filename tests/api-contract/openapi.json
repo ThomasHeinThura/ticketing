@@ -3872,6 +3872,45 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "activity",
+              "comment"
+            ],
+            "description": "Always present at runtime -- \"activity\" for an activity-table row, \"comment\" for a posted comment. Optional in the schema (not the pre-#452 contract) so this remains an additive change, not a breaking one."
+          },
+          "body": {
+            "description": "Comment rows only: the Tiptap document, or null if deleted (CA-18)."
+          },
+          "activityId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Comment rows only: see comment.activity_id in the data model."
+          },
+          "editedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Comment rows only (CA-17)."
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Comment rows only (CA-18 tombstone)."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Comment rows only."
           }
         },
         "required": [
@@ -15548,7 +15587,7 @@
           "Work items"
         ],
         "summary": "List work item activity",
-        "description": "The work item's activity journal (`WI-6`), newest first, cursor-paginated. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet.",
+        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet.",
         "parameters": [
           {
             "schema": {
