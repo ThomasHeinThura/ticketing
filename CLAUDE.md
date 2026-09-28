@@ -311,12 +311,18 @@ application-side gaps this section used to name are closed as of 2026-09-27** (v
 live against `main`, not carried forward from an earlier note): `TASKDESK_PORT` is read
 (#132), `/api/public/health/{live,ready}` exist, static serving runs in the Node process via
 `@hono/node-server/serve-static` (#144), and the `storage.filesystem` driver exists (#164,
-HMAC-signed direct-PUT with path-traversal defenses). `scripts/deploy.sh local` has itself
-been run end-to-end and both default hostnames (`ticket.`, `portal.`) verified healthy
-through a real Traefik (#377). The one remaining piece of issue #11 is the optional
-`--profile s3` third hostname (`files.<domain>`) — narrower scope than "the app can't
-deploy." Re-verify this note's own claims each session rather than assuming they stay true;
-`status.md`'s Blocked section and `gh issue list` remain the live source of truth.
+HMAC-signed direct-PUT with path-traversal defenses). **Corrected 2026-09-28** (a 2026-09-27
+version of this note overstated this next part): both default hostnames (`ticket.`,
+`portal.`) have been verified healthy through a real Traefik (#377), but that verification
+ran `deploy/compose.uat.yml` against this **host's own pre-existing, unrelated Traefik** — not
+`scripts/deploy.sh local`'s own bundled Traefik, which has never actually completed an
+end-to-end run (it hit a port conflict against that same pre-existing Traefik, unresolved as
+of the 2026-09-27 note). A fix for `deploy.sh local`'s own Traefik path is in progress; until
+it lands, do not assume "clean machine, never seen this repo" deployability is proven — only
+the UAT-compose path is. The `--profile s3` third hostname (`files.<domain>`) remains
+untested end-to-end either way. Re-verify this note's own claims each session rather than
+assuming they stay true; `status.md`'s Blocked section and `gh issue list` remain the live
+source of truth.
 
 Once those close: `docker build`, container boot, and the health endpoints answering are
 part of "done" for any change touching what ships in the image (`AGENTS.md`, "Before you say
