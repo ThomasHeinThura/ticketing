@@ -31,6 +31,13 @@ services:
   taskdesk:
     environment:
       NODE_ENV: production
+      # Issue #8's cutover needs ~7 days of clean shadow-mode evidence from a
+      # real UAT deployment under real traffic (docs/05-operations/
+      # configuration-reference.md). UAT is where that evidence is supposed to
+      # come from, so it runs with shadow mode on by standing default, not as
+      # a one-off manual override — every future UAT deploy starts the clock
+      # without anyone having to remember to set this.
+      TASKDESK_POLICY_SHADOW: "on"
       # ---------------------------------------------------------------
       # MEASURED, not assumed. 2026-09-06.
       #
