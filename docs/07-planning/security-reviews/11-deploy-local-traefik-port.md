@@ -89,3 +89,52 @@ did not bring up a Traefik container on non-default ports, did not test macOS's 
 and did not measure `docker compose port` against a *stopped* (as opposed to absent) local
 Traefik. The last is argued from Compose's documented behaviour (no bindings → non-zero),
 which fails in the safe direction either way.
+
+---
+
+## Delta confirmation (Opus 5.5) at 7ea2dbd
+
+**Reviewer:** Opus 5.5 (`claude-opus-5-5[1m]`), a fresh independent context commissioned by the orchestrating session. It did not author, direct or fix this change.
+**Reviewed head:** `7ea2dbda22c0969bfbd402e441d5223d7f183a23`
+**Previous review:** `14ee62152cbf70b26eae67f990fbb394744327df` (CLEAR WITH FINDINGS)
+**Date:** 2026-09-28
+
+**How the head was confirmed.** `git ls-remote origin fix/11-deploy-local-traefik` returns `7ea2dbd`. No PR exists for the branch yet. The confirmation ran from a separate clone.
+
+**Scope of the delta.**
+- `14ee621..37b3142` touches only this document.
+- `37b3142..7ea2dbd` touches exactly six files: `scripts/deploy.sh`, `deploy/compose.traefik.yml`, `deploy/.env.example`, and `docs/05-operations/{deployment,runbook,traefik-and-domains}.md` (+54/−35).
+- The only code change is in `scripts/deploy.sh`: `assert_local_ports_free` becomes two calls to a new `assert_local_port_free var_name container_port host_port` helper, which first requires `^[0-9]{1,5}$`. Every other hunk is comment, doc or message text.
+- No hunk touches `verify_signature`, `resolve_and_verify_image`, `generate_if_empty`, `assert_port_unpublished`, the cosign identity, or any `production`/`upgrade`/`rollback` path. The only call site is still inside `if [ "$MODE" = "local" ]`, after `.env` is sourced, so the validated value is the one Compose interpolates.
+
+**LOW-1: CLOSED.** The helper was sourced verbatim, with `dc` and `die` stubbed, under `set -Eeuo pipefail`:
+
+| Value | Result |
+| --- | --- |
+| `http`, `8080-8081`, `127.0.0.1:8443` | `die "… must be a plain port number"` |
+| empty, ` 80`, `80 `, a value with an embedded newline | `die` |
+| `18443`, `65535` | accepted, probe runs |
+| `TASKDESK_LOCAL_HTTPS_PORT=127.0.0.1:8443` through the real call sites | `die` names `TASKDESK_LOCAL_HTTPS_PORT`, so the argument order is correct |
+| Defaults, on this host (Dokploy holds 80/443) | `die "port 80 is already bound…"` |
+| `18080` / `18443` | pass |
+
+- `[[ … ]] || die` is errexit-exempt, and the script sets no `ERR` trap. `return 0` replaces `continue` correctly. Validation now runs before the own-Traefik skip.
+- `bash -n` is clean.
+
+**LOW-2: CLOSED for the overclaim.**
+- Every "another TaskDesk checkout" mention is gone.
+- `traefik-and-domains.md` and the script's comment block now name the same-project-name adoption and the `127.0.0.1`-only probe scope as known limits.
+- Not addressed, all failing open as before: the container-port-keyed skip, the loopback-`DROP` hang, and `configuration-reference.md`'s "`local` mode only".
+
+### New observations (informational, not findings)
+
+- **I1:** `^[0-9]{1,5}$` still admits `0` and `65536`–`99999`. `0` makes Docker pick a random host port; the others are rejected by Compose. Both are operator-only. A `1..65535` range check would close it.
+- **I2:** the new doc paragraph's "every case below fails open to the same raw Docker error" does not fit two cases. The same-checkout case is adopted without error, as the paragraph itself says. A loopback `DROP` makes the probe hang. This is wording only.
+
+**What the reviewer did not do.** It did not run `scripts/deploy.sh local` end to end, bring up Traefik, check CI (no PR exists yet), or test macOS's bash 3.2.
+
+### Verdict
+
+**CLEAR WITH FINDINGS at `7ea2dbda22c0969bfbd402e441d5223d7f183a23`** for the security scope of this review. There is no HIGH, MEDIUM or LOW finding, only I1 and I2. LOW-1 is closed. LOW-2 is closed as a doc overclaim, with the smaller residual items above carried forward. This review covers this head only. A later commit outside `docs/07-planning/security-reviews/` voids it.
+
+The commit that adds this section is docs-only. It moves the PR head but changes no code.
