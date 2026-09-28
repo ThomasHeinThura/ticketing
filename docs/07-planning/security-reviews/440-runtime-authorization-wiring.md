@@ -182,3 +182,72 @@ drift.
 
 B3 is required (fixed above). A fresh Opus delta pass is required on the head that fixes
 it.
+
+---
+
+## Security review — Opus delta 3 (2026-09-27)
+
+**Model:** Opus 5.5, fresh independent context (did not write, direct or fix any part of
+this PR)
+**Session:** subagent `a7353c095b6bdf8fe`
+
+**Reviewed head:** `738e2f4c8b5a9174732b6806c6709860841a9782` (docs-only; the code under
+review is fix commit `0a6c320`)
+
+**Verdict: BLOCKING.** B3 is fixed, and holds against every `ALL`-method shape tried. But
+a **fourth instance of the same class**, reproduced live: the guard's walk stopped at the
+first matched entry whose method is not `ALL`, assuming that entry is the one that
+actually answers. In Hono, a GET/POST/other specific-method handler can call `next()` and
+hand the request on, exactly like `.use()` does — nothing enforces that a non-`ALL`
+handler is terminal.
+
+**F4 (BLOCKING, same class as B1/B3, reproduced live):** three shapes, each with the
+first registration given a real policy entry (spying `policyRegistry.get`, same technique
+as prior passes): a classified GET pass-through (`app.get("/api/gm/*", (c, next) =>
+next())`) fronting an unclassified `app.get("/api/gm/x", LEAK)` — 200, leak served; a
+classified multi-method pass-through (`app.on(["GET","POST"], ...)`) fronting an
+unclassified POST — 200, leak served; a classified parameter route that conditionally
+calls `next()` (`app.get("/api/pr/:id", ...)`) fronting an unclassified literal sibling —
+200, leak served. The third shape is the most realistic (a common Hono idiom, followed
+later by a literal route added without a policy). Live exposure today: none — the real
+route table's only `ALL`-method entries are the two declared catch-alls, and grepping
+`apps/api/src` found every `next()`-calling handler shares its own route's key (same
+"backstop for the day the invariant breaks" standard as B1/B3).
+
+**Recommended fix (change altitude, per CLAUDE.md — third round finding the same fault in
+one function):** stop predicting which matched entry is terminal, entirely. Require every
+matched entry except the two declared catch-all keys to be classified, with no early
+stop. Shadow-mode attribution must NOT switch to this same unbounded walk — it needs the
+bounded first-non-`ALL` entry, or it misattributes (`GET /api/invitation/pending` also
+matches `GET /api/invitation/{id}`'s parameter pattern; taking the walk's last entry would
+misattribute every `/pending` request to the wrong policy).
+
+**One real cost that needed a human decision:** applying the stricter guard makes `GET
+/api/invitation/pending` also require `GET /api/invitation/{id}` to be classified (both
+match the same request), and `{id}` was still deliberately uncovered — pending a decision
+this project had left open since 2026-09-22 on whether to give it a real access check,
+delete it, or declare it intentionally open. Put to Thomas directly: **delete it.**
+Fixed accordingly (commit `8baa78f`): `attributedRoutesToClassify` now checks every
+matched entry unconditionally (no early exit); `attributedMatchedRoute` (shadow-mode's
+own, separate, bounded-prediction caller) reverted to the original first-non-`ALL`-entry
+behaviour; `GET /api/invitation/{id}` deleted (route, controller, dead schema export,
+`inherited-uncovered.json` entry, `policy.ts`'s own doc comment all updated) rather than
+classified — it had zero real callers (`apps/web` checked), returned the same
+invitee-email/workspace-name/inviter-name as the fully public `GET
+/api/invitation/public/{id}` with no recipient check of its own, and already 500ed for
+every authenticated caller regardless (N1, unchanged since the B1/B2 fix) — deletion
+closes a real, disclosed info-leak rather than reopening the classification question a
+fourth time.
+
+New regression tests: three F4 probes (GET pass-through, multi-method pass-through,
+parameter-route-conditionally-calling-next), each refused (500), reproduced fail-then-pass
+by reverting just the two source files; plus a direct test that `GET
+/api/invitation/pending` still returns 200 now that its former sibling is gone.
+
+Full suites reproduced at commit `8baa78f`: unit 61 files/496 tests, permissions 13/83,
+integration 104 files/1355 tests — all green. `tsc --noEmit` clean on all three `apps/api`
+tsconfigs (including `tsconfig.tests.json`). `check-openapi.mjs` clean, 132 operations (one
+fewer than before — the deleted `getInvitationDetails` operation), no drift.
+
+F4 is required (fixed above, including the invitation-route deletion Thomas approved). A
+fresh Opus delta pass is required on the head that fixes it.
