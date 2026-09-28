@@ -138,3 +138,54 @@ which fails in the safe direction either way.
 **CLEAR WITH FINDINGS at `7ea2dbda22c0969bfbd402e441d5223d7f183a23`** for the security scope of this review. There is no HIGH, MEDIUM or LOW finding, only I1 and I2. LOW-1 is closed. LOW-2 is closed as a doc overclaim, with the smaller residual items above carried forward. This review covers this head only. A later commit outside `docs/07-planning/security-reviews/` voids it.
 
 The commit that adds this section is docs-only. It moves the PR head but changes no code.
+
+---
+
+## Delta confirmation (Opus 5.5) at bd37de5
+
+**Reviewer:** Opus 5.5 (`claude-opus-5-5[1m]`), a fresh independent context commissioned by the orchestrating session. It did not author, direct or fix this change.
+**Reviewed head:** `bd37de5ed4fa9e9a974cd10b52bf81e3958f3661`
+**Previous review:** `7ea2dbda22c0969bfbd402e441d5223d7f183a23` (CLEAR WITH FINDINGS)
+**Date:** 2026-09-28
+
+**How the head was confirmed.** `git ls-remote origin fix/11-deploy-local-traefik` returns `bd37de5e…`.
+
+**Scope of the delta.**
+- `7ea2dbd..3b3c8f8` touches only this document (+49, the section above).
+- `3b3c8f8..bd37de5` touches only `scripts/deploy.sh` (+12/−4). Every hunk is inside `assert_local_port_free` or `assert_local_ports_free`.
+- Nothing touches cosign, secrets, `assert_port_unpublished`, Compose files, or any `production`/`upgrade`/`rollback` path. The only call site is still inside `if [ "$MODE" = "local" ]`, after `.env` is sourced.
+- `bash -n` is clean.
+
+**I1 (range): CLOSED.** The validation is now `[[ $host_port =~ ^[0-9]{1,5}$ ]] && (( 10#$host_port >= 1 && 10#$host_port <= 65535 )) || die`. Both functions were sourced verbatim, with `dc` and `die` stubbed, under `set -Eeuo pipefail`:
+
+| Value | Result |
+| --- | --- |
+| `0`, `00000`, `65536`, `99999`, `123456` | `die "… must be a TCP port number, 1-65535"` |
+| `1`, `18443`, `65535` | accepted, probe runs |
+| `08`, `09` | accepted as 8 and 9. `10#` stops them being read as bad octal |
+| `-1`, `+80`, `0x50`, `1e3`, `10#80`, empty, ` 80`, `80 ` | `die` from the regex |
+| `$(id)`, `a[$(id>&2)]` | `die` from the regex. Nothing runs, because `&&` short-circuits before `((` sees the value |
+
+- The regex's five-digit cap and the arithmetic check work together correctly. Only strings of one to five digits reach `((…))`, and every such string has a well-defined base-10 value of 0 to 99999.
+- `((…))` returning 1 behaves like `[[…]]` did. It is not the last command in the `&&`/`||` list, so errexit is exempt. `die` runs with the right message, and the script sets no `ERR` trap.
+
+**Ordinary reviewer's collision finding: CLOSED.**
+- Both values are resolved once with the same `${VAR:-default}` form that `compose.traefik.yml` uses, so empty and unset agree with Compose.
+- Each value is validated and probed on its own, and then compared.
+- The `return 0` for our own Traefik only leaves the inner helper, so the comparison still runs when this stack's Traefik is already up. `38080`/`38080` dies with or without a running Traefik.
+- `38080`/`38443` passes.
+- When a port is also bound elsewhere, the "already bound" message comes first. This is reasonable, because the user has to change that value anyway.
+
+### New observation (informational, not a finding)
+
+- **I3:** the comparison is a string comparison, but Compose normalises leading zeros. `docker compose config` renders `"08081:80"` and `"8081:443"` as `published: "8081"` both times. So `TASKDESK_LOCAL_HTTP_PORT=08081` with `TASKDESK_LOCAL_HTTPS_PORT=8081` passes the preflight and then fails inside Compose with the raw bind error. Getting there takes a deliberate leading zero on one value but not the other, so it is not the copy-paste case the check targets. It fails safe, and only the operator can set it. `(( 10#$http_port != 10#$https_port ))` would close it. Leading-zero values also print unnormalised in the "already bound" message, which is cosmetic.
+
+**Carried forward, unchanged and informational:** the container-port-keyed skip, the loopback-`DROP` hang, `configuration-reference.md`'s "`local` mode only", and I2's wording.
+
+**What the reviewer did not do.** It did not run `scripts/deploy.sh local` end to end, bring up Traefik on non-default ports, check CI, or test macOS's bash 3.2.
+
+### Verdict
+
+**CLEAR WITH FINDINGS at `bd37de5ed4fa9e9a974cd10b52bf81e3958f3661`** for the security scope of this review. There is no HIGH, MEDIUM or LOW finding. I1 and the ordinary reviewer's collision finding are closed. I3 and the carried-forward items are informational only. They are disclosure items for the pull request and do not call for another review round. This review covers this head only. A later commit outside `docs/07-planning/security-reviews/` voids it.
+
+The commit that adds this section is docs-only. It moves the PR head but changes no code.
