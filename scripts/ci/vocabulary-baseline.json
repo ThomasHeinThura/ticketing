@@ -18,8 +18,7 @@
 			"workspace_member": [
 				"apps/api/auth-schema.ts",
 				"apps/api/src/database/schema.ts"
-			],
-			"workspace_role": ["apps/api/src/database/schema.ts"]
+			]
 		}
 	}
 }

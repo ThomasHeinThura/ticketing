@@ -1100,8 +1100,16 @@ export const externalLinkTable = pgTable(
   ],
 );
 
-export const commentTable = pgTable(
-  "comment",
+// Kaneo's original, unmodified task/comment table -- renamed off the `comment` name
+// (issue #27, following the `activity`/`task_activity` precedent set by decision log
+// 2026-09-23 and migration 0066) so the new work-item-scoped `comment` table below can
+// be created under the name `data-model.md` §4 actually gives it. Still keyed on
+// `task_id`, not `work_item_id`; still backs every legacy task/comment route
+// (`apps/api/src/comment/`, `apps/api/src/activity/`). Not part of the work-item
+// journal, and not documented further here -- inherited-and-frozen, matching
+// `data-model.md`'s own `task_activity` row.
+export const taskCommentTable = pgTable(
+  "task_comment",
   {
     id: text("id")
       .$defaultFn(() => createId())
@@ -1126,8 +1134,8 @@ export const commentTable = pgTable(
       .notNull(),
   },
   (table) => [
-    index("comment_task_idx").on(table.taskId),
-    index("comment_user_idx").on(table.userId),
+    index("task_comment_task_idx").on(table.taskId),
+    index("task_comment_user_idx").on(table.userId),
   ],
 );
 
@@ -2595,6 +2603,163 @@ export const activityTable = pgTable(
     })
       .onDelete("cascade")
       .onUpdate("no action"),
+  ],
+);
+
+// `data-model.md` §4, issue #27: the work-item-scoped comment stream (`comments-and-
+// activity.md`). Created under the name `comment` -- freed by the rename of kaneo's
+// original table to `task_comment` immediately above -- following the same "own table,
+// own name" precedent `activity`/`task_activity` set (decision log 2026-09-23, migration
+// 0066).
+//
+// `author_id`/`actor_type` carry NO foreign key, deliberately mirroring `activityTable`'s
+// own `actor_id`/`actor_type` columns immediately above: `person` (P1's foundational
+// identity schema, decision log 2026-09-16) is "deliberately NOT wired to any
+// route/policy/resolveIdentity yet", and no route in this codebase resolves a `person`
+// row from a request today -- every write path here (`work-item/index.ts`'s
+// `resolveActor`) uses the raw `userId` (or, for a system/automation actor, no user at
+// all) as the actor identity. Adding a real FK here, before that wiring lands, would
+// either force this table to reference `user` instead of `person` (wrong target once
+// identity IS wired) or reference `person` for an id that is not actually a `person.id`
+// today (a live constraint violation on every insert). Matches the same judgment call
+// this codebase already made once, in the same file, for the same reason.
+export const commentTable = pgTable(
+  "comment",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    // Same #192-style denormalisation `activityTable.workspaceId` uses immediately
+    // above, for the same reason: reach-filtering and purge without a join, and a
+    // DB-level guarantee (the composite FK below) that this can never drift from the
+    // work item's own `workspace_id`.
+    workspaceId: text("workspace_id").notNull(),
+    workItemId: text("work_item_id").notNull(),
+    authorId: text("author_id"),
+    // data-model.md Conventions: "`actor_type` accompanies every `actor_id`" -- same
+    // vocabulary as `activity.actor_type` (`person | automation | system | api_key`).
+    actorType: text("actor_type").notNull(),
+    // CA-18: "Deleting ... clears the body" -- nullable so the delete path can null it
+    // out while keeping the row, its author and its position (the tombstone). `NOT NULL`
+    // at the application layer for every LIVE (non-deleted) comment; only the delete path
+    // is ever allowed to null it.
+    body: jsonb("body"),
+    // CA-1: "Visibility is chosen explicitly at composition" -- `NOT NULL`, no
+    // application-level default (a caller must always say which). The `'internal'`
+    // column default is the same fail-closed backstop `activity.visibility` carries for
+    // a writer that bypasses the normal application path (e.g. a future raw-SQL import),
+    // never a value the normal create-comment path is allowed to rely on.
+    visibility: text("visibility").default("internal").notNull(),
+    // CA-6: "links a transition note to its transition" -- nullable, no value on an
+    // ordinary comment. `ON DELETE SET NULL`: the comment (and the customer-facing text
+    // it carries) must survive even if its linked activity row is ever removed (e.g. a
+    // future purge of a narrower class of activity row) -- unlike `activity` itself,
+    // which cascades with its work item, a comment's own lifecycle is independent of any
+    // one activity row it happens to reference.
+    activityId: text("activity_id").references(() => activityTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    editedAt: timestamp("edited_at", { mode: "date" }),
+    // CA-18's tombstone: the row, its author and its position survive; the body is not
+    // rendered once `deletedAt` is set. `deletedBy` carries no FK, same reasoning as
+    // `authorId` above.
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+    deletedBy: text("deleted_by"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("comment_work_item_id_created_at_idx").on(
+      table.workItemId,
+      table.createdAt,
+    ),
+    index("comment_workspaceId_idx").on(table.workspaceId),
+    check(
+      "comment_visibility_allowed",
+      sql`${table.visibility} in ('public', 'internal')`,
+    ),
+    // Same composite-FK technique as `activityTable.workspaceId`/`.workItemId` above,
+    // for the identical cross-tenant reason (a plain single-column FK on `work_item_id`
+    // cannot see a `workspace_id` mismatch). `ON DELETE CASCADE` matches `activity`'s own
+    // precedent -- a hard-deleted work item takes its comments with it, the same as its
+    // journal.
+    foreignKey({
+      columns: [table.workspaceId, table.workItemId],
+      foreignColumns: [workItemTable.workspaceId, workItemTable.id],
+    })
+      .onDelete("cascade")
+      .onUpdate("no action"),
+  ],
+);
+
+// CA-17: one row per edit, rendering the "edited" hover history. `number` is the
+// per-comment edit sequence (1, 2, 3, ...), assigned by the writer, not the database --
+// no identity/sequence column of its own, unlike `activity.seq`, because this number IS
+// meant to be user-facing (edit 1, edit 2, ...), unlike that internal tiebreak.
+export const commentVersionTable = pgTable(
+  "comment_version",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    commentId: text("comment_id")
+      .notNull()
+      .references(() => commentTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    number: integer("number").notNull(),
+    body: jsonb("body").notNull(),
+    editedBy: text("edited_by"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("comment_version_comment_id_idx").on(table.commentId),
+    unique("comment_version_comment_id_number_unique").on(
+      table.commentId,
+      table.number,
+    ),
+  ],
+);
+
+// CA-19/CA-20: reusable composer snippets. Workspace-scoped -- `data-model.md` §4 names
+// no project scope for this table.
+export const cannedResponseTable = pgTable(
+  "canned_response",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    body: jsonb("body").notNull(),
+    visibilityDefault: text("visibility_default").default("internal").notNull(),
+    createdBy: text("created_by"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("canned_response_workspaceId_idx").on(table.workspaceId),
+    unique("canned_response_workspace_id_name_unique").on(
+      table.workspaceId,
+      table.name,
+    ),
+    check(
+      "canned_response_visibility_default_allowed",
+      sql`${table.visibilityDefault} in ('public', 'internal')`,
+    ),
   ],
 );
 

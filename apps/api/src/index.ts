@@ -15,6 +15,7 @@ import { HTTPException } from "hono/http-exception";
 import activity from "./activity";
 import audit from "./audit";
 import { auth } from "./auth";
+import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
 import column from "./column";
 import comment from "./comment";
@@ -815,6 +816,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
   const taskApi = api.route("/task", task);
   const columnApi = api.route("/column", column);
   const activityApi = api.route("/activity", activity);
+  const cannedResponseApi = api.route("/canned-responses", cannedResponse);
   const commentApi = api.route("/comment", comment);
   const timeEntryApi = api.route("/time-entry", timeEntry);
   const labelApi = api.route("/label", label);
@@ -989,6 +991,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     injectWebSocket,
     activityApi,
     auditApi,
+    cannedResponseApi,
     capabilitiesApi,
     columnApi,
     commentApi,
@@ -1209,6 +1212,7 @@ const {
   injectWebSocket,
   activityApi,
   auditApi,
+  cannedResponseApi,
   capabilitiesApi,
   columnApi,
   commentApi,
@@ -1274,6 +1278,7 @@ export type AppType =
   | typeof columnApi
   | typeof activityApi
   | typeof auditApi
+  | typeof cannedResponseApi
   | typeof commentApi
   | typeof timeEntryApi
   | typeof labelApi
