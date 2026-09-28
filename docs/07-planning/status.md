@@ -41,7 +41,9 @@ started.
   #8's evidence clock (below).
 
 **PR #494** turns `TASKDESK_POLICY_SHADOW=on` into `deploy/compose.uat.yml`'s own standing
-default (merged) — every future UAT deploy now collects evidence without a manual flag.
+default (ordinary review approve, CI green as of this snapshot, not yet merged) — once merged,
+every future UAT deploy collects evidence without a manual flag. The redeploy below already
+set the flag by hand for this one deploy, ahead of that default landing.
 
 **UAT redeployed** with a locally-built image from `main@0b95ed08` (tagged
 `ghcr.io/thomasheinthura/taskdesk:v2-uat-shadow-0b95ed08`, not a signed GHCR release — a
