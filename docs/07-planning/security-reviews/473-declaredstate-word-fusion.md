@@ -147,3 +147,31 @@ fixed and independently reverified; the one disclosed-not-fixed finding (N3) is 
 inert. No network-reachable surface, authority change, or gate-semantics change is
 introduced by this pull request — it is a CI-script parsing fix, reusing an
 already-established, already-reviewed pattern for one sibling function family.
+
+---
+
+## Mechanical reconfirmation after merging main past PR #475 and PR #476 (c2d540e5)
+
+**Confirmed by:** the orchestrating session, directly — not a fresh Opus pass.
+
+**Why this needed more than a disjoint-file check:** PR #476 (issue #474's `<!-->` empty-
+comment fix, merged `11f328e1`) also touches `scripts/ci/lib/pr-body.mjs` and
+`scripts/ci/lib/pr-body.test.mjs` — the same two files this PR changes. This is a real
+content overlap, not just two branches touching unrelated files.
+
+**Verified beyond a diff check:** in a fresh worktree at this branch's post-update head
+(`c2d540e5`), with `node_modules` symlinked read-only from the shared checkout, ran
+`node --test scripts/ci/lib/pr-body.test.mjs scripts/ci/probes/screens-opened-state.test.mjs`:
+**185/185 pass, 0 fail.** This includes both PR #476's own `<!-->`/`<!--->` regression tests
+and this PR's own bidi/word-fusion regression tests, confirmed via direct grep that both
+`stripComments`' complete-empty-comment handling (PR #476) and `wordBoundaryContentOf`'s
+`BidiControlCharacterError` (this PR) are present in the merged file — both fixes coexist
+and function together, not one silently overwriting the other.
+
+**PR #475 is also in this branch's history** (`bbdc027e`, disjoint — touches only
+`scripts/ci/check-reviews.mjs` and its own test file, confirmed via `git show --stat`
+earlier in this reconfirmation pass).
+
+**Verdict:** the Opus clearance at `2361b3fe` remains valid at `c2d540e5`.
+
+**Reviewed head:** `c2d540e59c9612721d406471e561bc7290ab3662`
