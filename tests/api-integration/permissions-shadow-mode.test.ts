@@ -524,6 +524,43 @@ describe("#324 — denied param workspace scope is checked against a verified ro
     expect(event.workspaceId).toBeNull();
   });
 
+  it("does not persist an unverified caller-supplied id when the caller is an instance admin (#400, Opus R1 on #381)", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const instanceAdminUser = {
+      id: "user-instance-admin-workspace-id-shadow-test",
+      email: "instance-admin-workspace-id-shadow-test@example.com",
+      name: "Instance Admin",
+      emailVerified: true,
+      role: "admin",
+    };
+    await fresh.db.insert(fresh.schema.userTable).values(instanceAdminUser);
+    await backfillPersons();
+    fresh.mockUser(instanceAdminUser);
+    const untrustedWorkspaceId = `attacker-${"x".repeat(6_000)}`;
+    expect(untrustedWorkspaceId).toHaveLength(6_009);
+
+    // `validateWorkspaceAccess` returns early for `role === "admin"` (never checking the
+    // workspace exists), so legacy authorization here is "allowed" purely from the admin
+    // bypass — the exact case #381's own fix (relying on `legacyAllowed === true` as proof
+    // of verification) missed.
+    const response = await fresh.app.request(
+      `/api/workspace/${untrustedWorkspaceId}`,
+    );
+    expect(response.status).toBe(404);
+
+    const event = await waitForShadowEvidence(async () => {
+      const rows = await shadowEventsFor(
+        WORKSPACE_DETAIL_ROUTE_KEY,
+        "unevaluated",
+      );
+      return rows.find((row) => row.reasonCode === "scope_source_unavailable");
+    });
+    expect(event.legacyAllowed).toBe(true);
+    expect(event.workspaceId).toBeNull();
+  });
+
   it("preserves a request-sourced workspace id when legacy authorization allowed it", {
     timeout: 60_000,
   }, async () => {
