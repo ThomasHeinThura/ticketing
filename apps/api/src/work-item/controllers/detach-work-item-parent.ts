@@ -8,6 +8,7 @@ import {
   recordWorkItemActivity,
   resolveVisibility,
 } from "../activity";
+import { runWithParentWriteDeadlockRetry } from "../parent-write-deadlock-retry";
 
 /**
  * `DELETE /api/work-items/{key}/parent` (`work_item:update`, required on both ends,
@@ -26,6 +27,11 @@ import {
  * added twice -- Idempotent, no second row, no error"), applied here to the symmetric
  * "detach what is already detached" case, which the spec's own Edge cases table does not
  * separately name. Flagged in the PR body.
+ *
+ * ISSUE #295: also #23's write path for `parent_id` (setting it to `NULL`), so this
+ * transaction gets the same bounded, idempotent `40P01` retry as `set-work-item-parent.ts`
+ * -- see `runWithParentWriteDeadlockRetry`'s own doc comment for why the retry wraps the
+ * whole transaction rather than just the final `UPDATE`.
  */
 export async function detachWorkItemParent(
   key: string,
@@ -35,72 +41,79 @@ export async function detachWorkItemParent(
 ) {
   const projectNotDeleted = sql`EXISTS (SELECT 1 FROM ${projectTable} WHERE ${projectTable.id} = ${workItemTable.projectId} AND ${projectTable.deletedAt} IS NULL)`;
 
-  const { updated, oldParentId, changed } = await db.transaction(async (tx) => {
-    const [item] = await tx
-      .select()
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.key, key),
-          eq(workItemTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("update");
+  const { updated, oldParentId, changed } =
+    await runWithParentWriteDeadlockRetry(() =>
+      db.transaction(async (tx) => {
+        const [item] = await tx
+          .select()
+          .from(workItemTable)
+          .where(
+            and(
+              eq(workItemTable.key, key),
+              eq(workItemTable.workspaceId, workspaceId),
+            ),
+          )
+          .for("update");
 
-    if (!item) {
-      throw new HTTPException(404, { message: "Work item not found" });
-    }
+        if (!item) {
+          throw new HTTPException(404, { message: "Work item not found" });
+        }
 
-    const [projectAlive] = await tx
-      .select({ id: projectTable.id })
-      .from(projectTable)
-      .where(
-        and(
-          eq(projectTable.id, item.projectId),
-          isNull(projectTable.deletedAt),
-        ),
-      );
+        const [projectAlive] = await tx
+          .select({ id: projectTable.id })
+          .from(projectTable)
+          .where(
+            and(
+              eq(projectTable.id, item.projectId),
+              isNull(projectTable.deletedAt),
+            ),
+          );
 
-    if (!projectAlive) {
-      throw new HTTPException(404, { message: "Work item not found" });
-    }
+        if (!projectAlive) {
+          throw new HTTPException(404, { message: "Work item not found" });
+        }
 
-    if (item.parentId === null) {
-      return { updated: item, oldParentId: null, changed: false };
-    }
+        if (item.parentId === null) {
+          return { updated: item, oldParentId: null, changed: false };
+        }
 
-    const [updatedRow] = await tx
-      .update(workItemTable)
-      .set({ parentId: null, version: sql`${workItemTable.version} + 1` })
-      .where(
-        and(
-          eq(workItemTable.id, item.id),
-          eq(workItemTable.version, item.version),
-          projectNotDeleted,
-        ),
-      )
-      .returning();
+        const [updatedRow] = await tx
+          .update(workItemTable)
+          .set({ parentId: null, version: sql`${workItemTable.version} + 1` })
+          .where(
+            and(
+              eq(workItemTable.id, item.id),
+              eq(workItemTable.version, item.version),
+              projectNotDeleted,
+            ),
+          )
+          .returning();
 
-    if (!updatedRow) {
-      throw new HTTPException(404, { message: "Work item not found" });
-    }
+        if (!updatedRow) {
+          throw new HTTPException(404, { message: "Work item not found" });
+        }
 
-    await recordWorkItemActivity(tx, [
-      {
-        workspaceId: updatedRow.workspaceId,
-        workItemId: updatedRow.id,
-        actorId,
-        actorType,
-        verb: "updated",
-        field: "parent",
-        oldValue: item.parentId,
-        newValue: null,
-        visibility: "internal",
-      },
-    ]);
+        await recordWorkItemActivity(tx, [
+          {
+            workspaceId: updatedRow.workspaceId,
+            workItemId: updatedRow.id,
+            actorId,
+            actorType,
+            verb: "updated",
+            field: "parent",
+            oldValue: item.parentId,
+            newValue: null,
+            visibility: "internal",
+          },
+        ]);
 
-    return { updated: updatedRow, oldParentId: item.parentId, changed: true };
-  });
+        return {
+          updated: updatedRow,
+          oldParentId: item.parentId,
+          changed: true,
+        };
+      }),
+    );
 
   if (changed) {
     await publishEvent("work_item.updated", {
