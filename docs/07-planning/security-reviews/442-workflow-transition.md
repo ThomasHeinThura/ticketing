@@ -409,3 +409,167 @@ Not checked:
 STILL OPEN for `children_closed`. D1 must be fixed, with its regression test, before merge.
 D2, N10 and N11 are non-blocking. Any later commit outside
 `docs/07-planning/security-reviews/` voids this note. No waiver was sought or used.
+
+---
+
+## Delta review 2 (2026-09-28): `b48b2a1..23bd93a`, verdict CLEAR WITH FINDINGS
+
+**Reviewed head:** `23bd93a5ea54f6af3178646476ac82b54eae57ba`
+
+**Reviewer:** Opus 5.5, in a fresh, independent context. I did not write, direct or fix any
+part of this change or either fix round. I checked the head with `git rev-parse HEAD` in the
+PR worktree, and it matched `origin/feat/442-workflow-transition-route`. The range has three
+commits:
+
+- `6a88add`, the previous delta note (docs only);
+- `4627c9f`, a merge of `origin/main`;
+- `23bd93a`, the D1/D2 fix round.
+
+The reproductions ran against a private `opus457_delta2_test` database on `td-lane-pg`. I used
+a scratch probe file, which I deleted afterwards and did not commit.
+
+**Headline:**
+
+- **D1 is CLOSED.**
+- **D2's claimed handling does not work.** On a real deadlock the route still returns
+  **500**, not 409. This is new finding D3 below. It is non-blocking by severity, because the
+  behaviour is the same as the D2 that was already accepted as non-blocking. But the code, its
+  comment, its unit test, the commit message and the PR body all claim a 409 that never
+  happens.
+- No new blocking findings.
+
+### The merge from `main` is unrelated
+
+`git diff 6a88add 4627c9f` touches only `attachment/controllers/delete-attachment.ts`, its
+review note and two attachment tests. The change adds an `ne(state, 'deleted')` guard and an
+idempotent re-read on `attachment`. It takes no `work_item` locks and doesn't interact with
+this route.
+
+`git diff -w b48b2a1 HEAD` on `transition-work-item.ts` has only two non-comment changes: the
+new children block and the new wrapper. Everything else is re-indentation.
+
+### D1: CLOSED, reproduced live via the real route
+
+The locked query is now single-table. The SQL Postgres actually ran, captured from
+`pg_stat_activity` while the query was blocked:
+
+```sql
+select "id", "state_id" from "work_item"
+ where ("work_item"."parent_id" = $1 and "work_item"."archived_at" is null
+        and "work_item"."deleted_at" is null) for share
+```
+
+There is no join to `state` (`transition-work-item.ts:323-333`). The group is resolved
+afterwards by a separate, unlocked `state ⋈ state_template WHERE state.id IN (...)` query
+(`:334-352`).
+
+Every probe first confirmed from `pg_stat_activity` that the app's query was waiting on a
+lock (`wait_event_type = 'Lock'`), and only then committed the concurrent transaction. So each
+probe really exercised the race and didn't just read already-committed data.
+
+| Probe (concurrent transaction held uncommitted across `POST /transition` on P, `children_closed`-guarded) | Result |
+| --- | --- |
+| **A**: original D1 shape, the only child reopened (completed→started) | **422** `guard.children_closed`, P unchanged, `version = 1` |
+| **A2**: A repeated 10 times | **10/10** gave 422 |
+| **B**: two closed children, the second reopened | **422** |
+| **C**: the reverse, the only open child closed | **200**. The new state was seen, which is correct |
+| **D**: the only open child reparented away (`parent_id = NULL`) | **200**. It drops out on the `parent_id` recheck, which is correct |
+| **F**: an open orphan parented *into* P | **422**. The concurrent transaction's cycle trigger holds P, so the transition waits on its own `FOR UPDATE` of P, then sees the child |
+
+**The two-step read has no race between the lock and the group lookup.**
+
+- The children's `FOR SHARE` row locks are held until the transaction ends. Any `UPDATE` of a
+  child's `state_id` needs at least `FOR NO KEY UPDATE`, which conflicts with `FOR SHARE`. So
+  the `state_id` values read under the lock can't change before the follow-up query or before
+  the commit. That follow-up query takes a new READ COMMITTED snapshot, but it only reads
+  `state` and `state_template` rows.
+- Nothing in `apps/api/src` ever updates `state` or `state_template`: there is no
+  `update(stateTable)` or `update(stateTemplateTable)`. So the `state_id` → group mapping is
+  effectively immutable.
+- A `state_id` whose template doesn't resolve is dropped by the inner join. `group` is then
+  `undefined`, which counts as not closed, so it fails closed.
+
+**Left over from delta 1 (latent only):** the locked query still filters on `archived_at IS
+NULL` and `deleted_at IS NULL`. Delta 1's fix direction asked for `parent_id` alone. Probe
+**E** confirms the known consequence: an archived open child whose un-archive is in flight is
+never matched and never locked, and the transition returned **200**. No route un-archives or
+restores a work item today. `unarchive-project.ts` touches `project` only, and nothing in
+`apps/api/src` sets `work_item.archived_at` or `work_item.deleted_at` back to NULL. So this is
+still latent. If a restore or un-archive route ever lands, move both filters to JS after the
+lock.
+
+### D3 (non-blocking, new): the 40P01→409 mapping never fires, because Drizzle wraps the driver error
+
+`isPostgresDeadlockError` (`transition-work-item.ts:94-101`) checks only the top-level
+`error.code`. Drizzle 0.45.2 (`pg-core/session.js:41-81`) catches every driver error and
+rethrows it as a `DrizzleQueryError` with the `pg` error on `.cause`. The top-level `.code` is
+`undefined`. The codebase already knows this: `utils/is-unique-violation.ts` and
+`utils/is-raise-exception.ts` both walk the `cause` chain for exactly this reason, and say so
+in their doc comments.
+
+The wrapper is wired correctly. `runTransactionCatchingDeadlock` (`:115-127`, called at
+`:293`) encloses the whole `db.transaction(...)`, `COMMIT` included. Only the predicate is
+wrong.
+
+**Reproduced live:**
+
+- **Probe H** (direct Drizzle deadlock): the caught error was `ctor=DrizzleQueryError
+  top.code=undefined cause.code=40P01`, and `isPostgresDeadlockError` returned `false`.
+- **Probe G** (the real route as the deadlock victim). This is delta 1's D2 shape, with the
+  set-parent side driven through raw SQL taking the same locks in the same order:
+  1. A raw transaction runs `SELECT ... FOR UPDATE` on child C. This is set-parent's `:106`
+     lock. It uses `SET deadlock_timeout = '20s'` so that the route's backend is the one that
+     detects the deadlock.
+  2. `POST /transition` on P locks P, then blocks on C in the children `FOR SHARE`.
+  3. The raw transaction runs `UPDATE work_item SET parent_id = Q WHERE id = C`. Q is P's other
+     child. The cycle trigger then waits on Q or P.
+  4. Postgres aborted the transition with `40P01`. The route returned **500** `Internal Server
+     Error`. P was unchanged at `version = 1`, and the reparent then succeeded.
+
+`tests/api/work-item/transition-deadlock.test.ts` passes only because it feeds a bare
+`{code: "40P01"}` object, and a real call never produces that shape.
+
+**Fix:** walk `.cause`, the same way `isRaiseException` does. The smallest change is the same
+loop matching `"40P01"`. Add a unit case with `{cause: {code: "40P01"}}`. Probe G is a
+ready-made live regression shape.
+
+**Why this doesn't block:** nothing is corrupted, the transaction rolls back cleanly, and the
+failure is the same 500 already accepted under D2. But the PR currently states, in code
+comments, a commit message, a test and the PR body, that D2 is handled. It isn't. Either fix it
+before merge, which is a small code change and needs a short delta review of just that change,
+or correct those claims and track D3 as a follow-up.
+
+### Still open, unchanged, as disclosed
+
+- **D2's underlying lock-order inversion** with `set-work-item-parent.ts`. It is now reported
+  rather than removed, and until D3 is fixed it isn't even reported correctly.
+- **N1, N2, N3, N5, N6, N8, N10, N11.** The code for each is unchanged, and I did not re-test
+  them.
+
+### Tests I ran on this head
+
+| Check | Result |
+| --- | --- |
+| `pnpm test:permissions` (via `vitest.permissions.config.ts`) | **13 files / 83 tests passed** |
+| `work-item-transition.test.ts` | **12/12**. That is 11 before plus the new D1 test. It is 12, not 13 |
+| `tests/api/work-item/transition-deadlock.test.ts` | **4/4**. It is predicate-only, see D3 |
+| `workflow-validate.test.ts` | **2/2** |
+| `work-item-assign.test.ts` | **17/17** |
+| `work-item-unassign.test.ts` | **8/8** |
+| `workflow.test.ts` | **8/8** |
+| `tsc --noEmit` on apps/api `tsconfig.json`, `tsconfig.permissions.json` and `tsconfig.tests.json` | exit 0, all three |
+
+Not checked:
+
+- the API-key caller path;
+- the web client;
+- the full integration suite;
+- CI status on this head;
+- the real `POST /work-items/{key}/parent` route as the other party in probe G. I drove its
+  exact lock sequence through raw SQL instead, because the transition side is what decides
+  409 vs 500.
+
+**Verdict: CLEAR WITH FINDINGS.** D1 is CLOSED, so B1 is now fully closed, and B2 stays
+CLOSED. There are no blocking findings. D3 is non-blocking, but its "handled" claim is false
+as shipped. Fix it or retract the claim before merge. Any later commit outside
+`docs/07-planning/security-reviews/` voids this note. No waiver was sought or used.
