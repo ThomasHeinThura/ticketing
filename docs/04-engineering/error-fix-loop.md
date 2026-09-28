@@ -196,7 +196,14 @@ Add to this as things are learned. It is the institutional memory that agents do
   re-export of the real global to another module). The tokenizer was retired rather than
   patched a third time; `lib/env-reads.mjs`'s own header is the detailed account of how the
   real parser closes each of those for structural reasons, not one more special case per
-  finding.
+  finding. `strip-code-comments.mjs`'s regex-vs-division scanner was the fourth instance of
+  the same class (#421): three prior patches (the original #143 lookback fix, dropping the
+  contextual keyword `of`, then excluding reserved words used as property/field names) each
+  closed one narrower shape and left a disclosed one open — a `)` closing an
+  `if`/`while`/`for` condition permits a following regex, which a previous-token lookback
+  cannot tell apart from an ordinary call's `)` without real paren-matching. Switched to the
+  same real-parser mechanism rather than a fourth instance-patch; see that file's own header
+  for the account.
 - **A React context Provider whose register/unregister calls go through `setState` can
   create an unbounded re-render loop with no built-in guard** (#407): registering
   something real state → Provider re-renders → its inline context `value` object gets a
