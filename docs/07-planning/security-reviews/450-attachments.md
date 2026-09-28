@@ -142,3 +142,42 @@ Full suites reproduced: integration 105/1366, unit 61/509, permissions 13/83 —
 `tsc --noEmit` clean, `check-openapi.mjs` clean, 143 operations, no drift.
 
 B2 (via N1+N2) is required before merge. A fresh Opus delta pass is required on the fix.
+
+## Fix applied after round 2 (commit `638e776`)
+
+**N1 (filesystem):** `writeStreamToFile` no longer opens the pending path directly with
+`O_TRUNC`. It writes to a uniquely-named temp file (`O_CREAT|O_EXCL`), and only `rename()`s
+that temp file onto the destination once the write has fully completed and the handle is
+closed — no in-flight upload ever holds a live handle on a path `complete` will later move.
+
+**N2 (both drivers), the structural fix:** `complete-attachment.ts` reordered so
+`finalizeStorageObject` (move pending → final) runs BEFORE the size check and magic-byte
+sniff, which now read only the FINAL key, never the pending one. A stray/racing PUT after
+this still lands somewhere — the now-vacated pending key, never the final one — the
+accepted, non-blocking N4 finding (an orphan object, not a served one). On any check
+failure the final object is deleted; if the row loses its `state='pending'` race, the
+final object it already created is now also cleaned up (a new, natural corollary of
+finalizing earlier).
+
+New regression tests: an N1 test (a slow, controllable-stream PUT racing a fast PUT
+against the same presigned key, with `complete` in between — fails on pre-fix code,
+served bytes are the malicious ones; passes on the fix, served bytes are the original);
+an N2 test exercising the real `completeAttachment` controller and S3 driver code path
+with only the AWS SDK client replaced by an in-memory fake (no MinIO harness exists in
+this repo's suite), with a one-shot hook firing exactly in the gap the review described.
+Both reproduced fail-then-pass (`git stash` the fix, confirm failure; restore, confirm
+pass).
+
+Independently spot-checked by the orchestrating session: both new test files pass
+(2 files, 11 tests) on a fresh isolated database.
+
+Full suites reproduced by the fixing lane: unit 61 files/509 tests, permissions 13/83,
+integration 106 files/1368 tests — all green (one earlier run showed 4 unrelated false
+failures from the lane's own overlapping concurrent test invocation against the same
+database — a deadlock during TRUNCATE, not a real defect — a clean solo re-run confirmed
+0 failures). `tsc --noEmit` clean on all three tsconfigs. `check-openapi.mjs` clean, 143
+operations, no drift. B1/B3/B4 re-confirmed unaffected.
+
+N3/N4 remain open, non-blocking, unchanged — not required for this round.
+
+A fresh Opus delta pass is required on this fix.
