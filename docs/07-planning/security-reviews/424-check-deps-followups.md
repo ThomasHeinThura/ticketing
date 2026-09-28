@@ -162,3 +162,34 @@ Not in this commit, unchanged: N3 (the pre-existing prototype-chain lookup on
 and N4 also stand as recorded above. No regression test pins a prototype-named specifier for
 F3. That is acceptable for a one-call stdlib swap, but it is cheap to add if this block is
 touched again.
+
+## Delta security review — error-fix-loop lesson (2026-09-28)
+
+**Model:** Opus 5.5, fresh independent context (same review lineage as the sections above;
+did not author this commit)
+
+**Reviewed head:** `af3f21d4f2a21762c2636ef9164c6242867569b9`
+
+**Verdict: CLEAR (unchanged)**, at head `af3f21d4f2a21762c2636ef9164c6242867569b9`. This
+final head is covered. The PR is done from the security-review side.
+
+What was checked:
+
+- **Diff scope.** `git show --stat af3f21d4` shows one file,
+  `docs/04-engineering/error-fix-loop.md`, 16+/0-. It adds one bullet to the lessons list.
+  `git diff --stat 565652c3 af3f21d4` shows only that file plus this review note (the
+  previous delta entry, `60eb35d9`). No code, test, CI, or dependency file changed.
+- **Accuracy of the bullet.** It matches what was verified in the reviews above. N1: the
+  `in` check against the spread-merged dependency fields matched `Object.prototype` names,
+  and the code now uses `Object.hasOwn(dependencyFields, packageName)` (`check-deps.mjs`
+  line 1035). N3: `FLAGGED_MESSAGES["__proto__"]` returns `Object.prototype`, which is
+  truthy, and calling it throws a `TypeError` that crashes the checker. It is pre-existing
+  and out of scope here. `gh issue view 464` confirms #464 is the open follow-up for exactly
+  this N3 bug.
+- **One nit, non-blocking.** The bullet says `Object.hasOwn` "only matches the object's own
+  enumerable properties". In fact it matches all own properties, enumerable or not. That
+  makes no difference here, because spread-created properties are always enumerable. It is
+  worth correcting the next time that file is edited.
+- **Head.** `git log -1 --format=%H` reports `af3f21d4f2a21762c2636ef9164c6242867569b9`.
+
+N2, N3 (#464), and N4 stand as recorded above.
