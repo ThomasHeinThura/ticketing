@@ -113,6 +113,14 @@ export async function unassignWorkItem(
         and(
           eq(workItemTable.id, item.id),
           eq(workItemTable.assigneeId, previousAssigneeId),
+          // Issue #490: same TOCTOU class #276/#486/#488 closed elsewhere, same shape as
+          // `assign-work-item.ts`'s own fix -- the liveness check above is an unlocked
+          // pre-read outside this transaction, and `delete-work-item.ts`'s soft-delete
+          // does not bump `version`, so a concurrent soft-delete landing between that
+          // pre-read and this conditional UPDATE would otherwise still match on
+          // `assigneeId` alone and clear the assignment on a deleted/archived item.
+          isNull(workItemTable.deletedAt),
+          isNull(workItemTable.archivedAt),
         ),
       )
       .returning({
