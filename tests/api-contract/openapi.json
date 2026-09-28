@@ -12000,7 +12000,8 @@
           "Invitations"
         ],
         "summary": "Get invitation details",
-        "description": "Look up an invitation by ID. Always 200 -- an unusable invitation is reported with valid: false and a reason rather than an error status.",
+        "description": "Deprecated and permanently disabled (2026-09-28): always refuses, even for a caller who holds the workspace authority its own middleware checks. Previously looked up an invitation by id with no recipient or workspace-membership check of its own -- the same data is not available any other way that lacks that check. Kept registered, not removed, per this API's versioning policy.",
+        "deprecated": true,
         "parameters": [
           {
             "schema": {
@@ -12023,7 +12024,34 @@
             }
           },
           "401": {
-            "description": "Missing or invalid credentials"
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This operation is deprecated and permanently disabled, or the caller lacks workspace access",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No invitation with this id",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },

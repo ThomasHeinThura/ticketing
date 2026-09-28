@@ -18,6 +18,11 @@ export const pendingInvitationSchema = z
 
 export const pendingInvitationListSchema = z.array(pendingInvitationSchema);
 
+// Retained for `getInvitationRoute`'s own `200` response shape (`invitation/index.ts`) --
+// that route is deprecated and its handler now always refuses (F4/F5 security review,
+// issue #8), never actually returns this shape, but api-design.md's Versioning section
+// requires a breaking removal post-2.0.0 to go through a real deprecation window, not an
+// outright delete -- see that route's own comment for the full reasoning.
 export const invitationDetailsSchema = z
   .object({
     valid: z.boolean().openapi({
