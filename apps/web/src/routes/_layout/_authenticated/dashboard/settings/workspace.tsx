@@ -13,7 +13,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@taskdesk/ui";
-import { Settings, Shield, Tag } from "lucide-react";
+import { CalendarDays, Settings, Shield, Tag } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import SettingsSidebar from "@/components/SettingsSidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -82,6 +82,11 @@ function RouteComponent() {
       title: t("settings:workspaceLabels.title", { defaultValue: "Labels" }),
       url: "/dashboard/settings/workspace/labels",
       icon: Tag,
+    },
+    {
+      title: "Service calendars",
+      url: "/agent/settings/calendars",
+      icon: CalendarDays,
     },
   ];
   const isActivePath = (path: string) => location.pathname === path;
