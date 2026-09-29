@@ -34,6 +34,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return proto === Object.prototype || proto === null;
 }
 
+function normaliseEmailDomain(value: string): string | undefined {
+  const domain = value.toLowerCase();
+  const dot = domain.indexOf(".");
+  // A terminal root dot is not part of the address-domain form stored in
+  // domain_bindings. Reject it rather than letting it bypass an exact match.
+  return dot > 0 && !domain.endsWith(".") ? domain : undefined;
+}
+
 function normaliseEmail(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const address = value.trim().toLowerCase();
@@ -51,8 +59,7 @@ function normaliseEmail(value: unknown): string | undefined {
   }
   if (at <= 0 || at === address.length - 1) return undefined;
   const domain = address.slice(at + 1);
-  const dot = domain.indexOf(".");
-  return dot > 0 && dot < domain.length - 1 ? address : undefined;
+  return normaliseEmailDomain(domain) === undefined ? undefined : address;
 }
 
 function isGroupOverage(claims: VerifiedEntraClaims): boolean {
@@ -107,7 +114,12 @@ export function normaliseEntraClaims(
   const addressDomain = address.slice(address.lastIndexOf("@") + 1);
   let domainOwner: string | undefined;
   for (const binding of domainOwners) {
-    if (binding.domain.toLowerCase() !== addressDomain) continue;
+    const bindingDomain = normaliseEmailDomain(binding.domain);
+    // Invalid configured data must not silently turn off a domain restriction.
+    if (bindingDomain === undefined) {
+      return { ok: false, reason: "ambiguous_domain_binding" };
+    }
+    if (bindingDomain !== addressDomain) continue;
     if (domainOwner !== undefined) {
       return { ok: false, reason: "ambiguous_domain_binding" };
     }

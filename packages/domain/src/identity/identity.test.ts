@@ -173,6 +173,26 @@ describe("P3 identity core", () => {
     ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
   });
 
+  it("IP-9/IP-27: rejects trailing-dot addresses and malformed configured bindings", () => {
+    expect(
+      normalise(
+        claims({
+          email: "person@example.com.",
+          preferred_username: "invalid",
+          upn: "also invalid",
+        }),
+        connection(),
+        [{ domain: "example.com", identityConnectionId: "connection-2" }],
+      ),
+    ).toEqual({ ok: false, reason: "no_usable_address" });
+
+    expect(
+      normalise(claims({ email: "person@example.com" }), connection(), [
+        { domain: "example.com.", identityConnectionId: "connection-2" },
+      ]),
+    ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
+  });
+
   it("IP-28: accepts group object ids and ignores overage claims without a Graph lookup", () => {
     expect(
       normalise(
