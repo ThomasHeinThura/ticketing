@@ -19,7 +19,7 @@
  * the statically-imported one this file also uses for the "off" baseline.
  */
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db from "../../apps/api/src/database";
 import type { createApp } from "../../apps/api/src/index";
@@ -616,11 +616,44 @@ describe("#8 notification self-read shadow evidence", () => {
       ownNotification.id,
     ]);
 
+    const readAllResponse = await fresh.app.request(
+      "/api/notification/read-all",
+      { method: "PATCH" },
+    );
+    expect(readAllResponse.status).toBe(200);
+    expect(await readAllResponse.json()).toEqual({ success: true });
+    const readAllRows = await fresh.db.query.notificationTable.findMany({
+      where: inArray(fresh.schema.notificationTable.id, [
+        privateNotification.id,
+        ownNotification.id,
+        deletedTaskNotification.id,
+      ]),
+    });
+    expect(
+      readAllRows.find((notification) => notification.id === ownNotification.id)
+        ?.isRead,
+    ).toBe(true);
+    expect(
+      readAllRows.find(
+        (notification) => notification.id === privateNotification.id,
+      )?.isRead,
+    ).toBe(false);
+    expect(
+      readAllRows.find(
+        (notification) => notification.id === deletedTaskNotification.id,
+      )?.isRead,
+    ).toBe(false);
+
     const readResponse = await fresh.app.request(
       `/api/notification/${privateNotification.id}/read`,
       { method: "PATCH" },
     );
     expect(readResponse.status).toBe(404);
+    const privateNotificationAfterRead =
+      await fresh.db.query.notificationTable.findFirst({
+        where: eq(fresh.schema.notificationTable.id, privateNotification.id),
+      });
+    expect(privateNotificationAfterRead?.isRead).toBe(false);
     const inaccessibleReadBody = await readResponse.text();
     const missingReadResponse = await fresh.app.request(
       "/api/notification/nonexistent-notification/read",

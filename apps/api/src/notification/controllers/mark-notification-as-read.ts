@@ -1,48 +1,30 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, ne, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { notificationTable } from "../../database/schema";
-import { userCanReachTask } from "../task-reach";
+import { reachableTaskNotificationPredicate } from "../task-reach";
 
 async function markNotificationAsRead(id: string, userId: string) {
-  const [existingNotification] = await db
-    .select()
-    .from(notificationTable)
-    .where(
-      and(eq(notificationTable.id, id), eq(notificationTable.userId, userId)),
-    )
-    .limit(1);
-
-  if (
-    !existingNotification ||
-    (existingNotification.resourceType === "task" &&
-      (!existingNotification.resourceId ||
-        !(await userCanReachTask(userId, existingNotification.resourceId))))
-  ) {
-    throw new HTTPException(404, {
-      message: "Notification not found",
-    });
-  }
-
+  // Keep the reach decision in the same statement as the mutation. A separate
+  // read/check/update sequence can mark a notification read after reach is lost,
+  // then return 404 from a post-update check.
   const [notification] = await db
     .update(notificationTable)
     .set({ isRead: true })
     .where(
-      and(eq(notificationTable.id, id), eq(notificationTable.userId, userId)),
+      and(
+        eq(notificationTable.id, id),
+        eq(notificationTable.userId, userId),
+        or(
+          isNull(notificationTable.resourceType),
+          ne(notificationTable.resourceType, "task"),
+          reachableTaskNotificationPredicate(userId),
+        ),
+      ),
     )
     .returning();
 
   if (!notification) {
-    throw new HTTPException(404, {
-      message: "Notification not found",
-    });
-  }
-
-  if (
-    notification.resourceType === "task" &&
-    (!notification.resourceId ||
-      !(await userCanReachTask(userId, notification.resourceId)))
-  ) {
     throw new HTTPException(404, {
       message: "Notification not found",
     });
