@@ -12446,6 +12446,16 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
+          "403": {
+            "description": "Missing sla_policy:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Service calendar not found",
             "content": {
@@ -13003,6 +13013,16 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
+          "403": {
+            "description": "Missing sla_policy:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Service calendar not found",
             "content": {
@@ -13299,6 +13319,16 @@
           "401": {
             "description": "Missing or invalid credentials"
           },
+          "403": {
+            "description": "Missing sla_policy:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Service calendar not found",
             "content": {
@@ -13377,6 +13407,16 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "404": {
             "description": "Service calendar not found",

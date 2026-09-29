@@ -141,6 +141,7 @@ const detailRoute = createRoute({
   request: { params: calendarIdParam },
   responses: {
     200: jsonResponse("Calendar details", calendarSchema),
+    403: errorResponse("Missing sla_policy:read permission"),
     404: errorResponse("Service calendar not found"),
   },
 });
@@ -165,6 +166,7 @@ const updateRouteDef = createRoute({
   responses: {
     200: jsonResponse("Updated calendar", calendarSchema),
     400: errorResponse("Invalid calendar data"),
+    403: errorResponse("Missing sla_policy:manage permission"),
     404: errorResponse("Service calendar not found"),
   },
 });
@@ -182,6 +184,7 @@ const deleteRouteDef = createRoute({
   request: { params: calendarIdParam },
   responses: {
     200: jsonResponse("Deleted calendar", calendarSchema),
+    403: errorResponse("Missing sla_policy:manage permission"),
     404: errorResponse("Service calendar not found"),
   },
 });
@@ -199,6 +202,7 @@ const previewRoute = createRoute({
   request: { params: calendarIdParam, query: previewQuery },
   responses: {
     200: jsonResponse("Calendar cover totals", calendarPreviewSchema),
+    403: errorResponse("Missing sla_policy:read permission"),
     404: errorResponse("Service calendar not found"),
   },
 });

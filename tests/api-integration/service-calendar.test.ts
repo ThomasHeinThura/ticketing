@@ -175,9 +175,16 @@ describe("API integration: service calendars (CAL-1–CAL-9)", () => {
     const manageKey = await createApiKeyFor(creator.user.id, {
       sla_policy: ["read", "manage"],
     });
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    const viewerManageKey = await createApiKeyFor(viewer.user.id, {
+      sla_policy: ["read", "manage"],
+    });
     const { app } = createApp();
     const readHeaders = { Authorization: `Bearer ${readKey}` };
     const manageHeaders = { Authorization: `Bearer ${manageKey}` };
+    const viewerManageHeaders = {
+      Authorization: `Bearer ${viewerManageKey}`,
+    };
     const body = {
       workspaceId: creator.workspace.id,
       name: "API key scoped calendar",
@@ -198,6 +205,24 @@ describe("API integration: service calendars (CAL-1–CAL-9)", () => {
       body: JSON.stringify(body),
     });
     expect(deniedCreate.status).toBe(403);
+
+    const viewerList = await app.request(
+      `/api/service-calendars?workspaceId=${viewer.workspace.id}`,
+      { headers: viewerManageHeaders },
+    );
+    expect(viewerList.status).toBe(200);
+    const deniedRoleCreate = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: {
+        ...viewerManageHeaders,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        ...body,
+        workspaceId: viewer.workspace.id,
+      }),
+    });
+    expect(deniedRoleCreate.status).toBe(403);
 
     const created = await app.request("/api/service-calendars", {
       method: "POST",
