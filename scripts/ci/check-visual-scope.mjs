@@ -28,6 +28,8 @@ function canonicalInventoryRoute(route) {
     .replaceAll("{typeKey}", "$typeKey");
 }
 
+// Keep screenshot evidence inside the callback for its named Playwright test. A global
+// substring search let an assertion from another screen certify this manifest entry.
 function visualTestScreenshots(source) {
   const scanner = createScanner(true, LanguageVariant.Standard, source);
   const tokens = [];
