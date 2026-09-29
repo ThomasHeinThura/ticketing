@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import PageTitle from "@/components/page-title";
 import WorkItemDetail from "@/components/work-item/work-item-detail";
+import WorkItemJourney from "@/components/work-item/work-item-journey";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -62,6 +63,14 @@ function WorkItemDetailRouteComponent() {
           isError={isError && !isNotFound}
           onRetry={refetch}
         />
+        {item && (
+          <WorkItemJourney
+            item={item}
+            onSaved={() => {
+              void refetch();
+            }}
+          />
+        )}
       </div>
     </>
   );
