@@ -33,6 +33,7 @@ export const userTable = pgTable("user", {
   emailVerified: boolean("email_verified")
     .$defaultFn(() => false)
     .notNull(),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
   image: text("image"),
   locale: text("locale"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -140,6 +141,26 @@ export const verificationTable = pgTable(
       .notNull(),
   },
   (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+export const twoFactorTable = pgTable(
+  "two_factor",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => userTable.id, { onDelete: "cascade" }),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    verified: boolean("verified").default(true),
+    failedVerificationCount: integer("failed_verification_count")
+      .default(0)
+      .notNull(),
+    lockedUntil: timestamp("locked_until", { mode: "date" }),
+  },
+  (table) => [index("two_factor_user_id_idx").on(table.userId)],
 );
 
 export const workspaceTable = pgTable("workspace", {

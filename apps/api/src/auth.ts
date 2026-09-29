@@ -10,6 +10,7 @@ import {
   genericOAuth,
   lastLoginMethod,
   magicLink,
+  twoFactor,
 } from "better-auth/plugins";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
@@ -149,6 +150,7 @@ export const auth = betterAuth({
       session: schema.sessionTable,
       verification: schema.verificationTable,
       apikey: schema.apikeyTable,
+      twoFactor: schema.twoFactorTable,
     },
   }),
   user: {
@@ -216,6 +218,7 @@ export const auth = betterAuth({
     // also let a guest arriving first consume the zero-user first-run window and
     // permanently lock an instance out of ever gaining an admin (see #18).
     lastLoginMethod(),
+    twoFactor({ issuer: "TaskDesk" }),
     magicLink({
       sendMagicLink: async ({ email, url }) => {
         try {

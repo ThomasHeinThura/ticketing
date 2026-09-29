@@ -32,6 +32,7 @@ import {
   teamMemberTable,
   teamTable,
   timeEntryTable,
+  twoFactorTable,
   userNotificationPreferenceTable,
   userNotificationWorkspaceProjectTable,
   userNotificationWorkspaceRuleTable,
@@ -54,6 +55,7 @@ import {
 export const userTableRelations = relations(userTable, ({ many, one }) => ({
   sessions: many(sessionTable),
   accounts: many(accountTable),
+  twoFactor: one(twoFactorTable),
   teamMembers: many(teamMemberTable),
   workspaceMemberships: many(workspaceUserTable),
   assignedTasks: many(taskTable),
@@ -86,6 +88,13 @@ export const verificationTableRelations = relations(
   verificationTable,
   () => ({}),
 );
+
+export const twoFactorTableRelations = relations(twoFactorTable, ({ one }) => ({
+  user: one(userTable, {
+    fields: [twoFactorTable.userId],
+    references: [userTable.id],
+  }),
+}));
 
 export const workspaceTableRelations = relations(
   workspaceTable,
