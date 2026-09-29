@@ -1,0 +1,268 @@
+import type { DragEndEvent } from "@dnd-kit/core";
+import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import type {
+  CalendarWindow,
+  Holiday,
+  Weekday,
+} from "@/fetchers/service-calendar";
+import { useCreateServiceCalendar } from "@/hooks/mutations/service-calendar/use-create-service-calendar";
+import { useUpdateServiceCalendar } from "@/hooks/mutations/service-calendar/use-update-service-calendar";
+import { useServiceCalendar } from "@/hooks/queries/service-calendar/use-service-calendar";
+import { useServiceCalendarPreview } from "@/hooks/queries/service-calendar/use-service-calendar-preview";
+import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import {
+  type CalendarWindowsForm,
+  copyCalendarWindows,
+  emptyCalendarWindows,
+  WEEKDAYS,
+} from "@/lib/service-calendar-form";
+import { toast } from "@/lib/toast";
+
+export type CalendarMetadata = {
+  name: string;
+  timezone: string;
+};
+
+let nextFieldId = 0;
+
+function createFieldId(): string {
+  nextFieldId += 1;
+  return `calendar-field-${nextFieldId}`;
+}
+
+function isValidTimezone(timezone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function useServiceCalendarEditor({
+  calendarId,
+  isNew,
+  year,
+  onCreated,
+}: {
+  calendarId: string;
+  isNew: boolean;
+  year: number;
+  onCreated: (id: string, year: number) => Promise<void>;
+}) {
+  const { data: workspace, isLoading: isWorkspaceLoading } =
+    useActiveWorkspace();
+  const {
+    data: calendar,
+    isLoading: isCalendarLoading,
+    isError: isCalendarError,
+    refetch: refetchCalendar,
+  } = useServiceCalendar(isNew ? "" : calendarId);
+  const preview = useServiceCalendarPreview(isNew ? "" : calendarId, year);
+  const createCalendar = useCreateServiceCalendar();
+  const updateCalendar = useUpdateServiceCalendar();
+  const [windows, setWindows] =
+    useState<CalendarWindowsForm>(emptyCalendarWindows);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [windowIds, setWindowIds] = useState<Record<Weekday, string[]>>({
+    mon: [],
+    tue: [],
+    wed: [],
+    thu: [],
+    fri: [],
+    sat: [],
+    sun: [],
+  });
+  const [holidayIds, setHolidayIds] = useState<string[]>([]);
+  const [windowError, setWindowError] = useState("");
+  const hydratedCalendarId = useRef<string | null>(null);
+
+  const metadataSchema = useMemo(
+    () =>
+      z.object({
+        name: z.string().trim().min(1, "Enter a calendar name").max(120),
+        timezone: z
+          .string()
+          .trim()
+          .min(1, "Choose an IANA timezone")
+          .refine(isValidTimezone, "Enter a valid IANA timezone"),
+      }),
+    [],
+  );
+  const form = useForm<CalendarMetadata>({
+    resolver: standardSchemaResolver(metadataSchema),
+    mode: "onChange",
+    defaultValues: { name: "", timezone: "" },
+  });
+
+  useEffect(() => {
+    if (!calendar || hydratedCalendarId.current === calendar.id) return;
+    hydratedCalendarId.current = calendar.id;
+    form.reset({ name: calendar.name, timezone: calendar.timezone });
+    setWindows(copyCalendarWindows(calendar.windows));
+    setHolidays(calendar.holidays.map((holiday) => ({ ...holiday })));
+    setWindowIds(
+      Object.fromEntries(
+        WEEKDAYS.map(({ key }) => [
+          key,
+          (calendar.windows[key] ?? []).map(() => createFieldId()),
+        ]),
+      ) as Record<Weekday, string[]>,
+    );
+    setHolidayIds(calendar.holidays.map(() => createFieldId()));
+  }, [calendar, form]);
+
+  async function handleSave(values: CalendarMetadata) {
+    const invalidWindow = WEEKDAYS.some(({ key }) =>
+      windows[key].some((window) => window.from >= window.to),
+    );
+    if (invalidWindow) {
+      setWindowError("Each window must end after it starts.");
+      return;
+    }
+    setWindowError("");
+
+    const data = {
+      name: values.name.trim(),
+      timezone: values.timezone.trim(),
+      windows,
+      holidays,
+    };
+
+    try {
+      if (isNew) {
+        if (!workspace?.id) throw new Error("Choose a workspace first.");
+        const created = await createCalendar.mutateAsync({
+          workspaceId: workspace.id,
+          ...data,
+        });
+        toast.success("Service calendar created");
+        await onCreated(created.id, year);
+      } else {
+        const updated = await updateCalendar.mutateAsync({
+          id: calendarId,
+          data,
+        });
+        form.reset({ name: updated.name, timezone: updated.timezone });
+        toast.success("Service calendar saved");
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save calendar",
+      );
+    }
+  }
+
+  function updateWindow(
+    day: Weekday,
+    index: number,
+    patch: Partial<CalendarWindow>,
+  ) {
+    setWindows((current) => ({
+      ...current,
+      [day]: current[day].map((window, itemIndex) =>
+        itemIndex === index ? { ...window, ...patch } : window,
+      ),
+    }));
+  }
+
+  function handleWindowDragEnd(event: DragEndEvent) {
+    const data = event.active.data.current as
+      | {
+          day: Weekday;
+          index: number;
+          from: number;
+          to: number;
+          getTrackWidth: () => number;
+        }
+      | undefined;
+    const trackWidth = data?.getTrackWidth();
+    if (!data || !trackWidth || data.to <= data.from) return;
+
+    const duration = data.to - data.from;
+    const shift = Math.round((event.delta.x / trackWidth) * 1440);
+    const from = Math.max(0, Math.min(1440 - duration, data.from + shift));
+    updateWindow(data.day, data.index, { from, to: from + duration });
+  }
+
+  function addWindow(day: Weekday) {
+    setWindows((current) => ({
+      ...current,
+      [day]: [...current[day], { from: 0, to: 0 }],
+    }));
+    setWindowIds((current) => ({
+      ...current,
+      [day]: [...current[day], createFieldId()],
+    }));
+  }
+
+  function removeWindow(day: Weekday, index: number) {
+    setWindows((current) => ({
+      ...current,
+      [day]: current[day].filter((_, itemIndex) => itemIndex !== index),
+    }));
+    setWindowIds((current) => ({
+      ...current,
+      [day]: current[day].filter((_, itemIndex) => itemIndex !== index),
+    }));
+  }
+
+  function replaceHoliday(index: number, holiday: Holiday) {
+    setHolidays((current) =>
+      current.map((existing, itemIndex) =>
+        itemIndex === index ? holiday : existing,
+      ),
+    );
+  }
+
+  function patchHoliday(index: number, patch: Partial<Holiday>) {
+    setHolidays((current) =>
+      current.map((holiday, itemIndex) =>
+        itemIndex === index ? ({ ...holiday, ...patch } as Holiday) : holiday,
+      ),
+    );
+  }
+
+  function addHoliday() {
+    setHolidays((current) => [...current, { date: "" }]);
+    setHolidayIds((current) => [...current, createFieldId()]);
+  }
+
+  function removeHoliday(index: number) {
+    setHolidays((current) =>
+      current.filter((_, itemIndex) => itemIndex !== index),
+    );
+    setHolidayIds((current) =>
+      current.filter((_, itemIndex) => itemIndex !== index),
+    );
+  }
+
+  return {
+    workspace,
+    calendar,
+    preview,
+    form,
+    windows,
+    holidays,
+    windowIds,
+    holidayIds,
+    windowError,
+    saving: createCalendar.isPending || updateCalendar.isPending,
+    loading: isWorkspaceLoading || (!isNew && isCalendarLoading),
+    isCalendarError,
+    refetchCalendar,
+    handleSave,
+    handleWindowDragEnd,
+    updateWindow,
+    addWindow,
+    removeWindow,
+    addHoliday,
+    replaceHoliday,
+    patchHoliday,
+    removeHoliday,
+    hasCover: WEEKDAYS.some(({ key }) => windows[key].length > 0),
+  };
+}

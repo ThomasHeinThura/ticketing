@@ -97,6 +97,19 @@ export function toggleWorkItemSortDirection(
 }
 
 export const routes = {
+  /** `docs/02-design/screen-inventory.md` "Workspace — service calendars". */
+  serviceCalendars: {
+    path: "/agent/settings/calendars" as const,
+    build: () => "/agent/settings/calendars",
+  },
+  /** `docs/02-design/screen-inventory.md` "Service calendar editor". */
+  serviceCalendarEditor: {
+    path: "/agent/settings/calendars/$calendarId" as const,
+    build: (params: { calendarId: string }, year?: number) => {
+      const path = `/agent/settings/calendars/${encodeURIComponent(params.calendarId)}`;
+      return year === undefined ? path : `${path}?year=${year}`;
+    },
+  },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {
     path: "/agent/projects/$projectKey/work" as const,

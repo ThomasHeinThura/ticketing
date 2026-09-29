@@ -117,7 +117,8 @@ are written in full so a script can check them against `lib/routes.ts`.
 | Workflow editor | `/agent/settings/workflows/{id}` | route | P2 | ⬜ |
 | Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | ⬜ |
 | SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | ⬜ |
-| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | ⬜ |
+| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | 🟡 |
+| Service calendar editor | `/agent/settings/calendars/{id}` | route | P2 | 🟡 |
 | Workspace — request types | `/agent/settings/request-types` | route | P2 | ⬜ |
 | Request type editor / form builder | `/agent/settings/request-types/{id}` | route | P2 | ⬜ |
 | Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | ⬜ |
@@ -201,12 +202,12 @@ build if it drifts.
 | --- | --- |
 | P0 Foundation | 6 |
 | P1 Core work | 33 |
-| P2 Service desk | 18 |
+| P2 Service desk | 19 |
 | P3 Portal & identity | 21 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **137** |
+| **Total** | **138** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see
