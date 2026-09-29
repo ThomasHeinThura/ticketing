@@ -9,8 +9,9 @@ blocks current work. Opus 5.5 is an optional sampled reviewer after a GPT-prepar
 
 At the cutover, every still-open security-scope PR needs a fresh GPT-6 Sol review of its
 current exact head and an updated PR body and committed review note before merge. Historical
-reviews remain historical evidence; there is no Opus-or-Sol CI fallback. Recheck GitHub's live
-PR list at cutover and complete this transition before merging those candidates.
+reviews remain historical evidence; CI has no Opus fallback for the required GPT-6 Sol
+review. Recheck GitHub's live PR list at cutover and complete this transition before merging
+those candidates.
 
 ---
 
