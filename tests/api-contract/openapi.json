@@ -10762,7 +10762,7 @@
         },
         "responses": {
           "200": {
-            "description": "The created notification, or null when the user has muted this notification type",
+            "description": "The created notification, or null when the category is muted or the task is unreachable",
             "content": {
               "application/json": {
                 "schema": {

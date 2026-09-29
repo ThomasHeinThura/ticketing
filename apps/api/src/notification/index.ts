@@ -50,7 +50,7 @@ const createNotificationRoute = createRoute({
   },
   responses: {
     200: jsonResponse(
-      "The created notification, or null when the user has muted this notification type",
+      "The created notification, or null when the category is muted or the task is unreachable",
       notificationSchema.nullable(),
     ),
     400: errorResponse("Invalid request"),
