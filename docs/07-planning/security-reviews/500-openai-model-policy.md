@@ -42,7 +42,7 @@ No unresolved security finding remains.
 ## Tests and evidence
 
 - `pnpm test:ci-scripts` on Node 24: **851 passed, 0 failed**, 110 suites.
-- `pnpm lint:ci`: passed across 1,582 files; 117 pre-existing warnings remain.
+- `pnpm lint:ci`: passed across 1,582 files; 117 warnings, no lint errors.
 - `pnpm typecheck`: **9/9 tasks passed**.
 - `pnpm test:all --list`: CI/document reconciliation passed; 38 declared gates, with G4/G8/G11
   still disabled pending their separate P0 implementation.
