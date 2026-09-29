@@ -18,8 +18,9 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 refs/heads/main` and `gh`, 12:29 UTC).** The latest merge is #505. This is a point-in-time
 snapshot; refresh GitHub before acting on any PR or issue state.
 
-**Merged since the prior snapshot:** #501 enabled the G4 accessibility check; #504 fixed the
-attachment R6 cleanup-ordering test; and #505 added local OIDC/SCIM mock servers and issuer
+**Merged since the prior snapshot:** #500 moved active agent routing to the OpenAI review
+tiers described above; #501 enabled the G4 accessibility check; #504 fixed the attachment R6
+cleanup-ordering test; and #505 added local OIDC/SCIM mock servers and issuer
 normalization/redaction for P3 identity work. #498's work-item liveness consolidation remains
 on `main`; its later review found follow-up gaps tracked in #499.
 
