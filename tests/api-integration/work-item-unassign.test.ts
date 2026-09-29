@@ -9,7 +9,7 @@
  * conjunction, not the capability alone, is the branch).
  */
 import { randomUUID } from "node:crypto";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -23,6 +23,7 @@ import {
   createWorkspaceMember,
   requireRow,
 } from "./helpers/fixtures";
+import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
 
 const publishEventMock = vi.hoisted(() => vi.fn());
 
@@ -606,7 +607,7 @@ describe("API integration: work item unassignment (#30, assignment.md)", () => {
     expect(publishEventMock).not.toHaveBeenCalled();
   });
 
-  it("#493: a concurrent project soft-delete landing after the pre-read cannot slip past the conditional UPDATE and clear the assignment on a work item whose project is gone", async () => {
+  it("#493: unassignment waits for a concurrent project soft-delete and refuses the write", async () => {
     const { creator, workspace, project, type } = await setupProject();
     const holder = await addPersonOnRoster({ projectId: project.id });
 
@@ -622,53 +623,23 @@ describe("API integration: work item unassignment (#30, assignment.md)", () => {
       .where(eq(schema.workItemTable.key, key));
     const workItemId = requireRow([row], "row").id;
 
-    let releaseLock!: () => void;
-    const releaseLockGate = new Promise<void>((resolve) => {
-      releaseLock = resolve;
-    });
-    let lockHeld!: () => void;
-    const lockHeldGate = new Promise<void>((resolve) => {
-      lockHeld = resolve;
-    });
-    // `unassignWorkItem`'s own pre-read never touches `project` at all (that is exactly
-    // the gap #493 flags), and there is no intermediate query between that pre-read and
-    // the final conditional UPDATE either -- so an ACCESS EXCLUSIVE table lock parks the
-    // call exactly at that final UPDATE, the new code this test exists for. A row-level
-    // lock on the project row would not do this: a plain, unlocked read never blocks on
-    // a concurrent writer's row lock.
-    const rival = db.transaction(async (tx) => {
-      await tx.execute(sql`LOCK TABLE project IN ACCESS EXCLUSIVE MODE`);
-      lockHeld();
-      await releaseLockGate;
-      await tx
-        .update(schema.projectTable)
-        .set({ deletedAt: new Date(), purgeAfter: new Date() })
-        .where(eq(schema.projectTable.id, project.id));
-    });
-    await lockHeldGate;
-
-    const racedCall = unassignWorkItem(
-      key,
-      workspace.id,
-      creator.id,
-      "person",
-      holder.id,
+    const race = await raceProjectSoftDelete(project.id, () =>
+      unassignWorkItem(key, workspace.id, creator.id, "person", holder.id),
     );
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    releaseLock();
-    await rival;
-
-    // Pre-fix: the final UPDATE's WHERE never checked the project at all, so once the
-    // concurrent soft-delete committed, the write still landed on a work item whose
-    // project was already gone. Post-fix: the same `projectNotDeletedClause`
-    // `update-work-item.ts` already used is folded in here too.
-    await expect(racedCall).rejects.toThrow(WorkItemAssigneeConflictError);
+    expect(race.blockedOnRowLock).toBe(true);
+    expect(race.operation.status).toBe("rejected");
+    if (race.operation.status !== "rejected") {
+      throw new Error("unassignment did not reject after project deletion");
+    }
+    expect(race.operation.reason).toMatchObject({ status: 404 });
 
     const [after] = await db
       .select()
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.id, workItemId));
     expect(after?.assigneeId).toBe(holder.id);
+    expect(after?.deletedAt).toBeNull();
+    expect(publishEventMock).not.toHaveBeenCalled();
   });
 
   it("#490: a concurrent archive cannot slip past the conditional UPDATE and clear the assignment on an archived item", async () => {

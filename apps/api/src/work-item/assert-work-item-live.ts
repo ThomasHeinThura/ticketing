@@ -39,11 +39,11 @@ export function assertWorkItemStillLive<
  * `projectNotDeleted` shape to a shared sibling check (issue #493's "project-freeze gap":
  * `transition-work-item.ts`/`assign-work-item.ts`/`unassign-work-item.ts` never re-checked
  * their work item's PROJECT for a soft-delete inside their own transaction, unlike this
- * shape). A work item's row lock does not serialise a concurrent `UPDATE project SET
- * deleted_at = ...` -- that is a different row entirely -- so this query also locks the
- * project row with `FOR SHARE` inside the same transaction. Project deletion must wait
- * for this check and its guarded writes to commit; if deletion wins the lock first, the
- * query waits and PostgreSQL rechecks the live-row predicate after the delete commits.
+ * shape). A work item's row lock does not serialise a concurrent project archive or
+ * deletion -- that is a different row entirely -- so this query also locks the project
+ * row with `FOR SHARE` inside the same transaction. Freezing the project must wait for
+ * this check and its guarded writes to commit; if archive or deletion wins the lock first,
+ * the query waits and PostgreSQL rechecks the live-row predicate.
  */
 export async function assertProjectStillLive(
   tx: DbOrTx,
@@ -53,7 +53,13 @@ export async function assertProjectStillLive(
   const [projectAlive] = await tx
     .select({ id: projectTable.id })
     .from(projectTable)
-    .where(and(eq(projectTable.id, projectId), isNull(projectTable.deletedAt)))
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
+      ),
+    )
     .for("share");
 
   if (!projectAlive) {
@@ -72,4 +78,4 @@ export async function assertProjectStillLive(
  * (a 404, a version conflict, or -- `assign-work-item.ts`/`unassign-work-item.ts`'s own
  * established shape -- the assignee-conflict 409), unchanged by adding this clause.
  */
-export const projectNotDeletedClause = sql`EXISTS (SELECT 1 FROM ${projectTable} WHERE ${projectTable.id} = ${workItemTable.projectId} AND ${projectTable.deletedAt} IS NULL)`;
+export const projectNotDeletedClause = sql`EXISTS (SELECT 1 FROM ${projectTable} WHERE ${projectTable.id} = ${workItemTable.projectId} AND ${projectTable.deletedAt} IS NULL AND ${projectTable.archivedAt} IS NULL)`;

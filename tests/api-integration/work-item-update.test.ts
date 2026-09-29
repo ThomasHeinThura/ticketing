@@ -611,6 +611,44 @@ describe("API integration: work item update (#23 second slice)", () => {
     expect(row?.version).toBe(1);
   });
 
+  it("#493: updateWorkItem refuses writes to an archived project", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Archived project stays read-only",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    const error = await updateWorkItem(
+      createdBody.key,
+      creator.workspace.id,
+      createdBody.version,
+      creator.user.id,
+      "person",
+      { title: "Should not land" },
+    ).catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(HTTPException);
+    expect((error as HTTPException).status).toBe(404);
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, createdBody.key));
+    expect(row?.title).toBe("Archived project stays read-only");
+    expect(row?.version).toBe(createdBody.version);
+  });
+
   it("S3 (independent Opus security review of PR #271): out-of-range startDate/dueDate are a 400, not a 500, and true/0 are not silently accepted as epoch", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);

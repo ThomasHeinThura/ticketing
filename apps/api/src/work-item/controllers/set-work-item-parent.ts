@@ -136,7 +136,8 @@ export async function setWorkItemParent(
             eq(workItemTable.key, parentKey),
             eq(workItemTable.workspaceId, workspaceId),
           ),
-        );
+        )
+        .for("share");
 
       assertWorkItemStillLive(parent, "Parent work item not found");
 

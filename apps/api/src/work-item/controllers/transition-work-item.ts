@@ -22,7 +22,10 @@ import {
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
-import { projectNotDeletedClause } from "../assert-work-item-live";
+import {
+  assertProjectStillLive,
+  projectNotDeletedClause,
+} from "../assert-work-item-live";
 import { resolveAssigneeEligibility } from "../assignee-eligibility";
 import {
   loadWorkflowTransitionContext,
@@ -318,6 +321,7 @@ export async function transitionWorkItem(
         .select({
           stateId: workItemTable.stateId,
           assigneeId: workItemTable.assigneeId,
+          projectId: workItemTable.projectId,
           deletedAt: workItemTable.deletedAt,
           archivedAt: workItemTable.archivedAt,
         })
@@ -339,6 +343,8 @@ export async function transitionWorkItem(
       ) {
         throw new TransitionConflictError(locked?.stateId ?? fromStateId);
       }
+
+      await assertProjectStillLive(tx, locked.projectId);
 
       // `children_closed` (Opus security review of PR #457, D1 -- the remaining half of
       // B1 the first fix round missed): lock children with a SINGLE-TABLE query first --

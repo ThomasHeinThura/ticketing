@@ -10,7 +10,10 @@ import {
   type NewActivityInput,
   recordWorkItemActivity,
 } from "../activity";
-import { projectNotDeletedClause } from "../assert-work-item-live";
+import {
+  assertProjectStillLive,
+  projectNotDeletedClause,
+} from "../assert-work-item-live";
 import { resolveAssigneeEligibility } from "../assignee-eligibility";
 
 /**
@@ -164,6 +167,7 @@ export async function assignWorkItem(
   const previousAssigneeId = input.expectedCurrentAssigneeId ?? null;
 
   const assigned = await db.transaction(async (tx) => {
+    await assertProjectStillLive(tx, item.projectId);
     const expected = input.expectedCurrentAssigneeId ?? null;
     const [updated] = await tx
       .update(workItemTable)
