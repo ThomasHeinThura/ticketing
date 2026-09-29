@@ -19,6 +19,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { raceProjectArchive } from "./helpers/race-soft-delete";
 
 async function makeWorkItemType(workspaceId: string) {
   const now = new Date();
@@ -158,6 +159,31 @@ describe("API integration: work item delete (#23 fourth slice)", () => {
       .where(eq(schema.workItemTable.key, key));
     expect(row).toBeDefined();
     expect(row?.deletedAt).not.toBeNull();
+  });
+
+  it("#499: work-item delete waits for project archive and leaves the item unchanged", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Archive race",
+    });
+    const { key } = (await created.json()) as { key: string };
+
+    const race = await raceProjectArchive(
+      project.id,
+      async () => await deleteWorkItemRequest(app, key),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    expect(row?.deletedAt).toBeNull();
   });
 
   it("issue #276: a deleted item now 404s on a direct GET, via the shared requireWorkItemReach guard", async () => {

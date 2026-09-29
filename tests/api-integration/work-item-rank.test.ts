@@ -15,6 +15,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
 
 async function makeWorkItemType(workspaceId: string) {
   const now = new Date();
@@ -336,5 +337,48 @@ describe("API integration: work item rank (#23 fourth slice)", () => {
 
     const response = await rankWorkItemRequest(app, b.key, { afterId: a.id });
     expect(response.status).toBe(403);
+  });
+
+  it("#499: project deletion waits for ranking and a deletion that wins makes rank return 404", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const first = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "First",
+      })
+    ).json()) as { id: string; key: string };
+    const target = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Target",
+      })
+    ).json()) as { id: string; key: string };
+    const [before] = await db
+      .select({
+        position: schema.workItemTable.position,
+        version: schema.workItemTable.version,
+      })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, target.id));
+
+    const race = await raceProjectSoftDelete(
+      project.id,
+      async () =>
+        await rankWorkItemRequest(app, target.key, { afterId: first.id }),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const [after] = await db
+      .select({
+        position: schema.workItemTable.position,
+        version: schema.workItemTable.version,
+      })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, target.id));
+    expect(after).toEqual(before);
   });
 });

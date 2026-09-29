@@ -1,8 +1,16 @@
 import { and, eq, ne } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { attachmentTable, personTable } from "../../database/schema";
+import {
+  attachmentTable,
+  personTable,
+  workItemTable,
+} from "../../database/schema";
 import { recordWorkItemActivity } from "../../work-item/activity";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+} from "../../work-item/assert-work-item-live";
 
 export type DeleteAttachmentInput = {
   attachmentId: string;
@@ -49,20 +57,37 @@ export async function deleteAttachment(input: DeleteAttachmentInput) {
     throw new HTTPException(404, { message: "Attachment not found" });
   }
 
-  // Deleting an already-deleted attachment is a no-op success, matching this
-  // codebase's own storage-delete idempotence convention (`filesystem.ts`'s
-  // `deleteObject`).
-  if (attachment.state === "deleted") {
-    return attachment;
-  }
-
   if (!person || attachment.uploadedBy !== person.id) {
     throw new HTTPException(403, {
       message: "Only the attachment's own uploader may delete it",
     });
   }
 
+  // Check uploader authority before the idempotent return so knowing a tombstone id
+  // does not reveal retained attachment metadata to another workspace member.
+  if (attachment.state === "deleted") {
+    return attachment;
+  }
+
   const [updated] = await db.transaction(async (tx) => {
+    const [lockedWorkItem] = await tx
+      .select({
+        id: workItemTable.id,
+        projectId: workItemTable.projectId,
+        deletedAt: workItemTable.deletedAt,
+        archivedAt: workItemTable.archivedAt,
+      })
+      .from(workItemTable)
+      .where(
+        and(
+          eq(workItemTable.id, workItemId),
+          eq(workItemTable.workspaceId, workspaceId),
+        ),
+      )
+      .for("share");
+    assertWorkItemStillLive(lockedWorkItem);
+    await assertProjectStillLive(tx, lockedWorkItem.projectId);
+
     const rows = await tx
       .update(attachmentTable)
       .set({ state: "deleted", deletedAt: new Date() })

@@ -483,6 +483,52 @@ describe("API integration: bulk work item operations (#23 fourth slice)", () => 
     expect(row?.assigneeId).toBeNull();
   });
 
+  it("#499: bulk no-op assignment on an archived project is reported as failed", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    const target = await addPersonOnRoster(project.id);
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Already assigned",
+    });
+    const { key } = (await created.json()) as { key: string };
+
+    const initial = await bulkRequest(app, {
+      workspaceId: creator.workspace.id,
+      workItemKeys: [key],
+      operation: "assign",
+      assigneeId: target.id,
+    });
+    expect(initial.status).toBe(200);
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    const response = await bulkRequest(app, {
+      workspaceId: creator.workspace.id,
+      workItemKeys: [key],
+      operation: "assign",
+      assigneeId: target.id,
+    });
+    const body = (await response.json()) as {
+      succeeded: string[];
+      failed: Array<{ id: string; reason: string }>;
+    };
+    expect(body.succeeded).toHaveLength(0);
+    expect(body.failed).toHaveLength(1);
+    expect(body.failed[0]?.id).toBe(key);
+    expect(body.failed[0]?.reason).toContain("Work item not found");
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    expect(row?.assigneeId).toBe(target.id);
+  });
+
   it("writes one bulk.performed audit summary row", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);

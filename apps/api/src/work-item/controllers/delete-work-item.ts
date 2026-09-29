@@ -2,9 +2,13 @@ import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
-import { projectTable, workItemTable } from "../../database/schema";
+import { workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import type { ActivityActorType } from "../activity";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+} from "../assert-work-item-live";
 
 // #23's fourth slice: `DELETE /api/work-items/{key}` (`work_item:delete`, plus reach).
 //
@@ -60,29 +64,29 @@ export async function deleteWorkItem(
   const now = new Date();
 
   const deleted = await db.transaction(async (tx) => {
-    // Opus security review of PR #433, F1: `requireWorkItemReach()` enforces the
-    // #202/#204 soft-deleted-project freeze for single-item routes via this same
-    // join, but the bulk route calls this controller directly with `middleware: []`
-    // and never goes through that middleware. Mirrored here so every caller --
-    // including bulk -- is covered regardless of which middleware chain it went
-    // through.
+    // The bulk route calls this controller directly with `middleware: []`, and the
+    // single-item reach middleware runs before this transaction. Lock and re-check
+    // both rows here so every caller is protected from project archive/delete races.
     const [row] = await tx
-      .select({ id: workItemTable.id })
+      .select({
+        id: workItemTable.id,
+        projectId: workItemTable.projectId,
+        deletedAt: workItemTable.deletedAt,
+        archivedAt: workItemTable.archivedAt,
+      })
       .from(workItemTable)
-      .innerJoin(projectTable, eq(workItemTable.projectId, projectTable.id))
       .where(
         and(
           eq(workItemTable.key, key),
           eq(workItemTable.workspaceId, workspaceId),
           isNull(workItemTable.deletedAt),
-          isNull(projectTable.deletedAt),
         ),
       )
-      .limit(1);
+      .limit(1)
+      .for("update");
 
-    if (!row) {
-      throw new HTTPException(404, { message: "Work item not found" });
-    }
+    assertWorkItemStillLive(row);
+    await assertProjectStillLive(tx, row.projectId);
 
     const [deleted] = await tx
       .update(workItemTable)

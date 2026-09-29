@@ -19,6 +19,7 @@ import {
   createWorkspaceMember,
   requireRow,
 } from "./helpers/fixtures";
+import { raceProjectArchive } from "./helpers/race-soft-delete";
 
 /**
  * A `person` row for a user (`presign-attachment.ts`/`delete-attachment.ts`'s own
@@ -764,6 +765,22 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       { method: "DELETE" },
     );
     expect(deleteResponse.status).toBe(403);
+
+    mockAuthenticatedSession(creator);
+    const ownerDelete = await app.request(
+      `/api/attachments/${presigned.attachmentId}`,
+      { method: "DELETE" },
+    );
+    expect(ownerDelete.status).toBe(200);
+    await ownerDelete.text();
+
+    mockAuthenticatedSession(otherUser);
+    const tombstoneDelete = await app.request(
+      `/api/attachments/${presigned.attachmentId}`,
+      { method: "DELETE" },
+    );
+    expect(tombstoneDelete.status).toBe(403);
+    await tombstoneDelete.text();
   });
 
   it("issue #480: 404s download and delete against an attachment whose work item is soft-deleted", async () => {
@@ -878,6 +895,56 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       .from(schema.attachmentTable)
       .where(eq(schema.attachmentTable.id, presigned.attachmentId));
     expect(row?.state).toBe("ready");
+  });
+
+  it("#499: attachment delete waits for project archive and leaves the attachment unchanged", async () => {
+    const { creator, project, type } = await setupProject();
+    await addPersonForUser(creator.id);
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const presignResponse = await app.request(
+      `/api/work-items/${key}/attachments/presign`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          filename: "photo.png",
+          contentType: "image/png",
+          size: PNG_BYTES.length,
+        }),
+      },
+    );
+    const { attachmentId } = (await presignResponse.json()) as {
+      attachmentId: string;
+    };
+
+    const race = await raceProjectArchive(
+      project.id,
+      async () =>
+        await app.request(`/api/attachments/${attachmentId}`, {
+          method: "DELETE",
+        }),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const [row] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, attachmentId));
+    if (!row) throw new Error("expected attachment row after rejected delete");
+    expect(row?.state).toBe("pending");
+    const activityRows = await db.select().from(schema.activityTable);
+    expect(
+      activityRows.some(
+        (activity) =>
+          activity.workItemId === row.workItemId &&
+          activity.verb === "attachment.deleted",
+      ),
+    ).toBe(false);
   });
 
   it("issue #480 (F3): 404s POST /api/attachments/{id}/complete against a soft-deleted work item, and the row stays pending", async () => {

@@ -16,6 +16,11 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import {
+  raceProjectArchive,
+  raceProjectSoftDelete,
+  raceWorkItemSoftDelete,
+} from "./helpers/race-soft-delete";
 
 type RecordedEvent = { type: string; data: unknown };
 let recordedEvents: RecordedEvent[] = [];
@@ -204,6 +209,29 @@ describe("API integration: work-item comments (#27)", () => {
     expect(created.visibility).toBe("public");
   });
 
+  it("#499: project deletion cannot race a comment onto a work item", async () => {
+    const { app, project, workItem } = await setupWorkItem("member");
+
+    const race = await raceProjectSoftDelete(
+      project.id,
+      async () =>
+        await postComment(app, workItem.key, {
+          body: { type: "doc", content: [] },
+          visibility: "public",
+        }),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const comments = await db
+      .select({ id: schema.commentTable.id })
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.workItemId, workItem.id));
+    expect(comments).toHaveLength(0);
+    expect(recordedEvents).toHaveLength(0);
+  });
+
   it("403s a caller with no comment:create/comment:create_internal capability", async () => {
     const { app, workItem, creator } = await setupWorkItem("member");
     const viewer = await addWorkspaceMember(creator.workspace.id, "viewer");
@@ -240,6 +268,33 @@ describe("API integration: work-item comments (#27)", () => {
       visibility: "internal",
     });
     expect(response.status).toBe(404);
+  });
+
+  it("#493: a concurrent soft-delete landing after the reach check cannot slip past this route's own transaction and insert a comment on a dead item", async () => {
+    const { app, workItem } = await setupWorkItem("member");
+
+    const race = await raceWorkItemSoftDelete(
+      workItem.id,
+      async () =>
+        await postComment(app, workItem.key, {
+          body: { type: "doc", content: [] },
+          visibility: "internal",
+        }),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    const response = race.operation.value;
+    // Pre-fix: this route had no in-transaction liveness re-check at all, so the insert
+    // landed anyway. Post-fix: the locked re-read sees the now-committed soft-delete and
+    // refuses with the same 404 `requireWorkItemReach()` itself would give.
+    expect(response.status).toBe(404);
+
+    const comments = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.workItemId, workItem.id));
+    expect(comments).toHaveLength(0);
+    expect(recordedEvents).toHaveLength(0);
   });
 
   it("400s a body containing a NUL byte", async () => {
@@ -361,6 +416,28 @@ describe("API integration: work-item comments (#27)", () => {
     // Idempotent: deleting again re-returns the same tombstoned row, not an error.
     const again = await deleteComment(app, id);
     expect(again.status).toBe(200);
+  });
+
+  it("does not return a tombstoned comment to a member without delete authority", async () => {
+    const { app, workItem, creator } = await setupWorkItem("member");
+    const created = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    const { id } = (await created.json()) as { id: string };
+
+    const ownerDelete = await deleteComment(app, id);
+    expect(ownerDelete.status).toBe(200);
+    await ownerDelete.text();
+
+    const otherMember = await addWorkspaceMember(
+      creator.workspace.id,
+      "member",
+    );
+    mockAuthenticatedSession(otherMember);
+    const unauthorizedDelete = await deleteComment(app, id);
+    expect(unauthorizedDelete.status).toBe(403);
+    await unauthorizedDelete.text();
   });
 
   it("refuses a delete by a non-author holding only comment:delete_own", async () => {
@@ -499,5 +576,44 @@ describe("API integration: work-item comments (#27)", () => {
       .from(schema.commentTable)
       .where(eq(schema.commentTable.id, id));
     expect(after).toEqual(before);
+  });
+
+  it("#499: comment edit and delete wait for project archive and leave the comment unchanged", async () => {
+    const { app, project, workItem } = await setupWorkItem("member");
+    const created = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [{ type: "paragraph" }] },
+      visibility: "internal",
+    });
+    const { id } = (await created.json()) as { id: string };
+    const [before] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    if (!before) throw new Error("expected comment row before project archive");
+
+    const race = await raceProjectArchive(project.id, async () =>
+      patchComment(app, id, {
+        body: {
+          type: "doc",
+          content: [{ type: "paragraph", text: "changed" }],
+        },
+      }),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const deleteResponse = await deleteComment(app, id);
+    expect(deleteResponse.status).toBe(404);
+    const [after] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    expect(after).toEqual(before);
+    const versions = await db
+      .select()
+      .from(schema.commentVersionTable)
+      .where(eq(schema.commentVersionTable.commentId, id));
+    expect(versions).toHaveLength(0);
   });
 });

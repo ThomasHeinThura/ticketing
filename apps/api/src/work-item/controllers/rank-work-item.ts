@@ -2,6 +2,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { workItemTable } from "../../database/schema";
+import { assertProjectStillLive } from "../assert-work-item-live";
 
 // #23's fourth slice: `POST /api/work-items/{key}/rank` (`work_item:rank`, plus reach).
 //
@@ -82,6 +83,7 @@ export async function rankWorkItem(
     if (!target || target.archivedAt || target.deletedAt) {
       throw new HTTPException(404, { message: "Work item not found" });
     }
+    await assertProjectStillLive(tx, target.projectId);
 
     // Neighbours must belong to the SAME rank partition (`project_id`, `state_id`) as
     // the item being moved -- an id from another project/state/workspace is rejected as

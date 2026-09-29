@@ -23,6 +23,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { raceWorkItemSoftDelete } from "./helpers/race-soft-delete";
 
 async function makeWorkItemType(workspaceId: string) {
   const now = new Date();
@@ -545,6 +546,36 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.key, item.key));
     expect(row?.parentId).toBeNull();
+  });
+
+  it("#493: parent liveness check waits for a concurrent parent soft-delete", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const parentResponse = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Parent",
+    });
+    const parent = (await parentResponse.json()) as { id: string; key: string };
+    const childResponse = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Child",
+    });
+    const child = (await childResponse.json()) as { id: string; key: string };
+
+    const race = await raceWorkItemSoftDelete(
+      parent.id,
+      async () => await setParentRequest(app, child.key, parent.key),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const [after] = await db
+      .select({ parentId: schema.workItemTable.parentId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, child.id));
+    expect(after?.parentId).toBeNull();
   });
 
   it("cross-workspace: setting a parent to a key from another workspace 404s (never a cross-tenant leak)", async () => {

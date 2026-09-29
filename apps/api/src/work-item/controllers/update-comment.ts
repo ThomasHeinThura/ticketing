@@ -1,12 +1,20 @@
 import { and, count, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { commentTable, commentVersionTable } from "../../database/schema";
+import {
+  commentTable,
+  commentVersionTable,
+  workItemTable,
+} from "../../database/schema";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
 import {
   isUnambiguousMembership,
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+} from "../assert-work-item-live";
 
 // `CA-17`: "Editing is allowed for 15 minutes by the author."
 const EDIT_WINDOW_MINUTES = 15;
@@ -46,6 +54,24 @@ export async function updateComment(
     if (!locked || locked.deletedAt !== null) {
       throw new HTTPException(404, { message: "Comment not found" });
     }
+
+    const [workItem] = await tx
+      .select({
+        id: workItemTable.id,
+        projectId: workItemTable.projectId,
+        deletedAt: workItemTable.deletedAt,
+        archivedAt: workItemTable.archivedAt,
+      })
+      .from(workItemTable)
+      .where(
+        and(
+          eq(workItemTable.id, locked.workItemId),
+          eq(workItemTable.workspaceId, workspaceId),
+        ),
+      )
+      .for("share");
+    assertWorkItemStillLive(workItem);
+    await assertProjectStillLive(tx, workItem.projectId);
 
     const roles = await workspaceMemberRoles(tx, workspaceId, actorId);
     if (!isUnambiguousMembership(roles)) {
