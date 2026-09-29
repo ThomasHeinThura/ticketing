@@ -182,6 +182,7 @@ function storybookSpec({
   mutateWithEvalAlias = false,
   mutateWithFunction = false,
   computedSkip = false,
+  computedAliasSkip = false,
   fakeTestBinding = false,
   runtimeCode = "",
 } = {}) {
@@ -200,6 +201,9 @@ function storybookSpec({
       ? ['if (process.env.CI) test.skip(true, "temporarily disabled");']
       : []),
     ...(computedSkip ? ['test["skip"](true, "temporarily disabled");'] : []),
+    ...(computedAliasSkip
+      ? ['testApi["sk" + "ip"](true, "temporarily disabled");']
+      : []),
     ...(mutateWithEval
       ? ['eval("Array.prototype[Symbol.iterator] = function* () {}");']
       : []),
@@ -372,6 +376,19 @@ test("G8 rejects aliased Playwright controls and callback defaults", async () =>
         "const { fixme: disableVisual } = test;",
         "const callback = (page = (process.exit(0), {})) => page;",
       ].join("\n"),
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /contains imports or runtime constructs/);
+});
+
+test("G8 rejects assignment aliases and computed Playwright control calls", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({
+      runtimeCode: "let testApi; testApi = test;",
+      computedAliasSkip: true,
     }),
   });
 

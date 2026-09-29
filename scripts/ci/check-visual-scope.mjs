@@ -204,6 +204,14 @@ function hasSafeVisualTestRuntime(sourceFile) {
       return;
     }
     if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      hasTestApiReference(node.right)
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
       ts.isCallExpression(node) &&
       node.expression.kind === ts.SyntaxKind.ImportKeyword
     ) {
@@ -212,6 +220,10 @@ function hasSafeVisualTestRuntime(sourceFile) {
     }
     if (ts.isElementAccessExpression(node)) {
       const property = node.argumentExpression;
+      if (hasTestApiReference(node.expression)) {
+        unsafe = true;
+        return;
+      }
       if (
         property &&
         (ts.isStringLiteral(property) ||
