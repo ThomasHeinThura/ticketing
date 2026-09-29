@@ -209,10 +209,10 @@ describe("API integration: saved views", () => {
     const deleteResponse = await editorApp.request(`/api/views/${created.id}`, {
       method: "DELETE",
     });
-    expect(deleteResponse.status).toBe(403);
+    expect(deleteResponse.status).toBe(404);
   });
 
-  it("lets the owner update their view but does not delete before pending-action support exists", async () => {
+  it("does not expose saved-view deletion before shared pending-action support exists", async () => {
     const member = await createWorkspaceMember();
     await addPerson(member.user.id);
     mockAuthenticatedSession(member.user);
@@ -245,8 +245,7 @@ describe("API integration: saved views", () => {
     const deleteResponse = await app.request(`/api/views/${created.id}`, {
       method: "DELETE",
     });
-    expect(deleteResponse.status).toBe(501);
-    expect(await deleteResponse.text()).toContain("nothing was deleted");
+    expect(deleteResponse.status).toBe(404);
 
     const persisted = await db.query.savedViewTable.findFirst({
       where: eq(schema.savedViewTable.id, created.id),
@@ -520,8 +519,8 @@ describe("API integration: saved views", () => {
   // LOW: the `workspace:manage_settings` admin-override branch of `assertCanEditView` was
   // reviewed and confirmed correct by hand but had no committed test exercising its
   // edit path -- an admin (holds `workspace:manage_settings` but did not create the view)
-  // can edit it. The delete route remains fail-closed until pending-action support exists.
-  it("lets workspace administrators edit but not delete another member's view before pending-action support", async () => {
+  // can edit it. Deletion is not exposed until shared pending-action support exists.
+  it("lets workspace administrators edit another member's view while deletion is unavailable", async () => {
     const owner = await createWorkspaceMember({ role: "member" });
     await addPerson(owner.user.id);
 
@@ -587,8 +586,7 @@ describe("API integration: saved views", () => {
     const deleteResponse = await adminApp.request(`/api/views/${created.id}`, {
       method: "DELETE",
     });
-    expect(deleteResponse.status).toBe(501);
-    expect(await deleteResponse.text()).toContain("nothing was deleted");
+    expect(deleteResponse.status).toBe(404);
 
     const persisted = await db.query.savedViewTable.findFirst({
       where: eq(schema.savedViewTable.id, created.id),

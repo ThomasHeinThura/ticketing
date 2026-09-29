@@ -2,7 +2,7 @@ import { HTTPException } from "hono/http-exception";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 
 /**
- * `PATCH /api/views/{id}` and `DELETE /api/views/{id}`'s declared policy
+ * `PATCH /api/views/{id}`'s declared policy
  * (search-and-saved-views.md § API): `workspace:manage_settings · orOwner(created_by,
  * saved_view:create)`. A conjunction the same shape `packages/permissions`'s `orOwner`
  * documents -- the owner branch still requires `saved_view:create` -- but every built-in

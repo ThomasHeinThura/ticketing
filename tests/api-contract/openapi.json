@@ -16986,59 +16986,6 @@
             }
           }
         }
-      },
-      "delete": {
-        "operationId": "deleteView",
-        "tags": [
-          "Views"
-        ],
-        "summary": "Request saved-view deletion",
-        "description": "Deletion requires the durable pending-action approval flow (pending-actions.md PA-1/PA-2). Until that shared mechanism is implemented, this endpoint returns 501 after authorization checks and leaves the saved view unchanged (issue #428).",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string"
-            },
-            "required": true,
-            "name": "id",
-            "in": "path"
-          }
-        ],
-        "responses": {
-          "401": {
-            "description": "Missing or invalid credentials"
-          },
-          "403": {
-            "description": "Not the view's owner, and missing workspace:manage_settings",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Saved view not found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "501": {
-            "description": "Pending-action deletion is not implemented; the saved view was not deleted",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
       }
     },
     "/views/{id}/pin": {

@@ -7,7 +7,6 @@ import {
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createView from "./controllers/create-view";
-import deleteView from "./controllers/delete-view";
 import getView from "./controllers/get-view";
 import listViews from "./controllers/list-views";
 import pinView from "./controllers/pin-view";
@@ -130,32 +129,6 @@ const updateViewRoute = createRoute({
   },
 });
 
-const deleteViewRoute = createRoute({
-  method: "delete",
-  operationId: "deleteView",
-  path: "/{id}",
-  tags: ["Views"],
-  summary: "Request saved-view deletion",
-  description:
-    "Deletion requires the durable pending-action approval flow (pending-actions.md PA-1/PA-2). " +
-    "Until that shared mechanism is implemented, this endpoint returns 501 after authorization " +
-    "checks and leaves the saved view unchanged (issue #428).",
-  middleware: [
-    workspaceAccess.fromSavedView(),
-    requireWorkspaceCapability("saved_view:create"),
-  ] as const,
-  request: { params: savedViewIdParam },
-  responses: {
-    501: errorResponse(
-      "Pending-action deletion is not implemented; the saved view was not deleted",
-    ),
-    403: errorResponse(
-      "Not the view's owner, and missing workspace:manage_settings",
-    ),
-    404: errorResponse("Saved view not found"),
-  },
-});
-
 const pinViewRoute = createRoute({
   method: "post",
   operationId: "pinView",
@@ -198,12 +171,6 @@ const view = apiRouter()
     const userId = c.get("userId");
     const personId = await resolveCallerPersonId(userId);
     return c.json(await updateView(id, body, personId, userId), 200);
-  })
-  .openapi(deleteViewRoute, async (c) => {
-    const { id } = c.req.valid("param");
-    const userId = c.get("userId");
-    const personId = await resolveCallerPersonId(userId);
-    return c.text(await deleteView(id, personId, userId), 501);
   })
   .openapi(pinViewRoute, async (c) => {
     const { id } = c.req.valid("param");
