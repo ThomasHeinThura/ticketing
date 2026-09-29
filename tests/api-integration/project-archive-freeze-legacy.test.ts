@@ -346,10 +346,20 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       [
         "time entry create",
         () =>
-          request("/time-entry/", "post", {
+          request("/time-entry", "post", {
             taskId: task.id,
             startTime: "2026-09-29T09:00:00Z",
             description: "new entry",
+          }),
+      ],
+      [
+        "time entry create with invalid interval",
+        () =>
+          request("/time-entry", "post", {
+            taskId: task.id,
+            startTime: "2026-09-29T10:00:00Z",
+            endTime: "2026-09-29T09:00:00Z",
+            description: "invalid interval",
           }),
       ],
       [
@@ -358,6 +368,15 @@ describe("API integration: legacy task writes respect PR-15 project archive free
           request(`/time-entry/${timeEntry.id}`, "put", {
             startTime: "2026-09-28T10:00:00Z",
             description: "edited after archive",
+          }),
+      ],
+      [
+        "time entry update with invalid interval",
+        () =>
+          request(`/time-entry/${timeEntry.id}`, "put", {
+            startTime: "2026-09-28T10:00:00Z",
+            endTime: "2026-09-28T09:00:00Z",
+            description: "invalid interval",
           }),
       ],
       [
@@ -883,6 +902,67 @@ describe("API integration: legacy task writes respect PR-15 project archive free
 
     expect(response.status).toBe(400);
     expect(await response.text()).toBe("Value is required for this operation");
+  });
+
+  it("checks task liveness before invalid time-entry interval validation", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await createLegacyTask(project.id, columns.todo.id, 1);
+    const timeEntry = requireRow(
+      await db
+        .insert(schema.timeEntryTable)
+        .values({
+          taskId: task.id,
+          userId: member.user.id,
+          description: "Original entry",
+          startTime: new Date("2026-09-28T09:00:00Z"),
+        })
+        .returning(),
+      "time entry",
+    );
+    mockAuthenticatedSession(member.user);
+
+    const createInvalidInterval = () =>
+      request("/time-entry", "post", {
+        taskId: task.id,
+        startTime: "2026-09-29T10:00:00Z",
+        endTime: "2026-09-29T09:00:00Z",
+      });
+    const updateInvalidInterval = () =>
+      request(`/time-entry/${timeEntry.id}`, "put", {
+        startTime: "2026-09-28T10:00:00Z",
+        endTime: "2026-09-28T09:00:00Z",
+      });
+
+    for (const send of [createInvalidInterval, updateInvalidInterval]) {
+      const liveResponse = await send();
+      expect(liveResponse.status).toBe(400);
+      expect(await liveResponse.text()).toBe(
+        "Start time cannot be after end time. Please adjust the time range.",
+      );
+    }
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+    for (const send of [createInvalidInterval, updateInvalidInterval]) {
+      const archivedResponse = await send();
+      expect(archivedResponse.status).toBe(404);
+      expect(await archivedResponse.text()).toBe("Task not found");
+    }
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: null, deletedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+    for (const send of [createInvalidInterval, updateInvalidInterval]) {
+      const deletedResponse = await send();
+      expect(deletedResponse.status).toBe(404);
+      expect(await deletedResponse.text()).toBe("Task not found");
+    }
   });
 
   it("keeps trusted task-event history when archive wins async delivery", async () => {

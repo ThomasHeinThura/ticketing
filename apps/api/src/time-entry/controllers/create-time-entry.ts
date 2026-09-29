@@ -19,10 +19,9 @@ async function createTimeEntry({
   startTime: Date;
   endTime?: Date;
 }) {
-  const duration = resolveDuration(startTime, endTime);
-
   const { createdTimeEntry, task } = await db.transaction(async (tx) => {
     const task = await lockTaskAndAssertProjectLive(tx, taskId);
+    const duration = resolveDuration(startTime, endTime);
     const [createdTimeEntry] = await tx
       .insert(timeEntryTable)
       .values({

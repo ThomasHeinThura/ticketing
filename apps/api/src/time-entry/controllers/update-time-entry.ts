@@ -28,10 +28,9 @@ async function updateTimeEntry(params: UpdateTimeEntryParams) {
 
   const effectiveEndTime = endTime ?? existingTimeEntry.endTime;
 
-  const duration = resolveDuration(startTime, effectiveEndTime ?? undefined);
-
   return db.transaction(async (tx) => {
     await lockTaskAndAssertProjectLive(tx, existingTimeEntry.taskId);
+    const duration = resolveDuration(startTime, effectiveEndTime ?? undefined);
     const [updatedTimeEntry] = await tx
       .update(timeEntryTable)
       .set({
