@@ -45,6 +45,15 @@ async function deleteWorkspace(workspaceId: string, sessionId: string) {
       .delete(schema.workflowTable)
       .where(eq(schema.workflowTable.workspaceId, workspaceId));
 
+    // `saved_view.shared_with_team_id` is `ON DELETE SET NULL`, while the saved-view
+    // visibility CHECK requires every team-visible view to keep its team id. A workspace
+    // delete cascades to both teams and saved views; deleting the views explicitly first
+    // avoids Postgres applying the team FK's SET NULL action before the workspace FK's
+    // saved-view cascade. Otherwise a valid workspace delete can fail its CHECK constraint.
+    await tx
+      .delete(schema.savedViewTable)
+      .where(eq(schema.savedViewTable.workspaceId, workspaceId));
+
     const [deleted] = await tx
       .delete(schema.workspaceTable)
       .where(eq(schema.workspaceTable.id, workspaceId))

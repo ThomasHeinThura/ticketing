@@ -1,8 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import { userPreferenceTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { assertCanReadView } from "../assert-can-read-view";
 
 const PINNED_VIEWS_KEY = "pinned_view_ids";
 
@@ -22,7 +24,9 @@ async function pinView(viewId: string, personId: string, userId: string) {
     throw new HTTPException(404, { message: "Saved view not found" });
   }
 
-  return db.transaction(async (tx) => {
+  await assertCanReadView(view, personId, userId);
+
+  const result = await db.transaction(async (tx) => {
     const [existing] = await tx
       .select()
       .from(userPreferenceTable)
@@ -62,15 +66,28 @@ async function pinView(viewId: string, personId: string, userId: string) {
       });
     }
 
-    await publishEvent("saved_view.pinned", {
-      savedViewId: viewId,
+    await appendAuditLog(tx, {
+      actorId: personId,
+      actorType: "person",
       workspaceId: view.workspaceId,
-      userId,
-      pinned: !pinned,
+      action: "saved_view.pinned",
+      entityType: "saved_view",
+      entityId: viewId,
+      before: { pinned },
+      after: { pinned: !pinned },
     });
 
     return { pinnedViewIds: nextIds };
   });
+
+  await publishEvent("saved_view.pinned", {
+    savedViewId: viewId,
+    workspaceId: view.workspaceId,
+    userId,
+    pinned: result.pinnedViewIds.includes(viewId),
+  });
+
+  return result;
 }
 
 export default pinView;

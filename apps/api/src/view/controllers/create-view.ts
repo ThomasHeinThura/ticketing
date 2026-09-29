@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import {
   projectTable,
@@ -103,24 +104,49 @@ async function createView(
     );
   }
 
-  const [inserted] = await db
-    .insert(savedViewTable)
-    .values({
-      workspaceId,
-      createdBy: personId,
-      name: input.name,
-      scope,
-      scopeId,
-      visibility,
-      sharedWithTeamId: visibility === "team" ? sharedWithTeamId : null,
-      layout: input.layout,
-      query: input.query,
-    })
-    .returning();
+  const inserted = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(savedViewTable)
+      .values({
+        workspaceId,
+        createdBy: personId,
+        name: input.name,
+        scope,
+        scopeId,
+        visibility,
+        sharedWithTeamId: visibility === "team" ? sharedWithTeamId : null,
+        layout: input.layout,
+        query: input.query,
+      })
+      .returning();
 
-  if (!inserted) {
-    throw new Error("Failed to create saved view");
-  }
+    if (!row) {
+      throw new Error("Failed to create saved view");
+    }
+
+    await appendAuditLog(tx, {
+      actorId: personId,
+      actorType: "person",
+      workspaceId,
+      action: "saved_view.created",
+      entityType: "saved_view",
+      entityId: row.id,
+      before: null,
+      // Do not copy arbitrary filter values into the audit trail; the event and
+      // `queryChanged` flag record the mutation without leaking user-entered search data.
+      after: {
+        name: row.name,
+        scope: row.scope,
+        scopeId: row.scopeId,
+        visibility: row.visibility,
+        sharedWithTeamId: row.sharedWithTeamId,
+        layout: row.layout,
+        queryChanged: true,
+      },
+    });
+
+    return row;
+  });
 
   await publishEvent("saved_view.created", {
     savedViewId: inserted.id,

@@ -62,6 +62,21 @@ describe("API integration: saved views", () => {
     };
     expect(created.visibility).toBe("private");
 
+    const [audit] = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, created.id));
+    expect(audit).toMatchObject({
+      action: "saved_view.created",
+      entityType: "saved_view",
+      workspaceId: member.workspace.id,
+      after: {
+        name: "My triage queue",
+        visibility: "private",
+        queryChanged: true,
+      },
+    });
+
     const listResponse = await app.request(
       `/api/views?workspaceId=${member.workspace.id}`,
     );
@@ -155,6 +170,11 @@ describe("API integration: saved views", () => {
 
     const getResponse = await otherApp.request(`/api/views/${created.id}`);
     expect(getResponse.status).toBe(404);
+
+    const pinResponse = await otherApp.request(`/api/views/${created.id}/pin`, {
+      method: "POST",
+    });
+    expect(pinResponse.status).toBe(404);
   });
 
   it("refuses an edit from a non-owner without workspace:manage_settings", async () => {
@@ -246,6 +266,19 @@ describe("API integration: saved views", () => {
       where: eq(schema.savedViewTable.id, created.id),
     });
     expect(persisted).toBeUndefined();
+
+    const audit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, created.id))
+      .orderBy(schema.auditLogTable.seq);
+    expect(audit.map((row) => row.action)).toEqual([
+      "saved_view.created",
+      "saved_view.updated",
+      "saved_view.deleted",
+    ]);
+    expect(audit[1]?.before).toMatchObject({ name: "Original name" });
+    expect(audit[1]?.after).toMatchObject({ name: "Renamed" });
   });
 
   it("toggles a view's pin state, persisted per person per workspace", async () => {
@@ -287,6 +320,74 @@ describe("API integration: saved views", () => {
     expect(
       (await unpinResponse.json()) as { pinnedViewIds: string[] },
     ).toMatchObject({ pinnedViewIds: [] });
+
+    const audit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, created.id))
+      .orderBy(schema.auditLogTable.seq);
+    expect(audit.map((row) => row.action)).toEqual([
+      "saved_view.created",
+      "saved_view.pinned",
+      "saved_view.pinned",
+    ]);
+    expect(audit[1]?.before).toMatchObject({ pinned: false });
+    expect(audit[1]?.after).toMatchObject({ pinned: true });
+    expect(audit[2]?.before).toMatchObject({ pinned: true });
+    expect(audit[2]?.after).toMatchObject({ pinned: false });
+  });
+
+  it("deletes a workspace that contains a team-shared view without violating the view check", async () => {
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const person = await addPerson(owner.user.id);
+    const teamId = `team-${randomUUID()}`;
+    await db.insert(schema.teamTable).values({
+      id: teamId,
+      name: "Shared view team",
+      workspaceId: owner.workspace.id,
+      createdAt: new Date(),
+    });
+    await db.insert(schema.teamMemberTable).values({
+      id: `tm-${randomUUID()}`,
+      teamId,
+      userId: owner.user.id,
+      createdAt: new Date(),
+    });
+    const [view] = await db
+      .insert(schema.savedViewTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        createdBy: person.id,
+        name: "Workspace deletion case",
+        scope: "workspace",
+        scopeId: owner.workspace.id,
+        visibility: "team",
+        sharedWithTeamId: teamId,
+        layout: "list",
+        query: { entity: "work_item" },
+      })
+      .returning();
+
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const deletion = await app.request(`/api/workspace/${owner.workspace.id}`, {
+      method: "DELETE",
+      headers: { cookie: "session=workspace-delete-test" },
+    });
+
+    expect(deletion.status).toBe(200);
+    expect(
+      await db
+        .select()
+        .from(schema.savedViewTable)
+        .where(eq(schema.savedViewTable.id, view?.id ?? "")),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, owner.workspace.id)),
+    ).toHaveLength(0);
   });
 
   // HIGH: `update-view.ts`'s `sharedWithTeamId` check only verified team membership, not

@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import {
   savedViewTable,
@@ -21,7 +22,7 @@ async function updateView(
   personId: string,
   userId: string,
 ) {
-  return db.transaction(async (tx) => {
+  const updated = await db.transaction(async (tx) => {
     const view = await tx.query.savedViewTable.findFirst({
       where: (savedView, { eq }) => eq(savedView.id, id),
     });
@@ -97,14 +98,41 @@ async function updateView(
       throw new HTTPException(404, { message: "Saved view not found" });
     }
 
-    await publishEvent("saved_view.updated", {
-      savedViewId: id,
+    await appendAuditLog(tx, {
+      actorId: personId,
+      actorType: "person",
       workspaceId: view.workspaceId,
-      userId,
+      action: "saved_view.updated",
+      entityType: "saved_view",
+      entityId: id,
+      before: {
+        name: view.name,
+        visibility: view.visibility,
+        sharedWithTeamId: view.sharedWithTeamId,
+        layout: view.layout,
+        queryChanged: false,
+      },
+      // Filter values may contain user-entered data. Record that the query changed,
+      // but not its arbitrary contents.
+      after: {
+        name: updated.name,
+        visibility: updated.visibility,
+        sharedWithTeamId: updated.sharedWithTeamId,
+        layout: updated.layout,
+        queryChanged: input.query !== undefined,
+      },
     });
 
     return updated;
   });
+
+  await publishEvent("saved_view.updated", {
+    savedViewId: id,
+    workspaceId: updated.workspaceId,
+    userId,
+  });
+
+  return updated;
 }
 
 export default updateView;

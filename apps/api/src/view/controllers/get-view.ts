@@ -1,7 +1,6 @@
-import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { teamMemberTable } from "../../database/schema";
+import { assertCanReadView } from "../assert-can-read-view";
 
 // `workspaceAccess.fromSavedView()` has already confirmed the caller reaches the view's
 // own workspace; this is SV-15..SV-18's finer visibility rule on top of that. A 404, not
@@ -16,27 +15,8 @@ async function getView(id: string, personId: string, userId: string) {
     throw new HTTPException(404, { message: "Saved view not found" });
   }
 
-  if (view.visibility === "workspace" || view.createdBy === personId) {
-    return view;
-  }
-
-  if (view.visibility === "team" && view.sharedWithTeamId) {
-    const [membership] = await db
-      .select({ id: teamMemberTable.id })
-      .from(teamMemberTable)
-      .where(
-        and(
-          eq(teamMemberTable.teamId, view.sharedWithTeamId),
-          eq(teamMemberTable.userId, userId),
-        ),
-      )
-      .limit(1);
-    if (membership) {
-      return view;
-    }
-  }
-
-  throw new HTTPException(404, { message: "Saved view not found" });
+  await assertCanReadView(view, personId, userId);
+  return view;
 }
 
 export default getView;
