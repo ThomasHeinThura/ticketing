@@ -9,10 +9,8 @@ import {
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
-import {
-  lockLegacyTaskRow,
-  lockProjectsAndAssertLive,
-} from "../assert-task-project-live";
+import { assertProjectStillLive } from "../../work-item/assert-work-item-live";
+import { lockLegacyTaskRow } from "../assert-task-project-live";
 import { claimTaskNumber } from "./claim-task-numbers";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -143,18 +141,40 @@ async function moveTask({
       )
       .limit(1);
     if (!destinationPreflight) {
+      // A plain source preflight may have gone stale while checking destination reach.
+      await assertProjectStillLive(tx, lockedTask.projectId, "Task not found");
       throw new HTTPException(404, { message: "Project not found" });
     }
 
-    // Lock the source and destination before reading their current workspace
-    // and names. The task row above is authoritative if another move completed
-    // after the route's reach middleware ran.
-    await lockProjectsAndAssertLive(
-      tx,
-      [lockedTask.projectId, destinationProjectId],
-      [destinationProjectId],
-      new Map([[destinationProjectId, "Project not found"]]),
-    );
+    // Keep the shared project lock order, but select the source error only after
+    // both rows have been checked under locks.
+    const lockedProjectLiveness = new Map<string, boolean>();
+    for (const projectId of [
+      ...new Set([lockedTask.projectId, destinationProjectId]),
+    ].sort()) {
+      const isDestination = projectId === destinationProjectId;
+      const [liveProject] = await tx
+        .select({ id: projectTable.id })
+        .from(projectTable)
+        .where(
+          and(
+            eq(projectTable.id, projectId),
+            isNull(projectTable.deletedAt),
+            isNull(projectTable.archivedAt),
+            ...(isDestination
+              ? [eq(projectTable.workspaceId, sourcePreflight.workspaceId)]
+              : []),
+          ),
+        )
+        .for(isDestination ? "update" : "share");
+      lockedProjectLiveness.set(projectId, liveProject !== undefined);
+    }
+    if (!lockedProjectLiveness.get(lockedTask.projectId)) {
+      throw new HTTPException(404, { message: "Task not found" });
+    }
+    if (!lockedProjectLiveness.get(destinationProjectId)) {
+      throw new HTTPException(404, { message: "Project not found" });
+    }
 
     const [sourceProject] = await tx
       .select({

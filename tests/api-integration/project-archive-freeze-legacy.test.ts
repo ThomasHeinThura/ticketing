@@ -452,6 +452,187 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     expect(after?.projectId).toBe(source.id);
   });
 
+  it("rechecks source liveness when archive wins during destination preflight", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const foreignMember = await createWorkspaceMember({ role: "admin" });
+    const source = requireRow(
+      await db
+        .insert(schema.projectTable)
+        .values({
+          id: "z-source",
+          workspaceId: member.workspace.id,
+          name: "Move race source",
+          slug: `source-${randomUUID()}`,
+        })
+        .returning(),
+      "move race source",
+    );
+    const foreign = requireRow(
+      await db
+        .insert(schema.projectTable)
+        .values({
+          id: "a-foreign",
+          workspaceId: foreignMember.workspace.id,
+          name: "Foreign destination",
+          slug: `foreign-${randomUUID()}`,
+        })
+        .returning(),
+      "foreign destination",
+    );
+    const sortedDestination = requireRow(
+      await db
+        .insert(schema.projectTable)
+        .values({
+          id: "a-destination",
+          workspaceId: member.workspace.id,
+          name: "Same-workspace destination",
+          slug: `destination-${randomUUID()}`,
+        })
+        .returning(),
+      "same-workspace destination",
+    );
+    const sourceColumn = requireRow(
+      await db
+        .insert(schema.columnTable)
+        .values({
+          id: "z-source-column",
+          projectId: source.id,
+          name: "To do",
+          slug: "to-do",
+          position: 0,
+        })
+        .returning(),
+      "source column",
+    );
+    const task = await createLegacyTask(source.id, sourceColumn.id, 1);
+    mockAuthenticatedSession(member.user);
+
+    const runArchiveRace = async (
+      destinationProjectId: string,
+      pauseAt:
+        | "destination-preflight"
+        | "destination-lock" = "destination-preflight",
+      projectIdsToArchive: string[] = [source.id],
+    ) => {
+      let reachedDestinationPreflight = () => {};
+      const destinationPreflightReached = new Promise<void>((resolve) => {
+        reachedDestinationPreflight = resolve;
+      });
+      let releaseDestinationPreflight = () => {};
+      const destinationPreflightBarrier = new Promise<void>((resolve) => {
+        releaseDestinationPreflight = resolve;
+      });
+      let paused = false;
+      const originalQuery = Client.prototype.query;
+      const interceptQuery = function (
+        this: Client,
+        ...args: unknown[]
+      ): unknown {
+        const [query, values] = args;
+        const queryText =
+          typeof query === "string"
+            ? query
+            : typeof query === "object" &&
+                query !== null &&
+                "text" in query &&
+                typeof query.text === "string"
+              ? query.text
+              : "";
+        const isDestinationPreflight =
+          !paused &&
+          queryText.includes('from "project"') &&
+          queryText.includes('"workspace_id"') &&
+          Array.isArray(values) &&
+          values.includes(destinationProjectId) &&
+          (pauseAt === "destination-lock"
+            ? /\bfor update\b/i.test(queryText)
+            : !/\bfor update\b/i.test(queryText));
+
+        if (isDestinationPreflight) {
+          paused = true;
+          reachedDestinationPreflight();
+          return (async () => {
+            await destinationPreflightBarrier;
+            return Reflect.apply(originalQuery, this, args);
+          })();
+        }
+
+        return Reflect.apply(originalQuery, this, args);
+      };
+      const querySpy = vi
+        .spyOn(Client.prototype, "query")
+        .mockImplementation(
+          interceptQuery as unknown as typeof Client.prototype.query,
+        );
+
+      const moveRequest = request(`/task/move/${task.id}`, "put", {
+        destinationProjectId,
+      });
+      let destinationPreflightTimeout:
+        | ReturnType<typeof setTimeout>
+        | undefined;
+      try {
+        await Promise.race([
+          destinationPreflightReached,
+          new Promise<never>((_, reject) => {
+            destinationPreflightTimeout = setTimeout(
+              () => reject(new Error("destination preflight did not start")),
+              5_000,
+            );
+          }),
+        ]);
+        await db.transaction(async (tx) => {
+          for (const projectId of [...projectIdsToArchive].sort()) {
+            await tx
+              .update(schema.projectTable)
+              .set({ archivedAt: new Date() })
+              .where(eq(schema.projectTable.id, projectId));
+          }
+        });
+        releaseDestinationPreflight();
+        return await moveRequest;
+      } finally {
+        if (destinationPreflightTimeout) {
+          clearTimeout(destinationPreflightTimeout);
+        }
+        releaseDestinationPreflight();
+        querySpy.mockRestore();
+      }
+    };
+
+    const withForeign = await runArchiveRace(foreign.id);
+    const foreignBody = await withForeign.text();
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: null })
+      .where(eq(schema.projectTable.id, source.id));
+    const withMissing = await runArchiveRace("0-missing");
+    const missingBody = await withMissing.text();
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: null })
+      .where(eq(schema.projectTable.id, source.id));
+    const withSortedLockRace = await runArchiveRace(
+      sortedDestination.id,
+      "destination-lock",
+      [source.id, sortedDestination.id],
+    );
+    const sortedLockBody = await withSortedLockRace.text();
+
+    expect(withForeign.status).toBe(404);
+    expect(foreignBody).toBe("Task not found");
+    expect(withMissing.status).toBe(404);
+    expect(missingBody).toBe(foreignBody);
+    expect(missingBody).toBe("Task not found");
+    expect(withSortedLockRace.status).toBe(404);
+    expect(sortedLockBody).toBe(foreignBody);
+    const [after] = await db
+      .select()
+      .from(schema.taskTable)
+      .where(eq(schema.taskTable.id, task.id));
+    expect(after?.projectId).toBe(source.id);
+  });
+
   it("waits behind an archive that wins, then refuses the legacy write", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { project, columns } = await createProjectFixture({
