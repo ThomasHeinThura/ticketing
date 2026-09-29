@@ -20,10 +20,16 @@ export type MockOidcIssuer = {
 export async function startMockOidcIssuer(
   options: MockOidcOptions = {},
 ): Promise<MockOidcIssuer> {
+  const normalizedIssuerPath = options.issuerPath
+    ?.split("/")
+    .filter(Boolean)
+    .join("/");
   const issuerPath =
     options.issuerPath === undefined
       ? "/tenant/v2.0"
-      : `/${options.issuerPath.split("/").filter(Boolean).join("/")}`;
+      : normalizedIssuerPath
+        ? `/${normalizedIssuerPath}`
+        : "";
   const discoveryPath =
     options.discoveryPath ??
     `${issuerPath.replace(/\/$/, "")}/.well-known/openid-configuration`;

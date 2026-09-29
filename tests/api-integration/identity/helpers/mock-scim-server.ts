@@ -33,7 +33,13 @@ export async function startMockScimServer(
     const request: ScimRequest = {
       method: incoming.method ?? "GET",
       path: incoming.url ?? "/",
-      headers: incoming.headers,
+      headers: {
+        ...incoming.headers,
+        authorization:
+          incoming.headers.authorization === undefined
+            ? undefined
+            : "[REDACTED]",
+      },
       body: Buffer.concat(chunks).toString("utf8"),
     };
     requests.push(request);

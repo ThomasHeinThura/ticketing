@@ -108,9 +108,8 @@ describe("local identity protocol test servers", () => {
       path: "/scim/v2/Users",
       body: JSON.stringify({ userName: "ada@example.test" }),
     });
-    expect(scim.requests[0]?.headers.authorization).toBe(
-      "Bearer local-test-token",
-    );
+    expect(scim.requests[0]?.headers.authorization).toBe("[REDACTED]");
+    expect(JSON.stringify(scim.requests)).not.toContain("local-test-token");
     expect(scim.requests[1]).toMatchObject({
       method: "DELETE",
       path: "/scim/v2/Users/scim-user-1",
