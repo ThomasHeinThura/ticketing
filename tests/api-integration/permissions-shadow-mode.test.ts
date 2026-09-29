@@ -516,14 +516,18 @@ describe("#8 notification self-read shadow evidence", () => {
       return { task: task[0], project };
     }
 
-    async function createOwnNotification(taskId: string, title: string) {
+    async function createOwnNotification(
+      taskId: string,
+      title: string,
+      eventData: Record<string, unknown> = { taskTitle: title },
+    ) {
       const response = await fresh.app.request("/api/notification", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           title,
           type: "info",
-          eventData: { taskTitle: title },
+          eventData,
           relatedEntityId: taskId,
           relatedEntityType: "task",
         }),
@@ -540,6 +544,10 @@ describe("#8 notification self-read shadow evidence", () => {
       caller.workspace.id,
       "Caller workspace task",
     );
+    const { task: deletedTask, project: deletedProject } = await createTask(
+      caller.workspace.id,
+      "Deleted task",
+    );
     const privateNotification = await createOwnNotification(
       privateTask.id,
       "Private task notification",
@@ -548,6 +556,18 @@ describe("#8 notification self-read shadow evidence", () => {
       ownTask.id,
       "Own task notification",
     );
+    const deletedTaskNotification = await createOwnNotification(
+      deletedTask.id,
+      "Deleted task notification",
+      {
+        taskTitle: "Deleted task notification",
+        projectId: deletedProject.id,
+        workspaceId: caller.workspace.id,
+      },
+    );
+    await fresh.db
+      .delete(fresh.schema.taskTable)
+      .where(eq(fresh.schema.taskTable.id, deletedTask.id));
 
     const response = await fresh.app.request("/api/notification");
     expect(response.status).toBe(200);
@@ -558,7 +578,7 @@ describe("#8 notification self-read shadow evidence", () => {
       eventData: Record<string, unknown> | null;
     }>;
 
-    expect(notifications).toHaveLength(2);
+    expect(notifications).toHaveLength(3);
     expect(notifications).toContainEqual(
       expect.objectContaining({
         id: privateNotification.id,
@@ -577,6 +597,14 @@ describe("#8 notification self-read shadow evidence", () => {
           projectId: ownProject.id,
           workspaceId: caller.workspace.id,
         },
+      }),
+    );
+    expect(notifications).toContainEqual(
+      expect.objectContaining({
+        id: deletedTaskNotification.id,
+        resourceId: null,
+        resourceType: null,
+        eventData: null,
       }),
     );
 

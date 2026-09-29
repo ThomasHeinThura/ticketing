@@ -44,6 +44,20 @@ async function getNotifications(userId: string) {
         ? (notification.eventData as Record<string, unknown>)
         : {};
 
+    // Notifications intentionally do not reference tasks with a foreign key, so a
+    // task can be deleted while its notification remains. Once the task is gone,
+    // there is no workspace boundary to check and none of the stored task payload
+    // can be trusted as reachable. Fail closed instead of returning stale ids or
+    // event data from the notification row.
+    if (notification.resourceType === "task" && !taskId) {
+      return {
+        ...notification,
+        resourceId: null,
+        resourceType: null,
+        eventData: null,
+      };
+    }
+
     if (notification.resourceType === "task" && taskId && !projectId) {
       const safeEventData = Object.fromEntries(
         Object.entries(existing).filter(
