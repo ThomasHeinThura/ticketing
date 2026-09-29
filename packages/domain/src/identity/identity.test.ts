@@ -193,6 +193,23 @@ describe("P3 identity core", () => {
     ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
   });
 
+  it.each([
+    "example.com ",
+    "example..com",
+    ".example.com",
+    "example.com.",
+    "-example.com",
+    "example-.com",
+    "example.c_m",
+    `${"a".repeat(64)}.com`,
+  ])("IP-9: fails closed for malformed configured domain %s", (domain) => {
+    expect(
+      normalise(claims({ email: "person@example.com" }), connection(), [
+        { domain, identityConnectionId: "connection-2" },
+      ]),
+    ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
+  });
+
   it("IP-28: accepts group object ids and ignores overage claims without a Graph lookup", () => {
     expect(
       normalise(

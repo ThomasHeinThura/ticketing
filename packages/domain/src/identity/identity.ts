@@ -36,10 +36,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function normaliseEmailDomain(value: string): string | undefined {
   const domain = value.toLowerCase();
-  const dot = domain.indexOf(".");
-  // A terminal root dot is not part of the address-domain form stored in
-  // domain_bindings. Reject it rather than letting it bypass an exact match.
-  return dot > 0 && !domain.endsWith(".") ? domain : undefined;
+  if (domain.length > 253) return undefined;
+  const labels = domain.split(".");
+  if (
+    labels.length < 2 ||
+    labels.some(
+      (label) =>
+        label.length > 63 ||
+        !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u.test(label),
+    )
+  ) {
+    return undefined;
+  }
+  return domain;
 }
 
 function normaliseEmail(value: unknown): string | undefined {
