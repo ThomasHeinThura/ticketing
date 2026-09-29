@@ -15,6 +15,7 @@
     "test:coverage": "pnpm --filter @taskdesk/domain test:coverage",
     "test:contract": "node ./scripts/ci/test-contract.mjs",
     "test:e2e": "pnpm --filter @taskdesk/web test:e2e",
+    "test:a11y": "pnpm --filter @taskdesk/ui exec vitest run --config vitest.config.ts src/components/stories.accessibility.test.tsx && pnpm --filter @taskdesk/web exec playwright test --config playwright.config.ts --grep @a11y",
     "test:integration": "turbo test:integration",
     "test:permissions": "turbo test:permissions",
     "typecheck": "turbo typecheck",
