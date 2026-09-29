@@ -536,7 +536,7 @@ describe("#8 notification self-read shadow evidence", () => {
       return (await response.json()) as { id: string };
     }
 
-    const { task: privateTask } = await createTask(
+    const { task: privateTask, project: privateProject } = await createTask(
       other.workspace.id,
       "Other workspace task",
     );
@@ -551,6 +551,12 @@ describe("#8 notification self-read shadow evidence", () => {
     const privateNotification = await createOwnNotification(
       privateTask.id,
       "Private task notification",
+      {
+        taskTitle: "Private task notification",
+        projectId: privateProject.id,
+        workspaceId: other.workspace.id,
+        marker: "must-not-leak",
+      },
     );
     const ownNotification = await createOwnNotification(
       ownTask.id,
@@ -584,7 +590,7 @@ describe("#8 notification self-read shadow evidence", () => {
         id: privateNotification.id,
         resourceId: null,
         resourceType: null,
-        eventData: { taskTitle: "Private task notification" },
+        eventData: null,
       }),
     );
     expect(notifications).toContainEqual(
