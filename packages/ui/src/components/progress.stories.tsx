@@ -10,7 +10,7 @@ import {
 const meta = {
   title: "Primitives/Progress",
   component: Progress,
-  args: { value: 40 },
+  args: { value: 40, "aria-label": "Uploading" },
   render: (args) => (
     <Progress {...args}>
       <ProgressLabel>Uploading</ProgressLabel>
