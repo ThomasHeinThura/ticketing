@@ -5,6 +5,28 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-29 · Service-calendar event delivery and deletion wait for their shared mechanisms
+
+**Supersedes:** the 2026-09-29 entry immediately below where it says calendar events may
+use the post-commit `publishEvent` emitter and treats outbox delivery as separate work.
+
+**Decision:** calendar mutations follow the existing global contracts: a failed audit
+insert must not roll back the business mutation (`AU-14`), with failure reporting through
+the error log now and the required alerting metric and administrator notification still
+needed; a lifecycle event is persisted to the durable outbox in the same transaction as
+the mutation (`EV-1`). The runtime outbox and AU-14 alerting/notification integrations do
+not exist yet, so this PR emits no service-calendar events and cannot claim those two
+acceptance requirements complete. The direct calendar `DELETE` route is withheld until
+the pending-action API can return `202` and perform PA-6 reauthorization; no approval stub
+is introduced.
+
+**Why:** the prior implementation note treated known platform-wide requirements as
+optional follow-up and exposed a direct deletion path with no approval or execution-time
+reauthorization. Keeping the slice explicit prevents a local exception from weakening
+AU-14, EV-1 or `pending-actions.md`.
+
+**Recorded by:** implementation lane, following fresh independent review of PR #513.
+
 ### 2026-09-29 · Service-calendar mutations use audit records and lifecycle events
 
 **Decision:** Calendar create, update and delete each append `audit_log` in the same

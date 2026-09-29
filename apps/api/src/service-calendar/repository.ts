@@ -1,6 +1,9 @@
 import type { JsonValue } from "@taskdesk/domain";
 import { and, eq } from "drizzle-orm";
-import { appendAuditLog } from "../audit/audit-writer";
+import {
+  type AppendAuditLogInput,
+  appendAuditLog,
+} from "../audit/audit-writer";
 import db from "../database";
 import { serviceCalendarTable } from "../database/schema";
 
@@ -9,6 +12,24 @@ type CalendarActor = {
   actorType: "person" | "api_key";
   apiKeyId: string | null;
 };
+
+type CalendarTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+async function appendCalendarAudit(
+  tx: CalendarTransaction,
+  input: AppendAuditLogInput,
+) {
+  try {
+    // An audit failure rolls back only this savepoint; the calendar write still commits.
+    await tx.transaction(async (auditTx) => appendAuditLog(auditTx, input));
+  } catch (error) {
+    console.error("AU-14: service-calendar audit write failed", {
+      action: input.action,
+      entityId: input.entityId,
+      error,
+    });
+  }
+}
 
 function auditSnapshot(calendar: {
   name: string;
@@ -60,7 +81,7 @@ export async function createCalendar(input: {
       })
       .returning();
     if (!row) throw new Error("Calendar insert returned no row");
-    await appendAuditLog(tx, {
+    await appendCalendarAudit(tx, {
       ...input.actor,
       workspaceId: input.workspaceId,
       action: "service_calendar.created",
@@ -106,7 +127,7 @@ export async function updateCalendar(
       )
       .returning();
     if (!row) return undefined;
-    await appendAuditLog(tx, {
+    await appendCalendarAudit(tx, {
       ...actor,
       workspaceId,
       action: "service_calendar.updated",
@@ -116,32 +137,5 @@ export async function updateCalendar(
       after: auditSnapshot(row),
     });
     return { before, row };
-  });
-}
-export async function deleteCalendar(
-  id: string,
-  workspaceId: string,
-  actor: CalendarActor,
-) {
-  return db.transaction(async (tx) => {
-    const [row] = await tx
-      .delete(serviceCalendarTable)
-      .where(
-        and(
-          eq(serviceCalendarTable.id, id),
-          eq(serviceCalendarTable.workspaceId, workspaceId),
-        ),
-      )
-      .returning();
-    if (!row) return undefined;
-    await appendAuditLog(tx, {
-      ...actor,
-      workspaceId,
-      action: "service_calendar.deleted",
-      entityType: "service_calendar",
-      entityId: row.id,
-      before: auditSnapshot(row),
-    });
-    return row;
   });
 }

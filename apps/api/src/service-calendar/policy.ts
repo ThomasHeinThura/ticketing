@@ -25,12 +25,6 @@ export const serviceCalendarPolicies = {
     scopeSource: "row",
     reach: "required",
   },
-  "DELETE /api/service-calendars/{id}": {
-    capability: "sla_policy:manage",
-    scope: "workspace",
-    scopeSource: "row",
-    reach: "required",
-  },
   "GET /api/service-calendars/{id}/preview": {
     capability: "sla_policy:read",
     scope: "workspace",

@@ -99,21 +99,32 @@ repeats every year (`CAL-12`).
   pre-expanded or persisted per year.
 - `CAL-13` Adding a holiday retroactively moves deadlines later. Warned about, with a
   count of affected items.
-- `CAL-14` Creating, updating or deleting a service calendar writes one `audit_log` row
-  in the same database transaction as the calendar mutation, then emits the matching
-  `service_calendar.*` domain event after commit. Calendar configuration has no secrets;
-  audit before/after values contain only the calendar's name, timezone, windows and
-  holidays. The work-item `activity` journal does not apply: its authoritative schema
-  requires a `work_item_id` composite foreign key, and a calendar has no work item.
-  Delivery through the durable outbox described in `docs/01-architecture/data-model.md`
-  is separate work; this slice uses the current `publishEvent` emitter.
+- `CAL-14` Creating or updating a calendar writes one `audit_log` row in the same
+  database transaction as the calendar mutation. If the audit insert fails, the calendar
+  mutation still commits (`AU-14`) and the failure is written to the error log. The
+  required alerting metric and notification to every instance administrator are not
+  available in this slice; audit-failure reporting is not acceptance-complete until those
+  AU-14 integrations exist. Calendar configuration has no secrets; audit before/after
+  values contain only the calendar's name, timezone, windows and holidays. The work-item
+  `activity` journal does not apply: its authoritative schema requires a `work_item_id`
+  composite foreign key, and a calendar has no work item.
+- A `service_calendar.*` event must be recorded in the durable outbox in the same
+  transaction as its calendar mutation (`EV-1`). The durable outbox is described in
+  `docs/01-architecture/data-model.md`, but its runtime table and writer are not
+  implemented. This slice emits no service-calendar events; it must not use the
+  post-commit in-memory `publishEvent` emitter as a substitute.
+- Calendar deletion is unavailable until the server-enforced pending-action mechanism is
+  implemented. When available, `DELETE /api/service-calendars/{id}` must create a pending
+  action and return `202` per `pending-actions.md` (`PA-1`–`PA-15`); it must not delete the
+  calendar directly.
 
 ## Permissions
 
 | Action | Capability |
 | --- | --- |
 | Read | `sla_policy:read` |
-| Create, edit, delete | `sla_policy:manage` |
+| Create, edit | `sla_policy:manage` |
+| Delete | Unavailable until pending-action approval (`PA-1`–`PA-15`) is implemented |
 
 Deliberately reused rather than a `service_calendar:*` capability of its own: a calendar
 has no independent lifecycle outside the SLA policies that reference it. The feature flag
@@ -143,7 +154,6 @@ GET    /api/service-calendars                 sla_policy:read
 POST   /api/service-calendars                 sla_policy:manage
 GET    /api/service-calendars/{id}            sla_policy:read
 PATCH  /api/service-calendars/{id}            sla_policy:manage
-DELETE /api/service-calendars/{id}            sla_policy:manage
 POST   /api/service-calendars/{id}/holidays/import   sla_policy:manage
 POST   /api/service-calendars/{id}/holidays/preset?country={cc}&year={yyyy} sla_policy:manage
 GET    /api/service-calendars/{id}/preview?year=2026 sla_policy:read
@@ -174,6 +184,8 @@ inferred here.
 
 The API codebase has no runtime feature-flag enforcement helper or persisted flag lookup
 for `feature.sla` yet, so this route slice does not add a second, ad-hoc flag mechanism.
+Deletion is withheld until the pending-action API exists; no direct-delete route is
+exposed.
 
 ## Edge cases
 
