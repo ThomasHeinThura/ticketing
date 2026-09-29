@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -9,6 +10,36 @@ import {
   createWorkspaceMember,
   requireRow,
 } from "./helpers/fixtures";
+
+function hashApiKeyForTest(key: string): string {
+  return createHash("sha256")
+    .update(key)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+async function createApiKeyFor(
+  userId: string,
+  permissions: Record<string, string[]>,
+): Promise<string> {
+  const rawKey = `taskdesk_test_${randomUUID()}`;
+  const now = new Date();
+  await db.insert(schema.apikeyTable).values({
+    referenceId: userId,
+    userId,
+    key: hashApiKeyForTest(rawKey),
+    name: "project settings scope test",
+    start: rawKey.slice(0, 12),
+    prefix: "taskdesk",
+    permissions: JSON.stringify(permissions),
+    createdAt: now,
+    updatedAt: now,
+  });
+  return rawKey;
+}
 
 describe("API integration: project creation", () => {
   beforeEach(async () => {
@@ -177,6 +208,50 @@ describe("API integration: project creation", () => {
       },
     );
     expect(ordinaryUpdateResponse.status).toBe(200);
+  });
+
+  it("intersects default visibility updates with API-key project scopes", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const { app } = createApp();
+    const updateBody = {
+      name: project.name,
+      icon: project.icon ?? "Layout",
+      slug: project.slug,
+      description: project.description ?? "",
+      defaultCommentVisibility: "public",
+    };
+
+    const restrictedKey = await createApiKeyFor(member.user.id, {
+      project: ["update"],
+    });
+    const restrictedResponse = await app.request(`/api/project/${project.id}`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": restrictedKey,
+      },
+      body: JSON.stringify(updateBody),
+    });
+    expect(restrictedResponse.status).toBe(403);
+
+    const scopedKey = await createApiKeyFor(member.user.id, {
+      project: ["update", "manage_settings"],
+    });
+    const scopedResponse = await app.request(`/api/project/${project.id}`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": scopedKey,
+      },
+      body: JSON.stringify(updateBody),
+    });
+    expect(scopedResponse.status).toBe(200);
+    await expect(scopedResponse.json()).resolves.toMatchObject({
+      defaultCommentVisibility: "public",
+    });
   });
 
   it("rejects project creation for users outside the workspace", async () => {
