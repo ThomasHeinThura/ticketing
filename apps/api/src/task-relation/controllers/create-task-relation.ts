@@ -58,6 +58,8 @@ async function createTaskRelation({
     throw new HTTPException(404, { message: "Source task not found" });
   }
 
+  // Keep target existence as a preflight only. The response must wait until the
+  // source project's freeze check so a frozen source cannot reveal target existence.
   const [targetTask] = await db
     .select({
       id: taskTable.id,
@@ -74,11 +76,12 @@ async function createTaskRelation({
     )
     .limit(1);
 
-  if (!targetTask) {
-    throw new HTTPException(404, { message: "Target task not found" });
-  }
-
   const { relation, sourceProjectId } = await db.transaction(async (tx) => {
+    if (!targetTask) {
+      await lockTaskAndAssertProjectLive(tx, sourceTaskId);
+      throw new HTTPException(404, { message: "Target task not found" });
+    }
+
     const taskIds = [sourceTaskId, targetTaskId].sort();
     const firstTaskId = taskIds[0];
     const secondTaskId = taskIds[1];

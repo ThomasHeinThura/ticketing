@@ -199,6 +199,23 @@ describe("API integration: legacy task writes respect PR-15 project archive free
           }),
       ],
       [
+        "import tasks with a nonmember assignee",
+        () =>
+          request(`/task/import/${project.id}`, "post", {
+            tasks: [
+              {
+                title: "must not import",
+                status: "to-do",
+                userId: randomUUID(),
+              },
+            ],
+          }),
+      ],
+      [
+        "import an empty task list",
+        () => request(`/task/import/${project.id}`, "post", { tasks: [] }),
+      ],
+      [
         "bulk update",
         () =>
           request("/task/bulk", "patch", {
@@ -508,6 +525,126 @@ describe("API integration: legacy task writes respect PR-15 project archive free
         .from(schema.assetTable)
         .where(eq(schema.assetTable.taskId, task.id)),
     ).toHaveLength(0);
+  });
+
+  it("checks project liveness before import validation and empty results", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const nonmemberId = randomUUID();
+    mockAuthenticatedSession(member.user);
+
+    const importOneWithAssignee = () =>
+      request(`/task/import/${project.id}`, "post", {
+        tasks: [
+          {
+            title: "Import candidate",
+            status: "to-do",
+            userId: nonmemberId,
+          },
+        ],
+      });
+    const importEmpty = () =>
+      request(`/task/import/${project.id}`, "post", { tasks: [] });
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+    const archivedAssigneeResponse = await importOneWithAssignee();
+    const archivedEmptyResponse = await importEmpty();
+    expect(archivedAssigneeResponse.status).toBe(404);
+    expect(await archivedAssigneeResponse.text()).toBe("Project not found");
+    expect(archivedEmptyResponse.status).toBe(404);
+    expect(await archivedEmptyResponse.text()).toBe("Project not found");
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: null, deletedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+    const deletedEmptyResponse = await importEmpty();
+    expect(deletedEmptyResponse.status).toBe(404);
+    expect(await deletedEmptyResponse.text()).toBe("Project not found");
+
+    await db
+      .update(schema.projectTable)
+      .set({ deletedAt: null })
+      .where(eq(schema.projectTable.id, project.id));
+    const liveEmptyResponse = await importEmpty();
+    expect(liveEmptyResponse.status).toBe(200);
+    expect(await liveEmptyResponse.json()).toMatchObject({
+      results: { total: 0, successful: 0, failed: 0, tasks: [] },
+    });
+    const liveAssigneeResponse = await importOneWithAssignee();
+    expect(liveAssigneeResponse.status).toBe(200);
+    expect(await liveAssigneeResponse.json()).toMatchObject({
+      results: {
+        total: 1,
+        successful: 0,
+        failed: 1,
+        tasks: [
+          {
+            success: false,
+            error: "Assignee is not a member of this workspace",
+          },
+        ],
+      },
+    });
+  });
+
+  it("checks source freeze before reporting a missing relation target", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const sourceFixture = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const targetFixture = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const sourceTask = await createLegacyTask(
+      sourceFixture.project.id,
+      sourceFixture.columns.todo.id,
+      1,
+    );
+    const targetTask = await createLegacyTask(
+      targetFixture.project.id,
+      targetFixture.columns.todo.id,
+      1,
+    );
+    mockAuthenticatedSession(member.user);
+
+    const createRelation = (targetTaskId: string) =>
+      request("/task-relation", "post", {
+        sourceTaskId: sourceTask.id,
+        targetTaskId,
+        relationType: "blocks",
+      });
+
+    const liveMissing = await createRelation("0-missing");
+    expect(liveMissing.status).toBe(404);
+    expect(await liveMissing.text()).toBe("Target task not found");
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, sourceFixture.project.id));
+    const archivedMissing = await createRelation("0-missing");
+    const archivedExisting = await createRelation(targetTask.id);
+    expect(archivedMissing.status).toBe(404);
+    expect(archivedExisting.status).toBe(404);
+    expect(await archivedMissing.text()).toBe("Task not found");
+    expect(await archivedExisting.text()).toBe("Task not found");
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: null, deletedAt: new Date() })
+      .where(eq(schema.projectTable.id, sourceFixture.project.id));
+    const deletedMissing = await createRelation("0-missing");
+    const deletedExisting = await createRelation(targetTask.id);
+    expect(deletedMissing.status).toBe(404);
+    expect(deletedExisting.status).toBe(404);
+    expect(await deletedMissing.text()).toBe("Task not found");
+    expect(await deletedExisting.text()).toBe("Task not found");
   });
 
   it("does not reveal foreign destination existence when the source is archived", async () => {

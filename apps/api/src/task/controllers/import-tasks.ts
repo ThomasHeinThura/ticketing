@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable, projectTable, taskTable } from "../../database/schema";
@@ -28,18 +28,24 @@ async function importTasks(
   tasksToImport: ImportTask[],
   currentUserId?: string,
 ) {
-  const project = await db.query.projectTable.findFirst({
-    // #202: a soft-deleted project is gone for ordinary use during its 30-day
-    // recovery window (#187, PR-16), so it cannot receive an import either. Same
-    // exclusion `get-project.ts` applies.
-    where: and(eq(projectTable.id, projectId), isNull(projectTable.deletedAt)),
-  });
+  const project = await db.transaction(async (tx) => {
+    await lockProjectAndAssertLiveForTaskNumber(
+      tx,
+      projectId,
+      "Project not found",
+    );
+    const [liveProject] = await tx
+      .select()
+      .from(projectTable)
+      .where(eq(projectTable.id, projectId))
+      .limit(1);
 
-  if (!project) {
-    throw new HTTPException(404, {
-      message: "Project not found",
-    });
-  }
+    if (!liveProject) {
+      throw new HTTPException(404, { message: "Project not found" });
+    }
+
+    return liveProject;
+  });
 
   const assigneeIds = [
     ...new Set(
