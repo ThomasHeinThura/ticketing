@@ -46,6 +46,20 @@ describe("pending-action canonical payload", () => {
         targetCount: 51,
       }),
     ).toBe("typed_count_step_up");
+    expect(
+      requiredConfirmation({
+        action: "delete",
+        targetType: "auth.oidc_connection",
+        targetCount: 1,
+      }),
+    ).toBe("typed_name_step_up");
+    expect(
+      requiredConfirmation({
+        action: "mcp_destructive",
+        targetType: "approval",
+        targetCount: 1,
+      }),
+    ).toBe("click");
   });
 
   it("rejects empty target sets and non-JSON payload objects", () => {

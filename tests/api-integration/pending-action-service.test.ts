@@ -8,6 +8,12 @@ import {
   decideOwnPendingAction,
 } from "../../apps/api/src/pending-action/service";
 import { resetTestDatabase } from "./helpers/database";
+import { createProjectFixture, requireRow } from "./helpers/fixtures";
+
+const organisationId = "organisation-pending-action-test";
+const workspaceId = "workspace-pending-action-test";
+const requesterPersonId = "person-pending-action-test";
+let projectId = "";
 
 function requestInput(requesterPersonId = "person-pending-action-test") {
   return {
@@ -20,10 +26,9 @@ function requestInput(requesterPersonId = "person-pending-action-test") {
     targetType: "work_item",
     targetIds: ["SUP-1"],
     summary: { key: "SUP-1", title: "Test request" },
-    workspaceId: "workspace-pending-action-test",
-    projectId: `project-${randomUUID()}`,
-    organisationId: null,
-    confirmationRequired: "click" as const,
+    workspaceId,
+    projectId,
+    organisationId,
     actorId: requesterPersonId,
     actorType: "person" as const,
   };
@@ -33,8 +38,8 @@ describe("pending-action service persistence", () => {
   beforeEach(async () => {
     await resetTestDatabase();
     await db.insert(schema.organisationTable).values({
-      id: "organisation-pending-action-test",
-      key: "organisation-pending-action-test",
+      id: organisationId,
+      key: organisationId,
       name: "Pending Action Test Organisation",
     });
     await db.insert(schema.userTable).values({
@@ -43,22 +48,90 @@ describe("pending-action service persistence", () => {
       email: "pending-action-requester@example.test",
     });
     await db.insert(schema.personTable).values({
-      id: "person-pending-action-test",
+      id: requesterPersonId,
       userId: "user-pending-action-test",
-      organisationId: "organisation-pending-action-test",
+      organisationId,
       side: "staff",
     });
     await db.insert(schema.workspaceTable).values({
       id: "workspace-pending-action-test",
-      organisationId: "organisation-pending-action-test",
+      organisationId,
       name: "Pending Action Test Workspace",
       slug: "pending-action-test",
       createdAt: new Date(),
     });
+    await db.insert(schema.workspaceUserTable).values({
+      id: "workspace-member-pending-action-test",
+      workspaceId,
+      userId: "user-pending-action-test",
+      role: "owner",
+      joinedAt: new Date(),
+    });
+    const project = await createProjectFixture({
+      workspaceId,
+      slug: "pending-action-test-project",
+    });
+    projectId = project.project.id;
+    const now = new Date();
+    const type = requireRow(
+      await db
+        .insert(schema.workItemTypeTable)
+        .values({
+          workspaceId,
+          key: "pending-action-test-type",
+          name: "Work item",
+          category: "delivery",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+      "pending-action test work item type",
+    );
+    const template = requireRow(
+      await db
+        .insert(schema.stateTemplateTable)
+        .values({
+          workspaceId,
+          key: "pending-action-test-state",
+          name: "Backlog",
+          group: "backlog",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+      "pending-action test state template",
+    );
+    const state = requireRow(
+      await db
+        .insert(schema.stateTable)
+        .values({
+          projectId,
+          stateTemplateId: template.id,
+          isDefault: true,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+      "pending-action test state",
+    );
+    await db.insert(schema.workItemTable).values({
+      projectId,
+      workspaceId,
+      typeId: type.id,
+      stateId: state.id,
+      number: 1,
+      key: "SUP-1",
+      title: "Test request",
+      createdAt: now,
+      updatedAt: now,
+    });
   });
 
   it("PA-2: persists the bound request and audit row before returning its approval details", async () => {
-    const input = requestInput();
+    const input = {
+      ...requestInput(),
+      confirmationRequired: "typed_name_step_up",
+    };
     const response = await createPendingAction(input);
     const [row] = await db
       .select()
@@ -89,10 +162,13 @@ describe("pending-action service persistence", () => {
     });
     expect(row).toMatchObject({
       state: "pending",
+      confirmationRequired: "click",
       requestedByPersonId: input.requesterPersonId,
       routeKey: input.routeKey,
       targetIds: ["SUP-1"],
       workspaceId: input.workspaceId,
+      projectId,
+      organisationId,
     });
     expect(row?.payloadHash).toMatch(/^[0-9a-f]{64}$/);
     expect(auditRows).toEqual([
@@ -106,7 +182,7 @@ describe("pending-action service persistence", () => {
       kind: "pending_action.requested",
       state: "pending",
       workspaceId: input.workspaceId,
-      organisationId: "organisation-pending-action-test",
+      organisationId,
       payload: {
         id: expect.stringMatching(/^evt_/),
         kind: "pending_action.requested",
@@ -117,7 +193,7 @@ describe("pending-action service persistence", () => {
         },
         scope: {
           workspaceId: input.workspaceId,
-          organisationId: "organisation-pending-action-test",
+          organisationId,
         },
         payload: {
           key: response.pendingActionId,
@@ -138,6 +214,73 @@ describe("pending-action service persistence", () => {
     await expect(createPendingAction(invalidInput)).rejects.toThrow(
       /Unknown pending-action route key/,
     );
+    const rows = await db.select().from(schema.pendingActionTable);
+    expect(rows).toHaveLength(0);
+  });
+
+  it("derives request scope from the target and denies mismatched caller scope", async () => {
+    const input = requestInput();
+    const response = await createPendingAction({
+      ...input,
+      workspaceId: undefined,
+      projectId: undefined,
+      organisationId: undefined,
+    });
+    const [row] = await db
+      .select()
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, response.pendingActionId));
+    expect(row).toMatchObject({
+      workspaceId,
+      projectId,
+      organisationId,
+    });
+
+    await expect(
+      createPendingAction({
+        ...requestInput(),
+        workspaceId: "another-workspace",
+      }),
+    ).rejects.toMatchObject({ status: 404 });
+    await expect(
+      createPendingAction({
+        ...requestInput(),
+        organisationId: null,
+      }),
+    ).rejects.toMatchObject({ status: 404 });
+    await expect(
+      createPendingAction({
+        ...requestInput(),
+        projectId: "does-not-exist",
+      }),
+    ).rejects.toMatchObject({ status: 404 });
+    await expect(
+      createPendingAction({
+        ...requestInput(),
+        targetIds: ["missing-work-item"],
+      }),
+    ).rejects.toMatchObject({ status: 404 });
+
+    const rows = await db.select().from(schema.pendingActionTable);
+    expect(rows).toHaveLength(1);
+  });
+
+  it("refuses a requester without current workspace reach", async () => {
+    await db.insert(schema.userTable).values({
+      id: "user-pending-action-outsider",
+      name: "Out of reach requester",
+      email: "pending-action-outsider@example.test",
+    });
+    await db.insert(schema.personTable).values({
+      id: "person-pending-action-outsider",
+      userId: "user-pending-action-outsider",
+      organisationId,
+      side: "staff",
+    });
+
+    await expect(
+      createPendingAction(requestInput("person-pending-action-outsider")),
+    ).rejects.toMatchObject({ status: 403 });
     const rows = await db.select().from(schema.pendingActionTable);
     expect(rows).toHaveLength(0);
   });
@@ -199,6 +342,46 @@ describe("pending-action service persistence", () => {
       );
       await db.execute(
         sql.raw("DROP FUNCTION IF EXISTS fail_pending_action_audit_insert()"),
+      );
+    }
+  });
+
+  it("rolls the request back if its transactional outbox insert fails", async () => {
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_pending_action_outbox_insert()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.kind = 'pending_action.requested' THEN
+            RAISE EXCEPTION 'test outbox failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_pending_action_outbox_insert
+        BEFORE INSERT ON outbox
+        FOR EACH ROW EXECUTE FUNCTION fail_pending_action_outbox_insert()
+      `),
+    );
+
+    try {
+      await expect(createPendingAction(requestInput())).rejects.toThrow(
+        /insert into "outbox"/,
+      );
+      expect(await db.select().from(schema.pendingActionTable)).toHaveLength(0);
+      expect(await db.select().from(schema.outboxTable)).toHaveLength(0);
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_pending_action_outbox_insert ON outbox",
+        ),
+      );
+      await db.execute(
+        sql.raw("DROP FUNCTION IF EXISTS fail_pending_action_outbox_insert()"),
       );
     }
   });
@@ -271,6 +454,31 @@ describe("pending-action service persistence", () => {
       });
 
       expect(decided.state).toBe(state);
+      const decisionEvents = await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "pending_action.decided"));
+      expect(decisionEvents).toHaveLength(1);
+      expect(decisionEvents[0]).toMatchObject({
+        state: "pending",
+        workspaceId,
+        organisationId,
+        payload: {
+          kind: "pending_action.decided",
+          actor: {
+            type: "person",
+            id: input.requesterPersonId,
+            name: "Pending Action Requester",
+          },
+          scope: { workspaceId, projectId, organisationId },
+          payload: {
+            key: created.pendingActionId,
+            url: `/agent/settings/profile/pending-actions/${created.pendingActionId}`,
+            pendingActionId: created.pendingActionId,
+            outcome: state,
+          },
+        },
+      });
       await expect(
         decideOwnPendingAction({
           id: created.pendingActionId,
@@ -280,4 +488,130 @@ describe("pending-action service persistence", () => {
       ).rejects.toMatchObject({ status: 409 });
     },
   );
+
+  it("AU-14: commits a decision and outbox event when its audit insert fails", async () => {
+    const input = requestInput();
+    const created = await createPendingAction(input);
+    const auditFailure = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_pending_action_decision_audit_insert()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.action = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'test decision audit failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_pending_action_decision_audit_insert
+        BEFORE INSERT ON audit_log
+        FOR EACH ROW EXECUTE FUNCTION fail_pending_action_decision_audit_insert()
+      `),
+    );
+
+    try {
+      const decided = await decideOwnPendingAction({
+        id: created.pendingActionId,
+        requesterPersonId: input.requesterPersonId,
+        outcome: "denied",
+      });
+      expect(decided.state).toBe("denied");
+      const [row] = await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, created.pendingActionId));
+      const events = await db
+        .select({ eventId: schema.outboxTable.eventId })
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "pending_action.decided"));
+      const auditRows = await db
+        .select({ id: schema.auditLogTable.id })
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "pending_action.decided"));
+
+      expect(row?.state).toBe("denied");
+      expect(events).toHaveLength(1);
+      expect(auditRows).toHaveLength(0);
+      expect(auditFailure).toHaveBeenCalledWith(
+        expect.stringContaining("AU-14:"),
+        expect.anything(),
+      );
+    } finally {
+      auditFailure.mockRestore();
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_pending_action_decision_audit_insert ON audit_log",
+        ),
+      );
+      await db.execute(
+        sql.raw(
+          "DROP FUNCTION IF EXISTS fail_pending_action_decision_audit_insert()",
+        ),
+      );
+    }
+  });
+
+  it("rolls a decision back if its transactional outbox insert fails", async () => {
+    const input = requestInput();
+    const created = await createPendingAction(input);
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_pending_action_decision_outbox_insert()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.kind = 'pending_action.decided' THEN
+            RAISE EXCEPTION 'test decision outbox failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_pending_action_decision_outbox_insert
+        BEFORE INSERT ON outbox
+        FOR EACH ROW EXECUTE FUNCTION fail_pending_action_decision_outbox_insert()
+      `),
+    );
+
+    try {
+      await expect(
+        decideOwnPendingAction({
+          id: created.pendingActionId,
+          requesterPersonId: input.requesterPersonId,
+          outcome: "denied",
+        }),
+      ).rejects.toThrow(/insert into "outbox"/);
+      const [row] = await db
+        .select({ state: schema.pendingActionTable.state })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, created.pendingActionId));
+      const events = await db
+        .select({ eventId: schema.outboxTable.eventId })
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "pending_action.decided"));
+
+      expect(row?.state).toBe("pending");
+      expect(events).toHaveLength(0);
+    } finally {
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_pending_action_decision_outbox_insert ON outbox",
+        ),
+      );
+      await db.execute(
+        sql.raw(
+          "DROP FUNCTION IF EXISTS fail_pending_action_decision_outbox_insert()",
+        ),
+      );
+    }
+  });
 });

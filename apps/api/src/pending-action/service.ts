@@ -1,23 +1,27 @@
 import { createId } from "@paralleldrive/cuid2";
-import type { PolicyMap } from "@taskdesk/permissions";
-import { and, eq } from "drizzle-orm";
+import { isCapability, type PolicyMap } from "@taskdesk/permissions";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
 import {
   pendingActionTable,
   personTable,
+  projectTable,
   userTable,
+  workItemTable,
   workspaceTable,
 } from "../database/schema";
-import { publishEvent } from "../events";
 import { enqueueOutboxEvent } from "../events/outbox";
 import { policyRegistry } from "../policy-registry";
+import { assertCallerHasCapability } from "../utils/require-workspace-capability";
+import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import {
   type ConfirmationKind,
   canonicalPendingActionPayload,
   hashPendingActionPayload,
   type PendingActionKind,
+  requiredConfirmation,
 } from "./payload";
 
 const ACTION_TTL_MS = 15 * 60 * 1000;
@@ -33,10 +37,10 @@ export type CreatePendingActionInput = {
   targetIds: readonly string[];
   targetVersions?: Record<string, unknown> | null;
   summary: Record<string, unknown>;
-  workspaceId: string;
-  projectId: string | null;
-  organisationId: string | null;
-  confirmationRequired: ConfirmationKind;
+  /** Optional scope assertions. Persisted scope always comes from target rows. */
+  workspaceId?: string | null;
+  projectId?: string | null;
+  organisationId?: string | null;
   actorId: string;
   actorType: "person" | "api_key";
   actorIp?: string | null;
@@ -46,24 +50,32 @@ export type CreatePendingActionInput = {
 /** Creates the durable approval and its audit record before returning any 202 response. */
 export async function createPendingAction(input: CreatePendingActionInput) {
   assertRegisteredRouteKey(input.routeKey);
-  const payload = canonicalPendingActionPayload({
-    action: input.action,
-    route_key: input.routeKey,
-    target_type: input.targetType,
-    target_ids: input.targetIds,
-    workspace_id: input.workspaceId,
-    project_id: input.projectId,
-    organisation_id: input.organisationId,
-    confirmation_required: input.confirmationRequired,
-  });
-  const payloadHash = hashPendingActionPayload(payload);
   const now = new Date();
   const id = createId();
   const traceId = createId();
+  const conflictTargetIds = [...input.targetIds].sort();
+  let created: { confirmation: ConfirmationKind } | undefined;
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      await db.transaction(async (tx) => {
+      created = await db.transaction(async (tx) => {
+        const scope = await resolveRequestScope(tx, input);
+        const confirmation = requiredConfirmation({
+          action: input.action,
+          targetType: input.targetType,
+          targetCount: input.targetIds.length,
+        });
+        const payload = canonicalPendingActionPayload({
+          action: input.action,
+          route_key: input.routeKey,
+          target_type: input.targetType,
+          target_ids: input.targetIds,
+          workspace_id: scope.workspaceId,
+          project_id: scope.projectId,
+          organisation_id: scope.organisationId,
+          confirmation_required: confirmation,
+        });
+        const payloadHash = hashPendingActionPayload(payload);
         const [created] = await tx
           .insert(pendingActionTable)
           .values({
@@ -80,10 +92,10 @@ export async function createPendingAction(input: CreatePendingActionInput) {
             routeKey: input.routeKey,
             payloadHash,
             payloadSummary: input.summary,
-            workspaceId: input.workspaceId,
-            projectId: input.projectId,
-            organisationId: input.organisationId,
-            confirmationRequired: input.confirmationRequired,
+            workspaceId: scope.workspaceId,
+            projectId: scope.projectId,
+            organisationId: scope.organisationId,
+            confirmationRequired: confirmation,
             state: "pending",
             createdAt: now,
             expiresAt: new Date(now.getTime() + ACTION_TTL_MS),
@@ -92,22 +104,6 @@ export async function createPendingAction(input: CreatePendingActionInput) {
           .returning({ id: pendingActionTable.id });
 
         if (!created) throw new Error("Pending action insert returned no row");
-        const [eventScope] = await tx
-          .select({
-            actorName: userTable.name,
-            organisationId: workspaceTable.organisationId,
-          })
-          .from(personTable)
-          .innerJoin(userTable, eq(userTable.id, personTable.userId))
-          .innerJoin(workspaceTable, eq(workspaceTable.id, input.workspaceId))
-          .where(eq(personTable.id, input.requesterPersonId))
-          .limit(1);
-        if (!eventScope) {
-          throw new Error(
-            "Pending-action event requires a requester with a workspace-scoped identity",
-          );
-        }
-
         await enqueueOutboxEvent(tx, {
           id: `evt_${createId()}`,
           kind: "pending_action.requested",
@@ -115,12 +111,12 @@ export async function createPendingAction(input: CreatePendingActionInput) {
           actor: {
             type: "person",
             id: input.requesterPersonId,
-            name: eventScope.actorName,
+            name: scope.actorName,
           },
           scope: {
-            workspaceId: input.workspaceId,
-            organisationId: eventScope.organisationId,
-            ...(input.projectId ? { projectId: input.projectId } : {}),
+            workspaceId: scope.workspaceId,
+            organisationId: scope.organisationId,
+            projectId: scope.projectId,
           },
           payload: {
             key: id,
@@ -146,9 +142,9 @@ export async function createPendingAction(input: CreatePendingActionInput) {
             actorIp: input.actorIp,
             userAgent: input.userAgent,
             traceId,
-            workspaceId: input.workspaceId,
-            projectId: input.projectId,
-            organisationId: input.organisationId,
+            workspaceId: scope.workspaceId,
+            projectId: scope.projectId,
+            organisationId: scope.organisationId,
             action: "pending_action.requested",
             entityType: "pending_action",
             entityId: id,
@@ -163,6 +159,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
         } catch (error) {
           console.error("AU-14: pending-action audit write failed", error);
         }
+        return { confirmation };
       });
       break;
     } catch (error) {
@@ -175,7 +172,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
           and(
             eq(pendingActionTable.requestedByPersonId, input.requesterPersonId),
             eq(pendingActionTable.action, input.action),
-            eq(pendingActionTable.targetIds, payload.target_ids),
+            eq(pendingActionTable.targetIds, conflictTargetIds),
             eq(pendingActionTable.state, "pending"),
           ),
         )
@@ -189,11 +186,13 @@ export async function createPendingAction(input: CreatePendingActionInput) {
     }
   }
 
+  if (!created) throw new Error("Pending action request did not commit");
+
   return {
     pendingActionId: id,
     action: input.action,
     summary: input.summary,
-    confirmation: input.confirmationRequired,
+    confirmation: created.confirmation,
     expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
     approveUrl: `/agent/settings/profile/pending-actions/${id}`,
   };
@@ -260,6 +259,20 @@ export async function decideOwnPendingAction(input: {
       throw new HTTPException(409, { message: "pending_action_not_pending" });
     }
     const outcome = row.expiresAt <= now ? "expired" : input.outcome;
+    const [actor] = await tx
+      .select({
+        userId: personTable.userId,
+        name: userTable.name,
+      })
+      .from(personTable)
+      .innerJoin(userTable, eq(userTable.id, personTable.userId))
+      .where(eq(personTable.id, input.requesterPersonId))
+      .limit(1);
+    if (!actor?.userId || !row.workspaceId) {
+      throw new HTTPException(403, {
+        message: "Pending-action requester is unavailable",
+      });
+    }
     const [updated] = await tx
       .update(pendingActionTable)
       .set({
@@ -278,26 +291,50 @@ export async function decideOwnPendingAction(input: {
     if (!updated)
       throw new HTTPException(409, { message: "pending_action_not_pending" });
 
-    await appendAuditLog(tx, {
-      actorId: input.requesterPersonId,
-      actorType: "person",
-      traceId: row.traceId,
-      workspaceId: row.workspaceId,
-      projectId: row.projectId,
-      organisationId: row.organisationId,
-      action: "pending_action.decided",
-      entityType: "pending_action",
-      entityId: row.id,
-      before: { state: "pending" },
-      after: { state: outcome },
+    await enqueueOutboxEvent(tx, {
+      id: `evt_${createId()}`,
+      kind: "pending_action.decided",
+      occurredAt: now.toISOString(),
+      actor: {
+        type: "person",
+        id: input.requesterPersonId,
+        name: actor.name,
+      },
+      scope: {
+        workspaceId: row.workspaceId,
+        ...(row.organisationId ? { organisationId: row.organisationId } : {}),
+        ...(row.projectId ? { projectId: row.projectId } : {}),
+      },
+      payload: {
+        key: row.id,
+        url: `/agent/settings/profile/pending-actions/${row.id}`,
+        pendingActionId: row.id,
+        outcome,
+      },
+      causationId: null,
+      depth: 0,
+      originAutomationId: null,
     });
+    try {
+      await appendAuditLog(tx, {
+        actorId: input.requesterPersonId,
+        actorType: "person",
+        traceId: row.traceId,
+        workspaceId: row.workspaceId,
+        projectId: row.projectId,
+        organisationId: row.organisationId,
+        action: "pending_action.decided",
+        entityType: "pending_action",
+        entityId: row.id,
+        before: { state: "pending" },
+        after: { state: outcome },
+      });
+    } catch (error) {
+      console.error("AU-14: pending-action decision audit write failed", error);
+    }
     return updated;
   });
 
-  await publishEvent("pending_action.decided", {
-    pendingActionId: result.id,
-    outcome: result.state,
-  });
   return toPublicPendingAction(result);
 }
 
@@ -317,6 +354,148 @@ async function auditViewed(
     entityId: id,
     after: { rendered: true },
   });
+}
+
+type PendingActionTransaction = Parameters<
+  Parameters<typeof db.transaction>[0]
+>[0];
+
+type ResolvedRequestScope = {
+  workspaceId: string;
+  projectId: string;
+  organisationId: string;
+  actorName: string;
+};
+
+/**
+ * This persistence slice currently accepts only live work-item deletions. The
+ * route's existing membership and capability checks are repeated here, then
+ * scope is derived from the locked target and its parent rows. Other target
+ * types stay refused until their row and reach resolvers are implemented.
+ */
+async function resolveRequestScope(
+  tx: PendingActionTransaction,
+  input: CreatePendingActionInput,
+): Promise<ResolvedRequestScope> {
+  if (
+    input.targetType !== "work_item" ||
+    input.action !== "delete" ||
+    input.targetIds.length !== 1
+  ) {
+    throw new HTTPException(400, {
+      message:
+        "Pending actions currently support registered single-work-item deletions only",
+    });
+  }
+
+  const targetIds = [...new Set(input.targetIds)];
+  if (targetIds.length === 0 || targetIds.length !== input.targetIds.length) {
+    throw new TypeError("Pending action targets must be nonempty and unique");
+  }
+
+  const targets = await tx
+    .select({
+      key: workItemTable.key,
+      workspaceId: workItemTable.workspaceId,
+      projectId: workItemTable.projectId,
+      organisationId: workspaceTable.organisationId,
+    })
+    .from(workItemTable)
+    .innerJoin(projectTable, eq(projectTable.id, workItemTable.projectId))
+    .innerJoin(workspaceTable, eq(workspaceTable.id, projectTable.workspaceId))
+    .where(
+      and(
+        inArray(workItemTable.key, targetIds),
+        isNull(workItemTable.deletedAt),
+        isNull(workItemTable.archivedAt),
+        isNull(projectTable.deletedAt),
+      ),
+    )
+    .for("update")
+    .limit(targetIds.length);
+
+  if (targets.length !== targetIds.length) {
+    throw new HTTPException(404, {
+      message: "Pending action target not found",
+    });
+  }
+  const [target] = targets;
+  if (!target)
+    throw new HTTPException(404, {
+      message: "Pending action target not found",
+    });
+  if (
+    targets.some(
+      (row) =>
+        row.workspaceId !== target.workspaceId ||
+        row.projectId !== target.projectId ||
+        row.organisationId !== target.organisationId,
+    )
+  ) {
+    throw new HTTPException(404, {
+      message: "Pending action target not found",
+    });
+  }
+
+  if (
+    (input.workspaceId !== undefined &&
+      input.workspaceId !== target.workspaceId) ||
+    (input.projectId !== undefined && input.projectId !== target.projectId) ||
+    (input.organisationId !== undefined &&
+      input.organisationId !== target.organisationId)
+  ) {
+    throw new HTTPException(404, {
+      message: "Pending action target not found",
+    });
+  }
+
+  const [requester] = await tx
+    .select({
+      userId: personTable.userId,
+      active: personTable.active,
+      actorName: userTable.name,
+      banned: userTable.banned,
+    })
+    .from(personTable)
+    .innerJoin(userTable, eq(userTable.id, personTable.userId))
+    .where(eq(personTable.id, input.requesterPersonId))
+    .limit(1);
+  if (!requester?.userId || !requester.active || requester.banned) {
+    throw new HTTPException(403, {
+      message: "Pending-action requester is unavailable",
+    });
+  }
+
+  const route = policyRegistry.get(input.routeKey);
+  if (
+    route?.kind !== "capability" ||
+    !("capability" in route.policy) ||
+    route.policy.scope !== "work_item" ||
+    !isCapability(route.policy.capability) ||
+    route.policy.capability !== "work_item:delete"
+  ) {
+    throw new TypeError("Pending-action route must authorize work_item:delete");
+  }
+
+  await validateWorkspaceAccess(
+    requester.userId,
+    target.workspaceId,
+    input.credentialType === "api_key"
+      ? (input.credentialId ?? undefined)
+      : undefined,
+  );
+  await assertCallerHasCapability(
+    target.workspaceId,
+    requester.userId,
+    route.policy.capability,
+  );
+
+  return {
+    workspaceId: target.workspaceId,
+    projectId: target.projectId,
+    organisationId: target.organisationId,
+    actorName: requester.actorName,
+  };
 }
 
 function toPublicPendingAction(row: typeof pendingActionTable.$inferSelect) {

@@ -124,7 +124,7 @@ export function requiredConfirmation(input: {
     input.targetType === "api_key" ||
     input.targetType === "webhook" ||
     input.targetType === "identity_connection" ||
-    input.targetType === "auth_plugin"
+    input.targetType.startsWith("auth.")
   ) {
     return "typed_name_step_up";
   }
