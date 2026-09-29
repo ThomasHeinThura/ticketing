@@ -19,9 +19,10 @@ import {
   Textarea,
 } from "@taskdesk/ui";
 import type { JSONContent } from "@tiptap/core";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
+import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import WorkItemActivityComment from "@/components/work-item/work-item-activity-comment";
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
 import createWorkItemComment from "@/fetchers/work-item/create-work-item-comment";
@@ -50,16 +51,68 @@ type WorkItemJourneyProps = {
   onActivityFilterChange?: (filter: WorkItemActivityFilter) => void;
 };
 
+type CommentDraft = {
+  text: string;
+  body: JSONContent;
+  visibility: "public" | "internal";
+};
+
+const emptyCommentBody = (): JSONContent => ({
+  type: "doc",
+  content: [{ type: "paragraph" }],
+});
+
+function getCommentDraftStorageKey(userId: string, itemKey: string) {
+  return `taskdesk:work-item-comment-draft:v1:${encodeURIComponent(userId)}:${encodeURIComponent(itemKey)}`;
+}
+
+function readCommentDraft(storageKey: string): CommentDraft {
+  const emptyDraft = {
+    text: "",
+    body: emptyCommentBody(),
+    visibility: "internal" as const,
+  };
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return emptyDraft;
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed === null || typeof parsed !== "object") return emptyDraft;
+    const draft = parsed as Record<string, unknown>;
+    return {
+      text: typeof draft.text === "string" ? draft.text : "",
+      body:
+        draft.body !== null &&
+        typeof draft.body === "object" &&
+        !Array.isArray(draft.body) &&
+        (draft.body as Record<string, unknown>).type === "doc"
+          ? (draft.body as JSONContent)
+          : emptyCommentBody(),
+      visibility: draft.visibility === "public" ? "public" : "internal",
+    };
+  } catch {
+    return emptyDraft;
+  }
+}
+
 export default function WorkItemJourney(props: WorkItemJourneyProps) {
-  return <WorkItemJourneyForItem key={props.item.key} {...props} />;
+  const { user } = useAuth();
+  const userId = user?.id ?? "anonymous";
+  return (
+    <WorkItemJourneyForItem
+      key={`${props.item.key}:${userId}`}
+      {...props}
+      userId={userId}
+    />
+  );
 }
 
 function WorkItemJourneyForItem({
   item,
   onSaved,
+  userId,
   activityFilter = "all",
   onActivityFilterChange = () => {},
-}: WorkItemJourneyProps) {
+}: WorkItemJourneyProps & { userId: string }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const {
@@ -91,14 +144,29 @@ function WorkItemJourneyForItem({
   const [confirmReassign, setConfirmReassign] = useState(false);
   const [editError, setEditError] = useState("");
   const [assignError, setAssignError] = useState("");
-  const [commentText, setCommentText] = useState("");
-  const [commentBody, setCommentBody] = useState<JSONContent>({
-    type: "doc",
-    content: [{ type: "paragraph" }],
-  });
-  const [commentVisibility, setCommentVisibility] = useState<
-    "public" | "internal"
-  >("internal");
+  const commentDraftStorageKey = getCommentDraftStorageKey(userId, item.key);
+  const [commentDraft, setCommentDraft] = useState<CommentDraft>(() =>
+    readCommentDraft(commentDraftStorageKey),
+  );
+  const {
+    text: commentText,
+    body: commentBody,
+    visibility: commentVisibility,
+  } = commentDraft;
+  useEffect(() => {
+    try {
+      if (!commentDraft.text.trim()) {
+        window.localStorage.removeItem(commentDraftStorageKey);
+      } else {
+        window.localStorage.setItem(
+          commentDraftStorageKey,
+          JSON.stringify(commentDraft),
+        );
+      }
+    } catch {
+      // A draft is best-effort when browser storage is unavailable or full.
+    }
+  }, [commentDraft, commentDraftStorageKey]);
   const [commentError, setCommentError] = useState("");
   const mayCreatePublicComment =
     !isCheckingPermissions && canCreatePublicComments();
@@ -225,8 +293,11 @@ function WorkItemJourneyForItem({
         visibility: effectiveCommentVisibility,
       }),
     onSuccess: async () => {
-      setCommentText("");
-      setCommentBody({ type: "doc", content: [{ type: "paragraph" }] });
+      setCommentDraft({
+        text: "",
+        body: emptyCommentBody(),
+        visibility: commentVisibility,
+      });
       setCommentError("");
       await queryClient.invalidateQueries({
         queryKey: ["work-items", "activity", item.key],
@@ -619,7 +690,10 @@ function WorkItemJourneyForItem({
                 value={effectiveCommentVisibility}
                 onValueChange={(value) => {
                   if (value === "internal" || value === "public")
-                    setCommentVisibility(value);
+                    setCommentDraft((draft) => ({
+                      ...draft,
+                      visibility: value,
+                    }));
                 }}
               >
                 <SelectTrigger id="work-item-comment-visibility">
@@ -637,8 +711,12 @@ function WorkItemJourneyForItem({
             <CommentEditor
               ariaLabel={t("workItems:journey.commentEditor")}
               value={commentText}
-              onChange={setCommentText}
-              onDocumentChange={setCommentBody}
+              onChange={(text) =>
+                setCommentDraft((draft) => ({ ...draft, text }))
+              }
+              onDocumentChange={(body) =>
+                setCommentDraft((draft) => ({ ...draft, body }))
+              }
               placeholder={t("workItems:journey.commentPlaceholder")}
               showQuickAttachButton={false}
             />

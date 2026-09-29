@@ -17,6 +17,7 @@ const permissionFlags = vi.hoisted(() => ({
   publicComments: false,
   internalComments: false,
 }));
+const authState = vi.hoisted(() => ({ userId: "user-1" }));
 const activityFetcher = vi.hoisted(() => vi.fn());
 const updateWorkItem = vi.fn();
 const assignWorkItem = vi.fn();
@@ -70,6 +71,9 @@ vi.mock("@/components/activity/comment-editor", () => ({
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
+vi.mock("@/components/providers/auth-provider/hooks/use-auth", () => ({
+  default: () => ({ user: { id: authState.userId } }),
+}));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canUpdateTasks: () => permissionFlags.update,
@@ -85,6 +89,8 @@ afterEach(() => {
 });
 
 beforeEach(() => {
+  window.localStorage.clear();
+  authState.userId = "user-1";
   updateWorkItem.mockReset();
   assignWorkItem.mockReset();
   assignWorkItem.mockResolvedValue({});
@@ -137,6 +143,63 @@ function makeItem(): WorkItemDetailRow {
 }
 
 describe("WorkItemJourney", () => {
+  it("restores each user's per-work-item comment draft after the journey remounts", async () => {
+    permissionFlags.publicComments = true;
+    permissionFlags.internalComments = true;
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const renderJourney = () => (
+      <QueryClientProvider client={client}>
+        <WorkItemJourney item={makeItem()} onSaved={vi.fn()} />
+      </QueryClientProvider>
+    );
+    const firstMount = render(renderJourney());
+
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: "workItems:journey.commentEditor",
+      }),
+      { target: { value: "Saved comment draft" } },
+    );
+    fireEvent.click(
+      screen.getByRole("combobox", { name: /commentVisibility/ }),
+    );
+    const publicOption = screen.getByRole("option", {
+      name: "workItems:journey.public",
+    });
+    fireEvent.pointerDown(publicOption);
+    fireEvent.pointerUp(publicOption);
+    fireEvent.click(publicOption);
+    await waitFor(() => {
+      expect(
+        window.localStorage.getItem(
+          "taskdesk:work-item-comment-draft:v1:user-1:WLP-1",
+        ),
+      ).toContain('"visibility":"public"');
+    });
+    firstMount.unmount();
+
+    const secondMount = render(renderJourney());
+    expect(
+      screen.getByRole("textbox", {
+        name: "workItems:journey.commentEditor",
+      }),
+    ).toHaveValue("Saved comment draft");
+    expect(
+      screen.getByRole("combobox", { name: /commentVisibility/ }),
+    ).toHaveTextContent("public");
+
+    secondMount.unmount();
+    authState.userId = "user-2";
+    render(renderJourney());
+    expect(
+      screen.getByRole("textbox", {
+        name: "workItems:journey.commentEditor",
+      }),
+    ).toHaveValue("");
+  });
+
   it("keeps the edit draft visible after a 409 and does not silently retry with the newer version", async () => {
     updateWorkItem.mockRejectedValue(new WorkItemVersionConflictError(7, 8));
     const client = new QueryClient({
@@ -547,5 +610,12 @@ describe("WorkItemJourney", () => {
         visibility: "internal",
       }),
     );
+    await waitFor(() => {
+      expect(
+        window.localStorage.getItem(
+          "taskdesk:work-item-comment-draft:v1:user-1:WLP-1",
+        ),
+      ).toBeNull();
+    });
   });
 });
