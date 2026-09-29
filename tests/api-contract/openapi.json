@@ -16620,7 +16620,7 @@
           "Views"
         ],
         "summary": "Create saved view",
-        "description": "A saved view is a stored search plus a presentation choice (search-and-saved-views.md). A workspace-visible view additionally requires workspace:manage_settings (SV-18); a team view requires membership in that team.",
+        "description": "A saved view is a stored search plus a presentation choice (search-and-saved-views.md). A workspace-visible view additionally requires workspace:manage_settings (SV-18); publishing a team view requires saved_view:share and membership in that team.",
         "requestBody": {
           "required": true,
           "content": {
@@ -16758,7 +16758,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Missing saved_view:create permission, or missing workspace:manage_settings / team membership for the requested visibility",
+            "description": "Missing saved_view:create, saved_view:share, or workspace:manage_settings permission, or missing membership in the target team",
             "content": {
               "text/plain": {
                 "schema": {
@@ -16839,7 +16839,7 @@
           "Views"
         ],
         "summary": "Update saved view",
-        "description": "The owner, or a caller with workspace:manage_settings, may edit a view.",
+        "description": "The owner, or a caller with workspace:manage_settings, may edit a view. Changing a view's team audience additionally requires saved_view:share and membership in the target team.",
         "parameters": [
           {
             "schema": {
@@ -16966,7 +16966,7 @@
             "description": "Missing or invalid credentials"
           },
           "403": {
-            "description": "Not the view's owner, and missing workspace:manage_settings",
+            "description": "Not the view's owner, missing workspace:manage_settings, or missing saved_view:share permission / membership in the target team",
             "content": {
               "text/plain": {
                 "schema": {

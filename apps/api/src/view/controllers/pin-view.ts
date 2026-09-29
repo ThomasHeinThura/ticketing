@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import db from "../../database";
 import { userPreferenceTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { type SavedViewAuditActor, writeSavedViewAudit } from "../audit";
 import getView from "./get-view";
 
 const PINNED_VIEWS_KEY = "pinned_view_ids";
@@ -13,13 +14,18 @@ const PINNED_VIEWS_KEY = "pinned_view_ids";
 // `key = 'pinned_view_ids'`, `value` a plain string array -- the table's own shape is
 // generic (see `userPreferenceTable`'s schema.ts comment), this is the one concrete use
 // this PR wires up.
-async function pinView(viewId: string, personId: string, userId: string) {
+async function pinView(
+  viewId: string,
+  personId: string,
+  userId: string,
+  auditActor: SavedViewAuditActor,
+) {
   // workspaceAccess.fromSavedView establishes workspace reach, but private/team
   // visibility is a separate SV-15..SV-18 rule. Apply the same check as direct reads
   // before writing the caller's preference, so knowing an id cannot pin an invisible view.
   const view = await getView(viewId, personId, userId);
 
-  return db.transaction(async (tx) => {
+  const mutation = await db.transaction(async (tx) => {
     const [existing] = await tx
       .select()
       .from(userPreferenceTable)
@@ -59,15 +65,31 @@ async function pinView(viewId: string, personId: string, userId: string) {
       });
     }
 
-    await publishEvent("saved_view.pinned", {
-      savedViewId: viewId,
-      workspaceId: view.workspaceId,
-      userId,
-      pinned: !pinned,
-    });
-
-    return { pinnedViewIds: nextIds };
+    return {
+      pinnedViewIds: nextIds,
+      wasPinned: pinned,
+      isPinned: !pinned,
+    };
   });
+
+  await writeSavedViewAudit({
+    actor: auditActor,
+    action: "saved_view.pinned",
+    workspaceId: view.workspaceId,
+    projectId: view.scope === "project" ? view.scopeId : null,
+    entityId: viewId,
+    before: { pinned: mutation.wasPinned },
+    after: { pinned: mutation.isPinned },
+  });
+
+  await publishEvent("saved_view.pinned", {
+    savedViewId: viewId,
+    workspaceId: view.workspaceId,
+    userId,
+    pinned: mutation.isPinned,
+  });
+
+  return { pinnedViewIds: mutation.pinnedViewIds };
 }
 
 export default pinView;

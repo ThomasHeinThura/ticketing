@@ -24,6 +24,11 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * why `saved_view.created_by` references `person.id`, not `user.id` (see that column's own
  * schema.ts comment).
  *
+ * `POST /api/views` and `PATCH /api/views/{id}` declare `saved_view:create` because both
+ * also serve private-view create/edit requests. After body validation, their controllers
+ * add `saved_view:share` when the requested operation publishes a team view or changes its
+ * team audience; target-team membership is checked separately against the same workspace.
+ *
  * `POST /api/views/{id}/pin` is kind 2 (`self`) per the spec's own "self (kind 2 -- the
  * caller's own `user_preference` row)" -- it never reads or writes another person's pinned
  * set, so there is no workspace-capability gate to declare; `personParam` is

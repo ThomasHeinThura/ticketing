@@ -6,6 +6,7 @@ import {
 } from "../openapi";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import type { SavedViewAuditActor } from "./audit";
 import createView from "./controllers/create-view";
 import getView from "./controllers/get-view";
 import listViews from "./controllers/list-views";
@@ -23,6 +24,17 @@ import {
   savedViewIdParam,
   updateViewBody,
 } from "./schema";
+
+function savedViewAuditActor(
+  userId: string,
+  apiKeyId: string | undefined,
+): SavedViewAuditActor {
+  return {
+    actorId: userId,
+    actorType: apiKeyId ? "api_key" : "person",
+    apiKeyId: apiKeyId ?? null,
+  };
+}
 
 const listViewsRoute = createRoute({
   method: "get",
@@ -58,7 +70,8 @@ const createViewRoute = createRoute({
   description:
     "A saved view is a stored search plus a presentation choice " +
     "(search-and-saved-views.md). A workspace-visible view additionally requires " +
-    "workspace:manage_settings (SV-18); a team view requires membership in that team.",
+    "workspace:manage_settings (SV-18); publishing a team view requires " +
+    "saved_view:share and membership in that team.",
   middleware: [
     workspaceAccess.fromBody(),
     requireWorkspaceCapability("saved_view:create"),
@@ -75,8 +88,8 @@ const createViewRoute = createRoute({
       "Invalid body, workspaceId could not be determined, or scopeId does not belong to it",
     ),
     403: errorResponse(
-      "Missing saved_view:create permission, or missing workspace:manage_settings / " +
-        "team membership for the requested visibility",
+      "Missing saved_view:create, saved_view:share, or workspace:manage_settings " +
+        "permission, or missing membership in the target team",
     ),
   },
 });
@@ -107,7 +120,9 @@ const updateViewRoute = createRoute({
   tags: ["Views"],
   summary: "Update saved view",
   description:
-    "The owner, or a caller with workspace:manage_settings, may edit a view.",
+    "The owner, or a caller with workspace:manage_settings, may edit a view. " +
+    "Changing a view's team audience additionally requires saved_view:share and " +
+    "membership in the target team.",
   middleware: [
     workspaceAccess.fromSavedView(),
     requireWorkspaceCapability("saved_view:create"),
@@ -123,7 +138,8 @@ const updateViewRoute = createRoute({
     200: jsonResponse("The updated saved view", savedViewSchema),
     400: errorResponse("Invalid body"),
     403: errorResponse(
-      "Not the view's owner, and missing workspace:manage_settings",
+      "Not the view's owner, missing workspace:manage_settings, or missing " +
+        "saved_view:share permission / membership in the target team",
     ),
     404: errorResponse("Saved view not found"),
   },
@@ -157,7 +173,8 @@ const view = apiRouter()
     const body = c.req.valid("json");
     const userId = c.get("userId");
     const personId = await resolveCallerPersonId(userId);
-    return c.json(await createView(body, personId, userId), 200);
+    const actor = savedViewAuditActor(userId, c.get("apiKey")?.id);
+    return c.json(await createView(body, personId, userId, actor), 200);
   })
   .openapi(getViewRoute, async (c) => {
     const { id } = c.req.valid("param");
@@ -170,13 +187,15 @@ const view = apiRouter()
     const body = c.req.valid("json");
     const userId = c.get("userId");
     const personId = await resolveCallerPersonId(userId);
-    return c.json(await updateView(id, body, personId, userId), 200);
+    const actor = savedViewAuditActor(userId, c.get("apiKey")?.id);
+    return c.json(await updateView(id, body, personId, userId, actor), 200);
   })
   .openapi(pinViewRoute, async (c) => {
     const { id } = c.req.valid("param");
     const userId = c.get("userId");
     const personId = await resolveCallerPersonId(userId);
-    return c.json(await pinView(id, personId, userId), 200);
+    const actor = savedViewAuditActor(userId, c.get("apiKey")?.id);
+    return c.json(await pinView(id, personId, userId, actor), 200);
   });
 
 export default view;

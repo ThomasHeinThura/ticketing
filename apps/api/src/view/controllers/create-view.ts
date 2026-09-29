@@ -11,6 +11,12 @@ import { publishEvent } from "../../events";
 import type { z } from "../../openapi";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { assertCallerHasCapability } from "../../utils/require-workspace-capability";
+import { assertCanShareView } from "../assert-can-share-view";
+import {
+  type SavedViewAuditActor,
+  savedViewAuditState,
+  writeSavedViewAudit,
+} from "../audit";
 import type { createViewBody } from "../schema";
 
 type CreateViewInput = z.infer<typeof createViewBody>;
@@ -56,6 +62,7 @@ async function createView(
   input: CreateViewInput,
   personId: string,
   userId: string,
+  auditActor: SavedViewAuditActor,
 ) {
   const { workspaceId, scope, scopeId, visibility, sharedWithTeamId } = input;
 
@@ -69,8 +76,8 @@ async function createView(
       });
     }
     rejectNulByte(sharedWithTeamId, "sharedWithTeamId");
-    // "Create a team view: Team membership" (search-and-saved-views.md § Permissions) --
-    // membership in THIS team, not merely the workspace.
+    // `saved_view:share` (rbac.md) and membership in THIS team are separate gates.
+    await assertCanShareView(workspaceId, userId);
     const [membership] = await db
       .select({ id: teamMemberTable.id })
       .from(teamMemberTable)
@@ -121,6 +128,16 @@ async function createView(
   if (!inserted) {
     throw new Error("Failed to create saved view");
   }
+
+  await writeSavedViewAudit({
+    actor: auditActor,
+    action: "saved_view.created",
+    workspaceId,
+    projectId: inserted.scope === "project" ? inserted.scopeId : null,
+    entityId: inserted.id,
+    before: null,
+    after: savedViewAuditState(inserted),
+  });
 
   await publishEvent("saved_view.created", {
     savedViewId: inserted.id,

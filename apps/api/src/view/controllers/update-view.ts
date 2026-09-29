@@ -11,6 +11,12 @@ import type { z } from "../../openapi";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { assertCallerHasCapability } from "../../utils/require-workspace-capability";
 import { assertCanEditView } from "../assert-can-edit-view";
+import { assertCanShareView } from "../assert-can-share-view";
+import {
+  type SavedViewAuditActor,
+  savedViewAuditState,
+  writeSavedViewAudit,
+} from "../audit";
 import type { updateViewBody } from "../schema";
 
 type UpdateViewInput = z.infer<typeof updateViewBody>;
@@ -20,8 +26,9 @@ async function updateView(
   input: UpdateViewInput,
   personId: string,
   userId: string,
+  auditActor: SavedViewAuditActor,
 ) {
-  return db.transaction(async (tx) => {
+  const { updated, before } = await db.transaction(async (tx) => {
     const view = await tx.query.savedViewTable.findFirst({
       where: (savedView, { eq }) => eq(savedView.id, id),
     });
@@ -45,6 +52,12 @@ async function updateView(
         });
       }
       rejectNulByte(nextSharedWithTeamId, "sharedWithTeamId");
+      const teamAudienceChanged =
+        view.visibility !== "team" ||
+        nextSharedWithTeamId !== view.sharedWithTeamId;
+      if (teamAudienceChanged) {
+        await assertCanShareView(view.workspaceId, userId);
+      }
       // Same check as create-view.ts's `assertScopeBelongsToWorkspace`-adjacent team
       // membership check: membership in the team alone is not enough -- the team must
       // also belong to THIS view's own workspace, or a caller who is a member of some
@@ -97,14 +110,26 @@ async function updateView(
       throw new HTTPException(404, { message: "Saved view not found" });
     }
 
-    await publishEvent("saved_view.updated", {
-      savedViewId: id,
-      workspaceId: view.workspaceId,
-      userId,
-    });
-
-    return updated;
+    return { updated, before: savedViewAuditState(view) };
   });
+
+  await writeSavedViewAudit({
+    actor: auditActor,
+    action: "saved_view.updated",
+    workspaceId: updated.workspaceId,
+    projectId: updated.scope === "project" ? updated.scopeId : null,
+    entityId: updated.id,
+    before,
+    after: savedViewAuditState(updated),
+  });
+
+  await publishEvent("saved_view.updated", {
+    savedViewId: updated.id,
+    workspaceId: updated.workspaceId,
+    userId,
+  });
+
+  return updated;
 }
 
 export default updateView;

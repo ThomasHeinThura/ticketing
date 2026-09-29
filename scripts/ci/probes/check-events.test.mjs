@@ -110,8 +110,10 @@ describe("check:events — the shipped tree", () => {
     // in; merging both together for real is what pushes it to 29. A non-vacuity guard:
     // it proves the checker actually saw the shipped keys, rather than passing on an
     // empty scan. #451 added work_item.commented, #442/PR #457 added
-    // work_item.transitioned, and #447 added saved_view.created/updated/deleted/pinned.
-    assert.match(result.output, /35 published event key/);
+    // work_item.transitioned, and #447 added saved_view.created/updated/pinned. Its
+    // saved_view.deleted publisher was removed when the route was corrected to wait for
+    // the pending-action contract, so the shipped tree currently publishes 34 keys.
+    assert.match(result.output, /34 published event key/);
   });
 });
 

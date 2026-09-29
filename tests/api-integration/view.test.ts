@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { defaultRolePayloads } from "@taskdesk/permissions";
-import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { and, eq } from "drizzle-orm";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as auditWriter from "../../apps/api/src/audit/audit-writer";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
@@ -76,6 +77,152 @@ describe("API integration: saved views", () => {
       workspaceId: member.workspace.id,
       name: "My triage queue",
       visibility: "private",
+    });
+
+    const auditRow = await db.query.auditLogTable.findFirst({
+      where: (row, { and, eq }) =>
+        and(eq(row.action, "saved_view.created"), eq(row.entityId, created.id)),
+    });
+    expect(auditRow).toMatchObject({
+      actorId: member.user.id,
+      actorType: "person",
+      workspaceId: member.workspace.id,
+      action: "saved_view.created",
+      entityType: "saved_view",
+      entityId: created.id,
+      before: null,
+    });
+    expect(auditRow?.after).toMatchObject({
+      visibility: "private",
+      sharedWithTeamId: null,
+    });
+  });
+
+  it("keeps create successful and logs when the AU-14 audit append fails", async () => {
+    const member = await createWorkspaceMember();
+    await addPerson(member.user.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const auditFailure = new Error("audit database unavailable");
+    const appendAuditSpy = vi
+      .spyOn(auditWriter, "appendAuditLog")
+      .mockRejectedValueOnce(auditFailure);
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    try {
+      const response = await app.request("/api/views", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: member.workspace.id,
+          name: "Audit outage queue",
+          scope: "workspace",
+          scopeId: member.workspace.id,
+          layout: "list",
+          query: { entity: "work_item" },
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const created = (await response.json()) as { id: string };
+      expect(
+        await db.query.savedViewTable.findFirst({
+          where: eq(schema.savedViewTable.id, created.id),
+        }),
+      ).toMatchObject({ id: created.id, name: "Audit outage queue" });
+      expect(appendAuditSpy).toHaveBeenCalledOnce();
+      expect(errorSpy).toHaveBeenCalledWith(
+        "AU-14: saved_view.created audit write failed",
+        expect.objectContaining({
+          workspaceId: member.workspace.id,
+          entityType: "saved_view",
+          entityId: created.id,
+          error: auditFailure,
+        }),
+      );
+      expect(
+        await db.query.auditLogTable.findFirst({
+          where: (row, { and, eq }) =>
+            and(
+              eq(row.action, "saved_view.created"),
+              eq(row.entityId, created.id),
+            ),
+        }),
+      ).toBeUndefined();
+    } finally {
+      appendAuditSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
+  });
+
+  it("requires saved_view:share as well as team membership to publish views", async () => {
+    const member = await createWorkspaceMember();
+    await addPerson(member.user.id);
+    const teamId = `team-view-share-denied-${randomUUID()}`;
+    await db.insert(schema.teamTable).values({
+      id: teamId,
+      name: "Member Team",
+      workspaceId: member.workspace.id,
+      createdAt: new Date(),
+    });
+    await db.insert(schema.teamMemberTable).values({
+      id: `team-member-view-share-denied-${randomUUID()}`,
+      teamId,
+      userId: member.user.id,
+      createdAt: new Date(),
+    });
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const teamBody = {
+      workspaceId: member.workspace.id,
+      name: "Member's shared view",
+      scope: "workspace",
+      scopeId: member.workspace.id,
+      visibility: "team",
+      sharedWithTeamId: teamId,
+      layout: "list",
+      query: { entity: "work_item" },
+    };
+
+    const teamCreate = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(teamBody),
+    });
+    expect(teamCreate.status).toBe(403);
+    expect(
+      await db.query.savedViewTable.findFirst({
+        where: eq(schema.savedViewTable.workspaceId, member.workspace.id),
+      }),
+    ).toBeUndefined();
+
+    const privateCreate = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ...teamBody,
+        visibility: "private",
+        sharedWithTeamId: undefined,
+      }),
+    });
+    expect(privateCreate.status).toBe(200);
+    const privateView = (await privateCreate.json()) as { id: string };
+
+    const publishUpdate = await app.request(`/api/views/${privateView.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ visibility: "team", sharedWithTeamId: teamId }),
+    });
+    expect(publishUpdate.status).toBe(403);
+    expect(
+      await db.query.savedViewTable.findFirst({
+        where: eq(schema.savedViewTable.id, privateView.id),
+      }),
+    ).toMatchObject({
+      id: privateView.id,
+      visibility: "private",
+      sharedWithTeamId: null,
     });
   });
 
@@ -302,6 +449,19 @@ describe("API integration: saved views", () => {
       where: (row, { eq }) => eq(row.personId, person.id),
     });
     expect(persisted?.value).toEqual([created.id]);
+    const firstPinAudit = await db.query.auditLogTable.findFirst({
+      where: (row, { and, eq }) =>
+        and(eq(row.action, "saved_view.pinned"), eq(row.entityId, created.id)),
+    });
+    expect(firstPinAudit).toMatchObject({
+      actorId: member.user.id,
+      action: "saved_view.pinned",
+      entityType: "saved_view",
+      entityId: created.id,
+      workspaceId: member.workspace.id,
+      before: { pinned: false },
+      after: { pinned: true },
+    });
 
     // GET /api/views is the persisted read/restore path: callers can restore sidebar
     // pin state and pinned items are ordered before unpinned items after a reload.
@@ -334,6 +494,23 @@ describe("API integration: saved views", () => {
     expect(unpinnedList.find((view) => view.id === created.id)?.isPinned).toBe(
       false,
     );
+    const pinAudits = await db
+      .select({
+        before: schema.auditLogTable.before,
+        after: schema.auditLogTable.after,
+      })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "saved_view.pinned"),
+          eq(schema.auditLogTable.entityId, created.id),
+        ),
+      )
+      .orderBy(schema.auditLogTable.seq);
+    expect(pinAudits).toEqual([
+      { before: { pinned: false }, after: { pinned: true } },
+      { before: { pinned: true }, after: { pinned: false } },
+    ]);
   });
 
   it("refuses to pin a private view the caller cannot read", async () => {
@@ -389,7 +566,7 @@ describe("API integration: saved views", () => {
   });
 
   it("refuses team deletion while a shared view references the team (TM-7)", async () => {
-    const member = await createWorkspaceMember();
+    const member = await createWorkspaceMember({ role: "admin" });
     await addPerson(member.user.id);
     const teamId = `team-view-delete-${randomUUID()}`;
     await db.insert(schema.teamTable).values({
@@ -461,7 +638,10 @@ describe("API integration: saved views", () => {
   // of A's team. Mirrors `create-view.ts`'s `assertScopeBelongsToWorkspace`-adjacent
   // team-membership-plus-workspace check.
   it("rejects sharing a view with a team from a different workspace, even if the caller is a member of that team", async () => {
-    const owner = await createWorkspaceMember({ workspaceName: "Workspace B" });
+    const owner = await createWorkspaceMember({
+      role: "admin",
+      workspaceName: "Workspace B",
+    });
     await addPerson(owner.user.id);
 
     // An unrelated workspace A, containing the team the caller happens to belong to.
@@ -553,6 +733,19 @@ describe("API integration: saved views", () => {
       updatedAt: now,
     });
     await addPerson(admin.id);
+    const teamId = `team-view-admin-share-${randomUUID()}`;
+    await db.insert(schema.teamTable).values({
+      id: teamId,
+      name: "Admin Share Team",
+      workspaceId: owner.workspace.id,
+      createdAt: new Date(),
+    });
+    await db.insert(schema.teamMemberTable).values({
+      id: `team-member-view-admin-share-${randomUUID()}`,
+      teamId,
+      userId: admin.id,
+      createdAt: new Date(),
+    });
 
     mockAuthenticatedSession(owner.user);
     const { app: ownerApp } = createApp();
@@ -583,6 +776,38 @@ describe("API integration: saved views", () => {
       name: "Renamed by admin",
     });
 
+    const shareResponse = await adminApp.request(`/api/views/${created.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        visibility: "team",
+        sharedWithTeamId: teamId,
+      }),
+    });
+    expect(shareResponse.status).toBe(200);
+    const updateAudits = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "saved_view.updated"),
+          eq(schema.auditLogTable.entityId, created.id),
+        ),
+      );
+    const shareAudit = updateAudits.find(
+      (row) =>
+        (row.after as { visibility?: string } | null)?.visibility === "team",
+    );
+    expect(shareAudit).toBeDefined();
+    expect(shareAudit?.before).toMatchObject({
+      visibility: "private",
+      sharedWithTeamId: null,
+    });
+    expect(shareAudit?.after).toMatchObject({
+      visibility: "team",
+      sharedWithTeamId: teamId,
+    });
+
     const deleteResponse = await adminApp.request(`/api/views/${created.id}`, {
       method: "DELETE",
     });
@@ -594,6 +819,8 @@ describe("API integration: saved views", () => {
     expect(persisted).toMatchObject({
       id: created.id,
       name: "Renamed by admin",
+      visibility: "team",
+      sharedWithTeamId: teamId,
     });
   });
 });

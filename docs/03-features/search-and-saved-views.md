@@ -98,7 +98,7 @@ triage. See [intake queue](intake-queue.md).
 | --- | --- |
 | Search | Any authenticated session; scoped to reach |
 | Create a private view | Any authenticated session |
-| Create a team view | Team membership |
+| Create or publish a team view | `saved_view:share` **and** membership in the target team |
 | Create a workspace view | `workspace:manage_settings` |
 | Edit a shared view | Owner, or `workspace:manage_settings` |
 
