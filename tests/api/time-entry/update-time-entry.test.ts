@@ -112,6 +112,10 @@ describe("updateTimeEntry", () => {
         },
       ]),
     );
+    queueTxSelectRows(
+      [{ id: "task-1", projectId: "project-1" }],
+      [{ id: "project-1", deletedAt: null, archivedAt: null }],
+    );
     mockUpdate.mockReturnValue(updateChain);
 
     await expect(
@@ -136,6 +140,10 @@ describe("updateTimeEntry", () => {
           duration: null,
         },
       ]),
+    );
+    queueTxSelectRows(
+      [{ id: "task-1", projectId: "project-1" }],
+      [{ id: "project-1", deletedAt: null, archivedAt: null }],
     );
     mockUpdate.mockReturnValue(updateChain);
 
