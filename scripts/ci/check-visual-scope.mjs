@@ -29,7 +29,72 @@ function isNamedProperty(node, name) {
   return ts.isPropertyAccessExpression(node) && node.name.text === name;
 }
 
+function bindingContainsName(binding, name) {
+  if (ts.isIdentifier(binding)) return binding.text === name;
+  if (ts.isObjectBindingPattern(binding) || ts.isArrayBindingPattern(binding)) {
+    return binding.elements.some((element) =>
+      ts.isOmittedExpression(element)
+        ? false
+        : bindingContainsName(element.name, name),
+    );
+  }
+  return false;
+}
+
+function hasTrustedPlaywrightTestApi(sourceFile) {
+  const trustedImports = new Set();
+  let invalidImport = false;
+  for (const statement of sourceFile.statements) {
+    if (
+      !ts.isImportDeclaration(statement) ||
+      !ts.isStringLiteral(statement.moduleSpecifier) ||
+      !ts.isImportClause(statement.importClause) ||
+      !ts.isNamedImports(statement.importClause.namedBindings)
+    ) {
+      continue;
+    }
+    const clause = statement.importClause;
+    for (const specifier of clause.namedBindings.elements) {
+      if (!new Set(["test", "expect"]).has(specifier.name.text)) continue;
+      const importedName = specifier.propertyName?.text ?? specifier.name.text;
+      if (
+        statement.moduleSpecifier.text === "@playwright/test" &&
+        importedName === specifier.name.text &&
+        !clause.isTypeOnly &&
+        !specifier.isTypeOnly
+      ) {
+        trustedImports.add(specifier);
+      } else {
+        invalidImport = true;
+      }
+    }
+  }
+
+  let shadowedBinding = false;
+  const visit = (node) => {
+    if (
+      (ts.isVariableDeclaration(node) ||
+        ts.isParameterDeclaration(node) ||
+        ts.isFunctionDeclaration(node) ||
+        ts.isClassDeclaration(node) ||
+        ts.isBindingElement(node) ||
+        ts.isImportClause(node) ||
+        ts.isImportSpecifier(node) ||
+        ts.isCatchClause(node)) &&
+      node.name &&
+      ["test", "expect"].some((name) => bindingContainsName(node.name, name)) &&
+      !(ts.isImportSpecifier(node) && trustedImports.has(node))
+    ) {
+      shadowedBinding = true;
+    }
+    node.forEachChild(visit);
+  };
+  visit(sourceFile);
+  return trustedImports.size === 2 && !invalidImport && !shadowedBinding;
+}
+
 function testCallbacks(sourceFile, title) {
+  if (!sourceFile || !hasTrustedPlaywrightTestApi(sourceFile)) return [];
   const callbacks = [];
   const visit = (node) => {
     if (
@@ -45,6 +110,80 @@ function testCallbacks(sourceFile, title) {
   };
   visit(sourceFile);
   return callbacks;
+}
+
+function isPageRootedTarget(node) {
+  if (ts.isIdentifier(node)) return node.text === "page";
+  if (ts.isPropertyAccessExpression(node)) {
+    return isPageRootedTarget(node.expression);
+  }
+  if (ts.isElementAccessExpression(node)) {
+    return isPageRootedTarget(node.expression);
+  }
+  return false;
+}
+
+function hasPlaywrightPageFixture(callback) {
+  if (
+    !ts.isArrowFunction(callback) ||
+    !ts.isBlock(callback.body) ||
+    !callback.parameters[0] ||
+    !ts.isObjectBindingPattern(callback.parameters[0].name)
+  ) {
+    return false;
+  }
+  const fixture = callback.parameters[0].name.elements.some(
+    (element) =>
+      ts.isIdentifier(element.name) &&
+      element.name.text === "page" &&
+      (!element.propertyName ||
+        (ts.isIdentifier(element.propertyName) &&
+          element.propertyName.text === "page")),
+  );
+  if (!fixture) return false;
+
+  let bypass = false;
+  const visit = (node) => {
+    if (bypass) return;
+    if (
+      (ts.isVariableDeclaration(node) ||
+        ts.isParameterDeclaration(node) ||
+        ts.isFunctionDeclaration(node) ||
+        ts.isClassDeclaration(node) ||
+        ts.isBindingElement(node) ||
+        ts.isCatchClause(node)) &&
+      node.name &&
+      bindingContainsName(node.name, "page")
+    ) {
+      bypass = true;
+      return;
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+      node.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
+      isPageRootedTarget(node.left)
+    ) {
+      bypass = true;
+      return;
+    }
+    if (
+      (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
+      (node.operator === ts.SyntaxKind.PlusPlusToken ||
+        node.operator === ts.SyntaxKind.MinusMinusToken) &&
+      isPageRootedTarget(node.operand)
+    ) {
+      bypass = true;
+      return;
+    }
+    if (ts.isDeleteExpression(node) && isPageRootedTarget(node.expression)) {
+      bypass = true;
+      return;
+    }
+    node.forEachChild(visit);
+  };
+  visit(callback.body);
+  return !bypass;
 }
 
 function propertyAccessPath(node) {
@@ -653,12 +792,37 @@ function isStoriesDeclaration(declaration) {
     declaration.initializer.expression.expression.text !== "Object" ||
     declaration.initializer.arguments.length !== 1 ||
     !ts.isCallExpression(declaration.initializer.arguments[0]) ||
-    !isNamedProperty(declaration.initializer.arguments[0].expression, "sort")
+    !isNamedProperty(declaration.initializer.arguments[0].expression, "map")
   ) {
     return false;
   }
 
-  const sortCall = declaration.initializer.arguments[0];
+  const mapCall = declaration.initializer.arguments[0];
+  const mapCallback = mapCall.arguments[0];
+  if (
+    !ts.isArrowFunction(mapCallback) ||
+    mapCallback.parameters.length !== 1 ||
+    !mapCallback.parameters[0] ||
+    !ts.isIdentifier(mapCallback.parameters[0].name) ||
+    !ts.isCallExpression(mapCallback.body) ||
+    !ts.isPropertyAccessExpression(mapCallback.body.expression) ||
+    mapCallback.body.expression.name.text !== "freeze" ||
+    !ts.isIdentifier(mapCallback.body.expression.expression) ||
+    mapCallback.body.expression.expression.text !== "Object" ||
+    mapCallback.body.arguments.length !== 1 ||
+    !ts.isIdentifier(mapCallback.body.arguments[0]) ||
+    mapCallback.body.arguments[0].text !== mapCallback.parameters[0].name.text
+  ) {
+    return false;
+  }
+
+  const sortCall = mapCall.expression.expression;
+  if (
+    !ts.isCallExpression(sortCall) ||
+    !isNamedProperty(sortCall.expression, "sort")
+  ) {
+    return false;
+  }
   const filterCall = sortCall.expression.expression;
   if (
     !ts.isCallExpression(filterCall) ||
@@ -1010,6 +1174,7 @@ function hasStorybookCoverage(sourceFile, title) {
   );
 
   return (
+    hasPlaywrightPageFixture(callback) &&
     fetchesStoryIndex &&
     derivesStoriesFromEveryExport &&
     statements.some(isNonemptyStoriesAssertion) &&
@@ -1078,6 +1243,16 @@ try {
         `${storySpecPath} could not be parsed for Storybook coverage`,
       );
     }
+    if (visualSourceFile && !hasTrustedPlaywrightTestApi(visualSourceFile)) {
+      failures.push(
+        `${path.basename(visualSpecPath)} must bind test and expect directly to @playwright/test without shadow declarations`,
+      );
+    }
+    if (storySourceFile && !hasTrustedPlaywrightTestApi(storySourceFile)) {
+      failures.push(
+        `${path.basename(storySpecPath)} must bind test and expect directly to @playwright/test without shadow declarations`,
+      );
+    }
   } finally {
     snapshot.dispose();
   }
@@ -1112,6 +1287,14 @@ for (const screen of manifest) {
   const matchingEvidence = matchingCallbacks.map((callback) =>
     testVisualEvidence(callback, visualSourceFile),
   );
+  if (
+    matchingCallbacks.length === 1 &&
+    !hasPlaywrightPageFixture(matchingCallbacks[0])
+  ) {
+    failures.push(
+      `${screen.name} visual test must receive the Playwright page fixture directly without shadowing or mutation`,
+    );
+  }
   if (matchingCallbacks.some(findTestDisable)) {
     failures.push(`${screen.name} visual test cannot be skipped or fixme`);
   }

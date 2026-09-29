@@ -116,6 +116,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: Trust the checked-out repository inside the Playwright container
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: ./.github/actions/setup
       - name: Build the permissions package used by the web bundle
         run: pnpm --filter @taskdesk/permissions build

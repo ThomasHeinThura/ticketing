@@ -14,7 +14,8 @@ test("every exported Storybook story has a visual baseline @visual", async ({
   const stories = Object.freeze(
     Object.values(index.entries)
       .filter((entry) => entry.type === "story")
-      .sort((left, right) => left.id.localeCompare(right.id)),
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map((story) => Object.freeze(story)),
   );
   expect(stories.length).toBeGreaterThan(0);
 

@@ -58,6 +58,8 @@ function visualSpec(
     mutationInVisibilityFor,
     locatorScreenshotFor,
     viewportScreenshotFor,
+    shadowedPageBindingFor,
+    fakeTestBinding = false,
   } = {},
 ) {
   const helper = `async function installAuthenticatedFixture(page: Page) {
@@ -130,6 +132,8 @@ function visualSpec(
         testName === shadowedFixtureHelperFor
           ? 'const installAuthenticatedFixture = async (page) => page.setContent("<main>pretend screen</main>");'
           : "";
+      const shadowedPageBinding =
+        testName === shadowedPageBindingFor ? "{ const page = {}; }" : "";
       const useShadowedSettleHelper =
         testName === shadowedSettleHelperFor
           ? "await settleVisuals(page);"
@@ -144,10 +148,13 @@ function visualSpec(
         testName === disabledFor
           ? 'if (process.env.CI) test.fixme(true, "known issue");'
           : ""
-      } ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${nestedNavigation} ${helperNavigation} ${mutationInVisibility} ${testName === mutationInVisibilityFor ? "" : 'await expect(page.getByText("screen ready")).toBeVisible();'} ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
+      } ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${shadowedPageBinding} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${nestedNavigation} ${helperNavigation} ${mutationInVisibility} ${testName === mutationInVisibilityFor ? "" : 'await expect(page.getByText("screen ready")).toBeVisible();'} ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
     })
     .join("\n");
-  return `const SCREENSHOT_OPTIONS = { fullPage: true };\n${helper}\n${tests}`;
+  const testImport = fakeTestBinding
+    ? 'import { expect, test as playwrightTest } from "@playwright/test";\nconst test = (_title, _callback) => {};'
+    : 'import { expect, test } from "@playwright/test";';
+  return `${testImport}\nconst SCREENSHOT_OPTIONS = { fullPage: true };\n${helper}\n${tests}`;
 }
 
 function storybookSpec({
@@ -160,7 +167,12 @@ function storybookSpec({
   describeConfigureDynamic = false,
   skipStoryCaptureInCi = false,
   mutateStoriesAfterAssertion = false,
+  freezeStoryEntries = true,
+  fakeTestBinding = false,
 } = {}) {
+  const freezeStoryMap = freezeStoryEntries
+    ? ".map((story) => Object.freeze(story))"
+    : ".map((story) => story)";
   const body = [
     ...(conditionalSkip
       ? ['if (process.env.CI) test.skip(true, "temporarily disabled");']
@@ -172,7 +184,7 @@ function storybookSpec({
           detachedIndex
             ? 'const index = { entries: { fake: { id: "Button--primary", type: "story" } } };'
             : "const index = await response.json();",
-          'const stories = Object.freeze(Object.values(index.entries).filter((entry) => entry.type === "story").sort((left, right) => left.id.localeCompare(right.id)));',
+          `const stories = Object.freeze(Object.values(index.entries).filter((entry) => entry.type === "story").sort((left, right) => left.id.localeCompare(right.id))${freezeStoryMap});`,
           "expect(stories.length).toBeGreaterThan(0);",
           ...(mutateStoriesAfterAssertion
             ? ["stories.splice(0, stories.length);"]
@@ -189,16 +201,19 @@ function storybookSpec({
         ]),
   ].join("\n");
   const testCase = `test("every exported Storybook story has a visual baseline @visual", async ({ page }) => {\n${body}\n});`;
+  const testImport = fakeTestBinding
+    ? 'import { expect, test as playwrightTest } from "@playwright/test";\nconst test = (_title, _callback) => {};'
+    : 'import { expect, test } from "@playwright/test";';
   if (describeSkip) {
-    return `test.describe.skip("visual Storybook coverage", () => {\n${testCase}\n});`;
+    return `${testImport}\ntest.describe.skip("visual Storybook coverage", () => {\n${testCase}\n});`;
   }
   if (describeConfigureSkip) {
-    return `test.describe.configure({ mode: "skip" });\n${testCase}`;
+    return `${testImport}\ntest.describe.configure({ mode: "skip" });\n${testCase}`;
   }
   if (describeConfigureDynamic) {
-    return `test.describe.configure({ mode: process.env.CI ? "skip" : "default" });\n${testCase}`;
+    return `${testImport}\ntest.describe.configure({ mode: process.env.CI ? "skip" : "default" });\n${testCase}`;
   }
-  return testCase;
+  return `${testImport}\n${testCase}`;
 }
 
 function routeTree(routes) {
@@ -257,6 +272,34 @@ test("G8 accepts active inventory routes and leaves not-started routes pending",
   assert.match(
     result.output,
     /2 screenshot cases, 2 active inventory route rows mapped \(2 in-progress or complete among 3 route rows\)/,
+  );
+});
+
+test("G8 rejects a no-op wrapper that shadows Playwright's test import", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, { fakeTestBinding: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /must bind test and expect directly to @playwright\/test/,
+  );
+});
+
+test("G8 rejects a visual callback that shadows its Playwright page fixture", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      shadowedPageBindingFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /must receive the Playwright page fixture directly/,
   );
 });
 
@@ -600,6 +643,32 @@ test("G8 rejects a Storybook story list mutation after its nonempty assertion", 
   assert.match(
     result.output,
     /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects a Storybook list that freezes the array but leaves entries mutable", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ freezeStoryEntries: false }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects a no-op wrapper that shadows the Storybook Playwright test import", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ fakeTestBinding: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /must bind test and expect directly to @playwright\/test/,
   );
 });
 
