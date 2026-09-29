@@ -1,13 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
 
-const SCREENSHOT_OPTIONS = {
-  animations: "disabled" as const,
-  caret: "hide" as const,
-  fullPage: true,
-  scale: "css" as const,
-  maxDiffPixels: 0,
-};
-
 const session = {
   session: {
     id: "visual-session",
@@ -166,7 +158,13 @@ test("sign-in screen @visual", async ({ page }) => {
 
   await page.goto("/auth/sign-in");
   await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();
-  await expect(page).toHaveScreenshot("sign-in.png", SCREENSHOT_OPTIONS);
+  await expect(page).toHaveScreenshot("sign-in.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+  });
 });
 
 test("work-item list screen @visual", async ({ page }) => {
@@ -175,7 +173,13 @@ test("work-item list screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Customer cannot reset their password"),
   ).toBeVisible();
-  await expect(page).toHaveScreenshot("work-item-list.png", SCREENSHOT_OPTIONS);
+  await expect(page).toHaveScreenshot("work-item-list.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+  });
 });
 
 test("work-item detail screen @visual", async ({ page }) => {
@@ -184,8 +188,11 @@ test("work-item detail screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Customer cannot reset their password", { exact: true }),
   ).toBeVisible();
-  await expect(page).toHaveScreenshot(
-    "work-item-detail.png",
-    SCREENSHOT_OPTIONS,
-  );
+  await expect(page).toHaveScreenshot("work-item-detail.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+  });
 });

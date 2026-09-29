@@ -59,6 +59,8 @@ function visualSpec(
     locatorScreenshotFor,
     viewportScreenshotFor,
     shadowedPageBindingFor,
+    mutateScreenshotOptionsFor,
+    excessiveInlineThresholdFor,
     fakeTestBinding = false,
     computedSkipFor,
     runtimeCode = "",
@@ -89,7 +91,11 @@ function visualSpec(
               ? `await expect(page.getByText("screen ready")).toHaveScreenshot(${JSON.stringify(screenshot)}, SCREENSHOT_OPTIONS);`
               : testName === viewportScreenshotFor
                 ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: false });`
-                : `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, SCREENSHOT_OPTIONS);`;
+                : testName === mutateScreenshotOptionsFor
+                  ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, SCREENSHOT_OPTIONS);`
+                  : testName === excessiveInlineThresholdFor
+                    ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 100000000 });`
+                    : `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 0 });`;
       const additionalNavigation =
         testName === additionalNavigationFor ? "await page.goto(target);" : "";
       const targetDeclaration =
@@ -156,7 +162,12 @@ function visualSpec(
   const testImport = fakeTestBinding
     ? 'import { expect, test as playwrightTest } from "@playwright/test";\nconst test = (_title, _callback) => {};'
     : 'import { expect, test } from "@playwright/test";';
-  return `${testImport}\n${runtimeCode}\nconst SCREENSHOT_OPTIONS = { fullPage: true };\n${helper}\n${tests}`;
+  const screenshotOptions = screens.some(
+    ({ test: testName }) => testName === mutateScreenshotOptionsFor,
+  )
+    ? "const SCREENSHOT_OPTIONS = { fullPage: true, maxDiffPixels: 0 };\nSCREENSHOT_OPTIONS.maxDiffPixels = 100000000;"
+    : "";
+  return `${testImport}\n${runtimeCode}\n${screenshotOptions}\n${helper}\n${tests}`;
 }
 
 function storybookSpec({
@@ -168,6 +179,11 @@ function storybookSpec({
   describeConfigureSkip = false,
   describeConfigureDynamic = false,
   skipStoryCaptureInCi = false,
+  shadowFetch = false,
+  storyNavigationWithOtherInterpolation = false,
+  reassignStory = false,
+  shadowStory = false,
+  excessiveInlineThreshold = false,
   mutateStoriesAfterAssertion = false,
   deleteIndexEntriesBeforeFreeze = false,
   rewriteIndexEntryBeforeFreeze = false,
@@ -246,6 +262,11 @@ function storybookSpec({
                 'reflectAlias.set(Object, "values", (value) => [value[Object.keys(value)[0]]]);',
               ]
             : []),
+          ...(shadowFetch
+            ? [
+                'async function fetch(_url) { return { json: async () => ({ entries: { fake: { id: "Button--primary", type: "story" } } }) }; }',
+              ]
+            : []),
           'const response = await fetch("http://127.0.0.1:6006/index.json");',
           detachedIndex
             ? 'const index = { entries: { fake: { id: "Button--primary", type: "story" } } };'
@@ -262,14 +283,22 @@ function storybookSpec({
           ...(mutateStoriesAfterAssertion
             ? ["stories.splice(0, stories.length);"]
             : []),
-          "for (const story of stories) {",
+          `for (${reassignStory ? "let" : "const"} story of stories) {`,
+          ...(reassignStory ? ['  story = { id: "Button--primary" };'] : []),
+          ...(shadowStory
+            ? ['  { const story = { id: "Button--primary" }; void story; }']
+            : []),
           ...(omitStoryNavigation
             ? []
             : [
-                "  await page.goto(`http://127.0.0.1:6006/iframe.html?id=\u0024{story.id}&viewMode=story`);",
+                storyNavigationWithOtherInterpolation
+                  ? "  await page.goto(`http://127.0.0.1:6006/iframe.html?id=Button--primary&viewMode=\u0024{story.id}`);"
+                  : "  await page.goto(`http://127.0.0.1:6006/iframe.html?id=\u0024{story.id}&viewMode=story`);",
               ]),
           ...(skipStoryCaptureInCi ? ["  if (process.env.CI) continue;"] : []),
-          "  await expect(page).toHaveScreenshot(`\u0024{story.id}.png`, { fullPage: true });",
+          excessiveInlineThreshold
+            ? "  await expect(page).toHaveScreenshot(`\u0024{story.id}.png`, { fullPage: true, maxDiffPixels: 100000000 });"
+            : "  await expect(page).toHaveScreenshot(`\u0024{story.id}.png`, { fullPage: true, maxDiffPixels: 0 });",
           "}",
         ]),
   ].join("\n");
@@ -1067,6 +1096,101 @@ test("G8 rejects a disconnected hard-coded Storybook story list", async () => {
   assert.match(
     result.output,
     /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects a locally shadowed fetch function in Storybook coverage", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ shadowFetch: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index/,
+  );
+});
+
+test("G8 requires the story id in the iframe id query parameter", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ storyNavigationWithOtherInterpolation: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index/,
+  );
+});
+
+test("G8 requires an immutable story loop binding", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ reassignStory: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index/,
+  );
+});
+
+test("G8 rejects a nested story shadow around capture evidence", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ shadowStory: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index/,
+  );
+});
+
+test("G8 requires zero pixel tolerance for inline Storybook baselines", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ excessiveInlineThreshold: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index/,
+  );
+});
+
+test("G8 rejects later mutation of a named route screenshot options object", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      mutateScreenshotOptionsFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /does not capture its declared screenshot baseline/,
+  );
+});
+
+test("G8 requires zero pixel tolerance for inline route baselines", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      excessiveInlineThresholdFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /does not capture its declared screenshot baseline/,
   );
 });
 

@@ -452,32 +452,8 @@ function literalScreenshotOptionValue(node) {
   );
 }
 
-function screenshotOptionsHaveFullPage(node, sourceFile) {
-  let options = unwrapTypeWrappers(node);
-  if (ts.isIdentifier(options)) {
-    const declarations = [];
-    const visit = (current) => {
-      if (!current) return;
-      if (
-        ts.isVariableDeclaration(current) &&
-        ts.isIdentifier(current.name) &&
-        current.name.text === options.text
-      ) {
-        declarations.push(current);
-      }
-      current.forEachChild(visit);
-    };
-    visit(sourceFile);
-    if (
-      declarations.length !== 1 ||
-      !declarations[0].initializer ||
-      !ts.isVariableDeclarationList(declarations[0].parent) ||
-      (declarations[0].parent.flags & ts.NodeFlags.Const) === 0
-    ) {
-      return false;
-    }
-    options = unwrapTypeWrappers(declarations[0].initializer);
-  }
+function screenshotOptionsHaveFullPage(node) {
+  const options = unwrapTypeWrappers(node);
   if (
     !ts.isObjectLiteralExpression(options) ||
     !literalScreenshotOptionValue(options)
@@ -491,9 +467,20 @@ function screenshotOptionsHaveFullPage(node, sourceFile) {
         (ts.isStringLiteral(property.name) &&
           property.name.text === "fullPage")),
   );
+  const maxDiffProperties = options.properties.filter(
+    (property) =>
+      ts.isPropertyAssignment(property) &&
+      ((ts.isIdentifier(property.name) &&
+        property.name.text === "maxDiffPixels") ||
+        (ts.isStringLiteral(property.name) &&
+          property.name.text === "maxDiffPixels")),
+  );
   return (
     fullPageProperties.length === 1 &&
-    fullPageProperties[0].initializer.kind === ts.SyntaxKind.TrueKeyword
+    fullPageProperties[0].initializer.kind === ts.SyntaxKind.TrueKeyword &&
+    maxDiffProperties.length === 1 &&
+    ts.isNumericLiteral(maxDiffProperties[0].initializer) &&
+    maxDiffProperties[0].initializer.text === "0"
   );
 }
 
@@ -530,7 +517,7 @@ function isSafeExpectationMessage(node) {
   );
 }
 
-function awaitedScreenshotName(statement, sourceFile) {
+function awaitedScreenshotName(statement) {
   if (
     !ts.isExpressionStatement(statement) ||
     !ts.isAwaitExpression(statement.expression) ||
@@ -549,7 +536,7 @@ function awaitedScreenshotName(statement, sourceFile) {
     !ts.isStringLiteral(name) ||
     !isExpectingPage(screenshot.expression.expression) ||
     !options ||
-    !screenshotOptionsHaveFullPage(options, sourceFile)
+    !screenshotOptionsHaveFullPage(options)
   ) {
     return undefined;
   }
@@ -804,7 +791,7 @@ function hasShadowedFixtureHelper(callback) {
   return shadowed;
 }
 
-function testVisualEvidence(callback, sourceFile) {
+function testVisualEvidence(callback) {
   if (!ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) {
     return {
       screenshots: [],
@@ -842,7 +829,7 @@ function testVisualEvidence(callback, sourceFile) {
   const directScreenshots = callback.body.statements
     .map((statement) => ({
       statement,
-      evidence: awaitedScreenshotName(statement, sourceFile),
+      evidence: awaitedScreenshotName(statement),
     }))
     .filter(({ evidence }) => evidence !== undefined)
     .map(({ statement, evidence }) => ({
@@ -1381,7 +1368,7 @@ function isStoryScreenshotTemplate(node) {
   );
 }
 
-function isStoryNavigation(statement) {
+function isStoryNavigation(statement, storyName = "story") {
   if (
     !ts.isExpressionStatement(statement) ||
     !ts.isAwaitExpression(statement.expression) ||
@@ -1395,18 +1382,17 @@ function isStoryNavigation(statement) {
   const [url] = statement.expression.expression.arguments;
   return (
     ts.isTemplateExpression(url) &&
-    url.head.text.includes("/iframe.html?id=") &&
-    url.templateSpans.some(
-      (span) =>
-        ts.isPropertyAccessExpression(span.expression) &&
-        span.expression.name.text === "id" &&
-        ts.isIdentifier(span.expression.expression) &&
-        span.expression.expression.text === "story",
-    )
+    url.head.text === "http://127.0.0.1:6006/iframe.html?id=" &&
+    url.templateSpans.length === 1 &&
+    ts.isPropertyAccessExpression(url.templateSpans[0].expression) &&
+    url.templateSpans[0].expression.name.text === "id" &&
+    ts.isIdentifier(url.templateSpans[0].expression.expression) &&
+    url.templateSpans[0].expression.expression.text === storyName &&
+    url.templateSpans[0].literal.text === "&viewMode=story"
   );
 }
 
-function isPageScreenshotCall(node, sourceFile) {
+function isPageScreenshotCall(node) {
   if (
     !ts.isCallExpression(node) ||
     !isNamedProperty(node.expression, "toHaveScreenshot") ||
@@ -1419,7 +1405,7 @@ function isPageScreenshotCall(node, sourceFile) {
     node.arguments.length === 2 &&
     (ts.isStringLiteral(name) || ts.isTemplateExpression(name)) &&
     options !== undefined &&
-    screenshotOptionsHaveFullPage(options, sourceFile)
+    screenshotOptionsHaveFullPage(options)
   );
 }
 
@@ -1457,6 +1443,134 @@ function hasStoryLoopControlBypass(loop) {
   return unsafe;
 }
 
+function isStoryBindingDeclaration(node) {
+  return (
+    (ts.isVariableDeclaration(node) ||
+      ts.isParameterDeclaration(node) ||
+      ts.isFunctionDeclaration(node) ||
+      ts.isClassDeclaration(node) ||
+      ts.isBindingElement(node) ||
+      ts.isImportClause(node) ||
+      ts.isImportSpecifier(node)) &&
+    node.name &&
+    bindingContainsName(node.name, "story")
+  );
+}
+
+function assignmentRootIdentifier(node) {
+  let target = node;
+  while (
+    ts.isPropertyAccessExpression(target) ||
+    ts.isElementAccessExpression(target)
+  ) {
+    target = target.expression;
+  }
+  return ts.isIdentifier(target) ? target.text : undefined;
+}
+
+function hasImmutableStoryBinding(loop, loopDeclaration) {
+  let unsafe = false;
+  const visit = (node) => {
+    if (unsafe) return;
+    if (isStoryBindingDeclaration(node) && node !== loopDeclaration) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+      node.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
+      assignmentRootIdentifier(node.left) === "story"
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isDeleteExpression(node) &&
+      assignmentRootIdentifier(node.expression) === "story"
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
+      (node.operator === ts.SyntaxKind.PlusPlusToken ||
+        node.operator === ts.SyntaxKind.MinusMinusToken) &&
+      assignmentRootIdentifier(node.operand) === "story"
+    ) {
+      unsafe = true;
+      return;
+    }
+    node.forEachChild(visit);
+  };
+  visit(loop.statement);
+  return !unsafe;
+}
+
+function hasPlatformFetchBinding(sourceFile) {
+  let unsafe = false;
+  const visit = (node) => {
+    if (unsafe) return;
+    const namedFunctionBinding =
+      (ts.isFunctionExpression(node) || ts.isClassExpression(node)) &&
+      node.name?.text === "fetch";
+    if (
+      (ts.isVariableDeclaration(node) ||
+        ts.isParameterDeclaration(node) ||
+        ts.isFunctionDeclaration(node) ||
+        ts.isClassDeclaration(node) ||
+        ts.isBindingElement(node) ||
+        ts.isImportClause(node) ||
+        ts.isImportSpecifier(node)) &&
+      node.name &&
+      bindingContainsName(node.name, "fetch")
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isCatchClause(node) &&
+      node.variableDeclaration &&
+      bindingContainsName(node.variableDeclaration.name, "fetch")
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (namedFunctionBinding) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+      node.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
+      assignmentRootIdentifier(node.left) === "fetch"
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isDeleteExpression(node) &&
+      assignmentRootIdentifier(node.expression) === "fetch"
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
+      (node.operator === ts.SyntaxKind.PlusPlusToken ||
+        node.operator === ts.SyntaxKind.MinusMinusToken) &&
+      assignmentRootIdentifier(node.operand) === "fetch"
+    ) {
+      unsafe = true;
+      return;
+    }
+    node.forEachChild(visit);
+  };
+  visit(sourceFile);
+  return !unsafe;
+}
+
 function hasStoryCoverageControlBypass(callback) {
   let unsafe = false;
   const visit = (node) => {
@@ -1490,7 +1604,7 @@ function hasStoryCoverageControlBypass(callback) {
   return unsafe;
 }
 
-function hasStoryScreenshotLoop(callback, sourceFile) {
+function hasStoryScreenshotLoop(callback) {
   if (!ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) return false;
   const loops = callback.body.statements.filter((statement) =>
     ts.isForOfStatement(statement),
@@ -1507,21 +1621,30 @@ function hasStoryScreenshotLoop(callback, sourceFile) {
     !declaration ||
     !ts.isIdentifier(declaration.name) ||
     declaration.name.text !== "story" ||
+    (loop.initializer.flags & ts.NodeFlags.Const) === 0 ||
     !ts.isIdentifier(loop.expression) ||
     loop.expression.text !== "stories" ||
     !ts.isBlock(loop.statement)
   ) {
     return false;
   }
+  if (!hasImmutableStoryBinding(loop, declaration)) return false;
   if (hasStoryLoopControlBypass(loop)) return false;
 
-  const navigationStatements =
-    loop.statement.statements.filter(isStoryNavigation);
+  const navigationStatements = loop.statement.statements.filter((statement) =>
+    isStoryNavigation(statement, declaration.name.text),
+  );
+  let pageNavigationCount = 0;
+  const countPageNavigations = (node) => {
+    if (isPageNavigationCall(node)) pageNavigationCount += 1;
+    node.forEachChild(countPageNavigations);
+  };
+  countPageNavigations(callback.body);
   const screenshotStatements = loop.statement.statements.filter((statement) => {
     if (
       !ts.isExpressionStatement(statement) ||
       !ts.isAwaitExpression(statement.expression) ||
-      !isPageScreenshotCall(statement.expression.expression, sourceFile)
+      !isPageScreenshotCall(statement.expression.expression)
     ) {
       return false;
     }
@@ -1530,6 +1653,7 @@ function hasStoryScreenshotLoop(callback, sourceFile) {
     );
   });
   return (
+    pageNavigationCount === 1 &&
     navigationStatements.length === 1 &&
     screenshotStatements.length === 1 &&
     loop.statement.statements.at(-1) === screenshotStatements[0]
@@ -1580,6 +1704,7 @@ function hasStorybookCoverage(sourceFile, title) {
 
   return (
     hasPlaywrightPageFixture(callback) &&
+    hasPlatformFetchBinding(sourceFile) &&
     fetchesStoryIndex &&
     hasFrozenStorybookIndex(callback) &&
     derivesStoriesFromEveryExport &&
@@ -1588,7 +1713,7 @@ function hasStorybookCoverage(sourceFile, title) {
     statements.some(isNonemptyStoriesAssertion) &&
     !hasStoryCoverageControlBypass(callback) &&
     !hasStoryArrayMutation(callback) &&
-    hasStoryScreenshotLoop(callback, sourceFile)
+    hasStoryScreenshotLoop(callback)
   );
 }
 
@@ -1703,7 +1828,7 @@ for (const screen of manifest) {
     ? testCallbacks(visualSourceFile, screen.test)
     : [];
   const matchingEvidence = matchingCallbacks.map((callback) =>
-    testVisualEvidence(callback, visualSourceFile),
+    testVisualEvidence(callback),
   );
   if (
     matchingCallbacks.length === 1 &&
