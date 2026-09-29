@@ -5,6 +5,22 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-29 · G8 route coverage advances with screen implementation
+
+**Decision:** enable G8 incrementally across the screen inventory. Every route marked in
+progress or complete must have a registered application route, deterministic browser
+fixture, and committed screenshot baseline in the same change. A registered inventory
+route whose rows are all still marked not started fails the scope check. Every exported UI
+Storybook story remains covered. Routes still marked not started are planned work and are
+not represented as already covered; their G8 requirement activates when implementation
+moves them into progress. The eventual scope remains every inventory route.
+
+**Why:** the inventory includes future-stage screens that do not exist yet. Requiring their
+screenshots before implementation would force building future features just to satisfy the
+gate, while omitting them from the eventual contract would leave permanent coverage gaps.
+
+**Decided by:** Thomas, 2026-09-29.
+
 ### 2026-09-29 · OpenAI model routing replaces Claude/`pal-mcp` routing
 
 **Decision:** TaskDesk's active AI workflow moves to an OpenAI-first two-tier model policy.
