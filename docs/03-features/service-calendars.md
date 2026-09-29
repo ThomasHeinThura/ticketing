@@ -142,6 +142,11 @@ The persisted CRUD/list/detail and annual preview routes are implemented. The pr
 the shared `packages/domain/src/calendar/` calculations. The remaining routes are not
 implemented in this slice:
 
+This partial slice also does not seed workspace calendars with named presets, implement
+calendar cloning, or provide the calendar list/editor UI. Issue #33 remains open: the
+remaining CAL behavior, API routes, screens and their specified test obligations have not
+been completed. No Follow the sun window pattern is defined or inferred here.
+
 - `/usage` waits on project calendar references (tracked by #437) and the not-yet-created
   `sla_policy` table. It must report real references before CAL-9 deletion protection can
   be enforced.
