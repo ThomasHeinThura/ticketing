@@ -1,12 +1,16 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { commentTable } from "../../database/schema";
+import { commentTable, workItemTable } from "../../database/schema";
 import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
 import {
   isUnambiguousMembership,
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+} from "../assert-work-item-live";
 
 /**
  * `DELETE /api/comments/{id}`. `comment:delete_any` is an unconditional override;
@@ -43,6 +47,24 @@ export async function deleteComment(
     if (locked.deletedAt !== null) {
       return locked;
     }
+
+    const [workItem] = await tx
+      .select({
+        id: workItemTable.id,
+        projectId: workItemTable.projectId,
+        deletedAt: workItemTable.deletedAt,
+        archivedAt: workItemTable.archivedAt,
+      })
+      .from(workItemTable)
+      .where(
+        and(
+          eq(workItemTable.id, locked.workItemId),
+          eq(workItemTable.workspaceId, workspaceId),
+        ),
+      )
+      .for("share");
+    assertWorkItemStillLive(workItem);
+    await assertProjectStillLive(tx, workItem.projectId);
 
     const roles = await workspaceMemberRoles(tx, workspaceId, actorId);
     if (!isUnambiguousMembership(roles)) {

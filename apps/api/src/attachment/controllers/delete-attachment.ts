@@ -1,8 +1,16 @@
 import { and, eq, ne } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { attachmentTable, personTable } from "../../database/schema";
+import {
+  attachmentTable,
+  personTable,
+  workItemTable,
+} from "../../database/schema";
 import { recordWorkItemActivity } from "../../work-item/activity";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+} from "../../work-item/assert-work-item-live";
 
 export type DeleteAttachmentInput = {
   attachmentId: string;
@@ -63,6 +71,24 @@ export async function deleteAttachment(input: DeleteAttachmentInput) {
   }
 
   const [updated] = await db.transaction(async (tx) => {
+    const [lockedWorkItem] = await tx
+      .select({
+        id: workItemTable.id,
+        projectId: workItemTable.projectId,
+        deletedAt: workItemTable.deletedAt,
+        archivedAt: workItemTable.archivedAt,
+      })
+      .from(workItemTable)
+      .where(
+        and(
+          eq(workItemTable.id, workItemId),
+          eq(workItemTable.workspaceId, workspaceId),
+        ),
+      )
+      .for("share");
+    assertWorkItemStillLive(lockedWorkItem);
+    await assertProjectStillLive(tx, lockedWorkItem.projectId);
+
     const rows = await tx
       .update(attachmentTable)
       .set({ state: "deleted", deletedAt: new Date() })

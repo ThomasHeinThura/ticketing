@@ -110,6 +110,7 @@ export async function assignWorkItem(
         eq(workItemTable.key, key),
         isNull(workItemTable.archivedAt),
         isNull(workItemTable.deletedAt),
+        isNull(projectTable.archivedAt),
         isNull(projectTable.deletedAt),
       ),
     )

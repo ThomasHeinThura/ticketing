@@ -17,6 +17,7 @@ import {
   createWorkspaceMember,
 } from "./helpers/fixtures";
 import {
+  raceProjectArchive,
   raceProjectSoftDelete,
   raceWorkItemSoftDelete,
 } from "./helpers/race-soft-delete";
@@ -553,5 +554,44 @@ describe("API integration: work-item comments (#27)", () => {
       .from(schema.commentTable)
       .where(eq(schema.commentTable.id, id));
     expect(after).toEqual(before);
+  });
+
+  it("#499: comment edit and delete wait for project archive and leave the comment unchanged", async () => {
+    const { app, project, workItem } = await setupWorkItem("member");
+    const created = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [{ type: "paragraph" }] },
+      visibility: "internal",
+    });
+    const { id } = (await created.json()) as { id: string };
+    const [before] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    if (!before) throw new Error("expected comment row before project archive");
+
+    const race = await raceProjectArchive(project.id, async () =>
+      patchComment(app, id, {
+        body: {
+          type: "doc",
+          content: [{ type: "paragraph", text: "changed" }],
+        },
+      }),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const deleteResponse = await deleteComment(app, id);
+    expect(deleteResponse.status).toBe(404);
+    const [after] = await db
+      .select()
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.id, id));
+    expect(after).toEqual(before);
+    const versions = await db
+      .select()
+      .from(schema.commentVersionTable)
+      .where(eq(schema.commentVersionTable.commentId, id));
+    expect(versions).toHaveLength(0);
   });
 });
