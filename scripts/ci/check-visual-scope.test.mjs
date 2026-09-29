@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { symlinkSync } from "node:fs";
+import path from "node:path";
 import { after, test } from "node:test";
+import { repoRoot } from "./lib/repo.mjs";
 import {
   cleanUpScratchRepos,
   installFromRepo,
@@ -33,11 +36,11 @@ const SCREENS = [
   },
 ];
 
-function visualSpec(screens) {
+function visualSpec(screens, { omitScreenshotFor } = {}) {
   return screens
     .map(
       ({ test: testName, screenshot }) =>
-        `test(${JSON.stringify(testName)}, async ({ page }) => { await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}); });`,
+        `test(${JSON.stringify(testName)}, async ({ page }) => { ${testName === omitScreenshotFor ? "await page.goto('/');" : `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)});`} });`,
     )
     .join("\n");
 }
@@ -46,15 +49,24 @@ function routeTree(routes) {
   return routes.map((route) => `fullPath: '${route}'`).join("\n");
 }
 
-async function runVisualScope({ screens = SCREENS, routes = [] } = {}) {
+async function runVisualScope({
+  screens = SCREENS,
+  routes = [],
+  source = visualSpec(screens),
+} = {}) {
   const dir = scratchDir("visual-scope-");
   installFromRepo(dir, "scripts/ci/check-visual-scope.mjs");
   installFromRepo(dir, "scripts/ci/lib/repo.mjs");
+  symlinkSync(
+    path.join(repoRoot, "node_modules"),
+    path.join(dir, "node_modules"),
+    "dir",
+  );
 
   write(dir, "docs/02-design/screen-inventory.md", INVENTORY);
   write(dir, "apps/web/src/routeTree.gen.ts", routeTree(routes));
   write(dir, "apps/web/e2e/visual-screens.json", JSON.stringify(screens));
-  write(dir, "apps/web/e2e/visual.spec.ts", visualSpec(screens));
+  write(dir, "apps/web/e2e/visual.spec.ts", source);
   write(
     dir,
     "apps/web/e2e/storybook-visual.spec.ts",
@@ -97,6 +109,25 @@ test("G8 fails when an active inventory route has no manifest baseline", async (
   assert.match(
     result.output,
     /in-progress or complete inventory route Work item detail .* has no G8 test\/baseline manifest entry/,
+  );
+});
+
+test("G8 binds each declared screenshot to its own named test", async () => {
+  const source = visualSpec(SCREENS, {
+    omitScreenshotFor: "work list @visual",
+  });
+  assert.doesNotMatch(source, /work-list\.png/);
+  assert.match(source, /toHaveScreenshot\("work-item-detail\.png"\)/);
+
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source,
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list test does not capture its declared screenshot baseline/,
   );
 });
 

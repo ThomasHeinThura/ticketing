@@ -1,6 +1,11 @@
 #!/usr/bin/env node
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  createScanner,
+  LanguageVariant,
+  SyntaxKind,
+} from "typescript/unstable/ast";
 import { repoRoot } from "./lib/repo.mjs";
 
 const manifestPath = "apps/web/e2e/visual-screens.json";
@@ -21,6 +26,130 @@ function canonicalInventoryRoute(route) {
     .replaceAll("{id}", "$id")
     .replaceAll("{ref}", "$ref")
     .replaceAll("{typeKey}", "$typeKey");
+}
+
+function visualTestScreenshots(source) {
+  const scanner = createScanner(true, LanguageVariant.Standard, source);
+  const tokens = [];
+  for (
+    let kind = scanner.scan();
+    kind !== SyntaxKind.EndOfFile;
+    kind = scanner.scan()
+  ) {
+    tokens.push({
+      kind,
+      text: scanner.getTokenText(),
+      value: scanner.getTokenValue(),
+    });
+  }
+
+  const openToClose = new Map([
+    [SyntaxKind.OpenParenToken, SyntaxKind.CloseParenToken],
+    [SyntaxKind.OpenBraceToken, SyntaxKind.CloseBraceToken],
+    [SyntaxKind.OpenBracketToken, SyntaxKind.CloseBracketToken],
+  ]);
+  const closeTokens = new Set(openToClose.values());
+  const testCases = new Map();
+
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    if (
+      tokens[index].kind !== SyntaxKind.Identifier ||
+      tokens[index].text !== "test" ||
+      tokens[index + 1].kind !== SyntaxKind.OpenParenToken
+    ) {
+      continue;
+    }
+
+    const callOpen = index + 1;
+    const delimiters = [SyntaxKind.CloseParenToken];
+    let callClose = -1;
+    let argumentSeparator = -1;
+    for (let cursor = callOpen + 1; cursor < tokens.length; cursor += 1) {
+      const kind = tokens[cursor].kind;
+      if (
+        delimiters.length === 1 &&
+        kind === SyntaxKind.CommaToken &&
+        argumentSeparator < 0
+      ) {
+        argumentSeparator = cursor;
+      }
+      if (openToClose.has(kind)) {
+        delimiters.push(openToClose.get(kind));
+      } else if (closeTokens.has(kind)) {
+        if (delimiters.pop() !== kind) break;
+        if (delimiters.length === 0 && kind === SyntaxKind.CloseParenToken) {
+          callClose = cursor;
+          break;
+        }
+      }
+    }
+
+    const title = tokens[callOpen + 1];
+    if (
+      callClose < 0 ||
+      argumentSeparator < 0 ||
+      title?.kind !== SyntaxKind.StringLiteral
+    ) {
+      continue;
+    }
+
+    let arrow = -1;
+    for (let cursor = argumentSeparator + 1; cursor < callClose; cursor += 1) {
+      if (tokens[cursor].kind === SyntaxKind.EqualsGreaterThanToken) {
+        arrow = cursor;
+        break;
+      }
+    }
+
+    const screenshots = new Set();
+    const bodyStart = arrow + 1;
+    if (arrow >= 0 && tokens[bodyStart]?.kind === SyntaxKind.OpenBraceToken) {
+      const bodyDelimiters = [SyntaxKind.CloseBraceToken];
+      let bodyEnd = -1;
+      for (let cursor = bodyStart + 1; cursor < callClose; cursor += 1) {
+        const kind = tokens[cursor].kind;
+        if (openToClose.has(kind)) {
+          bodyDelimiters.push(openToClose.get(kind));
+        } else if (closeTokens.has(kind)) {
+          if (bodyDelimiters.pop() !== kind) break;
+          if (bodyDelimiters.length === 0) {
+            bodyEnd = cursor;
+            break;
+          }
+        }
+      }
+      if (bodyEnd >= 0) {
+        collectScreenshotAssertions(
+          tokens,
+          bodyStart + 1,
+          bodyEnd,
+          screenshots,
+        );
+      }
+    } else if (arrow >= 0) {
+      collectScreenshotAssertions(tokens, bodyStart, callClose, screenshots);
+    }
+
+    const matches = testCases.get(title.value) ?? [];
+    matches.push(screenshots);
+    testCases.set(title.value, matches);
+  }
+
+  return testCases;
+}
+
+function collectScreenshotAssertions(tokens, start, end, screenshots) {
+  for (let index = start; index + 3 < end; index += 1) {
+    if (
+      tokens[index].kind === SyntaxKind.DotToken &&
+      tokens[index + 1].kind === SyntaxKind.Identifier &&
+      tokens[index + 1].text === "toHaveScreenshot" &&
+      tokens[index + 2].kind === SyntaxKind.OpenParenToken &&
+      tokens[index + 3].kind === SyntaxKind.StringLiteral
+    ) {
+      screenshots.add(tokens[index + 3].value);
+    }
+  }
 }
 
 const inventoryRows = [
@@ -53,6 +182,7 @@ const visualSpec = await readFile(
   path.join(repoRoot, "apps/web/e2e/visual.spec.ts"),
   "utf8",
 );
+const screenshotsByTest = visualTestScreenshots(visualSpec);
 for (const screen of manifest) {
   if (seenTests.has(screen.test))
     failures.push(`duplicate test name: ${screen.test}`);
@@ -60,19 +190,16 @@ for (const screen of manifest) {
   if (!screen.test.endsWith("@visual")) {
     failures.push(`${screen.name} test is not tagged @visual`);
   }
-  if (!visualSpec.includes(JSON.stringify(screen.test))) {
+  const matchingTests = screenshotsByTest.get(screen.test) ?? [];
+  if (matchingTests.length === 0) {
     failures.push(
       `${screen.name} has no matching test in apps/web/e2e/visual.spec.ts`,
     );
-  }
-  const screenshotArgumentOffset = visualSpec.indexOf(
-    JSON.stringify(screen.screenshot),
-  );
-  const precedingScreenshotCode = visualSpec.slice(
-    Math.max(0, screenshotArgumentOffset - 100),
-    screenshotArgumentOffset,
-  );
-  if (!precedingScreenshotCode.includes("toHaveScreenshot(")) {
+  } else if (matchingTests.length > 1) {
+    failures.push(
+      `${screen.name} has duplicate tests named ${JSON.stringify(screen.test)} in apps/web/e2e/visual.spec.ts`,
+    );
+  } else if (!matchingTests[0].has(screen.screenshot)) {
     failures.push(
       `${screen.name} test does not capture its declared screenshot baseline`,
     );
