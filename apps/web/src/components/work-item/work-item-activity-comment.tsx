@@ -8,6 +8,7 @@ import TaskList from "@tiptap/extension-task-list";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { TaskItemWithCheckbox } from "@/components/task/extensions/task-item-with-checkbox";
+import { TaskDeskIssueLink } from "@/components/task/extensions/taskdesk-issue-link";
 import { TaskDeskMention } from "@/components/task/extensions/taskdesk-mention";
 
 /** Read-only Tiptap renderer for the JSON document stored on a comment. */
@@ -31,6 +32,7 @@ export default function WorkItemActivityComment({ body }: { body: unknown }) {
       TableRow,
       TableHeader,
       TableCell,
+      TaskDeskIssueLink,
       TaskDeskMention,
     ],
     editorProps: {

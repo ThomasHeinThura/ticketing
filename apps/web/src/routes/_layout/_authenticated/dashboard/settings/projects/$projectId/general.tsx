@@ -45,6 +45,7 @@ import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
+import { getDefaultCommentVisibilityUpdate } from "@/lib/project-comment-visibility";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project.ts";
 
@@ -118,10 +119,11 @@ function RouteComponent() {
   const { data: workspace } = useActiveWorkspace();
   const { projectId: rawProjectId } = useParams({ strict: false });
   const projectId = rawProjectId ?? "";
-  const { data: projectSettings } = useGetProject({
-    id: projectId,
-    workspaceId: workspace?.id ?? "",
-  });
+  const { data: projectSettings, isSuccess: projectSettingsLoaded } =
+    useGetProject({
+      id: projectId,
+      workspaceId: workspace?.id ?? "",
+    });
   const { data: fetchedProject } = useGetTasks(projectId);
   const { project, setProject } = useProjectStore();
 
@@ -164,14 +166,29 @@ function RouteComponent() {
     };
     lastSavedRef.current = normalizeProjectValues(nextValues);
 
-    if (projectForm.formState.isDirty) return;
+    if (projectForm.formState.isDirty) {
+      if (
+        projectSettingsLoaded &&
+        !projectForm.getFieldState("defaultCommentVisibility").isDirty
+      ) {
+        projectForm.resetField("defaultCommentVisibility", {
+          defaultValue: nextValues.defaultCommentVisibility,
+        });
+      }
+      return;
+    }
 
     projectForm.reset(nextValues, {
       keepDirty: false,
       keepTouched: false,
       keepIsValid: true,
     });
-  }, [project, projectForm, projectSettings?.defaultCommentVisibility]);
+  }, [
+    project,
+    projectForm,
+    projectSettingsLoaded,
+    projectSettings?.defaultCommentVisibility,
+  ]);
 
   const saveProject = useCallback(
     async (data: ProjectFormValues) => {
@@ -183,15 +200,19 @@ function RouteComponent() {
       const descriptionChanged =
         lastSavedRef.current?.description !== normalizedData.description;
       const iconChanged = lastSavedRef.current?.icon !== normalizedData.icon;
-      const defaultCommentVisibilityChanged =
-        lastSavedRef.current?.defaultCommentVisibility !==
-        normalizedData.defaultCommentVisibility;
+      const defaultCommentVisibilityUpdate = getDefaultCommentVisibilityUpdate({
+        storedValue: projectSettings?.defaultCommentVisibility,
+        settingsLoaded: projectSettingsLoaded,
+        nextValue: normalizedData.defaultCommentVisibility,
+        fieldDirty: projectForm.getFieldState("defaultCommentVisibility")
+          .isDirty,
+      });
       const hasChanges =
         nameChanged ||
         slugChanged ||
         descriptionChanged ||
         iconChanged ||
-        defaultCommentVisibilityChanged;
+        defaultCommentVisibilityUpdate !== undefined;
 
       if (!hasChanges) return;
 
@@ -211,15 +232,22 @@ function RouteComponent() {
             ? normalizedData.description
             : (project.description ?? ""),
           icon: iconChanged ? normalizedData.icon : (project.icon ?? "Layout"),
-          defaultCommentVisibility: defaultCommentVisibilityChanged
-            ? normalizedData.defaultCommentVisibility
-            : (projectSettings?.defaultCommentVisibility ?? "internal"),
+          ...(defaultCommentVisibilityUpdate !== undefined
+            ? { defaultCommentVisibility: defaultCommentVisibilityUpdate }
+            : {}),
         };
 
         await updateProject(updatePayload);
 
-        projectForm.reset(normalizedData, { keepDirty: false });
-        lastSavedRef.current = normalizedData;
+        const savedValues = {
+          ...normalizedData,
+          defaultCommentVisibility:
+            defaultCommentVisibilityUpdate ??
+            projectSettings?.defaultCommentVisibility ??
+            normalizedData.defaultCommentVisibility,
+        };
+        projectForm.reset(savedValues, { keepDirty: false });
+        lastSavedRef.current = savedValues;
         queuedSaveRef.current = null;
 
         await Promise.all([
@@ -255,6 +283,7 @@ function RouteComponent() {
       project?.description,
       project?.icon,
       projectSettings?.defaultCommentVisibility,
+      projectSettingsLoaded,
       updateProject,
       queryClient,
       workspace?.id,
@@ -585,7 +614,7 @@ function RouteComponent() {
                           <Select
                             value={field.value}
                             onValueChange={field.onChange}
-                            disabled={!canEdit}
+                            disabled={!canEdit || !projectSettingsLoaded}
                           >
                             <SelectTrigger className="w-full sm:w-64">
                               <SelectValue />
