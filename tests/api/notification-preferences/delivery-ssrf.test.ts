@@ -29,6 +29,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { deliverNotification } from "../../../apps/api/src/notification-preferences/delivery";
 
 const notification = {
   id: "notif-1",
@@ -128,12 +129,7 @@ describe("SSRF regression guard — notification delivery (H10/H12, 0e046a6)", (
 
   afterEach(() => {
     fetchSpy.mockRestore();
-    vi.resetModules();
   });
-
-  const load = async () =>
-    (await import("../../../apps/api/src/notification-preferences/delivery"))
-      .deliverNotification;
 
   describe.each([
     {
@@ -150,7 +146,9 @@ describe("SSRF regression guard — notification delivery (H10/H12, 0e046a6)", (
       sender: "gotify",
       pref: {
         gotifyEnabled: true,
-        gotifyServerUrl: "http://localhost:8080",
+        // Use an IP literal so this guard regression never depends on DNS or
+        // resolver configuration in the test runner.
+        gotifyServerUrl: "http://127.0.0.1:8080",
         gotifyToken: "tok",
       },
     },
@@ -166,9 +164,8 @@ describe("SSRF regression guard — notification delivery (H10/H12, 0e046a6)", (
     it("refuses a private destination before any outbound request is made", async () => {
       const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       preference = { emailEnabled: false, ...pref };
-      const deliverNotification = await load();
 
-      await deliverNotification("notif-1").catch(() => undefined);
+      await deliverNotification("notif-1");
 
       // The assertion that matters: not "it threw", but that nothing left the process.
       // A sender that stopped calling the guard would reach fetch with this address.
@@ -205,7 +202,6 @@ describe("SSRF regression guard — notification delivery (H10/H12, 0e046a6)", (
       webhookUrl: outboundDestination,
       webhookSecret: null,
     };
-    const deliverNotification = await load();
 
     await deliverNotification("notif-1");
 
