@@ -1842,6 +1842,126 @@ function hasPlatformFetchBinding(sourceFile) {
   return !unsafe;
 }
 
+function isCanonicalStorybookIndexFetch(node) {
+  return (
+    ts.isCallExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === "fetch" &&
+    node.arguments.length === 1 &&
+    ts.isStringLiteral(node.arguments[0]) &&
+    node.arguments[0].text === "http://127.0.0.1:6006/index.json"
+  );
+}
+
+function isValidatedRouteRequest(node) {
+  let current = node;
+  while (current) {
+    if (ts.isArrowFunction(current) || ts.isFunctionExpression(current)) {
+      const call = current.parent;
+      return (
+        ts.isCallExpression(call) &&
+        call.arguments.includes(current) &&
+        isNamedProperty(call.expression, "route") &&
+        ts.isIdentifier(call.expression.expression) &&
+        call.expression.expression.text === "page" &&
+        ts.isStringLiteral(call.arguments[0]) &&
+        call.arguments[0].text === "**/api/**" &&
+        call.arguments[1] === current &&
+        hasSafeApiRouteHandler(current)
+      );
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
+function hasSafeNetworkCapabilities(sourceFile, allowStorybookIndexFetch) {
+  if (!sourceFile) return false;
+  const fetchCalls = [];
+  let unsafe = false;
+  const networkGlobals = new Set([
+    "APIRequestContext",
+    "EventSource",
+    "XMLHttpRequest",
+    "WebSocket",
+    "WebTransport",
+    "navigator",
+    "sendBeacon",
+  ]);
+  const isPropertyName = (node) =>
+    (ts.isPropertyAssignment(node.parent) && node.parent.name === node) ||
+    (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node) ||
+    (ts.isMethodDeclaration(node.parent) && node.parent.name === node) ||
+    (ts.isPropertyDeclaration(node.parent) && node.parent.name === node);
+  const isRouteRequest = (node) =>
+    ts.isPropertyAccessExpression(node) &&
+    node.name.text === "request" &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === "route" &&
+    isValidatedRouteRequest(node);
+  const visit = (node) => {
+    if (unsafe) return;
+    if (ts.isElementAccessExpression(node)) {
+      unsafe = true;
+      return;
+    }
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)) {
+      if (node.expression.text === "fetch") fetchCalls.push(node);
+      if (node.expression.text === "sendBeacon") unsafe = true;
+    }
+    if (
+      ts.isIdentifier(node) &&
+      !isPropertyName(node) &&
+      networkGlobals.has(node.text)
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isIdentifier(node) &&
+      node.text === "fetch" &&
+      !(
+        ts.isCallExpression(node.parent) &&
+        node.parent.expression === node &&
+        isCanonicalStorybookIndexFetch(node.parent)
+      )
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isPropertyAccessExpression(node) &&
+      ((node.name.text === "request" && !isRouteRequest(node)) ||
+        node.name.text === "fetch" ||
+        node.name.text === "sendBeacon")
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (ts.isNewExpression(node) && ts.isIdentifier(node.expression)) {
+      if (
+        new Set([
+          "EventSource",
+          "Request",
+          "WebSocket",
+          "WebTransport",
+          "XMLHttpRequest",
+        ]).has(node.expression.text)
+      ) {
+        unsafe = true;
+        return;
+      }
+    }
+    node.forEachChild(visit);
+  };
+  visit(sourceFile);
+  if (unsafe) return false;
+  if (!allowStorybookIndexFetch) return fetchCalls.length === 0;
+  return (
+    fetchCalls.length === 1 && isCanonicalStorybookIndexFetch(fetchCalls[0])
+  );
+}
+
 function hasStoryCoverageControlBypass(callback) {
   let unsafe = false;
   const visit = (node) => {
@@ -2068,6 +2188,19 @@ try {
     if (storySourceFile && !hasSafeVisualTestRuntime(storySourceFile)) {
       failures.push(
         `${path.basename(storySpecPath)} contains imports or runtime constructs that can alias or disable Playwright tests, mutate primordials, or exit before screenshots run`,
+      );
+    }
+    if (
+      visualSourceFile &&
+      !hasSafeNetworkCapabilities(visualSourceFile, false)
+    ) {
+      failures.push(
+        `${path.basename(visualSpecPath)} uses a network capability outside its local Playwright API-route fixture`,
+      );
+    }
+    if (storySourceFile && !hasSafeNetworkCapabilities(storySourceFile, true)) {
+      failures.push(
+        `${path.basename(storySpecPath)} may only fetch the canonical Storybook index once without request options`,
       );
     }
   } finally {

