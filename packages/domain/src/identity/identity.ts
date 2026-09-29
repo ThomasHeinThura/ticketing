@@ -2,7 +2,9 @@ import type {
   AllowedRole,
   ConnectionValidationResult,
   IdentityClaimResult,
+  IdentityConnectionContext,
   IdentityConnectionDraft,
+  IdentityDomainOwner,
   IdentityPortalScope,
   IdentityRoleMapping,
   ProvisioningDecision,
@@ -70,7 +72,8 @@ function hasInvalidGroupOverageMarker(claims: VerifiedEntraClaims): boolean {
 
 export function normaliseEntraClaims(
   claims: VerifiedEntraClaims,
-  connection: Pick<IdentityConnectionDraft, "tenantId" | "issuer">,
+  connection: IdentityConnectionContext,
+  domainOwners: readonly IdentityDomainOwner[],
 ): IdentityClaimResult {
   if (claims.tid !== connection.tenantId)
     return { ok: false, reason: "tenant_mismatch" };
@@ -99,6 +102,22 @@ export function normaliseEntraClaims(
   }
   if (claims.email_verified !== undefined && claims.email_verified !== true) {
     return { ok: false, reason: "unverified_address" };
+  }
+
+  const addressDomain = address.slice(address.lastIndexOf("@") + 1);
+  let domainOwner: string | undefined;
+  for (const binding of domainOwners) {
+    if (binding.domain.toLowerCase() !== addressDomain) continue;
+    if (domainOwner !== undefined) {
+      return { ok: false, reason: "ambiguous_domain_binding" };
+    }
+    domainOwner = binding.identityConnectionId;
+  }
+  if (
+    domainOwner !== undefined &&
+    domainOwner !== connection.identityConnectionId
+  ) {
+    return { ok: false, reason: "domain_bound_elsewhere" };
   }
 
   let groupObjectIds: readonly string[] | "overage" = [];
