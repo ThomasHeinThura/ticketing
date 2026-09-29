@@ -57,11 +57,11 @@ in the separate `views.md` review section, so the broader layout UI remains bloc
 P2 issues #31–#37 remain open; their owning feature review sections are empty for #31–35 and
 #37, with no #36 section in that review file. Service calendar API/persistence is the
 selected next P2 slice; it shares router/schema files with #447, so implementation starts
-after that lane releases them. P3's old lane-prep questions
-are superseded by the current specs, migration 0052/0053, and the 2026-09-23 decision. The
-next #39 slice is persistence for the six specified identity/SCIM tables, after #447 releases
-the shared Drizzle schema files; the 25-test real Microsoft Entra suite remains a completion
-gate. #38 remains behind its request/catalogue/intake/approval and portal dependencies.
+after that lane releases them. P3's old lane-prep questions are superseded by the current
+specs, migration 0052/0053, and the 2026-09-23 decision. The next #39 slice is persistence
+for the six specified identity/SCIM tables. Because #33 and #39 both edit the Drizzle schema,
+relations, and migration journal, #39's schema work starts only after #33 releases those files.
+The 25-test real Microsoft Entra suite remains a completion gate. #38 remains behind its request/catalogue/intake/approval and portal dependencies.
 
 **Open PRs at refresh:** #503 (Dependabot; behind `main`), #492 (this status refresh; stale
 base), and #447 (saved views; stale base and prior CI failures). The new status candidate is
