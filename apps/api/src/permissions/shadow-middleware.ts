@@ -144,25 +144,145 @@ async function writeErrorRecord(args: {
  * dispatches the FIRST such match while `at(-1)` returns the LAST — `PUT /api/project/
  * reorder`, `GET /api/invitation/pending` and `GET /api/ws/user` were all attributed to
  * another route's bucket, and their own keys never got a tally row (readable as "no
- * traffic" rather than "never measured").
+ * traffic" rather than "never measured"). `c.req.routePath` was tried as the primary
+ * signal and REJECTED — for `GET /api/ws/user` it reported `/api/ws/:projectId` (the
+ * param form) while `matchedRoutes` listed `GET /api/ws/user` first, and Opus's own probe
+ * established Hono dispatches the first match. Instrumented evidence, not theory:
+ * `matchedRoutes` for these three paths all put the literal before the parameter.
  *
- * Selection: the FIRST matched entry whose method is not `ALL` (Hono records middleware —
- * the guard, compress — as `method: "ALL"`, and route-level middleware share their route's
- * path/method, so the first non-`ALL` entry carries the dispatched route's path). This is
- * the fix's final form after live probing on all three problem routes: `c.req.routePath`
- * was tried as the primary signal and REJECTED — for `GET /api/ws/user` it reported
- * `/api/ws/:projectId` (the param form) while `matchedRoutes` listed `GET /api/ws/user`
- * first, and Opus's own probe established Hono dispatches the first match. Instrumented
- * evidence, not theory: `matchedRoutes` for these three paths all put the literal before
- * the parameter.
+ * The matched entry's OWN registered method is used to build the key, never
+ * `c.req.method` (Opus B2 delta): Hono dispatches a HEAD request through its matching GET
+ * route, so `c.req.method` stays `"HEAD"` while the matched route's own `method` is
+ * `"GET"` — the method the registry and route-coverage actually classified.
+ *
+ * See the catch-all-exemption doc comment above `attributedRoutesToClassify` below for
+ * how a matched entry is told apart from reviewed infrastructure middleware — that
+ * mechanism has its own, more recent history (B1, B3, F4, F5) and is documented there,
+ * not duplicated here.
  */
-function attributedRouteKey(c: Context): string | null {
-  const matched = c.req.matchedRoutes.find((r) => r.method !== "ALL");
+/**
+ * **Consolidated history** (this mechanism has been fixed four times in a row for the
+ * same recurring class of gap — B1, B3, F4, F5 — each closing one way a matched entry
+ * could be mistaken for infrastructure that doesn't need its own classification):
+ *
+ * `assertRouteIsClassified` (the guard) runs FROM INSIDE the auth guard's own middleware
+ * body, so `c.req.matchedRoutes` always includes at least the guard's own entry, plus
+ * CORS, compress, and (in a production layout with `apps/web/dist` present) the
+ * static-serving fallback — none of these is a feature route, and none should ever need
+ * a policy-registry entry of its own. Something has to tell "real feature route" apart
+ * from "reviewed infrastructure middleware" — B1/B3/F4 each tried a different PREDICTION
+ * (method is not `ALL`; stop at the first non-`ALL` entry; …) and each prediction had a
+ * hole an adversarial registration could exploit. F5 found the last one: exempting by KEY
+ * STRING (`ALL /*` / `ALL /api/*`) assumes the key identifies the handler, but the key
+ * only identifies where something is mounted — a stray `app.all("/api/*", …)` fallback, a
+ * `.use("*")` that itself answers a request, a `.mount()`, or a sub-router's own
+ * `.all("*")` at the same key would be exempted the same way the two real middlewares are.
+ *
+ * **Fix: identity, not prediction.** `createApp()` (`apps/api/src/index.ts`) calls
+ * `declareCatchAllMiddleware` on the EXACT function reference for each of its four
+ * reviewed catch-all registrations (CORS, compress, the conditional static-serving
+ * fallback, the auth guard itself) at the moment it creates each one, before passing it to
+ * `.use()`. A matched entry is exempted only when `r.handler` is one of those exact
+ * function references — identity, which `app.route("/api", api)` preserves (the mounted
+ * sub-app has its own `onError` but the middleware function objects themselves are never
+ * wrapped or copied) — never a string, a method, or a position anything else could
+ * coincidentally share. `attributedRoutesToClassify`'s unbounded walk (the guard's own
+ * caller) and `attributedMatchedRoute`'s bounded first-match (shadow-mode telemetry's
+ * caller, a different, non-enforcing use) both use this same `declaredCatchAllHandlers`
+ * set — the difference between them is how far each one walks matched entries, never how
+ * a single entry is judged exempt.
+ */
+const declaredCatchAllHandlers = new Set<unknown>();
+
+/**
+ * Called once per catch-all middleware, at its own registration call site in
+ * `apps/api/src/index.ts`, immediately before that middleware is passed to `.use()`.
+ * Never called for anything conditional, route-specific, or added after this module has
+ * already started serving requests -- there are exactly two call sites, both inside
+ * `createApp()`, both for the two entries `DECLARED_ROUTER_MIDDLEWARE` already declares.
+ * Takes `unknown`, not Hono's own handler type: this is an identity token, never invoked
+ * here, and matched against `RouterRoute["handler"]`, whose exact generic shape depends on
+ * the router instance's own type parameters -- coupling to it would make this module
+ * depend on every feature router's own `Env` type for no behavioural benefit.
+ */
+export function declareCatchAllMiddleware(handler: unknown): void {
+  declaredCatchAllHandlers.add(handler);
+}
+
+/** The dispatched route's own `{ method, path }`, or `null` when nothing matched at all. */
+export type AttributedRoute = {
+  readonly method: string;
+  readonly path: string;
+};
+
+/**
+ * Opus delta pass B3 (live-reproduced): the previous "first matched entry that isn't a
+ * DECLARED catch-all" rule fails open for a route-scoped `.use()` middleware registered
+ * before the real handler (e.g. `app.use("/api/foo/*", next)`) -- that middleware's own
+ * key is not one of the two DECLARED_CATCH_ALL_KEYS, so it was itself returned as "the"
+ * attributed route, and its own (possibly permissive) registry entry gated every
+ * unclassified route behind it instead of the real handler's.
+ *
+ * **Opus delta pass F4 (live-reproduced): stopping the walk at the first non-`ALL` entry
+ * was ITSELF still a prediction, and the prediction had a hole.** A GET/POST/other
+ * specific-method handler can call `next()` and hand the request on, exactly like
+ * `.use()` does -- Hono does not require a route to be the terminal handler just because
+ * its own method matches. Three shapes proved this live: a GET pass-through handler, a
+ * multi-method (`app.on(["GET","POST"], ...)`) pass-through, and a parameter route that
+ * conditionally calls `next()` -- each classified, each fronting an unclassified route
+ * that then served 200 with a leak. This guard cannot correctly PREDICT which matched
+ * entry Hono will end up running (this is the third time trying has produced a hole), so
+ * it stops predicting: every matched entry except the two declared catch-alls must be
+ * classified, full stop, no early exit. `route-classification-guard.ts`'s
+ * `assertRouteIsClassified` is the only caller of this unbounded form -- see
+ * `attributedMatchedRoute` below for the (deliberately still-bounded) single-route
+ * prediction shadow-mode attribution needs instead.
+ */
+export function attributedRoutesToClassify(c: Context): AttributedRoute[] {
+  const result: AttributedRoute[] = [];
+  for (const r of c.req.matchedRoutes) {
+    if (declaredCatchAllHandlers.has(r.handler)) {
+      continue;
+    }
+    result.push({ method: r.method, path: r.path });
+  }
+  return result;
+}
+
+/**
+ * The FIRST matched entry that is not one of the framework's own declared catch-all
+ * middleware registrations (`DECLARED_CATCH_ALL_KEYS`). `null` only for a genuinely
+ * unmatched request.
+ *
+ * **Deliberately NOT the unbounded walk `attributedRoutesToClassify` uses** (F4's own
+ * finding): shadow-mode attribution predicts the single route a request's outcome should
+ * be compared against, and the LAST entry of an unbounded walk can be a sibling parameter
+ * route that never actually runs -- `GET /api/invitation/pending` also matches
+ * `GET /api/invitation/{id}`'s parameter pattern, and taking the last (parameter) entry
+ * would misattribute every `/pending` request to the wrong policy. The first non-catch-all
+ * entry is Hono's own literal-before-parameter dispatch order (#323's S2 finding) and
+ * remains the correct single-route prediction for telemetry, even though it is not a safe
+ * enforcement boundary (that's exactly why the guard itself no longer uses it).
+ *
+ * Exported separately from `attributedRouteKey` so a caller that needs to distinguish "no
+ * route matched" (a real 404, nothing to check) from "a route matched but its key could not
+ * be normalised" (`route-classification-guard.ts`'s B1 fix: that case must still refuse, not
+ * be swallowed into the same `null` as an unmatched request) can tell them apart.
+ */
+export function attributedMatchedRoute(c: Context): AttributedRoute | null {
+  const matched = c.req.matchedRoutes.find(
+    (r) => !declaredCatchAllHandlers.has(r.handler),
+  );
+  return matched ? { method: matched.method, path: matched.path } : null;
+}
+
+export function attributedRouteKey(c: Context): string | null {
+  const matched = attributedMatchedRoute(c);
   if (!matched) {
     return null;
   }
   try {
-    return normaliseRouteKey(`${c.req.method} ${matched.path}`);
+    return normaliseRouteKey(`${matched.method} ${matched.path}`);
   } catch {
     return null;
   }
@@ -204,36 +324,46 @@ async function runShadowEvaluation(
   const userId = (c.get("userId") as string | undefined) || undefined;
   const credential = credentialKindFor(apiKey);
   const identityKind: string | null = userId ? credential : null;
+  // Evidence-only, deliberately decoupled from `workspaceIdSource` above (#400, Opus R1 on
+  // #381): that variable also feeds `buildShadowPolicySide`'s policy-side comparison below,
+  // where promoting it to "row" for a `scopeSource: "request"` policy would turn a correct
+  // agreement into a false `scope_source_mismatch` disagreement (#323 Opus S1). This flag
+  // answers a narrower question — "is this exact id backed by a real workspace row" — and is
+  // the only thing shadow evidence trusts. A legacy path saying "allowed" is never treated as
+  // proof by itself: an instance-admin bypass (`validateWorkspaceAccess`'s admin early
+  // return, `hasWorkspacePermission`'s `isInstanceAdmin` shortcut, and any future one) says
+  // "allowed" without ever checking the workspace exists.
+  let workspaceIdVerified = workspaceIdSource === "row";
   const evidenceWorkspaceId = () =>
-    workspaceIdForShadowEvidence(
-      workspaceId,
-      workspaceIdSource,
-      legacy.known ? legacy.allowed : null,
-    );
+    workspaceIdForShadowEvidence(workspaceId, workspaceIdVerified);
 
   let policySide: ReturnType<typeof buildShadowPolicySide>;
   try {
-    // Some workspace routes declare row provenance because their handler reads the
-    // workspace row, while the reach middleware starts from a path/query value. On
-    // denied requests that handler never runs, so resolve the declared target after
-    // the response (inside the bounded shadow queue) before deciding its provenance.
-    // A missing row stays unevaluated; a caller-supplied id is never promoted to row
-    // evidence without this authoritative lookup.
-    if (
-      workspaceId !== null &&
-      workspaceIdSource === "request" &&
-      entry !== undefined &&
-      isCapabilityPolicy(entry.policy) &&
-      entry.policy.scope === "workspace" &&
-      entry.policy.scopeSource === "row"
-    ) {
+    // A request-sourced id (query/body/param) is never itself a loaded row. Confirm it
+    // against a real `workspace` row before trusting it as evidence, for EVERY
+    // request-sourced id, regardless of the route's own policy shape and regardless of
+    // whether legacy authorization allowed or denied the request (#400 widens this beyond
+    // the `scopeSource: "row"`-only check #381 shipped). A missing row stays unverified;
+    // nothing here ever substitutes "some legacy path allowed it" for this check.
+    if (workspaceId !== null && workspaceIdSource === "request") {
       const [workspace] = await db
         .select({ id: schema.workspaceTable.id })
         .from(schema.workspaceTable)
         .where(eq(schema.workspaceTable.id, workspaceId))
         .limit(1);
       if (workspace) {
-        workspaceIdSource = "row";
+        workspaceIdVerified = true;
+        // Only promote the POLICY-side source when the route's own policy declares row
+        // provenance — promoting it for a `scopeSource: "request"` policy would make the
+        // evaluator refuse a correct agreement as `scope_source_mismatch` (#323 Opus S1).
+        if (
+          entry !== undefined &&
+          isCapabilityPolicy(entry.policy) &&
+          entry.policy.scope === "workspace" &&
+          entry.policy.scopeSource === "row"
+        ) {
+          workspaceIdSource = "row";
+        }
       }
     }
 

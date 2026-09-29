@@ -33,7 +33,9 @@ import {
 } from "@taskdesk/permissions";
 import { activityPolicies } from "./activity/policy";
 import { assetPolicies } from "./asset/policy";
+import { attachmentPolicies } from "./attachment/policy";
 import { auditPolicies } from "./audit/policy";
+import { cannedResponsePolicies } from "./canned-response/policy";
 import { capabilitiesPolicies } from "./capabilities/policy";
 import { columnPolicies } from "./column/policy";
 import { commentPolicies } from "./comment/policy";
@@ -142,6 +144,25 @@ export const platformPolicies = {
       "key-scoped signed token in the query string, verified in writeUploadedObject",
   },
 
+  // Issue #28 (attachments): the generic-key siblings of the task-image upload route
+  // above. Same reasoning -- the signed, short-lived token (which also binds the size
+  // ceiling on the upload side) is the credential, not a session; the real permission
+  // check already ran on `POST /api/work-items/{key}/attachments/presign` (mints the
+  // upload URL) and `GET /api/attachments/{id}` (mints the download URL) respectively.
+  "PUT /api/storage/filesystem-attachment-upload": {
+    public: true,
+    reason:
+      "no session applies to a direct-PUT upload; authorized instead by a short-lived, " +
+      "key-and-size-scoped signed token in the query string",
+  },
+  "GET /api/storage/filesystem-download": {
+    public: true,
+    reason:
+      "no session applies to a presigned-style download; authorized instead by a " +
+      "short-lived, key-scoped signed token minted by GET /api/attachments/{id} after " +
+      "its own policy check already ran",
+  },
+
   // --- Issue #8 classification pass: inline routes in index.ts (below). GET /api/asset/{id}
   // is classified separately, in apps/api/src/asset/policy.ts, since it was moved below the
   // auth guard in this same batch and so is no longer one of this map's above-guard entries.
@@ -247,6 +268,10 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/comment/policy.ts", policies: commentPolicies },
   { name: "apps/api/src/activity/policy.ts", policies: activityPolicies },
   {
+    name: "apps/api/src/canned-response/policy.ts",
+    policies: cannedResponsePolicies,
+  },
+  {
     name: "apps/api/src/notification/policy.ts",
     policies: notificationPolicies,
   },
@@ -262,6 +287,7 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/label/policy.ts", policies: labelPolicies },
   { name: "apps/api/src/asset/policy.ts", policies: assetPolicies },
   { name: "apps/api/src/view/policy.ts", policies: viewPolicies },
+  { name: "apps/api/src/attachment/policy.ts", policies: attachmentPolicies },
   { name: "apps/api/src/workflow/policy.ts", policies: workflowPolicies },
 ];
 

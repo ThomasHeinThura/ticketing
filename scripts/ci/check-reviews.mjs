@@ -20,12 +20,13 @@
 import path from "node:path";
 import { changedPaths } from "./lib/diff.mjs";
 import {
-  contentOf,
+  BidiControlCharacterError,
   DuplicateSectionError,
   field,
   loadBody,
   normaliseHeading,
   sections,
+  wordBoundaryContentOf,
 } from "./lib/pr-body.mjs";
 import {
   finish,
@@ -45,9 +46,60 @@ function argValue(flag) {
   return index === -1 ? undefined : process.argv[index + 1];
 }
 
-/** The exact character class and shape `main()` uses to extract a spec filename. Shared so
- * `fieldOpener` tests fusion against the SAME matches `main()` will actually act on. */
-const MD_TOKEN = /[a-z0-9-]+\.md/gi;
+/**
+ * Every `.md`-shaped token in `source` — same character class as a
+ * `/[a-z0-9-]+\.md/gi` match (case-insensitive `[a-z0-9-]` run immediately
+ * followed by the literal `.md`), same match shape (`{ 0: text, index }`, all
+ * `fieldOpener`/`specsNamedIn` below read), but a genuine single pass over the
+ * string instead of a backtracking regex (#154).
+ *
+ * Why the regex version was O(n^2), not just "matchAll re-scans": `.` is not
+ * in `[a-z0-9-]`, so once the engine has greedily consumed a maximal run of
+ * allowed characters, trying any SHORTER prefix of that same run can never
+ * make the following literal `.md` match either — none of those shorter
+ * cut points is a `.` character, because `.` was never part of what the class
+ * could consume in the first place. A backtracking engine doesn't know that;
+ * it retries every shorter length anyway before giving up on a start
+ * position, then moves the start forward by one character and does it all
+ * again. On a long run with no trailing `.md` (a long slug, a wall of prose
+ * with no `.md` mention, ...) that's O(n) wasted backtracking per start
+ * position over O(n) start positions: O(n^2) total — exactly the growth
+ * measured in #154 (a constructed ~60,000-character `**Spec:**` field took
+ * the extraction step from ~2.4s to ~4.1s once the fix for a *different* bug
+ * switched a first-match `exec` to a full-field `matchAll`).
+ *
+ * Walking the string once and tracking run boundaries directly makes the
+ * same match decision — a run is only ever a match at its one maximal
+ * length, for the reason above — without the redundant retries: no per-run
+ * backtracking, and each character visited once, so this is O(n) instead.
+ * Shared here (not inlined at each call site) so `fieldOpener` and
+ * `specsNamedIn` can never disagree about which spans count as `.md` tokens.
+ */
+function mdTokens(source) {
+  const isTokenChar = (code) =>
+    (code >= 48 && code <= 57) || // 0-9
+    (code >= 65 && code <= 90) || // A-Z
+    (code >= 97 && code <= 122) || // a-z
+    code === 45; // -
+  const matches = [];
+  const n = source.length;
+  let i = 0;
+  while (i < n) {
+    if (!isTokenChar(source.charCodeAt(i))) {
+      i += 1;
+      continue;
+    }
+    const start = i;
+    while (i < n && isTokenChar(source.charCodeAt(i))) {
+      i += 1;
+    }
+    if (source.slice(i, i + 3).toLowerCase() === ".md") {
+      matches.push({ 0: source.slice(start, i + 3), index: start });
+      i += 3;
+    }
+  }
+  return matches;
+}
 
 /**
  * Where a recognised "n/a" / "not applicable" / "blocked" opener sits in a compact
@@ -148,7 +200,7 @@ function fieldOpener(declared) {
     }
   }
 
-  for (const token of trimmed.matchAll(MD_TOKEN)) {
+  for (const token of mdTokens(trimmed)) {
     const tokenStart = token.index;
     const tokenEnd = token.index + token[0].length;
     if (tokenStart < openerEnd && tokenEnd > openerStart) {
@@ -216,7 +268,7 @@ function specsNamedIn(declared) {
     return [];
   }
   const source = withOpenerWordMasked(declared);
-  return [...source.matchAll(MD_TOKEN)].map((match) => match[0].toLowerCase());
+  return mdTokens(source).map((match) => match[0].toLowerCase());
 }
 
 /**
@@ -295,9 +347,31 @@ async function main() {
     const task = bodySections.get(normaliseHeading("Task"));
     // multiLine: true (issue #150) -- the one field() caller where a longer captured
     // value is never unsafe: it can only add more .md paths to check, never fewer.
-    const declared = task
-      ? field(contentOf(task.raw), "Spec", { multiLine: true })
-      : "";
+    //
+    // wordBoundaryContentOf, not contentOf (issues #152/#153): this value feeds
+    // WORD-BOUNDARY-SENSITIVE parsing below (specsNamedIn/fieldOpener/openerMatch
+    // recognising the two-word "not applicable" opener) -- contentOf's own aggressive
+    // stripping is for deciding whether a whole SECTION is blank, and reusing it here
+    // silently welded "not" to "applicable" whenever the gap was a real word-separating
+    // character (U+3000, routine from CJK input methods) rather than an ASCII space.
+    let declared;
+    try {
+      declared = task
+        ? field(wordBoundaryContentOf(task.raw), "Spec", { multiLine: true })
+        : "";
+    } catch (error) {
+      if (!(error instanceof BidiControlCharacterError)) throw error;
+      // "the Task section", not "the Spec field" -- wordBoundaryContentOf checks
+      // task.raw as a whole (the bidi test must run before the Spec field is even
+      // extracted, see that function's own doc comment), so the character can be
+      // anywhere in Task, not necessarily inside the Spec field itself. Found by the
+      // Opus security review of this fix: the original wording named the wrong scope.
+      failures.push(
+        violation("pull request body", `the **Task** section ${error.message}`),
+      );
+      finish({ name: NAME, failures, ok: "unreachable" });
+      return;
+    }
     // Not a bare `/^n\/a$/i` exact match — found adversarially, while
     // shepherding PR #144: that exact-match guard only recognised a Spec
     // field that was LITERALLY the two characters "n/a", not the "n/a —
@@ -347,8 +421,8 @@ async function main() {
     // "n/a" opener — a process expectation a mechanical check cannot
     // enforce, so it is written here as a sentence, not another regex.
     //
-    // Lower-cased before adding — found adversarially: `MD_TOKEN` carries
-    // the `i` flag (needed so an author who types `WORKFLOWS.MD` is still
+    // Lower-cased before adding — found adversarially: `mdTokens()` matches
+    // case-insensitively (needed so an author who types `WORKFLOWS.MD` is still
     // recognised as fused/checkable at all), but `specSections()` below
     // extracts review-doc heading filenames with NO `i` flag, matching this
     // repo's own always-lowercase-hyphenated naming convention exactly. A
@@ -358,7 +432,7 @@ async function main() {
     // trade that silent miss for a different one (never extracting the
     // mention at all). Lower-casing here is what actually closes it.
     //
-    // Extracted via `specsNamedIn`, not a raw `declared.matchAll(MD_TOKEN)`
+    // Extracted via `specsNamedIn`, not a raw `mdTokens(declared)`
     // — see `withOpenerWordMasked` for why a multi-word opener's own
     // trailing word needs masking before extraction.
     for (const spec of specsNamedIn(declared)) {

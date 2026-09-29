@@ -48,6 +48,18 @@ export const effectSchema = z.discriminatedUnion("kind", [
   }),
   z.object({
     kind: z.literal("schedule_transition"),
+    // Opus security review of PR #457, N7: with no upper bound, an authored value large
+    // enough overflows `Date`'s valid range once `transition-work-item.ts` computes
+    // `Date.now() + afterMinutes * 60_000`. Deliberately NOT tightened with a schema
+    // `.max()` here -- this exact field is also accepted by the ALREADY-SHIPPED
+    // `POST /workflows/{id}/versions` route (#31/#443), so narrowing it here is a real
+    // breaking change to a route this pull request does not otherwise touch, not a free
+    // fix (`pnpm test:contract` confirmed this live: oasdiff flagged it and the repo's
+    // own approved-breaks mechanism asks for a decision-log-backed justification this
+    // session cannot supply). Fixed instead where the actual failure happens --
+    // `transition-work-item.ts` now validates the computed `due_at` before using it and
+    // skips the effect (same "disclosed no-op" treatment as an unresolvable
+    // `schedule_transition` target) rather than ever handing Postgres an invalid Date.
     afterMinutes: z.number().int().positive(),
     toStateTemplateId: z.string(),
   }),

@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import { describe, it } from "node:test";
 import {
+  BidiControlCharacterError,
   checklistPresenceProblems,
   checklistProblems,
   contentOf,
@@ -29,6 +30,7 @@ import {
   sections,
   stripComments,
   stripCommentsStepsForTests,
+  wordBoundaryContentOf,
 } from "./pr-body.mjs";
 
 /**
@@ -76,16 +78,30 @@ const OLD_REGEX_OUTPUT = {
  */
 function referenceStripComments(input) {
   let text = input;
-  // Each iteration removes one "<!--"..."-->" pair or returns, so it cannot
-  // loop more than `input.length` times for a well-formed run. The bound
-  // exists only so a reasoning error here fails loudly instead of hanging
-  // the suite — see the two tests below for the same idea applied to their
-  // own fuzz generators ("if this reaches zero the fuzz has stopped...").
+  // Each iteration removes one "<!--"..."-->" pair (or one complete empty
+  // `<!-->`/`<!--->`) or returns, so it cannot loop more than `input.length`
+  // times for a well-formed run. The bound exists only so a reasoning error
+  // here fails loudly instead of hanging the suite — see the two tests below
+  // for the same idea applied to their own fuzz generators ("if this reaches
+  // zero the fuzz has stopped...").
   for (let guard = 0; guard < input.length + 1; guard += 1) {
     const openIdx = text.indexOf("<!--");
     if (openIdx === -1) return text;
     const before = text.slice(0, openIdx);
     const rest = text.slice(openIdx + 4);
+    // `<!-->` and `<!--->` are complete, self-closing empty comments on their
+    // own (issue #474) — not an opener waiting for a LATER "-->". Handled
+    // here too so this oracle keeps modelling the same corrected spec
+    // `stripComments` implements, rather than the old buggy "scan to the
+    // next -->  anywhere" behaviour.
+    if (rest.startsWith(">")) {
+      text = before + rest.slice(1);
+      continue;
+    }
+    if (rest.startsWith("->")) {
+      text = before + rest.slice(2);
+      continue;
+    }
     const closeIdx = rest.indexOf("-->");
     if (closeIdx === -1) return before; // fails closed, same as stripComments
     text = before + rest.slice(closeIdx + 3);
@@ -133,6 +149,47 @@ describe("stripComments", () => {
       OLD_REGEX_OUTPUT["abc<!-- unterminated"],
       "abc<!-- unterminated",
     );
+  });
+
+  describe("issue #474 — `<!-->` and `<!--->` are COMPLETE, self-closing empty comments, not an opener waiting for a later `-->`", () => {
+    // Verified against both the CommonMark spec and GitHub's own `cmark-gfm`
+    // test suite: everything after one of these two short forms is ordinary
+    // visible text on GitHub. Before the fix, `stripComments` detected the
+    // 4-char opener "<!--" inside "<!-->" and then scanned forward to the
+    // NEXT "-->" anywhere later in the string, deleting everything in
+    // between as if it were hidden — even though a human reviewer sees it
+    // rendered in plain sight.
+    it("`<!-->` on its own consumes only itself", () => {
+      assert.equal(stripComments("<!-->"), "");
+      assert.equal(stripComments("before <!-->after"), "before after");
+    });
+
+    it("`<!--->` on its own consumes only itself", () => {
+      assert.equal(stripComments("<!--->"), "");
+      assert.equal(stripComments("before <!--->after"), "before after");
+    });
+
+    it("does not swallow real, visible text up to a LATER, unrelated `-->`", () => {
+      // The exact shape that made this a gate bypass, not just a stripping
+      // quirk: real text between the empty comment and a later, unrelated
+      // closer used to vanish entirely.
+      assert.equal(
+        stripComments("<!-->required text-->after"),
+        "required text-->after",
+      );
+      assert.equal(
+        stripComments("before <!--> required text-->after"),
+        "before  required text-->after",
+      );
+    });
+
+    it("does not regress the reconstitution-attack defense", () => {
+      // A short empty comment must not create a new opportunity to
+      // reconstitute "<!--" from a retained prefix and later text — the
+      // exact CodeQL alert #4 shape this file already defends against.
+      assert.equal(stripComments("<!<!-->--"), "");
+      assert.ok(!stripComments("<!<!-->--").includes("<!--"));
+    });
   });
 
   it("leaves no opener behind, over a fuzz of hostile inputs", () => {
@@ -699,6 +756,54 @@ describe("sections", () => {
     it("field(text, 'Model') reads the real model, not the comment-hidden fake", () => {
       const security = sections(body).get("security review");
       assert.equal(field(security.text, "Model"), REAL_MODEL);
+    });
+  });
+
+  // Issue #474: `stripComments`/`stripCommentsWithPositions` used to treat a bare
+  // `<!-->` as an OPENER that only closes at the NEXT `-->` anywhere later in the
+  // document — but `<!-->` is a complete, self-closing empty comment on its own
+  // (CommonMark/GFM). `sections()` derives its heading-visibility check from the
+  // same buggy scan, so a blank required section followed by `<!-->`, a genuine
+  // later `##` heading, an unrelated inner HTML comment, and then that heading's
+  // real prose, got misparsed: the inner comment's own `-->` was mistaken for the
+  // fake opener's closer, which hid the real heading (so it was never recognised
+  // as a section boundary) while leaving its real prose to survive the isolated
+  // per-section re-strip and fold backward into the still-open earlier section —
+  // reading as filled in, while the real section vanished entirely. On GitHub this
+  // renders exactly as an honest author would expect; a human reviewer sees
+  // nothing wrong. Reproduced directly against this exact shape before the fix
+  // (`git show HEAD:scripts/ci/lib/pr-body.mjs`, prior to this branch): `sections()`
+  // returned only `["screens opened", "gates"]`, with `"screens opened".content`
+  // equal to `"Ran the integration suite locally against a fresh database."` —
+  // "Testing notes" content, not its own.
+  describe("issue #474 — a bare `<!-->` must not fold a later real heading's content backward into an earlier, blank section", () => {
+    const body = [
+      "## Screens opened",
+      "",
+      "<!-->",
+      "## Testing notes",
+      "",
+      "<!-- optional -->",
+      "Ran the integration suite locally against a fresh database.",
+      "",
+      "## Gates",
+      "",
+      "n/a",
+      "",
+    ].join("\n");
+
+    it("keeps all three sections distinct, each with its own real content", () => {
+      const found = sections(body);
+      assert.deepEqual(
+        [...found.keys()],
+        ["screens opened", "testing notes", "gates"],
+      );
+      assert.equal(found.get("screens opened").content, "");
+      assert.equal(
+        found.get("testing notes").content,
+        "Ran the integration suite locally against a fresh database.",
+      );
+      assert.equal(found.get("gates").content, "n/a");
     });
   });
 
@@ -1413,6 +1518,41 @@ describe("checklistProblems — applicability is per ITEM, not per block", () =>
       large < small * 12,
       `non-linear: ${small} steps -> ${large} steps`,
     );
+  });
+});
+
+// Issue #474's `###`-checklist variant. `headingBlocks()`/`visibleHeadingName()`
+// derive heading visibility from the exact same `survivedRawIndices` ->
+// `stripCommentsWithPositions` mechanism `sections()` uses for `##` headings — so
+// the same bare-`<!-->` bug applies here too: a genuinely blank required block
+// (no checklist at all) followed by `<!-->`, a real later `### ` heading, an
+// unrelated inner comment, and that heading's own prose folds the prose backward
+// into the earlier, still-open block. Since the folded-in prose has no checkboxes,
+// `checklistProblems` treats the block as "prose, not empty" and moves on —
+// silently reporting ZERO problems for a block that is, in truth, entirely blank.
+// Reproduced directly against this exact shape before the fix (`git show
+// HEAD:scripts/ci/lib/pr-body.mjs`, prior to this branch): `checklistProblems`
+// returned `[]`.
+describe("issue #474 (### variant) — a bare `<!-->` must not fold a later block's prose backward, hiding a genuinely blank required block", () => {
+  const raw = [
+    "### Backend change",
+    "",
+    "<!-->",
+    "### Frontend change",
+    "",
+    "<!-- optional -->",
+    "Everything backend-related was already covered elsewhere.",
+    "",
+    "### New feature",
+    "",
+    "n/a",
+    "",
+  ].join("\n");
+
+  it("flags 'Backend change' as blank instead of silently passing it", () => {
+    const problems = checklistProblems(raw);
+    assert.equal(problems.length, 1);
+    assert.match(problems[0], /"Backend change" is blank/);
   });
 });
 
@@ -2388,5 +2528,262 @@ describe("contentOf — L6, blank-rendering NON-format characters are not conten
   it("still keeps real content that merely contains one of them", () => {
     assert.equal(contentOf("re⠀viewed"), "reviewed");
     assert.notEqual(contentOf("ㅤ/projects/1 — 1280x800 — clicked New"), "");
+  });
+});
+
+/**
+ * Every character this suite exercises is built from its CODE POINT, never embedded as a
+ * raw literal — found by the Opus security review of this fix's own first draft: a source
+ * file (this one included) is not the right place to carry a raw bidi override character,
+ * since it renders in every diff viewer, editor and `git blame` exactly like the pull-
+ * request bodies issue #153 is about. `chr` keeps the tracked SOURCE TEXT free of any bidi
+ * or blank-rendering character while the tests still exercise the real ones at runtime.
+ */
+const chr = (codepoint) => String.fromCodePoint(codepoint);
+
+const U_3000_IDEOGRAPHIC_SPACE = chr(0x3000);
+const U_202E_RIGHT_TO_LEFT_OVERRIDE = chr(0x202e);
+const U_202C_POP_DIRECTIONAL_FORMATTING = chr(0x202c);
+
+const BIDI_CONTROL_CODEPOINTS_FOR_TESTS = [
+  [0x061c, "ARABIC LETTER MARK"],
+  [0x200e, "LEFT-TO-RIGHT MARK"],
+  [0x200f, "RIGHT-TO-LEFT MARK"],
+  [0x202a, "LEFT-TO-RIGHT EMBEDDING"],
+  [0x202b, "RIGHT-TO-LEFT EMBEDDING"],
+  [0x202c, "POP DIRECTIONAL FORMATTING"],
+  [0x202d, "LEFT-TO-RIGHT OVERRIDE"],
+  [0x202e, "RIGHT-TO-LEFT OVERRIDE"],
+  [0x2066, "LEFT-TO-RIGHT ISOLATE"],
+  [0x2067, "RIGHT-TO-LEFT ISOLATE"],
+  [0x2068, "FIRST STRONG ISOLATE"],
+  [0x2069, "POP DIRECTIONAL ISOLATE"],
+];
+
+describe("wordBoundaryContentOf — issues #152/#153, contentOf's stripping breaks word-boundary-sensitive parsing", () => {
+  it("issue #152's own repro: U+3000 between two words is a real separator, not deletable content", () => {
+    const raw = `**Spec:** not${U_3000_IDEOGRAPHIC_SPACE}applicable-workflows.md`;
+    // Non-vacuity: contentOf (the function this bug actually lived in) really does fuse
+    // the two words, which is exactly what corrupted `check-reviews.mjs`'s opener
+    // detection -- see check-reviews.mjs's own end-to-end reproduction below for the
+    // full failure this caused.
+    assert.equal(
+      contentOf(raw),
+      "**Spec:** notapplicable-workflows.md",
+      "non-vacuity: contentOf must still fuse the two words here for this to be the bug",
+    );
+    assert.equal(
+      wordBoundaryContentOf(raw),
+      "**Spec:** not applicable-workflows.md",
+      "wordBoundaryContentOf must keep U+3000 as a real space, preserving the boundary",
+    );
+  });
+
+  it("a section made up only of U+3000 is still BLANK -- the fix must not weaken blankness", () => {
+    assert.equal(wordBoundaryContentOf(U_3000_IDEOGRAPHIC_SPACE.repeat(2)), "");
+    assert.equal(
+      wordBoundaryContentOf(
+        `  ${U_3000_IDEOGRAPHIC_SPACE} \n ${U_3000_IDEOGRAPHIC_SPACE}  `,
+      ),
+      "",
+    );
+  });
+
+  it("still strips every other invisible character contentOf strips, identically", () => {
+    for (const codepoint of [
+      0x200b, 0x200c, 0x200d, 0x2060, 0xfeff, 0x00ad, 0x180e,
+    ]) {
+      const char = chr(codepoint);
+      assert.equal(wordBoundaryContentOf(char), "");
+      assert.equal(wordBoundaryContentOf(`re${char}viewed`), "reviewed");
+    }
+  });
+
+  it("issue #152, generalised to the one other L6 filler Unicode does NOT mark default-ignorable: U+2800 is masked to a space too, not just U+3000", () => {
+    // The split is Unicode's own `Default_Ignorable_Code_Point` derived property -- the
+    // one actually designed to answer "was this meant to render invisibly" -- not
+    // `General_Category`, which an earlier revision of this fix used and the Opus
+    // security review caught as the wrong property (a letter-vs-mark classification says
+    // nothing about rendered width). See WORD_SEPARATING_BLANKS's own doc comment for the
+    // full table and citation.
+    for (const codepoint of [0x2800]) {
+      const char = chr(codepoint);
+      const raw = `not${char}applicable-workflows.md`;
+      assert.equal(
+        wordBoundaryContentOf(raw),
+        "not applicable-workflows.md",
+        `expected U+${codepoint.toString(16).toUpperCase()} to be masked to a space, ` +
+          "preserving the word boundary",
+      );
+      // Still blank on its own -- masking to a space cannot weaken blankness, since
+      // INVISIBLE strips the space-adjacent-to-nothing result down to "" via trim().
+      assert.equal(wordBoundaryContentOf(char.repeat(3)), "");
+    }
+  });
+
+  it("does NOT mask any DEFAULT-IGNORABLE L6 filler (U+3164/U+FFA0/U+115F/U+1160/U+17B4/U+17B5) to a space", () => {
+    // Unicode's `Default_Ignorable_Code_Point` property is `true` for all six of these --
+    // verified directly with `/\p{Default_Ignorable_Code_Point}/u`, not assumed. Unicode's
+    // own design intent is that a renderer show NOTHING for these unless a higher-level
+    // protocol specifically supports them, so masking one to a space would make the
+    // PARSER see a word boundary that nothing in the rendered text shows -- the exact
+    // class of mismatch issue #153 is about, via a different character family. These six
+    // must still be deleted (contentOf's original, unchanged behaviour), not masked.
+    // (An earlier revision of this fix used `General_Category` instead, which wrongly
+    // classified U+115F/U+1160 -- both are ordinary letters (`Lo`), not marks -- as safe
+    // to mask; `Default_Ignorable_Code_Point` is the property that actually answers the
+    // question this split needs answered, and it says `true` for both.)
+    for (const codepoint of [0x3164, 0xffa0, 0x115f, 0x1160, 0x17b4, 0x17b5]) {
+      const char = chr(codepoint);
+      const raw = `not${char}applicable-workflows.md`;
+      assert.equal(
+        wordBoundaryContentOf(raw),
+        "notapplicable-workflows.md",
+        `expected U+${codepoint.toString(16).toUpperCase()} to still be DELETED, not ` +
+          "masked to a space that no rendering shows",
+      );
+      // Still blank on its own.
+      assert.equal(wordBoundaryContentOf(char.repeat(3)), "");
+    }
+  });
+
+  it("issue #153's own repro: a bidi override refuses instead of silently vanishing", () => {
+    // U+202E RIGHT-TO-LEFT OVERRIDE: renders the text after it right-to-left on GitHub
+    // without changing the code points a parser (or contentOf) reads -- contentOf's
+    // \p{Cf} strip deletes it silently, so what a human reviewer SAW when the override
+    // was rendered and what the gate actually parsed could permanently disagree.
+    const raw =
+      `**Spec:** not applicable ${U_202E_RIGHT_TO_LEFT_OVERRIDE}workflows.md` +
+      U_202C_POP_DIRECTIONAL_FORMATTING;
+    assert.equal(
+      contentOf(raw).includes(U_202E_RIGHT_TO_LEFT_OVERRIDE),
+      false,
+      "non-vacuity: contentOf really does delete the override silently",
+    );
+    assert.throws(() => wordBoundaryContentOf(raw), BidiControlCharacterError);
+  });
+
+  it("rejects every standard bidi control character, not only U+202E", () => {
+    for (const [codepoint, name] of BIDI_CONTROL_CODEPOINTS_FOR_TESTS) {
+      assert.throws(
+        () => wordBoundaryContentOf(`plain text ${chr(codepoint)} more text`),
+        BidiControlCharacterError,
+        `expected U+${codepoint.toString(16).toUpperCase()} (${name}) to be refused`,
+      );
+    }
+  });
+
+  it("issue #153, found by the Opus security review: a bidi character INSIDE a bold-label-only line (which the scaffolding filter would otherwise DROP whole) is still caught", () => {
+    // The bidi check must run on the comment-stripped text BEFORE the bold-label-only line
+    // filter (`/^\s*\*\*[^*]+:\*\*\s*$/`) -- the label's own `[^*]+` swallows any non-`*`
+    // character, bidi controls included, so a label line carrying one *inside* the label
+    // text ("**No<U+202E>te:**", not after the closing "**") still matches that filter and
+    // is dropped WHOLE by the old ordering. GitHub still renders it as part of the same
+    // paragraph as the line after it, so the override is not actually invisible to a human
+    // reviewer just because this function would otherwise discard that exact line -- the
+    // bidi test must see the text before the filter removes it, not after.
+    const labelLineOnly = `**No${U_202E_RIGHT_TO_LEFT_OVERRIDE}te:**\n**Spec:** n/a`;
+    // Non-vacuity: confirm the label-only filter really does match (and would drop) this
+    // exact line, so the fix is proven against the shape Opus actually found, not a
+    // near-miss that never reached the filter either way.
+    assert.match(
+      labelLineOnly.split("\n")[0],
+      /^\s*\*\*[^*]+:\*\*\s*$/,
+      "the probe line must match contentOf's own label-only filter for this test to mean " +
+        "anything",
+    );
+    assert.throws(
+      () => wordBoundaryContentOf(labelLineOnly),
+      BidiControlCharacterError,
+      "expected a bidi character embedded in an otherwise-dropped label-only line to still " +
+        "be refused",
+    );
+  });
+
+  it("does not reject a harmless Cf character (a zero-width joiner) that cannot reorder rendering", () => {
+    assert.doesNotThrow(() => wordBoundaryContentOf(`re${chr(0x200d)}viewed`));
+  });
+});
+
+describe("meaningfulLines / declaredState — issue #473, the sibling of #152/#153 in a different function", () => {
+  // #470's mandatory Opus security review found that `declaredState`/`meaningfulLines`
+  // apply the identical by-hand INVISIBLE-deletion behaviour `contentOf` does, and
+  // `declaredState`'s own `NOT_APPLICABLE_OPENER` (`/^(?:n\s*\/\s*a|not\s+applicable)\b/i`)
+  // has the exact same dependency on a REAL word boundary between "not" and "applicable"
+  // that #152 was about — just reached through `check-pr-template.mjs`'s `##
+  // Screens opened` n/a detection instead of `check-reviews.mjs`'s Spec field. These tests
+  // reproduce that exposure fail-before/pass-after, the same way `wordBoundaryContentOf`'s
+  // own tests above do.
+
+  it('issue #152\'s own repro, in this sibling function: U+3000 between "not" and "applicable" is a real separator, not deletable content', () => {
+    const raw = `not${U_3000_IDEOGRAPHIC_SPACE}applicable — nothing visual`;
+    // Non-vacuity: contentOf's plain INVISIBLE deletion (meaningfulLines' OLD behaviour,
+    // before this fix) really does fuse the two words, which is exactly what made an
+    // honest n/a read as "provided" instead of "not-applicable". Reuses contentOf rather
+    // than re-deriving the INVISIBLE regex here, so this assertion cannot drift from it.
+    assert.equal(
+      contentOf(raw),
+      "notapplicable — nothing visual",
+      "non-vacuity: plain INVISIBLE deletion must still fuse the two words here",
+    );
+    assert.deepEqual(meaningfulLines(raw), ["not applicable — nothing visual"]);
+    assert.equal(declaredState(raw).state, "not-applicable");
+    assert.equal(effectivelyNotApplicable(raw), true);
+  });
+
+  it("issue #152, generalised: U+2800 between the two words is also masked to a space, not just U+3000", () => {
+    const raw = `not${chr(0x2800)}applicable — nothing visual`;
+    assert.equal(declaredState(raw).state, "not-applicable");
+  });
+
+  it("a section made up only of U+3000 is still EMPTY — the fix must not weaken blankness", () => {
+    assert.deepEqual(meaningfulLines(U_3000_IDEOGRAPHIC_SPACE.repeat(3)), []);
+    assert.equal(
+      declaredState(U_3000_IDEOGRAPHIC_SPACE.repeat(3)).state,
+      "empty",
+    );
+  });
+
+  it("still deletes every DEFAULT-IGNORABLE L6 filler, unchanged — does not mask U+3164/U+FFA0/U+115F/U+1160/U+17B4/U+17B5", () => {
+    for (const codepoint of [0x3164, 0xffa0, 0x115f, 0x1160, 0x17b4, 0x17b5]) {
+      const char = chr(codepoint);
+      assert.deepEqual(
+        meaningfulLines(`not${char}applicable-workflows.md`),
+        ["notapplicable-workflows.md"],
+        `expected U+${codepoint.toString(16).toUpperCase()} to still be deleted, not masked`,
+      );
+    }
+  });
+
+  it("issue #153's own class DOES apply here: a bidi override in the Screens-opened section refuses instead of silently vanishing", () => {
+    const raw = `n/a ${U_202E_RIGHT_TO_LEFT_OVERRIDE}not applicable${U_202C_POP_DIRECTIONAL_FORMATTING}`;
+    assert.throws(() => meaningfulLines(raw), BidiControlCharacterError);
+    assert.throws(() => declaredState(raw), BidiControlCharacterError);
+    assert.throws(
+      () => effectivelyNotApplicable(raw),
+      BidiControlCharacterError,
+    );
+  });
+
+  it("rejects every standard bidi control character in declaredState, not only U+202E", () => {
+    for (const [codepoint, name] of BIDI_CONTROL_CODEPOINTS_FOR_TESTS) {
+      assert.throws(
+        () => declaredState(`plain text ${chr(codepoint)} more text`),
+        BidiControlCharacterError,
+        `expected U+${codepoint.toString(16).toUpperCase()} (${name}) to be refused`,
+      );
+    }
+  });
+
+  it("catches a bidi character inside a bold-label-only line the scaffolding filter would otherwise drop whole", () => {
+    const labelLineOnly = `**No${U_202E_RIGHT_TO_LEFT_OVERRIDE}te:**\nn/a — no UI`;
+    assert.throws(
+      () => meaningfulLines(labelLineOnly),
+      BidiControlCharacterError,
+    );
+  });
+
+  it("does not reject a harmless Cf character (a zero-width joiner) that cannot reorder rendering", () => {
+    assert.doesNotThrow(() => declaredState(`n/a ${chr(0x200d)}— no UI`));
   });
 });

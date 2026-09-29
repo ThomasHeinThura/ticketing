@@ -63,6 +63,20 @@ export function stripCommentsStepsForTests() {
  * direction for a gate — a section whose content hides behind an unclosed
  * comment reads as empty and the check fails, rather than counting text that a
  * reviewer cannot see.
+ *
+ * **`<!-->` and `<!--->` are complete, self-closing EMPTY comments on their
+ * own** — not an opener that waits for the next `-->` anywhere later in the
+ * string (issue #474). Verified against both the CommonMark spec and GitHub's
+ * own `cmark-gfm` test suite: everything after one of these two short forms
+ * is ordinary visible text on GitHub, never comment content. Before this fix,
+ * `stripComments("<!-->real text-->")` returned `""` — it detected the `<!--`
+ * opener inside `<!-->`, then scanned forward to the FAR `-->` at the end and
+ * deleted everything in between, silently swallowing "real text" as if it
+ * were hidden, when a human reviewer sees it rendered in plain sight. That
+ * was a genuine gate bypass: `sections()` reattaches text a comment appears
+ * to hide to whatever section is still open, so a real, later `## heading`
+ * placed after a bare `<!-->` could fold its content backward into an
+ * earlier, otherwise-blank required section.
  */
 export function stripComments(markdown) {
   const out = [];
@@ -95,6 +109,23 @@ export function stripComments(markdown) {
       out[end - 1] === "-"
     ) {
       out.length = end - 4;
+
+      // `<!-->` (this opener immediately followed by `>`) or `<!--->` (this
+      // opener immediately followed by `->`) is already a COMPLETE, empty
+      // comment — see the doc comment above. Consume just the closing
+      // characters and keep scanning from there, rather than treating this
+      // as an opener still waiting for a later `-->`.
+      if (markdown[i] === ">") {
+        i += 1;
+        stripCommentsSteps += 1;
+        continue;
+      }
+      if (markdown[i] === "-" && markdown[i + 1] === ">") {
+        i += 2;
+        stripCommentsSteps += 2;
+        continue;
+      }
+
       const close = findClose(i);
       if (close !== -1) stripCommentsSteps += 3; // the closing marker itself
       i = close === -1 ? markdown.length : close + 3;
@@ -142,6 +173,22 @@ function stripCommentsWithPositions(markdown) {
     ) {
       out.length = end - 4;
       positions.length = end - 4;
+
+      // Same complete-empty-comment special case as `stripComments` — see
+      // its doc comment (issue #474). This function backs `sections()`'s and
+      // `headingBlocks()`'s comment-visibility checks via `survivedRawIndices`,
+      // so the same fix closes the gap for both the `##` and the `###`
+      // heading variants at their one shared root, rather than patching each
+      // caller separately.
+      if (markdown[i] === ">") {
+        i += 1;
+        continue;
+      }
+      if (markdown[i] === "-" && markdown[i + 1] === ">") {
+        i += 2;
+        continue;
+      }
+
       const close = markdown.indexOf("-->", i);
       i = close === -1 ? markdown.length : close + 3;
     }
@@ -366,6 +413,162 @@ export function contentOf(markdown) {
     .filter((line) => !/^\s*\*\*[^*]+:\*\*\s*$/.test(line))
     .filter((line) => !/^\s*-{3,}\s*$/.test(line))
     .join("\n")
+    .replace(INVISIBLE, "")
+    .trim();
+}
+
+/**
+ * Thrown by `wordBoundaryContentOf` when the text contains a bidi control character
+ * (issue #153) — see that function's doc comment for why this refuses rather than strips.
+ */
+export class BidiControlCharacterError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "BidiControlCharacterError";
+  }
+}
+
+/**
+ * The standard Unicode bidirectional-formatting control characters, as CODE POINTS rather
+ * than embedded literal characters — found by the Opus security review of this very fix:
+ * a source file is not the right place to carry a raw bidi override character, even inside
+ * a regex meant to detect one. A raw literal renders in every diff viewer, editor and
+ * `git blame` exactly like the pull-request bodies this check exists to catch, which is the
+ * one thing a file fixing issue #153 should not itself do. Building the pattern from
+ * `String.fromCodePoint` keeps the tracked SOURCE TEXT free of any bidi character while the
+ * compiled regex still matches all twelve at runtime.
+ *
+ * This is the exact, closed set flagged by the "Trojan Source" paper and Unicode TR36/UAX#9
+ * (`Bidi_Control=Yes`) — not the whole `\p{Cf}` category `INVISIBLE` strips: a zero-width
+ * joiner is Cf too, but it cannot reorder how anything renders, so it stays silently
+ * stripped by `contentOf` for blankness purposes. Only these twelve get the fail-closed
+ * treatment.
+ */
+const BIDI_CONTROL_CODEPOINTS = [
+  0x061c, // ARABIC LETTER MARK
+  0x200e, // LEFT-TO-RIGHT MARK
+  0x200f, // RIGHT-TO-LEFT MARK
+  0x202a, // LEFT-TO-RIGHT EMBEDDING
+  0x202b, // RIGHT-TO-LEFT EMBEDDING
+  0x202c, // POP DIRECTIONAL FORMATTING
+  0x202d, // LEFT-TO-RIGHT OVERRIDE
+  0x202e, // RIGHT-TO-LEFT OVERRIDE
+  0x2066, // LEFT-TO-RIGHT ISOLATE
+  0x2067, // RIGHT-TO-LEFT ISOLATE
+  0x2068, // FIRST STRONG ISOLATE
+  0x2069, // POP DIRECTIONAL ISOLATE
+];
+const BIDI_CONTROL_CHARS = new RegExp(
+  `[${BIDI_CONTROL_CODEPOINTS.map((cp) => String.fromCodePoint(cp)).join("")}]`,
+  "u",
+);
+
+/**
+ * Shared verbatim between every `BidiControlCharacterError` thrown in this file
+ * (`wordBoundaryContentOf` and `meaningfulLines`) — found by ordinary review as
+ * duplicated-by-hand text that could silently drift between the two call sites if either
+ * were edited alone. One string, one place to keep it accurate.
+ */
+const BIDI_CONTROL_CHARACTER_MESSAGE =
+  "contains a bidi control character (e.g. U+202E RIGHT-TO-LEFT OVERRIDE), which can " +
+  "render differently to a human reviewer than the text this check actually parses. " +
+  "Remove it and resubmit.";
+
+/**
+ * The blank-RENDERING characters `INVISIBLE` strips (see its own doc comment) that Unicode
+ * itself designates as NOT default-ignorable — i.e. intended to occupy a real, visible
+ * position, a blank cell a human's eye registers as a gap between two things, rather than
+ * being designed to vanish. U+3000 IDEOGRAPHIC SPACE is the one issue #152 actually
+ * reproduced: CJK input methods commit it as an ordinary space key routinely, so
+ * `"not　applicable"` is two words to any human, but `contentOf` collapses it to
+ * `"notapplicable"`.
+ *
+ * The split from `INVISIBLE`'s full L6 list went through two wrong criteria before landing
+ * here, both found by adversarial review, kept in this history rather than silently
+ * smoothed over:
+ *
+ * 1. An unsourced assertion ("these specific characters render with no width") — flagged
+ *    by ordinary review as unverifiable, and correctly so.
+ * 2. `General_Category` (`Mn` excluded as a combining mark, everything else masked) —
+ *    checkable, but the WRONG property: `General_Category` classifies what KIND of
+ *    character something is (a letter, a mark, a symbol...), not whether it renders with
+ *    visible width. It let U+115F/U+1160 (`Lo`, an ordinary letter category) through as
+ *    "has width" purely because they are not `Mn`, which the Opus security review of this
+ *    fix caught as unsupported — `Lo` says nothing about rendering.
+ *
+ * The actual, purpose-built Unicode property for "was this code point DESIGNED to be
+ * invisible unless a renderer specifically opts to display it" is
+ * **`Default_Ignorable_Code_Point`** — a derived binary property in
+ * `DerivedCoreProperties.txt`, checkable directly with a Unicode property escape
+ * (`/\p{Default_Ignorable_Code_Point}/u.test(ch)`, supported by both Node's and every
+ * modern browser's regex engine — no external data file needed). Checked for every
+ * character in `INVISIBLE`'s L6 addition plus U+3000:
+ *
+ * | Character | `Default_Ignorable_Code_Point` |
+ * | --- | --- |
+ * | U+3000 IDEOGRAPHIC SPACE | `false` |
+ * | U+2800 BRAILLE PATTERN BLANK | `false` |
+ * | U+3164 HANGUL FILLER | `true` |
+ * | U+FFA0 HALFWIDTH HANGUL FILLER | `true` |
+ * | U+115F HANGUL CHOSEONG FILLER | `true` |
+ * | U+1160 HANGUL JUNGSEONG FILLER | `true` |
+ * | U+17B4 KHMER VOWEL INHERENT AQ | `true` |
+ * | U+17B5 KHMER VOWEL INHERENT AA | `true` |
+ *
+ * Only U+3000 and U+2800 are NOT default-ignorable — Unicode's own design intent is that
+ * they occupy a real, rendered position, so masking them to an ordinary space is safe and
+ * correct. Every other L6 character IS default-ignorable — by Unicode's own definition,
+ * text presented to a person should NOT display anything for it "unless the code point is
+ * used with an appropriate combination of other formatting or invisible characters, in the
+ * context of a particular higher-level protocol" — so masking one to a space would create a
+ * word boundary a human viewer would not perceive, the exact render/parse mismatch issue
+ * #153 is about, from a different character family. Those six stay covered by `INVISIBLE`'s
+ * plain deletion, unchanged from `contentOf`'s original behaviour.
+ *
+ * Masking to a space rather than deleting cannot weaken blankness: a section made only of
+ * these characters still trims away to `""` once `INVISIBLE` runs afterward.
+ */
+const WORD_SEPARATING_BLANKS = /[⠀　]/gu;
+
+/**
+ * Like `contentOf`, but for a caller that parses the result for WORD-BOUNDARY-SENSITIVE
+ * decisions — recognising a two-word opener like "not applicable", or extracting a
+ * filename — rather than merely testing whether a section is blank.
+ *
+ * Every invisible character `contentOf` strips is still stripped here, with two
+ * differences:
+ *
+ * 1. `WORD_SEPARATING_BLANKS` (issue #152) is masked to an ordinary space instead of
+ *    deleted, so a real word boundary survives instead of silently fusing two words.
+ * 2. A bidi control character (issue #153) is refused outright — `BidiControlCharacterError`
+ *    — instead of silently deleted. Deleting it would let a pull-request body RENDER one
+ *    way to a human reviewer (the override in effect) while this function hands a parser a
+ *    different, override-free string — a "Trojan Source" mismatch between what looks
+ *    approved and what the gate actually checked. Fail-closed is the same choice
+ *    `loadPullRequestHead` already makes for an unreadable event payload, for the identical
+ *    reason: silently substituting something plausible is worse than stopping and saying so.
+ *
+ * The bidi check runs on the COMMENT-STRIPPED text, before the template-scaffolding line
+ * filters below — found by the Opus security review of this fix: a bidi character sitting
+ * on a line the scaffolding filter would otherwise drop (a bare `**Label:**` line, or a
+ * `---` rule) still renders as part of the same paragraph on GitHub once adjacent lines are
+ * joined, so it must be caught even though that exact line never reaches the returned text.
+ *
+ * @param {string} markdown
+ * @returns {string}
+ */
+export function wordBoundaryContentOf(markdown) {
+  const commentsStripped = stripComments(markdown);
+  if (BIDI_CONTROL_CHARS.test(commentsStripped)) {
+    throw new BidiControlCharacterError(BIDI_CONTROL_CHARACTER_MESSAGE);
+  }
+  const stripped = commentsStripped
+    .split("\n")
+    .filter((line) => !/^\s*\*\*[^*]+:\*\*\s*$/.test(line))
+    .filter((line) => !/^\s*-{3,}\s*$/.test(line))
+    .join("\n");
+  return stripped
+    .replace(WORD_SEPARATING_BLANKS, " ")
     .replace(INVISIBLE, "")
     .trim();
 }
@@ -974,15 +1177,41 @@ const BLOCKED_EXPLANATION_MINIMUM = 40;
 
 /**
  * The lines of a section that carry content — comments stripped, template scaffolding and
- * invisible-only lines dropped. Shares its rules with `contentOf` so the two cannot drift.
+ * invisible-only lines dropped. Shares `contentOf`'s rules for what counts as blank, with
+ * the same two WORD-BOUNDARY-SENSITIVE exceptions `wordBoundaryContentOf` makes for
+ * `check-reviews.mjs` (issues #152/#153) — this function feeds `declaredState`'s own
+ * opener detection (`NOT_APPLICABLE_OPENER` needs real whitespace between "not" and
+ * "applicable"), the identical dependency in a sibling function, found by the mandatory
+ * Opus security review of #470 and tracked as #473:
+ *
+ * 1. `WORD_SEPARATING_BLANKS` (issue #152) is masked to an ordinary space instead of
+ *    deleted, so `"not　applicable"` (U+3000 IDEOGRAPHIC SPACE, routine from CJK input
+ *    methods) reads as two words instead of silently fusing into "notapplicable" — which
+ *    `NOT_APPLICABLE_OPENER` would never recognise, so an honest n/a declaration reads as
+ *    `state: "provided"` instead of `"not-applicable"`.
+ * 2. A bidi control character (issue #153) is refused outright — `BidiControlCharacterError`
+ *    — instead of silently deleted, for the same Trojan-Source-class reason
+ *    `wordBoundaryContentOf` refuses one: deleting it could make a PR body render one way to
+ *    a human reviewer and parse a different way to this gate. Checked on the
+ *    comment-stripped text before the scaffolding-line filters below, for the same reason
+ *    `wordBoundaryContentOf` does — a bidi character sitting on a line those filters would
+ *    otherwise drop whole (a bare `**Label:**` line, a `---` rule) still renders as part of
+ *    the same paragraph on GitHub.
  *
  * @param {string} markdown
  * @returns {string[]}
+ * @throws {BidiControlCharacterError} if the text contains a bidi control character.
  */
 export function meaningfulLines(markdown) {
-  return stripComments(markdown)
+  const commentsStripped = stripComments(markdown);
+  if (BIDI_CONTROL_CHARS.test(commentsStripped)) {
+    throw new BidiControlCharacterError(BIDI_CONTROL_CHARACTER_MESSAGE);
+  }
+  return commentsStripped
     .split("\n")
-    .map((line) => line.replace(INVISIBLE, "").trim())
+    .map((line) =>
+      line.replace(WORD_SEPARATING_BLANKS, " ").replace(INVISIBLE, "").trim(),
+    )
     .filter(
       (line) =>
         line !== "" &&
@@ -1002,6 +1231,7 @@ export function meaningfulLines(markdown) {
 /**
  * @param {string} text a section's raw markdown
  * @returns {SectionState}
+ * @throws {BidiControlCharacterError} propagated from `meaningfulLines` — see there.
  */
 export function declaredState(text) {
   const lines = meaningfulLines(text);
@@ -1045,6 +1275,8 @@ export function declaredState(text) {
  *
  * Used for `## Screens opened` when apps/web/** changed, where AGENTS.md do-not 18 asks
  * for the screens you actually opened and no reason substitutes for that.
+ *
+ * @throws {BidiControlCharacterError} propagated from `declaredState` — see there.
  */
 export function effectivelyNotApplicable(text) {
   const { state } = declaredState(text);

@@ -1,7 +1,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { projectTable, workItemTable } from "../../database/schema";
+import { workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
   type ActivityActorType,
@@ -11,6 +11,10 @@ import {
   resolveVisibility,
   type WorkItemFieldSnapshot,
 } from "../activity";
+import {
+  assertProjectStillLive,
+  projectNotDeletedClause,
+} from "../assert-work-item-live";
 
 export type UpdateWorkItemInput = {
   title?: string;
@@ -89,6 +93,18 @@ export class WorkItemVersionConflictError extends Error {
  * the final `UPDATE`'s `WHERE`, redundant with the lock but cheap defence in depth and
  * exactly the same clause the previous design relied on alone.
  *
+ * Issue #276: the row's OWN `deleted_at`/`archived_at` are checked too, but in only ONE
+ * place -- the locking `SELECT ... FOR UPDATE`'s own `WHERE` below -- unlike
+ * `projectNotDeleted` above. That single check is enough here: `deleted_at`/`archived_at`
+ * live on THIS SAME row, so once the `FOR UPDATE` select takes its lock, no concurrent
+ * `DELETE /api/work-items/{key}` (or any other writer of this row) can commit a change to
+ * it until this transaction finishes -- there is no unlocked window for either column to
+ * change out from under the final `UPDATE`, the way a soft-delete on the SEPARATE
+ * `project` row (not locked by this statement) can. `requireWorkItemReach()` already
+ * checks both columns before this transaction starts; this closes the same
+ * reach-check-to-transaction race #204/T3 closed for the project case, for this route's
+ * own row.
+ *
  * `WI-6`'s rows are written in the SAME transaction as the field update -- if the
  * activity insert fails, the whole update rolls back (`recordWorkItemActivity` is
  * awaited before the transaction returns, and any error it throws propagates out of
@@ -118,10 +134,6 @@ export async function updateWorkItem(
   if (input.startDate !== undefined) values.startDate = input.startDate;
   if (input.dueDate !== undefined) values.dueDate = input.dueDate;
 
-  // #202 / PR #204's freeze invariant -- see this function's own doc comment above for
-  // why it is applied in two places now instead of one.
-  const projectNotDeleted = sql`EXISTS (SELECT 1 FROM ${projectTable} WHERE ${projectTable.id} = ${workItemTable.projectId} AND ${projectTable.deletedAt} IS NULL)`;
-
   const { updated, activityRows } = await db.transaction(async (tx) => {
     const [locked] = await tx
       .select()
@@ -130,32 +142,26 @@ export async function updateWorkItem(
         and(
           eq(workItemTable.key, key),
           eq(workItemTable.workspaceId, workspaceId),
+          // Issue #276: same guard `requireWorkItemReach()` applies before this
+          // transaction starts, re-checked here to close the reach-check-to-lock race --
+          // see this function's own doc comment above for why one check suffices for
+          // these two columns.
+          isNull(workItemTable.deletedAt),
+          isNull(workItemTable.archivedAt),
         ),
       )
       .for("update");
 
     if (!locked) {
-      // Genuinely gone -- deleted, or moved out of this workspace -- since the
+      // Genuinely gone -- deleted, archived, or moved out of this workspace -- since the
       // reach-check middleware ran. 404, matching that middleware's own "not there"
       // outcome for this route.
       throw new HTTPException(404, { message: "Work item not found" });
     }
 
-    const [projectAlive] = await tx
-      .select({ id: projectTable.id })
-      .from(projectTable)
-      .where(
-        and(
-          eq(projectTable.id, locked.projectId),
-          isNull(projectTable.deletedAt),
-        ),
-      );
-
-    if (!projectAlive) {
-      // Its project was soft-deleted since the reach-check middleware ran (or is
-      // already soft-deleted and the middleware raced) -- 404, not a version conflict.
-      throw new HTTPException(404, { message: "Work item not found" });
-    }
+    // Its project may have been soft-deleted since the reach-check middleware ran (or
+    // is already soft-deleted and the middleware raced) -- 404, not a version conflict.
+    await assertProjectStillLive(tx, locked.projectId);
 
     if (locked.version !== assertedVersion) {
       throw new WorkItemVersionConflictError(assertedVersion, locked.version);
@@ -168,7 +174,7 @@ export async function updateWorkItem(
         and(
           eq(workItemTable.id, locked.id),
           eq(workItemTable.version, assertedVersion),
-          projectNotDeleted,
+          projectNotDeletedClause,
         ),
       )
       .returning();

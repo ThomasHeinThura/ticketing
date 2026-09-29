@@ -28,6 +28,7 @@
 
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
+import { isBuiltin } from "node:module";
 import path from "node:path";
 import process from "node:process";
 import * as ts from "typescript/unstable/ast";
@@ -967,28 +968,36 @@ function resolveWorkspaceTarget(
       workspace: ownerForFile(packageTarget.absolute, names),
       file: packageTarget.absolute,
     };
+  let sawRealDeclaration = false;
   if (imported.node) {
     const symbol = project?.checker.getSymbolAtLocation(imported.node);
     for (const declaration of symbol?.declarations ?? []) {
       // Skip ambient module augmentations (`declare module "some-package" { ... }`,
       // ts.SyntaxKind.ModuleDeclaration with a string-literal name) when this fallback
-      // walks a bare specifier's declarations. This branch only runs for specifiers that
-      // are neither a workspace name nor a declared/aliased dependency (the checks above
-      // already handled those) — i.e. third-party packages — so a workspace-owned
-      // ModuleDeclaration found here can never be that package's real home; it only
-      // proves someone augmented it from workspace source. TypeScript's declaration
-      // merging still attaches such a block to the target module's symbol from wherever
-      // it's written, and the module's own true declaration (its resolved SourceFile) can
-      // sort after it in `symbol.declarations` — order this gate doesn't control. Trusting
-      // whichever comes first attributed every `import ... from "vitest"` in the monorepo
-      // to whichever workspace happened to declare `declare module "vitest" { ... }`
-      // (packages/ui's a11y.ts), producing 69 false "outside the workspace edge matrix"
-      // violations (#389/#390, tracked as #393). Skipping augmentations here falls through
-      // to the module's real declaration when one exists, or to "unresolved" (no violation)
-      // when it doesn't — never to a workspace that merely typed the module.
+      // walks a bare specifier's declarations. This branch runs for any specifier that
+      // reaches it unresolved by the checks above — a bare third-party package name, but
+      // also a relative specifier (`./…`, `../…`), since that case is only excluded further
+      // below, not before this point. A workspace-owned ModuleDeclaration found here can
+      // never be the specifier's real home; it only proves someone augmented that module
+      // from workspace source. The hazard isn't array order — in the real repro, the
+      // module's own declaration consistently comes first, not last. This file resolves
+      // symbols through TypeScript 7's native API (`typescript/unstable/sync`), where every
+      // declaration handle, regardless of node kind, carries a real `.path` for its
+      // containing file. A third-party module's own declaration lives under
+      // `node_modules`, outside every workspace, so `ownerForFile` returns null for it and
+      // the loop just continues past it — but an augmentation written into workspace source
+      // has a `.path` that *does* fall inside a workspace, so it's the one declaration
+      // `ownerForFile` matches, and it wins regardless of where it sits in the array.
+      // Without this guard, one `declare module "vitest" { ... }` (packages/ui's a11y.ts)
+      // attributed every `import ... from "vitest"` in the monorepo to `@taskdesk/ui`,
+      // producing 69 false "outside the workspace edge matrix" violations (#389/#390,
+      // tracked as #393). Skipping augmentations here falls through to the module's real
+      // declaration when one exists, or to "unresolved" (no violation) when it doesn't —
+      // never to a workspace that merely typed the module.
       if (declaration.kind === ts.SyntaxKind.ModuleDeclaration) continue;
       const resolvedFile = declaration.path;
       if (typeof resolvedFile !== "string") continue;
+      sawRealDeclaration = true;
       const workspace = ownerForFile(resolvedFile, names);
       if (workspace) return { workspace, file: resolvedFile };
     }
@@ -999,6 +1008,32 @@ function resolveWorkspaceTarget(
       path.resolve(path.dirname(file), specifier);
     const workspace = ownerForFile(resolved, names);
     return workspace ? { workspace, file: resolved } : null;
+  }
+  // F3 (#424): a bare specifier this checker could not tie to any real declaration at all —
+  // no symbol, or every declaration found was an ambient `declare module` shim skipped
+  // above — might still be a genuine cross-workspace import, reaching its target through a
+  // mechanism TypeScript can't type-resolve (so the shim, wherever it happens to sit, is
+  // the only clue). Rather than trust symbol resolution for this last-resort case, fall
+  // back to what the specifier's own workspace actually declares: a real dependency (in any
+  // of package.json's four dependency fields) is legitimate even if this checker can't see
+  // where it resolves; a bare specifier that is neither a Node builtin nor a declared
+  // dependency has no legitimate story and is flagged directly, closing the gap without
+  // needing to reconstruct what the shim was hiding.
+  if (!sawRealDeclaration && !isBuiltin(specifier)) {
+    const packageName = packageNameForSpecifier(specifier);
+    const dependencyFields = {
+      ...owner.manifest.dependencies,
+      ...owner.manifest.devDependencies,
+      ...owner.manifest.optionalDependencies,
+      ...owner.manifest.peerDependencies,
+    };
+    // Object.hasOwn, not the `in` operator: `in` also matches inherited Object.prototype
+    // properties (toString, constructor, __proto__, ...), so a specifier literally named
+    // "toString" would otherwise read as "declared" without ever appearing in any
+    // package.json.
+    const declared =
+      packageName && Object.hasOwn(dependencyFields, packageName);
+    if (packageName && !declared) return { undeclaredDependency: true };
   }
   return null;
 }
@@ -1136,14 +1171,21 @@ export async function analyzeDependencies(root = repoRoot) {
       }
 
       for (const imported of imports) {
-        if (
-          imported.specifier === DYNAMIC_SPECIFIER ||
-          FLAGGED_MESSAGES[imported.specifier]
-        ) {
+        // Object.hasOwn, not bracket-truthiness: a bare `FLAGGED_MESSAGES[specifier]` read
+        // matches `Object.prototype` own accessors like `__proto__` (returns the prototype
+        // itself, truthy but not callable) for specifiers this table never declared, which
+        // then throws when called as a function below instead of falling through cleanly.
+        const flaggedMessage = Object.hasOwn(
+          FLAGGED_MESSAGES,
+          imported.specifier,
+        )
+          ? FLAGGED_MESSAGES[imported.specifier]
+          : undefined;
+        if (imported.specifier === DYNAMIC_SPECIFIER || flaggedMessage) {
           violations.push(
             violation(
               relativeFile,
-              FLAGGED_MESSAGES[imported.specifier]?.(imported.line) ??
+              flaggedMessage?.(imported.line) ??
                 `line ${imported.line} uses a non-static module specifier; package boundaries cannot be proven`,
             ),
           );
@@ -1162,6 +1204,15 @@ export async function analyzeDependencies(root = repoRoot) {
             violation(
               relativeFile,
               `line ${imported.line} uses an unresolved or ambiguous bundler alias "${imported.specifier}"`,
+            ),
+          );
+          continue;
+        }
+        if (target?.undeclaredDependency) {
+          violations.push(
+            violation(
+              relativeFile,
+              `line ${imported.line} imports "${imported.specifier}", which is not declared as a dependency in ${owner.name}/package.json and could not be resolved to a workspace package or file`,
             ),
           );
           continue;

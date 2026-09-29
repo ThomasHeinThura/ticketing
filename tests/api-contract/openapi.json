@@ -1317,6 +1317,48 @@
           "externalUrl"
         ]
       },
+      "CannedResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workspaceId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "body": {},
+          "visibilityDefault": {
+            "type": "string",
+            "description": "One of: public, internal."
+          },
+          "createdBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workspaceId",
+          "name",
+          "visibilityDefault",
+          "createdBy",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
       "Comment": {
         "type": "object",
         "properties": {
@@ -2521,6 +2563,81 @@
           "effects",
           "createdAt",
           "updatedAt"
+        ]
+      },
+      "WorkflowVersionValidation": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "unreachableStateTemplateIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "noOutboundStateTemplateIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rolesWithNoLegalTransition": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkflowVersionProjectValidation"
+            }
+          }
+        },
+        "required": [
+          "valid",
+          "unreachableStateTemplateIds",
+          "noOutboundStateTemplateIds",
+          "rolesWithNoLegalTransition",
+          "projects"
+        ]
+      },
+      "WorkflowVersionProjectValidation": {
+        "type": "object",
+        "properties": {
+          "projectId": {
+            "type": "string"
+          },
+          "valid": {
+            "type": "boolean"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "refusedStateTemplateIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "stuckWorkItemKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "projectId",
+          "valid",
+          "errors",
+          "refusedStateTemplateIds",
+          "stuckWorkItemKeys"
         ]
       },
       "PendingInvitation": {
@@ -3755,6 +3872,45 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "activity",
+              "comment"
+            ],
+            "description": "Always present at runtime -- \"activity\" for an activity-table row, \"comment\" for a posted comment. Optional in the schema (not the pre-#452 contract) so this remains an additive change, not a breaking one."
+          },
+          "body": {
+            "description": "Comment rows only: the Tiptap document, or null if deleted (CA-18)."
+          },
+          "activityId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Comment rows only: see comment.activity_id in the data model."
+          },
+          "editedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Comment rows only (CA-17)."
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Comment rows only (CA-18 tombstone)."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Comment rows only."
           }
         },
         "required": [
@@ -3793,6 +3949,210 @@
           "assigneeId",
           "previousAssigneeId",
           "version"
+        ]
+      },
+      "TransitionedWorkItem": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "stateId": {
+            "type": "string"
+          },
+          "assigneeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "stateId",
+          "assigneeId",
+          "resolvedAt",
+          "version"
+        ]
+      },
+      "WorkItemTransitionBlocked": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "blockedBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkItemTransitionBlockReason"
+            }
+          }
+        },
+        "required": [
+          "message",
+          "blockedBy"
+        ]
+      },
+      "WorkItemTransitionBlockReason": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "reasonCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "reasonCode"
+        ]
+      },
+      "WorkItemTransitionOffer": {
+        "type": "object",
+        "properties": {
+          "transitionId": {
+            "type": "string"
+          },
+          "toStateTemplateId": {
+            "type": "string"
+          },
+          "toStateId": {
+            "type": "string"
+          },
+          "notePolicy": {
+            "type": "string",
+            "enum": [
+              "none",
+              "optional",
+              "required"
+            ]
+          },
+          "noteVisibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "internal"
+            ]
+          },
+          "requiresApproval": {
+            "type": "boolean"
+          },
+          "requiresCab": {
+            "type": "boolean"
+          },
+          "isReopen": {
+            "type": "boolean"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "blockedBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkItemTransitionBlockReason"
+            }
+          }
+        },
+        "required": [
+          "transitionId",
+          "toStateTemplateId",
+          "toStateId",
+          "notePolicy",
+          "noteVisibility",
+          "requiresApproval",
+          "requiresCab",
+          "isReopen",
+          "available",
+          "blockedBy"
+        ]
+      },
+      "AttachmentPresignResult": {
+        "type": "object",
+        "properties": {
+          "attachmentId": {
+            "type": "string"
+          },
+          "uploadUrl": {
+            "type": "string"
+          },
+          "uploadHeaders": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "attachmentId",
+          "uploadUrl",
+          "uploadHeaders"
+        ]
+      },
+      "Attachment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "workItemId": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "state": {
+            "type": "string",
+            "description": "One of: pending, ready, deleted."
+          },
+          "customerVisible": {
+            "type": "boolean"
+          },
+          "uploadedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deletedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workItemId",
+          "filename",
+          "mimeType",
+          "size",
+          "state",
+          "customerVisible",
+          "uploadedBy",
+          "createdAt",
+          "deletedAt"
         ]
       },
       "UserAvatar": {
@@ -4007,6 +4367,173 @@
           },
           "404": {
             "description": "The filesystem storage driver is not active",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/storage/filesystem-attachment-upload": {
+      "put": {
+        "operationId": "uploadFilesystemAttachmentObject",
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Upload attachment bytes to the filesystem storage driver",
+        "description": "The local equivalent of a presigned S3 PUT for an attachment, minted by POST /api/work-items/{key}/attachments/presign when TASKDESK_STORAGE_DRIVER is filesystem (the default). Not authenticated by a browser session -- the signed token in the query string, which also binds the exact size ceiling that was validated at presign time, is the credential.",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "key",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "required": true,
+            "name": "maxBytes",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "required": true,
+            "name": "expires",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "token",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Stored"
+          },
+          "400": {
+            "description": "Invalid key, expired or invalid token, or the upload exceeds the signed limit",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The filesystem storage driver is not active",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/storage/filesystem-download": {
+      "get": {
+        "operationId": "downloadFilesystemAttachmentObject",
+        "tags": [
+          "Assets"
+        ],
+        "summary": "Download attachment bytes from the filesystem storage driver",
+        "description": "The local equivalent of a presigned S3 GET, minted by GET /api/attachments/{id} when TASKDESK_STORAGE_DRIVER is filesystem.",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "key",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "required": true,
+            "name": "expires",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "token",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "filename",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The attachment binary stream",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid key, or expired or invalid token",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The filesystem storage driver is not active, or the object is gone",
             "content": {
               "text/plain": {
                 "schema": {
@@ -8446,6 +8973,304 @@
         }
       }
     },
+    "/canned-responses": {
+      "get": {
+        "operationId": "listCannedResponses",
+        "tags": [
+          "Canned responses"
+        ],
+        "summary": "List canned responses",
+        "description": "A workspace's reusable composer snippets (`CA-19`).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The workspace's canned responses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CannedResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createCannedResponse",
+        "tags": [
+          "Canned responses"
+        ],
+        "summary": "Create canned response",
+        "description": "Requires `workspace:manage_settings` (`CA-19`).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "body": {},
+                  "visibilityDefault": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "internal"
+                    ]
+                  }
+                },
+                "required": [
+                  "workspaceId",
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created canned response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CannedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, or workspace ID could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A canned response with this name already exists",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/canned-responses/{id}": {
+      "patch": {
+        "operationId": "updateCannedResponse",
+        "tags": [
+          "Canned responses"
+        ],
+        "summary": "Update canned response",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "body": {},
+                  "visibilityDefault": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "internal"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated canned response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CannedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Canned response not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A canned response with this name already exists",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteCannedResponse",
+        "tags": [
+          "Canned responses"
+        ],
+        "summary": "Delete canned response",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted canned response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CannedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workspace:manage_settings permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Canned response not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/comment/{taskId}": {
       "get": {
         "operationId": "getTaskComments",
@@ -11696,6 +12521,80 @@
         }
       }
     },
+    "/workflows/{id}/versions/{number}/validate": {
+      "post": {
+        "operationId": "validateWorkflowVersion",
+        "tags": [
+          "Workflows"
+        ],
+        "summary": "Validate workflow version",
+        "description": "Reports unreachable state templates, templates with no outbound transition, work items in any adopting project that would become stuck (WF-9), a project with no concrete state for a required template, and roles with no legal transition at all. Read-only -- never mutates the version or anything it references.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0
+            },
+            "required": true,
+            "name": "number",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The validation report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowVersionValidation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "id must not contain a NUL (\\u0000) byte",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing workflow:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Workflow or version not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invitation/pending": {
       "get": {
         "operationId": "getUserPendingInvitations",
@@ -11731,7 +12630,8 @@
           "Invitations"
         ],
         "summary": "Get invitation details",
-        "description": "Look up an invitation by ID. Always 200 -- an unusable invitation is reported with valid: false and a reason rather than an error status.",
+        "description": "Deprecated and permanently disabled (2026-09-28): always refuses, even for a caller who holds the workspace authority its own middleware checks. Previously looked up an invitation by id with no recipient or workspace-membership check of its own -- the same data is not available any other way that lacks that check. Kept registered, not removed, per this API's versioning policy.",
+        "deprecated": true,
         "parameters": [
           {
             "schema": {
@@ -11754,7 +12654,34 @@
             }
           },
           "401": {
-            "description": "Missing or invalid credentials"
+            "description": "No credential at all",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "This operation is deprecated and permanently disabled, or the caller lacks workspace access",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No invitation with this id",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       },
@@ -14731,7 +15658,7 @@
           "Work items"
         ],
         "summary": "List work item activity",
-        "description": "The work item's activity journal (`WI-6`), newest first, cursor-paginated. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet.",
+        "description": "The work item's combined activity/comment stream (`WI-6`, `comments-and-activity.md`'s \"one stream showing everything\"), newest first, cursor-paginated. Each row in `data` carries `kind`: `\"activity\"` for an `activity` table row (issue #292) or `\"comment\"` for a posted `comment` row (issue #452) -- merged and sorted together, not two separate lists. Every row is returned regardless of `visibility` -- see the controller's own doc comment for why no caller-type filtering is applied yet.",
         "parameters": [
           {
             "schema": {
@@ -14797,6 +15724,726 @@
           },
           "404": {
             "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/transition": {
+      "post": {
+        "operationId": "transitionWorkItem",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Transition work item",
+        "description": "Move a work item to a new state through its type's active workflow version (`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see `GET .../transitions`). INTERIM, until issue #36 (approvals) lands: a transition whose `requires_approval` or `requires_cab` is set can never complete through this route -- both gates are treated as permanently unsatisfied. Guard resolution is also partial today: `no_open_blockers` (no `work_item_relation` table yet), `field_required` (no custom-field/satellite value store yet) and `change_risk_at_most` (no change-risk column yet) always fail closed (blocked), never fabricated as satisfied. `pause_sla`/`resume_sla`/`set_field` effects are silent no-ops (no backing table yet); `set_assignee`'s `'default'` always resolves to no assignee (no project/type default-assignee column yet).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "toStateTemplateId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 10000
+                  }
+                },
+                "required": [
+                  "toStateTemplateId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The transitioned work item",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransitionedWorkItem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:transition permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No transition matches this actor/state/target, the target has no concrete state in this project, or the work item's state changed mid-request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The matched transition is legal but not currently available (a guard, the approval/CAB gate, or a missing required note)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkItemTransitionBlocked"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/transitions": {
+      "get": {
+        "operationId": "listWorkItemTransitions",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "List available transitions",
+        "description": "Exactly what this actor may do now, with reasons for anything blocked (`workflows.md` § \"The state select\"). An illegal transition is absent, never shown disabled -- the UI never computes legality client-side.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The transitions this actor may take now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkItemTransitionOffer"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/comments": {
+      "post": {
+        "operationId": "createWorkItemComment",
+        "tags": [
+          "Comments"
+        ],
+        "summary": "Create comment",
+        "description": "Add a comment to a work item (`CA-1`..`CA-11`). `visibility` is required, chosen explicitly at composition -- `public` requires `comment:create`, `internal` requires `comment:create_internal`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {},
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "internal"
+                    ]
+                  }
+                },
+                "required": [
+                  "visibility"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The created comment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body -- oversized, malformed, or a NUL byte",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access, or missing comment:create/comment:create_internal (depending on the chosen visibility)",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/comments/{id}": {
+      "patch": {
+        "operationId": "updateWorkItemComment",
+        "tags": [
+          "Comments"
+        ],
+        "summary": "Update comment",
+        "description": "Edit a comment's body (`CA-17`). The author may edit within 15 minutes of posting (`comment:update_own`); `comment:update_any` edits anyone's, any time. Visibility cannot be changed (`CA-4`) -- this route has no `visibility` field.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "body": {}
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated comment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body -- oversized, malformed, or a NUL byte",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not the author within the edit window, or missing comment:update_own/comment:update_any",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteWorkItemComment",
+        "tags": [
+          "Comments"
+        ],
+        "summary": "Delete comment",
+        "description": "Delete a comment (`CA-18`): sets a tombstone, clears the body, keeps the row. `comment:delete_own` deletes the author's own; `comment:delete_any` deletes anyone's. Idempotent on an already-deleted comment.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted (tombstoned) comment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not the author, or missing comment:delete_own/comment:delete_any",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Comment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/attachments/presign": {
+      "post": {
+        "operationId": "presignAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Presign an attachment upload",
+        "description": "AT-2: mints a presigned direct-PUT for a new attachment on this work item. The API never proxies the bytes themselves.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "filename": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "contentType": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "size": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "customerVisible": {
+                    "type": "boolean",
+                    "description": "AT-3: staff uploads default to false (not customer-visible); explicit true is honoured."
+                  }
+                },
+                "required": [
+                  "filename",
+                  "contentType",
+                  "size"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The presigned upload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentPresignResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body, disallowed extension, oversized file, or per-item limit reached",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/attachments": {
+      "get": {
+        "operationId": "listWorkItemAttachments",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "List a work item's attachments",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The work item's attachments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Attachment"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachments/{id}/complete": {
+      "post": {
+        "operationId": "completeAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Complete an attachment upload",
+        "description": "AT-2's edge case: rejects a declared MIME that does not match the uploaded bytes' own magic bytes, deleting the object.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The completed attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Upload missing, or content does not match declared type",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Attachment not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Attachment is not pending",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attachments/{id}": {
+      "get": {
+        "operationId": "downloadAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Download an attachment",
+        "description": "AT-5/AT-6: redirects to a five-minute presigned download URL and writes an attachment.downloaded audit row.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to the presigned download URL"
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Attachment not found, or not ready",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteAttachment",
+        "tags": [
+          "Attachments"
+        ],
+        "summary": "Delete an attachment",
+        "description": "AT-7: soft delete. Only the attachment's own uploader may do this.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The deleted attachment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Not the uploader, or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Attachment not found",
             "content": {
               "text/plain": {
                 "schema": {

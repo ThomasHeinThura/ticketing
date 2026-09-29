@@ -5,7 +5,6 @@ import {
   apikeyTable,
   assetTable,
   columnTable,
-  commentTable,
   documentLinkTable,
   externalLinkTable,
   invitationTable,
@@ -27,6 +26,7 @@ import {
   stateTable,
   stateTemplateTable,
   taskActivityTable,
+  taskCommentTable,
   taskRelationTable,
   taskReminderSentTable,
   taskTable,
@@ -61,7 +61,7 @@ export const userTableRelations = relations(userTable, ({ many, one }) => ({
   assignedTasks: many(taskTable),
   timeEntries: many(timeEntryTable),
   activities: many(taskActivityTable),
-  comments: many(commentTable),
+  comments: many(taskCommentTable),
   assets: many(assetTable),
   notifications: many(notificationTable),
   notificationPreference: one(userNotificationPreferenceTable),
@@ -228,7 +228,7 @@ export const taskTableRelations = relations(taskTable, ({ one, many }) => ({
   }),
   timeEntries: many(timeEntryTable),
   activities: many(taskActivityTable),
-  comments: many(commentTable),
+  comments: many(taskCommentTable),
   assets: many(assetTable),
   labels: many(labelTable),
   externalLinks: many(externalLinkTable),
@@ -439,16 +439,19 @@ export const taskReminderSentTableRelations = relations(
   }),
 );
 
-export const commentTableRelations = relations(commentTable, ({ one }) => ({
-  task: one(taskTable, {
-    fields: [commentTable.taskId],
-    references: [taskTable.id],
+export const taskCommentTableRelations = relations(
+  taskCommentTable,
+  ({ one }) => ({
+    task: one(taskTable, {
+      fields: [taskCommentTable.taskId],
+      references: [taskTable.id],
+    }),
+    user: one(userTable, {
+      fields: [taskCommentTable.userId],
+      references: [userTable.id],
+    }),
   }),
-  user: one(userTable, {
-    fields: [commentTable.userId],
-    references: [userTable.id],
-  }),
-}));
+);
 
 // P1 foundational identity schema (data-model.md §2) -- see schema.ts for the full note.
 

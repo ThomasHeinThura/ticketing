@@ -109,8 +109,9 @@ describe("check:events — the shipped tree", () => {
     // branch before #430 (which independently also bumped main's copy 27->28) merged
     // in; merging both together for real is what pushes it to 29. A non-vacuity guard:
     // it proves the checker actually saw the shipped keys, rather than passing on an
-    // empty scan. #447 added four: saved_view.created/updated/deleted/pinned.
-    assert.match(result.output, /33 published event key/);
+    // empty scan. #451 added work_item.commented, #442/PR #457 added
+    // work_item.transitioned, and #447 added saved_view.created/updated/deleted/pinned.
+    assert.match(result.output, /35 published event key/);
   });
 });
 

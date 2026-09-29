@@ -27,26 +27,42 @@ import {
   workspaceMemberRoles,
 } from "../utils/workspace-member-roles";
 import type { ActivityActorType } from "./activity";
+import { commentSchema } from "./comment-response";
+import {
+  commentIdParam,
+  createCommentBody,
+  updateCommentBody,
+} from "./comment-schema";
 import assignWorkItem, {
   WorkItemAssigneeConflictError,
 } from "./controllers/assign-work-item";
 import bulkWorkItems from "./controllers/bulk-work-items";
+import createComment from "./controllers/create-comment";
 import createWorkItem from "./controllers/create-work-item";
+import deleteComment from "./controllers/delete-comment";
 import deleteWorkItem from "./controllers/delete-work-item";
 import detachWorkItemParent from "./controllers/detach-work-item-parent";
 import getWorkItemByKey from "./controllers/get-work-item";
 import getWorkItemTree from "./controllers/get-work-item-tree";
 import listAssignablePeople from "./controllers/list-assignable-people";
 import listWorkItemActivity from "./controllers/list-work-item-activity";
+import listWorkItemTransitions from "./controllers/list-work-item-transitions";
 import listWorkItemTypes from "./controllers/list-work-item-types";
 import listWorkItems from "./controllers/list-work-items";
 import rankWorkItem from "./controllers/rank-work-item";
 import setWorkItemParent from "./controllers/set-work-item-parent";
+import transitionWorkItem, {
+  NoMatchingTransitionError,
+  TransitionBlockedError,
+  TransitionConflictError,
+} from "./controllers/transition-work-item";
 import unassignWorkItem from "./controllers/unassign-work-item";
+import updateComment from "./controllers/update-comment";
 import updateWorkItem, {
   WorkItemVersionConflictError,
 } from "./controllers/update-work-item";
 import { unwatchWorkItem, watchWorkItem } from "./controllers/watch-work-item";
+import { requireCommentReach } from "./require-comment-reach";
 import { requireWorkItemReach } from "./require-work-item-reach";
 import {
   assignablePeopleSchema,
@@ -54,12 +70,15 @@ import {
   bulkWorkItemsResponseSchema,
   deletedWorkItemSchema,
   rankWorkItemResponseSchema,
+  transitionedWorkItemSchema,
   unassignWorkItemResponseSchema,
   workItemActivityListResponseSchema,
   workItemAssigneeConflictSchema,
   workItemDetailSchema,
   workItemListResponseSchema,
   workItemSchema,
+  workItemTransitionBlockedSchema,
+  workItemTransitionsResponseSchema,
   workItemTreeResponseSchema,
   workItemTypeListSchema,
   workItemVersionConflictSchema,
@@ -75,6 +94,7 @@ import {
   projectIdParam,
   rankWorkItemBody,
   setWorkItemParentBody,
+  transitionWorkItemBody,
   updateWorkItemBody,
   workItemKeyParam,
   workspaceIdParam,
@@ -632,9 +652,13 @@ const listWorkItemActivityRoute = createRoute({
   tags: ["Work items"],
   summary: "List work item activity",
   description:
-    "The work item's activity journal (`WI-6`), newest first, cursor-paginated. Every " +
-    "row is returned regardless of `visibility` -- see the controller's own doc " +
-    "comment for why no caller-type filtering is applied yet.",
+    "The work item's combined activity/comment stream (`WI-6`, `comments-and-" +
+    'activity.md`\'s "one stream showing everything"), newest first, cursor-' +
+    'paginated. Each row in `data` carries `kind`: `"activity"` for an `activity` ' +
+    'table row (issue #292) or `"comment"` for a posted `comment` row (issue #452) -- ' +
+    "merged and sorted together, not two separate lists. Every row is returned " +
+    "regardless of `visibility` -- see the controller's own doc comment for why no " +
+    "caller-type filtering is applied yet.",
   middleware: [
     requireWorkItemReach(),
     requireWorkspaceCapability("work_item:read"),
@@ -689,7 +713,169 @@ const unassignWorkItemRoute = createRoute({
   },
 });
 
-const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
+// Issue #442: the state-transition EXECUTION route the persistence PR (#31/#443)
+// deliberately left unbuilt.
+const transitionWorkItemRoute = createRoute({
+  method: "post",
+  operationId: "transitionWorkItem",
+  path: "/work-items/{key}/transition",
+  tags: ["Work items"],
+  summary: "Transition work item",
+  description:
+    "Move a work item to a new state through its type's active workflow version " +
+    "(`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see " +
+    "`GET .../transitions`). INTERIM, until issue #36 (approvals) lands: a transition " +
+    "whose `requires_approval` or `requires_cab` is set can never complete through this " +
+    "route -- both gates are treated as permanently unsatisfied. Guard resolution is " +
+    "also partial today: `no_open_blockers` (no `work_item_relation` table yet), " +
+    "`field_required` (no custom-field/satellite value store yet) and " +
+    "`change_risk_at_most` (no change-risk column yet) always fail closed (blocked), " +
+    "never fabricated as satisfied. `pause_sla`/`resume_sla`/`set_field` effects are " +
+    "silent no-ops (no backing table yet); `set_assignee`'s `'default'` always resolves " +
+    "to no assignee (no project/type default-assignee column yet).",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:transition"),
+  ] as const,
+  request: {
+    params: workItemKeyParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: transitionWorkItemBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The transitioned work item", transitionedWorkItemSchema),
+    400: errorResponse("Invalid body"),
+    403: errorResponse(
+      "No workspace access, or missing work_item:transition permission",
+    ),
+    404: errorResponse("Work item not found"),
+    409: errorResponse(
+      "No transition matches this actor/state/target, the target has no concrete " +
+        "state in this project, or the work item's state changed mid-request",
+    ),
+    422: jsonResponse(
+      "The matched transition is legal but not currently available (a guard, the " +
+        "approval/CAB gate, or a missing required note)",
+      workItemTransitionBlockedSchema,
+    ),
+  },
+});
+
+const listWorkItemTransitionsRoute = createRoute({
+  method: "get",
+  operationId: "listWorkItemTransitions",
+  path: "/work-items/{key}/transitions",
+  tags: ["Work items"],
+  summary: "List available transitions",
+  description:
+    "Exactly what this actor may do now, with reasons for anything blocked " +
+    '(`workflows.md` § "The state select"). An illegal transition is absent, never ' +
+    "shown disabled -- the UI never computes legality client-side.",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse(
+      "The transitions this actor may take now",
+      workItemTransitionsResponseSchema,
+    ),
+    403: errorResponse(
+      "No workspace access, or missing work_item:read permission",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+// `docs/03-features/comments-and-activity.md` (issue #27). `GET
+// /api/work-items/{key}/activity` and the portal read route are NOT here -- see this
+// PR's own body for what's built elsewhere (issue #23) and what has no portal-identity
+// path to build against yet.
+const createCommentRoute = createRoute({
+  method: "post",
+  operationId: "createWorkItemComment",
+  path: "/work-items/{key}/comments",
+  tags: ["Comments"],
+  summary: "Create comment",
+  description:
+    "Add a comment to a work item (`CA-1`..`CA-11`). `visibility` is required, chosen " +
+    "explicitly at composition -- `public` requires `comment:create`, `internal` requires " +
+    "`comment:create_internal`.",
+  middleware: [requireWorkItemReach()] as const,
+  request: {
+    params: workItemKeyParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: createCommentBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The created comment", commentSchema),
+    400: errorResponse("Invalid body -- oversized, malformed, or a NUL byte"),
+    403: errorResponse(
+      "No workspace access, or missing comment:create/comment:create_internal " +
+        "(depending on the chosen visibility)",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const updateCommentRoute = createRoute({
+  method: "patch",
+  operationId: "updateWorkItemComment",
+  path: "/comments/{id}",
+  tags: ["Comments"],
+  summary: "Update comment",
+  description:
+    "Edit a comment's body (`CA-17`). The author may edit within 15 minutes of " +
+    "posting (`comment:update_own`); `comment:update_any` edits anyone's, any time. " +
+    "Visibility cannot be changed (`CA-4`) -- this route has no `visibility` field.",
+  middleware: [requireCommentReach()] as const,
+  request: {
+    params: commentIdParam,
+    body: {
+      required: true,
+      content: { "application/json": { schema: updateCommentBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse("The updated comment", commentSchema),
+    400: errorResponse("Invalid body -- oversized, malformed, or a NUL byte"),
+    403: errorResponse(
+      "Not the author within the edit window, or missing comment:update_own/" +
+        "comment:update_any",
+    ),
+    404: errorResponse("Comment not found"),
+  },
+});
+
+const deleteCommentRoute = createRoute({
+  method: "delete",
+  operationId: "deleteWorkItemComment",
+  path: "/comments/{id}",
+  tags: ["Comments"],
+  summary: "Delete comment",
+  description:
+    "Delete a comment (`CA-18`): sets a tombstone, clears the body, keeps the row. " +
+    "`comment:delete_own` deletes the author's own; `comment:delete_any` deletes " +
+    "anyone's. Idempotent on an already-deleted comment.",
+  middleware: [requireCommentReach()] as const,
+  request: { params: commentIdParam },
+  responses: {
+    200: jsonResponse("The deleted (tombstoned) comment", commentSchema),
+    403: errorResponse(
+      "Not the author, or missing comment:delete_own/comment:delete_any",
+    ),
+    404: errorResponse("Comment not found"),
+  },
+});
+
+const workItem = apiRouter<
+  BaseVariables & { workspaceId: string; workItemId: string }
+>()
   .openapi(createWorkItemRoute, async (c) => {
     const { projectId } = c.req.valid("param");
     const workspaceId = c.get("workspaceId");
@@ -1114,6 +1300,87 @@ const workItem = apiRouter<BaseVariables & { workspaceId: string }>()
       }
       throw error;
     }
+  })
+  .openapi(transitionWorkItemRoute, async (c) => {
+    const workItemId = c.get("workItemId");
+    const userId = c.get("userId");
+    const { toStateTemplateId, note } = c.req.valid("json");
+    const { actorId, actorType } = resolveActor(userId, c.get("apiKey"));
+
+    const [callerPerson] = await db
+      .select({ id: personTable.id })
+      .from(personTable)
+      .where(eq(personTable.userId, userId))
+      .limit(1);
+
+    try {
+      const transitioned = await transitionWorkItem(
+        workItemId,
+        callerPerson?.id ?? null,
+        actorId,
+        actorType,
+        { toStateTemplateId, note },
+      );
+      return c.json(transitioned, 200);
+    } catch (error) {
+      if (error instanceof NoMatchingTransitionError) {
+        throw new HTTPException(409, { message: error.message });
+      }
+      if (error instanceof TransitionConflictError) {
+        throw new HTTPException(409, { message: error.message });
+      }
+      if (error instanceof TransitionBlockedError) {
+        return c.json(
+          { message: error.message, blockedBy: error.blockedBy },
+          422,
+        );
+      }
+      throw error;
+    }
+  })
+  .openapi(listWorkItemTransitionsRoute, async (c) => {
+    const workItemId = c.get("workItemId");
+    const userId = c.get("userId");
+    const [callerPerson] = await db
+      .select({ id: personTable.id })
+      .from(personTable)
+      .where(eq(personTable.userId, userId))
+      .limit(1);
+    const offers = await listWorkItemTransitions(
+      workItemId,
+      callerPerson?.id ?? null,
+    );
+    return c.json(offers, 200);
+  })
+  .openapi(createCommentRoute, async (c) => {
+    const workItemId = c.get("workItemId");
+    const workspaceId = c.get("workspaceId");
+    const { body, visibility } = c.req.valid("json");
+    const { actorId, actorType } = resolveActor(
+      c.get("userId"),
+      c.get("apiKey"),
+    );
+    const created = await createComment(
+      workItemId,
+      workspaceId,
+      actorId,
+      actorType,
+      { body, visibility },
+    );
+    return c.json(created, 200);
+  })
+  .openapi(updateCommentRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const { body } = c.req.valid("json");
+    const updated = await updateComment(id, workspaceId, c.get("userId"), body);
+    return c.json(updated, 200);
+  })
+  .openapi(deleteCommentRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const workspaceId = c.get("workspaceId");
+    const deleted = await deleteComment(id, workspaceId, c.get("userId"));
+    return c.json(deleted, 200);
   });
 
 export default workItem;

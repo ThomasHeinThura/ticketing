@@ -120,6 +120,7 @@ read by the server process.**
 | `DOMAIN` | Compose, at file-parse time | Substituted into every Traefik router rule — the `Host(...)` matcher for `ticket.`, `portal.` and, when deployed, `files.` ([traefik-and-domains.md](traefik-and-domains.md)). A wrong value produces a 404 from Traefik, never an application error |
 | `TASKDESK_IMAGE_TAG` · `TASKDESK_IMAGE_DIGEST` | Compose | Which image the `taskdesk` service pulls. Rollback is editing the digest here and bringing the service back up ([runbook](runbook.md)) |
 | `TASKDESK_HSTS_PRELOAD` | Compose, into the Traefik headers middleware | Opt-in `includeSubDomains; preload` on `Strict-Transport-Security`. Off unless the operator sets it, because both are commitments about someone else's apex domain ([traefik-and-domains.md](traefik-and-domains.md)) |
+| `TASKDESK_LOCAL_HTTP_PORT` · `TASKDESK_LOCAL_HTTPS_PORT` | Compose, `deploy/compose.traefik.yml` (`local` mode only) | Host ports for the bundled local Traefik. Default 80/443; override when the host already runs another reverse proxy on those ports. `scripts/deploy.sh local` checks both are free before starting anything ([traefik-and-domains.md](traefik-and-domains.md)) |
 | `TASKDESK_API_URL` · `TASKDESK_API_KEY` | `@taskdesk/mcp`, on the user's own machine | The MCP client package's own configuration ([mcp-server.md](../03-features/mcp-server.md)). It talks to an instance over HTTP like any other API consumer; the server never reads either name |
 
 The five-plus-six rule governs what the **application** reads. What Compose substitutes into

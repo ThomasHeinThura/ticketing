@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import type db from "../../database";
 import { projectTable } from "../../database/schema";
@@ -51,7 +51,13 @@ export async function claimWorkItemNumber(
     .set({
       lastTaskNumber: sql`${projectTable.lastTaskNumber} + 1`,
     })
-    .where(eq(projectTable.id, projectId))
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
+      ),
+    )
     .returning({ lastTaskNumber: projectTable.lastTaskNumber });
 
   if (!updated) {

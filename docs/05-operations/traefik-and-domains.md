@@ -19,29 +19,50 @@ its files origin from the provider. Only the middle case, where the operator run
 store themselves behind this proxy, produces a third record and the router below
 ([deployment.md](deployment.md)).
 
+## Environment-prefixed names
+
+Every router, service and (on the shared-Traefik UAT overlay) middleware name below is
+prefixed with the environment it belongs to — `taskdesk-local-*`, `taskdesk-uat-*`,
+`taskdesk-prod-*` — never the bare `taskdesk` name all three overlays used before this.
+
+Traefik's Docker provider (`--providers.docker=true`) discovers **every** container with
+`traefik.enable=true` on the Docker host it runs against — it is not scoped to one Compose
+project or network. Two overlays that both defined a service named `taskdesk` on the same
+host merge into a *single* Traefik service backed by both containers, and Traefik
+load-balances across them even when one is unreachable from that Traefik's own network:
+every request in the window before the loadbalancer's own healthcheck evicts the bad
+backend can 502. This bit in practice — a local dev stack and a stale UAT container left
+running on the same host — and reproduced live in Traefik's access logs as one router
+alternating between two different `ServiceAddr` values. The prefix makes the collision
+structurally impossible regardless of what other stacks share the host, rather than relying
+on operators to clean up stray containers or remember an opt-in flag.
+
 ## Routing
 
 ```yaml
 labels:
   # agent
-  - traefik.http.routers.taskdesk-agent.rule=Host(`ticket.${DOMAIN}`)
-  - traefik.http.routers.taskdesk-agent.tls.certresolver=letsencrypt
-  - traefik.http.routers.taskdesk-agent.middlewares=security-headers@file,compress@file
+  - traefik.http.routers.taskdesk-prod-agent.rule=Host(`ticket.${DOMAIN}`)
+  - traefik.http.routers.taskdesk-prod-agent.tls.certresolver=letsencrypt
+  - traefik.http.routers.taskdesk-prod-agent.middlewares=security-headers@file,compress@file
 
   # portal
-  - traefik.http.routers.taskdesk-portal.rule=Host(`portal.${DOMAIN}`)
-  - traefik.http.routers.taskdesk-portal.tls.certresolver=letsencrypt
-  - traefik.http.routers.taskdesk-portal.middlewares=security-headers@file,compress@file
+  - traefik.http.routers.taskdesk-prod-portal.rule=Host(`portal.${DOMAIN}`)
+  - traefik.http.routers.taskdesk-prod-portal.tls.certresolver=letsencrypt
+  - traefik.http.routers.taskdesk-prod-portal.middlewares=security-headers@file,compress@file
 
-  - traefik.http.services.taskdesk.loadbalancer.server.port=5173
-  - traefik.http.services.taskdesk.loadbalancer.healthcheck.path=/api/public/health/ready
+  - traefik.http.services.taskdesk-prod.loadbalancer.server.port=5173
+  - traefik.http.services.taskdesk-prod.loadbalancer.healthcheck.path=/api/public/health/ready
 
   # files — on the storage container, not the application; only with --profile s3
-  - traefik.http.routers.taskdesk-files.rule=Host(`files.${DOMAIN}`)
-  - traefik.http.routers.taskdesk-files.tls.certresolver=letsencrypt
-  - traefik.http.routers.taskdesk-files.middlewares=files-headers@file
-  - traefik.http.services.taskdesk-files.loadbalancer.server.port=8333
+  - traefik.http.routers.taskdesk-prod-files.rule=Host(`files.${DOMAIN}`)
+  - traefik.http.routers.taskdesk-prod-files.tls.certresolver=letsencrypt
+  - traefik.http.routers.taskdesk-prod-files.middlewares=files-headers@file
+  - traefik.http.services.taskdesk-prod-files.loadbalancer.server.port=8333
 ```
+
+(`deploy/compose.local.yml` uses the same shape with a `taskdesk-local-*` prefix, and
+`deploy/compose.uat.yml` with `taskdesk-uat-*` — see those files for the exact labels.)
 
 `files-headers@file` adds `Content-Disposition: attachment` for anything not an image and a
 restrictive `Content-Security-Policy: default-src 'none'; sandbox`. **On a real S3 backend
@@ -183,6 +204,27 @@ exercised rather than being first tested in UAT.
 ```
 
 Add `files.localhost` too when running the `s3` profile locally.
+
+**Port conflict with an existing reverse proxy.** The bundled local Traefik publishes
+80/443, and a "clean machine" is the target, but plenty of real development hosts already
+run something else on those ports (Dokploy, nginx, another app). Compose fails the whole
+`up` when a published port is already bound, so `scripts/deploy.sh local` checks both ports
+before starting anything and fails with instructions rather than a bare Docker "address
+already in use". Fix: set `TASKDESK_LOCAL_HTTP_PORT` and/or `TASKDESK_LOCAL_HTTPS_PORT` in
+`.env` to free ports (e.g. `8080` / `8443`), and add the HTTPS port to `TASKDESK_AGENT_URL` /
+`TASKDESK_PORTAL_URL` and to the `/etc/hosts` line above if you use it, e.g.
+`https://ticket.localhost:8443`. `scripts/deploy.sh` prints this same reminder in its final
+URLs when a non-default port is in play ([configuration-reference.md](configuration-reference.md)).
+
+This check is a best-effort pre-flight, not exhaustive — every case below fails open to the
+same raw Docker error this exists to improve on, never to a silent skip of a real conflict:
+it only probes `127.0.0.1`, so a listener bound only to `::` (with no dual-stack) or to a
+specific non-loopback address is missed; and it does **not** catch a second checkout of
+*this same repository* — `compose.yml` pins `name: taskdesk`, so a second checkout's
+already-running local Traefik shares that Compose project, `docker compose port traefik`
+succeeds against it, and `up` reads it as this stack's own and adopts it rather than
+flagging a conflict (harmless — it only means `up` recreates that other checkout's
+containers, which was already true before this port check existed).
 
 `scripts/deploy.sh local` prints this. It creates a self-signed **leaf** certificate for
 the local routes in `deploy/local/certs/`; it is not a certificate authority. Trust

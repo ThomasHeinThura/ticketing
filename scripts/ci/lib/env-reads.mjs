@@ -590,6 +590,29 @@ function hasExportModifier(node) {
   );
 }
 
+/** Every name a binding pattern introduces, recursively — object/array patterns, nesting,
+ * rest, defaults, and renamed keys all included. Unlike `flatBindingNames` (which fails
+ * closed to `null` the moment a shape gets complex, because IT is deciding what to attribute
+ * a read to), this is purely additive: it feeds `exportedNames`, so under-collecting a name
+ * here can only leave a later reassignment of it uncharged, never wrongly exempt one — same
+ * one-way-safe direction #423 pass 4's plain-identifier collection already relies on. */
+function collectBindingNames(nameNode, names) {
+  if (nameNode.kind === ts.SyntaxKind.Identifier) {
+    names.add(nameNode.text);
+    return;
+  }
+  if (
+    nameNode.kind !== ts.SyntaxKind.ObjectBindingPattern &&
+    nameNode.kind !== ts.SyntaxKind.ArrayBindingPattern
+  )
+    return;
+  for (const element of nameNode.elements) {
+    if (element.kind === ts.SyntaxKind.BindingElement && element.name) {
+      collectBindingNames(element.name, names);
+    }
+  }
+}
+
 /** Only flat, statically-named binding elements: no rest, no default, no nested pattern, and
  * a plain identifier property key (a quoted-string key is deliberately NOT flat here, matching
  * this gate's existing, more conservative behavior for that one shape). Returns `null` — not a
@@ -646,6 +669,9 @@ export function findEnvReadsInSourceFile(sourceFile) {
   // Top-level `export`-modified variable names, collected once so a later plain
   // reassignment (`x = process;`) can be charged as a module-boundary escape too —
   // `handleBindingDeclaration`'s own `exported` check only sees the declaration site.
+  // `collectBindingNames` also reaches every name a destructuring declaration introduces
+  // (`export let { a: x } = o;`), closing #427 (Opus review of #423 pass 5, F7) — a plain-
+  // identifier-only collection here missed exactly that shape's later reassignment.
   const exportedNames = new Set();
   for (const statement of sourceFile.statements) {
     if (
@@ -654,8 +680,7 @@ export function findEnvReadsInSourceFile(sourceFile) {
     )
       continue;
     for (const declaration of statement.declarationList.declarations) {
-      if (declaration.name.kind === ts.SyntaxKind.Identifier)
-        exportedNames.add(declaration.name.text);
+      collectBindingNames(declaration.name, exportedNames);
     }
   }
 

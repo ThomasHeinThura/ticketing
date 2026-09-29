@@ -135,6 +135,8 @@ For a project the caller can reach, an unknown `typeId` gets 400 `Unknown work i
 
 **Fix (follow-up issue):** look up the type with `where id = $typeId and workspace_id = project.workspaceId` and answer one message for both cases. The composite FK from #192 still backs it.
 
+**Closed by #347** (PR `fix/347-typeid-cross-tenant-message`): `create-work-item.ts` now does exactly this combined lookup, with a single "Work item type does not belong to the project's workspace" message for both the unknown-id and foreign-workspace cases.
+
 ## S3 — Two web properties have no test (NON-BLOCKING)
 
 - `use-get-work-item-types.ts:10`: the workspace-scoped key is correct, but dropping `workspaceId` from it survives every test, because `create-work-item-dialog.test.tsx:27` mocks the hook. If it regressed, a workspace switch would show the previous workspace's types, and the create would then 400 on the server (so nothing unsafe gets written).

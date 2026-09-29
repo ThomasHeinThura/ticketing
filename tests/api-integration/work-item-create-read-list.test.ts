@@ -9,15 +9,18 @@
  */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { claimWorkItemNumber } from "../../apps/api/src/work-item/controllers/claim-work-item-number";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
 
 // ── Fixture builders for the tables `work-item-schema.test.ts` also builds directly -- ──
 // this file needs the same rows (`work_item_type`, `state_template`, `state`), but reached
@@ -207,6 +210,68 @@ describe("API integration: work item create/read/list (#23)", () => {
     expect(rows[0]?.key).toBe(`${project.slug}-1`);
   });
 
+  it("#499: a project deleted before its number claim cannot receive a new work item", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const [before] = await db
+      .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+
+    const race = await raceProjectSoftDelete(
+      project.id,
+      async () =>
+        await createWorkItemRequest(app, project.id, {
+          typeId: type.id,
+          title: "Must not be created",
+        }),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const [after] = await db
+      .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+    expect(after?.lastTaskNumber).toBe(before?.lastTaskNumber);
+    const items = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, project.id));
+    expect(items).toHaveLength(0);
+    const activity = await db
+      .select({ id: schema.activityTable.id })
+      .from(schema.activityTable);
+    expect(activity).toHaveLength(0);
+  });
+
+  it("#499: the project number claim refuses an archived project", async () => {
+    const { project } = await setupProjectWithDefaultState();
+    const [before] = await db
+      .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    const error = await claimWorkItemNumber(project.id, db).catch(
+      (reason: unknown) => reason,
+    );
+    expect(error).toBeInstanceOf(HTTPException);
+    expect((error as HTTPException).status).toBe(404);
+
+    const [after] = await db
+      .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+    expect(after?.lastTaskNumber).toBe(before?.lastTaskNumber);
+  });
+
   it("WI-2: concurrent creates in the same project get distinct, sequential numbers", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);
@@ -285,6 +350,50 @@ describe("API integration: work item create/read/list (#23)", () => {
       title: "Should be rejected",
     });
     expect(response.status).toBe(400);
+  });
+
+  it("issue #347: an unknown typeId and a real-but-foreign-workspace typeId answer byte-identically, not a distinguishing message", async () => {
+    const { creator, project } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app: unknownApp } = createApp();
+
+    const unknownResponse = await createWorkItemRequest(
+      unknownApp,
+      project.id,
+      { typeId: "does-not-exist", title: "Unknown type" },
+    );
+
+    // A type that genuinely exists, but in a DIFFERENT workspace.
+    const otherCreator = await createWorkspaceMember({ role: "member" });
+    const otherType = await makeWorkItemType(otherCreator.workspace.id);
+    const { app: foreignApp } = createApp();
+
+    const foreignResponse = await createWorkItemRequest(
+      foreignApp,
+      project.id,
+      { typeId: otherType.id, title: "Foreign-workspace type" },
+    );
+
+    // Before #347, the unknown case answered "Unknown work item type" and the
+    // foreign-workspace case answered "Work item type does not belong to the
+    // project's workspace" -- a cross-tenant existence bit for `work_item_type` ids
+    // (an attacker could tell "this id doesn't exist" from "this id belongs to
+    // someone else"), the same class #290/#307 closed in
+    // `workspace-access-middleware.ts`. Both now answer identically.
+    expect(unknownResponse.status).toBe(400);
+    expect(foreignResponse.status).toBe(400);
+    await expect(unknownResponse.text()).resolves.toBe(
+      "Work item type does not belong to the project's workspace",
+    );
+    await expect(foreignResponse.text()).resolves.toBe(
+      "Work item type does not belong to the project's workspace",
+    );
+
+    const rows = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, project.id));
+    expect(rows).toHaveLength(0);
   });
 
   it("WI-3: rejects an empty title", async () => {

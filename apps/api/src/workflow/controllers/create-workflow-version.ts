@@ -4,10 +4,11 @@ import {
   type WorkflowState,
   type WorkflowTransition,
 } from "@taskdesk/domain";
-import { eq, isNull, max, or } from "drizzle-orm";
+import { eq, inArray, isNull, max, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
+  personTable,
   roleTable,
   stateTemplateTable,
   workflowTable,
@@ -76,6 +77,41 @@ async function createWorkflowVersion(
     );
   const roleIds = new Set(roleRows.map((r) => r.id));
 
+  // Opus security review of PR #457 (B2's "defence in depth" ask, alongside the
+  // execution-time eligibility check that is the actual authoritative gate --
+  // `transition-work-item.ts`'s `resolveAssigneeEligibility` call): refuse an obviously
+  // invalid `set_assignee.personId` -- one that names no `person` row anywhere -- at
+  // authoring time too, rather than letting a typo'd or garbage id get published and
+  // only fail (correctly, but late) the first time a work item actually takes that edge.
+  // Deliberately NOT a full roster/active check here: a workflow's transitions are
+  // shared across every project that adopts it (`WF-1`), so "on THIS project's roster"
+  // is not a fact this authoring-time call can evaluate once for all of them, and a
+  // person eligible today can be deactivated tomorrow -- the execution-time check is,
+  // and remains, the only one that can ever be authoritative for THIS existence check.
+  const assigneeEffectPersonIds = new Set(
+    transitions.flatMap((t) =>
+      t.effects
+        .filter(
+          (
+            effect,
+          ): effect is Extract<typeof effect, { kind: "set_assignee" }> =>
+            effect.kind === "set_assignee" && effect.personId !== "default",
+        )
+        .map((effect) => effect.personId),
+    ),
+  );
+  const knownPersonIds =
+    assigneeEffectPersonIds.size === 0
+      ? new Set<string>()
+      : new Set(
+          (
+            await db
+              .select({ id: personTable.id })
+              .from(personTable)
+              .where(inArray(personTable.id, [...assigneeEffectPersonIds]))
+          ).map((p) => p.id),
+        );
+
   for (const t of transitions) {
     if (t.roleId !== null && !roleIds.has(t.roleId)) {
       throw new HTTPException(400, {
@@ -89,6 +125,15 @@ async function createWorkflowVersion(
       ) {
         throw new HTTPException(400, {
           message: `Invalid workflow version: schedule_transition effect names a to-state that does not exist: ${effect.toStateTemplateId}`,
+        });
+      }
+      if (
+        effect.kind === "set_assignee" &&
+        effect.personId !== "default" &&
+        !knownPersonIds.has(effect.personId)
+      ) {
+        throw new HTTPException(400, {
+          message: `Invalid workflow version: set_assignee effect names a person that does not exist: ${effect.personId}`,
         });
       }
     }

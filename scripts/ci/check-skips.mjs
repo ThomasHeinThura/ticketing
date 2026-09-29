@@ -87,6 +87,7 @@ async function main() {
     // preserved by the scanner so the reported location is still the real one.
     const source = stripCodeComments(await readText(absolute), {
       blankStrings: true,
+      fileName: absolute,
     });
     for (const { pattern, why } of banned) {
       pattern.lastIndex = 0;

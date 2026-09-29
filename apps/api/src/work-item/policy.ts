@@ -214,6 +214,21 @@ export const workItemPolicies = {
     reach: "required",
   },
 
+  // Issue #27, `docs/03-features/comments-and-activity.md`. `requireWorkItemReach()`
+  // resolves the target work item by key before the handler runs; the actual capability
+  // decision (`comment:create` vs `comment:create_internal`) is data-dependent (the
+  // BODY's `visibility` field, not parsed until the handler -- same reason
+  // `work_item:set_priority` is checked in `PATCH /api/work-items/{key}`'s own handler,
+  // not `middleware`), so `capability` below names the PRIMARY, public-comment path;
+  // `./controllers/create-comment.ts` checks whichever of the two the request actually
+  // needs.
+  "POST /api/work-items/{key}/comments": {
+    capability: "comment:create",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
   // Re-rank a work item (`WI-11`-`WI-13`). `WI-13`'s customer-organisation-scoped
   // restriction is NOT enforced here -- see `controllers/rank-work-item.ts`'s own doc
   // comment for why (no live customer-portal caller identity exists anywhere in this
@@ -262,11 +277,73 @@ export const workItemPolicies = {
     reach: "required",
   },
 
-  // Read a work item's activity (`WI-6`, issue #292). Same reach/capability shape as
-  // the plain `GET /api/work-items/{key}` route above -- an activity row's visibility
-  // (`CA-7`) is not filtered by this route today; see
+  // Read a work item's combined activity/comment stream (`WI-6`, issue #292; merged
+  // with posted `comment` rows by issue #452 -- see `comments-and-activity.md`'s "one
+  // stream showing everything", which this route's own capability/reach shape already
+  // matched before #452, since `rbac.md`'s Comments table has no capability of its own
+  // for reading either). Same reach/capability shape as the plain
+  // `GET /api/work-items/{key}` route above -- neither an activity row's nor a comment
+  // row's visibility (`CA-7`) is filtered by this route today; see
   // `controllers/list-work-item-activity.ts`'s own doc comment for why.
   "GET /api/work-items/{key}/activity": {
+    capability: "work_item:read",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // `rbac.md`'s own worked example for this exact route: ownership is
+  // `row.person_id === identity.personId` (the comment's `author_id`), `orOwner` with
+  // `withinMinutes: 15` matching `CA-17`'s edit window -- `packages/permissions`'s
+  // `OwnerBranch.withinMinutes` exists specifically for this row. `requireCommentReach()`
+  // resolves the comment by id via a genuine DB lookup, so `scopeSource: "row"`. Nothing
+  // here calls the declarative evaluator at runtime (issue #8's runtime-integration work,
+  // out of this slice's scope) -- `./controllers/update-comment.ts` enforces the
+  // identical conjunction by hand, the same "declared target, `requireWorkspaceCapability`-
+  // family runtime check" split every other route in this codebase already uses.
+  "PATCH /api/comments/{id}": {
+    capability: "comment:update_any",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+    orOwner: {
+      predicate: "row.person_id === identity.personId",
+      capability: "comment:update_own",
+      withinMinutes: 15,
+    },
+  },
+
+  // Same shape as the update route above, minus the time window -- rbac.md's table names
+  // no `withinMinutes` for either delete capability.
+  "DELETE /api/comments/{id}": {
+    capability: "comment:delete_any",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+    orOwner: {
+      predicate: "row.person_id === identity.personId",
+      capability: "comment:delete_own",
+    },
+  },
+
+  // Issue #442 -- the state-transition EXECUTION route the persistence PR (#31/#443)
+  // deliberately left unbuilt. `WF-4`: "Without work_item:transition the request is
+  // 403". `requireWorkItemReach()` resolves the row by key before the handler runs, same
+  // shape as every other `{key}`-addressed route; the controller re-derives the row's
+  // own workspace/project id from the same lookup, so `scopeSource: "row"`.
+  "POST /api/work-items/{key}/transition": {
+    capability: "work_item:transition",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  // The state-select feed (`workflows.md` § "The state select"). Deliberately
+  // `work_item:read`, not `work_item:transition` -- rbac.md's own table lists
+  // `work_item:read` for this route (`| ... | GET .../transitions | work_item:read |`
+  // style entry mirrored from the spec's API table): seeing what one COULD do is a read,
+  // same distinction `POST /assign` vs the roster-read route already draws.
+  "GET /api/work-items/{key}/transitions": {
     capability: "work_item:read",
     scope: "work_item",
     scopeSource: "row",
