@@ -131,7 +131,7 @@ function resolveStoryElement(
   throw new Error("Story has no render function or component");
 }
 
-const storyModules = import.meta.glob<StoryModule>("./**/*.stories.{ts,tsx}", {
+const storyModules = import.meta.glob<StoryModule>("../**/*.stories.{ts,tsx}", {
   eager: true,
 });
 
@@ -232,7 +232,7 @@ beforeAll(() => {
   }
 });
 
-describe("Storybook stories have no critical or serious accessibility violations", () => {
+describe("Storybook stories have no accessibility violations", () => {
   for (const [modulePath, storyModule] of Object.entries(storyModules)) {
     const meta = storyModule.default;
 
@@ -254,7 +254,6 @@ describe("Storybook stories have no critical or serious accessibility violations
         const element = resolveStoryElement(meta, exportedStory);
         const { baseElement } = render(element as ReactNode);
         await expectNoA11yViolations(baseElement, {
-          impact: "serious-or-critical",
           // Base UI's menu portal inserts an invisible aria-owns focus
           // guard, a known jsdom false positive also excluded by the
           // Menubar component test.

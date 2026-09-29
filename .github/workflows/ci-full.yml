@@ -6,9 +6,9 @@
 #
 # The E2E job currently runs a browser-level logged-out redirect smoke. The full
 # agent/portal journey suite still needs deterministic browser fixtures and acceptance flows.
-# A11y and performance need scope/budgets; visual baselines need a deterministic screen
-# fixture. Do not treat the remaining `if: false` jobs as passing gates or make their skipped
-# statuses required.
+# The a11y job scans every UI Storybook story and tagged browser screen. Performance still
+# needs scope/budgets; visual baselines need a deterministic screen fixture. Do not treat the
+# remaining `if: false` jobs as passing gates or make their skipped statuses required.
 
 name: CI - full
 
