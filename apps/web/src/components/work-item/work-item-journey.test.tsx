@@ -239,6 +239,57 @@ describe("WorkItemJourney", () => {
     ).toHaveValue("");
   });
 
+  it("preserves a newer comment draft typed while the submitted comment is pending", async () => {
+    permissionFlags.internalComments = true;
+    let finishComment: (() => void) | undefined;
+    createWorkItemComment.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        finishComment = resolve;
+      }),
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney item={makeItem()} onSaved={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    const editor = screen.getByRole("textbox", {
+      name: "workItems:journey.commentEditor",
+    });
+    fireEvent.change(editor, { target: { value: "Submitted comment" } });
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.commentSend" }),
+    );
+    await waitFor(() =>
+      expect(createWorkItemComment).toHaveBeenCalledWith(
+        expect.objectContaining({ key: "WLP-1", visibility: "internal" }),
+      ),
+    );
+
+    fireEvent.change(editor, { target: { value: "Newer unsent draft" } });
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(
+          "taskdesk:work-item-comment-draft:v1:user-1:WLP-1",
+        ) ?? "null",
+      ),
+    ).toMatchObject({ text: "Newer unsent draft" });
+
+    finishComment?.();
+
+    await waitFor(() => expect(editor).toHaveValue("Newer unsent draft"));
+    expect(
+      JSON.parse(
+        window.localStorage.getItem(
+          "taskdesk:work-item-comment-draft:v1:user-1:WLP-1",
+        ) ?? "null",
+      ),
+    ).toMatchObject({ text: "Newer unsent draft" });
+  });
+
   it("keeps the edit draft visible after a 409 and does not silently retry with the newer version", async () => {
     updateWorkItem.mockRejectedValue(new WorkItemVersionConflictError(7, 8));
     const client = new QueryClient({

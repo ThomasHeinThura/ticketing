@@ -534,6 +534,13 @@
               "null"
             ]
           },
+          "defaultCommentVisibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "internal"
+            ]
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -578,6 +585,7 @@
           "icon",
           "name",
           "description",
+          "defaultCommentVisibility",
           "createdAt",
           "archivedAt",
           "deletedAt",
@@ -4946,7 +4954,7 @@
           "Projects"
         ],
         "summary": "Update project",
-        "description": "Replace a project's name, icon, slug, description, and visibility.",
+        "description": "Replace a project's name, icon, slug, and description; optionally configure its default comment visibility.",
         "parameters": [
           {
             "schema": {
@@ -4975,6 +4983,13 @@
                   },
                   "description": {
                     "type": "string"
+                  },
+                  "defaultCommentVisibility": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "internal"
+                    ]
                   }
                 },
                 "required": [

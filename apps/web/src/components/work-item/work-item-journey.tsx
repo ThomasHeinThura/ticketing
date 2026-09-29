@@ -68,6 +68,14 @@ function getCommentDraftStorageKey(userId: string, itemKey: string) {
   return `taskdesk:work-item-comment-draft:v1:${encodeURIComponent(userId)}:${encodeURIComponent(itemKey)}`;
 }
 
+function commentDraftMatches(left: CommentDraft, right: CommentDraft) {
+  return (
+    left.text === right.text &&
+    left.visibility === right.visibility &&
+    JSON.stringify(left.body) === JSON.stringify(right.body)
+  );
+}
+
 function readCommentDraft(
   storageKey: string,
   defaultVisibility: "public" | "internal",
@@ -188,11 +196,7 @@ function WorkItemJourneyForItem({
     [commentDraftStorageKey],
   );
   const [hasSavedCommentDraft] = useState(initialCommentDraft.persisted);
-  const {
-    text: commentText,
-    body: commentBody,
-    visibility: commentVisibility,
-  } = commentDraft;
+  const { text: commentText, visibility: commentVisibility } = commentDraft;
   useEffect(() => {
     if (commentVisibilityReady && !hasSavedCommentDraft) {
       updateCommentDraft((draft) => ({
@@ -325,18 +329,23 @@ function WorkItemJourneyForItem({
     },
   });
   const commentMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (submission: {
+      draft: CommentDraft;
+      visibility: "public" | "internal";
+    }) =>
       createWorkItemComment({
         key: item.key,
-        body: commentBody,
-        visibility: effectiveCommentVisibility,
+        body: submission.draft.body,
+        visibility: submission.visibility,
       }),
-    onSuccess: async () => {
-      updateCommentDraft(() => ({
-        text: "",
-        body: emptyCommentBody(),
-        visibility: commentVisibility,
-      }));
+    onSuccess: async (_result, submission) => {
+      if (commentDraftMatches(commentDraftRef.current, submission.draft)) {
+        updateCommentDraft((draft) => ({
+          text: "",
+          body: emptyCommentBody(),
+          visibility: draft.visibility,
+        }));
+      }
       setCommentError("");
       await queryClient.invalidateQueries({
         queryKey: ["work-items", "activity", item.key],
@@ -764,7 +773,12 @@ function WorkItemJourneyForItem({
               type="button"
               className="self-end"
               disabled={commentMutation.isPending || !commentText.trim()}
-              onClick={() => commentMutation.mutate()}
+              onClick={() =>
+                commentMutation.mutate({
+                  draft: { ...commentDraftRef.current },
+                  visibility: effectiveCommentVisibility,
+                })
+              }
             >
               {commentMutation.isPending
                 ? t("workItems:journey.commentSending")
