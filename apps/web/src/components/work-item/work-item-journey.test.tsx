@@ -15,6 +15,7 @@ const permissionFlags = vi.hoisted(() => ({ update: true, assign: true }));
 const activityFetcher = vi.hoisted(() => vi.fn());
 const updateWorkItem = vi.fn();
 const assignWorkItem = vi.fn();
+const unassignWorkItem = vi.fn();
 const getAssignablePeople = vi.fn();
 vi.mock("@/fetchers/work-item/update-work-item", () => ({
   default: (...args: unknown[]) => updateWorkItem(...args),
@@ -27,6 +28,9 @@ vi.mock("@/fetchers/work-item/get-assignable-people", () => ({
 }));
 vi.mock("@/fetchers/work-item/assign-work-item", () => ({
   default: (...args: unknown[]) => assignWorkItem(...args),
+}));
+vi.mock("@/fetchers/work-item/unassign-work-item", () => ({
+  default: (...args: unknown[]) => unassignWorkItem(...args),
 }));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
@@ -44,6 +48,8 @@ beforeEach(() => {
   updateWorkItem.mockReset();
   assignWorkItem.mockReset();
   assignWorkItem.mockResolvedValue({});
+  unassignWorkItem.mockReset();
+  unassignWorkItem.mockResolvedValue({});
   activityFetcher.mockReset();
   activityFetcher.mockResolvedValue({
     data: [],
@@ -263,5 +269,64 @@ describe("WorkItemJourney", () => {
     const rows = screen.getAllByRole("listitem");
     expect(rows[0]).toHaveTextContent("Older comment");
     expect(rows[1]).toHaveTextContent("Newer comment");
+  });
+
+  it("lets update-only callers unassign themselves but not a colleague", async () => {
+    permissionFlags.assign = false;
+    getAssignablePeople.mockResolvedValue([
+      { personId: "self", name: "Current Agent", roleName: "Member" },
+    ]);
+    const ownAssignment = makeItem();
+    ownAssignment.assigneeId = "self";
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney item={ownAssignment} onSaved={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "workItems:journey.unassign" }),
+    );
+    await waitFor(() => expect(unassignWorkItem).toHaveBeenCalledWith("WLP-1"));
+
+    view.unmount();
+    const colleagueAssignment = makeItem();
+    colleagueAssignment.assigneeId = "colleague";
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({
+            defaultOptions: { queries: { retry: false } },
+          })
+        }
+      >
+        <WorkItemJourney item={colleagueAssignment} onSaved={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    await screen.findByRole("button", { name: "workItems:journey.assignToMe" });
+    expect(
+      screen.queryByRole("button", { name: "workItems:journey.unassign" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lets assign-capable callers unassign another person", async () => {
+    const item = makeItem();
+    item.assigneeId = "colleague";
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney item={item} onSaved={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "workItems:journey.unassign" }),
+    );
+    await waitFor(() => expect(unassignWorkItem).toHaveBeenCalledWith("WLP-1"));
   });
 });

@@ -37,6 +37,7 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   let created = false;
   let assigned = false;
   let permissioned = true;
+  let accessDenied = false;
   const activity: Array<Record<string, unknown>> = [];
   const richComment = {
     id: "comment-rich",
@@ -214,12 +215,14 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
       created = true;
       return json(item);
     }
-    if (path === "/api/work-items/WLP-1" && request.method() === "GET")
+    if (path === "/api/work-items/WLP-1" && request.method() === "GET") {
+      if (accessDenied) return json({ message: "Work item not found" }, 404);
       return json({
         ...item,
         assigneeId: "person-existing",
         assigneeName: "Existing colleague",
       });
+    }
     if (path === "/api/work-items/WLP-1" && request.method() === "PATCH") {
       const headers = await request.allHeaders();
       expect(headers["if-match"], JSON.stringify(headers)).toBe('"1"');
@@ -300,6 +303,18 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
         version: item.version,
       });
     }
+    if (
+      path === "/api/work-items/WLP-1/assign" &&
+      request.method() === "DELETE"
+    ) {
+      item = { ...item, assigneeId: null, assigneeName: null };
+      return json({
+        key: item.key,
+        assigneeId: null,
+        previousAssigneeId: "person-e2e",
+        version: item.version + 1,
+      });
+    }
     if (path === "/api/work-items/WLP-1/activity") {
       if (url.searchParams.has("cursor"))
         return json({
@@ -372,4 +387,17 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(
     journey.getByRole("heading", { name: "Assignment" }),
   ).toHaveCount(0);
+
+  permissioned = true;
+  await page.reload();
+  await expect(page.getByTestId("work-item-journey")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Unassign" })).toBeVisible();
+  // The detail/activity were fetched successfully in this page session. Make the
+  // authoritative detail refetch return the same 404 used for an out-of-reach key.
+  accessDenied = true;
+  await page.getByRole("button", { name: "Unassign" }).click();
+  await expect(page.getByTestId("work-item-detail-not-found")).toBeVisible();
+  await expect(page.getByTestId("work-item-journey")).toHaveCount(0);
+  await expect(page.getByText("Tiptap note", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Older note", { exact: true })).toHaveCount(0);
 });

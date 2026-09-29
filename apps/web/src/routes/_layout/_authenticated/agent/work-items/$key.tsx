@@ -42,16 +42,22 @@ function WorkItemDetailRouteComponent() {
   // purpose (a guessable `{slug}-{number}` key), so a 404 is shown as one not-found
   // state, not split into "missing" vs "no access".
   const isNotFound = error instanceof HttpError && error.status === 404;
-  const project = item
-    ? projects?.find((candidate) => candidate.id === item.projectId)
+  // TanStack Query retains cached data when a refetch fails. Once the server says
+  // this key is missing or outside the caller's reach, stop rendering every cached
+  // projection (including the journey's separately cached activity stream).
+  const visibleItem = isError ? undefined : item;
+  const project = visibleItem
+    ? projects?.find((candidate) => candidate.id === visibleItem.projectId)
     : undefined;
 
   return (
     <>
-      <PageTitle title={item?.title ? `${item.title} · ${key}` : key} />
+      <PageTitle
+        title={visibleItem?.title ? `${visibleItem.title} · ${key}` : key}
+      />
       <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
         <WorkItemDetail
-          item={item}
+          item={visibleItem}
           workItemKey={key}
           project={
             project ? { name: project.name, slug: project.slug } : undefined
@@ -61,9 +67,9 @@ function WorkItemDetailRouteComponent() {
           isError={isError && !isNotFound}
           onRetry={refetch}
         />
-        {item && (
+        {visibleItem && (
           <WorkItemJourney
-            item={item}
+            item={visibleItem}
             onSaved={() => {
               void refetch();
             }}

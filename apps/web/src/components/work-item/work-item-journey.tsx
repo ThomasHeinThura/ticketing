@@ -24,6 +24,7 @@ import WorkItemActivityComment from "@/components/work-item/work-item-activity-c
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
 import getAssignablePeople from "@/fetchers/work-item/get-assignable-people";
 import getWorkItemActivity from "@/fetchers/work-item/get-work-item-activity";
+import unassignWorkItem from "@/fetchers/work-item/unassign-work-item";
 import updateWorkItem from "@/fetchers/work-item/update-work-item";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
@@ -156,6 +157,23 @@ export default function WorkItemJourney({
       }
     },
   });
+  const unassignMutation = useMutation({
+    mutationFn: () => unassignWorkItem(item.key),
+    onSuccess: async () => {
+      setAssignError("");
+      await invalidate();
+    },
+    onError: async (error) => {
+      if (error instanceof HttpError && error.status === 409) {
+        await queryClient.invalidateQueries({
+          queryKey: ["work-items", "detail", item.key],
+        });
+        setAssignError(t("workItems:journey.assignmentConflict"));
+      } else {
+        setAssignError(t("workItems:journey.unassignmentError"));
+      }
+    },
+  });
   const startEditing = () => {
     setTitle(item.title);
     const value = extractDescription(item.description);
@@ -174,6 +192,14 @@ export default function WorkItemJourney({
     }
     assignMutation.mutate(assigneeId);
   };
+  const canUnassign = Boolean(
+    item.assigneeId &&
+      (canAssignTasks() ||
+        (selfAssignmentOnly &&
+          assignees.data?.some(
+            (person) => person.personId === item.assigneeId,
+          ))),
+  );
 
   return (
     <div className="flex flex-col gap-6" data-testid="work-item-journey">
@@ -307,6 +333,16 @@ export default function WorkItemJourney({
                     ? t("workItems:journey.confirmAssignment")
                     : t("workItems:journey.assignToMe")}
                 </Button>
+                {canUnassign && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={unassignMutation.isPending}
+                    onClick={() => unassignMutation.mutate()}
+                  >
+                    {t("workItems:journey.unassign")}
+                  </Button>
+                )}
                 {confirmReassign && (
                   <Button
                     variant="outline"
@@ -369,6 +405,16 @@ export default function WorkItemJourney({
                     ? t("workItems:journey.confirmAssignment")
                     : t("workItems:journey.assign")}
                 </Button>
+                {canUnassign && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={unassignMutation.isPending}
+                    onClick={() => unassignMutation.mutate()}
+                  >
+                    {t("workItems:journey.unassign")}
+                  </Button>
+                )}
                 {confirmReassign && (
                   <Button
                     variant="outline"
