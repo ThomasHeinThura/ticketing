@@ -74,7 +74,8 @@ before relying on this snapshot.
 ---
 
 **2026-09-28 orchestrator snapshot (8) — `main` at `b7ec505a` (#497, stale UAT-overlay header
-comment removed). Prior snapshot (7), immediately below, is stale and kept only as history.**
+comment removed). Snapshot (7) was omitted from this file during a later refresh; it remains in
+Git history. Older snapshots below are retained as point-in-time history.**
 
 **Merged since snapshot (7):** **#495** (the four Thomas decisions, decision log), **#496**
 (the Traefik naming-collision fix — live UAT was actually down for several minutes before this
