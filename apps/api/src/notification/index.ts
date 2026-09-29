@@ -27,7 +27,8 @@ const listNotificationsRoute = createRoute({
   path: "/",
   tags: ["Notifications"],
   summary: "List notifications",
-  description: "Get every notification for the current user, read and unread.",
+  description:
+    "Get read and unread notifications for the current user. Task notifications are included only while the task is reachable; missing or unreachable task notifications are omitted.",
   responses: {
     200: jsonResponse("List of notifications", notificationListSchema),
   },
@@ -63,7 +64,7 @@ const markAsReadRoute = createRoute({
   tags: ["Notifications"],
   summary: "Mark notification read",
   description:
-    "Mark one notification as read. Scoped to the current user, so another user's notification is not found.",
+    "Mark one notification as read. Scoped to the current user and current task reach; another user's, missing, or unreachable-task notification is not found.",
   request: { params: notificationParam },
   responses: {
     200: jsonResponse("The updated notification", notificationSchema),

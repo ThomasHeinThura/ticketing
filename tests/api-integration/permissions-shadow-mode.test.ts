@@ -611,34 +611,23 @@ describe("#8 notification self-read shadow evidence", () => {
       eventData: Record<string, unknown> | null;
     }>;
 
-    expect(notifications).toHaveLength(3);
-    expect(notifications).toContainEqual(
-      expect.objectContaining({
-        id: privateNotification.id,
-        title: null,
-        content: null,
-        resourceId: null,
-        resourceType: null,
-        eventData: null,
-      }),
-    );
+    expect(notifications).toHaveLength(1);
+    expect(notifications.map((notification) => notification.id)).toEqual([
+      ownNotification.id,
+    ]);
 
     const readResponse = await fresh.app.request(
       `/api/notification/${privateNotification.id}/read`,
       { method: "PATCH" },
     );
-    expect(readResponse.status).toBe(200);
-    expect(await readResponse.json()).toEqual(
-      expect.objectContaining({
-        id: privateNotification.id,
-        isRead: true,
-        title: null,
-        content: null,
-        eventData: null,
-        resourceId: null,
-        resourceType: null,
-      }),
+    expect(readResponse.status).toBe(404);
+    const inaccessibleReadBody = await readResponse.text();
+    const missingReadResponse = await fresh.app.request(
+      "/api/notification/nonexistent-notification/read",
+      { method: "PATCH" },
     );
+    expect(missingReadResponse.status).toBe(404);
+    expect(await missingReadResponse.text()).toBe(inaccessibleReadBody);
     const reachableReadResponse = await fresh.app.request(
       `/api/notification/${ownNotification.id}/read`,
       { method: "PATCH" },
@@ -670,15 +659,8 @@ describe("#8 notification self-read shadow evidence", () => {
         },
       }),
     );
-    expect(notifications).toContainEqual(
-      expect.objectContaining({
-        id: deletedTaskNotification.id,
-        title: null,
-        content: null,
-        resourceId: null,
-        resourceType: null,
-        eventData: null,
-      }),
+    expect(notifications).not.toContainEqual(
+      expect.objectContaining({ id: deletedTaskNotification.id }),
     );
 
     const agreeTally = await waitForShadowEvidence(async () => {
@@ -843,33 +825,20 @@ describe("#8 notification self-read shadow evidence", () => {
 
     const listResponse = await fresh.app.request("/api/notification");
     expect(listResponse.status).toBe(200);
-    expect(await listResponse.json()).toEqual([
-      expect.objectContaining({
-        id: queuedNotification.id,
-        title: null,
-        content: null,
-        eventData: null,
-        resourceId: null,
-        resourceType: null,
-      }),
-    ]);
+    expect(await listResponse.json()).toEqual([]);
 
     const readResponse = await fresh.app.request(
       `/api/notification/${queuedNotification.id}/read`,
       { method: "PATCH" },
     );
-    expect(readResponse.status).toBe(200);
-    expect(await readResponse.json()).toEqual(
-      expect.objectContaining({
-        id: queuedNotification.id,
-        isRead: true,
-        title: null,
-        content: null,
-        eventData: null,
-        resourceId: null,
-        resourceType: null,
-      }),
+    expect(readResponse.status).toBe(404);
+    const inaccessibleReadBody = await readResponse.text();
+    const missingReadResponse = await fresh.app.request(
+      "/api/notification/nonexistent-notification/read",
+      { method: "PATCH" },
     );
+    expect(missingReadResponse.status).toBe(404);
+    expect(await missingReadResponse.text()).toBe(inaccessibleReadBody);
 
     expect(
       await fresh.db.query.userNotificationWorkspaceRuleTable.findFirst({

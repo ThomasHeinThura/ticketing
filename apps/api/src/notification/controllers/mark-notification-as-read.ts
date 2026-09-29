@@ -2,12 +2,28 @@ import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { notificationTable } from "../../database/schema";
-import {
-  redactUnreachableTaskNotification,
-  userCanReachTask,
-} from "../task-reach";
+import { userCanReachTask } from "../task-reach";
 
 async function markNotificationAsRead(id: string, userId: string) {
+  const [existingNotification] = await db
+    .select()
+    .from(notificationTable)
+    .where(
+      and(eq(notificationTable.id, id), eq(notificationTable.userId, userId)),
+    )
+    .limit(1);
+
+  if (
+    !existingNotification ||
+    (existingNotification.resourceType === "task" &&
+      (!existingNotification.resourceId ||
+        !(await userCanReachTask(userId, existingNotification.resourceId))))
+  ) {
+    throw new HTTPException(404, {
+      message: "Notification not found",
+    });
+  }
+
   const [notification] = await db
     .update(notificationTable)
     .set({ isRead: true })
@@ -27,7 +43,9 @@ async function markNotificationAsRead(id: string, userId: string) {
     (!notification.resourceId ||
       !(await userCanReachTask(userId, notification.resourceId)))
   ) {
-    return redactUnreachableTaskNotification(notification);
+    throw new HTTPException(404, {
+      message: "Notification not found",
+    });
   }
 
   return notification;

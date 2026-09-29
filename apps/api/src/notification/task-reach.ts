@@ -1,10 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import db from "../database";
-import {
-  type notificationTable,
-  projectTable,
-  taskTable,
-} from "../database/schema";
+import { projectTable, taskTable } from "../database/schema";
 import { reachableWorkspacePredicate } from "../utils/workspace-access-middleware";
 
 export async function userCanReachTask(
@@ -24,17 +20,4 @@ export async function userCanReachTask(
     .limit(1);
 
   return Boolean(reachableTask);
-}
-
-export function redactUnreachableTaskNotification(
-  notification: typeof notificationTable.$inferSelect,
-) {
-  return {
-    ...notification,
-    title: null,
-    content: null,
-    eventData: null,
-    resourceId: null,
-    resourceType: null,
-  };
 }

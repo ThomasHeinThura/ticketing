@@ -154,6 +154,7 @@ POST  /api/instance/notify/{channel}/test   instance:admin
 | Case | Behaviour |
 | --- | --- |
 | Recipient loses reach before delivery | Suppressed at delivery time, not just at creation |
+| Recipient loses reach after an in-app task notification is stored | Omitted from the inbox; marking it read returns 404 until reach is restored |
 | Recipient's account is deleted | Outbox rows for them are dropped |
 | Channel disabled after queueing | Queued messages are dropped with a log line |
 | SMTP down for hours | Retries with backoff; God Mode shows the backlog |

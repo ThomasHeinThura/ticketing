@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, ne, or } from "drizzle-orm";
 import db from "../../database";
 import {
   notificationTable,
@@ -7,7 +7,6 @@ import {
   workspaceTable,
 } from "../../database/schema";
 import { reachableWorkspacePredicate } from "../../utils/workspace-access-middleware";
-import { redactUnreachableTaskNotification } from "../task-reach";
 
 async function getNotifications(userId: string) {
   const rows = await db
@@ -33,11 +32,20 @@ async function getNotifications(userId: string) {
       ),
     )
     .leftJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
-    .where(eq(notificationTable.userId, userId))
+    .where(
+      and(
+        eq(notificationTable.userId, userId),
+        or(
+          isNull(notificationTable.resourceType),
+          ne(notificationTable.resourceType, "task"),
+          and(isNotNull(taskTable.id), isNotNull(projectTable.id)),
+        ),
+      ),
+    )
     .orderBy(desc(notificationTable.createdAt))
     .limit(50);
 
-  return rows.map(({ notification, taskId, projectId, workspaceId }) => {
+  return rows.flatMap(({ notification, taskId, projectId, workspaceId }) => {
     const existing =
       notification.eventData &&
       typeof notification.eventData === "object" &&
@@ -48,23 +56,25 @@ async function getNotifications(userId: string) {
     // Notifications intentionally do not reference tasks with a foreign key, so a
     // task can be deleted while its notification remains. A missing task or a task
     // outside the caller's reachable workspaces has no verified boundary for its
-    // stored payload. Fail closed instead of returning stale ids or task data.
+    // stored payload. Omit the row so even its notification type is not disclosed.
     if (notification.resourceType === "task" && (!taskId || !projectId)) {
-      return redactUnreachableTaskNotification(notification);
+      return [];
     }
 
     if (!projectId && !workspaceId) {
-      return notification;
+      return [notification];
     }
 
-    return {
-      ...notification,
-      eventData: {
-        ...existing,
-        projectId: projectId ?? existing.projectId ?? null,
-        workspaceId: workspaceId ?? existing.workspaceId ?? null,
+    return [
+      {
+        ...notification,
+        eventData: {
+          ...existing,
+          projectId: projectId ?? existing.projectId ?? null,
+          workspaceId: workspaceId ?? existing.workspaceId ?? null,
+        },
       },
-    };
+    ];
   });
 }
 
