@@ -24,18 +24,64 @@ type Story = {
 
 type Csf2Story = ((args: Record<string, unknown>) => ReactNode) & {
   args?: Record<string, unknown>;
+  decorators?: unknown[];
+  loaders?: unknown[];
+  play?: unknown;
+  [key: string]: unknown;
 };
 
-function resolveStoryElement(
-  meta: StoryModule["default"],
-  exportedStory: unknown,
-): ReactNode {
-  let story: Story;
-
+function normalizeStoryExport(exportedStory: unknown): Story {
   if (typeof exportedStory === "function") {
     const csf2Story = exportedStory as Csf2Story;
-    story = { args: csf2Story.args, render: csf2Story };
-  } else if (
+    // Check every own property, including non-enumerable properties. The
+    // standard function properties are the only accepted non-Storybook keys.
+    const supportedFunctionKeys = new Set([
+      "args",
+      "decorators",
+      "loaders",
+      "play",
+    ]);
+    const standardFunctionKeys = new Set([
+      "length",
+      "name",
+      "arguments",
+      "caller",
+      "prototype",
+    ]);
+    const unsupportedFunctionKeys = Reflect.ownKeys(csf2Story).filter(
+      (key) =>
+        typeof key !== "string" ||
+        (!supportedFunctionKeys.has(key) && !standardFunctionKeys.has(key)),
+    );
+    if (unsupportedFunctionKeys.length > 0) {
+      throw new Error(
+        `Unsupported CSF2 function story fields: ${unsupportedFunctionKeys.join(", ")}`,
+      );
+    }
+    if (
+      (csf2Story.args !== undefined &&
+        (typeof csf2Story.args !== "object" ||
+          csf2Story.args === null ||
+          Array.isArray(csf2Story.args))) ||
+      (csf2Story.decorators !== undefined &&
+        (!Array.isArray(csf2Story.decorators) ||
+          csf2Story.decorators.length > 0)) ||
+      (csf2Story.loaders !== undefined &&
+        (!Array.isArray(csf2Story.loaders) || csf2Story.loaders.length > 0)) ||
+      csf2Story.play !== undefined
+    ) {
+      throw new Error("Unsupported CSF2 story annotations");
+    }
+    return {
+      args: csf2Story.args,
+      render: csf2Story,
+      decorators: csf2Story.decorators,
+      loaders: csf2Story.loaders,
+      play: csf2Story.play,
+    };
+  }
+
+  if (
     typeof exportedStory === "object" &&
     exportedStory !== null &&
     !Array.isArray(exportedStory)
@@ -65,11 +111,17 @@ function resolveStoryElement(
     ) {
       throw new Error("Malformed Storybook story export");
     }
-    story = candidate as Story;
-  } else {
-    throw new Error("Named Storybook export is not a supported story");
+    return candidate as Story;
   }
 
+  throw new Error("Named Storybook export is not a supported story");
+}
+
+function resolveStoryElement(
+  meta: StoryModule["default"],
+  exportedStory: unknown,
+): ReactNode {
+  const story = normalizeStoryExport(exportedStory);
   const args = { ...meta.args, ...story.args };
   const renderStory = story.render ?? meta.render;
   if (renderStory) return renderStory(args);
@@ -96,6 +148,34 @@ describe("Storybook story export handling", () => {
   it("rejects a malformed named export instead of skipping it", () => {
     expect(() => resolveStoryElement({}, "not a story")).toThrow(
       "Named Storybook export is not a supported story",
+    );
+  });
+
+  it.each([
+    ["decorators", { decorators: [() => null] }],
+    ["loaders", { loaders: [() => ({})] }],
+    ["play", { play: async () => undefined }],
+    ["unknown annotation", { customAnnotation: true }],
+  ])("rejects unsupported CSF2 %s annotations", (_label, annotations) => {
+    const story = Object.assign(
+      (args: Record<string, unknown>) => (
+        <button type="button">{args.label as string}</button>
+      ),
+      annotations,
+    );
+    expect(() => normalizeStoryExport(story)).toThrow();
+  });
+
+  it("rejects unknown non-enumerable CSF2 function properties", () => {
+    const story = (args: Record<string, unknown>) => (
+      <button type="button">{args.label as string}</button>
+    );
+    Object.defineProperty(story, "customAnnotation", {
+      value: true,
+      enumerable: false,
+    });
+    expect(() => normalizeStoryExport(story)).toThrow(
+      "Unsupported CSF2 function story fields: customAnnotation",
     );
   });
 });
@@ -142,16 +222,10 @@ describe("Storybook stories have no critical or serious accessibility violations
         // or play-driven state.
         expect(meta.decorators ?? []).toEqual([]);
         expect(meta.loaders ?? []).toEqual([]);
-        const story =
-          typeof exportedStory === "function"
-            ? ({ render: exportedStory } as Story)
-            : typeof exportedStory === "object" && exportedStory !== null
-              ? (exportedStory as Story)
-              : undefined;
-        expect(story, "named export must be a supported story").toBeDefined();
-        expect(story?.decorators ?? []).toEqual([]);
-        expect(story?.loaders ?? []).toEqual([]);
-        expect(story?.play).toBeUndefined();
+        const story = normalizeStoryExport(exportedStory);
+        expect(story.decorators ?? []).toEqual([]);
+        expect(story.loaders ?? []).toEqual([]);
+        expect(story.play).toBeUndefined();
 
         const element = resolveStoryElement(meta, exportedStory);
         const { baseElement } = render(element as ReactNode);
