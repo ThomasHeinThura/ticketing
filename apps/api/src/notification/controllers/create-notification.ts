@@ -3,6 +3,7 @@ import db from "../../database";
 import { notificationTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deliverNotification } from "../../notification-preferences/delivery";
+import { userCanReachTask } from "../task-reach";
 
 async function createNotification({
   userId,
@@ -21,6 +22,13 @@ async function createNotification({
   resourceId?: string;
   resourceType?: string;
 }) {
+  if (
+    resourceType === "task" &&
+    (!resourceId || !(await userCanReachTask(userId, resourceId)))
+  ) {
+    return null;
+  }
+
   const preferenceKey =
     type === "task_assignee_changed" || type === "task_created"
       ? "taskAssignmentEnabled"

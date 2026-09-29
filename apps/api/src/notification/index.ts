@@ -40,7 +40,7 @@ const createNotificationRoute = createRoute({
   tags: ["Notifications"],
   summary: "Create notification",
   description:
-    "Create a notification for the current user. Most notifications are raised by the server from task and workspace events; this exists for integrations. Returns null when the user has turned off this notification category in their preferences.",
+    "Create a notification for the current user. Most notifications are raised by the server from task and workspace events; this exists for integrations. Task notifications are suppressed unless the recipient currently reaches the task. Returns null when the category is muted or the task is unreachable.",
   request: {
     body: {
       required: true,

@@ -550,16 +550,41 @@ describe("#8 notification self-read shadow evidence", () => {
       caller.workspace.id,
       "Deleted task",
     );
-    const privateNotification = await createOwnNotification(
-      privateTask.id,
-      "Private task notification",
+    const [privateNotification] = await fresh.db
+      .insert(fresh.schema.notificationTable)
+      .values({
+        userId: caller.user.id,
+        title: "Private task notification",
+        content: "Sensitive private task content",
+        type: "info",
+        eventData: {
+          taskTitle: "Private task notification",
+          projectId: privateProject.id,
+          workspaceId: other.workspace.id,
+          marker: "must-not-leak",
+        },
+        resourceId: privateTask.id,
+        resourceType: "task",
+      })
+      .returning();
+    if (!privateNotification)
+      throw new Error("notification insert returned no row");
+    const unreachableCreateResponse = await fresh.app.request(
+      "/api/notification",
       {
-        taskTitle: "Private task notification",
-        projectId: privateProject.id,
-        workspaceId: other.workspace.id,
-        marker: "must-not-leak",
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: "Unreachable task attempt",
+          message: "Must not be stored",
+          type: "info",
+          relatedEntityId: privateTask.id,
+          relatedEntityType: "task",
+        }),
       },
     );
+    expect(unreachableCreateResponse.status).toBe(200);
+    expect(await unreachableCreateResponse.json()).toBeNull();
     const ownNotification = await createOwnNotification(
       ownTask.id,
       "Own task notification",
@@ -595,6 +620,40 @@ describe("#8 notification self-read shadow evidence", () => {
         resourceId: null,
         resourceType: null,
         eventData: null,
+      }),
+    );
+
+    const readResponse = await fresh.app.request(
+      `/api/notification/${privateNotification.id}/read`,
+      { method: "PATCH" },
+    );
+    expect(readResponse.status).toBe(200);
+    expect(await readResponse.json()).toEqual(
+      expect.objectContaining({
+        id: privateNotification.id,
+        isRead: true,
+        title: null,
+        content: null,
+        eventData: null,
+        resourceId: null,
+        resourceType: null,
+      }),
+    );
+    const reachableReadResponse = await fresh.app.request(
+      `/api/notification/${ownNotification.id}/read`,
+      { method: "PATCH" },
+    );
+    expect(reachableReadResponse.status).toBe(200);
+    expect(await reachableReadResponse.json()).toEqual(
+      expect.objectContaining({
+        id: ownNotification.id,
+        title: "Own task notification",
+        content: "Sensitive content for Own task notification",
+        eventData: {
+          taskTitle: "Own task notification",
+        },
+        resourceId: ownTask.id,
+        resourceType: "task",
       }),
     );
     expect(notifications).toContainEqual(
@@ -639,6 +698,206 @@ describe("#8 notification self-read shadow evidence", () => {
         "legacy_deny_policy_allow",
       ),
     ).toEqual([]);
+  });
+
+  it("rechecks task reach at notification creation, read, delivery, and preference read", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("off");
+    const recipient = await createWorkspaceMember();
+    const actor = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(recipient.user);
+
+    const { project, columns } = await createProjectFixture({
+      workspaceId: recipient.workspace.id,
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Reach-gated task",
+        description: "Reach-gated task",
+        status: "to-do",
+        columnId: columns.todo.id,
+        priority: "medium",
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task) throw new Error("task insert returned no row");
+
+    await fresh.db.insert(fresh.schema.userNotificationPreferenceTable).values({
+      userId: recipient.user.id,
+      webhookEnabled: false,
+    });
+    await fresh.db
+      .insert(fresh.schema.userNotificationWorkspaceRuleTable)
+      .values({
+        userId: recipient.user.id,
+        workspaceId: recipient.workspace.id,
+        isActive: true,
+        webhookEnabled: false,
+      });
+
+    const { publishEvent } = await import("../../apps/api/src/events");
+    await publishEvent("task.status_changed", {
+      taskId: task.id,
+      userId: actor.user.id,
+      assigneeId: recipient.user.id,
+      oldStatus: "to-do",
+      newStatus: "in-progress",
+      title: task.title,
+      projectId: project.id,
+      type: "status_changed",
+    });
+
+    const findTaskNotifications = () =>
+      fresh.db
+        .select()
+        .from(fresh.schema.notificationTable)
+        .where(
+          and(
+            eq(fresh.schema.notificationTable.userId, recipient.user.id),
+            eq(fresh.schema.notificationTable.resourceId, task.id),
+            eq(fresh.schema.notificationTable.resourceType, "task"),
+          ),
+        );
+    const initialDeadline = Date.now() + 5_000;
+    let taskNotifications = await findTaskNotifications();
+    while (taskNotifications.length === 0 && Date.now() < initialDeadline) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      taskNotifications = await findTaskNotifications();
+    }
+    expect(taskNotifications).toHaveLength(1);
+    const queuedNotification = taskNotifications[0];
+    if (!queuedNotification)
+      throw new Error("status notification insert returned no row");
+
+    // Let the fire-and-forget first delivery observe the disabled preference.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await fresh.db
+      .update(fresh.schema.userNotificationPreferenceTable)
+      .set({
+        webhookEnabled: true,
+        webhookUrl: "https://8.8.8.8/notifications",
+      })
+      .where(
+        eq(
+          fresh.schema.userNotificationPreferenceTable.userId,
+          recipient.user.id,
+        ),
+      );
+    await fresh.db
+      .update(fresh.schema.userNotificationWorkspaceRuleTable)
+      .set({ webhookEnabled: true })
+      .where(
+        and(
+          eq(
+            fresh.schema.userNotificationWorkspaceRuleTable.userId,
+            recipient.user.id,
+          ),
+          eq(
+            fresh.schema.userNotificationWorkspaceRuleTable.workspaceId,
+            recipient.workspace.id,
+          ),
+        ),
+      );
+
+    await fresh.db
+      .delete(fresh.schema.workspaceUserTable)
+      .where(
+        and(
+          eq(fresh.schema.workspaceUserTable.userId, recipient.user.id),
+          eq(
+            fresh.schema.workspaceUserTable.workspaceId,
+            recipient.workspace.id,
+          ),
+        ),
+      );
+
+    await publishEvent("task.status_changed", {
+      taskId: task.id,
+      userId: actor.user.id,
+      assigneeId: recipient.user.id,
+      oldStatus: "in-progress",
+      newStatus: "done",
+      title: task.title,
+      projectId: project.id,
+      type: "status_changed",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    taskNotifications = await findTaskNotifications();
+    expect(taskNotifications.map((notification) => notification.id)).toEqual([
+      queuedNotification.id,
+    ]);
+
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const { deliverNotification } = await import(
+      "../../apps/api/src/notification-preferences/delivery"
+    );
+    await deliverNotification(queuedNotification.id);
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    const listResponse = await fresh.app.request("/api/notification");
+    expect(listResponse.status).toBe(200);
+    expect(await listResponse.json()).toEqual([
+      expect.objectContaining({
+        id: queuedNotification.id,
+        title: null,
+        content: null,
+        eventData: null,
+        resourceId: null,
+        resourceType: null,
+      }),
+    ]);
+
+    const readResponse = await fresh.app.request(
+      `/api/notification/${queuedNotification.id}/read`,
+      { method: "PATCH" },
+    );
+    expect(readResponse.status).toBe(200);
+    expect(await readResponse.json()).toEqual(
+      expect.objectContaining({
+        id: queuedNotification.id,
+        isRead: true,
+        title: null,
+        content: null,
+        eventData: null,
+        resourceId: null,
+        resourceType: null,
+      }),
+    );
+
+    expect(
+      await fresh.db.query.userNotificationWorkspaceRuleTable.findFirst({
+        where: eq(
+          fresh.schema.userNotificationWorkspaceRuleTable.workspaceId,
+          recipient.workspace.id,
+        ),
+      }),
+    ).toBeDefined();
+
+    const { getNotificationPreferences } = await import(
+      "../../apps/api/src/notification-preferences/service"
+    );
+    const directPreferences = await getNotificationPreferences(
+      recipient.user.id,
+      recipient.user.email,
+    );
+    expect(directPreferences.workspaces).toEqual([]);
+
+    const preferenceResponse = await fresh.app.request(
+      "/api/notification-preferences",
+    );
+    const preferenceText = await preferenceResponse.text();
+    expect(preferenceResponse.status, preferenceText).toBe(200);
+    const preferences = JSON.parse(preferenceText) as {
+      workspaces: Array<{ workspaceId: string; workspaceName: string }>;
+    };
+    expect(preferences.workspaces).toEqual([]);
   });
 });
 

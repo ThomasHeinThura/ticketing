@@ -7,19 +7,7 @@ import {
   workspaceTable,
 } from "../../database/schema";
 import { reachableWorkspacePredicate } from "../../utils/workspace-access-middleware";
-
-function redactUnreachableTaskNotification(
-  notification: typeof notificationTable.$inferSelect,
-) {
-  return {
-    ...notification,
-    title: null,
-    content: null,
-    eventData: null,
-    resourceId: null,
-    resourceType: null,
-  };
-}
+import { redactUnreachableTaskNotification } from "../task-reach";
 
 async function getNotifications(userId: string) {
   const rows = await db
