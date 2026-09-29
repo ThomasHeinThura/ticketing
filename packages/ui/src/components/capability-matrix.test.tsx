@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { expectNoA11yViolations } from "../test/a11y";
 import {
@@ -100,17 +101,122 @@ describe("CapabilityMatrix", () => {
     expect(onSelectedChange).not.toHaveBeenCalled();
   });
 
-  it("has no accessibility violations", async () => {
-    const { baseElement } = render(
+  it("forwards its root ref and native div props", () => {
+    const rootRef = React.createRef<HTMLDivElement>();
+    const onClick = vi.fn();
+    render(
       <CapabilityMatrix
-        disabled={["service:read"]}
-        disabledReasons={{ "service:read": "You do not hold this capability." }}
+        data-testid="capability-matrix-root"
+        id="role-capabilities"
         items={items}
+        onClick={onClick}
         onSelectedChange={() => {}}
-        selected={["work_item:read"]}
+        ref={rootRef}
+        selected={[]}
       />,
     );
 
-    await expectNoA11yViolations(baseElement);
+    const root = screen.getByTestId("capability-matrix-root");
+    expect(root).toHaveAttribute("id", "role-capabilities");
+    expect(rootRef.current).toBe(root);
+    fireEvent.click(root);
+    expect(onClick).toHaveBeenCalledOnce();
   });
+
+  it("renders long labels and explanations without dropping their content", () => {
+    const longContent: CapabilityMatrixItem[] = [
+      {
+        id: "service_calendar:manage",
+        label: "Manage service calendars across all workspaces",
+        description:
+          "Create and maintain business-hour calendars used by service level agreements, including timezone rules, holiday dates, and weekday coverage windows for every workspace this role can reach.",
+        group: "Service management",
+      },
+    ];
+
+    render(
+      <CapabilityMatrix
+        items={longContent}
+        onSelectedChange={() => {}}
+        selected={[]}
+      />,
+    );
+
+    expect(
+      screen.getByText("Manage service calendars across all workspaces"),
+    ).toBeVisible();
+    expect(screen.getByText(longContent[0].description)).toBeVisible();
+  });
+
+  it("renders within the dark theme without changing the capability contract", () => {
+    render(
+      <div className="dark" data-testid="dark-theme">
+        <CapabilityMatrix
+          items={items}
+          onSelectedChange={() => {}}
+          selected={["work_item:read"]}
+        />
+      </div>,
+    );
+
+    expect(screen.getByTestId("dark-theme")).toHaveClass("dark");
+    expect(screen.getByRole("checkbox", { name: "Read" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("checkbox", { name: "Create" })).toBeVisible();
+  });
+
+  it.each([
+    ["default", false, items],
+    ["disabled", true, items],
+    [
+      "long content",
+      false,
+      [
+        {
+          id: "service_calendar:manage",
+          label: "Manage service calendars across all workspaces",
+          description:
+            "Create and maintain business-hour calendars used by service level agreements, including timezone rules, holiday dates, and weekday coverage windows for every workspace this role can reach.",
+          group: "Service management",
+        },
+      ],
+    ],
+    [
+      "dark mode",
+      false,
+      [
+        {
+          id: "service_calendar:manage",
+          label: "Manage service calendars across all workspaces",
+          description:
+            "Create and maintain business-hour calendars used by service level agreements, including timezone rules, holiday dates, and weekday coverage windows for every workspace this role can reach.",
+          group: "Service management",
+        },
+      ],
+    ],
+  ] as const)(
+    "has no accessibility violations in the %s story",
+    async (name, isDisabled, storyItems) => {
+      const matrix = (
+        <CapabilityMatrix
+          disabled={isDisabled ? ["service:read"] : []}
+          disabledReasons={
+            isDisabled
+              ? { "service:read": "You do not hold this capability." }
+              : undefined
+          }
+          items={storyItems}
+          onSelectedChange={() => {}}
+          selected={storyItems === items ? ["work_item:read"] : []}
+        />
+      );
+      const { baseElement } = render(
+        name === "dark mode" ? <div className="dark">{matrix}</div> : matrix,
+      );
+
+      await expectNoA11yViolations(baseElement);
+    },
+  );
 });

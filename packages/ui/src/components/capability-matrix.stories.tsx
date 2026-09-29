@@ -45,7 +45,23 @@ const items: CapabilityMatrixItem[] = [
   },
 ];
 
-function InteractiveMatrix({ disabled = false }: { disabled?: boolean }) {
+const longContentItems: CapabilityMatrixItem[] = [
+  {
+    id: "service_calendar:manage",
+    label: "Manage service calendars across all workspaces",
+    description:
+      "Create and maintain business-hour calendars used by service level agreements, including timezone rules, holiday dates, and weekday coverage windows for every workspace this role can reach.",
+    group: "Service management",
+  },
+];
+
+function InteractiveMatrix({
+  disabled = false,
+  values = items,
+}: {
+  disabled?: boolean;
+  values?: CapabilityMatrixItem[];
+}) {
   const [selected, setSelected] = useState([
     "work_item:read",
     "work_item:create",
@@ -60,7 +76,7 @@ function InteractiveMatrix({ disabled = false }: { disabled?: boolean }) {
           ? { "service:manage": "You do not hold this capability yourself." }
           : undefined
       }
-      items={items}
+      items={values}
       onSelectedChange={setSelected}
       selected={selected}
     />
@@ -73,4 +89,16 @@ export const Editable: Story = {
 
 export const WithDisabledCapability: Story = {
   render: () => <InteractiveMatrix disabled />,
+};
+
+export const LongContent: Story = {
+  render: () => <InteractiveMatrix values={longContentItems} />,
+};
+
+export const DarkMode: Story = {
+  render: () => (
+    <div className="dark min-h-screen bg-background p-4 text-foreground">
+      <InteractiveMatrix values={longContentItems} />
+    </div>
+  ),
 };
