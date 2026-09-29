@@ -11,9 +11,11 @@ test("every exported Storybook story has a visual baseline @visual", async ({
   const response = await fetch("http://127.0.0.1:6006/index.json");
   expect(response.ok).toBeTruthy();
   const index = (await response.json()) as StorybookIndex;
-  const stories = Object.values(index.entries)
-    .filter((entry) => entry.type === "story")
-    .sort((left, right) => left.id.localeCompare(right.id));
+  const stories = Object.freeze(
+    Object.values(index.entries)
+      .filter((entry) => entry.type === "story")
+      .sort((left, right) => left.id.localeCompare(right.id)),
+  );
   expect(stories.length).toBeGreaterThan(0);
 
   for (const story of stories) {

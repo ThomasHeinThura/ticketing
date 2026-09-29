@@ -647,12 +647,19 @@ function isStoriesDeclaration(declaration) {
     declaration.name.text !== "stories" ||
     !declaration.initializer ||
     !ts.isCallExpression(declaration.initializer) ||
-    !isNamedProperty(declaration.initializer.expression, "sort")
+    !ts.isPropertyAccessExpression(declaration.initializer.expression) ||
+    declaration.initializer.expression.name.text !== "freeze" ||
+    !ts.isIdentifier(declaration.initializer.expression.expression) ||
+    declaration.initializer.expression.expression.text !== "Object" ||
+    declaration.initializer.arguments.length !== 1 ||
+    !ts.isCallExpression(declaration.initializer.arguments[0]) ||
+    !isNamedProperty(declaration.initializer.arguments[0].expression, "sort")
   ) {
     return false;
   }
 
-  const filterCall = declaration.initializer.expression.expression;
+  const sortCall = declaration.initializer.arguments[0];
+  const filterCall = sortCall.expression.expression;
   if (
     !ts.isCallExpression(filterCall) ||
     !isNamedProperty(filterCall.expression, "filter")
@@ -690,6 +697,79 @@ function isStoriesDeclaration(declaration) {
     predicate.body.right.text === "story";
 
   return indexEntries && storyTypeFilter;
+}
+
+function hasStoryArrayMutation(callback) {
+  const mutatingMethods = new Set([
+    "copyWithin",
+    "fill",
+    "pop",
+    "push",
+    "reverse",
+    "shift",
+    "sort",
+    "splice",
+    "unshift",
+  ]);
+  let unsafe = false;
+  const visit = (node) => {
+    if (unsafe) return;
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      mutatingMethods.has(node.expression.name.text) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === "stories"
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+      node.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
+      ((ts.isIdentifier(node.left) && node.left.text === "stories") ||
+        (ts.isPropertyAccessExpression(node.left) &&
+          ts.isIdentifier(node.left.expression) &&
+          node.left.expression.text === "stories") ||
+        (ts.isElementAccessExpression(node.left) &&
+          ts.isIdentifier(node.left.expression) &&
+          node.left.expression.text === "stories"))
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
+      (node.operator === ts.SyntaxKind.PlusPlusToken ||
+        node.operator === ts.SyntaxKind.MinusMinusToken) &&
+      ((ts.isIdentifier(node.operand) && node.operand.text === "stories") ||
+        (ts.isPropertyAccessExpression(node.operand) &&
+          ts.isIdentifier(node.operand.expression) &&
+          node.operand.expression.text === "stories") ||
+        (ts.isElementAccessExpression(node.operand) &&
+          ts.isIdentifier(node.operand.expression) &&
+          node.operand.expression.text === "stories"))
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isDeleteExpression(node) &&
+      ((ts.isPropertyAccessExpression(node.expression) &&
+        ts.isIdentifier(node.expression.expression) &&
+        node.expression.expression.text === "stories") ||
+        (ts.isElementAccessExpression(node.expression) &&
+          ts.isIdentifier(node.expression.expression) &&
+          node.expression.expression.text === "stories"))
+    ) {
+      unsafe = true;
+      return;
+    }
+    node.forEachChild(visit);
+  };
+  visit(callback.body);
+  return unsafe;
 }
 
 function isNonemptyStoriesAssertion(statement) {
@@ -934,6 +1014,7 @@ function hasStorybookCoverage(sourceFile, title) {
     derivesStoriesFromEveryExport &&
     statements.some(isNonemptyStoriesAssertion) &&
     !hasStoryCoverageControlBypass(callback) &&
+    !hasStoryArrayMutation(callback) &&
     hasStoryScreenshotLoop(callback, sourceFile)
   );
 }

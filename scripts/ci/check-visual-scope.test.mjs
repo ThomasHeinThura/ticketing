@@ -159,6 +159,7 @@ function storybookSpec({
   describeConfigureSkip = false,
   describeConfigureDynamic = false,
   skipStoryCaptureInCi = false,
+  mutateStoriesAfterAssertion = false,
 } = {}) {
   const body = [
     ...(conditionalSkip
@@ -171,8 +172,11 @@ function storybookSpec({
           detachedIndex
             ? 'const index = { entries: { fake: { id: "Button--primary", type: "story" } } };'
             : "const index = await response.json();",
-          'const stories = Object.values(index.entries).filter((entry) => entry.type === "story").sort((left, right) => left.id.localeCompare(right.id));',
+          'const stories = Object.freeze(Object.values(index.entries).filter((entry) => entry.type === "story").sort((left, right) => left.id.localeCompare(right.id)));',
           "expect(stories.length).toBeGreaterThan(0);",
+          ...(mutateStoriesAfterAssertion
+            ? ["stories.splice(0, stories.length);"]
+            : []),
           "for (const story of stories) {",
           ...(omitStoryNavigation
             ? []
@@ -577,6 +581,19 @@ test("G8 rejects a Storybook loop that continues before its screenshot in CI", a
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,
     storySource: storybookSpec({ skipStoryCaptureInCi: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects a Storybook story list mutation after its nonempty assertion", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ mutateStoriesAfterAssertion: true }),
   });
 
   assert.notEqual(result.status, 0);

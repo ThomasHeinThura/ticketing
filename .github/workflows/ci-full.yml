@@ -107,6 +107,12 @@ jobs:
   visual:
     name: visual regression (G8)
     runs-on: ubuntu-latest
+    # Screenshot baselines depend on browser and font rasterization. Pin the Playwright
+    # browser and its Noble system fonts to the environment used to produce the checked-in
+    # Linux snapshots; the default hosted runner produced consistent false pixel diffs.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      options: --ipc=host
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
@@ -129,7 +135,8 @@ jobs:
   performance:
     name: NOT ENABLED - performance budgets (G11)
     if: false
-    # Blocked by: browser performance metrics and budgets are not specified.
+    # Blocked by: G11's thresholds are defined, but the app still has one combined
+    # web bundle and no seeded P1 work-list/detail journeys to measure.
     runs-on: ubuntu-latest
     steps:
       - run: exit 1
