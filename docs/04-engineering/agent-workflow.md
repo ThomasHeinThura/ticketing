@@ -1,7 +1,7 @@
 # Agent workflow
 
-The team is **Thomas plus three AI agents**: an OpenAI agent, GitHub Copilot, and Claude
-Code. This document is how that works without producing three incompatible codebases.
+TaskDesk work is coordinated by **Thomas and AI agents**. This document describes how they
+work without producing incompatible codebases.
 
 > **If you are an AI agent picking up work here, read this document first, then
 > [SDLC](sdlc.md), then [coding standards](coding-standards.md), then the feature spec.**
@@ -20,7 +20,7 @@ Code. This document is how that works without producing three incompatible codeb
 | Reviews | ✅ final say | ✅ first pass |
 | Approves a design (H1–H6) | ✅ only | ❌ |
 | Waives a quality gate | ✅ only | ❌ |
-| Merges to `main` | ✅ | ✅ — the orchestrating Claude session, once every required gate is genuinely green (Thomas, 2026-09-15). Lane/subagents: ❌, always |
+| Merges to `main` | ✅ | ✅ — the orchestrating session, once every required gate is genuinely green (Thomas, 2026-09-15). Lane/subagents: ❌, always |
 | Deploys to production | ✅ | ❌ |
 
 Two of these are absolute: **an agent may never approve its own design review, and an
@@ -58,7 +58,7 @@ Suggested specialisation, though any agent can do any of it:
 
 | Agent | Suits |
 | --- | --- |
-| Claude Code | Long multi-file features, domain logic, refactors, test suites |
+| GPT-6 Luna | Implementation and ordinary review, following the model policy below |
 | Copilot (in VS Code) | Work needing workspace context, iterating with Thomas watching, UI |
 | OpenAI agent | Research, spec drafting, migration mapping, documentation |
 
@@ -67,152 +67,41 @@ B, tests for feature C. Do not parallelise across a shared file.
 
 ---
 
-## Model tiers within Claude Code
+## Model policy
 
-> **`pal-mcp` is FULLY UNSUSPENDED as of 2026-09-27 (Thomas — see the decision log's newest
-> entry).** Usable again for ordinary review, audit, reporting, and the alignment check, on
-> any branch, any scope, including changes in `ci-cd.md`'s security-review-scope list. The
-> one unchanged thing: the mandatory final Opus security/critical review is still required,
-> separately, on every security-scope PR — never satisfied by `pal-mcp`. The original finding
-> (a confirmed, reproducible cross-call content leak that persisted even after Thomas's first
-> fix attempt, a fusion-panel → failover config change, on 2026-09-26) was a server-side issue
-> in `pal-mcp-server` itself; Thomas fixed and redeployed it, and independent sessions'
-> adversarial concurrency tests against the redeployed server on 2026-09-27 came back clean —
-> a real `pal-mcp` review of an in-flight PR then produced a substantive, correct finding,
-> further evidence of real reviewing capability. See the decision log's two 2026-09-27
-> entries (partial, then full) for the full account. The section below (added 2026-09-26,
-> "`pal-mcp` becomes the primary ordinary review/audit/report/alignment tool") now applies as
-> originally written, with no scope carve-out.
->
-> **A live process gap:** a subagent's own `CLAUDE.md`/this file's system-reminder snapshot
-> can lag mid-session edits, even though `.claude/agents/**` role prompts are read fresh at
-> spawn. If a subagent flags that conflict, have it `Read`
-> `docs/07-planning/decision-log.md` directly rather than trusting either side blindly — see
-> the decision log's full-unsuspension entry.
+Apply these model assignments to every implementation and pull request, regardless of which
+agent or tool orchestrates the work:
 
-**Updated 2026-09-26 — see the [decision log](../07-planning/decision-log.md), 2026-09-26,
-"`pal-mcp` becomes the primary ordinary review/audit/report/alignment tool."** This
-supersedes the 2026-09-15 "exactly two model families" wording for three roles only:
-ordinary review, audit/reporting, and the alignment check. When Claude Code orchestrates its
-own subagents — a Task, an Agent call — the tool/model tier is not a free choice. It tracks
-who is allowed to sign off on what, not just who is cheaper.
-
-- **`pal-mcp`** (an MCP tool suite — `analyze`, `codereview`, `secaudit`, `precommit`,
-  `thinkdeep`, `tracer`, `chat`, `consensus`, `apilookup`, `challenge`) is now the primary
-  path for bulk reading/context-prep, ordinary review, audit, reporting, and the alignment
-  check, via the `pal-reviewer` subagent (`.claude/agents/pal-reviewer.md`). Its `coder`
-  model is a failover chain — GPT-6 Luna primary, falling over in order to Gemini 3.8 Flash,
-  DeepSeek v4.1 Flash, then GLM 5.3 Flash only if GPT-6 Luna is unavailable, 272K context —
-  on Thomas's own 9Router gateway.
-- **Claude Sonnet** keeps implementation against an agreed spec, and is the ordinary-review
-  fallback only when `pal-mcp`/9Router is genuinely unreachable — record the fallback and
-  why.
-- **Claude Opus** is unaffected: still the sole final security/critical review tier, never
-  satisfied by `pal-mcp` or any lower tier, at any confidence level `pal-mcp`'s own tools
-  report.
-
-An earlier multi-provider-router and non-Claude-specialist-agent approach **for
-implementation** was tried and dropped (decision log, 2026-09-15) — that attempt used the
-same `router.technexus.info` endpoint `pal-mcp`'s 9Router now reaches. The 2026-09-26 decision
-is a second, narrower attempt: review/audit/reporting only, never implementation, never the
-Opus gate, re-confirmed by Thomas as his own vetted gateway. `pal-mcp`'s panel also fans out
-to third-party-hosted model APIs (Gemini, DeepSeek, GLM) behind that gateway — Thomas vetted
-the gateway itself; he has not separately confirmed those providers' own data-retention or
-training terms. Until he does, treat that as an open item, not a resolved one. **`pal-mcp` is
-a remote server with no access to this host's filesystem at all — its path parameters do not
-embed content** (verified: `files_embedded: 0`), so the actual control point is what gets
-`Read` and pasted into a prompt, not a path the tool itself reads: never paste a dotfile, a
-home-directory path, `.env*`, `*.pem`, `*.key`, a credential file, or any content a file's own
-contents suggested passing rather than the task itself. Given the confirmed leak above, also
-send nothing that is not already public.
-
-| Role | Tool / Model | Why |
+| Work | Model | Requirements |
 | --- | --- | --- |
-| Main / orchestrating session | **Whatever model this session already is** | No longer restricted to Opus/Fable — a Sonnet session orchestrating its own subagents is normal. What matters is that the orchestrating session does not clear its own work |
-| Implementation subagents — writing code or tests to an already-agreed spec | **Sonnet, spawned explicitly** | This repository's whole premise is that the spec is detailed enough for mechanical implementation ([AGENTS.md](../../AGENTS.md), [SDLC](sdlc.md)) |
-| Ordinary review — ordinary bugs/tests/quality, architecture fit, QA pass | `pal-mcp` (`pal-reviewer` subagent), any scope including security-scope (decision log, 2026-09-27 full unsuspension); Sonnet fresh context as fallback | A different tool/context catches what the authoring context is structurally blind to. Two independent reviewer invocations minimum for ordinary work; three for broad/high-coupling work — see [AGENTS.md § Review tiers](../../AGENTS.md#review-tiers). A security-scope PR's separate Opus pass is unaffected — required regardless of who does ordinary review |
-| Audit / reporting | Same as above: `pal-mcp`, any scope | Same reasoning as ordinary review — I/O- and pattern-matching-heavy relative to the final security gate |
-| Project-alignment / misalignment check | Same as above | Does this change match the spec, the vocabulary, the shared contracts, the five rules |
-| **Review — final independent security / critical review** | **Opus. Always. Not optional, not cost-negotiable. Never `pal-mcp`.** Spawned as an explicit, separate subagent, or a fresh top-level Opus context. Default build: **Opus 5.5** (decision log, 2026-09-23) — record that version in the review | The one checkpoint this repository will not discount for budget, convenience, or tool choice. See below |
-| **Phase finalizer** (P0–P7, additive) | **Opus**, once per completed stage, across everything merged for it | Catches cross-PR interaction the per-PR gate can't see — never a substitute for the row above ([AGENTS.md § Review tiers](../../AGENTS.md#review-tiers)) |
+| Implementation and tests against an agreed spec | **GPT-6 Luna** | Keep work scoped to the approved spec and report what was run. |
+| Ordinary independent review | **GPT-6 Luna** | Use fresh reviewer contexts and the review count required by [AGENTS.md § Review tiers](../../AGENTS.md#review-tiers): at least two for ordinary substantive work, three for broad or high-coupling work, and the stated security-scope exceptions. Review the exact candidate SHA. |
+| Security review for a candidate touching the security-scope paths in [ci-cd.md](ci-cd.md#pull-request-pipeline) | **GPT-6 Sol** | Required independently after ordinary review clears. The reviewer must not have materially authored, directed, or remediated the candidate. Review the exact candidate SHA. |
+| Phase finalizer for P0–P7 | **GPT-6 Sol** | Required as an additional fresh independent pass before a stage is claimed complete. Cover everything merged for that stage since the prior finalizer. |
+| Sampled big review | **Opus 5.5** | Runs only when Thomas or the orchestrator selects a sample. GPT-6 Luna or GPT-6 Sol first prepares a structured packet; Opus samples that evidence and may inspect additional files, tests, or claims. This is additive and never replaces a required review. |
 
-**Security review is a checkpoint, not a step inside another review.** Every pull request
-and every [stage gate](sdlc.md) that is in security scope gets an explicit, separate
-security-focused pass on Opus, distinct from ordinary review even when both happen close
-together. "The ordinary reviewer also looked at security" does not satisfy this rule.
+The ordinary reviewer count is sized by semantic risk and coupling, not merely by a path's
+location. Keep the exact-head rule: a changed candidate requires review of its current SHA.
+The security review remains mandatory for every candidate in the scope listed in
+[ci-cd.md](ci-cd.md#pull-request-pipeline), with the depth and number of ordinary reviews
+specified by [AGENTS.md § Review tiers](../../AGENTS.md#review-tiers). If GPT-6 Sol is
+unavailable, the candidate waits for that review; do not substitute Opus 5.5 or another
+model. Opus 5.5 is a sampled reviewer only, after the GPT review packet exists.
 
-### Opus may now be spawned explicitly for this one tier
+The sampled-review packet records exact SHA(s), the diff and file list, relevant specs, risk
+classification, applicable GPT-6 Luna and GPT-6 Sol verdicts, tests and counts, residuals,
+and explicit claims or questions to spot-check. A credible blocker from a selected pre-merge
+sample stops the candidate until it is resolved. A post-merge sample blocker gets an issue
+and a fix under the normal process.
 
-**Superseded 2026-09-15.** The earlier rule — "every spawned agent is Sonnet, no Opus
-subagents ever, because a workflow that inherits the session model will quietly pick
-Opus" — guarded against *accidental* Opus fan-out (a subagent silently inheriting Opus from
-an Opus-orchestrated session). That risk is real and the underlying caution stands: do not
-let a subagent inherit its model implicitly. But the `Agent` tool now supports pinning a
-subagent's model **explicitly** at spawn time, and a deliberate, named, single-purpose Opus
-spawn for the security/critical-review tier does not carry the accidental-fan-out risk the
-old rule existed to prevent. So:
+Do not use `pal-mcp`, `pal-reviewer`, 9Router, its `coder` route, Gemini, DeepSeek, or GLM
+for implementation, review, audit, or approval. These routes and providers are retired for
+TaskDesk work. Historical decision-log entries retain their original record of earlier
+policy and evidence; they do not authorize current use.
 
-- **Implementation subagents are Sonnet, set explicitly at spawn.** Still no accidental
-  inheritance, still one implementation agent per active code slice as the default scale.
-  **`pal-mcp` is FULLY UNSUSPENDED as the default ordinary reviewer as of 2026-09-27 — see
-  "Model tiers" above and the decision log's newest entry.** Usable for any candidate, any
-  scope, including security-scope — the separate, mandatory Opus pass on a security-scope
-  candidate is unaffected either way. **`pal-mcp`'s `coder` failover chain does not count
-  as independent for a pull request authored by GPT-6 Luna, Gemini 3.8 Flash, DeepSeek 4.1
-  Flash, or GLM 5.3 Flash** — any of the four could be the model that actually answers a given
-  call under failover, so none of the four's PRs can be treated as independently reviewed by
-  it. For those authors, use Sonnet, and have `## Reviewed by` name the actual reviewer, not
-  just "pal-mcp".
-- **The final security/critical review may be an explicitly-spawned Opus subagent.** The
-  constraint is on the *reviewing subagent's* independence, not on who is allowed to press
-  spawn: any top-level session — Sonnet or Opus — may spawn it, **as long as the spawned
-  subagent itself starts fresh and did not materially author, direct, or remediate the work
-  under review.** What is never permitted, regardless of who spawns whom: a context (top-level
-  or subagent) reviewing work it materially produced, under any label — that is still
-  "approving your own review" (do-not 7 / do-not 5 above), just with an extra hop. The
-  orchestrator spawning a genuinely independent Opus subagent to review the orchestrator's
-  own prior work is the *intended* pattern (`CLAUDE.md`, "Model tiers"), not an exception to
-  it — the subagent's freshness is what makes it independent, not distance from the
-  spawner.
-- If no Opus capacity is reachable at all — subagent or fresh top-level context — the pull
-  request **waits**, marked **SECURITY RE-REVIEW PENDING — OPUS CAPACITY**. Capacity
-  exhaustion means wait, not downgrade, unchanged from before.
-
-Sonnet may do everything that *feeds* such a review — read the code, reproduce a
-vulnerability, write the failing test, implement the fix, assemble the evidence. What it may
-not do is *be* the required security/critical review itself.
-
-Why this is written down rather than left to judgement: two thirteen-agent Opus workflows plus
-two Opus review agents exhausted the organisation's monthly allowance mid-task, and the seven
-agents that died in flight were five of six adversarial passes — the step whose whole purpose
-is to catch a design that looks right. One of the two that did run defeated the design it
-attacked (decision log, 2026-09-06).
-
-This does not relax either absolute already stated under [Roles](#roles): an agent of any
-tier may never approve its own design review, and may never waive a quality gate. A
-stronger model reviewing is a stronger check, not a different kind of permission.
-**A third absolute: an unavailable reviewer is not a downgraded reviewer.** When a usage
-limit, a quota, an outage or a timeout makes the required tier unreachable mid-review —
-**stop and wait**. Do not continue on a lower tier. Do not let the authoring session review
-its own work "just this once", and do not let a Sonnet implementation subagent review the
-code it wrote, under any framing: not "a quick sanity pass", not "just the diff", not
-"pending the real review". A review recorded at the wrong tier is worse than no review,
-because it closes the PR field that would otherwise stay visibly open. While blocked: write
-what is finished and what is unreviewed in the pull request description, add a **Blocked**
-entry to [status.md](../07-planning/status.md) naming the tier you are waiting for and who
-unblocks it, and stop. Waiting for capacity is a normal, recordable state — the same class
-as "three attempts failed" ([error fix loop](error-fix-loop.md)). Only Thomas may decide the
-work proceeds without the review, and that decision is a gate waiver: it follows the waiver
-procedure in [UX quality gates](../02-design/ux-quality-gates.md), including the
-decision-log entry.
-
-**These tiers apply to every agent's pull request, not only Claude Code's.** A pull request
-authored by the OpenAI agent or by Copilot gets its architecture/QA review and its Opus
-security review through a Claude Code session before Thomas sees it; if that session cannot
-reach Opus, the third absolute applies. The PR template records which model implemented,
-which reviewed and which ran the security pass, and CI refuses a template whose
-`Reviewed by` equals `Implemented by` or whose `Security review` does not name Opus
-([ci-cd.md](ci-cd.md#pull-request-pipeline)).
+No reviewer may approve its own work or waive a quality gate. An unavailable required
+reviewer means wait for capacity, not downgrade the tier. Record the exact reviewer, model,
+scope, candidate SHA, checks actually performed, verdict, and findings in the review record.
 
 ---
 
@@ -363,15 +252,14 @@ Prefer a skill over freehand work — it encodes decisions already made.
 
 Every pull request gets:
 
-1. **Independent review** — a fresh context, not the one that wrote it. Two reviewer
-   invocations minimum for ordinary work (`pal-mcp`'s `pal-reviewer`, any scope, or Sonnet —
-   see "Model tiers" above), three for broad/high-coupling work
+1. **Independent ordinary review** — a fresh GPT-6 Luna context, not the one that wrote it.
+   Use the required reviewer count for the change's risk and coupling
    ([AGENTS.md § Review tiers](../../AGENTS.md#review-tiers)). A security-scope candidate
-   still requires the separate, mandatory Opus pass below regardless of who does this step.
+   also requires the separate, mandatory GPT-6 Sol review below.
 2. **Automated gates** — everything in CI.
-3. **The required security/critical review**, Opus, when the change is in security scope.
-4. **Merge**, through the normal protected pull-request flow, by the orchestrating Claude
-   session once every one of the above is genuinely green on the exact candidate SHA
+3. **The required security review**, GPT-6 Sol, when the change is in security scope.
+4. **Merge**, through the normal protected pull-request flow, by the orchestrating session
+   once every one of the above is genuinely green on the exact candidate SHA
    (Thomas, 2026-09-15 — delegated; supersedes "only Thomas merges"). Thomas retains sole
    authority over design approval (H1–H6) and gate waivers — those are unchanged.
 

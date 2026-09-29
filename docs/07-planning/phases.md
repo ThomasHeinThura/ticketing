@@ -81,7 +81,7 @@ happens; building on top of them is easy.
 - **Retrofit kaneo's inherited routers into the five policy kinds** — the largest
   security task in P0 and the reason the route-coverage test enumerates Hono's router. A
   human-reviewed pass over the inherited code (the snapshot's scanner run detects known
-  CVEs, not a planted change), with its own Opus security review before P0 closes. See
+  CVEs, not a planted change), with its own GPT-6 Sol security review before P0 closes. See
   [repository-bootstrap.md](../04-engineering/repository-bootstrap.md#3-removals-then-the-retrofit)
 - **Inherited-features register** — one page in `docs/01-architecture/` listing every
   kaneo feature and notable dependency with a verdict (*keep — spec exists* / *keep —
@@ -143,7 +143,7 @@ not a step 0 task completed once:
 
 **Done when:** the stack builds, deploys locally on three hostnames, every CI gate runs
 green **with kaneo's inherited routes present and each carrying a policy** (not on an
-empty application), and the P0 Opus security review has signed off the router retrofit.
+empty application), and the P0 GPT-6 Sol security review has signed off the router retrofit.
 Also: anonymous sign-in is off; account linking is off; the cookie cache is off; no route
 in Hono's router matches `public-project`, `github`, `gitea`, `slack`, `discord`,
 `telegram` or `generic-webhook`; no `process.env` read exists outside the approved list;

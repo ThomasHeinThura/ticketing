@@ -14,17 +14,19 @@ See docs/04-engineering/definition-of-done.md and docs/04-engineering/ci-cd.md.
 
 ## Implemented by
 
-**Model:** <!-- e.g. Sonnet 5 -->
+**Model:** <!-- e.g. GPT-6 Luna -->
 **Session:** <!-- session id -->
 
 ## Reviewed by
 
-**Model:** <!-- must be a different model or session from Implemented by -->
+**Model:** <!-- normally GPT-6 Luna; must be a different model or session from Implemented by -->
 **Session:** <!-- must differ from Implemented by's session -->
+
+Ordinary review normally uses **GPT-6 Luna**.
 
 ## Security review
 
-**Model:** <!-- must be Opus -->
+**Model:** <!-- must be exactly GPT-6 Sol -->
 **Session:** <!-- session id -->
 **Surfaces examined:** <!-- list them, or state explicitly "no security surface touched" -->
 **Note:** <!--
@@ -36,6 +38,15 @@ docs/07-planning/security-reviews/, or the note is stale and a fresh delta revie
 required. Judged over landed commits, not the net tree — a revert does not restore it.
 See ci-cd.md.
 -->
+
+## Sampled big review (optional)
+
+<!-- Non-gating random/sample audit. When selected, use Opus 5.5 and attach the packet. -->
+
+**Selected:** <!-- yes / no -->
+**Model:** <!-- Opus 5.5, or n/a if not selected -->
+**Packet author:** <!-- GPT-6 Luna or GPT-6 Sol; n/a if not selected -->
+**Verdict:** <!-- clear / findings / n/a if not selected -->
 
 ## Screens opened
 

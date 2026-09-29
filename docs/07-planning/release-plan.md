@@ -87,7 +87,7 @@ listing is not among them — it is deferred beyond the scope, [roadmap.md](road
 Six full stage gates cannot fit in five weeks with one human: each gate as written in
 [sdlc.md](../04-engineering/sdlc.md) needs a VoiceOver *and* NVDA pass, a keyboard-only
 session, a fresh-eyes test, four browsers, a 10,000-item data run, a k6 baseline, a
-holistic Opus security review and a written review. So the accelerated `2.0.0` is defined
+holistic GPT-6 Sol security review and a written review. So the accelerated `2.0.0` is defined
 **by what it deliberately does not yet contain**, and that list lives in **three** places
 that must agree — [roadmap.md](roadmap.md#explicitly-deferred-beyond-the-current-three-to-four-month-scope-decided-2026-09-05)
 for what is outside the whole program, [accelerated-delivery-plan.md](accelerated-delivery-plan.md)'s
@@ -96,7 +96,7 @@ deferral register for what go-live ships thinner, and here:
 - **Gate activities consolidated**: the manual accessibility pass, fresh-eyes test,
   four-browser check and k6 baseline are run **once, before `2.0.0`**, over the whole
   surface, instead of once per stage. Automated gates (`G1`–`G13`), route/permission tests
-  and the Opus security review of every merge are **not** consolidated — they run as
+  and the GPT-6 Sol security review of every merge are **not** consolidated — they run as
   specified. **This consolidation is a gate waiver and is recorded as one in the
   [decision log](decision-log.md) (Waivers), pending Thomas's confirmation** — a planning
   document cannot waive a gate on its own.

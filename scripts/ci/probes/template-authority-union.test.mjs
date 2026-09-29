@@ -37,6 +37,7 @@ import {
   commit,
   completeBody,
   evaluateInRepo,
+  git,
   initRepo,
   installCheckers,
   installFromRepo,
@@ -134,6 +135,41 @@ const HEAD_ONLY_CHECKLISTS = `
 
 function headOnlyChecklists(dir) {
   return evaluateInRepo(dir, HEAD_ONLY_CHECKLISTS).headings;
+}
+
+const SAMPLED_REVIEW = "Sampled big review (optional)";
+const SECURITY_NOTE = "docs/07-planning/security-reviews/19-optional-sample.md";
+
+function optionalSampleRemovalScenario() {
+  const dir = scenario("optional-sampled-review", (repo) => {
+    write(
+      repo,
+      ".github/pull_request_template.md",
+      withoutSection(
+        readIn(repo, ".github/pull_request_template.md"),
+        SAMPLED_REVIEW,
+      ),
+    );
+    const body = withoutSection(
+      completeBody({
+        securityModel: "GPT-6 Sol",
+        securityNote: SECURITY_NOTE,
+      }),
+      SAMPLED_REVIEW,
+    );
+    write(repo, "body.md", body);
+  });
+
+  // The template edit is security-scope (.github/**), so provide a real note bound to the
+  // branch head; only this review artefact lands after the attested code.
+  const reviewedHead = git(dir, ["rev-parse", "HEAD"]).trim();
+  write(
+    dir,
+    SECURITY_NOTE,
+    `# Security review probe\n\n**Reviewed head:** \`${reviewedHead}\`\n\n**Verdict:** CLEAR.\n`,
+  );
+  commit(dir, "docs: record the security review");
+  return dir;
 }
 
 describe("H1 — template authority cannot delete a merge-base requirement", () => {
@@ -267,6 +303,50 @@ describe("H1 — template authority cannot delete a merge-base requirement", () 
       0,
       `a legitimate pull request must not be caught by the H1 fix:\n${result.output}`,
     );
+  });
+
+  it("7. removing the optional sampled-review section stays non-gating while security stays required", () => {
+    const dir = optionalSampleRemovalScenario();
+    const scope = evaluateInRepo(
+      dir,
+      `import { readTemplateScope } from "./scripts/ci/lib/template-scope.mjs";
+       const scope = await readTemplateScope();
+       console.log(JSON.stringify({
+         sampledRequired: scope.sections.isRequired(${JSON.stringify(SAMPLED_REVIEW)}),
+         securityRequired: scope.sections.isRequired("Security review"),
+         sampledWasRemoved: scope.sections.removed.includes(${JSON.stringify(SAMPLED_REVIEW)}),
+       }));`,
+    );
+
+    assert.deepEqual(scope, {
+      sampledRequired: false,
+      securityRequired: true,
+      sampledWasRemoved: false,
+    });
+
+    const optionalOnly = runChecker(dir, "check-pr-template.mjs", [
+      "--body",
+      "body.md",
+    ]);
+    assert.equal(
+      optionalOnly.status,
+      0,
+      "removing the optional sampled-review section from the template and body must pass " +
+        `with valid security evidence:\n${optionalOnly.output}`,
+    );
+
+    write(
+      dir,
+      "body.md",
+      withoutSection(readIn(dir, "body.md"), "Security review"),
+    );
+    const missingSecurity = runChecker(dir, "check-pr-template.mjs", [
+      "--body",
+      "body.md",
+    ]);
+    assert.equal(missingSecurity.status, 1, missingSecurity.output);
+    assert.match(missingSecurity.output, /## Security review/);
+    assert.match(missingSecurity.output, /carries NO/);
   });
 });
 
