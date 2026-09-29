@@ -229,6 +229,17 @@ function hasSafeApiRouteHandler(handler) {
         return;
       }
     }
+    // API route fixtures may shape JSON with property access and calls from the
+    // allowlist below. Computed access and tagged templates are outside that
+    // grammar: either can invoke a browser fixture captured from the enclosing
+    // Playwright test without spelling `page.setContent` in ordinary AST nodes.
+    if (
+      ts.isElementAccessExpression(node) ||
+      ts.isTaggedTemplateExpression(node)
+    ) {
+      safe = false;
+      return;
+    }
     const isPropertyName =
       (ts.isPropertyAssignment(node.parent) && node.parent.name === node) ||
       (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node);

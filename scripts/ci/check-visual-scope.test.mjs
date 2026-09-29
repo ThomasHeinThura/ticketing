@@ -54,6 +54,7 @@ function visualSpec(
     shadowedSettleHelperFor,
     shadowedFixtureHelperFor,
     setContentInApiRouteFor,
+    computedTaggedSetContentInApiRouteFor,
   } = {},
 ) {
   const helper = `async function installAuthenticatedFixture(page: Page) {
@@ -106,6 +107,10 @@ function visualSpec(
         testName === setContentInApiRouteFor
           ? 'await page.route("**/api/**", async (route) => { await page.setContent("<main>pretend screen</main>"); await route.fulfill({ status: 200 }); });'
           : "";
+      const computedTaggedSetContentInApiRoute =
+        testName === computedTaggedSetContentInApiRouteFor
+          ? 'await page.route("**/api/**", async (route) => { await aliasedPage["setContent"]`<main>pretend screen</main>`; await route.fulfill({ status: 200 }); });'
+          : "";
       const shadowedSettleHelper =
         testName === shadowedSettleHelperFor
           ? 'const settleVisuals = async (page) => page.setContent("<main>pretend screen</main>");'
@@ -124,11 +129,11 @@ function visualSpec(
           : "";
       const afterNavigation =
         testName === screenshotBeforeNavigationFor ? "" : screenshotEvidence;
-      return `test(${JSON.stringify(testName)}, async ({ page }) => { ${
+      return `test(${JSON.stringify(testName)}, async ({ page, page: aliasedPage }) => { ${
         testName === disabledFor
           ? 'if (process.env.CI) test.fixme(true, "known issue");'
           : ""
-      } ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${nestedNavigation} ${helperNavigation} await expect(page.getByText("screen ready")).toBeVisible(); ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
+      } ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${nestedNavigation} ${helperNavigation} await expect(page.getByText("screen ready")).toBeVisible(); ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
     })
     .join("\n");
   return `${helper}\n${tests}`;
@@ -435,6 +440,21 @@ test("G8 rejects DOM mutation inside an API fixture route handler", async () => 
     routes: ACTIVE_ROUTES,
     source: visualSpec(SCREENS, {
       setContentInApiRouteFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list visual test must use only API fixture setup before navigation/,
+  );
+});
+
+test("G8 rejects computed tagged-template mutation through an aliased page fixture", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      computedTaggedSetContentInApiRouteFor: "work list @visual",
     }),
   });
 
