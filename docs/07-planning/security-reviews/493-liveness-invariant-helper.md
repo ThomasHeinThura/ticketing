@@ -208,3 +208,45 @@ candidate PR description; protected GitHub checks remain the merge gate.
 remote PR head `2030681e692c892436af112d03e33707508ea5c1` or its checks.
 
 **Reviewed head:** `0318c88b19f39d883efe08d320e1aa9ffe5f93dc`
+
+---
+
+## GPT-6 review of PR #498 remediated candidate
+
+**Review date:** 2026-09-29
+**Candidate:** `8361fe11e3c64c0c47e185872b74108c2b444da2`
+**Base:** `6e3f942546bd0e1964dd7387bcfb842470e8eb0b`
+
+### Ordinary review
+
+Three fresh, independent GPT-6 Luna contexts reviewed the complete candidate diff and the
+relevant liveness, attachment, comment, and permission specifications.
+
+- Luna review 1: **CLEAR**; inspected lock order, frozen-upload retention, tombstone
+  authorization, and race-test behavior. Ran the API typecheck.
+- Luna review 2: **CLEAR**; independently inspected controller transactions, cleanup,
+  reach checks, and audit/activity/event behavior. `git diff --check` passed.
+- Luna review 3: **CLEAR WITH FINDINGS**; no blocker. Noted that an already-unassigned item
+  can return a no-op `200` after project archive without mutating state, and that a failed
+  best-effort deletion can leave an unreferenced private storage object.
+
+### GPT-6 Sol security review
+
+**Verdict: CLEAR WITH FINDINGS; no blocking security finding.** The reviewer independently
+examined the changed controllers, reach/policy paths, archive/delete writes, storage
+finalization, lock ordering, and audit/event placement. The two low-severity residuals above
+do not mutate archived data or expose an object through an application row; they remain
+documented for follow-up.
+
+### Candidate validation
+
+At this exact code head, the orchestrating session ran the full API integration suite against
+the dedicated PostgreSQL test database: **117 files, 1,490/1,490 tests passed**. The three
+focused attachment/comment integration files passed **41/41**. Workspace typecheck passed
+across **9 packages**. Biome check passed for the six changed files with six existing
+storage-environment warnings. `git diff --check` passed. Reviewers did not rely on these local
+test results as a substitute for their independent code inspection.
+
+The candidate's protected GitHub checks must still pass on the pushed head before merge.
+
+**Reviewed head:** `8361fe11e3c64c0c47e185872b74108c2b444da2`
