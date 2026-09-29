@@ -110,6 +110,42 @@ async function moveTask({
       });
     }
 
+    // Reject frozen sources before touching a request-selected destination id.
+    // These reads only establish reach; sorted row locks below recheck both rows.
+    const [sourcePreflight] = await tx
+      .select({
+        id: projectTable.id,
+        workspaceId: projectTable.workspaceId,
+        archivedAt: projectTable.archivedAt,
+        deletedAt: projectTable.deletedAt,
+      })
+      .from(projectTable)
+      .where(eq(projectTable.id, lockedTask.projectId))
+      .limit(1);
+    if (
+      !sourcePreflight ||
+      sourcePreflight.archivedAt !== null ||
+      sourcePreflight.deletedAt !== null
+    ) {
+      throw new HTTPException(404, { message: "Task not found" });
+    }
+
+    const [destinationPreflight] = await tx
+      .select({ id: projectTable.id })
+      .from(projectTable)
+      .where(
+        and(
+          eq(projectTable.id, destinationProjectId),
+          eq(projectTable.workspaceId, sourcePreflight.workspaceId),
+          isNull(projectTable.deletedAt),
+          isNull(projectTable.archivedAt),
+        ),
+      )
+      .limit(1);
+    if (!destinationPreflight) {
+      throw new HTTPException(404, { message: "Project not found" });
+    }
+
     // Lock the source and destination before reading their current workspace
     // and names. The task row above is authoritative if another move completed
     // after the route's reach middleware ran.

@@ -385,6 +385,73 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     ).toHaveLength(0);
   });
 
+  it("does not reveal foreign destination existence when the source is archived", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const foreignMember = await createWorkspaceMember({ role: "admin" });
+    const source = requireRow(
+      await db
+        .insert(schema.projectTable)
+        .values({
+          id: "z-source",
+          workspaceId: member.workspace.id,
+          name: "Archived source",
+          slug: `source-${randomUUID()}`,
+        })
+        .returning(),
+      "archived source",
+    );
+    const foreign = requireRow(
+      await db
+        .insert(schema.projectTable)
+        .values({
+          id: "a-foreign",
+          workspaceId: foreignMember.workspace.id,
+          name: "Foreign destination",
+          slug: `foreign-${randomUUID()}`,
+        })
+        .returning(),
+      "foreign destination",
+    );
+    const sourceColumn = requireRow(
+      await db
+        .insert(schema.columnTable)
+        .values({
+          id: "z-source-column",
+          projectId: source.id,
+          name: "To do",
+          slug: "to-do",
+          position: 0,
+        })
+        .returning(),
+      "source column",
+    );
+    const task = await createLegacyTask(source.id, sourceColumn.id, 1);
+    mockAuthenticatedSession(member.user);
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, source.id));
+
+    const withForeign = await request(`/task/move/${task.id}`, "put", {
+      destinationProjectId: foreign.id,
+    });
+    const foreignBody = await withForeign.text();
+    const withMissing = await request(`/task/move/${task.id}`, "put", {
+      destinationProjectId: "0-missing",
+    });
+    const missingBody = await withMissing.text();
+
+    expect(withForeign.status).toBe(404);
+    expect(withMissing.status).toBe(404);
+    expect(foreignBody).toBe("Task not found");
+    expect(foreignBody).toBe(missingBody);
+    const [after] = await db
+      .select()
+      .from(schema.taskTable)
+      .where(eq(schema.taskTable.id, task.id));
+    expect(after?.projectId).toBe(source.id);
+  });
+
   it("waits behind an archive that wins, then refuses the legacy write", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { project, columns } = await createProjectFixture({
