@@ -5,11 +5,15 @@ import {
   isMissingBaseFileError,
   oasdiffExitError,
   parseApprovedBreaks,
+  parseApprovedRedoclyFindings,
   parseLsRemoteTags,
   parseOasdiffBreakingJson,
   parseRedoclyReport,
   partitionApprovedBreaks,
+  partitionApprovedRedoclyFindings,
   readBaseApprovedBreaks,
+  readBaseApprovedRedoclyFindings,
+  redoclyApprovedFindingIdentity,
   stableV2ReleaseExists,
   unapprovedProblems,
 } from "./test-contract.mjs";
@@ -383,6 +387,177 @@ test("an entry already on base approves nothing, even against a new finding with
     JSON.stringify([oasdiffFinding({ fingerprint: "fp-new" })]),
   );
   const { matched, unmatched } = partitionApprovedBreaks(findings, newEntries);
+  assert.equal(matched.length, 0);
+  assert.equal(unmatched.length, 1);
+});
+
+const redoclyApprovedFinding = (overrides = {}) => ({
+  operation: "GET /attachments/{id}",
+  rule: "operation-2xx-response",
+  pointer: "#/paths/~1attachments~1{id}/get/responses",
+  reason: "redirect-only by design",
+  decision: "decision-log 2026-09-28 redocly allowlist",
+  pr: 450,
+  ...overrides,
+});
+
+test("redoclyApprovedFindingIdentity binds on (rule, pointer) only", () => {
+  assert.equal(
+    redoclyApprovedFindingIdentity(redoclyApprovedFinding()),
+    redoclyApprovedFindingIdentity(
+      redoclyApprovedFinding({ operation: "different label", pr: 1 }),
+    ),
+  );
+  assert.notEqual(
+    redoclyApprovedFindingIdentity(redoclyApprovedFinding()),
+    redoclyApprovedFindingIdentity(
+      redoclyApprovedFinding({ pointer: "#/other" }),
+    ),
+  );
+});
+
+test("an unapproved Redocly finding fails", () => {
+  const { matched, unmatched } = partitionApprovedRedoclyFindings(
+    [
+      problem(
+        "warn",
+        "operation-2xx-response",
+        "#/paths/~1other~1{id}/get/responses",
+      ),
+    ],
+    [redoclyApprovedFinding()],
+  );
+  assert.equal(matched.length, 0);
+  assert.equal(unmatched.length, 1);
+});
+
+test("an exact (rule, pointer) match passes", () => {
+  const { matched, unmatched, unusedEntries } =
+    partitionApprovedRedoclyFindings(
+      [
+        problem(
+          "warn",
+          "operation-2xx-response",
+          "#/paths/~1attachments~1{id}/get/responses",
+        ),
+      ],
+      [redoclyApprovedFinding()],
+    );
+  assert.equal(matched.length, 1);
+  assert.equal(unmatched.length, 0);
+  assert.equal(unusedEntries.length, 0);
+});
+
+test("a new Redocly allowlist entry matching no finding fails, as a stale or typo'd entry", () => {
+  const { matched, unmatched, unusedEntries } =
+    partitionApprovedRedoclyFindings([], [redoclyApprovedFinding()]);
+  assert.equal(matched.length, 0);
+  assert.equal(unmatched.length, 0);
+  assert.equal(unusedEntries.length, 1);
+});
+
+test("a malformed Redocly allowlist file fails closed", () => {
+  assert.throws(() => parseApprovedRedoclyFindings("{ not an array }"));
+  assert.throws(() =>
+    parseApprovedRedoclyFindings(JSON.stringify([{ rule: "x" }])),
+  );
+  assert.throws(() =>
+    parseApprovedRedoclyFindings(
+      JSON.stringify([redoclyApprovedFinding({ pr: "450" })]),
+    ),
+  );
+  assert.throws(() =>
+    parseApprovedRedoclyFindings(
+      JSON.stringify([redoclyApprovedFinding({ reason: "" })]),
+    ),
+  );
+  assert.throws(() =>
+    parseApprovedRedoclyFindings(
+      JSON.stringify([redoclyApprovedFinding({ pointer: "" })]),
+    ),
+  );
+  assert.throws(() =>
+    parseApprovedRedoclyFindings(
+      JSON.stringify([{ ...redoclyApprovedFinding(), extra: "not allowed" }]),
+    ),
+  );
+});
+
+test("a duplicate (rule, pointer) Redocly allowlist entry fails closed", () => {
+  assert.throws(() =>
+    parseApprovedRedoclyFindings(
+      JSON.stringify([
+        redoclyApprovedFinding(),
+        redoclyApprovedFinding({ pr: 999 }),
+      ]),
+    ),
+  );
+});
+
+test("distinct pointers for the same rule are two valid Redocly allowlist entries", () => {
+  const parsed = parseApprovedRedoclyFindings(
+    JSON.stringify([
+      redoclyApprovedFinding({ pointer: "#/paths/~1a/get/responses" }),
+      redoclyApprovedFinding({ pointer: "#/paths/~1b/get/responses" }),
+    ]),
+  );
+  assert.equal(parsed.length, 2);
+});
+
+test("readBaseApprovedRedoclyFindings treats a missing base file as empty", async () => {
+  const runner = () => ({
+    status: 128,
+    stdout: "",
+    stderr:
+      "fatal: path 'scripts/ci/redocly-approved-findings.json' does not exist in 'origin/main'",
+  });
+  assert.deepEqual(await readBaseApprovedRedoclyFindings(runner), []);
+});
+
+test("readBaseApprovedRedoclyFindings fails closed on any other read error", async () => {
+  const runner = () => ({
+    status: 128,
+    stdout: "",
+    stderr:
+      "fatal: unable to access 'https://github.com/...': network unreachable",
+  });
+  await assert.rejects(() => readBaseApprovedRedoclyFindings(runner));
+});
+
+test("readBaseApprovedRedoclyFindings parses a present base file", async () => {
+  const runner = () => ({
+    status: 0,
+    stdout: JSON.stringify([redoclyApprovedFinding({ pr: 1 })]),
+    stderr: "",
+  });
+  const base = await readBaseApprovedRedoclyFindings(runner);
+  assert.equal(base.length, 1);
+  assert.equal(base[0].pr, 1);
+});
+
+test("an entry already on base approves nothing against a new finding at the same pointer", () => {
+  // Mirrors the equivalent oasdiff-allowlist F1 test above: an entry origin/main already
+  // has must not cover a finding this PR did not itself add an entry for.
+  const baseEntries = [redoclyApprovedFinding({ pr: 1 })];
+  const currentEntries = [redoclyApprovedFinding({ pr: 1 })]; // unchanged, still on file
+  const baseIdentities = new Set(
+    baseEntries.map(redoclyApprovedFindingIdentity),
+  );
+  const newEntries = currentEntries.filter(
+    (e) => !baseIdentities.has(redoclyApprovedFindingIdentity(e)),
+  );
+  assert.equal(newEntries.length, 0);
+
+  const { matched, unmatched } = partitionApprovedRedoclyFindings(
+    [
+      problem(
+        "warn",
+        "operation-2xx-response",
+        "#/paths/~1attachments~1{id}/get/responses",
+      ),
+    ],
+    newEntries,
+  );
   assert.equal(matched.length, 0);
   assert.equal(unmatched.length, 1);
 });

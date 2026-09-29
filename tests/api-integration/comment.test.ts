@@ -94,8 +94,8 @@ describe("API integration: task comments", () => {
 
     const legacyComments = await db
       .select()
-      .from(schema.commentTable)
-      .where(eq(schema.commentTable.taskId, task.id));
+      .from(schema.taskCommentTable)
+      .where(eq(schema.taskCommentTable.taskId, task.id));
     expect(legacyComments).toHaveLength(0);
   });
 

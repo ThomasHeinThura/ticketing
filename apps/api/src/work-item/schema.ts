@@ -392,6 +392,24 @@ export const setWorkItemParentBody = z.object({
     .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
 });
 
+// `POST /api/work-items/{key}/transition` (issue #442, `workflows.md`). `toStateTemplateId`
+// is a `state_template.id` -- the same id `GET /transitions` returns per offer -- never a
+// project's own concrete `state.id` (`WF-2`'s own template/state distinction). `note` is
+// optional at the schema level; `WF-10`'s `notePolicy: "required"` enforcement (422 when
+// absent) is the controller's own job, since it depends on the matched transition's row,
+// not on this request body alone.
+export const transitionWorkItemBody = z.object({
+  toStateTemplateId: z
+    .string()
+    .min(1)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE),
+  note: z
+    .string()
+    .max(10_000)
+    .refine((value) => !containsNulByte(value), NO_NUL_BYTE_MESSAGE)
+    .optional(),
+});
+
 export const assignWorkItemBody = z.object({
   assigneeId: z
     .string()

@@ -12,6 +12,7 @@ import {
 } from "../activity";
 import { ancestorChain, descendantDepth } from "../hierarchy";
 import { WORK_ITEM_HIERARCHY_LOCK_NAMESPACE } from "../hierarchy-lock";
+import { runWithParentWriteDeadlockRetry } from "../parent-write-deadlock-retry";
 
 /**
  * `POST /api/work-items/{key}/parent` (`work_item:update`, required on both ends --
@@ -55,6 +56,16 @@ import { WORK_ITEM_HIERARCHY_LOCK_NAMESPACE } from "../hierarchy-lock";
  * in ordinary operation, not a normal-path response (the same framing
  * `work-item/index.ts`'s own 409 doc comment uses for #261's key-collision defense-in-
  * depth).
+ *
+ * ISSUE #295 (migration 0056's own documented obligation, #196 OS3): this is #23's write
+ * path that sets `parent_id`, so the whole transaction below is wrapped in
+ * `runWithParentWriteDeadlockRetry` -- a bounded, idempotent retry on a genuine `40P01`
+ * from either `work_item_claim_key` or `work_item_reject_parent_cycle`, whichever trigger
+ * actually raised it. Wrapping the ENTIRE `db.transaction` call, not just the final
+ * `UPDATE`, is deliberate: a retry re-runs every read in this function too (the locked
+ * re-read, the ancestor chain, the depth check), so a retried attempt always decides
+ * against fresh post-rollback state, never replays a decision made against data a lost
+ * deadlock race already made stale.
  */
 export async function setWorkItemParent(
   key: string,
@@ -89,145 +100,153 @@ export async function setWorkItemParent(
     throw new HTTPException(404, { message: "Work item not found" });
   }
 
-  const { updated, oldParentId } = await db.transaction(async (tx) => {
-    await tx.execute(
-      sql`SELECT pg_advisory_xact_lock(${WORK_ITEM_HIERARCHY_LOCK_NAMESPACE}, hashtext(${pre.projectId}))`,
-    );
-
-    const [item] = await tx
-      .select()
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.key, key),
-          eq(workItemTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("update");
-
-    if (!item) {
-      throw new HTTPException(404, { message: "Work item not found" });
-    }
-
-    const [projectAlive] = await tx
-      .select({ id: projectTable.id })
-      .from(projectTable)
-      .where(
-        and(
-          eq(projectTable.id, item.projectId),
-          isNull(projectTable.deletedAt),
-        ),
+  const { updated, oldParentId } = await runWithParentWriteDeadlockRetry(() =>
+    db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(${WORK_ITEM_HIERARCHY_LOCK_NAMESPACE}, hashtext(${pre.projectId}))`,
       );
 
-    if (!projectAlive) {
-      throw new HTTPException(404, { message: "Work item not found" });
-    }
-
-    const [parent] = await tx
-      .select()
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.key, parentKey),
-          eq(workItemTable.workspaceId, workspaceId),
-        ),
-      );
-
-    if (!parent) {
-      throw new HTTPException(404, { message: "Parent work item not found" });
-    }
-
-    // RH-6: parent and child must be in the same project. The composite self-FK on
-    // `work_item.parent_id` (`schema.ts`) enforces this at the database layer too, but a
-    // caller crossing it here would otherwise hit a raw FK-violation 500 instead of a
-    // clean 400 -- same "application layer ahead of the write" discipline
-    // `create-work-item.ts` documents for its own cross-workspace type check.
-    if (parent.projectId !== item.projectId) {
-      throw new HTTPException(400, {
-        message: "Parent must be in the same project as the work item (RH-6)",
-      });
-    }
-
-    // Opus delta security review of PR #432 (D2): defensive-only -- nothing in this
-    // codebase moves a work item between projects today (see the pre-read's own doc
-    // comment above), so `item.projectId` cannot actually differ from `pre.projectId`
-    // on any live path. Guarded anyway: a future cross-project move landing here
-    // without updating this lock's scoping would otherwise silently reopen F1's race,
-    // since the lock was taken on `pre.projectId`, not `item.projectId`.
-    if (item.projectId !== pre.projectId) {
-      throw new HTTPException(409, {
-        message:
-          "Could not set parent -- the work item's project changed concurrently; reload and retry",
-      });
-    }
-
-    const chain = await ancestorChain(tx, parent.id);
-    const depth = await descendantDepth(tx, item.id);
-    const result = validateReparent(item.id, parent.id, chain, depth);
-
-    if (!result.ok) {
-      const messages: Record<typeof result.reason, string> = {
-        self: "A work item cannot be its own parent (RH-8)",
-        cycle:
-          "The proposed parent is a descendant of this work item -- rejected as a cycle (RH-8)",
-        max_depth:
-          "Setting this parent would exceed the maximum hierarchy depth of 5 (RH-7)",
-      };
-      throw new HTTPException(422, { message: messages[result.reason] });
-    }
-
-    let updatedRow: typeof workItemTable.$inferSelect | undefined;
-    try {
-      [updatedRow] = await tx
-        .update(workItemTable)
-        .set({
-          parentId: parent.id,
-          version: sql`${workItemTable.version} + 1`,
-        })
+      const [item] = await tx
+        .select()
+        .from(workItemTable)
         .where(
           and(
-            eq(workItemTable.id, item.id),
-            eq(workItemTable.version, item.version),
-            projectNotDeleted,
+            eq(workItemTable.key, key),
+            eq(workItemTable.workspaceId, workspaceId),
           ),
         )
-        .returning();
-    } catch (error) {
-      if (isRaiseException(error)) {
-        throw new HTTPException(409, {
-          message:
-            "Could not set parent -- a concurrent change affected this hierarchy; reload and retry",
+        .for("update");
+
+      // Issue #486: the same TOCTOU class #276 closed for `update-work-item.ts`.
+      // `require-work-item-reach.ts` already checks `archivedAt`/`deletedAt` on this same
+      // key before this transaction starts, but a concurrent soft-delete landing in the
+      // window between that check and this `FOR UPDATE` re-read would otherwise let this
+      // transaction still succeed against a since-deleted item -- belt-and-suspenders,
+      // matching #481's own guard on the parent lookup just below.
+      if (!item || item.archivedAt || item.deletedAt) {
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
+
+      const [projectAlive] = await tx
+        .select({ id: projectTable.id })
+        .from(projectTable)
+        .where(
+          and(
+            eq(projectTable.id, item.projectId),
+            isNull(projectTable.deletedAt),
+          ),
+        );
+
+      if (!projectAlive) {
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
+
+      const [parent] = await tx
+        .select()
+        .from(workItemTable)
+        .where(
+          and(
+            eq(workItemTable.key, parentKey),
+            eq(workItemTable.workspaceId, workspaceId),
+          ),
+        );
+
+      if (!parent || parent.archivedAt || parent.deletedAt) {
+        throw new HTTPException(404, { message: "Parent work item not found" });
+      }
+
+      // RH-6: parent and child must be in the same project. The composite self-FK on
+      // `work_item.parent_id` (`schema.ts`) enforces this at the database layer too, but a
+      // caller crossing it here would otherwise hit a raw FK-violation 500 instead of a
+      // clean 400 -- same "application layer ahead of the write" discipline
+      // `create-work-item.ts` documents for its own cross-workspace type check.
+      if (parent.projectId !== item.projectId) {
+        throw new HTTPException(400, {
+          message: "Parent must be in the same project as the work item (RH-6)",
         });
       }
-      throw error;
-    }
 
-    if (!updatedRow) {
-      // The row existed and was locked moments ago; the only remaining reason the WHERE
-      // can fail to match is a concurrent version bump or a soft-deleted project, in the
-      // window between the lock above and this UPDATE -- same reasoning as
-      // `update-work-item.ts`'s own identical branch.
-      throw new HTTPException(404, { message: "Work item not found" });
-    }
+      // Opus delta security review of PR #432 (D2): defensive-only -- nothing in this
+      // codebase moves a work item between projects today (see the pre-read's own doc
+      // comment above), so `item.projectId` cannot actually differ from `pre.projectId`
+      // on any live path. Guarded anyway: a future cross-project move landing here
+      // without updating this lock's scoping would otherwise silently reopen F1's race,
+      // since the lock was taken on `pre.projectId`, not `item.projectId`.
+      if (item.projectId !== pre.projectId) {
+        throw new HTTPException(409, {
+          message:
+            "Could not set parent -- the work item's project changed concurrently; reload and retry",
+        });
+      }
 
-    // CA-7's table: "parent" is explicitly `internal` (activity.ts's transcription of
-    // relations-and-hierarchy.md's own visibility rule for parent changes).
-    await recordWorkItemActivity(tx, [
-      {
-        workspaceId: updatedRow.workspaceId,
-        workItemId: updatedRow.id,
-        actorId,
-        actorType,
-        verb: "updated",
-        field: "parent",
-        oldValue: item.parentId,
-        newValue: updatedRow.parentId,
-        visibility: "internal",
-      },
-    ]);
+      const chain = await ancestorChain(tx, parent.id);
+      const depth = await descendantDepth(tx, item.id);
+      const result = validateReparent(item.id, parent.id, chain, depth);
 
-    return { updated: updatedRow, oldParentId: item.parentId };
-  });
+      if (!result.ok) {
+        const messages: Record<typeof result.reason, string> = {
+          self: "A work item cannot be its own parent (RH-8)",
+          cycle:
+            "The proposed parent is a descendant of this work item -- rejected as a cycle (RH-8)",
+          max_depth:
+            "Setting this parent would exceed the maximum hierarchy depth of 5 (RH-7)",
+        };
+        throw new HTTPException(422, { message: messages[result.reason] });
+      }
+
+      let updatedRow: typeof workItemTable.$inferSelect | undefined;
+      try {
+        [updatedRow] = await tx
+          .update(workItemTable)
+          .set({
+            parentId: parent.id,
+            version: sql`${workItemTable.version} + 1`,
+          })
+          .where(
+            and(
+              eq(workItemTable.id, item.id),
+              eq(workItemTable.version, item.version),
+              projectNotDeleted,
+            ),
+          )
+          .returning();
+      } catch (error) {
+        if (isRaiseException(error)) {
+          throw new HTTPException(409, {
+            message:
+              "Could not set parent -- a concurrent change affected this hierarchy; reload and retry",
+          });
+        }
+        throw error;
+      }
+
+      if (!updatedRow) {
+        // The row existed and was locked moments ago; the only remaining reason the WHERE
+        // can fail to match is a concurrent version bump or a soft-deleted project, in the
+        // window between the lock above and this UPDATE -- same reasoning as
+        // `update-work-item.ts`'s own identical branch.
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
+
+      // CA-7's table: "parent" is explicitly `internal` (activity.ts's transcription of
+      // relations-and-hierarchy.md's own visibility rule for parent changes).
+      await recordWorkItemActivity(tx, [
+        {
+          workspaceId: updatedRow.workspaceId,
+          workItemId: updatedRow.id,
+          actorId,
+          actorType,
+          verb: "updated",
+          field: "parent",
+          oldValue: item.parentId,
+          newValue: updatedRow.parentId,
+          visibility: "internal",
+        },
+      ]);
+
+      return { updated: updatedRow, oldParentId: item.parentId };
+    }),
+  );
 
   await publishEvent("work_item.updated", {
     workItemId: updated.id,

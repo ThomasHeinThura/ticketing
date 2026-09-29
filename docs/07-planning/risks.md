@@ -355,7 +355,7 @@ A third-party penetration test needs procurement, scoping, execution, remediatio
 retest — realistically four to eight weeks from booking. **Mitigation:** book it in week 1
 for a scoped first pass (auth, tenancy, portal boundary) even if the product is not
 feature-complete, with a second pass before the marketplace listing. **Independent of the
-external test**, an internal red-team pass by a fresh Opus context over the authorization
+external test**, an internal red-team pass by a fresh GPT-6 Sol context over the authorization
 surface, the portal boundary and the inherited kaneo routes is part of the go-live gate
 ([security-model.md](../01-architecture/security-model.md#testing-security)) — real customer
 data does not land on a stack proven only by its own suite.
@@ -376,7 +376,7 @@ kinds is done mechanically — a `public` policy stamped on anything that will n
 compile — the route-coverage test goes green and proves nothing. **Mitigation:** the
 retrofit is a named P0 task with a human-reviewed pass router by router
 ([phases.md](phases.md#p0--foundation)); `public-project` is deleted rather than flagged; a
-`public` or `delegated` policy requires a written `reason`, and the P0 Opus security review
+`public` or `delegated` policy requires a written `reason`, and the P0 GPT-6 Sol security review
 reads every one of those reasons before P0 closes. The P0 exit criterion is green on the
 *inherited* surface, not on an empty application. **Size, measured 2026-09-06:** kaneo mounts
 28 sub-routers plus 6 inline routes in `apps/api/src/index.ts` — about 105 route

@@ -36,9 +36,10 @@ Every gate whose failure must block merging is also listed by its exact check co
 the active `protect-main` ruleset. Adding a new standalone job here is not sufficient by
 itself: update the ruleset to require its context and verify the live rule after the change.
 As of 2026-09-23, `domain coverage (90%)` is required alongside the contexts listed in the
-repository's active ruleset. The full-stage `integration - Postgres 18` and
-`e2e - protected-route redirect` contexts are also required; do not infer that a workflow
-configured to run before merge is enforced unless its exact context appears in the ruleset.
+repository's active ruleset. The full-stage `integration - Postgres 18`,
+`e2e - protected-route redirect`, and `a11y - accessibility (G4, axe)` contexts are also
+required; do not infer that a workflow configured to run before merge is enforced unless its
+exact context appears in the ruleset.
 
 ```
 ┌─ Setup ──────────────────────────────────────────┐
@@ -103,18 +104,29 @@ breaking changes on the same route needs two entries, one per finding. Binding t
 entries only means **entries approve only the break in the PR that adds them** — an entry
 already on `origin/main` (an earlier PR's approved break, now merged) approves nothing, so
 a later PR that reintroduces the same kind of break on the same route still needs its own
-new entry and its own Opus review; the gate warns (does not fail) when a merged entry is
-still in the file, as a prompt to delete it. A new entry that matches no finding also fails,
+new entry and its own GPT-6 Sol security review; the gate warns (does not fail) when a merged
+entry is still in the file, as a prompt to delete it. A new entry that matches no finding also fails,
 as a stale or typo'd entry. oasdiff's exit code is also checked: anything other than `0` or
 `1`, or `1` with zero findings reported, fails closed. This is the reviewed-allowlist
 mechanism for an intentional pre-2.0 breaking change (decision log, 2026-09-25); see
 [api-design.md](../01-architecture/api-design.md#versioning). Each entry is added in the
-PR that makes the break, needs its own Opus security review there, and from the first
+PR that makes the break, needs its own GPT-6 Sol security review there, and from the first
 stable `v2.0.0` (or later) release tag on the file must be empty — a non-empty file fails
 the gate. "Stable" is looked up live from `git ls-remote --tags origin` (a tag matching
 `^v?(\d+)\.(\d+)\.(\d+)$` with major >= 2, no pre-release/build suffix), never from
 `package.json`'s `version` field, which tracks unrelated release history and is already
 past `2.0.0`.
+
+`scripts/ci/redocly-approved-findings.json` is the same reviewed-exception shape, for a
+Redocly LINT finding rather than an oasdiff breaking change — a specific, deliberate design
+choice a generic lint rule cannot recognize as intentional (e.g. an operation that is
+redirect-only by design, so `operation-2xx-response` is a false positive on it). Bound on
+`(rule, pointer)` instead of `(operation, rule, fingerprint)`: Redocly's own JSON pointer is
+already exact and stable per finding, so there is no separate fingerprint to invent. Same
+"new relative to `origin/main`" binding, same stale-entry warning, same "unmatched entry
+fails" rule. This file is **not** subject to the "closed past a stable `v2.0.0`+ tag" rule
+above — that rule is specific to breaking API changes, and a lint false-positive on an
+already-shipped, intentional design is not one (decision log, 2026-09-28).
 
 **`pnpm test:permissions` must run before `apps/web` is built, against a router that cannot
 see a built `apps/web/dist` (#165).** The Fast stage's ordering above already guarantees this
@@ -154,14 +166,15 @@ The current Playwright suite is a real-browser smoke for the already-specified l
 protected-route redirect and its preserved destination. The `security`, `reduced-motion`,
 and `mobile-320` project commands above document future suites; none are enabled yet. The
 current smoke does not yet satisfy authenticated agent/portal journeys; these still need
-deterministic application fixtures and acceptance flows. The narrow
-`e2e - protected-route redirect` smoke is a required branch-protection status check.
+deterministic application fixtures and acceptance flows. The `e2e - protected-route
+redirect` smoke and G4's `a11y - accessibility (G4, axe)` scan are required branch-protection
+status checks.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
-The Opus **security review** is a required section of `.github/pull_request_template.md`
+The GPT-6 Sol **security review** is a required section of `.github/pull_request_template.md`
 (the template is specified in [definition-of-done.md](definition-of-done.md#the-pull-request-template)).
-CI checks it non-empty, naming Opus, whenever the diff touches **any** of — this list is the
+CI checks it non-empty, naming GPT-6 Sol, whenever the diff touches **any** of — this list is the
 authoritative scope; [sdlc.md](sdlc.md) and [security-model.md](../01-architecture/security-model.md)
 cite it and do not restate it:
 
@@ -245,9 +258,10 @@ unreviewed code was merging. PR #110 trips the gate today anyway, via
 `apps/api/src/index.ts`, `apps/api/src/utils/**` and `apps/api/src/capabilities/**`. And
 independently of any path match, `checklistProblems()` in `scripts/ci/lib/pr-body.mjs` runs
 unconditionally on every pull request's `## Checklists`: the Definition of Done's
-"Opus security review completed and recorded" line matches `REVIEW_ITEM`, **cannot be marked
-`n/a`**, and a global rule fails the check if no independent-review checkbox exists anywhere.
-So a migration-only backend change was already required to record an Opus review. The
+"GPT-6 Sol security review completed and recorded" line matches `REVIEW_ITEM`, **cannot be
+marked `n/a`**, and a global rule fails the check if no independent-review checkbox exists
+anywhere.
+So a migration-only backend change is required to record the mandatory security review. The
 migrations cited below as precedent (`0045`-`0049`, `0026`) landed *before* this CI check
 existed (added in `e11976f`, #19, 2026-09-09) — they were not let through a blind spot.
 What these globs add is that such a change now trips the **path** half too, on its own
@@ -433,8 +447,12 @@ authority document; **`check:skips`** on `.skip(`, `.only(` or `describe.skip`.
 `@octokit/webhooks` are absent from the lockfile, and that the better-auth plugin list equals
 the approved list (no `anonymous`, `deviceAuthorization` or `bearer`) — the fork-time removal
 list made executable ([decision log](../07-planning/decision-log.md)).
-`pnpm test:a11y` and `pnpm test:perf` are Playwright projects invoked separately in the full
-stage; [testing-strategy.md](testing-strategy.md) describes them the same way.
+`pnpm test:a11y` runs axe against every exported `packages/ui` Storybook story and the
+screens exercised by the current Playwright E2E suite. It uses the existing `axe-core`
+dependency declared by `packages/ui` and scans the logged-out protected-route redirect's
+sign-in screen in a real browser. The workflow job's required context is
+`a11y - accessibility (G4, axe)`. `pnpm test:perf` remains a separate Playwright project in
+the full stage; [testing-strategy.md](testing-strategy.md) describes both commands.
 
 ## Main pipeline
 
@@ -564,8 +582,8 @@ main                    always deployable, protected
 - No long-lived branches. A branch older than a week is a merge problem forming.
 - Squash merge, so `main` has one commit per change and the history is readable.
 - `main` requires: all checks green, up to date with `main`, required independent review(s)
-  and, where in scope, the required Opus security review recorded. **The orchestrating
-  Claude session may then merge itself**, through this normal protected flow, once every one
+  and, where in scope, the required GPT-6 Sol security review recorded. **The orchestrating
+  session may then merge itself**, through this normal protected flow, once every one
   of those is genuinely satisfied on the exact candidate SHA (Thomas, 2026-09-15 — delegated;
   supersedes "only Thomas presses merge" — see the decision log, 2026-09-15). Design approval
   (H1–H6) and gate waivers remain Thomas-only, unchanged. The `protect-main` ruleset blocks

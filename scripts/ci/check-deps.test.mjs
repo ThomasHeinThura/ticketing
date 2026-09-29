@@ -777,3 +777,123 @@ export {};
   );
   assert.doesNotMatch(messages, /resolves to workspace "@taskdesk\/ui"/);
 });
+
+test("a bare specifier with no real declaration and no declared dependency is flagged, even when an unrelated workspace's ambient shim is the only thing TypeScript finds (#424 F3)", async (t) => {
+  // The pre-existing gap #424's F3 describes: a bare specifier that links into another
+  // workspace through a mechanism TypeScript can't type-resolve is only detectable today if
+  // a `declare module` shim for it happens to sit in the TARGET workspace — the shim is what
+  // #393's guard (rightly) skips as "never the specifier's real home," so when the shim sits
+  // somewhere else entirely (as here), the checker symbol resolution finds nothing usable at
+  // all and the specifier was previously waved through as "unresolved" with no violation.
+  // Fix: when this fallback's symbol resolution can't tie the specifier to any real
+  // (non-ambient) declaration, fall back to validating the bare name against the importing
+  // workspace's own package.json dependency fields instead of trusting resolution — a name
+  // that is neither a Node builtin nor declared there has no legitimate story.
+  const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-deps-baredep-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  async function packageAt(relative, name, tsconfig) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    await writeFile(
+      path.join(directory, "tsconfig.json"),
+      JSON.stringify(tsconfig),
+    );
+    return directory;
+  }
+
+  // The importer. No node_modules entry and no package.json dependency exists anywhere for
+  // "cross-workspace-injected" — it is not a real, resolvable third-party package.
+  const a = await packageAt("packages/a", "@taskdesk/a", {
+    compilerOptions: { allowJs: true },
+    include: ["src/**/*", "../b/src/shim.ts"],
+  });
+  // A different workspace than the importer, holding the only `declare module` for the
+  // specifier — same shape as #393's trigger, but deliberately NOT the importer's own
+  // workspace, so the old "unresolved => no violation" fallback is what fires without F3.
+  const b = await packageAt("packages/b", "@taskdesk/b", {
+    compilerOptions: { allowJs: true },
+  });
+
+  await writeFile(
+    path.join(b, "src/shim.ts"),
+    `declare module "cross-workspace-injected" {
+  export function thing(): void;
+}
+export {};
+`,
+  );
+
+  await writeFile(
+    path.join(a, "src/index.ts"),
+    'import { thing } from "cross-workspace-injected";\nthing();\n',
+  );
+
+  const { violations } = await analyzeDependencies(root);
+  const messages = violations.join("\n");
+  assert.match(
+    messages,
+    /packages\/a\/src\/index\.ts.*cross-workspace-injected.*not declared as a dependency in @taskdesk\/a\/package\.json/s,
+  );
+});
+
+test("an import specifier named after an Object.prototype own property does not crash the checker (#464)", async (t) => {
+  // `FLAGGED_MESSAGES[imported.specifier]` used to be a bare bracket read on a plain object
+  // literal. `FLAGGED_MESSAGES["__proto__"]` doesn't miss — `__proto__` is special-cased on
+  // object literals and returns the object's own prototype (`Object.prototype`), which is
+  // truthy, so the code then tried to call it as `Object.prototype?.(line)` and threw
+  // `TypeError: ... is not a function`, crashing the whole `analyzeDependencies()` run
+  // instead of producing a normal violation. Same class of gap for any other
+  // `Object.prototype` own name. Guarded with `Object.hasOwn`; this proves the fix is
+  // class-level (several prototype names), not just the one reported name.
+  const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-deps-proto-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  async function packageAt(relative, name) {
+    const directory = path.join(root, relative);
+    await mkdir(path.join(directory, "src"), { recursive: true });
+    await writeFile(
+      path.join(directory, "package.json"),
+      JSON.stringify({ name }),
+    );
+    await writeFile(
+      path.join(directory, "tsconfig.json"),
+      JSON.stringify({ compilerOptions: { allowJs: true } }),
+    );
+    return directory;
+  }
+
+  const libs = await packageAt("packages/libs", "@taskdesk/libs");
+
+  await writeFile(
+    path.join(libs, "src/proto.ts"),
+    [
+      'import "__proto__";',
+      'import "constructor";',
+      'import "hasOwnProperty";',
+      'import "toString";',
+    ].join("\n"),
+  );
+
+  await assert.doesNotReject(() => analyzeDependencies(root));
+  const { violations } = await analyzeDependencies(root);
+  const messages = violations.join("\n");
+  for (const specifier of [
+    "__proto__",
+    "constructor",
+    "hasOwnProperty",
+    "toString",
+  ]) {
+    assert.match(
+      messages,
+      new RegExp(
+        `packages/libs/src/proto\\.ts.*imports "${specifier}".*not declared as a dependency`,
+        "s",
+      ),
+    );
+  }
+});

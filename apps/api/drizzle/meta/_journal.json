@@ -523,8 +523,29 @@
 		{
 			"idx": 74,
 			"version": "7",
-			"when": 1790538204486,
-			"tag": "0074_saved_view_user_preference",
+			"when": 1790531660669,
+			"tag": "0074_rename_comment_to_task_comment",
+			"breakpoints": true
+		},
+		{
+			"idx": 75,
+			"version": "7",
+			"when": 1790531999693,
+			"tag": "0075_comment_and_canned_response_tables",
+			"breakpoints": true
+		},
+		{
+			"idx": 76,
+			"version": "7",
+			"when": 1790563177795,
+			"tag": "0076_attachments",
+			"breakpoints": true
+		},
+		{
+			"idx": 77,
+			"version": "7",
+			"when": 1790672632533,
+			"tag": "0077_saved_view_user_preference",
 			"breakpoints": true
 		}
 	]

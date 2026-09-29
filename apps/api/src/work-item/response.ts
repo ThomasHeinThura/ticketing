@@ -309,6 +309,39 @@ export const bulkWorkItemsResponseSchema = z
 // `GET /api/work-items/{key}/activity` -- the read side of the already-merged
 // `activity.ts` write path (`recordWorkItemActivity`). `seq` is deliberately absent,
 // same reason that module's own `.returning()` column list omits it.
+//
+// ISSUE #452 v2 (post-CI oasdiff finding): this schema originally grew a SECOND,
+// `.discriminatedUnion`-based shape here to carry posted `comment` rows alongside
+// activity rows (`comments-and-activity.md`'s "one stream showing everything"). That
+// version worked and passed all three rounds of Opus security review, but CI's
+// `contract - OpenAPI drift` job caught something the security review never checked:
+// `oasdiff breaking` flags `response-property-one-of-added` -- widening a response
+// `oneOf` is treated as breaking (a strict client generated against the OLD spec, coded
+// against exactly one shape, could choke on an unrecognized new variant), and
+// `docs/01-architecture/api-design.md`'s Versioning section makes the reviewed-allowlist
+// mechanism that used to cover exactly this case PERMANENTLY closed once a stable
+// `v2.0.0`+ tag exists on origin (it does: `v2.0.1`) -- the same constraint PR #440 hit on
+// the invitation route (decision log, 2026-09-28).
+//
+// Rather than treat this as a real breaking change needing a new path segment (there is
+// no removal or narrowing here to justify one, unlike #440's case), this schema was
+// redesigned to avoid the `oneOf` construct entirely: every field below is EXACTLY the
+// pre-#452 `WorkItemActivityRow` shape, byte-for-byte unchanged and still fully required
+// -- an activity-kind row's wire shape is untouched. `kind`/`body`/`activityId`/
+// `editedAt`/`deletedAt`/`updatedAt` are NEW, OPTIONAL fields added to that SAME existing
+// object schema, exactly the class of change `api-design.md`'s Versioning section already
+// names as free ("Additive changes (new optional field, new endpoint, new event key) go
+// out freely") -- verified empirically, not just argued: `oasdiff breaking` against this
+// exact shape reports zero findings (spiked and confirmed locally before committing this
+// version). `kind` is populated on EVERY row at runtime ("activity" or "comment", never
+// omitted) even though the schema only requires it be present when the row is one the old
+// contract never had (a comment) -- declaring it optional is what keeps the CONTRACT
+// backward-compatible; actually always sending it is what keeps a NEW caller's code simple
+// (no "absent means activity" inference needed). A comment-kind row's `verb` is the
+// literal string `"commented"` -- a real, honest description of what happened, matching
+// this table's own existing verb vocabulary (`created`, `transitioned`, `updated`, ...),
+// not a fabricated placeholder -- with `field`/`oldValue`/`newValue`/`payload` all `null`
+// (comments do not carry a field-level diff) and `workflowVersionId` null (not applicable).
 export const workItemActivityRowSchema = z
   .object({
     id: z.string(),
@@ -323,6 +356,32 @@ export const workItemActivityRowSchema = z
     visibility: z.string(),
     workflowVersionId: z.string().nullable(),
     createdAt: responseTimestamp,
+    kind: z
+      .enum(["activity", "comment"])
+      .optional()
+      .openapi({
+        description:
+          'Always present at runtime -- "activity" for an activity-table row, ' +
+          '"comment" for a posted comment. Optional in the schema (not the pre-#452 ' +
+          "contract) so this remains an additive change, not a breaking one.",
+      }),
+    body: z.unknown().nullable().optional().openapi({
+      description:
+        "Comment rows only: the Tiptap document, or null if deleted (CA-18).",
+    }),
+    activityId: z.string().nullable().optional().openapi({
+      description:
+        "Comment rows only: see comment.activity_id in the data model.",
+    }),
+    editedAt: nullableResponseTimestamp.optional().openapi({
+      description: "Comment rows only (CA-17).",
+    }),
+    deletedAt: nullableResponseTimestamp.optional().openapi({
+      description: "Comment rows only (CA-18 tombstone).",
+    }),
+    updatedAt: responseTimestamp.optional().openapi({
+      description: "Comment rows only.",
+    }),
   })
   .openapi("WorkItemActivityRow");
 
@@ -345,3 +404,61 @@ export const unassignWorkItemResponseSchema = z
     version: z.number(),
   })
   .openapi("WorkItemUnassignment");
+
+// Issue #442. One stable reason a blocked transition is not currently available
+// (`WF-16`): `kind` names which gate ("guard" | "approval" | "cab" | "note"), `reasonCode`
+// is the stable code (`guard.<type>`, `approval.pending`, `cab.pending`, `note.required`)
+// -- never free text, so a client can render an explanation without parsing prose.
+export const workItemBlockReasonSchema = z
+  .object({
+    kind: z.string(),
+    reasonCode: z.string(),
+  })
+  .openapi("WorkItemTransitionBlockReason");
+
+// `GET /api/work-items/{key}/transitions` (`workflows.md` § "The state select"): exactly
+// what the actor may do now, with reasons for anything blocked. An illegal transition
+// (wrong role/state, CAB-gated on a non-change type, or no concrete state in this
+// project) is simply absent from this array -- never returned with `available: false`.
+export const workItemTransitionOfferSchema = z
+  .object({
+    transitionId: z.string(),
+    toStateTemplateId: z.string(),
+    toStateId: z.string(),
+    notePolicy: z.enum(["none", "optional", "required"]),
+    noteVisibility: z.enum(["public", "internal"]),
+    requiresApproval: z.boolean(),
+    requiresCab: z.boolean(),
+    isReopen: z.boolean(),
+    available: z.boolean(),
+    blockedBy: z.array(workItemBlockReasonSchema),
+  })
+  .openapi("WorkItemTransitionOffer");
+
+export const workItemTransitionsResponseSchema = z.array(
+  workItemTransitionOfferSchema,
+);
+
+// `POST /api/work-items/{key}/transition`. The work item's own new state, exactly the
+// facts this route's own effects can change -- `assigneeId`/`resolvedAt` only move when
+// the executed transition actually carries a `set_assignee`/`clear_assignee` effect or
+// crosses the `completed` group boundary (`WF-17`/`WF-18`).
+export const transitionedWorkItemSchema = z
+  .object({
+    key: z.string(),
+    stateId: z.string(),
+    assigneeId: z.string().nullable(),
+    resolvedAt: nullableResponseTimestamp,
+    version: z.number(),
+  })
+  .openapi("TransitionedWorkItem");
+
+// The 422 "not currently available" response: the matched transition is legal, but
+// blocked by a guard, the (interim, always-unsatisfied) approval/CAB gate, or a missing
+// required note.
+export const workItemTransitionBlockedSchema = z
+  .object({
+    message: z.string(),
+    blockedBy: z.array(workItemBlockReasonSchema),
+  })
+  .openapi("WorkItemTransitionBlocked");

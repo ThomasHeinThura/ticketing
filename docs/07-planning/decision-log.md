@@ -5,6 +5,123 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-29 · OpenAI model routing replaces Claude/`pal-mcp` routing
+
+**Decision:** TaskDesk's active AI workflow moves to an OpenAI-first two-tier model policy.
+Every implementation and ordinary-review role previously assigned to Claude Sonnet is now
+GPT-6 Luna. Every mandatory final security/critical-review and stage-finalizer role previously
+assigned to Claude Opus/Opus 5.5 is now GPT-6 Sol. Reviewer independence, exact-head binding,
+review counts, security-scope definitions, branch protection, gate-waiver rules, and stage
+exit criteria are unchanged.
+
+`pal-mcp`, `pal-reviewer`, 9Router, and their provider failover chain are retired from the
+active TaskDesk workflow. They are not fallback paths. Historical reviews remain valid
+historical evidence for the exact heads they reviewed; this decision applies prospectively.
+
+**Supersedes:** the operative portions of the 2026-09-26 and 2026-09-27 decisions that made
+`pal-mcp`/9Router the primary ordinary-review/audit/report/alignment path, and every operative
+instruction that names Sonnet or Opus as the current required model tier.
+
+**Why:** the active agent environment is moving to OpenAI GPT models and does not provide the
+`pal-mcp` workflow. Keeping obsolete routing instructions would create false blockers and make
+CI/documentation disagree with the actual execution environment. This preserves the existing
+quality model: Luna inherits Sonnet work; Sol inherits mandatory Opus gates.
+
+**Decided by:** Thomas, 2026-09-29.
+
+### 2026-09-29 · Opus 5.5 retained as sampled big reviewer, fed by a GPT review packet
+
+**Decision:** retain one independent Opus 5.5 role as an additional sampled/random reviewer.
+It is not the per-PR security gate, not the phase finalizer, and not a replacement for GPT-6
+Sol. It reviews selected candidates, batches, or defect classes only.
+
+Before Opus 5.5 runs, GPT-6 Luna or GPT-6 Sol prepares a structured packet with exact SHA(s),
+changed files, spec/ADR scope, risk classification, GPT review verdicts, tests/counts, known
+residuals/waivers, and explicit claims/questions to spot-check. Opus then samples the real
+referenced code and evidence independently.
+
+A sampled Opus finding is actionable: a credible pre-merge blocker stops that candidate; a
+post-merge blocker becomes immediate follow-up work. A clean sample never substitutes for the
+mandatory GPT-6 Sol gate. Do not delay every PR waiting for Opus 5.5.
+
+**Why:** retain a genuinely different external reviewer for occasional challenge/audit without
+making every PR depend on a second full security pipeline.
+
+**Decided by:** Thomas, 2026-09-29.
+
+### 2026-09-28 · #10's gate-scope semantics decided: applicable-now gates required, future-stage gates activate with their prerequisite
+
+**Decision:** #10 ("all 38 declared gates enabled" vs. "every gate whose prerequisite exists
+today") is resolved as: **a gate is required, enabled and green once the capability it
+protects actually exists in the codebase; a gate for a capability that does not exist yet
+(`test:mcp`, portal bundle purity before the agent/portal bundle split, a future-feature's own
+E2E) becomes mandatory in the same pull request or workstream that introduces that
+capability — not before.** This does not weaken the safety property (nothing is ever
+permanently exempted), it only sequences *when* a gate must exist relative to what it
+protects.
+
+**Why:** requiring all 38 gates to exist before P0 can close would make P0 logically depend on
+P3/P4 features (MCP, the portal/agent bundle split) that the project's own stage definitions
+say do not exist yet — an incoherent gate. Requiring nothing until some later stage risks the
+opposite failure (a gate perpetually deferred past the point its prerequisite actually
+landed). Two independent external status reviews, read and cross-checked against live
+GitHub/git state rather than trusted at face value, both converged on the same rule
+independently; Thomas confirmed it directly.
+
+**Scope note, also confirmed by Thomas the same day:** G4 (accessibility), G8 (visual
+regression) and G11 (performance budgets) are **not** treated as future-gated under this rule.
+A real web application, Storybook, and Playwright infrastructure already exist, so their
+prerequisite is already present — these three should be enabled, not left indefinitely
+skipped, under the rule above. This is a direct consequence of the rule, not an exception to
+it.
+
+**Alternatives:** "all 38 gates must exist" (rejected — makes P0 depend on P3/P4-only
+features); "P0 closes on the currently-enabled subset regardless of what's missing" (rejected
+— no forcing function to ever enable a gate once its prerequisite lands).
+
+**Decided by:** Thomas, 2026-09-28.
+
+### 2026-09-28 · P1/P2 shared-surface ownership (#329) — acknowledged as proposed
+
+**Decision:** the ownership proposal on issue #329 (P1/Copilot-DeepSeek lane owns
+`work_item*`/`project*`/`workspace*`/etc.; P2 owns its own tables when it migrates them;
+listed shared files are sequential-only — land, push, announce, never concurrent) is accepted
+as written, unblocking the P2 migration batch, the audit-log read API, intake/request-type
+API slices, the portal submission route, and SLA policy CRUD/pause routes.
+
+**Why:** the proposal had sat unacknowledged since 2026-09-22 despite being cheap to accept,
+and was blocking a real, growing queue of P2 work. An external status review flagged it as one
+of the cheapest wins available; verified the issue was still open and the proposal
+unretracted before acting.
+
+**Alternatives:** amend the proposal (not needed — it was judged sound as written).
+
+**Decided by:** Thomas, 2026-09-28. Recorded on issue #329 directly (closing comment) and
+closed there.
+
+### 2026-09-28 · `v2.0.1` GitHub release marked prerelease
+
+**Decision:** the published GitHub release `TaskDesk v2.0.1` (2026-09-27, target `ed250723`)
+is now marked `prerelease: true`. It was previously published as a normal stable release
+despite the project's own release plan saying the TaskDesk product history should start at
+`2.0.0-alpha.1` (P0), with P0 itself not yet closed, and despite `package.json` still
+carrying kaneo's inherited `2.22.0` version string — three simultaneous, conflicting version
+stories.
+
+**Why:** an unlabeled stable release publicly implies production readiness the project has
+not reached. Marking it prerelease is a minimal, reversible correction that doesn't require
+deleting release history or reconciling `package.json`/the release plan in the same action.
+
+**Not done, still open:** reconciling `package.json`'s `2.22.0` against the release plan's
+`2.0.0-alpha/beta/rc` numbering, and whether future releases should follow the plan's numbering
+starting now or from P0's actual close. Left for a dedicated release-governance decision, not
+folded into this one.
+
+**Alternatives:** leave it alone (rejected — actively misleading given P0 isn't closed);
+delete it (rejected — destructive, and the release may already be referenced/pulled by
+something).
+
+**Decided by:** Thomas, 2026-09-28.
 
 ## Format
 
@@ -15,6 +132,123 @@ Newest first.
 **Alternatives:** what was rejected, briefly
 **Decided by:** who
 ```
+
+### 2026-09-28 · All four P0 gate issues (#8, #9, #10, #11) audited against live code; #9 closed; #8/#10/#11 identified as needing an operational or scoping decision, not more implementation
+
+**Decision:** ran a read-only verification of every checklist item on #8, #9, #10 and #11
+against the actual code on `main` (not against each issue's own text, which had drifted in
+places). Closed #9. Left #8, #10 and #11 open, each with a comment naming exactly what still
+blocks it and why more code review will not close it. Corrected `CLAUDE.md`'s overstated claim
+about `scripts/deploy.sh local`'s own Traefik path (see below). Dispatched a bounded fix for
+that Traefik gap; did not attempt the real external UAT deployment #8 actually needs, since
+that needs Thomas's own authorization per the 2026-09-23 entry below it.
+
+**Why:** issue #9's own "done when" bullet (`apps/web/src/components/ui/` empty) was
+technically false but for a reason already fully documented and independently tracked in
+#403 — leaving #9 open served no purpose except duplicating #403. Issue #8's remaining gap is
+a ~7-day live-UAT shadow-mode soak the 2026-09-23 entry already designed for; issue #10's
+remaining gap is 12 of 38 CI gates each blocked on a named, unbuilt P1/P9 prerequisite, plus
+a stale CODEOWNERS scope line describing a mechanism decided against twice already; issue
+#11's remaining gap is that its own "done when" claim was verified through the host's
+pre-existing Traefik, not `deploy.sh local`'s bundled one. None of these three closes by
+another review round, so recording that plainly here rather than leaving each issue looking
+like ordinary unfinished work.
+
+**Alternatives considered:** close #8/#10/#11 anyway on the theory that P0's *code* is done —
+rejected, each issue's own "done when" text is explicit and hasn't been met, and silently
+redefining "done" without saying so is exactly the kind of drift this log exists to prevent.
+Leave #9 open pending a fresh #403 resolution — rejected, #403 already exists and re-litigating
+the same gap on two issues helps no one.
+
+**Decided by:** the orchestrating session, 2026-09-28, closing #9 as a reversible housekeeping
+call (falls within the standing "take the recommended, non-waiver option" authorization); the
+#8 UAT-deployment question and the #10 gate-scoping question are flagged to Thomas directly,
+not decided here.
+
+### 2026-09-28 · `GET /api/invitation/{id}` (issue #8, PR #440) kept registered and permanently disabled, not deleted — the reviewed-allowlist breaking-change mechanism is closed for good now that v2.0.1 exists
+
+**Decision:** the route stays in the OpenAPI contract (`deprecated: true`), and its handler
+now unconditionally refuses (403) — including for a caller who holds the real
+`member:invite` authority its own middleware chain (reused verbatim from
+`DELETE /api/invitation/{id}`, the cancel route) checks. It was NOT deleted outright, and
+`scripts/ci/openapi-approved-breaks.json` was NOT used to approve its removal.
+
+**Why:** PR #440's Opus delta pass F4 found and fixed a route-classification-guard
+fail-open that, applied strictly, required this route to be classified rather than left
+"deliberately uncovered" — the state it had been in since 2026-09-22, because none of the
+registry's five policy kinds fit its old shape honestly (it returned invitee
+email/workspace name/inviter name to any authenticated caller, with no recipient or
+workspace-membership check at all — the same data `GET /api/invitation/public/{id}`
+already serves, but this one required a credential first). The first plan was to delete
+it outright (zero real callers in `apps/web`, an info-leak already). Before that landed,
+PR #440's own `test:contract` gate (`oasdiff` against `origin/main`) caught something the
+deletion plan missed: a stable `v2.0.1` tag already exists on origin, so
+`docs/01-architecture/api-design.md`'s Versioning section requires a real deprecation
+window (a new path segment, the old one kept for two minor releases with `Deprecation`/
+`Sunset` headers) for a breaking removal, not the reviewed allowlist — that allowlist is
+explicitly closed, permanently, from the first stable `v2.0.0`+ tag on. Asked Thomas
+directly given this new constraint; he chose to keep the route registered and disable it
+in place, rather than build a full deprecation-header mechanism (no existing precedent in
+this codebase) or wait out a real deprecation window for a route that was never safe.
+
+**Alternatives considered:** (1) waive the versioning policy for this one route and delete
+it anyway — rejected, a real policy waiver only Thomas may authorize, and he chose not to;
+(2) build the actual versioned-path-segment mechanism this policy describes, as the first
+real instance of it — rejected as disproportionate scope for closing one already-known
+info-leak in an unused route.
+
+**How this is enforced:** `apps/api/src/invitation/policy.ts` declares
+`"GET /api/invitation/{id}": { capability: "member:invite", scope: "workspace",
+scopeSource: "row", reach: "required", sessionOnly: true }` — identical to cancel's own
+declaration, and genuinely enforced (same middleware chain runs). The handler still
+throws 403 after that middleware passes; the declared capability check is a real,
+additional gate in front of an always-refusing handler, not a mismatch between what's
+declared and what runs.
+
+**Decided by:** Thomas, 2026-09-28, asked directly (a tight two-option-plus-status-quo
+question) after the versioning-policy constraint surfaced mid-fix. See
+`docs/07-planning/security-reviews/440-runtime-authorization-wiring.md` for the full
+five-round review history on the route-classification-guard mechanism this decision grew
+out of.
+
+### 2026-09-28 · Redocly-lint-finding allowlist added (`scripts/ci/redocly-approved-findings.json`) for `GET /attachments/{id}`'s redirect-only response
+
+**Decision:** `test:contract`'s Redocly shrink-only baseline correctly flagged
+`operation-2xx-response` as a NEW finding on `GET /attachments/{id}` (PR #450, issue #28)
+the first time that check ran to completion on the branch — the route only ever returns
+302 (redirect to a five-minute presigned download URL, AT-5/AT-6), never a 2xx of its
+own. Rather than silence this with Redocly's own informal `.redocly.lint-ignore.yaml`
+mechanism (which `test-contract.mjs`'s own `parseRedoclyReport` explicitly rejects —
+`ignored !== 0` fails closed, on purpose), a new reviewed-exception allowlist was added:
+`scripts/ci/redocly-approved-findings.json`, the same shape as the existing
+`openapi-approved-breaks.json` (operation/rule/reason/decision/pr) but keyed on
+`(rule, pointer)` — Redocly's own JSON pointer, unlike oasdiff's output, is already exact
+and stable per finding, so there is no separate fingerprint to invent. One entry recorded
+for this exact finding.
+
+**Why:** the route's redirect-only design is deliberate and already shipped (attachment
+download has worked this way since #450 was first written; `attachment.test.ts` and
+`attachment-s3-finalize-race.test.ts` both already assert the 302). A generic Redocly
+lint rule cannot distinguish "an operation forgot to document its success response" from
+"an operation's only success response is a redirect, and that's the whole contract" — this
+is the latter. Changing the actual route to return `200` + a JSON body instead of a real
+redirect, purely to satisfy the linter, would be a real protocol change late in an
+already-multi-round-reviewed PR, touching every existing test that asserts 302 — a much
+larger and riskier change than recording a scoped, reviewed exception for a known false
+positive. Asked Thomas directly given the fork (build the allowlist vs. change the
+protocol); he chose the allowlist.
+
+**Alternatives considered:** (1) `redocly lint --generate-ignore-file` — rejected, the
+project's own tooling hard-fails on any non-zero `ignored` count from Redocly itself, by
+design, and the generated file would have silently bundled in all 16 OTHER pre-existing,
+already-tolerated findings across the whole spec, not just this one; (2) change
+`GET /attachments/{id}` to return `200` with a JSON body containing the presigned URL
+instead of a real redirect — rejected as the larger, riskier change, see "Why" above.
+
+**Decided by:** Thomas, 2026-09-28, asked directly (a tight two-option question) after
+the finding surfaced on PR #450's first completed `contract - OpenAPI drift` run. See
+`scripts/ci/redocly-approved-findings.json` and
+`docs/07-planning/security-reviews/450-attachments.md` for the finding and its fix.
 
 ### 2026-09-27 · `pal-mcp` FULLY UNSUSPENDED for all reading/ordinary-review/audit/analysis, all branches, all scope — the Opus final security/critical review remains the sole, unreplaced gate
 

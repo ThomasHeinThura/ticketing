@@ -96,15 +96,26 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // exactly the boundary #192's composite FK (`work_item.workspace_id, type_id ->
   // work_item_type.workspace_id, id`) enforces at the DB level. Checked here first so a
   // cross-workspace pairing is a clean 400, not a raw FK-violation 500.
+  //
+  // #347: both conditions are ONE query (`id` AND `workspaceId` together), not a
+  // `findFirst` by `id` alone followed by a separate `workspaceId` comparison -- the
+  // two-query shape answered a distinguishable message for "no such type" (400 "Unknown
+  // work item type") versus "real type, foreign workspace" (400 "...does not belong to
+  // the project's workspace"), which is a cross-tenant existence oracle for
+  // `work_item_type` ids -- the same class #290/#307 closed in
+  // `workspace-access-middleware.ts`, and the same single-query-plus-single-message
+  // pattern already used by this codebase's other "row must belong to the same parent"
+  // checks (`upsert-workflow-rule.ts`'s `columnId`, `reorder-columns.ts`'s `col.id`,
+  // confirmed side by side in #307's own Opus review table). A nonexistent id and a
+  // real-but-foreign-workspace id now answer byte-identically.
   const type = await db.query.workItemTypeTable.findFirst({
-    where: eq(workItemTypeTable.id, typeId),
+    where: and(
+      eq(workItemTypeTable.id, typeId),
+      eq(workItemTypeTable.workspaceId, project.workspaceId),
+    ),
   });
 
   if (!type) {
-    throw new HTTPException(400, { message: "Unknown work item type" });
-  }
-
-  if (type.workspaceId !== project.workspaceId) {
     throw new HTTPException(400, {
       message: "Work item type does not belong to the project's workspace",
     });

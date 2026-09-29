@@ -52,3 +52,26 @@ export const workflowListSchema = z.array(workflowSchema);
 export const workflowWithVersionsSchema = workflowSchema.extend({
   versions: z.array(workflowVersionSchema),
 });
+
+// Issue #442's validation-panel route (`workflows.md` § Screens, "Workflow editor"). One
+// adopting project's own share of the report -- see `validate-workflow-version.ts`'s own
+// doc comment for what "adopting" means here.
+export const workflowVersionProjectValidationSchema = z
+  .object({
+    projectId: z.string(),
+    valid: z.boolean(),
+    errors: z.array(z.string()),
+    refusedStateTemplateIds: z.array(z.string()),
+    stuckWorkItemKeys: z.array(z.string()),
+  })
+  .openapi("WorkflowVersionProjectValidation");
+
+export const workflowVersionValidationSchema = z
+  .object({
+    valid: z.boolean(),
+    unreachableStateTemplateIds: z.array(z.string()),
+    noOutboundStateTemplateIds: z.array(z.string()),
+    rolesWithNoLegalTransition: z.array(z.string()),
+    projects: z.array(workflowVersionProjectValidationSchema),
+  })
+  .openapi("WorkflowVersionValidation");

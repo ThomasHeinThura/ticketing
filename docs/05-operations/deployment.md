@@ -97,6 +97,13 @@ Then: sign in at `https://ticket.localhost`, open God Mode, and configure everyt
 through the UI. **No further environment variables.** See
 [plugin architecture](../01-architecture/plugin-architecture.md).
 
+**On a host that already runs another reverse proxy on 80/443** (Dokploy, nginx, another
+app), the bundled local Traefik can't publish those ports too. `scripts/deploy.sh
+local` checks for this before starting anything and fails with the fix rather than a bare
+Docker port-in-use error: set `TASKDESK_LOCAL_HTTP_PORT` / `TASKDESK_LOCAL_HTTPS_PORT` in
+`.env` (e.g. `8080` / `8443`) and include the HTTPS port in `TASKDESK_AGENT_URL` /
+`TASKDESK_PORTAL_URL` — see [traefik-and-domains.md § Local development](traefik-and-domains.md#local-development).
+
 ## Compose files
 
 | File | Purpose |

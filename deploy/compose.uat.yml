@@ -1,13 +1,14 @@
 # ===========================================================================
-#  DO NOT APPLY THIS OVERLAY YET.
+#  APPLIED AND LIVE. Issue #6 (inherited kaneo auth defaults — anonymous
+#  sign-in among them) closed before this overlay was first brought up, and
+#  is CLOSED as of this comment. `ticket-v2-uat.bimats.com` and
+#  `portal-v2-uat.bimats.com` are both running this overlay in production
+#  right now, on this host.
 #
-#  Applying it publishes TaskDesk v2 on public hostnames. Issue #6 has not
-#  merged, so the tree still carries the inherited authentication defaults from
-#  the kaneo import — anonymous sign-in among them. Public exposure before #6
-#  merges is forbidden (docs/07-planning/status.md, Blocked).
-#
-#  Nothing in scripts/deploy.sh loads this file. Bringing it up is a deliberate
-#  manual act, and it is not one to take before #6.
+#  Nothing in scripts/deploy.sh loads this file — bringing it up (or updating
+#  the running stack, e.g. `docker compose --env-file .env -f compose.yml
+#  -f deploy/compose.uat.yml up -d --wait`) is still a deliberate manual act,
+#  same as it always was; it is just no longer a BLOCKED one.
 # ===========================================================================
 #
 # Overlay — UAT on the bimats.com host. As production, different hostnames, and
@@ -31,6 +32,13 @@ services:
   taskdesk:
     environment:
       NODE_ENV: production
+      # Issue #8's cutover needs ~7 days of clean shadow-mode evidence from a
+      # real UAT deployment under real traffic (docs/05-operations/
+      # configuration-reference.md). UAT is where that evidence is supposed to
+      # come from, so it runs with shadow mode on by standing default, not as
+      # a one-off manual override — every future UAT deploy starts the clock
+      # without anyone having to remember to set this.
+      TASKDESK_POLICY_SHADOW: "on"
       # ---------------------------------------------------------------
       # MEASURED, not assumed. 2026-09-06.
       #
@@ -49,24 +57,54 @@ services:
       # ---------------------------------------------------------------
       TASKDESK_TRUST_PROXY: "2"
     labels:
+      # Service/router/middleware names are prefixed `taskdesk-v2-uat` (not the
+      # bare `taskdesk` this overlay's service used before, and NOT `taskdesk-uat`
+      # either — see the incident below) because Traefik's Docker provider
+      # discovers every `traefik.enable=true` container on the Docker host it
+      # runs against — it is not scoped to one Compose project or network. A
+      # stray `taskdesk` container from another stack on the same host (this one
+      # included: v2 UAT and local dev have both run on this box at once) would
+      # otherwise merge into this overlay's Traefik service, load-balancing into
+      # a backend unreachable from that Traefik's own network.
+      # docs/05-operations/traefik-and-domains.md § Environment-prefixed names
+      #
+      # INCIDENT, 2026-09-28: this overlay used the bare name `taskdesk-uat` for
+      # its service and three middlewares, on the stated assumption (see the
+      # `@docker` note below) that v1's own `taskdesk-uat` Compose project
+      # defines identically-named, identically-configured Traefik objects, so
+      # sharing a name was harmless duplication. That assumption was wrong: v1's
+      # `taskdesk-uat-frontend-1` container defines a Traefik service ALSO named
+      # `taskdesk-uat`, with different config (different labels entirely, not a
+      # rename of this same app) — Traefik's own docker provider logged
+      # `Service defined multiple times with different configurations` and
+      # `Middleware defined multiple times with different configurations` for
+      # `taskdesk-uat`, `taskdesk-uat-headers` and `taskdesk-uat-ratelimit`, and
+      # disabled ALL of them, including v1's real router — not just v2's. This
+      # had been silently working by accident of provider processing order since
+      # this file was written; recreating the v2 `taskdesk` container (a routine
+      # redeploy, not a config change) flipped which side's router survived,
+      # taking `ticket-v2-uat.bimats.com`/`portal-v2-uat.bimats.com` down with a
+      # 404 from Traefik itself. `taskdesk-v2-uat` is unique against both v1's
+      # `taskdesk-uat` and this file's own `name: taskdesk-v2-uat` Compose
+      # project, so it cannot collide with anything sharing this Traefik again.
       - traefik.enable=true
       - traefik.docker.network=dokploy-network
-      - traefik.http.services.taskdesk.loadbalancer.server.port=${TASKDESK_PORT:-5173}
-      - traefik.http.services.taskdesk.loadbalancer.healthcheck.path=/api/public/health/ready
+      - traefik.http.services.taskdesk-v2-uat.loadbalancer.server.port=${TASKDESK_PORT:-5173}
+      - traefik.http.services.taskdesk-v2-uat.loadbalancer.healthcheck.path=/api/public/health/ready
       # `web`, not `websecure`, and no certresolver: CloudFront terminates TLS
       # and reaches this Traefik over plain HTTP on :80. A `websecure` router
       # here would never be matched, and an ACME challenge would never be
       # answered, because port 443 on this host is not what the browser talks
       # to. Measured: entryPointName "web", RequestScheme "http", in the
       # Traefik access log for a real request to ticket-uat.bimats.com.
-      - traefik.http.routers.taskdesk-v2-agent.rule=Host(`ticket-v2-uat.${DOMAIN:?DOMAIN is required}`)
-      - traefik.http.routers.taskdesk-v2-agent.entrypoints=web
-      - traefik.http.routers.taskdesk-v2-agent.service=taskdesk
-      - traefik.http.routers.taskdesk-v2-agent.middlewares=taskdesk-v2-uat-headers@docker,taskdesk-v2-uat-compress@docker,taskdesk-v2-uat-ratelimit@docker
-      - traefik.http.routers.taskdesk-v2-portal.rule=Host(`portal-v2-uat.${DOMAIN:?DOMAIN is required}`)
-      - traefik.http.routers.taskdesk-v2-portal.entrypoints=web
-      - traefik.http.routers.taskdesk-v2-portal.service=taskdesk
-      - traefik.http.routers.taskdesk-v2-portal.middlewares=taskdesk-v2-uat-headers@docker,taskdesk-v2-uat-compress@docker,taskdesk-v2-uat-ratelimit@docker
+      - traefik.http.routers.taskdesk-v2-uat-agent.rule=Host(`ticket-v2-uat.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.taskdesk-v2-uat-agent.entrypoints=web
+      - traefik.http.routers.taskdesk-v2-uat-agent.service=taskdesk-v2-uat
+      - traefik.http.routers.taskdesk-v2-uat-agent.middlewares=taskdesk-v2-uat-headers@docker,taskdesk-v2-uat-compress@docker,taskdesk-v2-uat-ratelimit@docker
+      - traefik.http.routers.taskdesk-v2-uat-portal.rule=Host(`portal-v2-uat.${DOMAIN:?DOMAIN is required}`)
+      - traefik.http.routers.taskdesk-v2-uat-portal.entrypoints=web
+      - traefik.http.routers.taskdesk-v2-uat-portal.service=taskdesk-v2-uat
+      - traefik.http.routers.taskdesk-v2-uat-portal.middlewares=taskdesk-v2-uat-headers@docker,taskdesk-v2-uat-compress@docker,taskdesk-v2-uat-ratelimit@docker
       # `@docker`, not `@file`: this overlay attaches to the HOST'S EXISTING
       # Dokploy-managed Traefik (dokploy-network), which loads its own dynamic
       # file-provider config, not this repo's deploy/traefik/dynamic/middlewares.yml.
@@ -76,8 +114,10 @@ services:
       # this host's actual Traefik on 2026-09-26. Defining the middlewares
       # inline as `@docker` labels (same values as middlewares.yml, kept in
       # sync by hand — there is no way to reference a file-provider middleware
-      # from a container attached to someone else's Traefik) is what v1's own
-      # taskdesk-uat stack already does, proven working on this exact host.
+      # from a container attached to someone else's Traefik) is the same
+      # `@docker`-label approach v1's own stack uses on this host — but each
+      # stack's own objects now have their own unique names (see the incident
+      # note above), not shared ones "proven working" by accidental duplication.
       - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.stsSeconds=63072000
       - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.stsIncludeSubdomains=false
       - traefik.http.middlewares.taskdesk-v2-uat-headers.headers.stsPreload=false

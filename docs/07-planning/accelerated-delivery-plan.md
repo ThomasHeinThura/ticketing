@@ -46,10 +46,10 @@ be fantasy. Three things make an aggressive attempt realistic rather than fantas
    concurrently, each on its own branch, per
    [agent-workflow.md](../04-engineering/agent-workflow.md)'s "parallelise across
    independent areas" rule and its
-   [model-tier policy](../04-engineering/agent-workflow.md#model-tiers-within-claude-code) —
-   Sonnet 5 implementing against an already-approved spec, Opus/Fable reviewing,
-   **Opus gating security on every workstream, always, with no exception for schedule
-   pressure.**
+   [model policy](../04-engineering/agent-workflow.md#model-policy) —
+   GPT-6 Luna implementing against an already-approved spec, independent GPT-6 Luna ordinary
+   review, and **GPT-6 Sol gating security on every workstream, always, with no exception for
+   schedule pressure.**
 
 ## What never moves, regardless of the calendar
 
@@ -59,7 +59,7 @@ equally explicit follow-up instruction that the calendar may flex but the archit
 not:
 
 1. **Security is not optional under any timeline.** Route policy coverage, the permission
-   matrix, tenant isolation (404-not-403), secrets handling, and the Opus security review
+   matrix, tenant isolation (404-not-403), secrets handling, and the GPT-6 Sol security review
    at every merge ([ADR 0010](../01-architecture/adr/0010-route-policy-registry.md),
    [Security model](../01-architecture/security-model.md)) run from day one, on every
    workstream, at full strength, on whatever calendar this actually takes.
@@ -111,7 +111,7 @@ set** (SLA, approvals, portal, 20 reports) — that would not be honest to promi
   **every route in Hono's router** (not only the OpenAPI document — `/auth/*`, `/ws`,
   `/metrics` included) has a declared policy of one of the five kinds, and kaneo's
   inherited routers have been retrofitted into those kinds with `public-project` removed
-  — the P0 security task named in [phases.md](phases.md#p0--foundation). An Opus security
+  — the P0 security task named in [phases.md](phases.md#p0--foundation). A GPT-6 Sol security
   pass over that retrofit is part of the exit, not a follow-up.
 
 ### Weeks 2–4 — parallel build-out to go-live (by Oct 3)
@@ -128,7 +128,7 @@ split, not serial.
 | **C — Governance / God Mode** | Roles editor, feature flags, plugin registry UI, organisations, branding, terminology overlay ([ADR 0012](../01-architecture/adr/0012-terminology-overlay.md)) | Plane's instance-admin model |
 | **D — Reduced insight** | Cycles, tier 1 fixed reports (a working subset, not all twenty), tier 2 selectable reports | Reduced [P5](phases.md) scope — see deferrals |
 | **E — Realtime, notifications, webhooks** | WebSocket fan-out, **`notify.email` (SMTP) only — chat channels are deferred**, outbound webhooks with signing | P1/P4 scope, pulled forward because the other streams depend on it |
-| **F — Security & QA (continuous, cross-cutting)** | Opus security review of every workstream's every merge; negative E2E suites; tenant-isolation fuzzing | Runs across all five other streams, never paused |
+| **F — Security & QA (continuous, cross-cutting)** | GPT-6 Sol security review of every workstream's every merge; negative E2E suites; tenant-isolation fuzzing | Runs across all five other streams, never paused |
 
 **Specs not named in the rows above, placed so the register's promise ("nothing is silently
 thinner") holds:** P1 — attachments, relations and hierarchy, search and saved views, projects
@@ -158,7 +158,7 @@ No new features. This week is exclusively:
 
 - Load test against the [testing strategy](../04-engineering/testing-strategy.md) targets.
 - A full security pass: the negative E2E suite in full, tenant-isolation fuzzing, a
-  dependency and container scan, and an Opus-reviewed pass over the whole surface built so
+  dependency and container scan, and a GPT-6 Sol-reviewed pass over the whole surface built so
   far — the stage-gate security review from [SDLC](../04-engineering/sdlc.md), run once
   now rather than only at a stage close, because "go-live" is being treated as a real
   stage-gate event.

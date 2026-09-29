@@ -8,13 +8,16 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import type { Session, User } from "better-auth/types";
 import { and, eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
+import type { Context, Next } from "hono";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import activity from "./activity";
+import attachment from "./attachment";
 import audit from "./audit";
 import { auth } from "./auth";
+import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
 import column from "./column";
 import comment from "./comment";
@@ -42,9 +45,14 @@ import notification from "./notification";
 import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
-// Issue #8, Slice 2: shadow-mode request-path policy comparison, off by default. See the
-// call site below and that file's own header comment for the full design.
-import { runNextWithPolicyShadow } from "./permissions/shadow-middleware";
+// Issue #8: `assertRouteIsClassified` refuses a request whose route has no policy entry at
+// all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
+// comparison, off by default. See the call sites below and each file's own header comment.
+import { assertRouteIsClassified } from "./permissions/route-classification-guard";
+import {
+  declareCatchAllMiddleware,
+  runNextWithPolicyShadow,
+} from "./permissions/shadow-middleware";
 import { initializePlugins } from "./plugins";
 // Importing this constructs and validates the registry at module load, so an invalid policy
 // refuses boot (#8 Slice 0). Keep the import even if its one use below moves: without a use,
@@ -54,7 +62,12 @@ import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
 import { getPrivateObject, getStorageDriver } from "./storage";
-import { StoragePathError, writeUploadedObject } from "./storage/filesystem";
+import {
+  readAttachmentDownloadObject,
+  StoragePathError,
+  writeAttachmentUploadedObject,
+  writeUploadedObject,
+} from "./storage/filesystem";
 import task from "./task";
 import taskRelation from "./task-relation";
 import timeEntry from "./time-entry";
@@ -246,7 +259,15 @@ function registerStaticServing(
   const serveAsset = serveStatic({ root: staticRoot });
   const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
 
-  app.use("*", async (c, next) => {
+  // Named (not inline in `.use()`) so its exact function reference can be declared to
+  // `permissions/shadow-middleware.ts` (Opus delta F5) as reviewed catch-all
+  // infrastructure -- the classification guard runs from inside a DIFFERENT catch-all
+  // (the auth guard, below) and would otherwise have no way to tell this middleware's own
+  // matched entry apart from a real, unclassified feature route sharing the same key.
+  const serveStaticOrSpaShell = async (
+    c: Context<AppVariables>,
+    next: Next,
+  ) => {
     if (
       (c.req.method !== "GET" && c.req.method !== "HEAD") ||
       isApiRequestPath(c.req.path)
@@ -278,7 +299,9 @@ function registerStaticServing(
       return next();
     }
     return serveIndex(c, next);
-  });
+  };
+  declareCatchAllMiddleware(serveStaticOrSpaShell);
+  app.use("*", serveStaticOrSpaShell);
 }
 
 export function createApp(options: { staticRoot?: string } = {}) {
@@ -318,30 +341,35 @@ export function createApp(options: { staticRoot?: string } = {}) {
     );
   }
 
-  app.use(
-    "*",
-    cors({
-      credentials: true,
-      origin: (origin) => {
-        // Reflecting an arbitrary origin alongside credentials lets any site
-        // read authenticated responses, so it stays a development convenience.
-        if (!corsOrigins) {
-          return reflectUnconfiguredOrigins ? origin || "*" : null;
-        }
+  const corsMiddleware = cors({
+    credentials: true,
+    origin: (origin) => {
+      // Reflecting an arbitrary origin alongside credentials lets any site
+      // read authenticated responses, so it stays a development convenience.
+      if (!corsOrigins) {
+        return reflectUnconfiguredOrigins ? origin || "*" : null;
+      }
 
-        if (!origin) {
-          return null;
-        }
+      if (!origin) {
+        return null;
+      }
 
-        return corsOrigins.includes(origin) ? origin : null;
-      },
-    }),
-  );
+      return corsOrigins.includes(origin) ? origin : null;
+    },
+  });
+  // Declared to shadow-middleware.ts's classification guard (Opus delta F5) as reviewed
+  // catch-all infrastructure -- see that module's own doc comment for why identity, not
+  // this registration's `"ALL /*"` key, is what tells it apart from an unclassified route
+  // that happened to share the key.
+  declareCatchAllMiddleware(corsMiddleware);
+  app.use("*", corsMiddleware);
 
   // Large boards return multi-MB JSON (board/task list responses embed
   // labels and external links per task); gzip cuts that by 85-95% since
   // JSON with repeated keys compresses extremely well.
-  app.use(compress());
+  const compressMiddleware = compress();
+  declareCatchAllMiddleware(compressMiddleware);
+  app.use(compressMiddleware);
 
   const api = new OpenAPIHono<ApiVariables>();
 
@@ -503,6 +531,162 @@ export function createApp(options: { staticRoot?: string } = {}) {
       }
 
       return c.body(null, 204);
+    },
+  );
+
+  // Issue #28 (attachments): the generic, arbitrary-key sibling of the task-image
+  // upload route above -- see `storage/filesystem.ts`'s own section comment for why
+  // this is a separate route rather than a reused one (the size ceiling travels with
+  // this route's own token, not a shared fixed default).
+  api.openapi(
+    createRoute({
+      method: "put",
+      operationId: "uploadFilesystemAttachmentObject",
+      path: "/storage/filesystem-attachment-upload",
+      tags: ["Assets"],
+      summary: "Upload attachment bytes to the filesystem storage driver",
+      description:
+        "The local equivalent of a presigned S3 PUT for an attachment, minted by " +
+        "POST /api/work-items/{key}/attachments/presign when TASKDESK_STORAGE_DRIVER " +
+        "is filesystem (the default). Not authenticated by a browser session -- the " +
+        "signed token in the query string, which also binds the exact size ceiling " +
+        "that was validated at presign time, is the credential.",
+      security: [],
+      request: {
+        query: z.object({
+          key: z.string().min(1),
+          maxBytes: z.string().regex(/^\d+$/, "maxBytes must be an integer"),
+          expires: z
+            .string()
+            .regex(/^\d+$/, "expires must be a unix timestamp"),
+          token: z.string().min(1),
+        }),
+        body: {
+          required: true,
+          content: {
+            "application/octet-stream": {
+              schema: { type: "string", format: "binary" },
+            },
+          },
+        },
+      },
+      responses: {
+        204: { description: "Stored" },
+        400: errorResponse(
+          "Invalid key, expired or invalid token, or the upload exceeds the signed limit",
+        ),
+        404: errorResponse("The filesystem storage driver is not active"),
+      },
+    }),
+    async (c) => {
+      if (getStorageDriver() !== "filesystem") {
+        throw new HTTPException(404, {
+          message: "The filesystem storage driver is not active.",
+        });
+      }
+
+      const { key, maxBytes, expires, token } = c.req.valid("query");
+
+      try {
+        await writeAttachmentUploadedObject({
+          key,
+          maxBytes,
+          expires,
+          token,
+          body: c.req.raw.body,
+        });
+      } catch (error) {
+        // Same safe-message/log-detail split as the task-image upload route above.
+        if (!(error instanceof StoragePathError)) {
+          console.error(
+            "storage/filesystem-attachment-upload: unexpected write failure",
+            error,
+          );
+        }
+        throw new HTTPException(400, {
+          message:
+            error instanceof StoragePathError
+              ? error.message
+              : "Upload failed.",
+        });
+      }
+
+      return c.body(null, 204);
+    },
+  );
+
+  // Issue #28 (attachments), AT-5: the local equivalent of a presigned S3 GET. Not
+  // authenticated by a browser session -- the signed, short-lived, key-scoped token in
+  // the query string is the credential, exactly like the upload route above; the real
+  // policy check already ran in `GET /api/attachments/{id}`, which minted this URL.
+  api.openapi(
+    createRoute({
+      method: "get",
+      operationId: "downloadFilesystemAttachmentObject",
+      path: "/storage/filesystem-download",
+      tags: ["Assets"],
+      summary: "Download attachment bytes from the filesystem storage driver",
+      description:
+        "The local equivalent of a presigned S3 GET, minted by GET " +
+        "/api/attachments/{id} when TASKDESK_STORAGE_DRIVER is filesystem.",
+      security: [],
+      request: {
+        query: z.object({
+          key: z.string().min(1),
+          expires: z
+            .string()
+            .regex(/^\d+$/, "expires must be a unix timestamp"),
+          token: z.string().min(1),
+          filename: z.string().min(1),
+        }),
+      },
+      responses: {
+        200: {
+          description: "The attachment binary stream",
+          content: { "*/*": { schema: { type: "string", format: "binary" } } },
+        },
+        400: errorResponse("Invalid key, or expired or invalid token"),
+        404: errorResponse(
+          "The filesystem storage driver is not active, or the object is gone",
+        ),
+      },
+    }),
+    async (c) => {
+      if (getStorageDriver() !== "filesystem") {
+        throw new HTTPException(404, {
+          message: "The filesystem storage driver is not active.",
+        });
+      }
+
+      const { key, expires, token, filename } = c.req.valid("query");
+
+      try {
+        const object = await readAttachmentDownloadObject({
+          key,
+          expires,
+          token,
+        });
+        return new Response(object.body as BodyInit, {
+          headers: {
+            "Cache-Control": "private, max-age=0, no-store",
+            "Content-Type": object.contentType || "application/octet-stream",
+            "Content-Disposition": `attachment; filename="${filename.replaceAll('"', "")}"`,
+          },
+        });
+      } catch (error) {
+        if (!(error instanceof StoragePathError)) {
+          console.error(
+            "storage/filesystem-download: unexpected read failure",
+            error,
+          );
+        }
+        throw new HTTPException(error instanceof StoragePathError ? 400 : 404, {
+          message:
+            error instanceof StoragePathError
+              ? error.message
+              : "Attachment not found.",
+        });
+      }
     },
   );
 
@@ -697,7 +881,12 @@ export function createApp(options: { staticRoot?: string } = {}) {
     return auth.handler(buildAuthRequest(c));
   });
 
-  api.use("*", async (c, next) => {
+  // Named (not inline in `.use()`) so its exact function reference can be declared to
+  // shadow-middleware.ts (Opus delta F5) as reviewed catch-all infrastructure --
+  // `assertRouteIsClassified` runs FROM INSIDE this very function, so `c.req.matchedRoutes`
+  // always includes this guard's own entry, and it must be exempted from its own check the
+  // same identity-based way CORS/compress/static-serving are.
+  const authGuard = async (c: Context<ApiVariables>, next: Next) => {
     // No prefix exemptions. kaneo exempted /api/mcp, /api/.well-known/ and
     // /api/billing/webhook; all three surfaces are removed in issue #6, so
     // every route mounted below this guard is authenticated without exception.
@@ -709,6 +898,11 @@ export function createApp(options: { staticRoot?: string } = {}) {
     // request through this guard succeeds unauthenticated.
     try {
       await authenticateApiRequest(c);
+      // Issue #8: refuses outright (never silently serves) a route below this guard that
+      // has no entry at all in the declarative policy registry -- see
+      // `route-classification-guard.ts`'s own doc comment for exactly what this does and
+      // does not check (presence only, never an ALLOW/DENY verdict).
+      assertRouteIsClassified(c);
       const windowId = c.req.header("X-TaskDesk-Window-Id");
       const userId = c.get("userId");
       const initiatorId = windowId ? `${userId}:${windowId}` : userId;
@@ -730,7 +924,9 @@ export function createApp(options: { staticRoot?: string } = {}) {
       }
       throw error;
     }
-  });
+  };
+  declareCatchAllMiddleware(authGuard);
+  api.use("*", authGuard);
 
   // Registered below the app-wide auth guard (issue #8, H2 fix, `docs/07-planning/
   // security-reviews/21-policy-registry.md`): `loadReachableAsset` requires a real
@@ -816,6 +1012,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
   const taskApi = api.route("/task", task);
   const columnApi = api.route("/column", column);
   const activityApi = api.route("/activity", activity);
+  const cannedResponseApi = api.route("/canned-responses", cannedResponse);
   const commentApi = api.route("/comment", comment);
   const timeEntryApi = api.route("/time-entry", timeEntry);
   const labelApi = api.route("/label", label);
@@ -839,6 +1036,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
   // `/work-items/{key}`), which `workItem`'s own routes already declare in full. See
   // `work-item/index.ts`'s file comment.
   const workItemApi = api.route("/", workItem);
+  const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
   const viewApi = api.route("/views", view);
 
@@ -990,7 +1188,9 @@ export function createApp(options: { staticRoot?: string } = {}) {
     api,
     injectWebSocket,
     activityApi,
+    attachmentApi,
     auditApi,
+    cannedResponseApi,
     capabilitiesApi,
     columnApi,
     commentApi,
@@ -1211,7 +1411,9 @@ const {
   app,
   injectWebSocket,
   activityApi,
+  attachmentApi,
   auditApi,
+  cannedResponseApi,
   capabilitiesApi,
   columnApi,
   commentApi,
@@ -1277,7 +1479,9 @@ export type AppType =
   | typeof taskApi
   | typeof columnApi
   | typeof activityApi
+  | typeof attachmentApi
   | typeof auditApi
+  | typeof cannedResponseApi
   | typeof commentApi
   | typeof timeEntryApi
   | typeof labelApi

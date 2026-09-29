@@ -1,20 +1,16 @@
-import { evaluateAssigneeEligibility, planAssignment } from "@taskdesk/domain";
+import { planAssignment } from "@taskdesk/domain";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
-import {
-  membershipTable,
-  personTable,
-  projectTable,
-  workItemTable,
-} from "../../database/schema";
+import { projectTable, workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
   type ActivityActorType,
   type NewActivityInput,
   recordWorkItemActivity,
 } from "../activity";
+import { resolveAssigneeEligibility } from "../assignee-eligibility";
 
 /**
  * `POST /api/work-items/{key}/assign` (`docs/03-features/assignment.md` § API,
@@ -119,22 +115,6 @@ export async function assignWorkItem(
     throw new HTTPException(404, { message: "Work item not found" });
   }
 
-  // AS-5: the assignable list is the PROJECT ROSTER, active only. One lookup answers
-  // both questions, so "not on the roster" and "deactivated" cannot be confused by two
-  // queries drifting apart.
-  const [roster] = await db
-    .select({ active: personTable.active })
-    .from(membershipTable)
-    .innerJoin(personTable, eq(personTable.id, membershipTable.personId))
-    .where(
-      and(
-        eq(membershipTable.scope, "project"),
-        eq(membershipTable.scopeId, item.projectId),
-        eq(membershipTable.personId, input.assigneeId),
-      ),
-    )
-    .limit(1);
-
   // The no-op decision comes FIRST, from `packages/domain`'s `planAssignment` (#287) --
   // the single source for "assigning the current holder is not a reassignment". The Opus
   // review's S5 flagged the earlier inline copy: two sources for one rule. Adopting the
@@ -155,12 +135,15 @@ export async function assignWorkItem(
     };
   }
 
-  // `AS-5`, from the domain rule itself (`evaluateAssigneeEligibility`, #287): on the
-  // project roster, and active. One source, one reason.
-  const eligibility = evaluateAssigneeEligibility({
-    onRoster: roster !== undefined,
-    active: roster?.active ?? false,
-  });
+  // `AS-5`, from the domain rule itself (`evaluateAssigneeEligibility`, #287, shared via
+  // `resolveAssigneeEligibility` -- `../assignee-eligibility.ts`): on the project roster,
+  // and active. One source, one reason -- also reused by the workflow-transition route's
+  // `set_assignee` effect (Opus security review of PR #457, B2).
+  const eligibility = await resolveAssigneeEligibility(
+    db,
+    item.projectId,
+    input.assigneeId,
+  );
   if (!eligibility.eligible) {
     throw new HTTPException(400, {
       message:
@@ -199,6 +182,13 @@ export async function assignWorkItem(
           expected === null
             ? isNull(workItemTable.assigneeId)
             : eq(workItemTable.assigneeId, expected),
+          // Issue #490: same TOCTOU class #276/#486/#488 closed elsewhere. The liveness
+          // check above is an unlocked pre-read outside this transaction, and
+          // `delete-work-item.ts`'s soft-delete does not bump `version`, so a concurrent
+          // soft-delete landing between that pre-read and this conditional UPDATE would
+          // otherwise still match on `assigneeId` alone and assign a deleted/archived item.
+          isNull(workItemTable.deletedAt),
+          isNull(workItemTable.archivedAt),
         ),
       )
       .returning({
