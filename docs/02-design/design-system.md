@@ -112,6 +112,12 @@ and they must look as though they shipped with the system.
 | `chart-table` | The accessible table equivalent `RP-11` requires, rendered alongside every `chart` instance |
 | `dashboard-grid` | Wraps react-grid-layout. Resizable, draggable dashboard widgets whose layout persists (`RP-15`) |
 
+`capability-matrix` is a controlled renderer for already-loaded capability metadata and
+selection state ([roles-and-permissions-ui.md](../03-features/roles-and-permissions-ui.md),
+RL-1–RL-3). It has no independent loading or error state: its caller owns data fetching,
+saving, and any resulting feedback. It has no visual variants or size options in the
+feature spec; grouped rows use the shared design tokens at the default density.
+
 **`chart`'s contract:** series colours are drawn only from a fixed token ramp
 (`--chart-series-1` … `--chart-series-n` in `tokens.css`), never a colour Recharts or a
 caller picks freely — this is what lets `G3` check chart contrast the same way it checks
