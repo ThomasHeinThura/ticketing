@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { timeEntryTable } from "../../database/schema";
+import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import { resolveDuration } from "../duration";
 
 type UpdateTimeEntryParams = {
@@ -29,18 +30,20 @@ async function updateTimeEntry(params: UpdateTimeEntryParams) {
 
   const duration = resolveDuration(startTime, effectiveEndTime ?? undefined);
 
-  const [updatedTimeEntry] = await db
-    .update(timeEntryTable)
-    .set({
-      startTime,
-      endTime: effectiveEndTime,
-      duration,
-      ...(description !== undefined && { description }),
-    })
-    .where(eq(timeEntryTable.id, timeEntryId))
-    .returning();
-
-  return updatedTimeEntry;
+  return db.transaction(async (tx) => {
+    await lockTaskAndAssertProjectLive(tx, existingTimeEntry.taskId);
+    const [updatedTimeEntry] = await tx
+      .update(timeEntryTable)
+      .set({
+        startTime,
+        endTime: effectiveEndTime,
+        duration,
+        ...(description !== undefined && { description }),
+      })
+      .where(eq(timeEntryTable.id, timeEntryId))
+      .returning();
+    return updatedTimeEntry;
+  });
 }
 
 export default updateTimeEntry;

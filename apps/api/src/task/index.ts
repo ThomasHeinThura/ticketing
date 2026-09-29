@@ -1,12 +1,7 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../database";
-import {
-  assetTable,
-  projectTable,
-  taskTable,
-  workspaceTable,
-} from "../database/schema";
+import { assetTable, projectTable, workspaceTable } from "../database/schema";
 import {
   apiRouter,
   type BaseVariables,
@@ -31,6 +26,7 @@ import {
   validateDateRange,
 } from "../utils/validate-dates";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { lockTaskAndAssertProjectLive } from "./assert-task-project-live";
 import bulkUpdateTasks from "./controllers/bulk-update-tasks";
 import createTask from "./controllers/create-task";
 import deleteTask from "./controllers/delete-task";
@@ -762,53 +758,33 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
       });
     }
 
-    const [taskContext] = await db
-      .select({
-        taskId: taskTable.id,
-        projectId: taskTable.projectId,
-        workspaceId: workspaceTable.id,
-      })
-      .from(taskTable)
-      .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-      .innerJoin(
-        workspaceTable,
-        eq(projectTable.workspaceId, workspaceTable.id),
-      )
-      .where(
-        and(
-          eq(taskTable.id, id),
-          // #202: a task inside a soft-deleted project is frozen for its project's
-          // 30-day recovery window (#187, PR-16), so no upload URL may be minted for
-          // it either. `getProjectWorkspaceId`, which the other task routes use, is
-          // not reachable here -- this handler needs the project and workspace ids
-          // in the same row -- so the exclusion is applied directly.
-          isNull(projectTable.deletedAt),
-        ),
-      )
-      .limit(1);
-
-    if (!taskContext) {
-      throw new HTTPException(404, { message: "Task not found" });
-    }
-
     try {
-      const upload = await createTaskImageUploadUrl({
-        workspaceId: taskContext.workspaceId,
-        projectId: taskContext.projectId,
-        taskId: taskContext.taskId,
-        surface,
-        filename,
-        contentType,
-        // Only meaningful to the filesystem driver, whose "presigned URL" is a route on this
-        // API process itself rather than a separate storage endpoint — see
-        // storage/filesystem.ts, which normalizes this itself (via the same
-        // normalizeApiServerUrl used below for the finalize response), so the raw origin is
-        // passed here rather than pre-normalizing it. s3.ts ignores this field entirely.
-        apiBaseUrl: process.env.KANEO_API_URL || new URL(c.req.url).origin,
+      const upload = await db.transaction(async (tx) => {
+        const task = await lockTaskAndAssertProjectLive(tx, id);
+        const [context] = await tx
+          .select({ workspaceId: workspaceTable.id })
+          .from(projectTable)
+          .innerJoin(
+            workspaceTable,
+            eq(projectTable.workspaceId, workspaceTable.id),
+          )
+          .where(eq(projectTable.id, task.projectId));
+        if (!context)
+          throw new HTTPException(404, { message: "Task not found" });
+        return createTaskImageUploadUrl({
+          workspaceId: context.workspaceId,
+          projectId: task.projectId,
+          taskId: task.id,
+          surface,
+          filename,
+          contentType,
+          apiBaseUrl: process.env.KANEO_API_URL || new URL(c.req.url).origin,
+        });
       });
 
       return c.json(upload, 200);
     } catch (error) {
+      if (error instanceof HTTPException) throw error;
       throw new HTTPException(503, {
         message:
           error instanceof Error
@@ -833,88 +809,61 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
       });
     }
 
-    const [taskContext] = await db
-      .select({
-        taskId: taskTable.id,
-        projectId: taskTable.projectId,
-        workspaceId: workspaceTable.id,
-      })
-      .from(taskTable)
-      .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-      .innerJoin(
-        workspaceTable,
-        eq(projectTable.workspaceId, workspaceTable.id),
-      )
-      .where(
-        and(
-          eq(taskTable.id, id),
-          // #202: same exclusion as the create-upload handler above, and for the same
-          // reason -- without it, an already-uploaded key could still be finalized
-          // into a stored asset belonging to a soft-deleted project's task.
-          isNull(projectTable.deletedAt),
-        ),
-      )
-      .limit(1);
-
-    if (!taskContext) {
-      throw new HTTPException(404, { message: "Task not found" });
-    }
-
     const normalizedKey = key.trim();
-    if (
-      !assertTaskImageKeyMatchesContext(normalizedKey, {
-        workspaceId: taskContext.workspaceId,
-        projectId: taskContext.projectId,
-        taskId: taskContext.taskId,
+    const asset = await db.transaction(async (tx) => {
+      const task = await lockTaskAndAssertProjectLive(tx, id);
+      const [context] = await tx
+        .select({ workspaceId: workspaceTable.id })
+        .from(projectTable)
+        .innerJoin(
+          workspaceTable,
+          eq(projectTable.workspaceId, workspaceTable.id),
+        )
+        .where(eq(projectTable.id, task.projectId));
+      if (!context) throw new HTTPException(404, { message: "Task not found" });
+      if (
+        !assertTaskImageKeyMatchesContext(normalizedKey, {
+          workspaceId: context.workspaceId,
+          projectId: task.projectId,
+          taskId: task.id,
+          surface,
+        })
+      ) {
+        throw new HTTPException(400, {
+          message: "Image upload key does not match the task context.",
+        });
+      }
+
+      const [existingAsset] = await tx
+        .select({ id: assetTable.id })
+        .from(assetTable)
+        .where(eq(assetTable.objectKey, normalizedKey))
+        .limit(1);
+      const values = {
+        workspaceId: context.workspaceId,
+        projectId: task.projectId,
+        taskId: task.id,
+        filename,
+        mimeType: contentType,
+        size,
+        kind: isImageContentType(contentType)
+          ? ("image" as const)
+          : ("attachment" as const),
         surface,
-      })
-    ) {
-      throw new HTTPException(400, {
-        message: "Image upload key does not match the task context.",
-      });
-    }
-
-    const [existingAsset] = await db
-      .select({ id: assetTable.id })
-      .from(assetTable)
-      .where(eq(assetTable.objectKey, normalizedKey))
-      .limit(1);
-
-    const [asset] = existingAsset
-      ? await db
-          .update(assetTable)
-          .set({
-            workspaceId: taskContext.workspaceId,
-            projectId: taskContext.projectId,
-            taskId: taskContext.taskId,
-            filename,
-            mimeType: contentType,
-            size,
-            kind: isImageContentType(contentType) ? "image" : "attachment",
-            surface,
-            createdBy: userId || null,
-          })
-          .where(eq(assetTable.id, existingAsset.id))
-          .returning({
-            id: assetTable.id,
-          })
-      : await db
-          .insert(assetTable)
-          .values({
-            workspaceId: taskContext.workspaceId,
-            projectId: taskContext.projectId,
-            taskId: taskContext.taskId,
-            objectKey: normalizedKey,
-            filename,
-            mimeType: contentType,
-            size,
-            kind: isImageContentType(contentType) ? "image" : "attachment",
-            surface,
-            createdBy: userId || null,
-          })
-          .returning({
-            id: assetTable.id,
-          });
+        createdBy: userId || null,
+      };
+      const [asset] = existingAsset
+        ? await tx
+            .update(assetTable)
+            .set(values)
+            .where(eq(assetTable.id, existingAsset.id))
+            .returning({ id: assetTable.id })
+        : await tx
+            .insert(assetTable)
+            .values({ ...values, objectKey: normalizedKey })
+            .returning({ id: assetTable.id });
+      return asset;
+    });
 
     if (!asset) {
       throw new HTTPException(500, {

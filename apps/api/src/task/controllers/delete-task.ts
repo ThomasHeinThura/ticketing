@@ -4,29 +4,34 @@ import db from "../../database";
 import { taskRelationTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteS3Keys, getTaskAssetKeys } from "../../storage/cleanup-assets";
+import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 import getTask from "./get-task";
 
 async function deleteTask(taskId: string, currentUserId: string) {
   const task = await getTask(taskId);
 
-  const relations = await db
-    .select()
-    .from(taskRelationTable)
-    .where(
-      or(
-        eq(taskRelationTable.sourceTaskId, taskId),
-        eq(taskRelationTable.targetTaskId, taskId),
-      ),
-    )
-    .execute();
-
-  const assetKeys = await getTaskAssetKeys(taskId);
-
-  const [deletedTask] = await db
-    .delete(taskTable)
-    .where(eq(taskTable.id, taskId))
-    .returning()
-    .execute();
+  const { relations, assetKeys, deletedTask } = await db.transaction(
+    async (tx) => {
+      await lockTaskAndAssertProjectLive(tx, taskId);
+      const relations = await tx
+        .select()
+        .from(taskRelationTable)
+        .where(
+          or(
+            eq(taskRelationTable.sourceTaskId, taskId),
+            eq(taskRelationTable.targetTaskId, taskId),
+          ),
+        )
+        .execute();
+      const assetKeys = await getTaskAssetKeys(taskId);
+      const [deletedTask] = await tx
+        .delete(taskTable)
+        .where(eq(taskTable.id, taskId))
+        .returning()
+        .execute();
+      return { relations, assetKeys, deletedTask };
+    },
+  );
 
   if (!deletedTask) {
     throw new HTTPException(404, {

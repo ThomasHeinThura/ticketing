@@ -1,9 +1,9 @@
 import { createId } from "@paralleldrive/cuid2";
-import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskTable, timeEntryTable } from "../../database/schema";
+import { timeEntryTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import { resolveDuration } from "../duration";
 
 async function createTimeEntry({
@@ -21,18 +21,22 @@ async function createTimeEntry({
 }) {
   const duration = resolveDuration(startTime, endTime);
 
-  const [createdTimeEntry] = await db
-    .insert(timeEntryTable)
-    .values({
-      id: createId(),
-      taskId,
-      userId,
-      description: description || "",
-      startTime,
-      endTime: endTime || null,
-      duration,
-    })
-    .returning();
+  const { createdTimeEntry, task } = await db.transaction(async (tx) => {
+    const task = await lockTaskAndAssertProjectLive(tx, taskId);
+    const [createdTimeEntry] = await tx
+      .insert(timeEntryTable)
+      .values({
+        id: createId(),
+        taskId,
+        userId,
+        description: description || "",
+        startTime,
+        endTime: endTime || null,
+        duration,
+      })
+      .returning();
+    return { createdTimeEntry, task };
+  });
 
   if (!createdTimeEntry) {
     throw new HTTPException(500, {
@@ -40,19 +44,14 @@ async function createTimeEntry({
     });
   }
 
-  const [task] = await db
-    .select({ userId: taskTable.userId, title: taskTable.title })
-    .from(taskTable)
-    .where(eq(taskTable.id, taskId));
-
   await publishEvent("time-entry.created", {
     timeEntryId: createdTimeEntry.id,
     taskId: createdTimeEntry.taskId,
     userId,
     type: "create",
     content: "started time tracking",
-    taskOwnerId: task?.userId,
-    taskTitle: task?.title,
+    taskOwnerId: task.userId,
+    taskTitle: task.title,
   });
 
   return createdTimeEntry;

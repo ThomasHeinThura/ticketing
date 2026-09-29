@@ -8,6 +8,7 @@ import {
   assertAssignableUser,
   getProjectWorkspaceId,
 } from "../../utils/assert-assignable-user";
+import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 async function updateTask(
@@ -69,22 +70,33 @@ async function updateTask(
     ),
   });
 
-  const [updatedTask] = await db
-    .update(taskTable)
-    .set({
-      title,
-      status,
-      columnId: column?.id ?? null,
-      startDate: startDate || null,
-      dueDate: dueDate || null,
-      projectId,
-      description,
-      priority,
-      position,
-      userId: normalizedUserId ?? null,
-    })
-    .where(eq(taskTable.id, id))
-    .returning();
+  const { existingTask: lockedTask, updatedTask } = await db.transaction(
+    async (tx) => {
+      const lockedTask = await lockTaskAndAssertProjectLive(tx, id);
+      if (projectId !== lockedTask.projectId) {
+        throw new HTTPException(400, {
+          message: "Use the task move endpoint to move tasks between projects",
+        });
+      }
+      const [updatedTask] = await tx
+        .update(taskTable)
+        .set({
+          title,
+          status,
+          columnId: column?.id ?? null,
+          startDate: startDate || null,
+          dueDate: dueDate || null,
+          projectId,
+          description,
+          priority,
+          position,
+          userId: normalizedUserId ?? null,
+        })
+        .where(eq(taskTable.id, id))
+        .returning();
+      return { existingTask: lockedTask, updatedTask };
+    },
+  );
 
   if (!updatedTask) {
     throw new HTTPException(500, {
@@ -92,12 +104,15 @@ async function updateTask(
     });
   }
 
-  if (existingTask.status !== status) {
+  const previousStatus = lockedTask.status;
+  const previousDescription = lockedTask.description;
+
+  if (previousStatus !== status) {
     await publishEvent("task.status_changed", {
       taskId: updatedTask.id,
       projectId: updatedTask.projectId,
       userId: currentUserId,
-      oldStatus: existingTask.status,
+      oldStatus: previousStatus,
       newStatus: status,
       title: updatedTask.title,
       assigneeId: updatedTask.userId,
@@ -118,8 +133,8 @@ async function updateTask(
     userId: currentUserId,
   });
 
-  if (existingTask.description !== description) {
-    deleteOrphanedAssets(existingTask.description, description, {
+  if (previousDescription !== description) {
+    deleteOrphanedAssets(previousDescription, description, {
       taskId: id,
     }).catch(() => {});
   }

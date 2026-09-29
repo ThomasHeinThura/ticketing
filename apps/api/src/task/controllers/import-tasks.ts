@@ -5,6 +5,7 @@ import { columnTable, projectTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { filterAssignableUsers } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import { assertProjectStillLive } from "../../work-item/assert-work-item-live";
 import {
   coercePriority,
   coerceStatus,
@@ -93,6 +94,7 @@ async function importTasks(
       });
 
       const createdTask = await db.transaction(async (tx) => {
+        await assertProjectStillLive(tx, projectId, "Task not found");
         const taskNumber = await claimTaskNumber(projectId, tx);
 
         const [task] = await tx

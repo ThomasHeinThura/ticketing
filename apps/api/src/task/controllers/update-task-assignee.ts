@@ -1,13 +1,11 @@
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskTable, userTable } from "../../database/schema";
+import { projectTable, taskTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
-import {
-  assertAssignableUser,
-  getProjectWorkspaceId,
-} from "../../utils/assert-assignable-user";
+import { assertAssignableUser } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 
 async function updateTaskAssignee({
   id,
@@ -27,39 +25,28 @@ async function updateTaskAssignee({
     rejectNulByte(userId, "Assignee id");
   }
 
-  const existingTask = await db.query.taskTable.findFirst({
-    where: eq(taskTable.id, id),
-  });
-
-  if (!existingTask) {
-    throw new HTTPException(404, {
-      message: "Task not found",
-    });
-  }
-
-  // #202: unconditional, and hoisted above the early return below. It used to run
-  // only when an assignee was actually being set (`getProjectWorkspaceId` was called
-  // inside `if (nextAssigneeId)`), so *unassigning* a task in a soft-deleted project
-  // slipped through the freeze entirely (#187, PR-16). The returned workspace id is
-  // reused by `assertAssignableUser` rather than looked up a second time.
-  const projectWorkspaceId = await getProjectWorkspaceId(
-    existingTask.projectId,
-  );
-
   const nextAssigneeId = userId?.trim() || null;
-  if (existingTask.userId === nextAssigneeId) {
-    return existingTask;
-  }
-
-  if (nextAssigneeId) {
-    await assertAssignableUser(nextAssigneeId, projectWorkspaceId);
-  }
-
-  const [updatedTask] = await db
-    .update(taskTable)
-    .set({ userId: nextAssigneeId })
-    .where(eq(taskTable.id, id))
-    .returning();
+  const { existingTask, updatedTask } = await db.transaction(async (tx) => {
+    const existingTask = await lockTaskAndAssertProjectLive(tx, id);
+    if (existingTask.userId === nextAssigneeId) {
+      return { existingTask, updatedTask: existingTask };
+    }
+    if (nextAssigneeId) {
+      const [project] = await tx
+        .select({ workspaceId: projectTable.workspaceId })
+        .from(projectTable)
+        .where(eq(projectTable.id, existingTask.projectId));
+      if (!project) throw new HTTPException(404, { message: "Task not found" });
+      await assertAssignableUser(nextAssigneeId, project.workspaceId);
+    }
+    const [updatedTask] = await tx
+      .update(taskTable)
+      .set({ userId: nextAssigneeId })
+      .where(eq(taskTable.id, id))
+      .returning();
+    return { existingTask, updatedTask };
+  });
+  if (existingTask.userId === nextAssigneeId) return updatedTask;
 
   if (!updatedTask) {
     throw new HTTPException(500, {

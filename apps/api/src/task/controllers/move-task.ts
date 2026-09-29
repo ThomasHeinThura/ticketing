@@ -9,6 +9,10 @@ import {
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import {
+  lockLegacyTaskRow,
+  lockProjectsAndAssertLive,
+} from "../assert-task-project-live";
 import { claimTaskNumber } from "./claim-task-numbers";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -159,6 +163,14 @@ async function moveTask({
   );
 
   const movedTask = await db.transaction(async (tx) => {
+    const lockedTask = await lockLegacyTaskRow(tx, taskId);
+    if (lockedTask.projectId !== existingTask.projectId) {
+      throw new HTTPException(404, { message: "Task not found" });
+    }
+    await lockProjectsAndAssertLive(tx, [
+      lockedTask.projectId,
+      destinationProjectId,
+    ]);
     const [nextTaskNumber, nextPosition] = await Promise.all([
       claimTaskNumber(destinationProjectId, tx),
       getNextTaskPosition(
