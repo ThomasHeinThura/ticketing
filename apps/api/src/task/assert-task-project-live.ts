@@ -36,13 +36,20 @@ export async function lockProjectsAndAssertLive(
   tx: DbOrTx,
   projectIds: string[],
   taskNumberProjectIds: string[] = [],
+  projectNotFoundMessages: ReadonlyMap<string, string> = new Map(),
 ) {
   const numberProjectIds = new Set(taskNumberProjectIds);
   for (const projectId of [...new Set(projectIds)].sort()) {
+    const projectNotFoundMessage =
+      projectNotFoundMessages.get(projectId) ?? "Task not found";
     if (numberProjectIds.has(projectId)) {
-      await lockProjectAndAssertLiveForTaskNumber(tx, projectId);
+      await lockProjectAndAssertLiveForTaskNumber(
+        tx,
+        projectId,
+        projectNotFoundMessage,
+      );
     } else {
-      await assertProjectStillLive(tx, projectId, "Task not found");
+      await assertProjectStillLive(tx, projectId, projectNotFoundMessage);
     }
   }
 }
@@ -56,6 +63,7 @@ export async function lockProjectsAndAssertLive(
 export async function lockProjectAndAssertLiveForTaskNumber(
   tx: DbOrTx,
   projectId: string,
+  projectNotFoundMessage = "Task not found",
 ) {
   const [project] = await tx
     .select({ id: projectTable.id })
@@ -70,6 +78,6 @@ export async function lockProjectAndAssertLiveForTaskNumber(
     .for("update");
 
   if (!project) {
-    throw new HTTPException(404, { message: "Task not found" });
+    throw new HTTPException(404, { message: projectNotFoundMessage });
   }
 }

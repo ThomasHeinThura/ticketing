@@ -117,6 +117,7 @@ async function moveTask({
       tx,
       [lockedTask.projectId, destinationProjectId],
       [destinationProjectId],
+      new Map([[destinationProjectId, "Project not found"]]),
     );
 
     const [sourceProject] = await tx
