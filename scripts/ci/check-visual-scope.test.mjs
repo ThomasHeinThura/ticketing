@@ -61,6 +61,7 @@ function visualSpec(
     shadowedPageBindingFor,
     fakeTestBinding = false,
     computedSkipFor,
+    runtimeCode = "",
   } = {},
 ) {
   const helper = `async function installAuthenticatedFixture(page: Page) {
@@ -155,7 +156,7 @@ function visualSpec(
   const testImport = fakeTestBinding
     ? 'import { expect, test as playwrightTest } from "@playwright/test";\nconst test = (_title, _callback) => {};'
     : 'import { expect, test } from "@playwright/test";';
-  return `${testImport}\nconst SCREENSHOT_OPTIONS = { fullPage: true };\n${helper}\n${tests}`;
+  return `${testImport}\n${runtimeCode}\nconst SCREENSHOT_OPTIONS = { fullPage: true };\n${helper}\n${tests}`;
 }
 
 function storybookSpec({
@@ -182,6 +183,7 @@ function storybookSpec({
   mutateWithFunction = false,
   computedSkip = false,
   fakeTestBinding = false,
+  runtimeCode = "",
 } = {}) {
   const freezeStoryMap = freezeStoryEntries
     ? ".map((story) => Object.freeze(story))"
@@ -283,7 +285,7 @@ function storybookSpec({
   if (describeConfigureDynamic) {
     return `${testImport}${outerAlias}\ntest.describe.configure({ mode: process.env.CI ? "skip" : "default" });\n${testCase}`;
   }
-  return `${testImport}${outerAlias}\n${testCase}`;
+  return `${testImport}${outerAlias}\n${runtimeCode}\n${testCase}`;
 }
 
 function routeTree(routes) {
@@ -345,6 +347,66 @@ test("G8 accepts active inventory routes and leaves not-started routes pending",
   );
 });
 
+test("G8 rejects Storybook runtime mutation of array iteration or dynamic code execution", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({
+      runtimeCode: [
+        "Array.prototype[Symbol.iterator] = function* () {};",
+        "Array.prototype.filter = () => [];",
+        'const bypass = [].constructor.constructor("return true")();',
+      ].join("\n"),
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /contains imports or runtime constructs/);
+});
+
+test("G8 rejects aliased Playwright controls and callback defaults", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      runtimeCode: [
+        "const skipVisual = test.skip;",
+        "const { fixme: disableVisual } = test;",
+        "const callback = (page = (process.exit(0), {})) => page;",
+      ].join("\n"),
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /contains imports or runtime constructs/);
+});
+
+test("G8 rejects suite configuration and process exit before screenshots run", async () => {
+  const configured = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({
+      runtimeCode: "test.describe.configure({ mode: 'default' });",
+    }),
+  });
+  assert.notEqual(configured.status, 0);
+  assert.match(configured.output, /contains imports or runtime constructs/);
+
+  const exited = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ runtimeCode: "process.exit(0);" }),
+  });
+  assert.notEqual(exited.status, 0);
+  assert.match(exited.output, /contains imports or runtime constructs/);
+});
+
+test("G8 rejects untrusted loaders in screenshot specifications", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: `${visualSpec(SCREENS)}\nimport { readFileSync } from "node:fs";`,
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /contains imports or runtime constructs/);
+});
+
 test("G8 rejects a no-op wrapper that shadows Playwright's test import", async () => {
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,
@@ -365,7 +427,10 @@ test("G8 rejects a computed test.skip call in a route visual test", async () => 
   });
 
   assert.notEqual(result.status, 0);
-  assert.match(result.output, /cannot contain test\.skip or test\.fixme calls/);
+  assert.match(
+    result.output,
+    /cannot contain test\.skip, test\.fixme, test\.fail, or test\.only calls/,
+  );
 });
 
 test("G8 rejects a visual callback that shadows its Playwright page fixture", async () => {
@@ -902,7 +967,10 @@ test("G8 rejects a computed test.skip call in the Storybook visual test", async 
   });
 
   assert.notEqual(result.status, 0);
-  assert.match(result.output, /cannot contain test\.skip or test\.fixme calls/);
+  assert.match(
+    result.output,
+    /cannot contain test\.skip, test\.fixme, test\.fail, or test\.only calls/,
+  );
 });
 
 test("G8 rejects a Storybook visual test inside a skipped describe block", async () => {
@@ -914,7 +982,7 @@ test("G8 rejects a Storybook visual test inside a skipped describe block", async
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /storybook-visual\.spec\.ts cannot disable tests/,
+    /storybook-visual\.spec\.ts cannot disable or reconfigure Playwright suites/,
   );
 });
 
@@ -927,7 +995,7 @@ test("G8 rejects a Storybook file configured to skip its suite", async () => {
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /storybook-visual\.spec\.ts cannot disable tests/,
+    /storybook-visual\.spec\.ts cannot disable or reconfigure Playwright suites/,
   );
 });
 
@@ -940,7 +1008,7 @@ test("G8 rejects a Storybook suite whose mode can conditionally skip", async () 
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /storybook-visual\.spec\.ts cannot disable tests/,
+    /storybook-visual\.spec\.ts cannot disable or reconfigure Playwright suites/,
   );
 });
 

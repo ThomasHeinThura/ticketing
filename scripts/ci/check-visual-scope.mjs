@@ -93,6 +93,141 @@ function hasTrustedPlaywrightTestApi(sourceFile) {
   return trustedImports.size === 2 && !invalidImport && !shadowedBinding;
 }
 
+const unsafeVisualRuntimeNames = new Set([
+  "Array",
+  "Bun",
+  "Deno",
+  "Function",
+  "Reflect",
+  "Symbol",
+  "configure",
+  "constructor",
+  "eval",
+  "fail",
+  "fixme",
+  "global",
+  "globalThis",
+  "module",
+  "only",
+  "process",
+  "prototype",
+  "require",
+  "self",
+  "skip",
+  "window",
+]);
+const allowedVisualTestImports = new Map([
+  ["test", false],
+  ["expect", false],
+  ["Page", true],
+]);
+
+/**
+ * These two specs are the trust boundary for required screenshot execution. They only
+ * need the Playwright test API, so fail closed on other imports, runtime loaders, test API
+ * aliases/modifiers, process exits, or mutable intrinsic access. The checker separately
+ * proves the allowed direct test declarations and screenshot statements below.
+ */
+function hasSafeVisualTestRuntime(sourceFile) {
+  if (!sourceFile) return false;
+  let unsafe = false;
+
+  for (const statement of sourceFile.statements) {
+    if (ts.isImportDeclaration(statement)) {
+      if (
+        !ts.isStringLiteral(statement.moduleSpecifier) ||
+        statement.moduleSpecifier.text !== "@playwright/test" ||
+        !statement.importClause ||
+        statement.importClause.isTypeOnly ||
+        !ts.isNamedImports(statement.importClause.namedBindings)
+      ) {
+        unsafe = true;
+        continue;
+      }
+      for (const specifier of statement.importClause.namedBindings.elements) {
+        const importedName =
+          specifier.propertyName?.text ?? specifier.name.text;
+        const typeOnly =
+          statement.importClause.isTypeOnly || specifier.isTypeOnly;
+        if (
+          importedName !== specifier.name.text ||
+          !allowedVisualTestImports.has(importedName) ||
+          allowedVisualTestImports.get(importedName) !== typeOnly
+        ) {
+          unsafe = true;
+        }
+      }
+    } else if (
+      ts.isImportEqualsDeclaration(statement) ||
+      (ts.isExportDeclaration(statement) && statement.moduleSpecifier)
+    ) {
+      unsafe = true;
+    }
+  }
+
+  const hasTestApiReference = (node) => {
+    let found = false;
+    const visit = (current) => {
+      if (found) return;
+      if (
+        ts.isIdentifier(current) &&
+        (current.text === "test" || current.text === "expect")
+      ) {
+        found = true;
+        return;
+      }
+      current.forEachChild(visit);
+    };
+    visit(node);
+    return found;
+  };
+
+  const visit = (node) => {
+    if (unsafe) return;
+    if (ts.isIdentifier(node) && unsafeVisualRuntimeNames.has(node.text)) {
+      unsafe = true;
+      return;
+    }
+    if (
+      (ts.isParameterDeclaration(node) && node.initializer) ||
+      (ts.isBindingElement(node) && node.initializer)
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.initializer &&
+      hasTestApiReference(node.initializer)
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isCallExpression(node) &&
+      node.expression.kind === ts.SyntaxKind.ImportKeyword
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (ts.isElementAccessExpression(node)) {
+      const property = node.argumentExpression;
+      if (
+        property &&
+        (ts.isStringLiteral(property) ||
+          ts.isNoSubstitutionTemplateLiteral(property)) &&
+        unsafeVisualRuntimeNames.has(property.text)
+      ) {
+        unsafe = true;
+        return;
+      }
+    }
+    node.forEachChild(visit);
+  };
+  visit(sourceFile);
+  return !unsafe;
+}
+
 function testCallbacks(sourceFile, title) {
   if (!sourceFile || !hasTrustedPlaywrightTestApi(sourceFile)) return [];
   const callbacks = [];
@@ -217,7 +352,7 @@ function testDisableMethod(node) {
   const last = parts.at(-1);
   const previous = parts.at(-2);
   const disableMethod = parts.findLast((part) =>
-    ["skip", "fixme"].includes(part),
+    ["skip", "fixme", "fail", "only"].includes(part),
   );
   if (disableMethod && parts.includes("describe")) {
     return `describe.${disableMethod}`;
@@ -226,24 +361,7 @@ function testDisableMethod(node) {
     return disableMethod;
   }
   if (previous === "describe" && last === "configure") {
-    const mode = node.arguments
-      .filter(ts.isObjectLiteralExpression)
-      .flatMap((argument) => argument.properties)
-      .find(
-        (property) =>
-          ts.isPropertyAssignment(property) &&
-          ((ts.isIdentifier(property.name) && property.name.text === "mode") ||
-            (ts.isStringLiteral(property.name) &&
-              property.name.text === "mode")),
-      );
-    if (!mode) return undefined;
-    if (
-      ts.isStringLiteral(mode.initializer) &&
-      ["default", "parallel", "serial"].includes(mode.initializer.text)
-    ) {
-      return undefined;
-    }
-    return "describe.configure({ mode: 'skip' or dynamic })";
+    return "describe.configure";
   }
   return undefined;
 }
@@ -1506,6 +1624,16 @@ try {
         `${path.basename(storySpecPath)} must bind test and expect directly to @playwright/test without shadow declarations`,
       );
     }
+    if (visualSourceFile && !hasSafeVisualTestRuntime(visualSourceFile)) {
+      failures.push(
+        `${path.basename(visualSpecPath)} contains imports or runtime constructs that can alias or disable Playwright tests, mutate primordials, or exit before screenshots run`,
+      );
+    }
+    if (storySourceFile && !hasSafeVisualTestRuntime(storySourceFile)) {
+      failures.push(
+        `${path.basename(storySpecPath)} contains imports or runtime constructs that can alias or disable Playwright tests, mutate primordials, or exit before screenshots run`,
+      );
+    }
   } finally {
     snapshot.dispose();
   }
@@ -1516,12 +1644,12 @@ try {
 const visualFileDisable = findTestDisable(visualSourceFile);
 if (visualFileDisable && !visualFileDisable.startsWith("describe.")) {
   failures.push(
-    `${path.basename(visualSpecPath)} cannot contain test.skip or test.fixme calls`,
+    `${path.basename(visualSpecPath)} cannot contain test.skip, test.fixme, test.fail, or test.only calls`,
   );
 }
 if (findDisabledSuite(visualSourceFile)) {
   failures.push(
-    `${path.basename(visualSpecPath)} cannot disable tests with test.describe.skip/fixme or test.describe.configure({ mode: 'skip' })`,
+    `${path.basename(visualSpecPath)} cannot disable or reconfigure Playwright suites`,
   );
 }
 
@@ -1756,12 +1884,12 @@ if (storyCallbacks.some(findTestDisable)) {
 const storyFileDisable = findTestDisable(storySourceFile);
 if (storyFileDisable && !storyFileDisable.startsWith("describe.")) {
   failures.push(
-    `${path.basename(storySpecPath)} cannot contain test.skip or test.fixme calls`,
+    `${path.basename(storySpecPath)} cannot contain test.skip, test.fixme, test.fail, or test.only calls`,
   );
 }
 if (findDisabledSuite(storySourceFile)) {
   failures.push(
-    `${path.basename(storySpecPath)} cannot disable tests with test.describe.skip/fixme or test.describe.configure({ mode: 'skip' })`,
+    `${path.basename(storySpecPath)} cannot disable or reconfigure Playwright suites`,
   );
 }
 if (!storySourceFile || !hasStorybookCoverage(storySourceFile, storyTitle)) {
