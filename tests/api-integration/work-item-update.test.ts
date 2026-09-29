@@ -7,9 +7,11 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { Client } from "pg";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { assertProjectStillLive } from "../../apps/api/src/work-item/assert-work-item-live";
 import updateWorkItem from "../../apps/api/src/work-item/controllers/update-work-item";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -17,6 +19,14 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+
+const publishEventMock = vi.hoisted(() => vi.fn());
+
+vi.mock("../../apps/api/src/events", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../apps/api/src/events")>();
+  return { ...actual, publishEvent: publishEventMock };
+});
 
 // F-A's negative case needs a caller who holds `work_item:update` but NOT
 // `work_item:set_priority` -- every seeded `BUILT_IN_ROLES` entry that has the first
@@ -179,6 +189,7 @@ function updateWorkItemRequest(
 
 describe("API integration: work item update (#23 second slice)", () => {
   beforeEach(async () => {
+    publishEventMock.mockReset();
     await resetTestDatabase();
   });
 
@@ -406,6 +417,127 @@ describe("API integration: work item update (#23 second slice)", () => {
     expect(row?.title).toBe("Edited while project was alive");
   });
 
+  it("#493: a project deletion that wins the row lock makes the in-transaction liveness check wait and refuse the update", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Must stay unchanged",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+    const [workItem] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, createdBody.key));
+    if (!workItem) throw new Error("created work item was not persisted");
+    const activityBefore = await db
+      .select({ id: schema.activityTable.id })
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, workItem.id));
+
+    const raw = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await raw.connect();
+    let transactionOpen = false;
+    try {
+      await raw.query("BEGIN");
+      transactionOpen = true;
+      await raw.query(
+        "UPDATE project SET deleted_at = now(), purge_after = now() WHERE id = $1",
+        [project.id],
+      );
+      const [projectVisibleToApplication] = await db
+        .select({ deletedAt: schema.projectTable.deletedAt })
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.id, project.id));
+      expect(projectVisibleToApplication?.deletedAt).toBeNull();
+      const lockOwner = await raw.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid",
+      );
+      const lockOwnerPid = lockOwner.rows[0]?.pid;
+      if (lockOwnerPid === undefined) {
+        throw new Error("could not read project-delete lock owner pid");
+      }
+
+      publishEventMock.mockReset();
+      let livenessError: unknown;
+      const livenessCheck = db
+        .transaction((tx) => assertProjectStillLive(tx, project.id))
+        .then(
+          () => undefined,
+          (error: unknown) => {
+            livenessError = error;
+          },
+        );
+
+      // Confirm the liveness check is blocked specifically on its `FOR SHARE` project check
+      // before committing the delete. A plain SELECT would pass while this UPDATE is
+      // uncommitted, allowing the work-item write to race through.
+      let waitingOnProjectShare = false;
+      const deadline = Date.now() + 5_000;
+      while (Date.now() < deadline && !waitingOnProjectShare) {
+        const result = await raw.query<{ waiting: boolean }>(
+          `
+          SELECT EXISTS (
+            SELECT 1
+            FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND pid <> pg_backend_pid()
+              AND state = 'active'
+              AND wait_event_type = 'Lock'
+              AND $1 = ANY(pg_blocking_pids(pid))
+          ) AS waiting
+        `,
+          [lockOwnerPid],
+        );
+        waitingOnProjectShare = result.rows[0]?.waiting === true;
+        if (!waitingOnProjectShare) {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+      }
+
+      await raw.query("COMMIT");
+      transactionOpen = false;
+      await livenessCheck;
+      expect(waitingOnProjectShare).toBe(true);
+      expect(livenessError).toBeInstanceOf(HTTPException);
+      expect((livenessError as HTTPException).status).toBe(404);
+
+      const updateError = await updateWorkItem(
+        createdBody.key,
+        creator.workspace.id,
+        createdBody.version,
+        creator.user.id,
+        "person",
+        { title: "Must be rejected" },
+      ).catch((error: unknown) => error);
+      expect(updateError).toBeInstanceOf(HTTPException);
+      expect((updateError as HTTPException).status).toBe(404);
+      expect(publishEventMock).not.toHaveBeenCalled();
+
+      const [after] = await db
+        .select()
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.id, workItem.id));
+      expect(after?.title).toBe("Must stay unchanged");
+      expect(after?.version).toBe(createdBody.version);
+      const activityAfter = await db
+        .select({ id: schema.activityTable.id })
+        .from(schema.activityTable)
+        .where(eq(schema.activityTable.workItemId, workItem.id));
+      expect(activityAfter).toHaveLength(activityBefore.length);
+    } finally {
+      if (transactionOpen) await raw.query("ROLLBACK");
+      await raw.end();
+    }
+  });
+
   it("T3 (independent Opus security review of PR #271, delta round): updateWorkItem itself refuses a soft-deleted project's row, not only requireWorkItemReach", async () => {
     // The S1 tests above both go through the real HTTP route, so `requireWorkItemReach`
     // (which independently checks `project.deleted_at IS NULL`) answers 404 before the
@@ -477,6 +609,44 @@ describe("API integration: work item update (#23 second slice)", () => {
       .where(eq(schema.workItemTable.key, createdBody.key));
     expect(row?.title).toBe("CAS-guarded directly");
     expect(row?.version).toBe(1);
+  });
+
+  it("#493: updateWorkItem refuses writes to an archived project", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "Archived project stays read-only",
+    });
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    const error = await updateWorkItem(
+      createdBody.key,
+      creator.workspace.id,
+      createdBody.version,
+      creator.user.id,
+      "person",
+      { title: "Should not land" },
+    ).catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(HTTPException);
+    expect((error as HTTPException).status).toBe(404);
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, createdBody.key));
+    expect(row?.title).toBe("Archived project stays read-only");
+    expect(row?.version).toBe(createdBody.version);
   });
 
   it("S3 (independent Opus security review of PR #271): out-of-range startDate/dueDate are a 400, not a 500, and true/0 are not silently accepted as epoch", async () => {

@@ -9,15 +9,18 @@
  */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { claimWorkItemNumber } from "../../apps/api/src/work-item/controllers/claim-work-item-number";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
 
 // ── Fixture builders for the tables `work-item-schema.test.ts` also builds directly -- ──
 // this file needs the same rows (`work_item_type`, `state_template`, `state`), but reached
@@ -205,6 +208,68 @@ describe("API integration: work item create/read/list (#23)", () => {
       .where(eq(schema.workItemTable.id, body.id as string));
     expect(rows).toHaveLength(1);
     expect(rows[0]?.key).toBe(`${project.slug}-1`);
+  });
+
+  it("#499: a project deleted before its number claim cannot receive a new work item", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const [before] = await db
+      .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+
+    const race = await raceProjectSoftDelete(
+      project.id,
+      async () =>
+        await createWorkItemRequest(app, project.id, {
+          typeId: type.id,
+          title: "Must not be created",
+        }),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const [after] = await db
+      .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+    expect(after?.lastTaskNumber).toBe(before?.lastTaskNumber);
+    const items = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.projectId, project.id));
+    expect(items).toHaveLength(0);
+    const activity = await db
+      .select({ id: schema.activityTable.id })
+      .from(schema.activityTable);
+    expect(activity).toHaveLength(0);
+  });
+
+  it("#499: the project number claim refuses an archived project", async () => {
+    const { project } = await setupProjectWithDefaultState();
+    const [before] = await db
+      .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    const error = await claimWorkItemNumber(project.id, db).catch(
+      (reason: unknown) => reason,
+    );
+    expect(error).toBeInstanceOf(HTTPException);
+    expect((error as HTTPException).status).toBe(404);
+
+    const [after] = await db
+      .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+    expect(after?.lastTaskNumber).toBe(before?.lastTaskNumber);
   });
 
   it("WI-2: concurrent creates in the same project get distinct, sequential numbers", async () => {

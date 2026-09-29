@@ -1,7 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { attachmentTable, instanceSettingTable } from "../../database/schema";
+import {
+  attachmentTable,
+  instanceSettingTable,
+  workItemTable,
+} from "../../database/schema";
 import {
   deleteStorageObject,
   finalizeStorageObject,
@@ -9,6 +13,10 @@ import {
   toFinalAttachmentObjectKey,
 } from "../../storage";
 import { recordWorkItemActivity } from "../../work-item/activity";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+} from "../../work-item/assert-work-item-live";
 import { magicBytesMatchDeclaredMime } from "../magic-bytes";
 
 const SNIFF_BYTES = 512;
@@ -16,6 +24,43 @@ const SNIFF_BYTES = 512;
 // Same fallback as `presign-attachment.ts`'s own `FALLBACK_MAX_BYTES` -- only used when
 // the singleton `instance_setting` row is somehow missing (never true after a real boot).
 const FALLBACK_MAX_BYTES = 25 * 1024 * 1024;
+
+async function deleteRejectedPendingAttachmentRow(input: {
+  attachmentId: string;
+  workspaceId: string;
+  workItemId: string;
+}) {
+  return db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select({
+        projectId: workItemTable.projectId,
+        deletedAt: workItemTable.deletedAt,
+        archivedAt: workItemTable.archivedAt,
+      })
+      .from(workItemTable)
+      .where(
+        and(
+          eq(workItemTable.id, input.workItemId),
+          eq(workItemTable.workspaceId, input.workspaceId),
+        ),
+      )
+      .for("share");
+    assertWorkItemStillLive(locked);
+    await assertProjectStillLive(tx, locked.projectId);
+
+    return tx
+      .delete(attachmentTable)
+      .where(
+        and(
+          eq(attachmentTable.id, input.attachmentId),
+          eq(attachmentTable.workspaceId, input.workspaceId),
+          eq(attachmentTable.workItemId, input.workItemId),
+          eq(attachmentTable.state, "pending"),
+        ),
+      )
+      .returning({ id: attachmentTable.id });
+  });
+}
 
 export type CompleteAttachmentInput = {
   attachmentId: string;
@@ -106,21 +151,19 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
   // object's content -- the whole point of B3 is to reject an oversized object without
   // ever reading its bytes.
   if (contentLength === undefined || contentLength > maxBytes) {
+    try {
+      await deleteRejectedPendingAttachmentRow({
+        attachmentId,
+        workspaceId,
+        workItemId,
+      });
+    } catch (error) {
+      // Preserve the pending row if the project/work item froze first. The invalid
+      // upload object is still discarded; the pending-row cleanup job owns its expiry.
+      await deleteStorageObject(finalObjectKey).catch(() => {});
+      throw error;
+    }
     await deleteStorageObject(finalObjectKey).catch(() => {});
-    // N5 security-review fix (2026-09-28): guard this DELETE the same way the `ready`
-    // UPDATE below is guarded -- without `state = 'pending'`, a losing call whose own
-    // check fails here could delete the ROW a concurrent call already marked `ready`
-    // (the final object key is unique per call as of the fix above, so this no longer
-    // touches another call's object, but it could still erase another call's already-
-    // successful row without this).
-    await db
-      .delete(attachmentTable)
-      .where(
-        and(
-          eq(attachmentTable.id, attachmentId),
-          eq(attachmentTable.state, "pending"),
-        ),
-      );
     throw new HTTPException(400, {
       message:
         contentLength === undefined
@@ -130,55 +173,92 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
   }
 
   if (!magicBytesMatchDeclaredMime(header, attachment.mimeType)) {
+    try {
+      await deleteRejectedPendingAttachmentRow({
+        attachmentId,
+        workspaceId,
+        workItemId,
+      });
+    } catch (error) {
+      // Preserve the pending row if the project/work item froze first. The invalid
+      // upload object is still discarded; the pending-row cleanup job owns its expiry.
+      await deleteStorageObject(finalObjectKey).catch(() => {});
+      throw error;
+    }
     await deleteStorageObject(finalObjectKey).catch(() => {});
-    // N5 security-review fix (2026-09-28): same guard as the size-check delete above.
-    await db
-      .delete(attachmentTable)
-      .where(
-        and(
-          eq(attachmentTable.id, attachmentId),
-          eq(attachmentTable.state, "pending"),
-        ),
-      );
     throw new HTTPException(400, {
       message: `The uploaded file's content does not match its declared type (${attachment.mimeType}).`,
     });
   }
 
-  const [updated] = await db.transaction(async (tx) => {
-    const rows = await tx
-      .update(attachmentTable)
-      .set({ state: "ready", size: contentLength, objectKey: finalObjectKey })
-      // L5 security-review fix (2026-09-27): the `WHERE state = 'pending'` condition makes
-      // the 409-under-concurrency behaviour a real database-level guard rather than
-      // something only observed because of the read-then-write check above -- two
-      // concurrent `complete` calls now have exactly one winner at the database, not at
-      // whichever request happened to read first.
-      .where(
-        and(
-          eq(attachmentTable.id, attachmentId),
-          eq(attachmentTable.state, "pending"),
-        ),
-      )
-      .returning();
+  let updatedRows: (typeof attachmentTable.$inferSelect)[];
+  try {
+    updatedRows = await db.transaction(async (tx) => {
+      // Issue #493: this route had NO in-transaction liveness re-check at all before
+      // marking the attachment `ready` -- `requireAttachmentReach()` checks the work
+      // item's `deletedAt`/`archivedAt` before this request reaches here, but a
+      // soft-delete/archive landing in the window between that check and this UPDATE
+      // would otherwise still leave a `ready` attachment (plus its `attachment.added`
+      // activity row) on a dead item. `.for("share")` locks the row so a concurrent
+      // soft-delete blocks until this transaction finishes; read-only here, so a shared
+      // lock is enough.
+      const [locked] = await tx
+        .select({
+          projectId: workItemTable.projectId,
+          deletedAt: workItemTable.deletedAt,
+          archivedAt: workItemTable.archivedAt,
+        })
+        .from(workItemTable)
+        .where(eq(workItemTable.id, workItemId))
+        .for("share");
+      assertWorkItemStillLive(locked);
+      await assertProjectStillLive(tx, locked.projectId);
 
-    if (rows.length > 0) {
-      await recordWorkItemActivity(tx, [
-        {
-          workspaceId,
-          workItemId,
-          actorId,
-          actorType,
-          verb: "attachment.added",
-          payload: { attachmentId, filename: attachment.filename },
-          // CA-7: `attachment.added` is public only for a customer-visible attachment.
-          visibility: attachment.customerVisible ? "public" : "internal",
-        },
-      ]);
-    }
+      const rows = await tx
+        .update(attachmentTable)
+        .set({ state: "ready", size: contentLength, objectKey: finalObjectKey })
+        // L5 security-review fix (2026-09-27): the `WHERE state = 'pending'` condition
+        // makes the 409-under-concurrency behaviour a real database-level guard rather
+        // than something only observed because of the read-then-write check above -- two
+        // concurrent `complete` calls now have exactly one winner at the database, not at
+        // whichever request happened to read first.
+        .where(
+          and(
+            eq(attachmentTable.id, attachmentId),
+            eq(attachmentTable.state, "pending"),
+          ),
+        )
+        .returning();
 
-    return rows;
-  });
+      if (rows.length > 0) {
+        await recordWorkItemActivity(tx, [
+          {
+            workspaceId,
+            workItemId,
+            actorId,
+            actorType,
+            verb: "attachment.added",
+            payload: { attachmentId, filename: attachment.filename },
+            // CA-7: `attachment.added` is public only for a customer-visible attachment.
+            visibility: attachment.customerVisible ? "public" : "internal",
+          },
+        ]);
+      }
+
+      return rows;
+    });
+  } catch (error) {
+    // Issue #493: whether this is the new liveness check above (404) or any other error
+    // out of the transaction, the object was already moved to `finalObjectKey` before this
+    // transaction ever ran (finalize runs before any guard, not after -- see this
+    // function's own doc comment) -- nothing will ever reference it now, so clean it up
+    // rather than orphaning it silently, same as the `!updated` 409 branch below already
+    // does for its own case.
+    await deleteStorageObject(finalObjectKey).catch(() => {});
+    throw error;
+  }
+
+  const [updated] = updatedRows;
 
   if (!updated) {
     // The object was already moved to `finalObjectKey` above (finalize now runs before
