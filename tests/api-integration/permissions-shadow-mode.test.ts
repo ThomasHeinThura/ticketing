@@ -437,6 +437,58 @@ const INVITATION_BY_ID_ROUTE_KEY = "GET /api/invitation/{id}";
 const WS_USER_ROUTE_KEY = "GET /api/ws/user";
 const WS_PROJECT_ROUTE_KEY = "GET /api/ws/{projectId}";
 
+describe("#8 notification self-read shadow evidence", () => {
+  it("returns only the caller's notifications and records the self-policy agreement", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const other = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const [ownNotification] = await fresh.db
+      .insert(fresh.schema.notificationTable)
+      .values({ userId: caller.user.id, type: "info", title: "Own" })
+      .returning();
+    await fresh.db.insert(fresh.schema.notificationTable).values({
+      userId: other.user.id,
+      type: "info",
+      title: "Other user's private notification",
+    });
+    if (!ownNotification)
+      throw new Error("notification insert returned no row");
+
+    const response = await fresh.app.request("/api/notification");
+    expect(response.status).toBe(200);
+    const notifications = (await response.json()) as Array<{
+      id: string;
+      title: string | null;
+    }>;
+    expect(notifications).toEqual([
+      expect.objectContaining({ id: ownNotification.id, title: "Own" }),
+    ]);
+
+    const agreeTally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor("GET /api/notification");
+      return rows.find((row) => row.outcome === "agree");
+    });
+    expect(agreeTally.count).toBe(1);
+    expect(
+      await shadowEventsFor(
+        "GET /api/notification",
+        "legacy_deny_policy_allow",
+      ),
+    ).toEqual([]);
+    expect(
+      await shadowEventsFor(
+        "GET /api/notification",
+        "legacy_allow_policy_deny",
+      ),
+    ).toEqual([]);
+  });
+});
+
 describe("#323 Opus S1 — a request-sourced workspace route fully evaluates to agree", () => {
   it("an allowed member on GET /api/label/workspace/{workspaceId} records agree, never legacy_allow_policy_deny", {
     timeout: 60_000,

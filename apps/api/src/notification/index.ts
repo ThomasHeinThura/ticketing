@@ -8,6 +8,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import clearNotifications from "./controllers/clear-notifications";
 import createNotification from "./controllers/create-notification";
 import getNotifications from "./controllers/get-notifications";
@@ -96,9 +97,15 @@ const clearAllRoute = createRoute({
 });
 
 const notification = apiRouter()
-  .openapi(listNotificationsRoute, async (c) =>
-    c.json(await getNotifications(c.get("userId")), 200),
-  )
+  .openapi(listNotificationsRoute, async (c) => {
+    const notifications = await getNotifications(c.get("userId"));
+    // The existing self boundary for this route is the controller's
+    // `WHERE notification.user_id = authenticated userId` filter. Record the
+    // legacy outcome only after that query has completed successfully; this is
+    // telemetry for shadow comparison and does not alter the response or policy.
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.json(notifications, 200);
+  })
   .openapi(createNotificationRoute, async (c) => {
     const {
       title,
