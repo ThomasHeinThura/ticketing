@@ -180,7 +180,7 @@ PATCH  /api/notification/read-all                             (self)
 PATCH  /api/notification/{id}/unread                          (self; target route for NO-15)
 DELETE /api/notification/clear-all                            (self)
 GET    /api/notification-preferences                         (self)
-PATCH  /api/notification-preferences                         (self)
+PUT    /api/notification-preferences                         (self)
 PUT    /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked)
 DELETE /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked)
 PUT    /api/notification-preferences/projects/{projectId}    (self; project reach checked)
@@ -218,20 +218,19 @@ retry and digest scheduling are in [background-jobs.md](../01-architecture/backg
 
 ## Testing
 
-Acceptance tests cover preference resolution across the three scopes, duplicate suppression,
-and quiet-hours bypass rules. Existing focused coverage includes
-`tests/api/notification-preferences/delivery-ssrf.test.ts`.
+The existing focused notification test,
+`tests/api/notification-preferences/delivery-ssrf.test.ts`, covers outbound destination
+guards only. It does not cover preference resolution, notification reach, delivery
+transactionality, retries, deduplication, quiet hours, or customer privacy. Those remain
+acceptance work. Add `tests/api-integration/notification-task-reach.test.ts` for hidden-task
+list/read/read-all/create/delivery reach; `tests/api-integration/notification-preferences.test.ts`
+for scoped preference resolution, outbox transactionality/retries, deduplication and quiet
+hours; and `tests/api-integration/customer-notification-privacy.test.ts` for `NO-19` and
+`NO-20`.
 
-Integration tests cover notification/outbox transactionality, retry and dead-lettering,
-hidden-task reach, and that a customer never receives an internal-comment notification.
-Current task-reach coverage lives in `tests/api-integration/permissions-shadow-mode.test.ts`.
-Add `tests/api-integration/notification-preferences.test.ts` for scoped preference
-resolution and delivery scheduling, and `tests/api-integration/customer-notification-privacy.test.ts`
-for `NO-19` and `NO-20`.
-
-Browser acceptance: assign a work item and see its in-app notification arrive live; open an
-email preference link, verify it makes no change on GET, then authenticate and explicitly
-save the selected setting. Browser acceptance remains pending until its route and test exist.
+Browser acceptance remains pending. Add `tests/e2e/notifications-inbox.spec.ts` for an
+assignment arriving live in the inbox, and for opening an email preference link, verifying
+that GET makes no change, then authenticating and explicitly saving the selected setting.
 
 ## Out of scope
 
