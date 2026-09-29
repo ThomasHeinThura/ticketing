@@ -45,12 +45,13 @@ router groups; many routers remain unobserved and the notification router is une
 The seven-day shadow soak has not completed. **Issue #8 remains open** pending sufficient
 evidence and the cutover.
 
-**P0 gates:** issues **#9** and **#11** are closed. Issue **#10** remains open: G11 is
-still skipped on `main`. A local G8 candidate covers two active inventory routes, the legacy
-sign-in screen, and all 133 Storybook stories, but an independent Luna review blocked it:
-the canonical G8 spec says every route-kind inventory row needs a baseline, while this
-candidate only requires baselines for active rows. The 120 not-started route rows are not
-covered, so the candidate is not merge-ready. The #8 shadow soak is also open.
+**P0 gates:** issues **#9** and **#11** are closed. Issue **#10** remains open: G8 and
+G11 are still skipped on `main`. The local G8 candidate (`d053d514`) covers two active
+inventory routes, the legacy sign-in screen, and all 133 Storybook stories; its Storybook
+readiness wait has a clear exact-head delta review. The candidate remains blocked on route
+scope: the canonical G8 spec says every route-kind inventory row needs a baseline, while
+this candidate only requires baselines for active rows. The 120 not-started route rows are
+not covered, so the candidate is not merge-ready. The #8 shadow soak is also open.
 
 **P1/P2/P3 lanes:** PR #447's remote candidate is stale and has failed `registers` and
 `unit + component`; its refreshed local branch merged #498 and initially failed the R6-1
