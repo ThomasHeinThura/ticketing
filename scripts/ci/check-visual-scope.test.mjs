@@ -38,23 +38,26 @@ const SCREENS = [
 
 function visualSpec(
   screens,
-  { omitScreenshotFor, nestedScreenshotFor, disabledFor } = {},
+  { omitScreenshotFor, nestedScreenshotFor, disabledFor, wrongRouteFor } = {},
 ) {
   return screens
-    .map(
-      ({ test: testName, screenshot }) =>
-        `test(${JSON.stringify(testName)}, async ({ page }) => { ${
-          testName === disabledFor
-            ? 'if (process.env.CI) test.fixme(true, "known issue");'
-            : ""
-        } ${
-          testName === omitScreenshotFor
-            ? "await page.goto('/');"
-            : testName === nestedScreenshotFor
-              ? `const unused = () => expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}); await page.goto('/');`
-              : `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)});`
-        } });`,
-    )
+    .map(({ test: testName, screenshot, applicationRoute }) => {
+      const navigation =
+        testName === wrongRouteFor
+          ? "/agent/inbox"
+          : applicationRoute.replace(/\$[A-Za-z0-9_]+/gu, "sample");
+      const screenshotEvidence =
+        testName === omitScreenshotFor
+          ? "await page.goto('/');"
+          : testName === nestedScreenshotFor
+            ? `const unused = () => expect(page).toHaveScreenshot(${JSON.stringify(screenshot)});`
+            : `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)});`;
+      return `test(${JSON.stringify(testName)}, async ({ page }) => { ${
+        testName === disabledFor
+          ? 'if (process.env.CI) test.fixme(true, "known issue");'
+          : ""
+      } await page.goto(${JSON.stringify(navigation)}); ${screenshotEvidence} });`;
+    })
     .join("\n");
 }
 
@@ -191,6 +194,19 @@ test("G8 binds each declared screenshot to its own named test", async () => {
   assert.match(
     result.output,
     /work-list test does not capture its declared screenshot baseline/,
+  );
+});
+
+test("G8 binds each visual test to its declared application route", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, { wrongRouteFor: "work list @visual" }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list visual test does not navigate directly to its declared application route \/agent\/projects\/\$projectKey\/work/,
   );
 });
 

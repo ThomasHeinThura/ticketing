@@ -148,6 +148,56 @@ function directTestScreenshots(callback) {
   );
 }
 
+function awaitedPageNavigation(statement) {
+  if (
+    !ts.isExpressionStatement(statement) ||
+    !ts.isAwaitExpression(statement.expression) ||
+    !ts.isCallExpression(statement.expression.expression) ||
+    !isNamedProperty(statement.expression.expression.expression, "goto") ||
+    !ts.isIdentifier(statement.expression.expression.expression.expression) ||
+    statement.expression.expression.expression.expression.text !== "page"
+  ) {
+    return undefined;
+  }
+
+  const [url] = statement.expression.expression.arguments;
+  return ts.isStringLiteral(url) ? url.text : undefined;
+}
+
+function directTestNavigations(callback) {
+  if (!ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) {
+    return [];
+  }
+  return callback.body.statements
+    .map(awaitedPageNavigation)
+    .filter((url) => url !== undefined);
+}
+
+function navigationMatchesApplicationRoute(navigation, applicationRoute) {
+  // Visual route tests use a concrete path through Playwright's configured base
+  // URL. Require that the path itself is the app route; an alias or redirect
+  // must be declared explicitly in the manifest instead of silently standing in
+  // for the screen being measured.
+  if (!navigation.startsWith("/") || navigation.startsWith("//")) {
+    return false;
+  }
+
+  const actualPath = navigation.split(/[?#]/u, 1)[0];
+  const expectedPath = applicationRoute.split("?", 1)[0];
+  const actualSegments = actualPath.split("/").filter(Boolean);
+  const expectedSegments = expectedPath.split("/").filter(Boolean);
+  if (actualSegments.length !== expectedSegments.length) {
+    return false;
+  }
+
+  return expectedSegments.every((segment, index) => {
+    if (segment.startsWith("$")) {
+      return actualSegments[index].length > 0;
+    }
+    return actualSegments[index] === segment;
+  });
+}
+
 function unwrapTypeWrappers(node) {
   let expression = node;
   while (
@@ -479,6 +529,7 @@ for (const screen of manifest) {
     ? testCallbacks(visualSourceFile, screen.test)
     : [];
   const matchingTests = matchingCallbacks.map(directTestScreenshots);
+  const matchingNavigations = matchingCallbacks.map(directTestNavigations);
   if (matchingCallbacks.some(findTestDisable)) {
     failures.push(`${screen.name} visual test cannot be skipped or fixme`);
   }
@@ -494,6 +545,20 @@ for (const screen of manifest) {
     failures.push(
       `${screen.name} test does not capture its declared screenshot baseline`,
     );
+  }
+  if (matchingNavigations.length === 1) {
+    const [navigations] = matchingNavigations;
+    if (
+      navigations.length !== 1 ||
+      !navigationMatchesApplicationRoute(
+        navigations[0] ?? "",
+        screen.applicationRoute,
+      )
+    ) {
+      failures.push(
+        `${screen.name} visual test does not navigate directly to its declared application route ${screen.applicationRoute}`,
+      );
+    }
   }
   if (!screen.screenshot.endsWith(".png")) {
     failures.push(`${screen.name} must name a PNG screenshot baseline`);
