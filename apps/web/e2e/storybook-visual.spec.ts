@@ -11,6 +11,11 @@ test("every exported Storybook story has a visual baseline @visual", async ({
   const response = await fetch("http://127.0.0.1:6006/index.json");
   expect(response.ok).toBeTruthy();
   const index = (await response.json()) as StorybookIndex;
+  Object.freeze(index.entries);
+  Object.values(index.entries).forEach((entry) => {
+    Object.freeze(entry);
+  });
+  Object.freeze(index);
   const stories = Object.freeze(
     Object.values(index.entries)
       .filter((entry) => entry.type === "story")

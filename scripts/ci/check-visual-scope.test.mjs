@@ -60,6 +60,7 @@ function visualSpec(
     viewportScreenshotFor,
     shadowedPageBindingFor,
     fakeTestBinding = false,
+    computedSkipFor,
   } = {},
 ) {
   const helper = `async function installAuthenticatedFixture(page: Page) {
@@ -148,7 +149,7 @@ function visualSpec(
         testName === disabledFor
           ? 'if (process.env.CI) test.fixme(true, "known issue");'
           : ""
-      } ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${shadowedPageBinding} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${nestedNavigation} ${helperNavigation} ${mutationInVisibility} ${testName === mutationInVisibilityFor ? "" : 'await expect(page.getByText("screen ready")).toBeVisible();'} ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
+      } ${testName === computedSkipFor ? 'test["skip"](true, "temporarily disabled");' : ""} ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${shadowedPageBinding} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${nestedNavigation} ${helperNavigation} ${mutationInVisibility} ${testName === mutationInVisibilityFor ? "" : 'await expect(page.getByText("screen ready")).toBeVisible();'} ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
     })
     .join("\n");
   const testImport = fakeTestBinding
@@ -167,16 +168,28 @@ function storybookSpec({
   describeConfigureDynamic = false,
   skipStoryCaptureInCi = false,
   mutateStoriesAfterAssertion = false,
+  deleteIndexEntriesBeforeFreeze = false,
+  rewriteIndexEntryBeforeFreeze = false,
+  freezeStoryIndex = true,
   freezeStoryEntries = true,
+  computedSkip = false,
   fakeTestBinding = false,
 } = {}) {
   const freezeStoryMap = freezeStoryEntries
     ? ".map((story) => Object.freeze(story))"
     : ".map((story) => story)";
+  const freezeIndex = freezeStoryIndex
+    ? [
+        "Object.freeze(index.entries);",
+        "Object.values(index.entries).forEach((entry) => { Object.freeze(entry); });",
+        "Object.freeze(index);",
+      ]
+    : [];
   const body = [
     ...(conditionalSkip
       ? ['if (process.env.CI) test.skip(true, "temporarily disabled");']
       : []),
+    ...(computedSkip ? ['test["skip"](true, "temporarily disabled");'] : []),
     ...(emptyCallback
       ? ["await page.goto('/');"]
       : [
@@ -184,6 +197,13 @@ function storybookSpec({
           detachedIndex
             ? 'const index = { entries: { fake: { id: "Button--primary", type: "story" } } };'
             : "const index = await response.json();",
+          ...(deleteIndexEntriesBeforeFreeze
+            ? ["delete index.entries.fake;"]
+            : []),
+          ...(rewriteIndexEntryBeforeFreeze
+            ? ['index.entries.fake.id = "changed";']
+            : []),
+          ...freezeIndex,
           `const stories = Object.freeze(Object.values(index.entries).filter((entry) => entry.type === "story").sort((left, right) => left.id.localeCompare(right.id))${freezeStoryMap});`,
           "expect(stories.length).toBeGreaterThan(0);",
           ...(mutateStoriesAfterAssertion
@@ -286,6 +306,16 @@ test("G8 rejects a no-op wrapper that shadows Playwright's test import", async (
     result.output,
     /must bind test and expect directly to @playwright\/test/,
   );
+});
+
+test("G8 rejects a computed test.skip call in a route visual test", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, { computedSkipFor: "work list @visual" }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /cannot contain test\.skip or test\.fixme calls/);
 });
 
 test("G8 rejects a visual callback that shadows its Playwright page fixture", async () => {
@@ -659,6 +689,45 @@ test("G8 rejects a Storybook list that freezes the array but leaves entries muta
   );
 });
 
+test("G8 rejects deletion from the fetched index before story enumeration", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ deleteIndexEntriesBeforeFreeze: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects edits to fetched story entries before story enumeration", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ rewriteIndexEntryBeforeFreeze: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 requires the fetched index and each exported entry to be frozen", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ freezeStoryIndex: false }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
 test("G8 rejects a no-op wrapper that shadows the Storybook Playwright test import", async () => {
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,
@@ -670,6 +739,16 @@ test("G8 rejects a no-op wrapper that shadows the Storybook Playwright test impo
     result.output,
     /must bind test and expect directly to @playwright\/test/,
   );
+});
+
+test("G8 rejects a computed test.skip call in the Storybook visual test", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ computedSkip: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /cannot contain test\.skip or test\.fixme calls/);
 });
 
 test("G8 rejects a Storybook visual test inside a skipped describe block", async () => {

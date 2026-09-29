@@ -188,8 +188,20 @@ function hasPlaywrightPageFixture(callback) {
 
 function propertyAccessPath(node) {
   if (ts.isIdentifier(node)) return [node.text];
-  if (!ts.isPropertyAccessExpression(node)) return [];
-  return [...propertyAccessPath(node.expression), node.name.text];
+  if (ts.isPropertyAccessExpression(node)) {
+    return [...propertyAccessPath(node.expression), node.name.text];
+  }
+  if (ts.isElementAccessExpression(node)) {
+    const property = node.argumentExpression;
+    return [
+      ...propertyAccessPath(node.expression),
+      ts.isStringLiteral(property) ||
+      ts.isNoSubstitutionTemplateLiteral(property)
+        ? property.text
+        : "<computed>",
+    ];
+  }
+  return [];
 }
 
 function isTestApiPath(parts) {
@@ -200,14 +212,18 @@ function testDisableMethod(node) {
   if (!ts.isCallExpression(node)) return undefined;
   const parts = propertyAccessPath(node.expression);
   if (!isTestApiPath(parts)) return undefined;
+  if (parts.includes("<computed>")) return "dynamic test API method";
 
   const last = parts.at(-1);
   const previous = parts.at(-2);
-  if ((last === "skip" || last === "fixme") && previous !== "describe") {
-    return last;
+  const disableMethod = parts.findLast((part) =>
+    ["skip", "fixme"].includes(part),
+  );
+  if (disableMethod && parts.includes("describe")) {
+    return `describe.${disableMethod}`;
   }
-  if (previous === "describe" && (last === "skip" || last === "fixme")) {
-    return `describe.${last}`;
+  if (disableMethod && previous !== "configure") {
+    return disableMethod;
   }
   if (previous === "describe" && last === "configure") {
     const mode = node.arguments
@@ -779,6 +795,107 @@ function isFetchedIndexDeclaration(declaration, responseName) {
   );
 }
 
+function isObjectFreezeStatement(statement, target) {
+  if (
+    !ts.isExpressionStatement(statement) ||
+    !ts.isCallExpression(statement.expression) ||
+    !isNamedProperty(statement.expression.expression, "freeze") ||
+    !ts.isIdentifier(statement.expression.expression.expression) ||
+    statement.expression.expression.expression.text !== "Object" ||
+    statement.expression.arguments.length !== 1
+  ) {
+    return false;
+  }
+  const [argument] = statement.expression.arguments;
+  if (target === "index") {
+    return ts.isIdentifier(argument) && argument.text === "index";
+  }
+  return (
+    ts.isPropertyAccessExpression(argument) &&
+    argument.name.text === "entries" &&
+    ts.isIdentifier(argument.expression) &&
+    argument.expression.text === "index"
+  );
+}
+
+function isFrozenIndexEntryValuesStatement(statement) {
+  if (
+    !ts.isExpressionStatement(statement) ||
+    !ts.isCallExpression(statement.expression) ||
+    !isNamedProperty(statement.expression.expression, "forEach") ||
+    statement.expression.arguments.length !== 1
+  ) {
+    return false;
+  }
+  const values = statement.expression.expression.expression;
+  const callback = statement.expression.arguments[0];
+  const callbackExpression =
+    ts.isArrowFunction(callback) && ts.isBlock(callback.body)
+      ? callback.body.statements.length === 1 &&
+        ts.isExpressionStatement(callback.body.statements[0])
+        ? callback.body.statements[0].expression
+        : undefined
+      : ts.isArrowFunction(callback)
+        ? callback.body
+        : undefined;
+  if (
+    !ts.isCallExpression(values) ||
+    !isNamedProperty(values.expression, "values") ||
+    !ts.isIdentifier(values.expression.expression) ||
+    values.expression.expression.text !== "Object" ||
+    values.arguments.length !== 1 ||
+    !ts.isPropertyAccessExpression(values.arguments[0]) ||
+    values.arguments[0].name.text !== "entries" ||
+    !ts.isIdentifier(values.arguments[0].expression) ||
+    values.arguments[0].expression.text !== "index" ||
+    !ts.isArrowFunction(callback) ||
+    callback.parameters.length !== 1 ||
+    !callback.parameters[0] ||
+    !ts.isIdentifier(callback.parameters[0].name) ||
+    !callbackExpression ||
+    !ts.isCallExpression(callbackExpression) ||
+    !isNamedProperty(callbackExpression.expression, "freeze") ||
+    !ts.isIdentifier(callbackExpression.expression.expression) ||
+    callbackExpression.expression.expression.text !== "Object" ||
+    callbackExpression.arguments.length !== 1 ||
+    !ts.isIdentifier(callbackExpression.arguments[0]) ||
+    callbackExpression.arguments[0].text !== callback.parameters[0].name.text
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function hasFrozenStorybookIndex(callback) {
+  if (!ts.isBlock(callback.body)) return false;
+  const statements = callback.body.statements;
+  const indexStatementIndex = statements.findIndex(
+    (statement) =>
+      ts.isVariableStatement(statement) &&
+      statement.declarationList.declarations.some((declaration) =>
+        isFetchedIndexDeclaration(declaration, "response"),
+      ),
+  );
+  if (indexStatementIndex < 0) return false;
+
+  const indexStatement = statements[indexStatementIndex];
+  const indexDeclaration = indexStatement.declarationList.declarations.find(
+    (declaration) => isFetchedIndexDeclaration(declaration, "response"),
+  );
+  if (!indexDeclaration || !ts.isIdentifier(indexDeclaration.name)) {
+    return false;
+  }
+  const [freezeEntries, freezeEntryValues, freezeIndex, storiesStatement] =
+    statements.slice(indexStatementIndex + 1, indexStatementIndex + 5);
+  return (
+    isObjectFreezeStatement(freezeEntries, "entries") &&
+    isFrozenIndexEntryValuesStatement(freezeEntryValues) &&
+    isObjectFreezeStatement(freezeIndex, "index") &&
+    ts.isVariableStatement(storiesStatement) &&
+    storiesStatement.declarationList.declarations.some(isStoriesDeclaration)
+  );
+}
+
 function isStoriesDeclaration(declaration) {
   if (
     !ts.isVariableDeclaration(declaration) ||
@@ -1176,6 +1293,7 @@ function hasStorybookCoverage(sourceFile, title) {
   return (
     hasPlaywrightPageFixture(callback) &&
     fetchesStoryIndex &&
+    hasFrozenStorybookIndex(callback) &&
     derivesStoriesFromEveryExport &&
     statements.some(isNonemptyStoriesAssertion) &&
     !hasStoryCoverageControlBypass(callback) &&
