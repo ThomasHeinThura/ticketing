@@ -39,7 +39,7 @@ claim a version the toolchain cannot produce.
 | --- | --- | --- |
 | `/api/*` | The application API | capability |
 | `/api/me/*` | The caller's own records: settings, preferences, API keys, approvals | `authenticated + self` |
-| `/api/public/*` | Unauthenticated: branding, `health/live` and `health/ready`, the login page's provider **buttons only** (label + id — never discovery URLs, tenant ids or domain restrictions), terminology, CSP reports | `public` with reason — **no exceptions**, so the router's blanket kind is true of every route under it |
+| `/api/public/*` | Unauthenticated: branding, `health/live` and `health/ready`, the login page's provider **buttons only** (label + id — never discovery URLs, tenant ids or domain restrictions), terminology, CSP reports, and the two origin-specific `POST /api/public/{agent|portal}/notification-preference-handoffs` routes (one-purpose signed email token; short-lived selector handoff only) | `public` with reason — **no exceptions**, so the router's blanket kind is true of every route under it |
 | `/api/instance/*` | God Mode. `instance:*` capabilities. Includes the dependency-enumerating deep health check, `GET /api/instance/health/deep` — capability `instance:admin`, scope `instance`; it is **not** on the public router, and the `/metrics` bearer token is not an alternative credential for it | capability |
 | `/api/portal/*` | Customer portal — a deliberately narrow, separate router | `portal` with predicate |
 | `/auth/*` | better-auth handler | `delegated: better-auth` |

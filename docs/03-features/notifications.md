@@ -89,22 +89,39 @@ unique key, digest values, and per-person quiet-hours fields are defined in
 - `NO-1` Sensible defaults on account creation: in-app for everything, email for
   assignment, mention, approval and SLA breach only.
 - `NO-2` Every notification email carries a link to the exact preference that produced it.
-  The signed, single-purpose token binds `purpose: notification_pref`, the recipient,
-  `event_kind`, channel, scope and optional `scope_id`, and expires after 30 days. Opening
-  the link never changes a preference. Staff links open
-  `/agent/settings/profile/notifications#preference_token={token}` and customer links open
-  `/portal/account#preference_token={token}`. The page removes the fragment from the
-  address bar immediately and holds the token only in same-origin transient session state
-  while authentication completes; it must not put the token in a query string, sign-in
-  return URL, referrer, analytics event or application log. Once authenticated, the page
-  sends it in the `Authorization: Notification-Preference` header to the read-only
-  validation route below. That route returns the bound event, channel and scope only when
-  the signed-in person is the token recipient. The screen preselects that setting; the
-  recipient must explicitly save to change it. If the signed-in person does not match,
-  show no preference or token details, clear the transient token, and require sign-out and
-  sign-in as the recipient before reopening the email link. Invalid, expired or
-  wrong-purpose tokens show a generic invalid-or-expired-link message. The landing `GET`
-  never mutates or consumes the preference; only the authenticated explicit save does.
+  The signed, single-purpose token binds `purpose: notification_pref`, its `audience`
+  (`agent` or `customer`), the recipient, `event_kind`, channel, scope and optional
+  `scope_id`, and expires after 30 days. Staff
+  links open `/agent/settings/profile/notifications#preference_token={token}` and customer
+  links open `/portal/account#preference_token={token}`. Opening the link never changes a
+  preference.
+
+  The landing page reads the fragment and immediately removes it from the address bar. It
+  submits the signed token in a JSON body to the matching origin-specific public handoff
+  route below **before any authentication redirect**. That route validates signature,
+  purpose and expiry, stores only the verified selector in
+  `notification_preference_handoff`, and sets a ten-minute
+  `__Host-tdk_notification_preference_handoff` cookie with `Path=/`, no `Domain`, and
+  `HttpOnly; Secure; SameSite=Lax`; its value is only an opaque random handoff handle. The
+  raw signed token is not persisted. The handle is not an authentication credential and
+  reveals no recipient or preference data. The browser must never put the signed token in
+  browser storage, a query string, sign-in return URL, referrer, analytics event or
+  application log. The public POST returns the same generic accepted response for valid
+  and invalid tokens and does not read or change a preference.
+
+  After authentication, the page calls the matching agent or portal handoff GET below.
+  Each route requires that audience's session and matches its audience and person id to
+  the stored token claims before returning the bound event, channel and scope with
+  `Cache-Control: no-store`. The GET is read-only: it leaves the handoff row and cookie
+  unchanged. A token with the wrong audience is rejected by the public handoff
+  route and cannot be resolved through the other portal.
+  The page preselects the setting, and the recipient may explicitly save it. A recipient
+  mismatch returns the same generic not-found result without revealing token or preference
+  details; the short-lived handoff remains available after the person signs out and signs
+  in as the recipient. Invalid, expired or wrong-purpose tokens show a generic
+  invalid-or-expired-link message. Only the recipient's
+  explicit authenticated save changes a preference; the email-link flow never does.
+
 - `NO-3` A person may set quiet hours. At each external-delivery drain, evaluate the
   recipient's current quiet-hours setting and defer non-urgent delivery until the next
   allowed time; preference changes therefore apply immediately. In-app notifications still
@@ -169,17 +186,23 @@ delivery problem uses the audit log and the outbox, not another person's inbox.
 | --- | --- |
 | Read, clear, or change read state for own notifications | Authenticated self; recipient id is taken from the session |
 | Create an integration notification for self | Authenticated self; recipient id is taken from the session |
-| Read or change own notification preferences | Authenticated self; workspace/project scopes are validated against reach |
+| Read or change staff member's own notification preferences | Agent session; recipient id is taken from the session; workspace/project scopes are validated against reach |
+| Read or change customer's own notification preferences | Customer portal session; recipient id is taken from the session; customer-eligible global preferences only |
+| Start an email-link handoff | Public, origin-specific endpoint; validates one-purpose signed token and stores a short-lived server-side handoff; no preference mutation |
+| Resolve an email-link handoff | Matching agent or customer portal session; handoff recipient must equal session person; returns only its bound selector |
 | Configure or test instance notification plugins | `instance:manage_plugins` |
 | Inspect, requeue, or discard external deliveries | `instance:admin` |
 
 ## Screens
 
-Notifications inbox at `/agent/notifications`; scoped preferences under
-`/agent/settings/profile/notifications` and portal `/portal/account`; God Mode channel
+Notifications inbox at `/agent/notifications`; staff scoped preferences under
+`/agent/settings/profile/notifications` and customer global preferences under
+`/portal/account`; the email-link fragment is exchanged for a server-side handoff before
+authentication, so neither page stores the signed token; God Mode channel
 configuration at `/agent/god-mode/notifications`;
 delivery operations at `/agent/god-mode/deliveries`. Workspace and project choices are
-per-person preference scopes on the profile screen, not administrator-managed rule screens.
+per-person preference scopes on the staff profile screen, not administrator-managed rule
+screens.
 
 ## API
 
@@ -196,7 +219,12 @@ PUT    /api/notification-preferences/workspaces/{workspaceId} (self; workspace r
 DELETE /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked)
 PUT    /api/notification-preferences/projects/{projectId}    (self; project reach checked)
 DELETE /api/notification-preferences/projects/{projectId}    (self; project reach checked)
-GET    /api/notification-preferences/email-link                (self; signed preference token in Authorization header; recipient match required; no mutation)
+POST   /api/public/agent/notification-preference-handoffs     (public; signed token body; short-lived server-side handoff only)
+GET    /api/notification-preferences/email-link-handoff       (agent self; matching recipient; read-only selector)
+POST   /api/public/portal/notification-preference-handoffs    (public; signed token body; short-lived server-side handoff only)
+GET    /api/portal/notification-preferences/email-link-handoff (portal self; matching recipient; read-only selector)
+GET    /api/portal/notification-preferences                   (portal self; customer-eligible global preferences)
+PUT    /api/portal/notification-preferences                   (portal self; customer-eligible global preferences)
 POST   /api/instance/plugins/{id}/test                        instance:manage_plugins
 GET    /api/instance/deliveries                               instance:admin
 POST   /api/instance/deliveries/{id}/requeue                  instance:admin
@@ -207,20 +235,38 @@ The mark-unread route is a target route required by `NO-15`; it must use the sam
 and task-reach checks as mark-read. Project preference overrides use the same per-person
 scope model and are target routes; both are not yet implemented.
 
-The email-link validation route is a target route required by `NO-2`. It requires an
-authenticated session and a valid, unexpired `notification_pref` token whose recipient
-matches that session. It returns only the token-bound preference selector, sets
-`Cache-Control: no-store`, and never consumes the token or changes a preference. Invalid,
-expired, wrong-purpose and recipient-mismatch cases share a generic response. It must not
-log the token or return recipient identity details.
+The two public handoff routes are target routes required by `NO-2`. Each accepts the signed
+token in the JSON body, validates its signature, purpose, expiry and audience, stores only
+its selector in `notification_preference_handoff`, and sets the opaque handle cookie. The
+agent endpoint accepts only `audience: agent`; the portal endpoint accepts only
+`audience: customer`. Require `Origin` to equal the configured application origin on every
+request; when a session cookie is present, also require the CSRF double-submit token.
+Rate-limit by source IP. Never log or echo the token. Valid and invalid token submissions
+return the same generic `202` response with `Cache-Control: no-store`; only a valid token
+sets the cookie and creates a handoff row. The matching authenticated agent or portal GET
+route requires the corresponding session and matching audience and person id, then returns
+only the bound selector with `Cache-Control: no-store`. The GET leaves the row and cookie
+unchanged. A mismatch reveals no recipient or preference data; signing in as the
+recipient within the handoff's ten-minute life can complete it. Invalid, expired,
+wrong-purpose, wrong-audience and mismatch cases are generic. None of these routes changes
+a preference; only the explicit authenticated `PUT` does.
+
+The portal preference routes are distinct from the agent routes as required by
+[api-design.md](../01-architecture/api-design.md#why-apiportal-is-separate). They use the
+customer session and support only global preferences for events whose existing recipient
+rules allow customer-side people, further restricted by `NO-18`–`NO-20` and `EV-5`. They do
+not accept agent sessions, workspace/project scopes or staff-only event keys. Portal writes
+cannot add a customer as a recipient or broaden notification visibility.
 
 ## Data
 
 The canonical fields and constraints are in
 [data-model.md §11](../01-architecture/data-model.md#11-automations-notifications-integrations-audit):
-`notification`, scoped `notification_preference`, and `outbox` with `dedupe_key`. Event keys
-and notification fan-out flags are in [events.md](../01-architecture/events.md). Delivery
-retry and digest scheduling are in [background-jobs.md](../01-architecture/background-jobs.md).
+`notification`, scoped `notification_preference`, short-lived
+`notification_preference_handoff`, and `outbox` with `dedupe_key`. Event keys and
+notification fan-out flags are in [events.md](../01-architecture/events.md). Delivery,
+handoff cleanup and digest scheduling are in
+[background-jobs.md](../01-architecture/background-jobs.md).
 
 ## Edge cases
 
@@ -228,6 +274,7 @@ retry and digest scheduling are in [background-jobs.md](../01-architecture/backg
 | --- | --- |
 | Recipient loses reach before delivery | Suppressed at delivery time, not just at creation |
 | Task is unreachable, deleted, or in a deleted project | Omitted from inbox; read-all leaves it unread; individual mark-read returns not found |
+| Another notification email link is opened before the handoff completes | The newest valid handoff replaces the browser's pending handoff cookie; reopening the earlier email starts its handoff again |
 | Recipient's account is deleted | Outbox rows for them are dropped |
 | Channel disabled after queueing | Queued messages are dropped with a log line |
 | SMTP down for hours | Retries with backoff; God Mode shows the backlog |
@@ -246,6 +293,12 @@ list/read/read-all/create/delivery reach; `tests/api-integration/notification-pr
 for scoped preference resolution, outbox transactionality/retries, deduplication and quiet
 hours; and `tests/api-integration/customer-notification-privacy.test.ts` for `NO-19` and
 `NO-20`.
+
+Add `tests/api-integration/notification-preference-link-handoff.test.ts` for expired and
+wrong-purpose tokens, token redaction, audience mismatch, same-origin handoff cookies, auth
+redirects, portal separation, recipient mismatch with no selector disclosure, repeatable
+read-only matching resolution before expiry, and proof that the handoff never mutates a
+preference.
 
 Browser acceptance remains pending. Add `tests/e2e/notifications-inbox.spec.ts` for an
 assignment arriving live in the inbox, and for opening an email preference link, verifying
