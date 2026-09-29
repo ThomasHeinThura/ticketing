@@ -92,7 +92,8 @@ export async function updateCalendar(
           eq(serviceCalendarTable.workspaceId, workspaceId),
         ),
       )
-      .limit(1);
+      .limit(1)
+      .for("update");
     if (!before) return undefined;
     const [row] = await tx
       .update(serviceCalendarTable)

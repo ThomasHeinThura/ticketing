@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { subscribeToEvent } from "../../apps/api/src/events";
@@ -62,6 +62,24 @@ async function disarmAuditInsertFailure() {
   await db.execute(sql.raw(`DROP FUNCTION IF EXISTS ${FAIL_FUNCTION}()`));
 }
 
+async function waitForBlockedCalendarRequests(expected: number) {
+  for (let attempt = 0; attempt < 500; attempt += 1) {
+    const result = await db.execute<{ count: string }>(sql`
+      SELECT count(*)::text AS count
+      FROM pg_stat_activity
+      WHERE pid <> pg_backend_pid()
+        AND datname = current_database()
+        AND wait_event_type = 'Lock'
+        AND query ILIKE '%service_calendar%'
+    `);
+    if (Number(result.rows[0]?.count ?? 0) >= expected) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(
+    `Timed out waiting for ${expected} blocked calendar request(s)`,
+  );
+}
+
 function hashApiKeyForTest(key: string): string {
   return createHash("sha256")
     .update(key)
@@ -92,7 +110,7 @@ async function createApiKeyFor(
   return rawKey;
 }
 
-describe("API integration: service calendars (CAL-1–CAL-9)", () => {
+describe("API integration: service calendars (CAL-1–CAL-14)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
     recordedEvents.length = 0;
@@ -292,6 +310,89 @@ describe("API integration: service calendars (CAL-1–CAL-9)", () => {
         .from(schema.auditLogTable)
         .where(eq(schema.auditLogTable.entityType, "service_calendar")),
     ).toHaveLength(auditCountBefore.length);
+  });
+
+  it("CAL-14: serializes concurrent PATCH snapshots with a row lock", async () => {
+    const creator = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const created = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: creator.workspace.id,
+        name: "Initial hours",
+        timezone: "UTC",
+        windows: weekdayWindows,
+        holidays: [],
+      }),
+    });
+    expect(created.status).toBe(200);
+    const calendar = (await created.json()) as { id: string };
+    recordedEvents.length = 0;
+
+    let signalLockAcquired: (() => void) | undefined;
+    let releaseLock: (() => void) | undefined;
+    const lockAcquired = new Promise<void>((resolve) => {
+      signalLockAcquired = resolve;
+    });
+    const lockReleased = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    const holdingTransaction = db.transaction(async (tx) => {
+      await tx.execute(sql`
+        SELECT id FROM service_calendar WHERE id = ${calendar.id} FOR UPDATE
+      `);
+      signalLockAcquired?.();
+      await lockReleased;
+    });
+    await lockAcquired;
+
+    try {
+      const firstPatch = app.request(`/api/service-calendars/${calendar.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "First update" }),
+      });
+      await waitForBlockedCalendarRequests(1);
+      const secondPatch = app.request(`/api/service-calendars/${calendar.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Second update" }),
+      });
+      await waitForBlockedCalendarRequests(2);
+
+      releaseLock?.();
+      const [firstResponse, secondResponse] = await Promise.all([
+        firstPatch,
+        secondPatch,
+      ]);
+      expect(firstResponse.status).toBe(200);
+      expect(secondResponse.status).toBe(200);
+    } finally {
+      releaseLock?.();
+      await holdingTransaction;
+    }
+
+    const updates = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityType, "service_calendar"),
+          eq(schema.auditLogTable.entityId, calendar.id),
+          eq(schema.auditLogTable.action, "service_calendar.updated"),
+        ),
+      )
+      .orderBy(asc(schema.auditLogTable.seq));
+    expect(updates.map((row) => row.before)).toEqual([
+      expect.objectContaining({ name: "Initial hours" }),
+      expect.objectContaining({ name: "First update" }),
+    ]);
+    expect(updates.map((row) => row.after)).toEqual([
+      expect.objectContaining({ name: "First update" }),
+      expect.objectContaining({ name: "Second update" }),
+    ]);
   });
 
   it("CAL-2: rejects overlapping windows", async () => {
