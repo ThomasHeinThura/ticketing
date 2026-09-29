@@ -45,12 +45,19 @@ router groups; many routers remain unobserved and the notification router is une
 The seven-day shadow soak has not completed. **Issue #8 remains open** pending sufficient
 evidence and the cutover.
 
-**P0 gates:** issues **#9** and **#11** are closed. Issue **#10** remains open: G8 visual
-regression and G11 performance gates are still skipped on `main`; the G8 candidate is under
-development. The #8 shadow soak is also open.
+**P0 gates:** issues **#9** and **#11** are closed. Issue **#10** remains open: G11 is
+still skipped on `main`. A local G8 candidate covers two active inventory routes, the legacy
+sign-in screen, and all 133 Storybook stories, but an independent Luna review blocked it:
+the canonical G8 spec says every route-kind inventory row needs a baseline, while this
+candidate only requires baselines for active rows. The 120 not-started route rows are not
+covered, so the candidate is not merge-ready. The #8 shadow soak is also open.
 
 **P1/P2/P3 lanes:** PR #447's remote candidate is stale and has failed `registers` and
-`unit + component`; its local branch has now merged #498 and is under integration check.
+`unit + component`; its refreshed local branch merged #498, then `CI=true pnpm test:integration`
+failed at the merged attachment R6-1 regression (1 failure among 1,499 tests). The failure
+reported zero HTTP-200 winners in the concurrent-complete race; a separate P0 investigation
+branch is checking the same-final-object overwrite hypothesis. #447 remains unchanged and
+not merge-ready.
 The PR body has been narrowed to the saved-view CRUD/pin slice governed by
 `search-and-saved-views.md`; it explicitly leaves #24's layouts unfinished. Nine rows remain
 in the separate `views.md` review section, so the broader layout UI remains blocked there.
