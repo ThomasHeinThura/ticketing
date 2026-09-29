@@ -443,7 +443,7 @@ ahead of the feature that needs it.
 
 ## 7. Security surface, enumerated — for the reviewer who reads this first
 
-Three of the nine issues carry the mandatory Opus security review by name in the task
+Three of the nine issues carry the mandatory GPT-6 Sol security review by name in the task
 brief: **#47** (API keys, webhook signing/delivery), **#42** (God Mode, the highest-
 privilege surface in the product), **#40** (permissions UI). This section is written for
 that reviewer, not for the implementer.
@@ -643,7 +643,7 @@ touching its secret field; assert the stored secret is byte-identical to before.
   blocking taxonomy — escalate to Thomas, do not ship the feature without its seam and
   call it "P4 follow-up."
 - **No self-approval of the mandatory reviews.** #40, #42 and #47 all require the
-  independent Opus security review (CLAUDE.md's three absolutes) — no Sonnet
+  independent GPT-6 Sol security review (CLAUDE.md's three absolutes) — no GPT-6 Luna
   implementation agent may sign off its own remediation, and no orchestrator may either.
 - **No deciding #47's `sessionOnly` question in this prep pass, or silently, in
   implementation.** §7.2 identifies a real gap; this plan states it precisely and hands it

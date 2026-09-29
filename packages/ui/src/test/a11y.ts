@@ -23,7 +23,26 @@ import { axe } from "vitest-axe";
  * Asserting on the plain result object needs no augmentation of a
  * third-party module's types at all.
  */
-export async function expectNoA11yViolations(root: Element): Promise<void> {
-  const results = await axe(root, { rules: { region: { enabled: false } } });
-  expect(results.violations).toEqual([]);
+export async function expectNoA11yViolations(
+  root: Element,
+  options: {
+    impact?: "all" | "serious-or-critical";
+    ignoredRules?: string[];
+  } = {},
+): Promise<void> {
+  const rules: Record<string, { enabled: boolean }> = {
+    region: { enabled: false },
+  };
+  for (const rule of options.ignoredRules ?? [])
+    rules[rule] = { enabled: false };
+
+  const results = await axe(root, { rules });
+  const violations =
+    options.impact === "serious-or-critical"
+      ? results.violations.filter(
+          (violation) =>
+            violation.impact === "serious" || violation.impact === "critical",
+        )
+      : results.violations;
+  expect(violations).toEqual([]);
 }

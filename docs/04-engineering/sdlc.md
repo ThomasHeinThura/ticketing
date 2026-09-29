@@ -114,8 +114,8 @@ and later never came.
 - Permission matrix updated and passing.
 - Negative tests: every "must not" in the spec has a test proving it.
 - Manual API exercise where behaviour is subtle.
-- **A security review, on Opus, not optional.** See
-  [agent-workflow.md](agent-workflow.md#model-tiers-within-claude-code) — a separate,
+- **A security review, on GPT-6 Sol, not optional.** See
+  [agent-workflow.md](agent-workflow.md#model-policy) — a separate,
   explicit pass, distinct from the general code review, on anything touching auth,
   reach/authority, secrets, uploads, webhooks or a new route. The **trigger is the path list in [ci-cd.md](ci-cd.md#pull-request-pipeline)** — that list is
   authoritative and this sentence only cites it; the review itself is recorded in the pull
@@ -218,7 +218,7 @@ The steps are never skipped for convenience. They are scoped to the work.
 section no longer restates it — four copies of the list had drifted apart by 2026-09-06. In
 one sentence: every feature passes the Definition of Done; the manual passes (screen reader,
 keyboard-only session, fresh-eyes test, cross-browser, realistic data volumes, load baseline,
-backup and restore) are run; **a stage-level security review, on Opus** — a holistic pass
+backup and restore) are run; **a stage-level security review, on GPT-6 Sol** — a holistic pass
 over the whole stage's surface, not the sum of the per-feature reviews — is recorded; the
 stage review is written in `07-planning/`, including what went wrong; and every gate that was
 not run is a **recorded waiver** in the decision log, or the stage is not closed.

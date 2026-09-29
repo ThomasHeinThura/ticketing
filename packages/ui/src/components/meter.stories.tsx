@@ -10,7 +10,7 @@ import {
 const meta = {
   title: "Primitives/Meter",
   component: Meter,
-  args: { value: 40 },
+  args: { value: 40, "aria-label": "Disk usage" },
   render: (args) => (
     <Meter {...args}>
       <MeterLabel>Disk usage</MeterLabel>

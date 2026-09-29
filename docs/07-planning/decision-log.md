@@ -5,6 +5,50 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-29 · OpenAI model routing replaces Claude/`pal-mcp` routing
+
+**Decision:** TaskDesk's active AI workflow moves to an OpenAI-first two-tier model policy.
+Every implementation and ordinary-review role previously assigned to Claude Sonnet is now
+GPT-6 Luna. Every mandatory final security/critical-review and stage-finalizer role previously
+assigned to Claude Opus/Opus 5.5 is now GPT-6 Sol. Reviewer independence, exact-head binding,
+review counts, security-scope definitions, branch protection, gate-waiver rules, and stage
+exit criteria are unchanged.
+
+`pal-mcp`, `pal-reviewer`, 9Router, and their provider failover chain are retired from the
+active TaskDesk workflow. They are not fallback paths. Historical reviews remain valid
+historical evidence for the exact heads they reviewed; this decision applies prospectively.
+
+**Supersedes:** the operative portions of the 2026-09-26 and 2026-09-27 decisions that made
+`pal-mcp`/9Router the primary ordinary-review/audit/report/alignment path, and every operative
+instruction that names Sonnet or Opus as the current required model tier.
+
+**Why:** the active agent environment is moving to OpenAI GPT models and does not provide the
+`pal-mcp` workflow. Keeping obsolete routing instructions would create false blockers and make
+CI/documentation disagree with the actual execution environment. This preserves the existing
+quality model: Luna inherits Sonnet work; Sol inherits mandatory Opus gates.
+
+**Decided by:** Thomas, 2026-09-29.
+
+### 2026-09-29 · Opus 5.5 retained as sampled big reviewer, fed by a GPT review packet
+
+**Decision:** retain one independent Opus 5.5 role as an additional sampled/random reviewer.
+It is not the per-PR security gate, not the phase finalizer, and not a replacement for GPT-6
+Sol. It reviews selected candidates, batches, or defect classes only.
+
+Before Opus 5.5 runs, GPT-6 Luna or GPT-6 Sol prepares a structured packet with exact SHA(s),
+changed files, spec/ADR scope, risk classification, GPT review verdicts, tests/counts, known
+residuals/waivers, and explicit claims/questions to spot-check. Opus then samples the real
+referenced code and evidence independently.
+
+A sampled Opus finding is actionable: a credible pre-merge blocker stops that candidate; a
+post-merge blocker becomes immediate follow-up work. A clean sample never substitutes for the
+mandatory GPT-6 Sol gate. Do not delay every PR waiting for Opus 5.5.
+
+**Why:** retain a genuinely different external reviewer for occasional challenge/audit without
+making every PR depend on a second full security pipeline.
+
+**Decided by:** Thomas, 2026-09-29.
+
 ### 2026-09-28 · #10's gate-scope semantics decided: applicable-now gates required, future-stage gates activate with their prerequisite
 
 **Decision:** #10 ("all 38 declared gates enabled" vs. "every gate whose prerequisite exists

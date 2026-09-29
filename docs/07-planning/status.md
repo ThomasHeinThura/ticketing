@@ -1,5 +1,34 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+**2026-09-29 orchestrator snapshot — `main` at `6e3f9425`**, after **#500** (OpenAI
+review policy) and **#501** (G4 accessibility gate) merged. The active review tiers are
+GPT-6 Luna for implementation and ordinary review, GPT-6 Sol for required security reviews
+and phase finalizers; Opus 5.5 remains an optional sampled reviewer. Historical review records
+below retain the model names and verdicts that applied when they were written.
+
+**UAT smoke evidence:** image `v2-uat-shadow-0b95ed08`, shadow mode on. Health endpoints
+returned 200. The browser HAR contained 54 requests, with no `localhost:1337` requests and no
+4xx responses. This is smoke-level evidence only: 12 route groups were examined, many are
+missing, notification outcome is `legacy_outcome_unknown`, and the seven-day shadow soak has
+not completed. **Issue #8 remains open** pending the required evidence and cutover.
+
+**P0 gates:** issue **#9** and issue **#11** are closed. Issue **#10** remains open; G8 visual
+regression and G11 performance remain open gates. These facts preserve the gate state after
+#501's G4 accessibility addition.
+
+**Review candidates:** local candidate `8361fe11` for #498 received fresh reviews from three
+GPT-6 Luna reviewers and GPT-6 Sol, all CLEAR WITH FINDINGS. That local SHA is not the remote
+PR head, so these reviews do not establish the remote PR's current review state. PR #447 remains
+stale and behind; its earlier CI run showed unit and register failures. No current remote PR
+state is asserted here.
+
+Source basis for this snapshot: `origin/main` at `6e3f9425` and its #500/#501 merge history;
+UAT health checks, browser HAR, and shadow smoke capture; candidate-specific #498 review
+records; and the prior #447 CI run. GitHub's API was unreachable during this refresh, so no
+live PR-head or check state was inferred.
+
+---
+
 **2026-09-28 orchestrator snapshot (8) — `main` at `b7ec505a` (#497, stale UAT-overlay header
 comment removed). Prior snapshot (7), immediately below, is stale and kept only as history.**
 

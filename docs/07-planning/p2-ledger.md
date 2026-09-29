@@ -1,21 +1,25 @@
 # P2 Service Desk — execution ledger
 
-> **Owner:** the P2 lane. **Agents on this program (2026-09-23 lineup):** Luna (GPT-6),
+> **Model-policy update, 2026-09-29:** all current implementation and ordinary-review roles
+> previously assigned to Sonnet use GPT-6 Luna; every mandatory Opus security/critical or
+> phase-finalizer role uses GPT-6 Sol. Opus 5.5 is sampled only after a GPT-prepared packet.
+> `pal-mcp`, `pal-reviewer`, 9Router, and provider failover are retired. The lineup and PR
+> queue below are a **2026-09-23 historical snapshot**, not live capacity or PR state; use
+> the newest decision-log entry and GitHub for current routing and exact heads. Historical
+> evidence below remains unchanged.
+
+> **Historical owner/lineup (2026-09-23):** the P2 lane; Luna (GPT-6),
 > Copilot/DeepSeek 4.1 Flash (P1 + shared contract), Cline (mimo-v2.26 flash — all
-> Sonnet-tier implementation and ordinary reviews; this ledger). Claude hit its capacity
-> limit; its four active PRs (#308, #320, #322, #323) were taken over mid-flight.
-> **Claude Sonnet and Opus model capacity remain unavailable** — ordinary reviews are
-> executed by genuinely independent contexts with their **actual model identities recorded
-> per review** (never relabeled as Sonnet/Opus). Mandatory Opus security reviews stay
-> mandatory: affected PRs carry `SECURITY REVIEW PENDING — OPUS CAPACITY` and **never
-> merge without the Opus pass.**
+> — this is historical staffing context only). Claude hit its capacity limit; its four active
+> PRs (#308, #320, #322, #323) were taken over mid-flight. Current roles and reviewer
+> capacity follow the model-policy update above; never relabel historical reviews.
 > **Chain of record:** roadmap → specification/rules → issue → PR → exact SHA → tests →
 > reviews → UI walkthrough → merge → acceptance. Anything short of every cell is
 > **IN PROGRESS**, never SHIPPED.
 > **Supersedes** the 2026-09-18 ledger (its PR, #210, was closed unmerged; this file is
 > the fresh landing).
 
-## Coordination with the P1 (Copilot + DeepSeek) lane
+## Historical P1 coordination snapshot (Copilot + DeepSeek lane, 2026-09-23)
 
 - **Handover:** the #206 OpenAPI sweep findings were handed to P1 on PR #216 — **#216
   merged 2026-09-22** with a combined ordinary + mandatory security review returning
@@ -127,7 +131,11 @@ transitions, duplicate operations, retries, timing boundaries, approval conflict
 with the API slices. Reuses the landed calendar, workflow, audit, approvals and
 assignment pure cores — no parallel engines.
 
-## Opus-review queue (durable — never bypassed, never merged without)
+## Historical Opus-review queue (snapshot from 2026-09-23; not live PR state)
+
+The PR rows below record the queue at the time this ledger was written. Check GitHub before
+acting on any row. Current security-scope reviews require GPT-6 Sol at the exact candidate
+head; historical Opus reviews remain evidence for the exact heads they reviewed.
 
 | PR | Head awaiting Opus | Note |
 | --- | --- | --- |
@@ -135,9 +143,10 @@ assignment pure cores — no parallel engines.
 | **#320** work-item list API | branch head (post `1e8ad6f` fix round + main merge) | delta pass on the S1–S3 fix round (null-bucket cursor sort, cursor validation, assigneeName scope) |
 | **#322** reserve built-in role names | `fb92bff` | full pass; include judging the planted-role edge case (decision-log: report-only) |
 | **#323** shadow mode | `5d26f79` | delta pass on the S1–S7 fix round (S1 BLOCKING fixed: scopeSource branching + artifact→unevaluated; S2 attribution first-non-ALL; S3 trace validation; S5 bounded concurrency + drop-count; S6 prune loop; S4/S7 runbook) |
-| standing rule | — | any future P2 PR adding a migration or auth-adjacent route gets full Opus before merge |
+| current rule (2026-09-29) | — | every security-scope P2 PR gets its required GPT-6 Sol review at the exact head |
 
-Ordinary/alignment reviews: recorded per PR with actual model identities.
+Ordinary/alignment reviews: recorded per PR with actual model identities; current ordinary
+review roles use fresh GPT-6 Luna contexts as required by the model policy.
 
 ## Owner decisions queued for Thomas
 
@@ -172,4 +181,4 @@ Ordinary/alignment reviews: recorded per PR with actual model identities.
    Thomas's call to front-load the `team.is_cab` answer).
 4. **Coordinated first P2 migration batch** — the moment the 0068 collision settles:
    calendar + SLA + submission + approval + workflow tables in one ordered PR
-   (full review tiers + mandatory Opus).
+   (full review tiers + the mandatory GPT-6 Sol security review for the migration).
