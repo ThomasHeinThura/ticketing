@@ -53,11 +53,12 @@ candidate only requires baselines for active rows. The 120 not-started route row
 covered, so the candidate is not merge-ready. The #8 shadow soak is also open.
 
 **P1/P2/P3 lanes:** PR #447's remote candidate is stale and has failed `registers` and
-`unit + component`; its refreshed local branch merged #498, then `CI=true pnpm test:integration`
-failed at the merged attachment R6-1 regression (1 failure among 1,499 tests). The failure
-reported zero HTTP-200 winners in the concurrent-complete race; a separate P0 investigation
-branch is checking the same-final-object overwrite hypothesis. #447 remains unchanged and
-not merge-ready.
+`unit + component`; its refreshed local branch merged #498 and initially failed the R6-1
+attachment regression test. A separate test-only P0 follow-up (`22dd94d6`) corrects the
+fake-S3 ordering gate; focused R6-1, all three attachment-concurrency tests, and
+`CI=true pnpm test:integration` now pass (117 files / 1,490 tests). It has not been reviewed
+or merged, so #447 still needs that base fix before rebase and its own gates. #447 remains
+unchanged and not merge-ready.
 The PR body has been narrowed to the saved-view CRUD/pin slice governed by
 `search-and-saved-views.md`; it explicitly leaves #24's layouts unfinished. Nine rows remain
 in the separate `views.md` review section, so the broader layout UI remains blocked there.
