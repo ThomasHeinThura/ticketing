@@ -166,3 +166,45 @@ files, 1473/1473 tests, including both `attachment-liveness-race.test.ts` tests 
 commits from #495/#496 touch nothing this review examined.
 
 **Reviewed head:** `73fb5ea73095d0ae7717434cda3ae9fe6dd219a4`
+
+---
+
+## GPT-6 Sol security review for PR #498 candidate
+
+**Review date:** 2026-09-29
+**Reviewer:** GPT-6 Sol, fresh independent context
+**Candidate:** `0318c88b19f39d883efe08d320e1aa9ffe5f93dc`
+**Base:** `e081138ed2cffbfe331b08dc1eab993eae062ccb`
+
+### Scope examined
+
+The reviewer independently inspected the changed work-item liveness helper and guarded
+controllers, route policies and reach middleware, project archive/delete writes, audit/event
+placement, and the concurrency tests. The review focused on whether archived/deleted project
+and work-item states can race with the guarded mutations, including direct bulk deletion.
+
+### Findings
+
+**No blocking security findings.** The work-item and project locks are held through the
+mutations. If the archive/delete operation wins first, the locked read rejects the write; if
+the mutation wins first, the freeze waits. Direct bulk deletion repeats workspace and
+liveness checks in its controller.
+
+Two non-blocking residuals were recorded:
+
+1. Assignment's no-op branch returns from an unlocked read. A project may be archived just
+   afterward, leaving a stale `200` response, but that path writes no state, activity, audit
+   row, or event.
+2. Attachment completion finalizes storage before the database liveness guard. Cleanup errors
+   are swallowed, so a failed request can leave an orphaned storage object.
+
+The reviewer did not run tests. Local integration and static validation are recorded in the
+candidate PR description; protected GitHub checks remain the merge gate.
+
+### Verdict
+
+**CLEAR WITH FINDINGS (non-blocking)** for candidate
+`0318c88b19f39d883efe08d320e1aa9ffe5f93dc` only. This review does not attest the then-live
+remote PR head `2030681e692c892436af112d03e33707508ea5c1` or its checks.
+
+**Reviewed head:** `0318c88b19f39d883efe08d320e1aa9ffe5f93dc`
