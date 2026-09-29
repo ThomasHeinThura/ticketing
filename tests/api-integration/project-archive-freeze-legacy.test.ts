@@ -1,4 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
+import { Client } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -427,5 +429,154 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       .where(eq(schema.projectTable.id, project.id));
     expect(after?.deletedAt).not.toBeNull();
     expect(after?.archivedAt).toBeNull();
+  });
+
+  it("serializes label detach with task deletion in task-first lock order", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await createLegacyTask(project.id, columns.todo.id, 1);
+    const taskLabel = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          workspaceId: member.workspace.id,
+          taskId: task.id,
+          name: "Concurrent detach",
+          color: "red",
+        })
+        .returning(),
+      "task label",
+    );
+    mockAuthenticatedSession(member.user);
+
+    const suffix = randomUUID().replaceAll("-", "");
+    const functionName = `task_delete_barrier_${suffix}`;
+    const triggerName = `task_delete_barrier_${suffix}`;
+    const advisoryKey = Number.parseInt(suffix.slice(0, 7), 16);
+    const escapedTaskId = task.id.replaceAll("'", "''");
+    const client = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await client.connect();
+
+    let deleteRequest: Promise<Response> | undefined;
+    let detachRequest: Promise<Response> | undefined;
+    let advisoryLockHeld = false;
+    try {
+      await client.query(`
+        CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF OLD.id = '${escapedTaskId}' THEN
+            PERFORM pg_advisory_lock(${advisoryKey});
+            PERFORM pg_advisory_unlock(${advisoryKey});
+          END IF;
+          RETURN OLD;
+        END;
+        $$
+      `);
+      await client.query(`
+        CREATE TRIGGER ${triggerName}
+        BEFORE DELETE ON task
+        FOR EACH ROW EXECUTE FUNCTION ${functionName}()
+      `);
+      await client.query("SELECT pg_advisory_lock($1::bigint)", [advisoryKey]);
+      advisoryLockHeld = true;
+      const lockOwner = await client.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid",
+      );
+      const barrierPid = lockOwner.rows[0]?.pid;
+      if (barrierPid === undefined) {
+        throw new Error("could not read lock barrier backend pid");
+      }
+
+      deleteRequest = request(`/task/${task.id}`, "delete");
+
+      let deleteBackendPid: number | undefined;
+      const deleteDeadline = Date.now() + 5_000;
+      while (!deleteBackendPid && Date.now() < deleteDeadline) {
+        const blockedDelete = await client.query<{ pid: number }>(
+          `
+            SELECT pid
+            FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND pid <> pg_backend_pid()
+              AND wait_event_type = 'Lock'
+              AND $1 = ANY(pg_blocking_pids(pid))
+            LIMIT 1
+          `,
+          [barrierPid],
+        );
+        deleteBackendPid = blockedDelete.rows[0]?.pid;
+        if (!deleteBackendPid) {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+      }
+      expect(
+        deleteBackendPid,
+        "task delete reached its deterministic barrier",
+      ).toBeDefined();
+
+      detachRequest = request(`/label/${taskLabel.id}/task`, "delete");
+      let detachBlockedByDelete = false;
+      const detachDeadline = Date.now() + 5_000;
+      while (!detachBlockedByDelete && Date.now() < detachDeadline) {
+        const blockedDetach = await client.query<{ waiting: boolean }>(
+          `
+            SELECT EXISTS (
+              SELECT 1
+              FROM pg_stat_activity
+              WHERE datname = current_database()
+                AND pid <> pg_backend_pid()
+                AND wait_event_type = 'Lock'
+                AND $1 = ANY(pg_blocking_pids(pid))
+            ) AS waiting
+          `,
+          [deleteBackendPid],
+        );
+        detachBlockedByDelete = blockedDetach.rows[0]?.waiting === true;
+        if (!detachBlockedByDelete) {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+      }
+      expect(
+        detachBlockedByDelete,
+        "label detach waits on the task lock without holding the label row",
+      ).toBe(true);
+
+      await client.query("SELECT pg_advisory_unlock($1::bigint)", [
+        advisoryKey,
+      ]);
+      advisoryLockHeld = false;
+      const [deleteResponse, detachResponse] = await Promise.all([
+        deleteRequest,
+        detachRequest,
+      ]);
+      expect(deleteResponse.status).toBe(200);
+      expect(detachResponse.status).toBe(404);
+      expect(
+        await db
+          .select()
+          .from(schema.taskTable)
+          .where(eq(schema.taskTable.id, task.id)),
+      ).toHaveLength(0);
+      expect(
+        await db
+          .select()
+          .from(schema.labelTable)
+          .where(eq(schema.labelTable.id, taskLabel.id)),
+      ).toHaveLength(0);
+    } finally {
+      if (advisoryLockHeld) {
+        await client.query("SELECT pg_advisory_unlock($1::bigint)", [
+          advisoryKey,
+        ]);
+      }
+      await Promise.allSettled([deleteRequest, detachRequest].filter(Boolean));
+      await client.query(`DROP TRIGGER IF EXISTS ${triggerName} ON task`);
+      await client.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
+      await client.end();
+    }
   });
 });

@@ -7,6 +7,26 @@ import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-liv
 
 async function unassignLabelFromTask(id: string, userId: string) {
   const { deletedLabel, task } = await db.transaction(async (tx) => {
+    const [labelSnapshot] = await tx
+      .select({ taskId: labelTable.taskId })
+      .from(labelTable)
+      .where(eq(labelTable.id, id))
+      .limit(1);
+    if (!labelSnapshot) {
+      throw new HTTPException(404, { message: "Label not found" });
+    }
+    if (!labelSnapshot.taskId) {
+      throw new HTTPException(400, {
+        message: "Label is not assigned to a task",
+      });
+    }
+
+    // Match task deletion's task -> child-row lock order. A stale snapshot is
+    // rejected below instead of taking a second task lock after the label lock.
+    const lockedTask = await lockTaskAndAssertProjectLive(
+      tx,
+      labelSnapshot.taskId,
+    );
     const [label] = await tx
       .select()
       .from(labelTable)
@@ -15,12 +35,12 @@ async function unassignLabelFromTask(id: string, userId: string) {
     if (!label) {
       throw new HTTPException(404, { message: "Label not found" });
     }
-    if (!label.taskId) {
-      throw new HTTPException(400, {
-        message: "Label is not assigned to a task",
+    if (label.taskId !== labelSnapshot.taskId) {
+      throw new HTTPException(409, {
+        message: "Label assignment changed; retry the request",
       });
     }
-    const lockedTask = await lockTaskAndAssertProjectLive(tx, label.taskId);
+
     const [deletedLabel] = await tx
       .delete(labelTable)
       .where(eq(labelTable.id, id))
@@ -38,9 +58,6 @@ async function unassignLabelFromTask(id: string, userId: string) {
     throw new HTTPException(500, {
       message: "Failed to detach label from task",
     });
-  }
-
-  if (deletedLabel.taskId) {
   }
 
   await publishEvent("task.label_unassigned", {
