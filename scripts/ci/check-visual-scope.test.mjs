@@ -48,9 +48,20 @@ function visualSpec(
     helperNavigationFor,
     nestedNavigationFor,
     screenshotBeforeNavigationFor,
+    earlyReturnFor,
+    setContentAfterNavigationFor,
+    documentInterceptFor,
   } = {},
 ) {
-  return screens
+  const helper = `async function settleVisuals(page: Page) {
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => resolve()),
+    );
+  });
+}`;
+  const tests = screens
     .map(({ test: testName, screenshot, applicationRoute, inventoryRoute }) => {
       const applicationPath = applicationRoute.replace(
         /\$[A-Za-z0-9_]+/gu,
@@ -83,6 +94,16 @@ function visualSpec(
         testName === helperNavigationFor
           ? "await navigateElsewhere(page);"
           : "";
+      const earlyReturn =
+        testName === earlyReturnFor ? "if (process.env.CI) return;" : "";
+      const setContent =
+        testName === setContentAfterNavigationFor
+          ? 'await page.setContent("<main>pretend screen</main>");'
+          : "";
+      const documentIntercept =
+        testName === documentInterceptFor
+          ? 'await page.route("**/*", (route) => route.fulfill({ body: "<main>pretend screen</main>" }));'
+          : "";
       const beforeNavigation =
         testName === screenshotBeforeNavigationFor
           ? `${screenshotEvidence} `
@@ -93,9 +114,10 @@ function visualSpec(
         testName === disabledFor
           ? 'if (process.env.CI) test.fixme(true, "known issue");'
           : ""
-      } ${targetDeclaration} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${additionalNavigation} ${nestedNavigation} ${helperNavigation} ${afterNavigation} });`;
+      } ${targetDeclaration} ${documentIntercept} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${nestedNavigation} ${helperNavigation} await expect(page.getByText("screen ready")).toBeVisible(); await settleVisuals(page); ${afterNavigation} });`;
     })
     .join("\n");
+  return `${helper}\n${tests}`;
 }
 
 function storybookSpec({
@@ -318,6 +340,49 @@ test("G8 requires the screenshot capture to follow its declared route navigation
   assert.match(
     result.output,
     /work-list visual test captures its screenshot before navigating to its declared route/,
+  );
+});
+
+test("G8 rejects an early return that makes the screenshot unreachable", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, { earlyReturnFor: "work list @visual" }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list visual test can return before its route screenshot assertion/,
+  );
+});
+
+test("G8 rejects replacing the declared route document before capture", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      setContentAfterNavigationFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list visual test must navigate, assert visible route content/,
+  );
+});
+
+test("G8 rejects route interception that can replace the application document", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      documentInterceptFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /visual\.spec\.ts contains page navigation or screenshot assertions outside its named visual tests, or intercepts a non-API document route/,
   );
 });
 

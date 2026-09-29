@@ -158,6 +158,57 @@ function isScreenshotCall(node) {
   );
 }
 
+function isRouteInterceptCall(node) {
+  return (
+    ts.isCallExpression(node) &&
+    (isNamedProperty(node.expression, "route") ||
+      isNamedProperty(node.expression, "routeFromHAR"))
+  );
+}
+
+function isVisibleAssertionStatement(statement) {
+  return (
+    ts.isExpressionStatement(statement) &&
+    ts.isAwaitExpression(statement.expression) &&
+    ts.isCallExpression(statement.expression.expression) &&
+    isNamedProperty(statement.expression.expression.expression, "toBeVisible")
+  );
+}
+
+function isSettleVisualsStatement(statement) {
+  return (
+    ts.isExpressionStatement(statement) &&
+    ts.isAwaitExpression(statement.expression) &&
+    ts.isCallExpression(statement.expression.expression) &&
+    ts.isIdentifier(statement.expression.expression.expression) &&
+    statement.expression.expression.expression.text === "settleVisuals" &&
+    statement.expression.expression.arguments.length === 1 &&
+    ts.isIdentifier(statement.expression.expression.arguments[0]) &&
+    statement.expression.expression.arguments[0].text === "page"
+  );
+}
+
+function hasSafeSettleVisualsHelper(sourceFile) {
+  if (!sourceFile) return false;
+  const helpers = [];
+  const visit = (node) => {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === "settleVisuals") {
+      helpers.push(node);
+    }
+    node.forEachChild(visit);
+  };
+  visit(sourceFile);
+  if (helpers.length !== 1) return false;
+
+  // This is the only post-navigation helper allowed before capture. Keep its
+  // implementation narrowly bound to waiting for fonts and one animation frame.
+  const normalized = helpers[0].getText(sourceFile).replaceAll(/\s+/gu, "");
+  return (
+    normalized ===
+    "asyncfunctionsettleVisuals(page:Page){awaitpage.evaluate(async()=>{awaitdocument.fonts.ready;awaitnewPromise<void>((resolve)=>requestAnimationFrame(()=>resolve()),);});}"
+  );
+}
+
 function testVisualEvidence(callback) {
   if (!ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) {
     return {
@@ -165,15 +216,31 @@ function testVisualEvidence(callback) {
       directScreenshots: [],
       navigations: [],
       directNavigations: [],
+      returns: [],
     };
   }
 
   const screenshots = [];
   const navigations = [];
+  const returns = [];
   const visit = (node) => {
     if (isScreenshotCall(node)) screenshots.push(node);
     if (isPageNavigationCall(node)) navigations.push(node);
-    node.forEachChild(visit);
+    if (ts.isReturnStatement(node)) returns.push(node);
+    node.forEachChild((child) => {
+      // A return from a nested fixture/request callback does not exit the
+      // Playwright test. Only returns in the test's own control-flow scope can
+      // make its route screenshot unreachable.
+      if (
+        ts.isArrowFunction(child) ||
+        ts.isFunctionExpression(child) ||
+        ts.isFunctionDeclaration(child)
+      ) {
+        if (child === callback) visit(child);
+        return;
+      }
+      visit(child);
+    });
   };
   visit(callback.body);
 
@@ -183,7 +250,12 @@ function testVisualEvidence(callback) {
       evidence: awaitedScreenshotName(statement),
     }))
     .filter(({ evidence }) => evidence !== undefined)
-    .map(({ evidence }) => evidence);
+    .map(({ statement, evidence }) => ({
+      ...evidence,
+      statementIndex: callback.body.statements.indexOf(statement),
+      statementStart: statement.getStart(),
+      statementEnd: statement.end,
+    }));
   const directNavigations = callback.body.statements
     .filter(
       (statement) =>
@@ -196,12 +268,21 @@ function testVisualEvidence(callback) {
       const [url] = call.arguments;
       return {
         url: ts.isStringLiteral(url) ? url.text : undefined,
+        statementIndex: callback.body.statements.indexOf(statement),
+        statementStart: statement.getStart(),
+        statementEnd: statement.end,
         start: statement.getStart(),
         end: statement.end,
       };
     });
 
-  return { screenshots, directScreenshots, navigations, directNavigations };
+  return {
+    screenshots,
+    directScreenshots,
+    navigations,
+    directNavigations,
+    returns,
+  };
 }
 
 function navigationMatchesApplicationRoute(
@@ -626,6 +707,37 @@ for (const screen of manifest) {
         `${screen.name} visual test captures its screenshot before navigating to its declared route`,
       );
     }
+    if (evidence.returns.length > 0) {
+      failures.push(
+        `${screen.name} visual test can return before its route screenshot assertion`,
+      );
+    }
+    if (
+      evidence.directNavigations.length === 1 &&
+      evidence.directScreenshots.length === 1
+    ) {
+      const callbackBody = matchingCallbacks[0].body;
+      const navigationIndex = evidence.directNavigations[0].statementIndex;
+      const screenshotIndex = evidence.directScreenshots[0].statementIndex;
+      const postNavigation = callbackBody.statements.slice(
+        navigationIndex + 1,
+        screenshotIndex,
+      );
+      const safeSettleVisuals = hasSafeSettleVisualsHelper(visualSourceFile);
+      if (
+        screenshotIndex !== callbackBody.statements.length - 1 ||
+        postNavigation.some(
+          (statement) =>
+            !isVisibleAssertionStatement(statement) &&
+            !(safeSettleVisuals && isSettleVisualsStatement(statement)),
+        ) ||
+        !postNavigation.some(isVisibleAssertionStatement)
+      ) {
+        failures.push(
+          `${screen.name} visual test must navigate, assert visible route content, use only the safe visual settle helper, and finish with its declared screenshot assertion`,
+        );
+      }
+    }
   }
   if (!screen.screenshot.endsWith(".png")) {
     failures.push(`${screen.name} must name a PNG screenshot baseline`);
@@ -693,18 +805,26 @@ for (const screen of manifest) {
 
 let visualFilePageNavigations = 0;
 let visualFileScreenshotAssertions = 0;
+let visualFileInvalidRouteInterceptions = 0;
 const countVisualFileNavigations = (node) => {
   if (isPageNavigationCall(node)) visualFilePageNavigations += 1;
   if (isScreenshotCall(node)) visualFileScreenshotAssertions += 1;
+  if (isRouteInterceptCall(node)) {
+    const [matcher] = node.arguments;
+    if (!ts.isStringLiteral(matcher) || matcher.text !== "**/api/**") {
+      visualFileInvalidRouteInterceptions += 1;
+    }
+  }
   node.forEachChild(countVisualFileNavigations);
 };
 if (visualSourceFile) countVisualFileNavigations(visualSourceFile);
 if (
   visualFilePageNavigations !== mappedPageNavigations ||
-  visualFileScreenshotAssertions !== mappedScreenshotAssertions
+  visualFileScreenshotAssertions !== mappedScreenshotAssertions ||
+  visualFileInvalidRouteInterceptions > 0
 ) {
   failures.push(
-    `${path.basename(visualSpecPath)} contains page navigation or screenshot assertions outside its named visual tests`,
+    `${path.basename(visualSpecPath)} contains page navigation or screenshot assertions outside its named visual tests, or intercepts a non-API document route`,
   );
 }
 
