@@ -165,7 +165,9 @@ correction.
 - `NO-15` Mark one read, mark all read, and mark unread again.
 - `NO-16` Arrives live over WebSocket. No polling.
 - `NO-17` Read notifications are purged after the instance's configured notification
-  retention period (90 days by default; configurable in God Mode).
+  retention period (90 days by default; configurable in God Mode). The daily
+  `session-cleanup` job deletes only rows whose `read_at` is set and older than
+  `instance_setting.notification_retention_days`; unread notifications are retained.
 
 ## Customer notifications
 

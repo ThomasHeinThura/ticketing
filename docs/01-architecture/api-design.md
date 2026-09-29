@@ -73,7 +73,7 @@ these forms, and `PolicyMap<typeof routes>` makes a mismatch a type error.
 ## Workspace context
 
 Many routes are workspace-scoped but carry no workspace in the path (`/api/custom-fields`,
-`/api/capabilities`, `/api/webhooks`, `/api/views`, `/api/notifications`). They read the
+`/api/capabilities`, `/api/webhooks`, `/api/views`, `/api/notification`). They read the
 workspace from the **`X-Workspace-Id` header** (or `?workspace=` for GET), which the
 policy middleware validates against the identity's memberships **before** the policy
 check. Absent ⇒ `400`; not a member ⇒ `404`. The typed client sets the header from the
