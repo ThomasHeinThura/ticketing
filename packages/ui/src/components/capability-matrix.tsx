@@ -123,12 +123,13 @@ const CapabilityMatrix = React.forwardRef<
                         }}
                       />
                       <div className="min-w-0">
-                        <p
+                        <label
                           className="font-medium text-foreground text-sm"
+                          htmlFor={checkboxId}
                           id={labelId}
                         >
                           {item.label}
-                        </p>
+                        </label>
                         <p
                           className="mt-1 text-muted-foreground text-sm"
                           id={descriptionId}

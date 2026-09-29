@@ -78,6 +78,21 @@ describe("CapabilityMatrix", () => {
     ]);
   });
 
+  it("toggles a capability when its visible name is clicked", () => {
+    const onSelectedChange = vi.fn();
+    render(
+      <CapabilityMatrix
+        items={items}
+        onSelectedChange={onSelectedChange}
+        selected={[]}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Create"));
+
+    expect(onSelectedChange).toHaveBeenCalledWith(["work_item:create"]);
+  });
+
   it("keeps disabled items disabled and exposes the caller's reason", () => {
     const onSelectedChange = vi.fn();
     render(
