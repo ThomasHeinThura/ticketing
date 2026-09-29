@@ -1,10 +1,16 @@
 # CLAUDE.md
 
-Operating guide for Claude working in this repository.
+OpenAI-first operating guide for GPT agents working in this repository.
 
-[`AGENTS.md`](AGENTS.md) is canonical and applies to every agent, human or otherwise. Read
-it. This file does not repeat it — it holds the things that are specific to Claude, and the
-things previous Claude sessions learned the hard way and would otherwise learn again.
+> **Compatibility filename.** This file keeps the historical name `CLAUDE.md` so existing
+> links, CI comments, CODEOWNERS entries and repository references do not break during the
+> model-provider migration. Its operative instructions are now for **OpenAI GPT agents**.
+> A future rename to `OPENAI.md` is a separate control-plane change, not part of this model
+> routing decision.
+
+[`AGENTS.md`](AGENTS.md) is canonical and applies to every agent, human or otherwise. Read it.
+This file does not repeat it — it holds the OpenAI-specific model routing, subagent patterns,
+review handoffs, and the repository lessons that would otherwise be relearned each session.
 
 This file deliberately contains **no live PR list, live SHA, issue count, or current stage
 count**. Refresh those from GitHub every session.
@@ -15,450 +21,409 @@ count**. Refresh those from GitHub every session.
 
 Read, in this order, every session:
 
-1. [`AGENTS.md`](AGENTS.md) — the five rules and the twenty do-nots.
-2. [`docs/07-planning/status.md`](docs/07-planning/status.md) — **Blocked** first, then the
-   newest session-log entry. It tells you what is actually true today.
-3. [`docs/07-planning/decision-log.md`](docs/07-planning/decision-log.md) — the newest
-   entries. **Check it before calling anything an open question.** Most things that look
-   undecided were decided and written down.
-4. Live GitHub — `gh pr list --state open`, `gh issue list --state open`, the exact head of
-   whatever you are about to touch.
-
-Then the feature spec for what you are doing, and any ADR it cites.
+1. [`AGENTS.md`](AGENTS.md) — the five rules and the standing do-nots.
+2. [`docs/04-engineering/agent-workflow.md`](docs/04-engineering/agent-workflow.md) — the
+   repository-wide agent workflow.
+3. [`docs/07-planning/status.md`](docs/07-planning/status.md) — **Blocked** first, then the
+   newest dated snapshot.
+4. [`docs/07-planning/decision-log.md`](docs/07-planning/decision-log.md) — newest entries
+   first. **Check it before calling anything an open question.**
+5. Live GitHub — `gh pr list --state open`, `gh issue list --state open`, the exact head of
+   whatever you are about to touch, its review state, and its checks.
+6. The feature spec for the work, plus every ADR or authoritative contract it cites.
 
 **Do not act on a remembered SHA or a remembered PR list from an earlier conversation.**
-Re-check. Sessions have compacted or lost context before while a repository this active kept
-moving underneath them.
+Re-check. This repository moves too quickly for conversational memory to be authoritative.
 
 ---
 
 ## Mission, and what "done for now" means
 
 Continuous verified progress through the currently authorized dependency graph, currently
-targeting **P4 complete** — a fresh deployment configurable into a customer's service desk
-without editing application source. P0 has taken longer than planned and the calendar is
-under real pressure; that changes the urgency, not the gates. A gate that closes a real
-defect does not get thinner because a customer is waiting.
+working toward **P4 complete** — a fresh deployment configurable into a customer's service desk
+without editing application source.
 
-Do not stop at: P0, a throttle boundary, one merged PR, one merge-ready PR, a review report,
-a provider failure, or a context refresh. See "Keep moving, without skipping a gate" in
-`AGENTS.md` for the operational rules this implies, and "Reporting to Thomas" below for how
-to say what happened without that becoming the stopping point itself.
+Calendar pressure changes urgency, not gates. A gate that closes a real defect does not become
+thinner because a date is near.
+
+Do not stop at one merged PR, one merge-ready PR, one review report, one blocked lane, one
+provider failure, or a context refresh. See `AGENTS.md` → **Keep moving, without skipping a
+gate**.
 
 ---
 
 ## Establishing current truth
 
-**Do not maintain a live-state narrative in this file.** Earlier versions of `CLAUDE.md` and
-`status.md` embedded pull-request tables, throttle-condition counts and "blocked by exactly
-issue N" statements that were true when written and false within days, and were then read as
-current by the next session. The fix is not a better table — it is not keeping one here.
+**Do not maintain a live-state narrative in this file.** GitHub and the newest dated
+`status.md` snapshot are the live sources.
 
-To find out what is actually true right now:
+To establish truth now:
 
-1. `status.md`'s dated snapshot header — **stage**, throttle open/shut, and *why* a throttle
-   is shut (the reason is durable even when the count is not).
-2. `docs/07-planning/retrofits/organization-plugin-retrofit.md` (or whichever stage ledger
-   governs the work you're doing) for exact dependency state.
-3. `gh pr list --state open` and `gh issue list --state open` for what is actually in
-   flight. Nothing in an open pull request is on `main` — do not build on it, do not
-   rebuild it.
-4. `gh pr view <n> --json headRefName,mergeable,reviewDecision,statusCheckRollup` for one
-   candidate's exact state before reviewing or merging it.
+1. Read the newest `status.md` snapshot and its Blocked section.
+2. Read the stage/retrofit ledger that governs the work.
+3. Run `gh pr list --state open` and `gh issue list --state open`.
+4. For a candidate, run `gh pr view <n> --json headRefName,headRefOid,mergeable,reviewDecision,statusCheckRollup`.
+5. Compare the exact candidate head with every recorded review head before merging.
 
-If `status.md` and GitHub disagree, GitHub is right — `status.md` is simply older. Update
-`status.md` when you find it stale rather than working around the discrepancy silently.
+If `status.md` and GitHub disagree, GitHub is newer. Correct `status.md`; do not silently work
+around the discrepancy.
 
 ---
 
 ## How work reaches `main`, and who may merge
 
-`AGENTS.md`'s flow is unchanged: **branch → commit → push → pull request → required
-independent review → required security review where applicable → required CI green → merge
-→ refresh `main` → continue.**
+`AGENTS.md`'s flow is unchanged:
 
-**The orchestrating Claude session may merge a fully-green candidate itself**, through the
-normal protected pull-request flow, once every required gate is genuinely satisfied on the
-exact candidate SHA (Thomas, 2026-09-15 — see the decision log; this supersedes the earlier
-"only Thomas merges" rule). Lane and background subagents never merge — only the top-level
-session that is actually driving the work does, and only after verifying every gate itself
-rather than trusting a subagent's report of green.
+**branch → commit → push → pull request → required independent review → required GPT-6 Sol
+security review where applicable → required CI green → merge → refresh `main` → continue.**
+
+The top-level orchestrating GPT session may merge a fully-green candidate through the normal
+protected pull-request flow once every required gate is genuinely satisfied on the **exact
+candidate SHA**. Lane/subagent contexts never merge.
 
 Before merging, verify directly:
 
-- the candidate SHA is the one that was actually reviewed — a rebase, a conflict-resolution
-  commit, or a `main`-merge since the last review invalidates it;
-- applicable tests are green with the expected suite/file counts, not just exit code zero;
-- the required independent review(s) are recorded on the PR at this SHA;
-- the required security review is recorded where the change touches a security-review-scope
-  path (`docs/04-engineering/ci-cd.md`'s list), at this SHA;
+- the candidate SHA is the SHA actually reviewed;
+- applicable tests are green with the expected suite/file counts;
+- required independent review(s) are recorded at that SHA;
+- required GPT-6 Sol security review is recorded at that SHA for security-scope changes;
 - every required GitHub status check is green;
-- branch protection permits the merge without any bypass;
-- **the `## Gates` table cites no waived gate.** If it does, this delegation does not cover
-  it — the waiver-declaration mechanism proves a waiver was declared, not that Thomas
-  authorized it, and his physical presence at the merge button was the only real check on
-  that. A waived-gate candidate needs Thomas's own action to merge, always.
+- branch protection permits the merge without bypass;
+- the `## Gates` table cites no waived gate.
 
-If any of that is not true, do not merge. Say what is missing on the PR, and move to other
-runnable work — do not sit idle waiting on it, and do not route around it.
-
-After every merge: refresh `main`, refresh PR/issue/check state, release dependents that
-were waiting on it, rebase and re-test only the branches that actually need it, and continue.
-A merge is not a stopping point.
+If any item is false, do not merge. Record what is missing, then continue other runnable work.
 
 ---
 
-## Model tiers
+# Model routing
 
-> **`pal-mcp` is FULLY UNSUSPENDED as of 2026-09-27 (Thomas — see the decision log's newest
-> entry) for all reading, ordinary review, audit, and analysis — on any branch, any scope,
-> including security-review-scope changes.** The one thing this never touches: the mandatory
-> final Opus security/critical review is unaffected in every respect on a security-scope PR —
-> same tier, same independence requirement, same mandatory status, never satisfied by
-> `pal-mcp` at any confidence level, regardless of how much ordinary-review/audit work
-> `pal-mcp` does on that same PR. The original finding: a cross-call content leak in its
-> `codereview`/`analyze`/`precommit` tools (one session's file list, prompt text, and
-> findings appeared in a different, unrelated session's response, with no shared
-> `continuation_id`), which survived Thomas's first fix attempt (fusion panel → failover
-> config change) on 2026-09-26 — server-side workflow-tool state being shared across
-> calls/clients, not something the model-routing config controlled. Thomas fixed it at the
-> actual server/container level and redeployed; two independent sessions ran adversarial
-> concurrency tests against the redeployed server on 2026-09-27, including forcing the exact
-> `calling_expert_analysis` round-trip that reproduced the leak before, and found it clean —
-> a `pal-mcp`-based review of a real, in-flight PR then produced a substantive, correct,
-> non-blocking finding, further evidence it's doing real reviewing work, not just failing to
-> leak. See the decision log's two 2026-09-27 entries (partial, then full) for exactly what
-> was tested and Thomas's own reasoning for going the rest of the way the same day.
->
-> **A live process gap, worth knowing before you spawn a subagent that uses `pal-mcp`:** a
-> subagent's own view of this file (via its system-reminder) can lag mid-session edits to the
-> live file, even though `.claude/agents/**` role-prompt content is read fresh at each spawn.
-> If a subagent reports a conflict between a task instruction and its own `CLAUDE.md`
-> snapshot, tell it to `Read` `docs/07-planning/decision-log.md` directly — a live file read,
-> not a cached snapshot — rather than trusting either side blindly. One subagent already hit
-> this and handled it correctly (treated the stale snapshot as unverified, fell back to a
-> direct Sonnet review) — see the decision log's full-unsuspension entry.
->
-> - **`pal-mcp`** (an MCP tool suite — `analyze`, `codereview`, `secaudit`, `debug`,
->   `refactor`, `testgen`, `precommit`, `consensus`, `thinkdeep`, `tracer`, `chat`,
->   `apilookup`, `challenge`) is now the **primary** path for bulk reading/context-prep,
->   ordinary review, audit, reporting, and the alignment check. **`pal-mcp`'s `clink` tool is
->   explicitly excluded from this path, always** — it launches other CLIs (`claude`, `codex`,
->   `gemini`) with their own full tool access, which would make `pal-mcp` an implementation
->   path in disguise; never use it, and never count its output as any review. Its `coder` model is a
->   **failover chain** on Thomas's own 9Router gateway — **GPT-6 Luna primary**, falling
->   over in order to Gemini 3.8 Flash, DeepSeek v4.1 Flash, then GLM 5.3 Flash only if GPT-6
->   Luna is unavailable (changed 2026-09-26 from an earlier fusion-panel-with-judge mode,
->   after that mode showed cross-call content contamination in testing — see the decision
->   log). 272K context, not a single small local model.
->   Thomas confirmed the endpoint is his own and vetted (2026-09-26).
-> - This supersedes the 2026-09-23/2026-09-24 "#345 temporary current-model-context" ordinary-
->   review fallback for Claude's own subagent tier: GPT-6 Luna's review capacity is now
->   reachable directly as a tool call from inside this session, not only through a separately
->   Thomas-run agent.
-> - **Sonnet's role narrows to coding/implementation against an agreed spec**, spawned
->   explicitly, and remains the fallback ordinary reviewer only when `pal-mcp`/9Router is
->   genuinely unreachable — record the fallback and why, same as any other tier substitution.
-> - **The Opus 5.5 final security/critical review is unchanged: still mandatory, still a
->   fresh independent context, still never replaced by any lower tier — including `pal-mcp`.**
->   If Opus is unavailable, the PR waits.
->
-> See the 2026-09-26 entry ("`pal-mcp` becomes the ordinary review/audit/report/alignment
-> tool") and the 2026-09-23 entries it partly supersedes ("Three non-Claude implementation
-> agents take the P0/P1/P2 lanes…" #336, "Until the lane agents' review capacity returns…"
-> #345). The text below describes the tiers **within Claude's own subagents**, and the merge
-> gates are unchanged.
+## The migration rule
 
-Every subagent's model or tool is set **explicitly** at spawn time — never inherited from the
-session. Three lanes are in play: **`pal-mcp`** (reading, ordinary review, audit, report,
-alignment), **Claude Sonnet** (coding/implementation, and ordinary-review fallback), and
-**Claude Opus** (the sole final security/critical review gate, never substituted). The earlier
-multi-provider router, and the non-Claude coding agents routed through it, did not work out
-**as an implementation router** — `pal-mcp` is narrower than that: a review/audit/reporting
-tool, never an implementation path, and it never touches the Opus gate.
+From this decision forward:
 
-| Work | Tool / model |
+- every role previously assigned to **Claude Sonnet** is assigned to **GPT-6 Luna**;
+- every required role previously assigned to **Claude Opus / Opus 5.5** as a merge gate or
+  stage-completion gate is assigned to **GPT-6 Sol**;
+- **Opus 5.5 remains available only as one independent sampled "big reviewer"**, described
+  below. It is not the per-PR security gate and not the phase finalizer;
+- `pal-mcp`, `pal-reviewer`, `9Router`, and their provider failover chain are **retired from
+  the active TaskDesk workflow**. Do not use them for reading, implementation, review,
+  reporting, alignment, or security clearance.
+
+Historical review records remain historical truth. Do not rewrite old PRs, old security-review
+notes, or old decision-log entries merely because the current model policy changed.
+
+## Active model tiers
+
+| Work | Required model / context |
 | --- | --- |
-| Bulk reading, context-prep, summarization | `pal-mcp` (`coder` failover chain), any scope |
-| Ordinary review (bugs, tests, code quality), audit, reporting | `pal-mcp` (`coder` failover chain), any scope including security-scope; Sonnet fresh context as fallback if `pal-mcp`/9Router is unreachable **or if the PR's author is GPT-6 Luna, Gemini 3.8 Flash, DeepSeek 4.1 Flash, or GLM 5.3 Flash — any of these could be the model that actually answers, so `coder` cannot independently review a PR authored by any of them.** A security-scope PR still requires the separate, mandatory Opus pass below in addition — `pal-mcp` reviewing it ordinarily never substitutes for that |
-| Project-alignment / misalignment check — does this change match the spec, the vocabulary, the shared contracts, the five rules | `pal-mcp` (`coder` failover chain), any scope; Sonnet fresh context as fallback |
-| Implementation against an agreed spec | Sonnet, spawned explicitly |
-| **Final independent security / critical review** | **Opus**, spawned explicitly as its own subagent, on the exact candidate SHA — never `pal-mcp`, never a fallback tier |
-| **Phase finalizer** (P0–P7, additive — see `AGENTS.md`'s "Review tiers") | **Opus**, a **fresh independent context that did not orchestrate or merge that stage's own PRs**, across everything merged for the stage, in addition to (never instead of) the per-PR security-scope gate above. If Opus is unreachable for the finalizer, the stage is **not** claimed done — same capacity rule as the per-PR gate, not a lower bar because it runs less often |
-| Orchestrating, planning, synthesizing reports | whatever model this top-level session is running as |
+| Implementation against an agreed spec | **GPT-6 Luna**, explicitly selected |
+| Small mechanical implementation / tests | **GPT-6 Luna** |
+| Bulk repository reading and context preparation | **GPT-6 Luna** by default; **GPT-6 Sol** when the reasoning is security/architecture-heavy |
+| Ordinary review — bugs, tests, code quality | fresh independent **GPT-6 Luna** context(s) |
+| Architecture / project-alignment review | fresh **GPT-6 Luna** for bounded work; **GPT-6 Sol** for broad/high-risk design changes |
+| Security-scope final review | **GPT-6 Sol**, fresh independent exact-head context, mandatory |
+| Critical cross-boundary review | **GPT-6 Sol** |
+| Phase finalizer P0–P7 | **GPT-6 Sol**, fresh independent context, additive to per-PR reviews |
+| Orchestration / planning / synthesis | top-level GPT session; prefer **GPT-6 Sol** for broad governance/security work |
+| Random sampled "big reviewer" | **Opus 5.5**, only from a GPT-prepared review packet; optional sampling, never a replacement for GPT-6 Sol |
 
-**Reading, ordinary review, audit, reporting and the alignment check default to `pal-mcp`,
-on any branch and any scope — including security-scope changes (decision log, 2026-09-27,
-full unsuspension).** A security-scope PR still gets its separate, mandatory Opus pass in
-addition, exactly as before; `pal-mcp` doing the ordinary review never substitutes for it.
-Match the tool to the job: `analyze`/`codereview`/`secaudit` for review and audit,
-`thinkdeep`/`tracer` for understanding a change before judging it, `precommit` before a
-candidate goes up, `chat`/`consensus` for a second opinion, `apilookup` for current API/SDK
-facts instead of guessing from training data. Spin up as many independent `pal-mcp` calls or
-Sonnet subagents as there is genuinely independent, boundable work for — implementation lanes
-stay Sonnet; ordinary reviewers and the alignment checker default to `pal-mcp`, falling back
-to fresh Sonnet contexts only when `pal-mcp` is genuinely unreachable. Decide the tier and the
-reviewer count yourself, using `AGENTS.md`'s review-tier table — **by what the change actually
-risks, not by which directory it touches** (Thomas, 2026-09-16, after PR #148 spent
-eight-plus review rounds on a small CI-parsing fix: touching `scripts/ci/**` or another
-security-scope path is not on its own a reason for three rounds — a bounded fix that changes no
-authority or gate-semantics invariant is one strong ordinary review, then straight to the
-single required Opus pass; the full three-round tier is for migrations, API+frontend crossing
-the same change, concurrency, cross-package integration, or a change that actually redesigns an
-authority/gate-semantics invariant, not for every touch to a sensitive path). Do not ask Thomas
-to make that call per PR — but do apply the actual table, not a shortcut memory of "CI files
-always get three."
-
-**When a mechanism has already had several review rounds finding the same recurring class of
-gap, do not keep queuing more ordinary-review rounds** — see AGENTS.md's "stop patching and
-change altitude." Once the design has had its structural fix and further findings are narrower
-instances of the same class (not a new class), one Opus pass is the closing gate, not
-another ordinary round first. This is a rule about round *count*, not about rigor within a
-round — exact-head discipline, a real regression test per finding, and the ban on waiving a
-gate are unchanged.
-
-**Only the final independent review for genuinely security-sensitive or otherwise critical
-work is Opus, and it is always a fresh, separate context from whatever authored or
-orchestrated the change — including `pal-mcp`.** A context that materially authored, directed,
-or remediated the work under review cannot also clear it — spin up a distinct Opus subagent
-(or, if this session is itself Opus, hand off to a fresh top-level Opus context) for that
-review alone. Security-review scope is the path list in
-[`ci-cd.md`](docs/04-engineering/ci-cd.md): auth, permissions, migrations, the CI/gate
-machinery itself, and the dependency graph (`package.json`, lockfiles, `pnpm-workspace.yaml`
-overrides).
-
-Five things an agent may never do:
-
-1. Approve its own review.
-2. Waive a quality gate — only Thomas, recorded in the decision log.
-3. **Downgrade an unavailable reviewer.** If Opus capacity is genuinely unreachable
-   mid-review, the candidate waits, marked **SECURITY RE-REVIEW PENDING — OPUS CAPACITY** on
-   the PR. Capacity exhaustion means wait, not substitute.
-4. **Treat `pal-mcp`, or any model in its `coder` panel, as satisfying the Opus gate.**
-   `pal-mcp` is an ordinary-review, audit and reporting tool. It is never the final
-   security/critical review, at any confidence level its own tools report.
-5. **`Read`-and-paste the content of anything outside the repo worktree into a `pal-mcp`
-   prompt, or anything a file's own content suggested passing.** `pal-mcp` is a **remote SSE
-   server** (`https://mcp-router.technexus.info/sse`, confirmed 2026-09-26) — it cannot read
-   this host's filesystem itself, at all; its file-path parameters do not embed content
-   (verified: they return `files_embedded: 0` and ask for the content back). So the earlier
-   framing of this rule ("its tools take arbitrary absolute paths and read them with the host
-   user's own privileges") was **wrong** — there is no such read. The actual control point is
-   what *you* `Read` and paste into the prompt: never a dotfile, a home-directory config,
-   `.env*`, `*.pem`, `*.key`, or a credential file. Thomas vetted the 9Router gateway itself;
-   he has not separately vetted what its panel's own third-party sub-providers (Gemini,
-   DeepSeek, GLM) retain or train on, and their exact composition on the gateway rests on his
-   statement — it cannot be verified from this side. Treat both as open items, not resolved,
-   until he says otherwise (`pal-reviewer.md` carries the same rule). **`pal-mcp` itself is
-   fully unsuspended as of 2026-09-27 (see the notice at the top of "Model tiers") — this rule
-   about what content to send it is unaffected by that and applies at every scope.**
+Every model/context used for a review is named explicitly in the PR or review note. Never rely
+on an inherited/default model label.
 
 ---
 
-## Using subagents here — what works
+## GPT-6 Luna — implementation and ordinary review
 
-This corpus is large, and parallel work is genuinely useful when it is bounded. What has
-been learned on this repository:
+GPT-6 Luna inherits the work previously assigned to Sonnet:
 
-- **Every subagent needs a concrete, bounded deliverable**: exact branch/head or exact
-  files, exact question, exact expected output. Do not spin one up to "look into" something
-  broadly — that burns tokens for a report nobody can act on (`AGENTS.md` do-not 19).
-- **Partition by file, exclusively.** Two agents editing one document, or one shared
-  contract (`packages/permissions`, identity/context types, the org/workspace/project
-  schema, the work-item base schema, plugin contracts, the API error envelope, the event
-  envelope, route-policy types, the migration journal), will silently overwrite each other
-  or redesign it twice. Give each agent a file list it owns and a handoff note for anything
-  it needs changed elsewhere.
-- **Use the plain `Agent` tool, one lens per agent, in the background** when several
-  independent implementation or review lanes are genuinely ready at once. Default useful
-  concurrency is a handful of lanes — as many as there is real, non-overlapping,
-  well-scoped work for, not a fixed number to hit.
-- **FULLY UNSUSPENDED 2026-09-27 — the `pal-reviewer` subagent (`.claude/agents/pal-reviewer.md`)
-  is usable again for ordinary review, audit, reporting and the alignment check, on any
-  candidate, any scope, including security-scope.** A security-scope candidate still needs
-  the separate, mandatory Opus pass in addition — `pal-reviewer` never substitutes for it.
-  Give it the exact candidate SHA and file list, and **paste the actual diff/file content
-  directly in the task prompt** — it has no `Bash`/`git`, so a bare path or SHA reference
-  alone will not let it fetch the real content itself (a subagent hit exactly this gap on PR
-  #408 and correctly refused to fabricate a review rather than guess). It does the actual
-  review via `pal-mcp`'s `coder` failover chain, batched into as few tool calls as the job
-  allows, and reports the SHA it checked plus what it did not check. Fall back to a fresh
-  Sonnet context only when `pal-mcp`/9Router is genuinely unreachable, and say so in the
-  report. **If it reports its own `CLAUDE.md` snapshot conflicts with your task instruction,
-  tell it to `Read` `docs/07-planning/decision-log.md` directly** — see the decision log's
-  full-unsuspension entry for why this can happen.
-- **Do not reach for heavier multi-agent orchestration (the `Workflow` tool) as a standing
-  default.** It requires the user's own explicit opt-in in that session and is not something
-  this file can pre-authorize; ask Thomas to say so explicitly ("use a workflow") when a
-  stage genuinely has enough independent, well-defined slices queued to justify a larger,
-  structured fan-out. Its stall detector has also killed long-document review agents on this
-  repository before — for large single-document review, plain background `Agent` calls have
-  been more reliable.
-- **Have every agent write findings incrementally**, not buffered for a final message, when
-  the task can take a while.
-- **Tell agents to read in ranges**, never to `cat` a long file or walk a reference clone
-  recursively — that is what triggers timeouts on this corpus.
-- **Re-verify a subagent's claims against the actual source before acting on them.**
-  Confident findings have been wrong before; the ones that mattered were checked against the
-  file first.
+- implement code/tests against an already-approved spec;
+- prepare bounded context;
+- perform ordinary correctness/test/quality review in a fresh context;
+- perform project-alignment review for ordinary changes;
+- prepare evidence packets for GPT-6 Sol or Opus 5.5;
+- remediate findings when assigned as the fixer.
+
+Ordinary substantive work still requires the reviewer count in `AGENTS.md`:
+
+- at least **two fresh independent reviewer contexts** for ordinary substantive work;
+- **three** for broad/high-coupling work when the review-tier table calls for it;
+- one strong ordinary reviewer for the bounded cases explicitly allowed by the table.
+
+A GPT-6 Luna context that materially authored, directed, or remediated the change is not an
+independent reviewer of that same change. The model name may be the same; the context and role
+must be independent.
+
+---
+
+## GPT-6 Sol — mandatory security / critical gate
+
+GPT-6 Sol inherits every mandatory gate role previously assigned to Opus.
+
+For every security-scope PR, after the required ordinary review clears, run a fresh independent
+GPT-6 Sol review on the **exact candidate SHA**.
+
+The security-scope path list remains authoritative in
+[`docs/04-engineering/ci-cd.md`](docs/04-engineering/ci-cd.md): authentication and permissions
+code, migrations, CI/gate machinery, and the dependency graph, plus any other paths that file
+currently declares.
+
+The reviewer must not have materially authored, directed, or remediated the candidate.
+
+The review records:
+
+- exact candidate SHA;
+- merge base or comparison base;
+- files/surfaces examined;
+- tests or reproductions actually run;
+- findings with blocking/non-blocking classification;
+- residual risk / what was not checked;
+- verdict;
+- `**Reviewed head:** <40-character-sha>` in the committed review note.
+
+**No security-scope row is exempt from GPT-6 Sol.** The depth may be lightweight for a truly
+mechanical non-semantic change, but the required independent Sol confirmation still happens.
+
+If GPT-6 Sol is unavailable, the candidate waits and is marked:
+
+**SECURITY RE-REVIEW PENDING — GPT-6 SOL CAPACITY**
+
+Do not downgrade to Luna, Opus 5.5, or any other model to make the merge happen.
+
+---
+
+## Phase finalizer — GPT-6 Sol, additive
+
+At each stage completion P0–P7, before the stage is claimed done, run one broader fresh
+independent GPT-6 Sol red-team pass across everything merged for that stage since the previous
+finalizer.
+
+The phase finalizer:
+
+- does not replace per-PR GPT-6 Sol security reviews;
+- does not batch or postpone per-PR security work;
+- exists to catch cross-PR interactions that an individual review could not see;
+- must be independent from the contexts that orchestrated or merged the stage's PRs;
+- blocks the stage claim if unavailable or if a blocking finding remains unresolved.
+
+If the phase finalizer discovers a defect that a per-PR gate should have caught, treat that as
+a finding about the per-PR process too. Do not respond by weakening the per-PR gate and relying
+more heavily on the finalizer.
+
+---
+
+# Opus 5.5 — sampled big reviewer, not the merge gate
+
+TaskDesk keeps **one Opus 5.5 big-review role** as an additional random/sample audit.
+
+It is deliberately **not a full review of every PR** and **not a required per-PR merge gate**.
+Its purpose is to challenge the GPT review system itself by sampling claims, code, evidence,
+and recurring defect classes from a fresh outside context.
+
+## When it runs
+
+There is no fixed per-PR cadence. Thomas or the orchestrating session may select a candidate,
+a recently merged batch, a defect class, or a stage slice for a sampled Opus 5.5 check.
+
+Do not delay every PR waiting for Opus 5.5. That would recreate the old process under a new
+name.
+
+When a sample is selected, however, its findings are real:
+
+- before merge: a credible blocking finding blocks the candidate until resolved and rechecked;
+- after merge: file/assign the finding immediately and remediate under the normal workflow;
+- a clean Opus sample never substitutes for a required GPT-6 Sol review.
+
+## Opus 5.5 receives a GPT report, not an unstructured dump
+
+Before invoking Opus 5.5, **GPT-6 Luna or GPT-6 Sol must prepare a review packet**. Opus 5.5
+must not be asked to reconstruct the whole repository state from scratch as its normal mode.
+
+The packet contains, at minimum:
+
+1. PR / issue / stage and exact SHA(s).
+2. What changed and why.
+3. Exact changed-file list and the highest-risk files.
+4. Relevant spec/ADR/rules in scope.
+5. Risk classification and why that tier was chosen.
+6. Ordinary GPT-6 Luna review verdicts and unresolved findings.
+7. GPT-6 Sol security-review verdict if the work is security-scope.
+8. Tests actually run, including suite/file/test counts and notable negative tests.
+9. Known residuals, waivers, exceptions, and `## Not done` items.
+10. Any recurring defect class or architectural invariant the reviewer should challenge.
+11. Explicit sample questions: what claims should Opus spot-check?
+
+Opus 5.5 then samples the packet against the real referenced code/evidence. It may choose its
+own random files, tests, or claims from that packet. It is not constrained to agree with the
+GPT conclusions.
+
+The packet author and the Opus reviewer are separate roles. Opus 5.5 does not prepare the
+packet it is judging.
+
+---
+
+## Retired tooling: `pal-mcp`, `pal-reviewer`, 9Router
+
+The earlier `pal-mcp` ordinary-review/audit/reporting route is superseded.
+
+Going forward:
+
+- do not call `pal-mcp` for any TaskDesk work;
+- do not use `.claude/agents/pal-reviewer.md` as an active agent role;
+- do not use `9Router` or its Gemini/DeepSeek/GLM failover chain as TaskDesk reviewer or
+  implementer routing;
+- do not use `clink` through `pal-mcp`;
+- do not count any historical `pal-mcp` confidence/verdict as current-model evidence for a new
+  candidate head.
+
+Historical decision-log entries and review records about `pal-mcp` stay intact because the
+decision log is append-only. The new decision supersedes their operative effect; it does not
+erase history.
+
+---
+
+## Review-round discipline
+
+When repeated review keeps finding narrower instances of the same already-identified defect
+class, stop patching individual examples and change altitude.
+
+After the third round on the same mechanism finds the same class again:
+
+- ask whether a structural invariant/helper/redesign is required;
+- add the structural guard when appropriate;
+- add non-vacuous regression tests;
+- then use the review tier the resulting candidate actually requires.
+
+Once the structural fix is in place and the remaining changes are only narrower instances of
+the same class, do not stack more Luna rounds merely for comfort. The required GPT-6 Sol pass
+closes the security tier if it is clean.
+
+This changes review count, not rigor: exact-head discipline, real regression tests, and the
+ban on waiving gates remain unchanged.
+
+---
+
+## Using parallel GPT agents here
+
+Parallel work is useful only when it is bounded.
+
+- Give every agent an exact branch/head or exact files, exact question, and expected output.
+- Partition editing work by file/shared contract. Two lanes never edit the same shared
+  contract concurrently.
+- Implementation lanes default to GPT-6 Luna.
+- Ordinary reviewer lanes use fresh GPT-6 Luna contexts.
+- Security/critical review uses a fresh GPT-6 Sol context.
+- A sampled Opus 5.5 audit only starts after a GPT review packet exists.
+- Have long-running reviewers write findings incrementally.
+- Read large files in ranges rather than dumping entire trees unnecessarily.
+- Re-verify reviewer claims against actual source before acting on them.
+
+A blocked lane blocks that lane, not the whole program.
 
 ---
 
 ## Deployment status is part of the routine, not a separate track
 
-A live UAT deployment is near-term, active priority, not a someday item. **The four
-application-side gaps this section used to name are closed as of 2026-09-27** (verified
-live against `main`, not carried forward from an earlier note): `TASKDESK_PORT` is read
-(#132), `/api/public/health/{live,ready}` exist, static serving runs in the Node process via
-`@hono/node-server/serve-static` (#144), and the `storage.filesystem` driver exists (#164,
-HMAC-signed direct-PUT with path-traversal defenses). **Corrected 2026-09-28** (a 2026-09-27
-version of this note overstated this next part): both default hostnames (`ticket.`,
-`portal.`) have been verified healthy through a real Traefik (#377), but that verification
-ran `deploy/compose.uat.yml` against this **host's own pre-existing, unrelated Traefik** — not
-`scripts/deploy.sh local`'s own bundled Traefik, which has never actually completed an
-end-to-end run — it hits a port conflict against that same pre-existing Traefik. The
-2026-09-27 note incorrectly stated this had been verified; it had not. A fix for `deploy.sh local`'s own Traefik path is in progress; until
-it lands, do not assume "clean machine, never seen this repo" deployability is proven — only
-the UAT-compose path is. The `--profile s3` third hostname (`files.<domain>`) remains
-untested end-to-end either way. Re-verify this note's own claims each session rather than
-assuming they stay true; `status.md`'s Blocked section and `gh issue list` remain the live
-source of truth.
+Do not store today's deployment state in this file. Check `status.md`, the deployment runbook,
+GitHub, and the live environment each session.
 
-Once those close: `docker build`, container boot, and the health endpoints answering are
-part of "done" for any change touching what ships in the image (`AGENTS.md`, "Before you say
-done"). After a merge that could affect deployability, redeploy the UAT stack and confirm it
-comes up healthy — that is a runnable next step, not optional follow-up work someone else
-picks up later.
+For any change that affects what ships in the image:
+
+- build the image;
+- boot the container;
+- verify health endpoints;
+- run the applicable deployment/config validation;
+- after merge, redeploy UAT when the change affects deployability and verify the affected
+  public paths.
+
+A passing unit suite does not excuse a broken image or deployment.
 
 ---
 
 ## The control plane, and who owns it
 
-Ten surfaces are **orchestrator-owned**:
+The orchestrator owns the central control-plane surfaces:
 
 `AGENTS.md` · `CLAUDE.md` · `docs/04-engineering/agent-workflow.md` ·
 `docs/04-engineering/ci-cd.md` · `docs/07-planning/status.md` ·
-`docs/07-planning/decision-log.md` · `.github/CODEOWNERS` · `.claude/agents/` ·
-GitHub issue status · GitHub Project board status
+`docs/07-planning/decision-log.md` · `.github/CODEOWNERS` · active agent-role files ·
+GitHub issue status · GitHub Project board status.
 
-**`CLAUDE.md`, `AGENTS.md`, `agent-workflow.md`, `ci-cd.md`, `.claude/agents/**` and
-`.github/CODEOWNERS` are listed in `.github/CODEOWNERS` itself — as a documentation signal,
-not a machine gate.** A 2026-09-26 attempt to make Code Owner review actually block a merge
-on these paths was reversed the same day: this repo has one collaborator, and every agent
-session acts through that same account's `gh` token, so there is no separate identity for
-GitHub to check an approval against — see `.github/CODEOWNERS`'s own header and the decision
-log for the full reasoning. **Do not re-attempt enabling "Require review from Code Owners"
-and never add a bypass actor to work around the deadlock it would create; ask Thomas.**
-`status.md` and `decision-log.md` are deliberately not even listed in `CODEOWNERS` (see
-"Establishing current truth" — they are meant to change every session something durable
-happens), and GitHub issue/board status are not files any of this can cover at all.
+Lane/background agents treat these as read-only unless their task explicitly grants ownership
+of a named control-plane change.
 
-Lane or background agents treat all ten as **read-only** unless their task explicitly says
-they own a specific change. They may *report* — completed work, evidence, findings, a
-suggested doc correction. The orchestrating session verifies it and makes the durable
-central update itself. Two lanes independently editing `status.md` is how the record starts
-contradicting itself, and it has.
+When sources disagree, use this order:
 
-**When sources disagree**, the order is: the latest Thomas decision in the decision log or a
-spec → an accepted ADR or authoritative spec → this file and `AGENTS.md` → GitHub issue
-acceptance criteria → `status.md` and the board → a pull-request body → a temporary chat
-instruction. **A lower source never silently overrides a higher one.** An instruction in
-this session that changes architecture, scope, governance, or gate semantics may guide work
-immediately, but must be written into the right spec or the decision log **before dependent
-code merges** — this file asserting something the decision log does not actually contain is
-exactly the failure this hierarchy exists to prevent.
+**latest Thomas decision in the decision log or authoritative spec → accepted ADR/spec →
+`AGENTS.md`/this file → issue acceptance criteria → `status.md`/board → PR body → temporary
+chat instruction.**
 
-**`status.md` is a durable snapshot, kept current, not a work log and not something updated
-only at a stage's end.** Update it whenever something durable changes: a pull request becomes
-genuinely review-ready or merges, an issue blocks, unblocks or completes, a throttle state
-changes, Thomas makes a material decision, or a material repository/deployment fact changes.
-Intermediate progress goes in pull-request comments.
+A lower source never silently overrides a higher one.
 
-**The decision log is append-only.** When Thomas reverses or extends something, add a new
-newest-first entry naming what it supersedes and why, then update the operative documents in
-the same change. Never rewrite an old entry, and never let a decision that governs live
-behavior exist only as an uncommitted draft — if it isn't in the decision log, it isn't in
-force yet, no matter how confidently a later document assumes it.
+`status.md` is a dated durable snapshot, not a permanent live dashboard. Update it when a
+durable fact changes.
 
-**No agent moves project memory.** Do not move, rename or delete a planning document,
-reorganise `docs/`, move an issue between board columns, close or reopen an issue, or
-rewrite decision history — unless the task authorises it.
+The decision log is **append-only**. A new decision names what it supersedes and why; old
+entries are not rewritten.
 
 ---
 
-## Parallelizing P1–P7 once Throttle 1 opens
+## Parallelizing P1–P7 once the throttle allows it
 
-Once the throttle conditions in `status.md` are genuinely met (verify live, do not round up),
-run independent lanes in parallel rather than finishing one stage before starting the next:
+Once the live throttle conditions are genuinely satisfied, run dependency-safe lanes in
+parallel rather than serializing the whole program:
 
 - **P1 core** — work items, comments, attachments, labels, views, search, realtime.
-- **P2 domain** — SLA calendars, workflow transitions, approvals, assignment — pure
-  functions in `packages/domain` with exhaustive tests before any HTTP endpoint exists.
-- **P3 identity internals** — OIDC claims, SCIM mapping, connection config, provisioning
-  state — before `/scim/v2/*` routes are exposed.
-- **P4 governance seams** — land immediately alongside whatever P1–P3 work makes something
-  configurable: schema → admin API → God Mode UI → audit trail. P4 is not a later cleanup
-  lane; a feature that creates configuration without its seam is not finished (`AGENTS.md`
-  rule 5).
+- **P2 domain** — SLA calendars, workflow transitions, approvals, assignment, with pure
+  functions in `packages/domain` before HTTP where the spec requires it.
+- **P3 identity internals** — OIDC claims, SCIM mapping, connection configuration,
+  provisioning state before exposed routes.
+- **P4 governance seams** — configuration schema → admin API → God Mode UI → audit trail
+  alongside the features that need configuration.
 
-A shared contract (see the list above) gets its own small dedicated pull request when a lane
-needs it changed — never two lanes redesigning it independently. Blast radius decides how
-much a block matters: a lane-local block stops that lane only; a shared-contract block stops
-every dependent lane and needs Thomas; a soft block (review pending, external setup pending)
-means switch to other Ready work; anything with no real dependency just continues.
+A shared contract gets its own bounded PR. Never let two lanes redesign one shared contract at
+the same time.
 
 ---
 
-## Verify against the source, never against memory
+## Verify against source, never memory
 
-The most valuable findings on this project came from reading the actual thing, not from what
-a document claimed:
+The repository's most valuable findings come from opening the actual code, lockfile, CI run,
+database, and deployment rather than trusting summaries.
 
-- kaneo enables better-auth's `anonymous()` guest sign-in by default, ships
-  `accountLinking.enabled: true`, and keeps a five-minute session cookie cache — none of it
-  was in any document until someone opened `auth.ts`.
-- MinIO had been wound down as an open-source project; a plausible written default would
-  have been wrong within the year.
-- kaneo's primitives are Base UI, not Radix — several documents said otherwise.
-- Raw `grep` for a plugin client caller overcounts roughly 12x because comments carry
-  historical strings — strip comment lines before trusting a count.
-
-So: check the upstream repository, the lockfile, the actual CI run, the live database.
-Reference clones live beside this one under `../`. Explore with `ls` and targeted reads;
-recursive searches over them stall.
+Use targeted reads and live verification. Do not turn an old report into current truth merely
+because it sounds precise.
 
 ---
 
 ## Environment specifics on this host
 
-- `node` is not on the default `PATH` — prefix shell commands with the fnm-managed Node
-  path, or use the package-local binary (e.g. `apps/api/node_modules/.bin/vitest`).
-- Integration tests need a **private `*_test` Postgres database per concurrent lane** — the
-  harness truncates every table on reset, so two lanes sharing a database corrupt each
-  other's runs and produce failures that look like real defects.
-- The host runs unrelated production containers alongside this project. Keep test load
-  bounded.
+- If `node` is not on the default `PATH`, use the host's configured Node path or package-local
+  binaries.
+- Integration tests require a **private `*_test` Postgres database per concurrent lane**. The
+  harness resets tables; shared lane databases create false failures and cross-test damage.
+- The host may run unrelated containers. Keep test load bounded.
 
 ---
 
-## The vocabulary, which is enforced
+## Vocabulary authority
 
-Four words that are easy to blur, separated deliberately:
+Four words remain deliberately distinct:
 
 | Word | Means |
 | --- | --- |
-| **Stage** (P0–P7) | A level of product capability, with exit criteria |
-| **Workstream** | A lane of work executing against those criteria; several run at once |
-| **Step** (1–9) | One pass of the build process for a single feature (the SDLC) |
+| **Stage** (P0–P7) | A level of product capability with exit criteria |
+| **Workstream** | A lane executing against those criteria; several may run at once |
+| **Step** | One pass of the feature SDLC |
 | **State** | Where a single work item sits in its lifecycle |
 
-Every identifier has exactly one authoritative home — `AGENTS.md` do-not 11:
+Authoritative identifier homes remain:
 
-| Identifier | Lives in |
+| Identifier | Authority |
 | --- | --- |
 | Tables and columns | `docs/01-architecture/data-model.md` |
-| Capabilities, policy kinds | `docs/01-architecture/rbac.md` |
-| Feature flags, plugin kinds | `docs/01-architecture/plugin-architecture.md` |
+| Capabilities / policy kinds | `docs/01-architecture/rbac.md` |
+| Feature flags / plugin kinds | `docs/01-architecture/plugin-architecture.md` |
 | Event keys | `docs/01-architecture/events.md` |
 | Background jobs | `docs/01-architecture/background-jobs.md` |
 | Environment variables | `docs/05-operations/configuration-reference.md` |
@@ -468,34 +433,25 @@ Every identifier has exactly one authoritative home — `AGENTS.md` do-not 11:
 
 ## Reporting to Thomas
 
-He reads long output between other work, on a phone as often as not.
-
-- **Plain language.** Short sentences. No jargon where a normal word exists.
-- **Label every item** as a *question he must answer*, a *decision he must make*, a
-  *decision you made for him* (with how to reverse it), or *just an explanation*.
-- **Never reopen a settled item.** Do not raise a decided question again as a caveat or a
-  risk note.
-- **Say what you did not do**, plainly, at the end. An honest omission is worth more than a
-  confident summary.
-- **A status report is a checkpoint, not a stopping point.** State what merged, what's
-  current on `main`, what's merge-ready, what's tested, what's reviewed at which tier, new
-  findings/issues, and what's blocked and why — then continue to the next runnable thing in
-  the same turn where possible, rather than ending on the report.
-- If genuinely confused about something only Thomas can decide — a real product/architecture
-  call, a risk acceptance, something irreversible — ask once, as a tight set of concrete
-  options, rather than stalling silently or guessing and redoing the work later.
+- Use plain language and short sentences.
+- Label each item as: **question Thomas must answer**, **decision Thomas must make**,
+  **decision the orchestrator made** (with reversal path), or **explanation**.
+- Never reopen a settled item as if it were undecided.
+- Say what was not done.
+- A status report is a checkpoint, not a stopping point.
+- State what merged, what is current on `main`, what is merge-ready, what was tested, what was
+  reviewed by Luna/Sol, any sampled Opus 5.5 result, new findings, and blockers.
+- If only Thomas can decide a real architecture/risk/waiver question, ask once with concrete
+  options. Do not guess and redo it later.
 
 ---
 
 ## The failure this project exists to avoid
 
-TaskDesk v1 shipped eleven authorization holes past a green test suite, and twenty-five
-screens at sixty per cent. Its documentation was excellent; its process was not. Every rule
-here that feels heavy — the policy registry, the route-coverage test, the security review at
-a fixed tier, the empty-review-section gate — is one of those failures converted into
-something a build can refuse.
+TaskDesk v1 shipped authorization defects past a green suite and too many partly-finished
+screens. The response is not more ceremony for its own sake; it is executable constraints:
+policy coverage, exact-head review, tests for defect classes, explicit decisions, and stages
+claimed only when complete.
 
-**Every rule that closes a code defect has a test; every rule that closes a process defect
-has a sentence.** Sentences are what agents route around. If you find yourself explaining why
-a gate does not apply this once, that is the failure happening again, and the answer is to
-stop and ask — not to keep going quietly.
+**Every rule that closes a code defect gets a test. Every rule that closes a process defect
+gets a durable instruction or machine gate.**

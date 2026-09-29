@@ -10,12 +10,12 @@
 # repository at large, and says in terms that CODEOWNERS is ownership metadata rather than a
 # mechanical gate. The reason recorded there: a required approving review from a one-person
 # team documents a gate rather than providing one — the control that actually keeps a bad
-# change out of `main` is the required independent review(s), the required Opus security
+# change out of `main` is the required independent review(s), the required GPT-6 Sol security
 # review where in scope, and the required status checks, not an approval count. That
 # reasoning is UNCHANGED and still governs every path not listed below.
 #
 # UPDATED 2026-09-15 (decision log, same date, "Governance reset"): merge execution is
-# delegated to the orchestrating Claude session once every one of those gates is genuinely
+# delegated to the orchestrating session once every one of those gates is genuinely
 # green on the exact candidate SHA. Lane/subagents still never merge, and no bypass of any
 # required check or review tier is authorized by this delegation.
 #

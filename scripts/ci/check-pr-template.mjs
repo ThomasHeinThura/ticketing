@@ -9,7 +9,7 @@
  * left unticked and unmarked."
  *
  * And, whenever the diff touches the security paths ci-cd.md lists: `## Security review`
- * non-empty, its model matching ^Opus, and a link to the committed note under
+ * non-empty, its model exactly `GPT-6 Sol`, and a link to the committed note under
  * docs/07-planning/security-reviews/ (docs/04-engineering/definition-of-done.md
  * § The pull request template).
  *
@@ -349,7 +349,7 @@ async function main() {
   const securityReview = present.get(normaliseHeading("Security review"));
   // H1: this was `if (requiresReview && securityReview)`. When a review IS required, the
   // ABSENCE of the section is the strongest failure available, not a reason to skip the
-  // Opus-model assertion and the committed-note requirement. Reproduced: remove the
+  // required-model assertion and the committed-note requirement. Reproduced: remove the
   // section from the body AND from the template in one commit, touch scripts/ci/**, tick
   // the author-visible checkbox — the old checker exited 0.
   if (requiresReview && !securityReview) {
@@ -358,8 +358,9 @@ async function main() {
         "## Security review",
         `this pull request touches ${touched.length} security path(s) and carries NO ` +
           "`## Security review` section. That is not an exemption, it is the requirement " +
-          "deleted. Security review is Opus, always (CLAUDE.md), and it needs a committed " +
-          "note at docs/07-planning/security-reviews/<pr>-<slug>.md. Restore the section.",
+          "deleted. Security review requires GPT-6 Sol, always (AGENTS.md), and it needs " +
+          "a committed note at docs/07-planning/security-reviews/<pr>-<slug>.md. Restore " +
+          "the section.",
       ),
     );
   }
@@ -372,14 +373,15 @@ async function main() {
           `(${scope.removed.join(", ")})`;
 
     const model = field(securityReview.text, "Model");
-    if (!/^opus/i.test(model)) {
+    if (model !== "GPT-6 Sol") {
       failures.push(
         violation(
           "## Security review",
-          `this pull request ${why} — so **Model:** must name Opus, and it names ` +
+          `this pull request ${why} — so **Model:** must be exactly GPT-6 Sol, and it names ` +
             `"${model || "(nothing)"}". ` +
-            "Security review is Opus, always (CLAUDE.md). Never downgrade an unavailable reviewer: " +
-            "stop, record what is unreviewed, add a Blocked entry to status.md.",
+            "Security review requires GPT-6 Sol, always (AGENTS.md). Never downgrade an " +
+            "unavailable reviewer: stop, record what is unreviewed, add a Blocked entry " +
+            "to status.md.",
         ),
       );
     }
@@ -641,7 +643,7 @@ async function main() {
   // under a comment claiming it stayed "the single definition, exactly as it already does
   // for the H2 list above" — which H1 had just made false. Deleting `### Backend change`
   // from the template and the body in one diff dropped "every new or changed route has a
-  // policy entry" and "Opus security review completed and recorded" from the requirements
+  // policy entry" and "GPT-6 Sol security review completed and recorded" from the requirements
   // of the pull request doing the deleting. Reported whether or not `## Checklists`
   // survived in the body, because the removal is the governance act either way.
   if (templateScope.checklists.removed.length > 0) {

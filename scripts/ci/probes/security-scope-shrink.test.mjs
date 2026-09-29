@@ -78,7 +78,7 @@ function ciCdWith(globs) {
     "└──────────────────────────────────────────────────┘",
     "```",
     "",
-    "CI checks it non-empty, naming Opus, whenever the diff touches **any** of:",
+    "CI requires the exact model GPT-6 Sol whenever the diff touches **any** of:",
     "",
     "```",
     ...globs,
@@ -175,17 +175,17 @@ describe("GPT-F1 — security-review scope is the union of merge base and HEAD",
     assert.equal(scope.counts.current, SHRUNK_LIST.length);
 
     // ── the checker itself, end to end ────────────────────────────────────────────
-    const body = bodyFile(completeBody({ securityModel: "Sonnet 5" }));
+    const body = bodyFile(completeBody({ securityModel: "GPT-6 Luna" }));
     const run = runChecker(dir, "check-pr-template.mjs", ["--body", body]);
 
     assert.equal(
       run.status,
       1,
       `check-pr-template exited ${run.status}; it must reject a narrowing diff that ` +
-        `names no Opus reviewer.\n${run.output}`,
+        `names a non-canonical security reviewer.\n${run.output}`,
     );
     assert.match(run.output, /## Security review/);
-    assert.match(run.output, /\*\*Model:\*\* must name Opus/);
+    assert.match(run.output, /\*\*Model:\*\* must be exactly GPT-6 Sol/);
     assert.doesNotMatch(
       run.output,
       /no security-review path touched/,
@@ -198,7 +198,7 @@ describe("GPT-F1 — security-review scope is the union of merge base and HEAD",
     const { dir } = shrinkScenario();
     const body = bodyFile(
       completeBody({
-        securityModel: "Opus 5",
+        securityModel: "GPT-6 Sol",
         securityNote: "docs/07-planning/security-reviews/19-probe.md",
       }),
     );
@@ -240,7 +240,7 @@ describe("GPT-F1 — security-review scope is the union of merge base and HEAD",
     );
     commit(dir, "chore: drop the storage glob and nothing else");
 
-    const body = bodyFile(completeBody({ securityModel: "Sonnet 5" }));
+    const body = bodyFile(completeBody({ securityModel: "GPT-6 Luna" }));
     const run = runChecker(dir, "check-pr-template.mjs", ["--body", body]);
 
     assert.equal(

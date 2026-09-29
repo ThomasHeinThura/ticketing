@@ -363,7 +363,7 @@ surface, not on an empty application. **Delete first, then retrofit**, so no pol
 written for a route that is about to go. `GET /invitation/public/:id` (`index.ts:240`) is
 **kept**, as policy kind 4 (`public`), rate-limited in the anonymous class, constant-shape
 404, no email address and no member list. This is a human-reviewed pass over kaneo's code,
-not a scanner run, and it gets its own Opus security review before P0 closes.
+not a scanner run, and it gets its own GPT-6 Sol security review before P0 closes.
 
 ## 4. Structure
 

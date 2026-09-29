@@ -1,5 +1,20 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## 2026-09-29 — OpenAI review-policy transition
+
+Thomas's 2026-09-29 decision moves ordinary implementation and review to GPT-6 Luna and
+mandatory security/critical reviews and phase finalizers to GPT-6 Sol. The earlier Opus
+capacity blocker below is retained as an accurate 2026-09-28 snapshot, but it no longer
+blocks current work. Opus 5.5 is an optional sampled reviewer after a GPT-prepared packet.
+
+At the cutover, every still-open security-scope PR needs a fresh GPT-6 Sol review of its
+current exact head and an updated PR body and committed review note before merge. Historical
+reviews remain historical evidence; CI has no Opus fallback for the required GPT-6 Sol
+review. Recheck GitHub's live PR list at cutover and complete this transition before merging
+those candidates.
+
+---
+
 **2026-09-28 orchestrator snapshot (4) — `main` at `0a5dc368` (#469, Traefik environment-label
 fix, merged). Two of P0's four gate issues are now CLOSED — #9 (closed earlier today, see
 snapshot (3) below) and #11 (closed just now, evidence below). #464 (check-deps `__proto__`
