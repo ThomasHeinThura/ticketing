@@ -10,6 +10,7 @@ import {
   workspaceUserTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { lockWorkspaceLabelNames } from "../../label/label-name-lock";
 import { assertAssignableUser } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import {
@@ -79,6 +80,51 @@ async function bulkUpdateTasks({
     const scopedIds = candidateIds.map((task) => task.id);
     if (scopedIds.length === 0) {
       throw new HTTPException(404, { message: "No tasks found" });
+    }
+
+    let bulkLabel: typeof labelTable.$inferSelect | undefined;
+    if (operation === "addLabel" || operation === "removeLabel") {
+      if (!value) {
+        throw new HTTPException(400, { message: "Label ID is required" });
+      }
+      rejectNulByte(value, "Label id");
+      const label = await tx.query.labelTable.findFirst({
+        where: and(
+          eq(labelTable.id, value),
+          or(
+            eq(labelTable.workspaceId, workspaceId),
+            isNull(labelTable.workspaceId),
+          ),
+        ),
+      });
+      if (!label) {
+        throw new HTTPException(404, { message: "Label not found" });
+      }
+
+      // Bulk label writes join the same name family before task/project locks.
+      await lockWorkspaceLabelNames(tx, workspaceId, [label.name]);
+      const currentLabel = await tx.query.labelTable.findFirst({
+        where: and(
+          eq(labelTable.id, value),
+          or(
+            eq(labelTable.workspaceId, workspaceId),
+            isNull(labelTable.workspaceId),
+          ),
+        ),
+      });
+      if (!currentLabel) {
+        throw new HTTPException(404, { message: "Label not found" });
+      }
+      if (
+        currentLabel.workspaceId !== label.workspaceId ||
+        currentLabel.taskId !== label.taskId ||
+        currentLabel.name !== label.name
+      ) {
+        throw new HTTPException(409, {
+          message: "Label changed; retry the request",
+        });
+      }
+      bulkLabel = currentLabel;
     }
 
     const lockedTasks = await tx
@@ -255,19 +301,7 @@ async function bulkUpdateTasks({
       }
 
       case "addLabel": {
-        if (!value) {
-          throw new HTTPException(400, { message: "Label ID is required" });
-        }
-        rejectNulByte(value, "Label id");
-        const label = await tx.query.labelTable.findFirst({
-          where: and(
-            eq(labelTable.id, value),
-            or(
-              eq(labelTable.workspaceId, workspaceId),
-              isNull(labelTable.workspaceId),
-            ),
-          ),
-        });
+        const label = bulkLabel;
         if (!label)
           throw new HTTPException(404, { message: "Label not found" });
         for (const task of tasks) {
@@ -303,19 +337,7 @@ async function bulkUpdateTasks({
       }
 
       case "removeLabel": {
-        if (!value) {
-          throw new HTTPException(400, { message: "Label ID is required" });
-        }
-        rejectNulByte(value, "Label id");
-        const label = await tx.query.labelTable.findFirst({
-          where: and(
-            eq(labelTable.id, value),
-            or(
-              eq(labelTable.workspaceId, workspaceId),
-              isNull(labelTable.workspaceId),
-            ),
-          ),
-        });
+        const label = bulkLabel;
         if (!label)
           throw new HTTPException(404, { message: "Label not found" });
         const deleted = await tx
