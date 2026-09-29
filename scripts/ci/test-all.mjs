@@ -204,7 +204,7 @@ const manifest = [
     gate: "check:bundle-size",
     stage: "fast",
     run: null,
-    why: "G11's budgets are not written down anywhere yet, and there is no portal bundle to measure.",
+    why: "the current web build has one combined entry rather than distinct agent and portal bundles, so the approved per-entry G11 budgets cannot yet be measured (#9).",
   },
   {
     gate: "helm lint + helm template",
@@ -258,7 +258,7 @@ const manifest = [
     gate: "pnpm test:perf",
     stage: "full",
     run: null,
-    why: "no Playwright suite and no performance budgets (G11).",
+    why: "the specified Work list and Work item full-page routes lack deterministic P1 seeded data and browser journeys, so G11 route metrics cannot be measured against their approved targets yet.",
   },
 ];
 
