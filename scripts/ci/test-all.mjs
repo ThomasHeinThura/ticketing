@@ -251,8 +251,8 @@ const manifest = [
   {
     gate: "pnpm test:visual",
     stage: "full",
-    run: null,
-    why: "Playwright screenshots are selected for G8, but deterministic screen/data fixtures and snapshot acceptance scope are not yet defined.",
+    run: ["pnpm", "test:visual"],
+    note: "checks in-repo Playwright baselines for every exported UI Storybook story and deterministic fixtures for each inventory route marked in progress or complete; new stories and active route rows require baselines in the same change.",
   },
   {
     gate: "pnpm test:perf",

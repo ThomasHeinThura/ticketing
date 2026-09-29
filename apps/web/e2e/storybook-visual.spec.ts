@@ -1,0 +1,51 @@
+import { expect, test } from "@playwright/test";
+
+type StorybookIndex = {
+  entries: Record<string, { id: string; type: string }>;
+};
+
+test("every exported Storybook story has a visual baseline @visual", async ({
+  page,
+}) => {
+  test.setTimeout(12 * 60 * 1000);
+  const response = await fetch("http://127.0.0.1:6006/index.json");
+  expect(response.ok).toBeTruthy();
+  const index = (await response.json()) as StorybookIndex;
+  const stories = Object.values(index.entries)
+    .filter((entry) => entry.type === "story")
+    .sort((left, right) => left.id.localeCompare(right.id));
+  expect(stories.length).toBeGreaterThan(0);
+
+  for (const story of stories) {
+    await page.goto(
+      `http://127.0.0.1:6006/iframe.html?id=${story.id}&viewMode=story`,
+    );
+    // Modal stories put the preview canvas in an inert subtree, so the dialog itself is
+    // the visible render surface in that case.
+    await expect
+      .poll(async () => {
+        return (
+          (await page.locator("#storybook-root").isVisible()) ||
+          (await page.getByRole("dialog").isVisible())
+        );
+      })
+      .toBe(true);
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => resolve()),
+      );
+    });
+    await expect
+      .soft(page, `Storybook story ${story.id}`)
+      .toHaveScreenshot(`${story.id}.png`, {
+        animations: "disabled",
+        caret: "hide",
+        fullPage: true,
+        scale: "css",
+        maxDiffPixels: 0,
+      });
+  }
+
+  console.log(`G8 Storybook screenshot coverage: ${stories.length} stories.`);
+});
