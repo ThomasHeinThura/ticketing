@@ -48,13 +48,21 @@ async function importTasks(
         .filter((id): id is string => Boolean(id)),
     ),
   ];
+  if (assigneeIds.some((assigneeId) => assigneeId.includes("\u0000"))) {
+    await db.transaction(async (tx) => {
+      await lockProjectAndAssertLiveForTaskNumber(
+        tx,
+        projectId,
+        "Project not found",
+      );
+      for (const assigneeId of assigneeIds) {
+        rejectNulByte(assigneeId, "Assignee id");
+      }
+    });
+  }
   // S5 (Opus review of PR #307, delta round): reaches `filterAssignableUsers`'s
   // `inArray(workspaceUserTable.userId, ...)` query below unvalidated -- a NUL
   // byte would otherwise 500 instead of a clean 400.
-  for (const assigneeId of assigneeIds) {
-    rejectNulByte(assigneeId, "Assignee id");
-  }
-
   const assignableIds = await filterAssignableUsers(
     assigneeIds,
     project.workspaceId,

@@ -16,18 +16,14 @@ async function updateTaskAssignee({
   userId: string | null;
   currentUserId: string;
 }) {
-  // #290 S4 sweep: `userId` is a body field, not covered by `workspaceAccess.
-  // fromTask()` (which only guards `id`) -- a NUL byte here reached
-  // `assertAssignableUser`'s/`eq(userTable.id, ...)`'s raw queries below unvalidated
-  // and 500'd, the same class #281 fixed for path/query ids. `null` (unassign) is
-  // left alone.
-  if (userId) {
-    rejectNulByte(userId, "Assignee id");
-  }
-
   const nextAssigneeId = userId?.trim() || null;
   const { existingTask, updatedTask } = await db.transaction(async (tx) => {
     const existingTask = await lockTaskAndAssertProjectLive(tx, id);
+    // Validate body identifiers after the frozen-task check, before they reach raw
+    // database filters. `null` (unassign) is left alone.
+    if (userId) {
+      rejectNulByte(userId, "Assignee id");
+    }
     if (existingTask.userId === nextAssigneeId) {
       return { existingTask, updatedTask: existingTask };
     }

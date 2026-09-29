@@ -10,6 +10,7 @@ import { publishEvent } from "../../events";
 import {
   lockLegacyTaskRow,
   lockProjectsAndAssertLive,
+  lockTaskAndAssertProjectLive,
 } from "../../task/assert-task-project-live";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 
@@ -30,11 +31,10 @@ async function createTaskRelation({
   // query below unvalidated -- `sourceTaskId` is already checked by
   // `scopeToSourceTask` (task-relation/index.ts) before this controller runs, but
   // this is the one field that middleware never sees.
-  rejectNulByte(targetTaskId, "Task id");
-
-  if (sourceTaskId === targetTaskId) {
-    throw new HTTPException(400, {
-      message: "Cannot create a relation between a task and itself",
+  if (targetTaskId.includes("\u0000")) {
+    await db.transaction(async (tx) => {
+      await lockTaskAndAssertProjectLive(tx, sourceTaskId);
+      rejectNulByte(targetTaskId, "Task id");
     });
   }
 
@@ -86,6 +86,12 @@ async function createTaskRelation({
       throw new HTTPException(400, { message: "Invalid task relation" });
     }
     const firstTask = await lockLegacyTaskRow(tx, firstTaskId);
+    if (sourceTaskId === targetTaskId) {
+      await lockProjectsAndAssertLive(tx, [firstTask.projectId]);
+      throw new HTTPException(400, {
+        message: "Cannot create a relation between a task and itself",
+      });
+    }
     const secondTask = await lockLegacyTaskRow(tx, secondTaskId);
     const lockedSourceTask =
       firstTask.id === sourceTaskId ? firstTask : secondTask;

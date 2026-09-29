@@ -98,14 +98,14 @@ async function moveTask({
   // `workspaceAccess.fromTask()` (which only guards `taskId`) -- a NUL byte here
   // reached a raw `eq(projectTable.id, destinationProjectId)`-shaped query below
   // unvalidated and 500'd, the same class #281 fixed for path/query ids.
-  rejectNulByte(destinationProjectId, "Destination project id");
-
   const moveResult = await db.transaction(async (tx) => {
     const lockedTask = await lockLegacyTaskRow(tx, taskId);
-    if (isSameProjectMove(lockedTask.projectId, destinationProjectId)) {
-      throw new HTTPException(400, {
-        message: "Task is already in that project",
-      });
+    // Malformed destinations cannot be queried safely, but their validation still
+    // follows an authoritative source liveness lock. Valid destinations retain the
+    // existing source preflight and sorted-lock sequence below.
+    if (destinationProjectId.includes("\u0000")) {
+      await assertProjectStillLive(tx, lockedTask.projectId, "Task not found");
+      rejectNulByte(destinationProjectId, "Destination project id");
     }
 
     // Reject frozen sources before touching a request-selected destination id.
@@ -126,6 +126,12 @@ async function moveTask({
       sourcePreflight.deletedAt !== null
     ) {
       throw new HTTPException(404, { message: "Task not found" });
+    }
+    if (isSameProjectMove(lockedTask.projectId, destinationProjectId)) {
+      await assertProjectStillLive(tx, lockedTask.projectId, "Task not found");
+      throw new HTTPException(400, {
+        message: "Task is already in that project",
+      });
     }
 
     const [destinationPreflight] = await tx

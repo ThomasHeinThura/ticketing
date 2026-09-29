@@ -3,29 +3,35 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { taskReminderSentTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { validateAndParseDate } from "../../utils/validate-dates";
 import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 
 async function updateTaskDueDate({
   id,
-  dueDate,
+  dueDate: dueDateInput,
   currentUserId,
 }: {
   id: string;
-  dueDate: Date | null;
+  dueDate: string | null;
   currentUserId: string;
 }) {
-  const { existingTask, updatedTask } = await db.transaction(async (tx) => {
-    const existingTask = await lockTaskAndAssertProjectLive(tx, id);
-    await tx
-      .delete(taskReminderSentTable)
-      .where(eq(taskReminderSentTable.taskId, id));
-    const [updatedTask] = await tx
-      .update(taskTable)
-      .set({ dueDate: dueDate || null })
-      .where(eq(taskTable.id, id))
-      .returning();
-    return { existingTask, updatedTask };
-  });
+  const { existingTask, updatedTask, dueDate } = await db.transaction(
+    async (tx) => {
+      const existingTask = await lockTaskAndAssertProjectLive(tx, id);
+      const dueDate = dueDateInput
+        ? validateAndParseDate(dueDateInput, "dueDate")
+        : null;
+      await tx
+        .delete(taskReminderSentTable)
+        .where(eq(taskReminderSentTable.taskId, id));
+      const [updatedTask] = await tx
+        .update(taskTable)
+        .set({ dueDate: dueDate || null })
+        .where(eq(taskTable.id, id))
+        .returning();
+      return { existingTask, updatedTask, dueDate };
+    },
+  );
 
   if (!updatedTask) {
     throw new HTTPException(500, {

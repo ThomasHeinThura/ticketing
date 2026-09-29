@@ -21,10 +21,6 @@ import {
 } from "../storage";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
-import {
-  validateAndParseDate,
-  validateDateRange,
-} from "../utils/validate-dates";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { lockTaskAndAssertProjectLive } from "./assert-task-project-live";
 import bulkUpdateTasks from "./controllers/bulk-update-tasks";
@@ -546,16 +542,6 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
       throw new HTTPException(401, { message: "Unauthorized" });
     }
 
-    if (
-      operation !== "delete" &&
-      operation !== "updateDueDate" &&
-      value === undefined
-    ) {
-      throw new HTTPException(400, {
-        message: "Value is required for this operation",
-      });
-    }
-
     markShadowLegacyAuthorizationUnknown(c);
     let result: Awaited<ReturnType<typeof bulkUpdateTasks>>;
     try {
@@ -581,25 +567,14 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { title, description, startDate, dueDate, priority, status, userId } =
       c.req.valid("json");
 
-    const parsedStartDate =
-      startDate !== undefined
-        ? validateAndParseDate(startDate, "startDate")
-        : undefined;
-    const parsedDueDate =
-      dueDate !== undefined
-        ? validateAndParseDate(dueDate, "dueDate")
-        : undefined;
-
-    validateDateRange(parsedStartDate, parsedDueDate);
-
     const task = await createTask({
       projectId,
       currentUserId: c.get("userId"),
       userId: userId,
       title,
       description,
-      startDate: parsedStartDate,
-      dueDate: parsedDueDate,
+      startDate,
+      dueDate,
       priority,
       status,
     });
@@ -643,23 +618,12 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const currentUserId = c.get("userId");
 
-    const parsedStartDate =
-      startDate !== undefined
-        ? validateAndParseDate(startDate, "startDate")
-        : undefined;
-    const parsedDueDate =
-      dueDate !== undefined
-        ? validateAndParseDate(dueDate, "dueDate")
-        : undefined;
-
-    validateDateRange(parsedStartDate, parsedDueDate);
-
     const task = await updateTask(
       id,
       title,
       status,
-      parsedStartDate,
-      parsedDueDate,
+      startDate,
+      dueDate,
       projectId,
       description,
       priority,
@@ -728,7 +692,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const task = await updateTaskDueDate({
       id,
-      dueDate: dueDate ? validateAndParseDate(dueDate, "dueDate") : null,
+      dueDate,
       currentUserId,
     });
 
@@ -748,19 +712,18 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { filename, contentType, size, surface } = c.req.valid("json");
 
     try {
-      validateTaskAssetUploadInput(contentType, size);
-    } catch (error) {
-      throw new HTTPException(400, {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Invalid image upload request",
-      });
-    }
-
-    try {
       const upload = await db.transaction(async (tx) => {
         const task = await lockTaskAndAssertProjectLive(tx, id);
+        try {
+          validateTaskAssetUploadInput(contentType, size);
+        } catch (error) {
+          throw new HTTPException(400, {
+            message:
+              error instanceof Error
+                ? error.message
+                : "Invalid image upload request",
+          });
+        }
         const [context] = await tx
           .select({ workspaceId: workspaceTable.id })
           .from(projectTable)
@@ -798,20 +761,19 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
     const { key, filename, contentType, size, surface } = c.req.valid("json");
     const userId = c.get("userId");
 
-    try {
-      validateTaskAssetUploadInput(contentType, size);
-    } catch (error) {
-      throw new HTTPException(400, {
-        message:
-          error instanceof Error
-            ? error.message
-            : "Invalid image upload request",
-      });
-    }
-
     const normalizedKey = key.trim();
     const asset = await db.transaction(async (tx) => {
       const task = await lockTaskAndAssertProjectLive(tx, id);
+      try {
+        validateTaskAssetUploadInput(contentType, size);
+      } catch (error) {
+        throw new HTTPException(400, {
+          message:
+            error instanceof Error
+              ? error.message
+              : "Invalid image upload request",
+        });
+      }
       const [context] = await tx
         .select({ workspaceId: workspaceTable.id })
         .from(projectTable)

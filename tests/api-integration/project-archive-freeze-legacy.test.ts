@@ -158,10 +158,44 @@ describe("API integration: legacy task writes respect PR-15 project archive free
           }),
       ],
       [
+        "create task with invalid date",
+        () =>
+          request(`/task/${project.id}`, "post", {
+            title: "must not create",
+            description: "",
+            priority: "medium",
+            status: "to-do",
+            startDate: "not-a-date",
+          }),
+      ],
+      [
+        "create task with invalid status",
+        () =>
+          request(`/task/${project.id}`, "post", {
+            title: "must not create",
+            description: "",
+            priority: "medium",
+            status: "missing-column",
+          }),
+      ],
+      [
         "import tasks",
         () =>
           request(`/task/import/${project.id}`, "post", {
             tasks: [{ title: "must not import", status: "to-do" }],
+          }),
+      ],
+      [
+        "import tasks with invalid assignee id",
+        () =>
+          request(`/task/import/${project.id}`, "post", {
+            tasks: [
+              {
+                title: "must not import",
+                status: "to-do",
+                userId: "bad\u0000id",
+              },
+            ],
           }),
       ],
       [
@@ -171,6 +205,14 @@ describe("API integration: legacy task writes respect PR-15 project archive free
             taskIds: [task.id],
             operation: "updatePriority",
             value: "high",
+          }),
+      ],
+      [
+        "bulk update with missing value",
+        () =>
+          request("/task/bulk", "patch", {
+            taskIds: [task.id],
+            operation: "updatePriority",
           }),
       ],
       [
@@ -186,6 +228,19 @@ describe("API integration: legacy task writes respect PR-15 project archive free
           }),
       ],
       [
+        "full task update with invalid date",
+        () =>
+          request(`/task/${task.id}`, "put", {
+            title: "must not update",
+            description: "changed",
+            priority: "high",
+            status: "to-do",
+            projectId: project.id,
+            position: 9,
+            dueDate: "not-a-date",
+          }),
+      ],
+      [
         "status update",
         () => request(`/task/status/${task.id}`, "put", { status: "done" }),
       ],
@@ -198,10 +253,24 @@ describe("API integration: legacy task writes respect PR-15 project archive free
         () => request(`/task/assignee/${task.id}`, "put", { userId: null }),
       ],
       [
+        "assignee update with invalid id",
+        () =>
+          request(`/task/assignee/${task.id}`, "put", {
+            userId: "bad\u0000id",
+          }),
+      ],
+      [
         "due-date update",
         () =>
           request(`/task/due-date/${task.id}`, "put", {
             dueDate: "2026-10-01T00:00:00.000Z",
+          }),
+      ],
+      [
+        "due-date update with invalid date",
+        () =>
+          request(`/task/due-date/${task.id}`, "put", {
+            dueDate: "not-a-date",
           }),
       ],
       [
@@ -220,6 +289,13 @@ describe("API integration: legacy task writes respect PR-15 project archive free
         () =>
           request(`/task/move/${task.id}`, "put", {
             destinationProjectId: destination.project.id,
+          }),
+      ],
+      [
+        "task move with invalid destination id",
+        () =>
+          request(`/task/move/${task.id}`, "put", {
+            destinationProjectId: "bad\u0000id",
           }),
       ],
       ["task delete", () => request(`/task/${task.id}`, "delete")],
@@ -248,9 +324,18 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       [
         "relation create",
         () =>
-          request("/task-relation/", "post", {
+          request("/task-relation", "post", {
             sourceTaskId: task.id,
             targetTaskId: targetTask.id,
+            relationType: "blocks",
+          }),
+      ],
+      [
+        "relation create with invalid target id",
+        () =>
+          request("/task-relation", "post", {
+            sourceTaskId: task.id,
+            targetTaskId: "bad\u0000id",
             relationType: "blocks",
           }),
       ],
@@ -325,12 +410,33 @@ describe("API integration: legacy task writes respect PR-15 project archive free
           }),
       ],
       [
+        "image upload URL with invalid content type",
+        () =>
+          request(`/task/image-upload/${task.id}`, "put", {
+            filename: "frozen.png",
+            contentType: "text/plain",
+            size: 123,
+            surface: "description",
+          }),
+      ],
+      [
         "image finalize",
         () =>
           request(`/task/image-upload/${task.id}/finalize`, "post", {
             key: `workspace/${member.workspace.id}/project/${project.id}/task/${task.id}/descriptions/frozen.png`,
             filename: "frozen.png",
             contentType: "image/png",
+            size: 123,
+            surface: "description",
+          }),
+      ],
+      [
+        "image finalize with invalid content type",
+        () =>
+          request(`/task/image-upload/${task.id}/finalize`, "post", {
+            key: `workspace/${member.workspace.id}/project/${project.id}/task/${task.id}/descriptions/frozen.png`,
+            filename: "frozen.png",
+            contentType: "text/plain",
             size: 123,
             surface: "description",
           }),
@@ -450,6 +556,110 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       .from(schema.taskTable)
       .where(eq(schema.taskTable.id, task.id));
     expect(after?.projectId).toBe(source.id);
+  });
+
+  it("checks source freeze before same-project move validation", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await createLegacyTask(project.id, columns.todo.id, 1);
+    mockAuthenticatedSession(member.user);
+
+    const moveToSameProject = () =>
+      request(`/task/move/${task.id}`, "put", {
+        destinationProjectId: project.id,
+      });
+    const liveResponse = await moveToSameProject();
+    expect(liveResponse.status).toBe(400);
+    expect(await liveResponse.text()).toBe("Task is already in that project");
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+    const archivedResponse = await moveToSameProject();
+    expect(archivedResponse.status).toBe(404);
+    expect(await archivedResponse.text()).toBe("Task not found");
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: null, deletedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+    const deletedResponse = await moveToSameProject();
+    expect(deletedResponse.status).toBe(404);
+    expect(await deletedResponse.text()).toBe("Task not found");
+  });
+
+  it("checks source freeze before full-task project-mismatch validation", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const destination = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await createLegacyTask(project.id, columns.todo.id, 1);
+    mockAuthenticatedSession(member.user);
+
+    const updateToDifferentProject = () =>
+      request(`/task/${task.id}`, "put", {
+        title: "Update task",
+        description: "Description",
+        priority: "medium",
+        status: "to-do",
+        projectId: destination.project.id,
+        position: 2,
+      });
+    const liveResponse = await updateToDifferentProject();
+    expect(liveResponse.status).toBe(400);
+    expect(await liveResponse.text()).toBe(
+      "Use the task move endpoint to move tasks between projects",
+    );
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+    const archivedResponse = await updateToDifferentProject();
+    expect(archivedResponse.status).toBe(404);
+    expect(await archivedResponse.text()).toBe("Task not found");
+  });
+
+  it("checks source freeze before self-relation validation", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await createLegacyTask(project.id, columns.todo.id, 1);
+    mockAuthenticatedSession(member.user);
+
+    const relateTaskToItself = () =>
+      request("/task-relation", "post", {
+        sourceTaskId: task.id,
+        targetTaskId: task.id,
+        relationType: "blocks",
+      });
+    const liveResponse = await relateTaskToItself();
+    const liveBody = await liveResponse.text();
+    expect(liveResponse.status, liveBody).toBe(400);
+    expect(liveBody).toBe("Cannot create a relation between a task and itself");
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+    const archivedResponse = await relateTaskToItself();
+    expect(archivedResponse.status).toBe(404);
+    expect(await archivedResponse.text()).toBe("Task not found");
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: null, deletedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+    const deletedResponse = await relateTaskToItself();
+    expect(deletedResponse.status).toBe(404);
+    expect(await deletedResponse.text()).toBe("Task not found");
   });
 
   it("rechecks source liveness when archive wins during destination preflight", async () => {
@@ -656,6 +866,23 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       .from(schema.taskTable)
       .where(eq(schema.taskTable.id, task.id));
     expect(after?.title).toBe(task.title);
+  });
+
+  it("keeps the bulk missing-value validation for a live task", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await createLegacyTask(project.id, columns.todo.id, 1);
+    mockAuthenticatedSession(member.user);
+
+    const response = await request("/task/bulk", "patch", {
+      taskIds: [task.id],
+      operation: "updatePriority",
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.text()).toBe("Value is required for this operation");
   });
 
   it("keeps trusted task-event history when archive wins async delivery", async () => {
