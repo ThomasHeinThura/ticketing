@@ -3171,6 +3171,18 @@
 						"descriptionPlaceholder": {
 							"type": "string"
 						},
+						"defaultCommentVisibilityLabel": {
+							"type": "string"
+						},
+						"defaultCommentVisibilityHint": {
+							"type": "string"
+						},
+						"commentVisibilityInternal": {
+							"type": "string"
+						},
+						"commentVisibilityPublic": {
+							"type": "string"
+						},
 						"dangerZone": {
 							"type": "string"
 						},
@@ -3254,6 +3266,10 @@
 						"descriptionLabel",
 						"descriptionHint",
 						"descriptionPlaceholder",
+						"defaultCommentVisibilityLabel",
+						"defaultCommentVisibilityHint",
+						"commentVisibilityInternal",
+						"commentVisibilityPublic",
 						"dangerZone",
 						"dangerZoneSubtitle",
 						"deleteProject",
@@ -6310,6 +6326,9 @@
 			"type": "object",
 			"additionalProperties": false,
 			"properties": {
+				"title": {
+					"type": "string"
+				},
 				"status": {
 					"type": "object",
 					"additionalProperties": false,
@@ -7586,10 +7605,10 @@
 						"title": {
 							"type": "string"
 						},
-						"searchPlaceholder": {
+						"jumpToToday": {
 							"type": "string"
 						},
-						"jumpToToday": {
+						"searchPlaceholder": {
 							"type": "string"
 						},
 						"hideTasks": {
@@ -7629,8 +7648,8 @@
 					"required": [
 						"pageTitle",
 						"title",
-						"searchPlaceholder",
 						"jumpToToday",
+						"searchPlaceholder",
 						"hideTasks",
 						"showTasks",
 						"noTasks",
@@ -8183,6 +8202,7 @@
 				}
 			},
 			"required": [
+				"title",
 				"status",
 				"priority",
 				"boardSearchPlaceholder",
@@ -8922,6 +8942,561 @@
 				"copyUrl",
 				"branding"
 			]
+		},
+		"workItems": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"list": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"pageTitle": {
+							"type": "string"
+						},
+						"pageTitleWithProject": {
+							"type": "string"
+						},
+						"heading": {
+							"type": "string"
+						},
+						"columnKey": {
+							"type": "string"
+						},
+						"columnTitle": {
+							"type": "string"
+						},
+						"columnPriority": {
+							"type": "string"
+						},
+						"columnDueDate": {
+							"type": "string"
+						},
+						"columnState": {
+							"type": "string"
+						},
+						"columnAssignee": {
+							"type": "string"
+						},
+						"noDueDate": {
+							"type": "string"
+						},
+						"noPriority": {
+							"type": "string"
+						},
+						"unassigned": {
+							"type": "string"
+						},
+						"assigneeInactive": {
+							"type": "string"
+						},
+						"priority": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"urgent": {
+									"type": "string"
+								},
+								"high": {
+									"type": "string"
+								},
+								"medium": {
+									"type": "string"
+								},
+								"low": {
+									"type": "string"
+								}
+							},
+							"required": ["urgent", "high", "medium", "low"]
+						},
+						"loading": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"errorTitle": {
+							"type": "string"
+						},
+						"errorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"unavailableFieldLabel": {
+							"type": "string"
+						},
+						"partialNoticeTitle": {
+							"type": "string"
+						},
+						"partialNoticeDescription": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"pageTitle",
+						"pageTitleWithProject",
+						"heading",
+						"columnKey",
+						"columnTitle",
+						"columnPriority",
+						"columnDueDate",
+						"columnState",
+						"columnAssignee",
+						"noDueDate",
+						"noPriority",
+						"unassigned",
+						"assigneeInactive",
+						"priority",
+						"loading",
+						"emptyTitle",
+						"emptyDescription",
+						"errorTitle",
+						"errorDescription",
+						"retry",
+						"unavailable",
+						"unavailableFieldLabel",
+						"partialNoticeTitle",
+						"partialNoticeDescription"
+					]
+				},
+				"create": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"trigger": {
+							"type": "string"
+						},
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"fieldType": {
+							"type": "string"
+						},
+						"typePlaceholder": {
+							"type": "string"
+						},
+						"typesLoading": {
+							"type": "string"
+						},
+						"typesError": {
+							"type": "string"
+						},
+						"typesRetry": {
+							"type": "string"
+						},
+						"noTypes": {
+							"type": "string"
+						},
+						"fieldTitle": {
+							"type": "string"
+						},
+						"titlePlaceholder": {
+							"type": "string"
+						},
+						"fieldDescription": {
+							"type": "string"
+						},
+						"descriptionPlaceholder": {
+							"type": "string"
+						},
+						"fieldPriority": {
+							"type": "string"
+						},
+						"priorityNone": {
+							"type": "string"
+						},
+						"submit": {
+							"type": "string"
+						},
+						"submitting": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"close": {
+							"type": "string"
+						},
+						"success": {
+							"type": "string"
+						},
+						"errorTitle": {
+							"type": "string"
+						},
+						"errorForbidden": {
+							"type": "string"
+						},
+						"errorInvalid": {
+							"type": "string"
+						},
+						"errorGeneric": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"trigger",
+						"title",
+						"description",
+						"fieldType",
+						"typePlaceholder",
+						"typesLoading",
+						"typesError",
+						"typesRetry",
+						"noTypes",
+						"fieldTitle",
+						"titlePlaceholder",
+						"fieldDescription",
+						"descriptionPlaceholder",
+						"fieldPriority",
+						"priorityNone",
+						"submit",
+						"submitting",
+						"cancel",
+						"close",
+						"success",
+						"errorTitle",
+						"errorForbidden",
+						"errorInvalid",
+						"errorGeneric"
+					]
+				},
+				"detail": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"loading": {
+							"type": "string"
+						},
+						"notFoundDescription": {
+							"type": "string"
+						},
+						"errorTitle": {
+							"type": "string"
+						},
+						"errorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"keyLabel": {
+							"type": "string"
+						},
+						"titleLabel": {
+							"type": "string"
+						},
+						"stateLabel": {
+							"type": "string"
+						},
+						"priorityLabel": {
+							"type": "string"
+						},
+						"dueDateLabel": {
+							"type": "string"
+						},
+						"assigneeLabel": {
+							"type": "string"
+						},
+						"descriptionHeading": {
+							"type": "string"
+						},
+						"detailsHeading": {
+							"type": "string"
+						},
+						"projectLabel": {
+							"type": "string"
+						},
+						"startDateLabel": {
+							"type": "string"
+						},
+						"createdLabel": {
+							"type": "string"
+						},
+						"updatedLabel": {
+							"type": "string"
+						},
+						"unassigned": {
+							"type": "string"
+						},
+						"inactiveAssignee": {
+							"type": "string"
+						},
+						"noPriority": {
+							"type": "string"
+						},
+						"noDueDate": {
+							"type": "string"
+						},
+						"noStartDate": {
+							"type": "string"
+						},
+						"noDescription": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"unavailableFieldLabel": {
+							"type": "string"
+						},
+						"partialNoticeTitle": {
+							"type": "string"
+						},
+						"partialNoticeDescription": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"loading",
+						"notFoundDescription",
+						"errorTitle",
+						"errorDescription",
+						"retry",
+						"keyLabel",
+						"titleLabel",
+						"stateLabel",
+						"priorityLabel",
+						"dueDateLabel",
+						"assigneeLabel",
+						"descriptionHeading",
+						"detailsHeading",
+						"projectLabel",
+						"startDateLabel",
+						"createdLabel",
+						"updatedLabel",
+						"unassigned",
+						"inactiveAssignee",
+						"noPriority",
+						"noDueDate",
+						"noStartDate",
+						"noDescription",
+						"unavailable",
+						"unavailableFieldLabel",
+						"partialNoticeTitle",
+						"partialNoticeDescription"
+					]
+				},
+				"journey": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"editHeading": {
+							"type": "string"
+						},
+						"edit": {
+							"type": "string"
+						},
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"startDate": {
+							"type": "string"
+						},
+						"dueDate": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"saveAttention": {
+							"type": "string"
+						},
+						"editConflict": {
+							"type": "string"
+						},
+						"saveError": {
+							"type": "string"
+						},
+						"assignmentHeading": {
+							"type": "string"
+						},
+						"assignee": {
+							"type": "string"
+						},
+						"assigneePlaceholder": {
+							"type": "string"
+						},
+						"loadingPeople": {
+							"type": "string"
+						},
+						"peopleError": {
+							"type": "string"
+						},
+						"unnamedPerson": {
+							"type": "string"
+						},
+						"confirmReassign": {
+							"type": "string"
+						},
+						"confirmReassignDescription": {
+							"type": "string"
+						},
+						"assignmentConflict": {
+							"type": "string"
+						},
+						"assignmentError": {
+							"type": "string"
+						},
+						"unassignmentError": {
+							"type": "string"
+						},
+						"assign": {
+							"type": "string"
+						},
+						"unassign": {
+							"type": "string"
+						},
+						"confirmAssignment": {
+							"type": "string"
+						},
+						"activityHeading": {
+							"type": "string"
+						},
+						"loadingActivity": {
+							"type": "string"
+						},
+						"activityError": {
+							"type": "string"
+						},
+						"activityFilters": {
+							"type": "string"
+						},
+						"filterAll": {
+							"type": "string"
+						},
+						"filterComments": {
+							"type": "string"
+						},
+						"filterPublic": {
+							"type": "string"
+						},
+						"noFilteredActivity": {
+							"type": "string"
+						},
+						"commentVisibility": {
+							"type": "string"
+						},
+						"commentEditor": {
+							"type": "string"
+						},
+						"commentPlaceholder": {
+							"type": "string"
+						},
+						"commentSend": {
+							"type": "string"
+						},
+						"commentSending": {
+							"type": "string"
+						},
+						"commentForbidden": {
+							"type": "string"
+						},
+						"commentError": {
+							"type": "string"
+						},
+						"noActivity": {
+							"type": "string"
+						},
+						"comment": {
+							"type": "string"
+						},
+						"internal": {
+							"type": "string"
+						},
+						"public": {
+							"type": "string"
+						},
+						"visibilityUnavailable": {
+							"type": "string"
+						},
+						"commentDeleted": {
+							"type": "string"
+						},
+						"assignToMe": {
+							"type": "string"
+						},
+						"loadOlderActivity": {
+							"type": "string"
+						},
+						"loadingOlderActivity": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"editHeading",
+						"edit",
+						"title",
+						"description",
+						"startDate",
+						"dueDate",
+						"save",
+						"saving",
+						"cancel",
+						"saveAttention",
+						"editConflict",
+						"saveError",
+						"assignmentHeading",
+						"assignee",
+						"assigneePlaceholder",
+						"loadingPeople",
+						"peopleError",
+						"unnamedPerson",
+						"confirmReassign",
+						"confirmReassignDescription",
+						"assignmentConflict",
+						"assignmentError",
+						"unassignmentError",
+						"assign",
+						"unassign",
+						"confirmAssignment",
+						"activityHeading",
+						"loadingActivity",
+						"activityError",
+						"activityFilters",
+						"filterAll",
+						"filterComments",
+						"filterPublic",
+						"noFilteredActivity",
+						"commentVisibility",
+						"commentEditor",
+						"commentPlaceholder",
+						"commentSend",
+						"commentSending",
+						"commentForbidden",
+						"commentError",
+						"noActivity",
+						"comment",
+						"internal",
+						"public",
+						"visibilityUnavailable",
+						"commentDeleted",
+						"assignToMe",
+						"loadOlderActivity",
+						"loadingOlderActivity"
+					]
+				}
+			},
+			"required": ["list", "create", "detail", "journey"]
 		}
 	},
 	"required": [
@@ -8935,6 +9510,7 @@
 		"invitations",
 		"workspace",
 		"team",
-		"publicProject"
+		"publicProject",
+		"workItems"
 	]
 }

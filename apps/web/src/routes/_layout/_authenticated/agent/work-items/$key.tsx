@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import PageTitle from "@/components/page-title";
 import WorkItemDetail from "@/components/work-item/work-item-detail";
 import WorkItemJourney from "@/components/work-item/work-item-journey";
+import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -62,6 +63,10 @@ function WorkItemDetailRouteComponent() {
   const project = visibleItem
     ? projects?.find((candidate) => candidate.id === visibleItem.projectId)
     : undefined;
+  const projectDetails = useGetProject({
+    id: visibleItem?.projectId ?? "",
+    workspaceId: visibleItem?.workspaceId ?? "",
+  });
 
   return (
     <>
@@ -85,6 +90,10 @@ function WorkItemDetailRouteComponent() {
             key={visibleItem.key}
             item={visibleItem}
             activityFilter={activity}
+            defaultCommentVisibility={
+              projectDetails.data?.defaultCommentVisibility ?? "internal"
+            }
+            commentVisibilityReady={projectDetails.data !== undefined}
             onActivityFilterChange={(nextFilter) => {
               void navigate({
                 search: {

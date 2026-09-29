@@ -252,6 +252,7 @@ export const updateProjectBody = z.object({
   icon: z.string(),
   slug: z.string(),
   description: z.string(),
+  defaultCommentVisibility: z.enum(["public", "internal"]).optional(),
 });
 
 export const reorderProjectsBody = z.object({

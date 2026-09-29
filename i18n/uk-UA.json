@@ -671,7 +671,11 @@
 				"iconRequired": "Іконка є обов'язковою"
 			},
 			"importExportTasks": "Імпорт/Експорт",
-			"importExportTasksDescription": "Імпортуйте та експортуйте завдання."
+			"importExportTasksDescription": "Імпортуйте та експортуйте завдання.",
+			"commentVisibilityInternal": "Internal",
+			"commentVisibilityPublic": "Public",
+			"defaultCommentVisibilityHint": "New comments start with this audience; authors can change it in the composer.",
+			"defaultCommentVisibilityLabel": "Default comment visibility"
 		},
 		"projectIntegrations": {
 			"pageTitle": "Інтеґрації проєкту",

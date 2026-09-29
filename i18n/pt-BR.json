@@ -834,7 +834,11 @@
 				"iconRequired": "O ícone é obrigatório"
 			},
 			"importExportTasks": "Importar/Exportar",
-			"importExportTasksDescription": "Importe e exporte tarefas."
+			"importExportTasksDescription": "Importe e exporte tarefas.",
+			"commentVisibilityInternal": "Internal",
+			"commentVisibilityPublic": "Public",
+			"defaultCommentVisibilityHint": "New comments start with this audience; authors can change it in the composer.",
+			"defaultCommentVisibilityLabel": "Default comment visibility"
 		},
 		"projectIntegrations": {
 			"pageTitle": "Integrações do projeto",

@@ -351,6 +351,10 @@ export const projectTable = pgTable(
     icon: text("icon").default("Layout"),
     name: text("name").notNull(),
     description: text("description"),
+    defaultCommentVisibility: text("default_comment_visibility")
+      .$type<"public" | "internal">()
+      .notNull()
+      .default("internal"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     archivedAt: timestamp("archived_at", { mode: "date" }),
     // #187: soft delete. `deletedAt`/`purgeAfter` mirror `organisationTable`'s own pair
@@ -374,6 +378,10 @@ export const projectTable = pgTable(
     index("project_workspaceId_position_idx").on(
       table.workspaceId,
       table.position,
+    ),
+    check(
+      "project_default_comment_visibility_allowed",
+      sql`${table.defaultCommentVisibility} in ('public', 'internal')`,
     ),
   ],
 );

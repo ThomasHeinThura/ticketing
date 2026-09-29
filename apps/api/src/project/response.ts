@@ -11,6 +11,7 @@ export const projectSchema = z
     icon: z.string().nullable(),
     name: z.string(),
     description: z.string().nullable(),
+    defaultCommentVisibility: z.enum(["public", "internal"]),
     createdAt: responseTimestamp,
     archivedAt: nullableResponseTimestamp.openapi({
       description:

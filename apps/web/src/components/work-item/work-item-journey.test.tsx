@@ -143,6 +143,45 @@ function makeItem(): WorkItemDetailRow {
 }
 
 describe("WorkItemJourney", () => {
+  it("uses the configured project visibility as the fresh comment default", async () => {
+    permissionFlags.publicComments = true;
+    permissionFlags.internalComments = true;
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney
+          item={makeItem()}
+          onSaved={vi.fn()}
+          defaultCommentVisibility="public"
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      screen.getByRole("combobox", { name: /commentVisibility/ }),
+    ).toHaveTextContent("public");
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: "workItems:journey.commentEditor",
+      }),
+      { target: { value: "Public by default" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.commentSend" }),
+    );
+
+    await waitFor(() =>
+      expect(createWorkItemComment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          key: "WLP-1",
+          visibility: "public",
+        }),
+      ),
+    );
+  });
+
   it("restores each user's per-work-item comment draft after the journey remounts", async () => {
     permissionFlags.publicComments = true;
     permissionFlags.internalComments = true;

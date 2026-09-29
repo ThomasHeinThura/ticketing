@@ -910,7 +910,13 @@ export default function CommentEditor({
         },
       },
       onUpdate: ({ editor: activeEditor }) => {
-        if (readOnly || disabled || isSyncingRef.current) return;
+        if (
+          readOnly ||
+          disabled ||
+          isSyncingRef.current ||
+          !hasHydratedRef.current
+        )
+          return;
         onDocumentChangeRef.current?.(activeEditor.getJSON());
         if (!onChange) return;
         const markdown = normalizeMarkdown(activeEditor.getMarkdown());

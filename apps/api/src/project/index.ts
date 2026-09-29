@@ -164,7 +164,7 @@ const updateProjectRoute = createRoute({
   tags: ["Projects"],
   summary: "Update project",
   description:
-    "Replace a project's name, icon, slug, description, and visibility.",
+    "Replace a project's name, icon, slug, and description; optionally configure its default comment visibility.",
   middleware: [
     workspaceAccess.fromProject(),
     requireWorkspacePermission({ project: ["update"] }),
@@ -655,7 +655,8 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(updateProjectRoute, async (c) => {
     const { id } = c.req.valid("param");
-    const { name, icon, slug, description } = c.req.valid("json");
+    const { name, icon, slug, description, defaultCommentVisibility } =
+      c.req.valid("json");
     const workspaceId = c.get("workspaceId");
     try {
       const updatedProject = await updateProjectCtrl(
@@ -665,6 +666,7 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
         slug,
         description,
         workspaceId,
+        defaultCommentVisibility,
       );
       return c.json(updatedProject, 200);
     } catch (error) {

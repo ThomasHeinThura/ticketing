@@ -19,7 +19,7 @@ import {
   Textarea,
 } from "@taskdesk/ui";
 import type { JSONContent } from "@tiptap/core";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
@@ -49,6 +49,8 @@ type WorkItemJourneyProps = {
   onSaved: () => void;
   activityFilter?: WorkItemActivityFilter;
   onActivityFilterChange?: (filter: WorkItemActivityFilter) => void;
+  defaultCommentVisibility?: "public" | "internal";
+  commentVisibilityReady?: boolean;
 };
 
 type CommentDraft = {
@@ -66,31 +68,42 @@ function getCommentDraftStorageKey(userId: string, itemKey: string) {
   return `taskdesk:work-item-comment-draft:v1:${encodeURIComponent(userId)}:${encodeURIComponent(itemKey)}`;
 }
 
-function readCommentDraft(storageKey: string): CommentDraft {
+function readCommentDraft(
+  storageKey: string,
+  defaultVisibility: "public" | "internal",
+): { draft: CommentDraft; persisted: boolean } {
   const emptyDraft = {
     text: "",
     body: emptyCommentBody(),
-    visibility: "internal" as const,
+    visibility: defaultVisibility,
   };
   try {
     const raw = window.localStorage.getItem(storageKey);
-    if (!raw) return emptyDraft;
+    if (!raw) return { draft: emptyDraft, persisted: false };
     const parsed: unknown = JSON.parse(raw);
-    if (parsed === null || typeof parsed !== "object") return emptyDraft;
+    if (parsed === null || typeof parsed !== "object") {
+      return { draft: emptyDraft, persisted: false };
+    }
     const draft = parsed as Record<string, unknown>;
     return {
-      text: typeof draft.text === "string" ? draft.text : "",
-      body:
-        draft.body !== null &&
-        typeof draft.body === "object" &&
-        !Array.isArray(draft.body) &&
-        (draft.body as Record<string, unknown>).type === "doc"
-          ? (draft.body as JSONContent)
-          : emptyCommentBody(),
-      visibility: draft.visibility === "public" ? "public" : "internal",
+      draft: {
+        text: typeof draft.text === "string" ? draft.text : "",
+        body:
+          draft.body !== null &&
+          typeof draft.body === "object" &&
+          !Array.isArray(draft.body) &&
+          (draft.body as Record<string, unknown>).type === "doc"
+            ? (draft.body as JSONContent)
+            : emptyCommentBody(),
+        visibility:
+          draft.visibility === "public" || draft.visibility === "internal"
+            ? draft.visibility
+            : defaultVisibility,
+      },
+      persisted: true,
     };
   } catch {
-    return emptyDraft;
+    return { draft: emptyDraft, persisted: false };
   }
 }
 
@@ -110,6 +123,8 @@ function WorkItemJourneyForItem({
   item,
   onSaved,
   userId,
+  defaultCommentVisibility = "internal",
+  commentVisibilityReady = true,
   activityFilter = "all",
   onActivityFilterChange = () => {},
 }: WorkItemJourneyProps & { userId: string }) {
@@ -145,28 +160,52 @@ function WorkItemJourneyForItem({
   const [editError, setEditError] = useState("");
   const [assignError, setAssignError] = useState("");
   const commentDraftStorageKey = getCommentDraftStorageKey(userId, item.key);
-  const [commentDraft, setCommentDraft] = useState<CommentDraft>(() =>
-    readCommentDraft(commentDraftStorageKey),
+  const [initialCommentDraft] = useState(() =>
+    readCommentDraft(commentDraftStorageKey, defaultCommentVisibility),
   );
+  const [commentDraft, setCommentDraft] = useState<CommentDraft>(
+    initialCommentDraft.draft,
+  );
+  const commentDraftRef = useRef(commentDraft);
+  const updateCommentDraft = useCallback(
+    (update: (current: CommentDraft) => CommentDraft) => {
+      const nextDraft = update(commentDraftRef.current);
+      commentDraftRef.current = nextDraft;
+      setCommentDraft(nextDraft);
+      try {
+        if (!nextDraft.text.trim()) {
+          window.localStorage.removeItem(commentDraftStorageKey);
+        } else {
+          window.localStorage.setItem(
+            commentDraftStorageKey,
+            JSON.stringify(nextDraft),
+          );
+        }
+      } catch {
+        // A draft is best-effort when browser storage is unavailable or full.
+      }
+    },
+    [commentDraftStorageKey],
+  );
+  const [hasSavedCommentDraft] = useState(initialCommentDraft.persisted);
   const {
     text: commentText,
     body: commentBody,
     visibility: commentVisibility,
   } = commentDraft;
   useEffect(() => {
-    try {
-      if (!commentDraft.text.trim()) {
-        window.localStorage.removeItem(commentDraftStorageKey);
-      } else {
-        window.localStorage.setItem(
-          commentDraftStorageKey,
-          JSON.stringify(commentDraft),
-        );
-      }
-    } catch {
-      // A draft is best-effort when browser storage is unavailable or full.
+    if (commentVisibilityReady && !hasSavedCommentDraft) {
+      updateCommentDraft((draft) => ({
+        ...draft,
+        visibility: defaultCommentVisibility,
+      }));
     }
-  }, [commentDraft, commentDraftStorageKey]);
+  }, [
+    commentVisibilityReady,
+    defaultCommentVisibility,
+    hasSavedCommentDraft,
+    updateCommentDraft,
+  ]);
   const [commentError, setCommentError] = useState("");
   const mayCreatePublicComment =
     !isCheckingPermissions && canCreatePublicComments();
@@ -293,11 +332,11 @@ function WorkItemJourneyForItem({
         visibility: effectiveCommentVisibility,
       }),
     onSuccess: async () => {
-      setCommentDraft({
+      updateCommentDraft(() => ({
         text: "",
         body: emptyCommentBody(),
         visibility: commentVisibility,
-      });
+      }));
       setCommentError("");
       await queryClient.invalidateQueries({
         queryKey: ["work-items", "activity", item.key],
@@ -667,7 +706,7 @@ function WorkItemJourneyForItem({
               : t("workItems:journey.loadOlderActivity")}
           </Button>
         )}
-        {allowedCommentVisibilities.length > 0 && (
+        {allowedCommentVisibilities.length > 0 && commentVisibilityReady && (
           <div
             className={
               effectiveCommentVisibility === "internal"
@@ -690,7 +729,7 @@ function WorkItemJourneyForItem({
                 value={effectiveCommentVisibility}
                 onValueChange={(value) => {
                   if (value === "internal" || value === "public")
-                    setCommentDraft((draft) => ({
+                    updateCommentDraft((draft) => ({
                       ...draft,
                       visibility: value,
                     }));
@@ -712,10 +751,10 @@ function WorkItemJourneyForItem({
               ariaLabel={t("workItems:journey.commentEditor")}
               value={commentText}
               onChange={(text) =>
-                setCommentDraft((draft) => ({ ...draft, text }))
+                updateCommentDraft((draft) => ({ ...draft, text }))
               }
               onDocumentChange={(body) =>
-                setCommentDraft((draft) => ({ ...draft, body }))
+                updateCommentDraft((draft) => ({ ...draft, body }))
               }
               placeholder={t("workItems:journey.commentPlaceholder")}
               showQuickAttachButton={false}

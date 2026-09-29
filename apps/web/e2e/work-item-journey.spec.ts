@@ -39,6 +39,7 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   let permissioned = true;
   let accessDenied = false;
   let postedComment = false;
+  let projectDefaultCommentVisibility: "public" | "internal" = "internal";
   const activity: Array<Record<string, unknown>> = [];
   const richComment = {
     id: "comment-rich",
@@ -155,6 +156,7 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
           name: "Worklist",
           description: null,
           icon: null,
+          defaultCommentVisibility: projectDefaultCommentVisibility,
           createdAt: "2026-09-01T00:00:00.000Z",
           archivedAt: null,
           deletedAt: null,
@@ -171,11 +173,27 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
           columns: [],
         },
       ]);
+    if (path === `/api/project/${projectId}` && request.method() === "GET")
+      return json({
+        id: projectId,
+        workspaceId,
+        slug: "WLP",
+        name: "Worklist",
+        description: null,
+        icon: null,
+        defaultCommentVisibility: projectDefaultCommentVisibility,
+        createdAt: "2026-09-01T00:00:00.000Z",
+        archivedAt: null,
+        deletedAt: null,
+        purgeAfter: null,
+        position: 1,
+        lastTaskNumber: created ? 1 : 0,
+      });
     if (path === "/api/capabilities")
       return json({
-        manageProjects: false,
+        manageProjects: true,
         createProjects: false,
-        updateProjects: false,
+        updateProjects: true,
         deleteProjects: false,
         updateTasks: permissioned,
         createTasks: true,
@@ -218,6 +236,47 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
     ) {
       created = true;
       return json(item);
+    }
+    if (path === `/api/task/tasks/${projectId}` && request.method() === "GET")
+      return json({
+        data: {
+          id: projectId,
+          workspaceId,
+          slug: "WLP",
+          name: "Worklist",
+          icon: null,
+          description: "",
+          columns: [],
+          archivedTasks: [],
+          plannedTasks: [],
+        },
+        pagination: {
+          total: 0,
+          page: 1,
+          pageSize: 50,
+          totalPages: 0,
+        },
+      });
+    if (path === `/api/project/${projectId}` && request.method() === "PUT") {
+      const body = request.postDataJSON() as {
+        defaultCommentVisibility: "public" | "internal";
+      };
+      projectDefaultCommentVisibility = body.defaultCommentVisibility;
+      return json({
+        id: projectId,
+        workspaceId,
+        slug: "WLP",
+        name: "Worklist",
+        description: "",
+        icon: null,
+        defaultCommentVisibility: projectDefaultCommentVisibility,
+        createdAt: "2026-09-01T00:00:00.000Z",
+        archivedAt: null,
+        deletedAt: null,
+        purgeAfter: null,
+        position: 1,
+        lastTaskNumber: created ? 1 : 0,
+      });
     }
     if (path === "/api/work-items/WLP-1" && request.method() === "GET") {
       if (accessDenied) return json({ message: "Work item not found" }, 404);
@@ -374,7 +433,14 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await page.getByLabel("Title", { exact: true }).fill("First report");
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page.getByRole("link", { name: /First report/ })).toBeVisible();
-  await page.getByRole("link", { name: /First report/ }).click();
+  await page.goto("/dashboard/settings/projects/project-e2e/general");
+  await expect(
+    page.getByRole("heading", { name: "General Settings" }),
+  ).toBeVisible();
+  await page.getByLabel("Default comment visibility").click();
+  await page.getByRole("option", { name: "Public" }).click();
+  await expect.poll(() => projectDefaultCommentVisibility).toBe("public");
+  await page.goto("/agent/work-items/WLP-1");
   await expect(page.getByTestId("work-item-detail")).toBeVisible();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByLabel("Title", { exact: true }).fill("First report edited");
@@ -406,11 +472,35 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(displayedActivity.first()).toContainText("Older note");
   await expect(displayedActivity.last()).toContainText("Tiptap note");
 
-  await page.getByLabel("Comment visibility").click();
-  await page.getByRole("option", { name: "Public" }).click();
-  await page
-    .locator('[contenteditable="true"][aria-label="Write a comment"]')
-    .fill("Customer-safe update");
+  await expect(page.getByLabel("Comment visibility")).toContainText("public");
+  const commentEditor = page.locator(
+    '[contenteditable="true"][aria-label="Write a comment"]',
+  );
+  await commentEditor.fill("Customer-safe update");
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        localStorage.getItem(
+          "taskdesk:work-item-comment-draft:v1:user-e2e:WLP-1",
+        ),
+      ),
+    )
+    .toContain("Customer-safe update");
+  await page.reload();
+  await expect(page.getByTestId("work-item-detail")).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        localStorage.getItem(
+          "taskdesk:work-item-comment-draft:v1:user-e2e:WLP-1",
+        ),
+      ),
+    )
+    .toContain("Customer-safe update");
+  await expect(page.getByLabel("Comment visibility")).toContainText("public");
+  await expect(
+    page.locator('[contenteditable="true"][aria-label="Write a comment"]'),
+  ).toHaveText("Customer-safe update");
   await page.getByRole("button", { name: "Send comment" }).click();
   await expect.poll(() => postedComment).toBe(true);
   await expect(

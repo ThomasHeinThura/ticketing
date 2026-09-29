@@ -4,7 +4,11 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  createWorkspaceMember,
+  requireRow,
+} from "./helpers/fixtures";
 
 describe("API integration: project creation", () => {
   beforeEach(async () => {
@@ -59,6 +63,7 @@ describe("API integration: project creation", () => {
       name: "Roadmap",
       icon: "FolderKanban",
       slug: "roadmap",
+      defaultCommentVisibility: "internal",
     });
 
     const persistedProject = await db.query.projectTable.findFirst({
@@ -70,6 +75,7 @@ describe("API integration: project creation", () => {
       workspaceId: member.workspace.id,
       name: "Roadmap",
       slug: "roadmap",
+      defaultCommentVisibility: "internal",
     });
 
     const columns = await db.query.columnTable.findMany({
@@ -90,6 +96,39 @@ describe("API integration: project creation", () => {
       false,
       true,
     ]);
+  });
+
+  it("returns the configured default comment visibility from project detail", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const updateResponse = await app.request(`/api/project/${project.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: project.name,
+        icon: project.icon ?? "Layout",
+        slug: project.slug,
+        description: project.description ?? "",
+        defaultCommentVisibility: "public",
+      }),
+    });
+
+    expect(updateResponse.status).toBe(200);
+    await expect(updateResponse.json()).resolves.toMatchObject({
+      id: project.id,
+      defaultCommentVisibility: "public",
+    });
+
+    const response = await app.request(`/api/project/${project.id}`);
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      id: project.id,
+      defaultCommentVisibility: "public",
+    });
   });
 
   it("rejects project creation for users outside the workspace", async () => {

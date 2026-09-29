@@ -671,7 +671,11 @@
 				"iconRequired": "Иконата е задолжителна"
 			},
 			"importExportTasks": "Импортирање/Експортирање",
-			"importExportTasksDescription": "Импортирање/Експортирање на задачи"
+			"importExportTasksDescription": "Импортирање/Експортирање на задачи",
+			"commentVisibilityInternal": "Internal",
+			"commentVisibilityPublic": "Public",
+			"defaultCommentVisibilityHint": "New comments start with this audience; authors can change it in the composer.",
+			"defaultCommentVisibilityLabel": "Default comment visibility"
 		},
 		"projectIntegrations": {
 			"pageTitle": "Интеграции на проект",

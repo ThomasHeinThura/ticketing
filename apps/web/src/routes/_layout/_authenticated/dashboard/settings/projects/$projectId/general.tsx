@@ -24,6 +24,11 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Separator,
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -35,6 +40,7 @@ import { TasksImportExport } from "@/components/project/tasks-import-export.tsx"
 import icons from "@/constants/project-icons";
 import useDeleteProject from "@/hooks/mutations/project/use-delete-project";
 import useUpdateProject from "@/hooks/mutations/project/use-update-project";
+import useGetProject from "@/hooks/queries/project/use-get-project";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -53,6 +59,7 @@ type ProjectFormValues = {
   slug: string;
   description?: string;
   icon: string;
+  defaultCommentVisibility: "public" | "internal";
 };
 
 type NormalizedProjectValues = {
@@ -60,6 +67,7 @@ type NormalizedProjectValues = {
   slug: string;
   description: string;
   icon: string;
+  defaultCommentVisibility: "public" | "internal";
 };
 
 function normalizeProjectValues(
@@ -70,6 +78,7 @@ function normalizeProjectValues(
     slug: data.slug.trim(),
     description: (data.description ?? "").trim(),
     icon: data.icon || "Layout",
+    defaultCommentVisibility: data.defaultCommentVisibility,
   };
 }
 
@@ -88,6 +97,7 @@ function RouteComponent() {
           .min(1, t("settings:projectGeneral.validation.keyRequired"))
           .max(8, t("settings:projectGeneral.validation.keyMax")),
         description: z.string().optional(),
+        defaultCommentVisibility: z.enum(["public", "internal"]),
         icon: z
           .string()
           .min(1, t("settings:projectGeneral.validation.iconRequired")),
@@ -108,6 +118,10 @@ function RouteComponent() {
   const { data: workspace } = useActiveWorkspace();
   const { projectId: rawProjectId } = useParams({ strict: false });
   const projectId = rawProjectId ?? "";
+  const { data: projectSettings } = useGetProject({
+    id: projectId,
+    workspaceId: workspace?.id ?? "",
+  });
   const { data: fetchedProject } = useGetTasks(projectId);
   const { project, setProject } = useProjectStore();
 
@@ -132,6 +146,8 @@ function RouteComponent() {
       slug: project?.slug || "",
       description: project?.description || "",
       icon: project?.icon || "Layout",
+      defaultCommentVisibility:
+        projectSettings?.defaultCommentVisibility ?? "internal",
     },
   });
 
@@ -143,6 +159,8 @@ function RouteComponent() {
       slug: project.slug || "",
       description: project.description || "",
       icon: project.icon || "Layout",
+      defaultCommentVisibility:
+        projectSettings?.defaultCommentVisibility ?? "internal",
     };
     lastSavedRef.current = normalizeProjectValues(nextValues);
 
@@ -153,7 +171,7 @@ function RouteComponent() {
       keepTouched: false,
       keepIsValid: true,
     });
-  }, [project, projectForm]);
+  }, [project, projectForm, projectSettings?.defaultCommentVisibility]);
 
   const saveProject = useCallback(
     async (data: ProjectFormValues) => {
@@ -165,8 +183,15 @@ function RouteComponent() {
       const descriptionChanged =
         lastSavedRef.current?.description !== normalizedData.description;
       const iconChanged = lastSavedRef.current?.icon !== normalizedData.icon;
+      const defaultCommentVisibilityChanged =
+        lastSavedRef.current?.defaultCommentVisibility !==
+        normalizedData.defaultCommentVisibility;
       const hasChanges =
-        nameChanged || slugChanged || descriptionChanged || iconChanged;
+        nameChanged ||
+        slugChanged ||
+        descriptionChanged ||
+        iconChanged ||
+        defaultCommentVisibilityChanged;
 
       if (!hasChanges) return;
 
@@ -186,6 +211,9 @@ function RouteComponent() {
             ? normalizedData.description
             : (project.description ?? ""),
           icon: iconChanged ? normalizedData.icon : (project.icon ?? "Layout"),
+          defaultCommentVisibility: defaultCommentVisibilityChanged
+            ? normalizedData.defaultCommentVisibility
+            : (projectSettings?.defaultCommentVisibility ?? "internal"),
         };
 
         await updateProject(updatePayload);
@@ -226,6 +254,7 @@ function RouteComponent() {
       project?.slug,
       project?.description,
       project?.icon,
+      projectSettings?.defaultCommentVisibility,
       updateProject,
       queryClient,
       workspace?.id,
@@ -281,7 +310,8 @@ function RouteComponent() {
           last.name !== normalized.name ||
           last.slug !== normalized.slug ||
           last.description !== normalized.description ||
-          last.icon !== normalized.icon;
+          last.icon !== normalized.icon ||
+          last.defaultCommentVisibility !== normalized.defaultCommentVisibility;
         if (!hasPendingChanges) return;
 
         const isValid = await projectFormRef.current.trigger();
@@ -524,6 +554,55 @@ function RouteComponent() {
                             disabled={!canEdit}
                             {...field}
                           />
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <Separator />
+
+                <FormField
+                  control={projectForm.control}
+                  name="defaultCommentVisibility"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-sm font-medium">
+                            {t(
+                              "settings:projectGeneral.defaultCommentVisibilityLabel",
+                            )}
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            {t(
+                              "settings:projectGeneral.defaultCommentVisibilityHint",
+                            )}
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            disabled={!canEdit}
+                          >
+                            <SelectTrigger className="w-full sm:w-64">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="internal">
+                                {t(
+                                  "settings:projectGeneral.commentVisibilityInternal",
+                                )}
+                              </SelectItem>
+                              <SelectItem value="public">
+                                {t(
+                                  "settings:projectGeneral.commentVisibilityPublic",
+                                )}
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
                         </FormControl>
                       </div>
                       <FormMessage />

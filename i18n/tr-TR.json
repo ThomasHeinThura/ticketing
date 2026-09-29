@@ -671,7 +671,11 @@
 				"iconRequired": "Simge gereklidir"
 			},
 			"importExportTasks": "İçe/Dışa Aktar",
-			"importExportTasksDescription": "Talepleri içe ve dışa aktarın."
+			"importExportTasksDescription": "Talepleri içe ve dışa aktarın.",
+			"commentVisibilityInternal": "Internal",
+			"commentVisibilityPublic": "Public",
+			"defaultCommentVisibilityHint": "New comments start with this audience; authors can change it in the composer.",
+			"defaultCommentVisibilityLabel": "Default comment visibility"
 		},
 		"projectIntegrations": {
 			"pageTitle": "Proje Entegrasyonları",

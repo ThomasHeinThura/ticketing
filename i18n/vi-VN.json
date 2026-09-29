@@ -832,7 +832,11 @@
 				"iconRequired": "Cần có biểu tượng"
 			},
 			"importExportTasks": "Nhập/Xuất",
-			"importExportTasksDescription": "Nhập và xuất công việc."
+			"importExportTasksDescription": "Nhập và xuất công việc.",
+			"commentVisibilityInternal": "Internal",
+			"commentVisibilityPublic": "Public",
+			"defaultCommentVisibilityHint": "New comments start with this audience; authors can change it in the composer.",
+			"defaultCommentVisibilityLabel": "Default comment visibility"
 		},
 		"projectIntegrations": {
 			"pageTitle": "Tích hợp dự án",
