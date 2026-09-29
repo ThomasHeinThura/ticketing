@@ -47,6 +47,79 @@ function testCallbacks(sourceFile, title) {
   return callbacks;
 }
 
+function propertyAccessPath(node) {
+  if (ts.isIdentifier(node)) return [node.text];
+  if (!ts.isPropertyAccessExpression(node)) return [];
+  return [...propertyAccessPath(node.expression), node.name.text];
+}
+
+function isTestApiPath(parts) {
+  return parts[0] === "test" || parts[0] === "it" || parts.includes("test");
+}
+
+function testDisableMethod(node) {
+  if (!ts.isCallExpression(node)) return undefined;
+  const parts = propertyAccessPath(node.expression);
+  if (!isTestApiPath(parts)) return undefined;
+
+  const last = parts.at(-1);
+  const previous = parts.at(-2);
+  if ((last === "skip" || last === "fixme") && previous !== "describe") {
+    return last;
+  }
+  if (previous === "describe" && (last === "skip" || last === "fixme")) {
+    return `describe.${last}`;
+  }
+  if (previous === "describe" && last === "configure") {
+    const mode = node.arguments
+      .filter(ts.isObjectLiteralExpression)
+      .flatMap((argument) => argument.properties)
+      .find(
+        (property) =>
+          ts.isPropertyAssignment(property) &&
+          ((ts.isIdentifier(property.name) && property.name.text === "mode") ||
+            (ts.isStringLiteral(property.name) &&
+              property.name.text === "mode")),
+      );
+    if (!mode) return undefined;
+    if (
+      ts.isStringLiteral(mode.initializer) &&
+      ["default", "parallel", "serial"].includes(mode.initializer.text)
+    ) {
+      return undefined;
+    }
+    return "describe.configure({ mode: 'skip' or dynamic })";
+  }
+  return undefined;
+}
+
+function findTestDisable(node) {
+  let method;
+  const visit = (current) => {
+    if (method) return;
+    method = testDisableMethod(current);
+    if (!method) current.forEachChild(visit);
+  };
+  visit(node);
+  return method;
+}
+
+function findDisabledSuite(sourceFile) {
+  if (!sourceFile) return undefined;
+  let method;
+  const visit = (node) => {
+    if (method) return;
+    const candidate = testDisableMethod(node);
+    if (candidate?.startsWith("describe.")) {
+      method = candidate;
+      return;
+    }
+    node.forEachChild(visit);
+  };
+  visit(sourceFile);
+  return method;
+}
+
 function awaitedScreenshotName(statement) {
   if (
     !ts.isExpressionStatement(statement) ||
@@ -382,6 +455,18 @@ try {
   parser.close();
 }
 
+const visualFileDisable = findTestDisable(visualSourceFile);
+if (visualFileDisable && !visualFileDisable.startsWith("describe.")) {
+  failures.push(
+    `${path.basename(visualSpecPath)} cannot contain test.skip or test.fixme calls`,
+  );
+}
+if (findDisabledSuite(visualSourceFile)) {
+  failures.push(
+    `${path.basename(visualSpecPath)} cannot disable tests with test.describe.skip/fixme or test.describe.configure({ mode: 'skip' })`,
+  );
+}
+
 for (const screen of manifest) {
   if (seenTests.has(screen.test))
     failures.push(`duplicate test name: ${screen.test}`);
@@ -389,9 +474,13 @@ for (const screen of manifest) {
   if (!screen.test.endsWith("@visual")) {
     failures.push(`${screen.name} test is not tagged @visual`);
   }
-  const matchingTests = visualSourceFile
-    ? testCallbacks(visualSourceFile, screen.test).map(directTestScreenshots)
+  const matchingCallbacks = visualSourceFile
+    ? testCallbacks(visualSourceFile, screen.test)
     : [];
+  const matchingTests = matchingCallbacks.map(directTestScreenshots);
+  if (matchingCallbacks.some(findTestDisable)) {
+    failures.push(`${screen.name} visual test cannot be skipped or fixme`);
+  }
   if (matchingTests.length === 0) {
     failures.push(
       `${screen.name} has no matching test in apps/web/e2e/visual.spec.ts`,
@@ -493,6 +582,23 @@ for (const [applicationRoute, rows] of registeredInventoryRouteGroups) {
 
 const storyTitle =
   "every exported Storybook story has a visual baseline @visual";
+const storyCallbacks = storySourceFile
+  ? testCallbacks(storySourceFile, storyTitle)
+  : [];
+if (storyCallbacks.some(findTestDisable)) {
+  failures.push("Storybook visual test cannot be skipped or fixme");
+}
+const storyFileDisable = findTestDisable(storySourceFile);
+if (storyFileDisable && !storyFileDisable.startsWith("describe.")) {
+  failures.push(
+    `${path.basename(storySpecPath)} cannot contain test.skip or test.fixme calls`,
+  );
+}
+if (findDisabledSuite(storySourceFile)) {
+  failures.push(
+    `${path.basename(storySpecPath)} cannot disable tests with test.describe.skip/fixme or test.describe.configure({ mode: 'skip' })`,
+  );
+}
 if (!storySourceFile || !hasStorybookCoverage(storySourceFile, storyTitle)) {
   failures.push(
     "Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline",

@@ -36,11 +36,18 @@ const SCREENS = [
   },
 ];
 
-function visualSpec(screens, { omitScreenshotFor, nestedScreenshotFor } = {}) {
+function visualSpec(
+  screens,
+  { omitScreenshotFor, nestedScreenshotFor, disabledFor } = {},
+) {
   return screens
     .map(
       ({ test: testName, screenshot }) =>
         `test(${JSON.stringify(testName)}, async ({ page }) => { ${
+          testName === disabledFor
+            ? 'if (process.env.CI) test.fixme(true, "known issue");'
+            : ""
+        } ${
           testName === omitScreenshotFor
             ? "await page.goto('/');"
             : testName === nestedScreenshotFor
@@ -55,26 +62,45 @@ function storybookSpec({
   emptyCallback = false,
   detachedIndex = false,
   omitStoryNavigation = false,
+  conditionalSkip = false,
+  describeSkip = false,
+  describeConfigureSkip = false,
+  describeConfigureDynamic = false,
 } = {}) {
-  const body = emptyCallback
-    ? "await page.goto('/');"
-    : [
-        'const response = await fetch("http://127.0.0.1:6006/index.json");',
-        detachedIndex
-          ? 'const index = { entries: { fake: { id: "Button--primary", type: "story" } } };'
-          : "const index = await response.json();",
-        'const stories = Object.values(index.entries).filter((entry) => entry.type === "story").sort((left, right) => left.id.localeCompare(right.id));',
-        "expect(stories.length).toBeGreaterThan(0);",
-        "for (const story of stories) {",
-        ...(omitStoryNavigation
-          ? []
-          : [
-              "  await page.goto(`http://127.0.0.1:6006/iframe.html?id=\u0024{story.id}&viewMode=story`);",
-            ]),
-        "  await expect(page).toHaveScreenshot(`\u0024{story.id}.png`, options);",
-        "}",
-      ].join("\n");
-  return `test("every exported Storybook story has a visual baseline @visual", async ({ page }) => {\n${body}\n});`;
+  const body = [
+    ...(conditionalSkip
+      ? ['if (process.env.CI) test.skip(true, "temporarily disabled");']
+      : []),
+    ...(emptyCallback
+      ? ["await page.goto('/');"]
+      : [
+          'const response = await fetch("http://127.0.0.1:6006/index.json");',
+          detachedIndex
+            ? 'const index = { entries: { fake: { id: "Button--primary", type: "story" } } };'
+            : "const index = await response.json();",
+          'const stories = Object.values(index.entries).filter((entry) => entry.type === "story").sort((left, right) => left.id.localeCompare(right.id));',
+          "expect(stories.length).toBeGreaterThan(0);",
+          "for (const story of stories) {",
+          ...(omitStoryNavigation
+            ? []
+            : [
+                "  await page.goto(`http://127.0.0.1:6006/iframe.html?id=\u0024{story.id}&viewMode=story`);",
+              ]),
+          "  await expect(page).toHaveScreenshot(`\u0024{story.id}.png`, options);",
+          "}",
+        ]),
+  ].join("\n");
+  const testCase = `test("every exported Storybook story has a visual baseline @visual", async ({ page }) => {\n${body}\n});`;
+  if (describeSkip) {
+    return `test.describe.skip("visual Storybook coverage", () => {\n${testCase}\n});`;
+  }
+  if (describeConfigureSkip) {
+    return `test.describe.configure({ mode: "skip" });\n${testCase}`;
+  }
+  if (describeConfigureDynamic) {
+    return `test.describe.configure({ mode: process.env.CI ? "skip" : "default" });\n${testCase}`;
+  }
+  return testCase;
 }
 
 function routeTree(routes) {
@@ -183,6 +209,19 @@ test("G8 does not accept a nested screenshot helper as a route assertion", async
   );
 });
 
+test("G8 rejects a visual route test that conditionally calls test.fixme", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, { disabledFor: "work list @visual" }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list visual test cannot be skipped or fixme/,
+  );
+});
+
 test("G8 fails when the Storybook test title remains but its coverage loop is removed", async () => {
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,
@@ -193,6 +232,58 @@ test("G8 fails when the Storybook test title remains but its coverage loop is re
   assert.match(
     result.output,
     /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects a Storybook callback that conditionally calls test.skip", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ conditionalSkip: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test cannot be skipped or fixme/,
+  );
+});
+
+test("G8 rejects a Storybook visual test inside a skipped describe block", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ describeSkip: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /storybook-visual\.spec\.ts cannot disable tests/,
+  );
+});
+
+test("G8 rejects a Storybook file configured to skip its suite", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ describeConfigureSkip: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /storybook-visual\.spec\.ts cannot disable tests/,
+  );
+});
+
+test("G8 rejects a Storybook suite whose mode can conditionally skip", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ describeConfigureDynamic: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /storybook-visual\.spec\.ts cannot disable tests/,
   );
 });
 
