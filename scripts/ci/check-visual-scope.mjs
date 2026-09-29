@@ -94,6 +94,7 @@ function testDisableMethod(node) {
 }
 
 function findTestDisable(node) {
+  if (!node) return undefined;
   let method;
   const visit = (current) => {
     if (method) return;
