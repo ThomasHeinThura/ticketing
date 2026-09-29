@@ -55,7 +55,9 @@ function normalizeStoryExport(exportedStory: unknown): Story {
     );
     if (unsupportedFunctionKeys.length > 0) {
       throw new Error(
-        `Unsupported CSF2 function story fields: ${unsupportedFunctionKeys.join(", ")}`,
+        `Unsupported CSF2 function story fields: ${unsupportedFunctionKeys
+          .map((key) => (typeof key === "symbol" ? key.toString() : key))
+          .join(", ")}`,
       );
     }
     if (
@@ -129,7 +131,7 @@ function resolveStoryElement(
   throw new Error("Story has no render function or component");
 }
 
-const storyModules = import.meta.glob<StoryModule>("./*.stories.tsx", {
+const storyModules = import.meta.glob<StoryModule>("./**/*.stories.{ts,tsx}", {
   eager: true,
 });
 
@@ -143,6 +145,18 @@ describe("Storybook story export handling", () => {
     );
     const { getByRole } = render(element as ReactNode);
     expect(getByRole("button", { name: "CSF2 action" })).toBeInTheDocument();
+  });
+
+  it("renders a CSF2 function story with attached args", () => {
+    const story = Object.assign(
+      (args: Record<string, unknown>) => (
+        <button type="button">{args.label as string}</button>
+      ),
+      { args: { label: "Attached args" } },
+    );
+    const element = resolveStoryElement({}, story);
+    const { getByRole } = render(element as ReactNode);
+    expect(getByRole("button", { name: "Attached args" })).toBeInTheDocument();
   });
 
   it("rejects a malformed named export instead of skipping it", () => {
@@ -176,6 +190,16 @@ describe("Storybook story export handling", () => {
     });
     expect(() => normalizeStoryExport(story)).toThrow(
       "Unsupported CSF2 function story fields: customAnnotation",
+    );
+  });
+
+  it("reports unknown CSF2 symbol properties without losing the fail-closed error", () => {
+    const story = (args: Record<string, unknown>) => (
+      <button type="button">{args.label as string}</button>
+    );
+    Object.defineProperty(story, Symbol.for("custom"), { value: true });
+    expect(() => normalizeStoryExport(story)).toThrow(
+      "Unsupported CSF2 function story fields: Symbol(custom)",
     );
   });
 });
