@@ -22,7 +22,7 @@ const getCapabilitiesRoute = createRoute({
   tags: ["Capabilities"],
   summary: "Get the caller's capabilities in a workspace",
   description:
-    "One call replacing the 16-way has-permission fan-out the client made against the organization() plugin's /organization/has-permission (apps/web/src/hooks/use-workspace-permission.ts). Computed over hasWorkspacePermission -- the same TaskDesk-native authorization check every other route already uses.",
+    "One call replacing the 16-way has-permission fan-out the client made against the organization() plugin. Includes the exact canonical sla_policy:manage check used to gate service-calendar authoring.",
   middleware: [requireSessionOnly(), workspaceAccess.fromQuery()] as const,
   request: { query: workspaceIdQuery },
   responses: {

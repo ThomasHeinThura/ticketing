@@ -1,7 +1,7 @@
 # Service calendars
 
 - **Stage:** P2
-- **Status:** ⬜
+- **Status:** 🟡
 - **Feature flag:** `feature.sla`
 - **Depends on:** nothing
 
@@ -77,8 +77,10 @@ repeats every year (`CAL-12`).
 - `CAL-7` During a DST spring-forward, an hour that does not exist is skipped. During
   autumn fall-back, the repeated hour is counted once.
 - `CAL-8` Changing a calendar takes effect immediately for all SLAs measured against it,
-  because SLA state is computed on read. The editor warns and shows how many open work
-  items are affected.
+  because SLA state is computed on read. Changing its timezone requires explicit
+  confirmation before save. The editor shows how many open work items are affected when
+  usage data is available; this count remains outstanding until `/usage` can be implemented
+  after project calendar references (#437) and the `sla_policy` table exist.
 - `CAL-9` A calendar in use cannot be deleted. It must be replaced on every policy and
   project referencing it first, and the UI lists them (`GET
   /api/service-calendars/{id}/usage`, below).
@@ -112,12 +114,16 @@ meaningless with SLA turned off.
 
 ## Screens
 
-**Calendar list** — name, timezone, weekly cover total, how many policies and projects use
-it.
+**Calendar list** — name, timezone, and weekly cover total. It will also show how many
+policies and projects use each calendar once the usage API is available. The current list
+and editor screens are implemented; reference counts and safe deletion remain unavailable.
 
 **Calendar editor** — a week grid with draggable window blocks, a timezone selector, and a
-holiday list with a year picker. Beside it, a live preview: "This calendar provides 40
-hours of cover per week, 1,992 hours in 2026 after holidays."
+holiday list with a year picker. Beside it, a server-calculated preview for the selected
+year. The preview currently reflects the last saved settings; saving is required before it
+reflects editor changes. Changing an existing calendar's timezone opens a confirmation
+warning. The affected-item count is not shown because `/usage` is still blocked by #437 and
+the missing `sla_policy` table.
 
 The preview matters. Without it, an administrator cannot tell whether they have configured
 what they meant, and calendar mistakes are silent and expensive.
@@ -142,10 +148,12 @@ The persisted CRUD/list/detail and annual preview routes are implemented. The pr
 the shared `packages/domain/src/calendar/` calculations. The remaining routes are not
 implemented in this slice:
 
-This partial slice also does not seed workspace calendars with named presets, implement
-calendar cloning, or provide the calendar list/editor UI. Issue #33 remains open: the
-remaining CAL behavior, API routes, screens and their specified test obligations have not
-been completed. No Follow the sun window pattern is defined or inferred here.
+This slice also does not seed workspace calendars with named presets or implement calendar
+cloning. The calendar list/editor UI now covers manual calendar creation, editing, and
+saved-settings coverage preview. Issue #33 remains open: reference counts, safe deletion,
+presets, cloning, ICS import, country holidays, and the remaining CAL behavior and
+acceptance tests have not been completed. No Follow the sun window pattern is defined or
+inferred here.
 
 - `/usage` waits on project calendar references (tracked by #437) and the not-yet-created
   `sla_policy` table. It must report real references before CAL-9 deletion protection can
@@ -167,7 +175,7 @@ for `feature.sla` yet, so this route slice does not add a second, ad-hoc flag me
 | Holiday falling on a day with no windows anyway | No effect. Allowed |
 | Overlapping holiday ranges | Merged |
 | Window of zero length | Rejected |
-| Calendar timezone changed | Recomputes everything. Strongly warned; requires confirmation |
+| Calendar timezone changed | Recomputes everything. Requires explicit confirmation; affected-item count stays outstanding until `/usage` exists |
 | Leap second | Ignored. Not modelled |
 | Country preset for a country with regional holidays | Presets are national only. Regional holidays are added manually |
 

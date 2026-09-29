@@ -79,6 +79,7 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
   let savedCalendar = { ...calendar };
   let patchPayload: CalendarFixture | undefined;
   let createPayload: Omit<CalendarFixture, "id"> | undefined;
+  let canManageServiceCalendars = true;
 
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
@@ -124,6 +125,43 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
           role: "owner",
         },
       ]),
+    }),
+  );
+  await page.route("**/api/workspace/*/members", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: "user-e2e",
+          role: canManageServiceCalendars ? "admin" : "viewer",
+        },
+      ]),
+    }),
+  );
+  await page.route("**/api/capabilities**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        manageProjects: false,
+        createProjects: false,
+        updateProjects: false,
+        deleteProjects: false,
+        updateTasks: false,
+        createTasks: false,
+        deleteTasks: false,
+        assignTasks: false,
+        createLabels: false,
+        updateLabels: false,
+        deleteLabels: false,
+        manageWorkspace: false,
+        deleteWorkspace: false,
+        inviteUsers: false,
+        manageTeam: false,
+        removeMembers: false,
+        manageServiceCalendars: canManageServiceCalendars,
+      }),
     }),
   );
   await page.route("**/api/service-calendars**", async (route) => {
@@ -243,13 +281,29 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
 
   await page.setViewportSize({ width: 375, height: 812 });
   await page.getByLabel("Name", { exact: true }).fill("London support");
+  await page
+    .getByLabel("IANA timezone", { exact: true })
+    .fill("America/New_York");
   await page.getByLabel("Monday window 1 start").fill("10:00");
   await page.getByRole("button", { name: "Add holiday" }).click();
   await page.getByLabel("Date").nth(1).fill("2026-12-26");
   await page.getByRole("button", { name: "Save changes" }).click();
+  const timezoneDialog = page.getByRole("alertdialog", {
+    name: "Confirm calendar timezone change",
+  });
+  await expect(timezoneDialog).toBeVisible();
+  await expect(
+    timezoneDialog.getByText(/affected open-item count is not available yet/i),
+  ).toBeVisible();
+  expect(patchPayload).toBeUndefined();
+  await expectNoSeriousAxeViolations(page);
+  await timezoneDialog
+    .getByRole("button", { name: "Confirm and save" })
+    .click();
 
   await expect(page.getByText("Service calendar saved")).toBeVisible();
   expect(patchPayload?.name).toBe("London support");
+  expect(patchPayload?.timezone).toBe("America/New_York");
   expect(patchPayload?.windows.mon[0]?.from).toBe(600);
   expect(patchPayload?.holidays).toHaveLength(2);
   await page.screenshot({
@@ -274,4 +328,20 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
   ).toBeVisible();
   expect(createPayload?.workspaceId).toBe(workspaceId);
   expect(createPayload?.windows.mon).toEqual([{ from: 540, to: 1020 }]);
+
+  canManageServiceCalendars = false;
+  await page.goto("/agent/settings/calendars");
+  await expect(page.getByText("Read-only access")).toBeVisible();
+  await expect(page.getByRole("button", { name: "New calendar" })).toHaveCount(
+    0,
+  );
+  await page.getByRole("link", { name: "New regional cover" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save changes" }),
+  ).toBeDisabled();
+  await expect(page.getByLabel("Name", { exact: true })).toBeDisabled();
+  await page.goto("/agent/settings/calendars/new");
+  await expect(
+    page.getByRole("button", { name: "Create calendar" }),
+  ).toBeDisabled();
 });

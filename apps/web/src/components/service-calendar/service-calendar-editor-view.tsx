@@ -2,6 +2,13 @@ import { Link } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
+  AlertDialog,
+  AlertDialogClose,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogPopup,
+  AlertDialogTitle,
   AlertTitle,
   Button,
   Skeleton,
@@ -99,7 +106,12 @@ export function ServiceCalendarEditorView({
           <Button
             type="submit"
             form="service-calendar-form"
-            disabled={saving || !state.workspace}
+            disabled={
+              saving ||
+              !state.workspace ||
+              !state.canManageCalendars ||
+              state.isCheckingPermissions
+            }
           >
             {saving ? "Saving…" : isNew ? "Create calendar" : "Save changes"}
           </Button>
@@ -110,32 +122,49 @@ export function ServiceCalendarEditorView({
           calendar={calendar}
           hasCover={state.hasCover}
         />
+        {!state.canManageCalendars && !state.isCheckingPermissions ? (
+          <Alert variant="info">
+            <AlertTitle>Read-only access</AlertTitle>
+            <AlertDescription>
+              Your workspace role does not allow creating or editing service
+              calendars. Contact a workspace administrator if you need access.
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         <form
           id="service-calendar-form"
           className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]"
           onSubmit={form.handleSubmit(state.handleSave)}
         >
-          <div className="space-y-6">
-            <CalendarDetailsCard form={form} />
-            <WeeklyCoverCard
-              windows={state.windows}
-              windowIds={state.windowIds}
-              windowError={state.windowError}
-              onDragEnd={state.handleWindowDragEnd}
-              onChange={state.updateWindow}
-              onAdd={state.addWindow}
-              onRemove={state.removeWindow}
-            />
-            <HolidayListCard
-              holidays={state.holidays}
-              holidayIds={state.holidayIds}
-              onAdd={state.addHoliday}
-              onChange={state.replaceHoliday}
-              onPatch={state.patchHoliday}
-              onRemove={state.removeHoliday}
-            />
-          </div>
+          <fieldset
+            disabled={!state.canManageCalendars || state.isCheckingPermissions}
+            className="m-0 min-w-0 border-0 p-0"
+          >
+            <legend className="sr-only">
+              Editable service calendar settings
+            </legend>
+            <div className="space-y-6">
+              <CalendarDetailsCard form={form} />
+              <WeeklyCoverCard
+                windows={state.windows}
+                windowIds={state.windowIds}
+                windowError={state.windowError}
+                onDragEnd={state.handleWindowDragEnd}
+                onChange={state.updateWindow}
+                onAdd={state.addWindow}
+                onRemove={state.removeWindow}
+              />
+              <HolidayListCard
+                holidays={state.holidays}
+                holidayIds={state.holidayIds}
+                onAdd={state.addHoliday}
+                onChange={state.replaceHoliday}
+                onPatch={state.patchHoliday}
+                onRemove={state.removeHoliday}
+              />
+            </div>
+          </fieldset>
           <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">
             <CoveragePreviewCard
               calendar={calendar}
@@ -146,6 +175,45 @@ export function ServiceCalendarEditorView({
             />
           </aside>
         </form>
+        <AlertDialog
+          open={state.timezoneConfirmationOpen}
+          onOpenChange={(open) => {
+            if (!open) state.cancelTimezoneChange();
+          }}
+        >
+          <AlertDialogPopup>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Confirm calendar timezone change
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-foreground">
+                Changing the calendar timezone immediately changes how SLA
+                deadlines are calculated for work items using this calendar.
+              </AlertDialogDescription>
+              <p className="text-sm text-foreground">
+                The affected open-item count is not available yet. The calendar
+                usage count is not available yet. Confirm to continue without
+                that count.
+              </p>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogClose
+                render={
+                  <Button type="button" variant="outline">
+                    Cancel
+                  </Button>
+                }
+              />
+              <Button
+                type="button"
+                disabled={saving}
+                onClick={() => void state.confirmTimezoneChange()}
+              >
+                Confirm and save
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogPopup>
+        </AlertDialog>
       </main>
     </>
   );
@@ -166,8 +234,9 @@ function EditorNotices({
         <AlertTitle>Changes affect SLA deadlines immediately</AlertTitle>
         <AlertDescription className="text-foreground">
           Editing cover or holidays recalculates SLA state on the next read. The
-          affected-item count is unavailable until calendar usage is
-          implemented.
+          affected-item count is not available in this slice because the usage
+          endpoint depends on project calendar references (#437) and the
+          sla_policy table.
         </AlertDescription>
       </Alert>
       {!isNew && calendar && !hasCover ? (

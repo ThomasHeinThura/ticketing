@@ -13,10 +13,12 @@ import { useUpdateServiceCalendar } from "@/hooks/mutations/service-calendar/use
 import { useServiceCalendar } from "@/hooks/queries/service-calendar/use-service-calendar";
 import { useServiceCalendarPreview } from "@/hooks/queries/service-calendar/use-service-calendar-preview";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import {
   type CalendarWindowsForm,
   copyCalendarWindows,
   emptyCalendarWindows,
+  timezoneChangeNeedsConfirmation,
   WEEKDAYS,
 } from "@/lib/service-calendar-form";
 import { toast } from "@/lib/toast";
@@ -53,6 +55,8 @@ export function useServiceCalendarEditor({
   year: number;
   onCreated: (id: string, year: number) => Promise<void>;
 }) {
+  const { canManageServiceCalendars, isCheckingPermissions } =
+    useWorkspacePermission();
   const { data: workspace, isLoading: isWorkspaceLoading } =
     useActiveWorkspace();
   const {
@@ -78,6 +82,10 @@ export function useServiceCalendarEditor({
   });
   const [holidayIds, setHolidayIds] = useState<string[]>([]);
   const [windowError, setWindowError] = useState("");
+  const [timezoneConfirmationOpen, setTimezoneConfirmationOpen] =
+    useState(false);
+  const [pendingSaveValues, setPendingSaveValues] =
+    useState<CalendarMetadata | null>(null);
   const hydratedCalendarId = useRef<string | null>(null);
 
   const metadataSchema = useMemo(
@@ -115,7 +123,11 @@ export function useServiceCalendarEditor({
     setHolidayIds(calendar.holidays.map(() => createFieldId()));
   }, [calendar, form]);
 
-  async function handleSave(values: CalendarMetadata) {
+  async function persist(values: CalendarMetadata) {
+    if (!canManageServiceCalendars()) {
+      toast.error("You do not have permission to manage service calendars.");
+      return;
+    }
     const invalidWindow = WEEKDAYS.some(({ key }) =>
       windows[key].some((window) => window.from >= window.to),
     );
@@ -154,6 +166,37 @@ export function useServiceCalendarEditor({
         error instanceof Error ? error.message : "Failed to save calendar",
       );
     }
+  }
+
+  async function handleSave(values: CalendarMetadata) {
+    if (!canManageServiceCalendars()) {
+      toast.error("You do not have permission to manage service calendars.");
+      return;
+    }
+    if (
+      timezoneChangeNeedsConfirmation(
+        isNew,
+        calendar?.timezone,
+        values.timezone,
+      )
+    ) {
+      setPendingSaveValues(values);
+      setTimezoneConfirmationOpen(true);
+      return;
+    }
+    await persist(values);
+  }
+
+  async function confirmTimezoneChange() {
+    const values = pendingSaveValues;
+    setTimezoneConfirmationOpen(false);
+    setPendingSaveValues(null);
+    if (values) await persist(values);
+  }
+
+  function cancelTimezoneChange() {
+    setTimezoneConfirmationOpen(false);
+    setPendingSaveValues(null);
   }
 
   function updateWindow(
@@ -251,10 +294,15 @@ export function useServiceCalendarEditor({
     holidayIds,
     windowError,
     saving: createCalendar.isPending || updateCalendar.isPending,
+    canManageCalendars: canManageServiceCalendars(),
+    isCheckingPermissions,
     loading: isWorkspaceLoading || (!isNew && isCalendarLoading),
     isCalendarError,
     refetchCalendar,
     handleSave,
+    timezoneConfirmationOpen,
+    confirmTimezoneChange,
+    cancelTimezoneChange,
     handleWindowDragEnd,
     updateWindow,
     addWindow,

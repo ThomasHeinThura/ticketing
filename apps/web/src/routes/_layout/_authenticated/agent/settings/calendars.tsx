@@ -22,6 +22,7 @@ import PageTitle from "@/components/page-title";
 import { CalendarSummaryCard } from "@/components/service-calendar/calendar-summary-card";
 import { useServiceCalendars } from "@/hooks/queries/service-calendar/use-service-calendars";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { routes } from "@/lib/routes";
 
 export const Route = createFileRoute(
@@ -40,6 +41,9 @@ function ServiceCalendarsRoute() {
     isError,
     refetch,
   } = useServiceCalendars(workspace?.id ?? "");
+  const { canManageServiceCalendars, isCheckingPermissions } =
+    useWorkspacePermission();
+  const canManageCalendars = canManageServiceCalendars();
 
   if (location.pathname.startsWith(`${routes.serviceCalendars.path}/`)) {
     return <Outlet />;
@@ -58,19 +62,31 @@ function ServiceCalendarsRoute() {
               Set the working hours that SLA clocks count for this workspace.
             </p>
           </div>
-          <Button
-            render={
-              <Link
-                to={routes.serviceCalendarEditor.path}
-                params={{ calendarId: "new" }}
-              />
-            }
-            disabled={!workspace}
-          >
-            <Plus aria-hidden="true" />
-            New calendar
-          </Button>
+          {canManageCalendars && !isCheckingPermissions ? (
+            <Button
+              render={
+                <Link
+                  to={routes.serviceCalendarEditor.path}
+                  params={{ calendarId: "new" }}
+                />
+              }
+              disabled={!workspace}
+            >
+              <Plus aria-hidden="true" />
+              New calendar
+            </Button>
+          ) : null}
         </div>
+
+        {!canManageCalendars && !isCheckingPermissions ? (
+          <Alert variant="info">
+            <AlertTitle>Read-only access</AlertTitle>
+            <AlertDescription>
+              Your workspace role does not allow creating or editing service
+              calendars. Contact a workspace administrator if you need access.
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         <Alert variant="info">
           <CalendarDays aria-hidden="true" />
@@ -119,17 +135,19 @@ function ServiceCalendarsRoute() {
                     Create a calendar to define when SLA time advances.
                   </EmptyDescription>
                 </EmptyHeader>
-                <Button
-                  render={
-                    <Link
-                      to={routes.serviceCalendarEditor.path}
-                      params={{ calendarId: "new" }}
-                    />
-                  }
-                >
-                  <Plus aria-hidden="true" />
-                  Create calendar
-                </Button>
+                {canManageCalendars && !isCheckingPermissions ? (
+                  <Button
+                    render={
+                      <Link
+                        to={routes.serviceCalendarEditor.path}
+                        params={{ calendarId: "new" }}
+                      />
+                    }
+                  >
+                    <Plus aria-hidden="true" />
+                    Create calendar
+                  </Button>
+                ) : null}
               </Empty>
             </CardContent>
           </Card>

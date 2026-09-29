@@ -79,6 +79,14 @@ export function timezoneOptions(): string[] {
   return ["UTC", ...zones.filter((zone) => zone !== "UTC")];
 }
 
+export function timezoneChangeNeedsConfirmation(
+  isNew: boolean,
+  savedTimezone: string | undefined,
+  nextTimezone: string,
+): boolean {
+  return !isNew && savedTimezone !== nextTimezone.trim();
+}
+
 export function parseCalendarEditorSearch(raw: unknown): { year: number } {
   const candidate = (raw ?? {}) as Record<string, unknown>;
   const year = Number(candidate.year);

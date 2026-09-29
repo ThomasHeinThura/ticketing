@@ -5,6 +5,7 @@ import {
   formatClockTime,
   parseCalendarEditorSearch,
   parseClockTime,
+  timezoneChangeNeedsConfirmation,
   weeklyCoverHours,
 } from "./service-calendar-form";
 
@@ -46,5 +47,19 @@ describe("service calendar editor helpers", () => {
   it("formats preview minutes as hours without rounding away fractional minutes", () => {
     expect(weeklyCoverHours(2400)).toBe("40");
     expect(weeklyCoverHours(2415)).toBe("40.25");
+  });
+
+  it("requires confirmation only when an existing calendar changes timezone", () => {
+    expect(timezoneChangeNeedsConfirmation(false, "Europe/London", "UTC")).toBe(
+      true,
+    );
+    expect(
+      timezoneChangeNeedsConfirmation(
+        false,
+        "Europe/London",
+        " Europe/London ",
+      ),
+    ).toBe(false);
+    expect(timezoneChangeNeedsConfirmation(true, undefined, "UTC")).toBe(false);
   });
 });
