@@ -13,6 +13,7 @@ import {
   lockProjectsAndAssertLive,
 } from "../../task/assert-task-project-live";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import { lockWorkspaceLabelNames } from "../label-name-lock";
 
 type LabelRow = typeof labelTableType.$inferSelect;
 
@@ -80,6 +81,7 @@ async function assignLabelToTask(id: string, taskId: string, userId: string) {
     inserted,
     task: taskContext,
   } = await db.transaction<InsertionResult>(async (tx) => {
+    await lockWorkspaceLabelNames(tx, label.workspaceId, [label.name]);
     // Task-scoped labels follow task -> label lock order so task deletion's
     // cascading child-row delete cannot deadlock against a label edit/move.
     // Workspace labels remain label -> task: workspace-label cascades take the
@@ -117,6 +119,14 @@ async function assignLabelToTask(id: string, taskId: string, userId: string) {
     }
     if (!currentLabel) {
       throw new HTTPException(404, { message: "Label not found" });
+    }
+    if (
+      currentLabel.workspaceId !== label.workspaceId ||
+      currentLabel.name !== label.name
+    ) {
+      throw new HTTPException(409, {
+        message: "Label changed; retry the request",
+      });
     }
     if (currentLabel.taskId && !lockedTasks.has(currentLabel.taskId)) {
       throw new HTTPException(409, {

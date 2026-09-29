@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { recordTaskEventActivity } from "../../apps/api/src/activity/controllers/create-activity";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { lockProjectAndAssertLiveForTaskNumber } from "../../apps/api/src/task/assert-task-project-live";
@@ -407,6 +408,189 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       .from(schema.taskTable)
       .where(eq(schema.taskTable.id, task.id));
     expect(after?.title).toBe(task.title);
+  });
+
+  it("keeps trusted task-event history when archive wins async delivery", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await createLegacyTask(project.id, columns.todo.id, 1);
+
+    await db
+      .update(schema.projectTable)
+      .set({ archivedAt: new Date() })
+      .where(eq(schema.projectTable.id, project.id));
+
+    // This is the trusted internal subscriber path after the task write has
+    // committed. It must preserve the resulting activity even if archive wins
+    // before asynchronous event delivery; the public create endpoint remains
+    // covered by the refusal case above.
+    await recordTaskEventActivity(
+      task.id,
+      "title_changed",
+      member.user.id,
+      null,
+      { oldTitle: task.title, newTitle: "Changed before archive" },
+    );
+
+    const activities = await db
+      .select()
+      .from(schema.taskActivityTable)
+      .where(eq(schema.taskActivityTable.taskId, task.id));
+    expect(activities).toHaveLength(1);
+    expect(activities[0]).toMatchObject({
+      type: "title_changed",
+      eventData: {
+        oldTitle: task.title,
+        newTitle: "Changed before archive",
+      },
+    });
+  });
+
+  it("serializes task-label creation with a workspace-label cascade", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await createLegacyTask(project.id, columns.todo.id, 1);
+    const workspaceLabel = requireRow(
+      await db
+        .insert(schema.labelTable)
+        .values({
+          workspaceId: member.workspace.id,
+          name: "Race label",
+          color: "red",
+        })
+        .returning(),
+      "workspace label",
+    );
+    mockAuthenticatedSession(member.user);
+
+    const suffix = randomUUID().replaceAll("-", "");
+    const functionName = `label_insert_barrier_${suffix}`;
+    const triggerName = `label_insert_barrier_${suffix}`;
+    const advisoryKey = Number.parseInt(suffix.slice(0, 7), 16);
+    const escapedTaskId = task.id.replaceAll("'", "''");
+    const client = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await client.connect();
+
+    let barrierHeld = false;
+    let createRequest: Promise<Response> | undefined;
+    let cascadeRequest: Promise<Response> | undefined;
+    try {
+      await client.query(`
+        CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.task_id = '${escapedTaskId}' AND NEW.name = 'Race label' THEN
+            PERFORM pg_advisory_lock(${advisoryKey});
+            PERFORM pg_advisory_unlock(${advisoryKey});
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `);
+      await client.query(`
+        CREATE TRIGGER ${triggerName}
+        BEFORE INSERT ON label
+        FOR EACH ROW EXECUTE FUNCTION ${functionName}()
+      `);
+      await client.query("SELECT pg_advisory_lock($1::bigint)", [advisoryKey]);
+      barrierHeld = true;
+      const lockOwner = await client.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid",
+      );
+      const barrierPid = lockOwner.rows[0]?.pid;
+      if (barrierPid === undefined) {
+        throw new Error("could not read label barrier backend pid");
+      }
+
+      createRequest = request("/label", "post", {
+        workspaceId: member.workspace.id,
+        taskId: task.id,
+        name: "Race label",
+        color: "red",
+      });
+
+      let createPid: number | undefined;
+      const createDeadline = Date.now() + 5_000;
+      while (!createPid && Date.now() < createDeadline) {
+        const blockedCreate = await client.query<{ pid: number }>(
+          `
+            SELECT pid
+            FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND pid <> pg_backend_pid()
+              AND wait_event_type = 'Lock'
+              AND $1 = ANY(pg_blocking_pids(pid))
+            LIMIT 1
+          `,
+          [barrierPid],
+        );
+        createPid = blockedCreate.rows[0]?.pid;
+        if (!createPid) await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      expect(createPid).toBeDefined();
+
+      cascadeRequest = request(`/label/${workspaceLabel.id}`, "put", {
+        name: "Race label renamed",
+        color: "blue",
+      });
+
+      let cascadeBlockedOnCreate = false;
+      const cascadeDeadline = Date.now() + 5_000;
+      while (!cascadeBlockedOnCreate && Date.now() < cascadeDeadline) {
+        const blockedCascade = await client.query<{ waiting: boolean }>(
+          `
+            SELECT EXISTS (
+              SELECT 1
+              FROM pg_stat_activity
+              WHERE datname = current_database()
+                AND pid <> pg_backend_pid()
+                AND wait_event_type = 'Lock'
+                AND $1 = ANY(pg_blocking_pids(pid))
+            ) AS waiting
+          `,
+          [createPid],
+        );
+        cascadeBlockedOnCreate = blockedCascade.rows[0]?.waiting === true;
+        if (!cascadeBlockedOnCreate) {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+      }
+      expect(cascadeBlockedOnCreate).toBe(true);
+
+      await client.query("SELECT pg_advisory_unlock($1::bigint)", [
+        advisoryKey,
+      ]);
+      barrierHeld = false;
+      const [created, cascaded] = await Promise.all([
+        createRequest,
+        cascadeRequest,
+      ]);
+      expect(created.status).toBe(200);
+      expect(cascaded.status).toBe(200);
+
+      const [copy] = await db
+        .select()
+        .from(schema.labelTable)
+        .where(eq(schema.labelTable.taskId, task.id));
+      expect(copy).toMatchObject({
+        name: "Race label renamed",
+        color: "blue",
+      });
+    } finally {
+      if (barrierHeld) {
+        await client.query("SELECT pg_advisory_unlock($1::bigint)", [
+          advisoryKey,
+        ]);
+      }
+      await client.query(`DROP TRIGGER IF EXISTS ${triggerName} ON label`);
+      await client.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
+      await client.end();
+    }
   });
 
   it("archive loses cleanly when project soft-delete wins the lifecycle race", async () => {

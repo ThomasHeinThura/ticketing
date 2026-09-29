@@ -25,11 +25,12 @@ function isSameProjectMove(
 }
 
 async function resolveDestinationStatus(
+  dbOrTx: DbOrTx,
   destinationProjectId: string,
   currentStatus: string,
   requestedStatus?: string,
 ) {
-  const destinationColumns = await db
+  const destinationColumns = await dbOrTx
     .select({
       id: columnTable.id,
       slug: columnTable.slug,
@@ -95,82 +96,67 @@ async function moveTask({
   destinationStatus?: string;
   currentUserId: string;
 }) {
-  const existingTask = await db.query.taskTable.findFirst({
-    where: eq(taskTable.id, taskId),
-  });
-
-  if (!existingTask) {
-    throw new HTTPException(404, {
-      message: "Task not found",
-    });
-  }
-
   // #290 S4 sweep: `destinationProjectId` is a body field, not covered by
   // `workspaceAccess.fromTask()` (which only guards `taskId`) -- a NUL byte here
   // reached a raw `eq(projectTable.id, destinationProjectId)`-shaped query below
   // unvalidated and 500'd, the same class #281 fixed for path/query ids.
   rejectNulByte(destinationProjectId, "Destination project id");
 
-  if (isSameProjectMove(existingTask.projectId, destinationProjectId)) {
-    throw new HTTPException(400, {
-      message: "Task is already in that project",
-    });
-  }
-
-  // #202: the source is checked. #187's `deleted_at` window (PR-16) means a
-  // soft-deleted project is gone for ordinary use, so it can neither be a move's
-  // source nor its destination -- otherwise this route would be a way to pull a
-  // task *out* of a deleted project (and back in) during the recovery window.
-  const sourceProject = await db.query.projectTable.findFirst({
-    where: and(
-      eq(projectTable.id, existingTask.projectId),
-      isNull(projectTable.deletedAt),
-    ),
-  });
-
-  if (!sourceProject) {
-    throw new HTTPException(404, {
-      message: "Project not found",
-    });
-  }
-
-  // S2 (Opus review of PR #307, delta round): scoped to the source project's own
-  // (already reach-checked, via `workspaceAccess.fromTask()` on `taskId`)
-  // workspace in the query itself, so a `destinationProjectId` belonging to
-  // ANOTHER workspace is indistinguishable from a nonexistent one -- both now 404
-  // `Project not found` here, instead of a nonexistent id 404ing while a foreign
-  // id resolved and then 400'd "can only be moved within the same workspace",
-  // which is the #290/#285 existence-oracle class applied to project ids. The
-  // soft-delete freeze applies to the destination too, same as before.
-  const destinationProject = await db.query.projectTable.findFirst({
-    where: and(
-      eq(projectTable.id, destinationProjectId),
-      eq(projectTable.workspaceId, sourceProject.workspaceId),
-      isNull(projectTable.deletedAt),
-    ),
-  });
-
-  if (!destinationProject) {
-    throw new HTTPException(404, {
-      message: "Project not found",
-    });
-  }
-
-  const resolvedColumn = await resolveDestinationStatus(
-    destinationProjectId,
-    existingTask.status,
-    destinationStatus,
-  );
-
-  const movedTask = await db.transaction(async (tx) => {
+  const moveResult = await db.transaction(async (tx) => {
     const lockedTask = await lockLegacyTaskRow(tx, taskId);
-    if (lockedTask.projectId !== existingTask.projectId) {
-      throw new HTTPException(404, { message: "Task not found" });
+    if (isSameProjectMove(lockedTask.projectId, destinationProjectId)) {
+      throw new HTTPException(400, {
+        message: "Task is already in that project",
+      });
     }
+
+    // Lock the source and destination before reading their current workspace
+    // and names. The task row above is authoritative if another move completed
+    // after the route's reach middleware ran.
     await lockProjectsAndAssertLive(
       tx,
       [lockedTask.projectId, destinationProjectId],
       [destinationProjectId],
+    );
+
+    const [sourceProject] = await tx
+      .select({
+        id: projectTable.id,
+        name: projectTable.name,
+        workspaceId: projectTable.workspaceId,
+      })
+      .from(projectTable)
+      .where(eq(projectTable.id, lockedTask.projectId))
+      .limit(1);
+    if (!sourceProject) {
+      throw new HTTPException(404, { message: "Project not found" });
+    }
+
+    // S2 (review of PR #307): scope the destination lookup to the source's
+    // current workspace so foreign and missing project ids remain indistinct.
+    const [destinationProject] = await tx
+      .select({
+        id: projectTable.id,
+        name: projectTable.name,
+      })
+      .from(projectTable)
+      .where(
+        and(
+          eq(projectTable.id, destinationProjectId),
+          eq(projectTable.workspaceId, sourceProject.workspaceId),
+          isNull(projectTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!destinationProject) {
+      throw new HTTPException(404, { message: "Project not found" });
+    }
+
+    const resolvedColumn = await resolveDestinationStatus(
+      tx,
+      destinationProjectId,
+      lockedTask.status,
+      destinationStatus,
     );
     const [nextTaskNumber, nextPosition] = await Promise.all([
       claimTaskNumber(destinationProjectId, tx),
@@ -205,25 +191,31 @@ async function moveTask({
       .set({ projectId: destinationProjectId })
       .where(eq(assetTable.taskId, taskId));
 
-    return updatedTask;
+    return {
+      movedTask: updatedTask,
+      sourceProject,
+      destinationProject,
+      oldStatus: lockedTask.status,
+      newStatus: resolvedColumn.slug,
+    };
   });
 
   await publishEvent("task.moved", {
     taskId,
     type: "moved",
     userId: currentUserId,
-    fromProjectId: sourceProject.id,
-    fromProjectName: sourceProject.name,
-    toProjectId: destinationProject.id,
-    toProjectName: destinationProject.name,
-    oldStatus: existingTask.status,
-    newStatus: resolvedColumn.slug,
+    fromProjectId: moveResult.sourceProject.id,
+    fromProjectName: moveResult.sourceProject.name,
+    toProjectId: moveResult.destinationProject.id,
+    toProjectName: moveResult.destinationProject.name,
+    oldStatus: moveResult.oldStatus,
+    newStatus: moveResult.newStatus,
   });
 
   return {
-    task: movedTask,
-    sourceProjectId: sourceProject.id,
-    destinationProjectId: destinationProject.id,
+    task: moveResult.movedTask,
+    sourceProjectId: moveResult.sourceProject.id,
+    destinationProjectId: moveResult.destinationProject.id,
   };
 }
 

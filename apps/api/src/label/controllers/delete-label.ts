@@ -8,6 +8,7 @@ import {
   lockProjectsAndAssertLive,
   lockTaskAndAssertProjectLive,
 } from "../../task/assert-task-project-live";
+import { lockWorkspaceLabelNames } from "../label-name-lock";
 
 async function deleteLabel(id: string, userId: string) {
   const labelSnapshot = await db.query.labelTable.findFirst({
@@ -18,6 +19,9 @@ async function deleteLabel(id: string, userId: string) {
   }
 
   const result = await db.transaction(async (tx) => {
+    await lockWorkspaceLabelNames(tx, labelSnapshot.workspaceId, [
+      labelSnapshot.name,
+    ]);
     let lockedTask: Awaited<ReturnType<typeof lockLegacyTaskRow>> | undefined;
     if (labelSnapshot.taskId) {
       lockedTask = await lockTaskAndAssertProjectLive(tx, labelSnapshot.taskId);
@@ -31,9 +35,13 @@ async function deleteLabel(id: string, userId: string) {
       throw new HTTPException(404, { message: "Label not found" });
     }
 
-    if (label.taskId !== labelSnapshot.taskId) {
+    if (
+      label.taskId !== labelSnapshot.taskId ||
+      label.workspaceId !== labelSnapshot.workspaceId ||
+      label.name !== labelSnapshot.name
+    ) {
       throw new HTTPException(409, {
-        message: "Label assignment changed; retry the request",
+        message: "Label changed; retry the request",
       });
     }
 

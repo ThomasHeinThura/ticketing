@@ -4,11 +4,16 @@ import db from "../../database";
 import { labelTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
+import { lockWorkspaceLabelNames } from "../label-name-lock";
 
 async function unassignLabelFromTask(id: string, userId: string) {
   const { deletedLabel, task } = await db.transaction(async (tx) => {
     const [labelSnapshot] = await tx
-      .select({ taskId: labelTable.taskId })
+      .select({
+        taskId: labelTable.taskId,
+        workspaceId: labelTable.workspaceId,
+        name: labelTable.name,
+      })
       .from(labelTable)
       .where(eq(labelTable.id, id))
       .limit(1);
@@ -20,6 +25,10 @@ async function unassignLabelFromTask(id: string, userId: string) {
         message: "Label is not assigned to a task",
       });
     }
+
+    await lockWorkspaceLabelNames(tx, labelSnapshot.workspaceId, [
+      labelSnapshot.name,
+    ]);
 
     // Match task deletion's task -> child-row lock order. A stale snapshot is
     // rejected below instead of taking a second task lock after the label lock.
@@ -35,9 +44,13 @@ async function unassignLabelFromTask(id: string, userId: string) {
     if (!label) {
       throw new HTTPException(404, { message: "Label not found" });
     }
-    if (label.taskId !== labelSnapshot.taskId) {
+    if (
+      label.taskId !== labelSnapshot.taskId ||
+      label.workspaceId !== labelSnapshot.workspaceId ||
+      label.name !== labelSnapshot.name
+    ) {
       throw new HTTPException(409, {
-        message: "Label assignment changed; retry the request",
+        message: "Label changed; retry the request",
       });
     }
 

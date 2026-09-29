@@ -7,6 +7,7 @@ import {
   lockProjectsAndAssertLive,
   lockTaskAndAssertProjectLive,
 } from "../../task/assert-task-project-live";
+import { lockWorkspaceLabelNames } from "../label-name-lock";
 
 async function updateLabel(id: string, name: string, color: string) {
   const labelSnapshot = await db.query.labelTable.findFirst({
@@ -17,6 +18,10 @@ async function updateLabel(id: string, name: string, color: string) {
   }
 
   return db.transaction(async (tx) => {
+    await lockWorkspaceLabelNames(tx, labelSnapshot.workspaceId, [
+      labelSnapshot.name,
+      name,
+    ]);
     if (labelSnapshot.taskId) {
       await lockTaskAndAssertProjectLive(tx, labelSnapshot.taskId);
     }
@@ -32,9 +37,13 @@ async function updateLabel(id: string, name: string, color: string) {
       });
     }
 
-    if (label.taskId !== labelSnapshot.taskId) {
+    if (
+      label.taskId !== labelSnapshot.taskId ||
+      label.workspaceId !== labelSnapshot.workspaceId ||
+      label.name !== labelSnapshot.name
+    ) {
       throw new HTTPException(409, {
-        message: "Label assignment changed; retry the request",
+        message: "Label changed; retry the request",
       });
     }
 
