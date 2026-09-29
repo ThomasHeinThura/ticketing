@@ -1899,6 +1899,8 @@ function hasSafeNetworkCapabilities(sourceFile, allowStorybookIndexFetch) {
     ts.isIdentifier(node.expression) &&
     node.expression.text === "route" &&
     isValidatedRouteRequest(node);
+  const isCallableCallback = (node) =>
+    ts.isArrowFunction(node) || ts.isFunctionExpression(node);
   const visit = (node) => {
     if (unsafe) return;
     if (ts.isElementAccessExpression(node)) {
@@ -1919,6 +1921,23 @@ function hasSafeNetworkCapabilities(sourceFile, allowStorybookIndexFetch) {
     }
     if (
       ts.isIdentifier(node) &&
+      (node.text === "setTimeout" || node.text === "setInterval") &&
+      !(
+        ts.isPropertyAccessExpression(node.parent) &&
+        node.parent.name === node &&
+        ts.isIdentifier(node.parent.expression) &&
+        node.parent.expression.text === "test" &&
+        node.text === "setTimeout" &&
+        ts.isCallExpression(node.parent.parent) &&
+        node.parent.parent.expression === node.parent
+      )
+    ) {
+      // Timer aliases can defer opaque strings past the synchronous source scan.
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isIdentifier(node) &&
       node.text === "fetch" &&
       !(
         ts.isCallExpression(node.parent) &&
@@ -1934,6 +1953,54 @@ function hasSafeNetworkCapabilities(sourceFile, allowStorybookIndexFetch) {
       ((node.name.text === "request" && !isRouteRequest(node)) ||
         node.name.text === "fetch" ||
         node.name.text === "sendBeacon")
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (ts.isCallExpression(node)) {
+      const expression = node.expression;
+      const operation = ts.isIdentifier(expression)
+        ? expression.text
+        : ts.isPropertyAccessExpression(expression)
+          ? expression.name.text
+          : undefined;
+      if (
+        operation === "evaluate" &&
+        (!ts.isPropertyAccessExpression(expression) ||
+          node.arguments.length === 0 ||
+          !isCallableCallback(unwrapTypeWrappers(node.arguments[0])))
+      ) {
+        // Playwright also accepts source strings here; they hide browser network APIs
+        // from this AST check. Only callback execution can be inspected structurally.
+        unsafe = true;
+        return;
+      }
+      if (
+        (operation === "setTimeout" || operation === "setInterval") &&
+        !(
+          ts.isPropertyAccessExpression(expression) &&
+          ts.isIdentifier(expression.expression) &&
+          expression.expression.text === "test" &&
+          operation === "setTimeout"
+        ) &&
+        (node.arguments.length === 0 ||
+          !isCallableCallback(unwrapTypeWrappers(node.arguments[0])))
+      ) {
+        unsafe = true;
+        return;
+      }
+      if (
+        ts.isIdentifier(expression) &&
+        (expression.text === "eval" || expression.text === "Function")
+      ) {
+        unsafe = true;
+        return;
+      }
+    }
+    if (
+      ts.isNewExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "Function"
     ) {
       unsafe = true;
       return;
