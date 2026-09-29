@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { publishEvent } from "../events";
 import {
   apiRouter,
   type BaseVariables,
@@ -219,7 +220,23 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(createRouteDef, async (c) => {
     const { workspaceId, name, ...data } = c.req.valid("json");
     calendarValue(data);
-    const created = await createCalendar({ workspaceId, name, ...data });
+    const apiKey = c.get("apiKey");
+    const created = await createCalendar({
+      workspaceId,
+      name,
+      ...data,
+      actor: {
+        actorId: c.get("userId"),
+        actorType: apiKey ? "api_key" : "person",
+        apiKeyId: apiKey?.id ?? null,
+      },
+    });
+    await publishEvent("service_calendar.created", {
+      calendarId: created.id,
+      workspaceId: created.workspaceId,
+      name: created.name,
+      url: `/api/service-calendars/${created.id}`,
+    });
     return c.json(calendarSchema.parse(created), 200);
   })
   .openapi(detailRoute, async (c) => {
@@ -243,18 +260,42 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
       holidays: input.holidays ?? existing.holidays,
     };
     calendarValue(next);
-    const updated = await updateCalendar(id, c.get("workspaceId"), input);
-    if (!updated)
+    const apiKey = c.get("apiKey");
+    const result = await updateCalendar(id, c.get("workspaceId"), input, {
+      actorId: c.get("userId"),
+      actorType: apiKey ? "api_key" : "person",
+      apiKeyId: apiKey?.id ?? null,
+    });
+    if (!result)
       throw new HTTPException(404, { message: "Service calendar not found" });
-    return c.json(calendarSchema.parse(updated), 200);
+    await publishEvent("service_calendar.updated", {
+      calendarId: result.row.id,
+      workspaceId: result.row.workspaceId,
+      name: result.row.name,
+      changedFields: Object.keys(input),
+      url: `/api/service-calendars/${result.row.id}`,
+    });
+    return c.json(calendarSchema.parse(result.row), 200);
   })
   .openapi(deleteRouteDef, async (c) => {
+    const apiKey = c.get("apiKey");
     const deleted = await deleteCalendar(
       c.req.valid("param").id,
       c.get("workspaceId"),
+      {
+        actorId: c.get("userId"),
+        actorType: apiKey ? "api_key" : "person",
+        apiKeyId: apiKey?.id ?? null,
+      },
     );
     if (!deleted)
       throw new HTTPException(404, { message: "Service calendar not found" });
+    await publishEvent("service_calendar.deleted", {
+      calendarId: deleted.id,
+      workspaceId: deleted.workspaceId,
+      name: deleted.name,
+      url: `/api/service-calendars/${deleted.id}`,
+    });
     return c.json(calendarSchema.parse(deleted), 200);
   })
   .openapi(previewRoute, async (c) => {

@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
-import { beforeEach, describe, expect, it } from "vitest";
+import { and, eq, sql } from "drizzle-orm";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
+import { subscribeToEvent } from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -13,6 +15,52 @@ const weekdayWindows = {
   thu: [{ from: 540, to: 1020 }],
   fri: [{ from: 540, to: 1020 }],
 };
+
+type RecordedEvent = { type: string; data: unknown };
+const recordedEvents: RecordedEvent[] = [];
+let eventSubscriberInitialized = false;
+
+function initEventSubscriber() {
+  if (eventSubscriberInitialized) return;
+  eventSubscriberInitialized = true;
+  for (const type of [
+    "service_calendar.created",
+    "service_calendar.updated",
+    "service_calendar.deleted",
+  ]) {
+    subscribeToEvent(type, async (data) => {
+      recordedEvents.push({ type, data });
+    });
+  }
+}
+
+const FAIL_FUNCTION = "td_calendar_audit_probe_fail";
+
+async function armAuditInsertFailure() {
+  await db.execute(
+    sql.raw(`
+    CREATE OR REPLACE FUNCTION ${FAIL_FUNCTION}() RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'service-calendar probe: injected audit insert failure';
+    END;
+    $$ LANGUAGE plpgsql;
+  `),
+  );
+  await db.execute(
+    sql.raw(`
+    CREATE TRIGGER ${FAIL_FUNCTION}
+    BEFORE INSERT ON "audit_log"
+    FOR EACH ROW EXECUTE FUNCTION ${FAIL_FUNCTION}();
+  `),
+  );
+}
+
+async function disarmAuditInsertFailure() {
+  await db.execute(
+    sql.raw(`DROP TRIGGER IF EXISTS ${FAIL_FUNCTION} ON "audit_log"`),
+  );
+  await db.execute(sql.raw(`DROP FUNCTION IF EXISTS ${FAIL_FUNCTION}()`));
+}
 
 function hashApiKeyForTest(key: string): string {
   return createHash("sha256")
@@ -45,7 +93,12 @@ async function createApiKeyFor(
 }
 
 describe("API integration: service calendars (CAL-1–CAL-9)", () => {
-  beforeEach(async () => resetTestDatabase());
+  beforeEach(async () => {
+    await resetTestDatabase();
+    recordedEvents.length = 0;
+    initEventSubscriber();
+  });
+  afterEach(disarmAuditInsertFailure);
 
   it("CAL-1–CAL-7: persists calendar data and previews weekly and annual cover", async () => {
     const creator = await createWorkspaceMember({ role: "admin" });
@@ -66,6 +119,30 @@ describe("API integration: service calendars (CAL-1–CAL-9)", () => {
     expect(created.status).toBe(200);
     const calendar = (await created.json()) as { id: string; name: string };
     expect(calendar.name).toBe("Business hours");
+    const createAudit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityType, "service_calendar"),
+          eq(schema.auditLogTable.entityId, calendar.id),
+          eq(schema.auditLogTable.action, "service_calendar.created"),
+        ),
+      );
+    expect(createAudit).toHaveLength(1);
+    expect(createAudit[0]?.after).toMatchObject({
+      name: "Business hours",
+      timezone: "Europe/London",
+    });
+    expect(recordedEvents.map((event) => event.type)).toEqual([
+      "service_calendar.created",
+    ]);
+    expect(recordedEvents[0]?.data).toMatchObject({
+      calendarId: calendar.id,
+      workspaceId: creator.workspace.id,
+      name: "Business hours",
+      url: `/api/service-calendars/${calendar.id}`,
+    });
 
     const listed = await app.request(
       `/api/service-calendars?workspaceId=${creator.workspace.id}`,
@@ -91,10 +168,130 @@ describe("API integration: service calendars (CAL-1–CAL-9)", () => {
     expect(((await updated.json()) as { name: string }).name).toBe(
       "Updated hours",
     );
+    const updateAudit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityType, "service_calendar"),
+          eq(schema.auditLogTable.entityId, calendar.id),
+          eq(schema.auditLogTable.action, "service_calendar.updated"),
+        ),
+      );
+    expect(updateAudit).toHaveLength(1);
+    expect(updateAudit[0]?.before).toMatchObject({ name: "Business hours" });
+    expect(updateAudit[0]?.after).toMatchObject({ name: "Updated hours" });
+    expect(recordedEvents.map((event) => event.type)).toEqual([
+      "service_calendar.created",
+      "service_calendar.updated",
+    ]);
+    expect(recordedEvents[1]?.data).toMatchObject({
+      calendarId: calendar.id,
+      changedFields: ["name"],
+    });
     const deleted = await app.request(`/api/service-calendars/${calendar.id}`, {
       method: "DELETE",
     });
     expect(deleted.status).toBe(200);
+    const deleteAudit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityType, "service_calendar"),
+          eq(schema.auditLogTable.entityId, calendar.id),
+          eq(schema.auditLogTable.action, "service_calendar.deleted"),
+        ),
+      );
+    expect(deleteAudit).toHaveLength(1);
+    expect(deleteAudit[0]?.before).toMatchObject({ name: "Updated hours" });
+    expect(recordedEvents.map((event) => event.type)).toEqual([
+      "service_calendar.created",
+      "service_calendar.updated",
+      "service_calendar.deleted",
+    ]);
+  });
+
+  it("CAL-14: rolls back calendar writes and emits no event when the audit insert fails", async () => {
+    const creator = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const body = {
+      workspaceId: creator.workspace.id,
+      name: "Atomic hours",
+      timezone: "UTC",
+      windows: weekdayWindows,
+      holidays: [],
+    };
+
+    await armAuditInsertFailure();
+    const createFailed = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    expect(createFailed.status).toBeGreaterThanOrEqual(500);
+    expect(await db.select().from(schema.serviceCalendarTable)).toHaveLength(0);
+    expect(recordedEvents).toHaveLength(0);
+    await disarmAuditInsertFailure();
+
+    const created = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    expect(created.status).toBe(200);
+    const calendar = (await created.json()) as { id: string };
+    recordedEvents.length = 0;
+    const auditCountBefore = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityType, "service_calendar"));
+
+    await armAuditInsertFailure();
+    const updateFailed = await app.request(
+      `/api/service-calendars/${calendar.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Must roll back" }),
+      },
+    );
+    expect(updateFailed.status).toBeGreaterThanOrEqual(500);
+    await disarmAuditInsertFailure();
+    const [afterFailedUpdate] = await db
+      .select()
+      .from(schema.serviceCalendarTable)
+      .where(eq(schema.serviceCalendarTable.id, calendar.id));
+    expect(afterFailedUpdate?.name).toBe("Atomic hours");
+    expect(recordedEvents).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.entityType, "service_calendar")),
+    ).toHaveLength(auditCountBefore.length);
+
+    await armAuditInsertFailure();
+    const deleteFailed = await app.request(
+      `/api/service-calendars/${calendar.id}`,
+      { method: "DELETE" },
+    );
+    expect(deleteFailed.status).toBeGreaterThanOrEqual(500);
+    await disarmAuditInsertFailure();
+    expect(
+      await db
+        .select()
+        .from(schema.serviceCalendarTable)
+        .where(eq(schema.serviceCalendarTable.id, calendar.id)),
+    ).toHaveLength(1);
+    expect(recordedEvents).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.entityType, "service_calendar")),
+    ).toHaveLength(auditCountBefore.length);
   });
 
   it("CAL-2: rejects overlapping windows", async () => {

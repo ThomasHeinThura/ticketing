@@ -1,6 +1,30 @@
+import type { JsonValue } from "@taskdesk/domain";
 import { and, eq } from "drizzle-orm";
+import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
 import { serviceCalendarTable } from "../database/schema";
+
+type CalendarActor = {
+  actorId: string;
+  actorType: "person" | "api_key";
+  apiKeyId: string | null;
+};
+
+function auditSnapshot(calendar: {
+  name: string;
+  timezone: string;
+  windows: unknown;
+  holidays: unknown;
+}) {
+  return JSON.parse(
+    JSON.stringify({
+      name: calendar.name,
+      timezone: calendar.timezone,
+      windows: calendar.windows,
+      holidays: calendar.holidays,
+    }),
+  ) as JsonValue;
+}
 
 export const listCalendars = (workspaceId: string) =>
   db
@@ -22,9 +46,30 @@ export async function createCalendar(input: {
   timezone: string;
   windows: unknown;
   holidays: unknown;
+  actor: CalendarActor;
 }) {
-  const [row] = await db.insert(serviceCalendarTable).values(input).returning();
-  return row;
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(serviceCalendarTable)
+      .values({
+        workspaceId: input.workspaceId,
+        name: input.name,
+        timezone: input.timezone,
+        windows: input.windows,
+        holidays: input.holidays,
+      })
+      .returning();
+    if (!row) throw new Error("Calendar insert returned no row");
+    await appendAuditLog(tx, {
+      ...input.actor,
+      workspaceId: input.workspaceId,
+      action: "service_calendar.created",
+      entityType: "service_calendar",
+      entityId: row.id,
+      after: auditSnapshot(row),
+    });
+    return row;
+  });
 }
 export async function updateCalendar(
   id: string,
@@ -35,28 +80,67 @@ export async function updateCalendar(
     windows?: unknown;
     holidays?: unknown;
   },
+  actor: CalendarActor,
 ) {
-  const [row] = await db
-    .update(serviceCalendarTable)
-    .set(input)
-    .where(
-      and(
-        eq(serviceCalendarTable.id, id),
-        eq(serviceCalendarTable.workspaceId, workspaceId),
-      ),
-    )
-    .returning();
-  return row;
+  return db.transaction(async (tx) => {
+    const [before] = await tx
+      .select()
+      .from(serviceCalendarTable)
+      .where(
+        and(
+          eq(serviceCalendarTable.id, id),
+          eq(serviceCalendarTable.workspaceId, workspaceId),
+        ),
+      )
+      .limit(1);
+    if (!before) return undefined;
+    const [row] = await tx
+      .update(serviceCalendarTable)
+      .set(input)
+      .where(
+        and(
+          eq(serviceCalendarTable.id, id),
+          eq(serviceCalendarTable.workspaceId, workspaceId),
+        ),
+      )
+      .returning();
+    if (!row) return undefined;
+    await appendAuditLog(tx, {
+      ...actor,
+      workspaceId,
+      action: "service_calendar.updated",
+      entityType: "service_calendar",
+      entityId: row.id,
+      before: auditSnapshot(before),
+      after: auditSnapshot(row),
+    });
+    return { before, row };
+  });
 }
-export async function deleteCalendar(id: string, workspaceId: string) {
-  const [row] = await db
-    .delete(serviceCalendarTable)
-    .where(
-      and(
-        eq(serviceCalendarTable.id, id),
-        eq(serviceCalendarTable.workspaceId, workspaceId),
-      ),
-    )
-    .returning();
-  return row;
+export async function deleteCalendar(
+  id: string,
+  workspaceId: string,
+  actor: CalendarActor,
+) {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .delete(serviceCalendarTable)
+      .where(
+        and(
+          eq(serviceCalendarTable.id, id),
+          eq(serviceCalendarTable.workspaceId, workspaceId),
+        ),
+      )
+      .returning();
+    if (!row) return undefined;
+    await appendAuditLog(tx, {
+      ...actor,
+      workspaceId,
+      action: "service_calendar.deleted",
+      entityType: "service_calendar",
+      entityId: row.id,
+      before: auditSnapshot(row),
+    });
+    return row;
+  });
 }

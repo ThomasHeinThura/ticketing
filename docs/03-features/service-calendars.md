@@ -99,6 +99,14 @@ repeats every year (`CAL-12`).
   pre-expanded or persisted per year.
 - `CAL-13` Adding a holiday retroactively moves deadlines later. Warned about, with a
   count of affected items.
+- `CAL-14` Creating, updating or deleting a service calendar writes one `audit_log` row
+  in the same database transaction as the calendar mutation, then emits the matching
+  `service_calendar.*` domain event after commit. Calendar configuration has no secrets;
+  audit before/after values contain only the calendar's name, timezone, windows and
+  holidays. The work-item `activity` journal does not apply: its authoritative schema
+  requires a `work_item_id` composite foreign key, and a calendar has no work item.
+  Delivery through the durable outbox described in `docs/01-architecture/data-model.md`
+  is separate work; this slice uses the current `publishEvent` emitter.
 
 ## Permissions
 

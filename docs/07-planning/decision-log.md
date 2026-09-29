@@ -5,6 +5,28 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-29 · Service-calendar mutations use audit records and lifecycle events
+
+**Decision:** Calendar create, update and delete each append `audit_log` in the same
+transaction as the calendar row change, then emit the registered
+`service_calendar.created`, `service_calendar.updated` or `service_calendar.deleted`
+event after commit. The event payload contains calendar/workspace ids, name, a relative
+resource URL, and (for updates) the changed field names. The audit snapshot contains only
+name, timezone, windows and holidays. No `activity` row is written: that journal is
+work-item-scoped and its authoritative composite foreign key requires a work item.
+
+The calendar API uses the current `publishEvent` emitter. Durable outbox delivery, though
+described by EV-1 and the data model, is not implemented in this slice and remains a
+separate cross-cutting task.
+
+**Why:** the generic Definition of Done checklist requires activity, audit and events for
+mutations, while the audit-trail/data-model contracts specifically scope activity to work
+items. A calendar has no work item; manufacturing a synthetic one would corrupt both the
+journal and its foreign-key meaning. Atomic audit plus a lifecycle event records the real
+calendar change without changing the activity schema.
+
+**Recorded by:** implementation agent under the PR #513 blocker assignment, 2026-09-29.
+
 ### 2026-09-29 · OpenAI model routing replaces Claude/`pal-mcp` routing
 
 **Decision:** TaskDesk's active AI workflow moves to an OpenAI-first two-tier model policy.
