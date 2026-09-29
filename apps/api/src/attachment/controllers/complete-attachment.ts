@@ -13,7 +13,10 @@ import {
   toFinalAttachmentObjectKey,
 } from "../../storage";
 import { recordWorkItemActivity } from "../../work-item/activity";
-import { assertWorkItemStillLive } from "../../work-item/assert-work-item-live";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+} from "../../work-item/assert-work-item-live";
 import { magicBytesMatchDeclaredMime } from "../magic-bytes";
 
 const SNIFF_BYTES = 512;
@@ -163,6 +166,7 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
       // lock is enough.
       const [locked] = await tx
         .select({
+          projectId: workItemTable.projectId,
           deletedAt: workItemTable.deletedAt,
           archivedAt: workItemTable.archivedAt,
         })
@@ -170,6 +174,7 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
         .where(eq(workItemTable.id, workItemId))
         .for("share");
       assertWorkItemStillLive(locked);
+      await assertProjectStillLive(tx, locked.projectId);
 
       const rows = await tx
         .update(attachmentTable)

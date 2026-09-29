@@ -16,6 +16,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { raceProjectSoftDelete } from "./helpers/race-project-soft-delete";
 
 type RecordedEvent = { type: string; data: unknown };
 let recordedEvents: RecordedEvent[] = [];
@@ -202,6 +203,29 @@ describe("API integration: work-item comments (#27)", () => {
     expect(response.status).toBe(200);
     const created = (await response.json()) as Record<string, unknown>;
     expect(created.visibility).toBe("public");
+  });
+
+  it("#499: project deletion cannot race a comment onto a work item", async () => {
+    const { app, project, workItem } = await setupWorkItem("member");
+
+    const race = await raceProjectSoftDelete(
+      project.id,
+      async () =>
+        await postComment(app, workItem.key, {
+          body: { type: "doc", content: [] },
+          visibility: "public",
+        }),
+    );
+    expect(race.blockedOnProjectLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const comments = await db
+      .select({ id: schema.commentTable.id })
+      .from(schema.commentTable)
+      .where(eq(schema.commentTable.workItemId, workItem.id));
+    expect(comments).toHaveLength(0);
+    expect(recordedEvents).toHaveLength(0);
   });
 
   it("403s a caller with no comment:create/comment:create_internal capability", async () => {

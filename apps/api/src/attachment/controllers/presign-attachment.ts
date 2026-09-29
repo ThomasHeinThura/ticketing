@@ -12,7 +12,10 @@ import {
 } from "../../database/schema";
 import { createAttachmentUploadUrl } from "../../storage";
 import { getFileExtension, sanitizePathSegment } from "../../storage/shared";
-import { assertWorkItemStillLive } from "../../work-item/assert-work-item-live";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+} from "../../work-item/assert-work-item-live";
 import { isMimeTypeAllowedForExtension } from "../magic-bytes";
 
 export type PresignAttachmentInput = {
@@ -192,6 +195,7 @@ export async function presignAttachment(input: PresignAttachmentInput) {
   const inserted = await db.transaction(async (tx) => {
     const [locked] = await tx
       .select({
+        projectId: workItemTable.projectId,
         deletedAt: workItemTable.deletedAt,
         archivedAt: workItemTable.archivedAt,
       })
@@ -199,6 +203,7 @@ export async function presignAttachment(input: PresignAttachmentInput) {
       .where(eq(workItemTable.id, workItemId))
       .for("share");
     assertWorkItemStillLive(locked);
+    await assertProjectStillLive(tx, locked.projectId);
 
     const [row] = await tx
       .insert(attachmentTable)

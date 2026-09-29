@@ -6,7 +6,10 @@ import {
   watcherTable,
   workItemTable,
 } from "../../database/schema";
-import { assertWorkItemStillLive } from "../assert-work-item-live";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+} from "../assert-work-item-live";
 
 // #23's fourth slice: `POST`/`DELETE /api/work-items/{key}/watch` (`work_item:read` --
 // deliberate, `work-items.md` § Permissions: "WI-28 already lets anyone with read access
@@ -66,6 +69,7 @@ async function resolveCallerPersonAndItem(
     throw new HTTPException(404, { message: "Work item not found" });
   }
   assertWorkItemStillLive(item);
+  await assertProjectStillLive(tx, item.projectId);
 
   const person = await tx.query.personTable.findFirst({
     where: eq(personTable.userId, userId),

@@ -14,6 +14,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { raceProjectSoftDelete } from "./helpers/race-project-soft-delete";
 
 async function makeWorkItemType(workspaceId: string) {
   const now = new Date();
@@ -147,6 +148,44 @@ describe("API integration: work item watch/unwatch (#23 fourth slice)", () => {
       );
     expect(watcher?.source).toBe("explicit");
     expect(watcher?.muted).toBe(false);
+  });
+
+  it("#499: project deletion waits for watch and prevents a watcher row on a deleted item", async () => {
+    const { creator, project, type } = await setupProjectWithDefaultState();
+    const person = await givePersonProfile(creator.user.id);
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+
+    const created = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Project deletion race",
+      })
+    ).json()) as { key: string };
+    const [workItem] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, created.key));
+    if (!workItem) throw new Error("work item was not persisted");
+
+    const race = await raceProjectSoftDelete(
+      project.id,
+      async () => await watchRequest(app, created.key),
+    );
+    expect(race.blockedOnProjectLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const watchers = await db
+      .select()
+      .from(schema.watcherTable)
+      .where(
+        and(
+          eq(schema.watcherTable.workItemId, workItem.id),
+          eq(schema.watcherTable.personId, person.id),
+        ),
+      );
+    expect(watchers).toHaveLength(0);
   });
 
   it("idempotent: watching twice does not create a second row", async () => {
