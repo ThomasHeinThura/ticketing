@@ -279,14 +279,11 @@ const s3Fakes = vi.hoisted(() => {
     onCopyArrival = fn;
   }
 
-  // R6-1: holds a "delete" command (the losing racer's own cleanup, after its magic-byte
-  // check fails) until this resolves -- lets a test force the real ordering the
-  // `state = 'pending'` guard exists for (the winner's row already committed `ready`
-  // before the loser's guarded delete runs) deterministically, instead of hoping real
-  // timing lands on it.
-  let deleteGate: (() => Promise<void>) | null = null;
-  function setDeleteGate(fn: (() => Promise<void>) | null) {
-    deleteGate = fn;
+  // R6-1: pauses only the invalid final object's byte read so its rejection cleanup cannot
+  // reach the database until a concurrent valid complete has committed `ready`.
+  let getGate: ((key: string) => Promise<void>) | null = null;
+  function setGetGate(fn: ((key: string) => Promise<void>) | null) {
+    getGate = fn;
   }
 
   function fakeCommand(kind: string) {
@@ -324,6 +321,7 @@ const s3Fakes = vi.hoisted(() => {
 
       if (kind === "get") {
         const key = input.Key as string;
+        if (getGate) await getGate(key);
         const obj = fakeStore.get(key);
         if (!obj) {
           const error = new Error("NoSuchKey");
@@ -372,7 +370,6 @@ const s3Fakes = vi.hoisted(() => {
       }
 
       if (kind === "delete") {
-        if (deleteGate) await deleteGate();
         fakeStore.delete(input.Key as string);
         return {};
       }
@@ -387,7 +384,7 @@ const s3Fakes = vi.hoisted(() => {
     FakeS3Client,
     setCopyBarrier,
     setOnCopyArrival,
-    setDeleteGate,
+    setGetGate,
   };
 });
 
@@ -417,7 +414,7 @@ describe("N5 regression (#28, 450-attachments.md round 5): concurrent complete -
     s3Fakes.fakeStore.clear();
     s3Fakes.setCopyBarrier(0);
     s3Fakes.setOnCopyArrival(null);
-    s3Fakes.setDeleteGate(null);
+    s3Fakes.setGetGate(null);
     process.env.TASKDESK_STORAGE_DRIVER = "s3";
     process.env.S3_ENDPOINT = "https://fake-s3.example.test";
     process.env.S3_BUCKET = "taskdesk-test";
@@ -556,11 +553,12 @@ describe("N5 regression (#28, 450-attachments.md round 5): concurrent complete -
       }
     });
 
-    // Force the real ordering the guard exists for: the loser's own cleanup delete must
-    // not run until the winner's row has actually committed `ready`. Real S3/network
-    // latency is what gave the review's original repro this ordering; polling the row
-    // here reproduces it deterministically instead of relying on incidental timing.
-    s3Fakes.setDeleteGate(async () => {
+    // Force the real ordering the guard exists for: the invalid request cannot begin its
+    // rejection cleanup until the valid request has committed `ready`. Gate the invalid
+    // object's read, not its later storage delete, because row cleanup happens first.
+    s3Fakes.setGetGate(async (key) => {
+      if (!s3Fakes.fakeStore.get(key)?.equals(INVALID_BYTES)) return;
+
       for (let attempt = 0; attempt < 200; attempt++) {
         const [row] = await db
           .select()
@@ -569,6 +567,7 @@ describe("N5 regression (#28, 450-attachments.md round 5): concurrent complete -
         if (row?.state === "ready") return;
         await new Promise((resolve) => setTimeout(resolve, 5));
       }
+      throw new Error("Valid concurrent complete did not mark the row ready");
     });
 
     const statuses = await raceConcurrentCompletes(
