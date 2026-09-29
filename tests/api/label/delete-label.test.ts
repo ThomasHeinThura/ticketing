@@ -97,6 +97,7 @@ function makeSelectMock(rows: unknown[]) {
     from: vi.fn(() => chain),
     innerJoin: vi.fn(() => chain),
     where: vi.fn(() => chain),
+    orderBy: vi.fn(() => chain),
     limit: vi.fn(() => result),
     for: vi.fn(() => result),
   });
@@ -115,14 +116,14 @@ function queueTxSelectRows(...rows: unknown[][]) {
  *
  * - `.where()` returns a sub-chain that supports `.returning()` and is thenable.
  */
-function makeDeleteMock(deletedRow: unknown) {
+function makeDeleteMock(deletedRows: unknown[]) {
   const chain: Record<string, Mock> = {};
 
   // Sub-chain returned by .where():
   // - Native Promise.then so `await db.delete().where(...)` works
   // - .returning() attached for the returning-delete path
   const whereResult = Object.assign(Promise.resolve(undefined), {
-    returning: vi.fn(() => Promise.resolve([deletedRow])),
+    returning: vi.fn(() => Promise.resolve(deletedRows)),
   });
 
   chain.where = vi.fn(() => whereResult);
@@ -169,8 +170,11 @@ describe("deleteLabel", () => {
         [TASK_2],
         [LIVE_PROJECT_1],
         [LIVE_PROJECT_2],
+        [{ id: TASK_LABEL_1.id }, { id: TASK_LABEL_2.id }],
       );
-      mockDelete.mockReturnValue(makeDeleteMock(DELETED_WORKSPACE_LABEL));
+      mockDelete
+        .mockReturnValueOnce(makeDeleteMock([DELETED_WORKSPACE_LABEL]))
+        .mockReturnValueOnce(makeDeleteMock([TASK_LABEL_1, TASK_LABEL_2]));
 
       await deleteLabel("label-ws-1", "user-1");
 
@@ -197,7 +201,7 @@ describe("deleteLabel", () => {
     it("fires no events when no task-level labels are affected", async () => {
       mockFindFirst.mockResolvedValue(WORKSPACE_LABEL);
       queueTxSelectRows([WORKSPACE_LABEL], []);
-      mockDelete.mockReturnValue(makeDeleteMock(DELETED_WORKSPACE_LABEL));
+      mockDelete.mockReturnValue(makeDeleteMock([DELETED_WORKSPACE_LABEL]));
 
       await deleteLabel("label-ws-1", "user-1");
 
