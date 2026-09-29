@@ -1,85 +1,75 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-## 2026-09-29 — OpenAI review-policy transition
+## Current review policy — 2026-09-29
 
-Thomas's 2026-09-29 decision moves ordinary implementation and review to GPT-6 Luna and
-mandatory security/critical reviews and phase finalizers to GPT-6 Sol. The earlier Opus
-capacity blocker below is retained as an accurate 2026-09-28 snapshot, but it no longer
-blocks current work. Opus 5.5 is an optional sampled reviewer after a GPT-prepared packet.
-
-At the cutover, every still-open security-scope PR needs a fresh GPT-6 Sol review of its
-current exact head and an updated PR body and committed review note before merge. Historical
-reviews remain historical evidence; CI has no Opus fallback for the required GPT-6 Sol
-review. Recheck GitHub's live PR list at cutover and complete this transition before merging
-those candidates.
+Thomas's 2026-09-29 decision sets GPT-6 Luna for implementation and ordinary review, and
+GPT-6 Sol for required security reviews and P0–P7 phase finalizers. Ordinary substantive
+changes require at least two fresh independent Luna contexts (three for broad or high-coupling
+work). Security-scope changes also require a fresh independent Sol pass after ordinary review;
+its depth follows the risk tier in `AGENTS.md`. The phase finalizer is additional to per-PR
+security review. Opus 5.5 is an optional sampled reviewer, selected by Thomas or the
+orchestrator and supplied a GPT-prepared review packet; it is not a per-PR gate or a Sol
+substitute. Reviews below retain the exact heads and model tiers they actually covered.
 
 ---
 
-**2026-09-29 orchestrator snapshot — `main` at `4b64d506`**, after **#500** (OpenAI
-review policy), **#501** (G4 accessibility gate), and **#498** (work-item liveness sweep)
-merged. The active review tiers are GPT-6 Luna for implementation and ordinary review,
-GPT-6 Sol for required security reviews and phase finalizers; Opus 5.5 remains an optional
-sampled reviewer. Historical review records below retain the model names and verdicts that
-applied when they were written.
+**2026-09-29 orchestrator snapshot — remote `main` at
+`d885be8abdb54bef6e73c7a39e22f1cefc191a34` (verified with `git ls-remote origin
+refs/heads/main` and `gh`, 12:29 UTC).** The latest merge is #505. This is a point-in-time
+snapshot; refresh GitHub before acting on any PR or issue state.
 
-**#498 merged:** PR #498 merged at `4b64d506dfce4ccec13864d4e5292ace24378078` after every
-required check passed, including unit/component and Postgres integration. Three fresh GPT-6
-Luna reviews and one GPT-6 Sol security review examined code head
-`8361fe11e3c64c0c47e185872b74108c2b444da2`; the final commit only added review records.
-Reviews found no blocker and documented two low residuals: the no-op unassign response after
-archive, and possible orphaned private storage after a failed best-effort deletion. Legacy
-`/api/task` enforcement remains tracked separately in #502.
+**Merged since the prior snapshot:** #501 enabled the G4 accessibility check; #504 fixed the
+attachment R6 cleanup-ordering test; and #505 added local OIDC/SCIM mock servers and issuer
+normalization/redaction for P3 identity work. #498's work-item liveness consolidation remains
+on `main`; its later review found follow-up gaps tracked in #499.
 
-**UAT smoke evidence:** the running container uses image
-`ghcr.io/thomasheinthura/taskdesk:v2-uat-shadow-0b95ed08` and its Docker health status is
-healthy. The last browser HAR contained 54 requests, with no `localhost:1337` requests and no
-4xx responses. On this refresh, the orchestrator could not resolve `uat.taskdesk.app`, so it
-could not repeat the external health/browser check. The UAT Postgres read at 2026-09-29
-09:39 UTC found 25 shadow observations across 12 router groups, aggregated into 17
-tally rows: 21 `agree`, 4 `unevaluated`
-(notification and platform fallback); all four event rows are `unevaluated`, with no
-mismatch or evaluator-error rows. The most recent tally is from 2026-09-28 16:46 UTC, so
-this is low-volume evidence with no activity for nearly 17 hours and incomplete route-group
-coverage. The 54-request HAR is login-page smoke only. Shadow telemetry covers just 12
-router groups; many routers remain unobserved and the notification router is unevaluated.
-The seven-day shadow soak has not completed. **Issue #8 remains open** pending sufficient
-evidence and the cutover.
+**P0:** #9 and #11 remain closed. #8 remains open: policy shadow mode is still telemetry-only,
+and closure requires about seven days of clean, representative UAT evidence before cutover.
+The last recorded UAT database sample (2026-09-29 09:39 UTC, copied forward from the prior snapshot) had 25 observations
+across 12 router groups: 21 `agree`, 4 `unevaluated` (notification/platform fallback), and no
+mismatch or evaluator-error rows. All four event rows were unevaluated; the last tally was
+2026-09-28 16:46 UTC. This is low-volume, incomplete evidence and does not satisfy the soak.
+A 12:29 UTC DNS/health recheck could not resolve `uat.taskdesk.app`, so current external
+reachability is unverified. The 2026-09-28 comment on issue #8 claiming no v2 UAT deployment
+predates the UAT image and database observations above.
 
-**P0 gates:** issues **#9** and **#11** are closed. Issue **#10** remains open: G8 and
-G11 are still skipped on `main`. The local G8 candidate (`d053d514`) covers two active
-inventory routes, the legacy sign-in screen, and all 133 Storybook stories; its Storybook
-readiness wait has a clear exact-head delta review. The candidate remains blocked on route
-scope: the canonical G8 spec says every route-kind inventory row needs a baseline, while
-this candidate only requires baselines for active rows. The 120 not-started route rows are
-not covered, so the candidate is not merge-ready. The #8 shadow soak is also open.
+#10 remains open. G4 now runs and passed on the post-#501 CI candidate. G8 visual regression
+and G11 performance budgets are still skipped. The G8 candidate accepts only active inventory
+routes, while the canonical scope requires baselines for every route-kind row, including 120
+not-started rows; it is not ready to merge. No G11 candidate is open. Thomas's 2026-09-28
+scope decision still applies: G4/G8/G11 are required now; gates for capabilities not yet
+present become required with the capability that introduces them. The issue's own checklist
+and latest comment need reconciliation against the newer #501 and this scope decision.
 
-**P1/P2/P3 lanes:** PR #447's remote candidate is stale and has failed `registers` and
-`unit + component`; its refreshed local branch merged #498 and initially failed the R6-1
-attachment regression test. A separate test-only P0 follow-up (`22dd94d6`) corrects the
-fake-S3 ordering gate; focused R6-1, all three attachment-concurrency tests, and
-`CI=true pnpm test:integration` now pass (117 files / 1,490 tests). It has not been reviewed
-or merged, so #447 still needs that base fix before rebase and its own gates. #447 remains
-unchanged and not merge-ready.
-The PR body has been narrowed to the saved-view CRUD/pin slice governed by
-`search-and-saved-views.md`; it explicitly leaves #24's layouts unfinished. Nine rows remain
-in the separate `views.md` review section, so the broader layout UI remains blocked there.
-P2 issues #31–#37 remain open; their owning feature review sections are empty for #31–35 and
-#37, with no #36 section in that review file. Service calendar API/persistence is the
-selected next P2 slice; it shares router/schema files with #447, so implementation starts
-after that lane releases them. P3's old lane-prep questions are superseded by the current
-specs, migration 0052/0053, and the 2026-09-23 decision. The next #39 slice is persistence
-for the six specified identity/SCIM tables. Because #33 and #39 both edit the Drizzle schema,
-relations, and migration journal, #39's schema work starts only after #33 releases those files.
-The 25-test real Microsoft Entra suite remains a completion gate. #38 remains behind its request/catalogue/intake/approval and portal dependencies.
+**P1:** PR #447 remains open at remote head `dc8f317a07ef82157183cc275f2651a6c2d4c104`.
+GitHub reports it `DIRTY`; its latest recorded run has failed `registers` and `unit + component`,
+and its base predates current `main`. The R6 attachment ordering fix is now merged as #504,
+so #447 must update to current `main`, then rerun applicable checks and obtain reviews at its
+new exact head. The prior status-only P0 test repair at `22dd94d6` is no longer an unmerged
+blocker. P1 issue #28's remaining attachment seams are #446 (comment/submission tables), #448
+(portal caller identity), and #449 (system-actor transition for reopen-on-upload). New open
+follow-ups are #499 (three more soft-delete/archive liveness gaps from #498's review) and #502
+(project-archive freeze across legacy `/api/task` writes).
 
-**Open PRs at refresh:** #503 (Dependabot; behind `main`), #492 (this status refresh; stale
-base), and #447 (saved views; stale base and prior CI failures). The new status candidate is
-local and not yet pushed. No other open PR was returned by the GitHub API.
+**P2:** Issues #31–#37 remain open. The local #33 service-calendar branch has a bounded API
+slice at `f7fb28d3e29534022dab1e6ed6ce9aec5f01ce23` (persisted CRUD/list/detail and annual
+preview, including CAL-12 recurrence-date validation); it is not an open PR or merged work.
+#33 remains incomplete: usage, import and country presets, named workspace seeds, cloning and
+calendar UI are still outstanding. The #39 identity persistence slice must wait for #33 to
+release the shared Drizzle schema, relations and migration-journal files. #36 has no owning
+section in the 2026-09-05 feature-review file; resolve that review ownership before starting
+its feature work.
 
-Sources: `origin/main` at `4b64d506`; live PR/issue state queried on 2026-09-29; #498's merged
-checks and committed Luna/Sol review evidence; UAT container health, prior browser HAR, and
-shadow smoke capture. The PR #447 details above describe its remote head; its refreshed local
-branch is not yet a GitHub candidate.
+**P3:** #505 has merged the test helpers and issuer normalization/redaction. Issue #39 remains
+open; its next persistence work depends on #33's shared-schema lane, and its phase gate still
+requires the 25 named identity tests against a real Microsoft Entra test tenant. Issue #38's
+portal implementation remains behind request/catalogue/intake/approval dependencies.
+
+**Open GitHub PRs at refresh:** #503 (Dependabot; behind `main`), #492 (this status refresh;
+its prior reviewed head is stale and needs current-head review), and #447 (saved-view CRUD/pin;
+stale base and `DIRTY`). No other open PR was returned by `gh pr list --state open`.
+The open issues and live PR heads were queried from GitHub at 12:29 UTC; see their live records
+before relying on this snapshot.
 
 ---
 
@@ -1886,221 +1876,50 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 
 ## Blocked
 
-### Open decision — #192, work-item tenant attribution (blocks the P1 write path)
+### P0 #8 — shadow-mode soak and cutover
 
-**Awaiting Thomas.** Presented as issue #192's decision request on 2026-09-18: four options
-(denormalise `work_item.workspace_id` with a composite `(workspace_id, type_id)` foreign key
-and `ON UPDATE NO ACTION`; application-level enforcement only; a trigger; and adding
-`workspace.organisation_id` as a separate prerequisite), with the tenancy implications,
-migration effects, concurrency risks and a proposed direction. **No agent may pick this — it
-creates a trust boundary.** The recommendation on the issue is the denormalised column plus
-the `workspace.organisation_id` link, as one bounded pre-write-path schema change, because it
-releases three blocked things at once: #192's cross-tenant gap, the RLS prototype, and #198's
-project purge. It also needs a **new** `UNIQUE (workspace_id, id)` on `work_item_type`, which
-does not exist today.
+The authorization mechanism is merged, but policy evaluation remains shadow-only. The latest
+available evidence is too sparse and incomplete for the required seven-day UAT soak; this
+refresh also could not resolve the UAT hostname. UAT infrastructure/traffic and a clean soak
+are required before cutover. Do not treat further code review as a substitute for that evidence.
 
-### PR #376 — governance change; `pal-mcp` SUSPENDED as a live finding, not merged yet
+### P0 #10 — G8/G11 CI gates
 
-**PR #376** set out to make `pal-mcp` the primary ordinary-review/audit/report/alignment
-tool. Across two Sonnet ordinary reviews and three Opus passes, real findings were found and
-fixed each round (Code-Owner-review-toggle unenforceability, panel-independence gaps, stale
-cross-references, PR-template defects — full history in
-`docs/07-planning/security-reviews/376-pal-mcp-governance.md`'s per-pass sections and the
-decision log's 2026-09-26 entries). **The headline outcome: a third Opus pass, testing
-specifically for it, reproduced a cross-call content leak in `pal-mcp` that persisted even
-after Thomas's fusion-panel→failover config change** — this is server-side state-sharing on
-`pal-mcp` itself, not something the model-routing config controls. `pal-mcp` is now
-**SUSPENDED** as the default reviewer (`CLAUDE.md`, `agent-workflow.md`, `pal-reviewer.md` all
-carry the notice) — fresh Sonnet contexts are the standing ordinary-review path again, not a
-"fallback." A follow-up Opus confirmation found the suspension notice correct where it existed
-but incomplete: `pal-reviewer.md` had no suspension text at all, and `agent-workflow.md`'s main
-"Model tiers" section still read as pal-mcp-primary throughout (only one later subsection had
-been fixed). Both corrected. **Not yet done:** one more lightweight Opus confirmation on the
-completeness fix, then the PR body/checklist need a final pass before merge. This PR does not
-merge with `pal-mcp` "must-use" framing — it merges recording what was tried, what was found,
-and what is suspended, which is itself the useful governance outcome here.
+G8 is blocked on resolving the candidate's scope mismatch: the canonical visual-regression
+requirement includes all route-kind inventory rows, while the candidate omits the 120
+not-started routes. G11 remains skipped without a candidate. Both gates are required now under
+Thomas's 2026-09-28 scope decision. G4 is enabled on `main` by #501. The #10 checklist is also
+stale and needs reconciliation.
 
-**Update 2026-09-27:** Thomas fixed the underlying `pal-mcp-server` bug (a shared-singleton
-tool instance in `server.py`) and redeployed it. Two independent sessions ran adversarial
-concurrency tests against the redeployed server the same day and found it clean, including on
-the exact `calling_expert_analysis` round-trip that reproduced the leak before. Thomas then
-made the call himself (asked directly, chose the middle option): **`pal-mcp` is now PARTIALLY
-UNSUSPENDED** — usable again for ordinary review/audit/report/alignment on changes that touch
-no path in `ci-cd.md`'s security-review-scope list; still suspended for anything that does.
-See the decision log's 2026-09-27 entry for the test detail and reasoning, and `CLAUDE.md`,
-`agent-workflow.md`, `pal-reviewer.md` (all updated in the same pass) for the current rule.
-This does not retroactively change PR #376's own history above — that record stands — and
-does not by itself reopen or change PR #376's merge readiness.
+### P1 #447 — saved-view candidate needs a current base and gates
 
-**Further update, same day:** Thomas then lifted the remaining restriction — `pal-mcp` is now
-**FULLY UNSUSPENDED** for reading/ordinary-review/audit/analysis on any branch, any scope,
-including security-review-scope changes. The mandatory final Opus security/critical review is
-completely unaffected — still required, separately, on every security-scope PR. See the
-decision log's second 2026-09-27 entry (naming the first as what it supersedes). Also
-recorded there: a real process gap where a subagent's own `CLAUDE.md` snapshot lagged this
-session's live edits — noted in `CLAUDE.md` itself with a workaround (`Read` the decision log
-directly when a subagent flags the conflict).
+The remote head is `dc8f317a07ef82157183cc275f2651a6c2d4c104`, GitHub reports `DIRTY`, and its
+latest `registers` and `unit + component` checks failed. #504 has since merged the attachment
+R6 test-order repair; update #447 from current `main`, then rerun checks and obtain reviews for
+the refreshed exact head. Existing reviews and checks remain evidence for their recorded heads
+only.
 
-### PR #377 — UAT deploy verified end-to-end through the real host Traefik
+### P1 attachment/liveness follow-ups
 
-Issue #11's deployment skeleton was mostly already built on `main`; verified live rather than
-trusted from its checklist. `scripts/deploy.sh local`'s core stack (Postgres, Valkey,
-migrations, app) boots healthy from scratch. `deploy/compose.uat.yml`, attached to this
-host's existing (Dokploy-managed) `dokploy-network` — the same mechanism v1's `taskdesk-uat`
-stack already uses successfully here — had a real bug: its Traefik routers referenced
-`@file` middlewares that only exist when Traefik loads this repo's own
-`deploy/traefik/dynamic/middlewares.yml`, which the shared Traefik instance does not load, so
-the router silently went `disabled`. Fixed by defining the same middleware values as
-`@docker` labels instead (matching v1's proven pattern). Verified end-to-end through the real
-Traefik: both `ticket-v2-uat.bimats.com` and `portal-v2-uat.bimats.com` return
-`{"status":"ok"}`. Ordinary review: **APPROVE**, not security-scope, no Opus needed. **Not
-done, outside this repo/host:** DNS for these hostnames, and the CloudFront origin
-`X-Forwarded-Proto` header the file's own comments already flag as an open item.
+Issue #28 still has three distinct dependencies: #446 needs comment/submission storage, #448
+needs a portal-caller identity path, and #449 needs a system-actor transition mechanism. Issue
+#499 tracks three additional liveness checks found during #498's review. Issue #502 tracks
+archive-freeze enforcement across legacy `/api/task` writes. These issues are open follow-up
+work; check their live GitHub state before dispatch.
 
-### P3 identity candidate — independent review capacity and real-tenant gate
+### P2 #33 / P3 #39 shared-schema ordering
 
-The P3 identity domain candidate is in draft PR #346 from `feat/p3-identity-portal`. Opus 5.5
-reviewed the earlier head and found three blocking domain issues; fixes are pushed in
-`1eabb4392210fe05dc1523e858d9727953a6e696`. A fresh exact-head Opus delta review remains
-mandatory before any merge. The local Claude client is unauthenticated (`loggedIn: false`), so
-this candidate waits for Opus capacity. Ordinary GPT-6 review authorization does not replace
-that final security tier. The full P3 identity gate also remains open until all 25 named
-acceptance tests pass against a real Microsoft Entra test tenant. A domain-only unit suite does
-not satisfy that provider gate. An authenticated Opus session unblocks review; an operator
-with a real Entra test tenant unblocks the provider gate.
+The #33 calendar API candidate is local and partial, with no open PR at this refresh. It does
+not complete issue #33's usage/import/preset/seed/clone/UI requirements. P3 #39's six-table
+persistence work shares Drizzle schema, relation and migration-journal files, so that work
+starts after the #33 lane releases them. #39's eventual completion still requires its 25-test
+real-Entra gate. P3 #38 remains dependent on request/catalogue/intake/approval foundations.
 
-### Opus security reviews — capacity, not permission
+### Design-review ownership — P2 #36
 
-**#214 and #215 are in security-review scope and their Opus passes have not happened.**
-Claude was unavailable throughout this session, and `CLAUDE.md` is explicit that capacity
-exhaustion means the candidate **waits** — it is not downgraded to an available model and it
-is not cleared by a non-independent context. Both are marked
-`SECURITY REVIEW PENDING — OPUS CAPACITY`, neither security-review box is ticked, and neither
-may be merged by anyone, including the orchestrating session: the delegation to merge a
-green candidate explicitly does not cover a candidate whose security review has not been
-performed. Ordinary review capacity itself was also intermittent — the subagent provider
-returned budget-exhausted (403) and connection-reset errors across several attempts, so
-reviews of the other open candidates are queued rather than done.
-
-### Process deviation — recorded, corrected, not waived
-
-**PR #13 merged on 2026-09-06 before its mandatory security review had been performed.**
-This was a **process deviation, not an approved waiver.** A post-merge Opus security review
-was run immediately over the merged diff — five independent reviewers, one lens each,
-reading the source rather than the pull-request description. Findings are recorded in
-[`security-reviews/13-kaneo-import.md`](security-reviews/13-kaneo-import.md) with the five
-lens files beside it, and on PR #13 itself.
-
-It found **three CRITICAL** defects, **all three now fixed** on
-`feat/p0-remove-inherited-surfaces` before Throttle 1: a missing `TASKDESK_AUTH_SECRET`
-silently falling through to a constant published in better-auth's source; credentialed CORS
-reflecting any origin whenever `NODE_ENV` was not exactly `"production"`; and `bearer()`
-publishing the raw session token in a CORS-exposed header. One HIGH was fixed in the same
-pass. **From now on a security-path pull request does not merge until its review is
-recorded on it** — and once #10 lands, the fast CI job becomes a required status check so
-this stops depending on anyone remembering.
-
-**Corrected 2026-09-09: #10 has landed (as #19) and the prediction above is only half
-true.** `check:pr-template` on PR #19's own final commit (`4c24b8a4`) reported exactly the
-two problems this rule exists to catch — an unticked independent-security-review checkbox
-and no committed note — and **failed**, one second before Thomas merged it (`e11976f`,
-06:22:54Z). No decision-log entry records this as an authorised deviation the way #13's is
-recorded above.
-
-**The fast CI job is now a required status check — but not the part that would have
-caught this.** `protect-main` (ruleset `22365005`) gained a `required_status_checks` rule
-during this same reconciliation pass (`updated_at 2026-09-09T06:28:04Z`), closing Throttle
-1's condition 3. Its list, re-read directly from the API, is `static`, `unit + component`,
-`build`, `registers - env, vocabulary, reviews, skips, overrides`, `route policy coverage +
-permission matrix`, `gate checkers + red probes`, `contract - OpenAPI drift`, `CI matches
-ci-cd.md`, `supply chain - dependency audit`, `supply chain - secret scan`, `helm lint +
-template` — and, **since later on 2026-09-09, `pull request template + security review` IS
-the twelfth required context**, on Thomas's explicit instruction. So the exact gap #19 fell
-through — a security-path pull request merging with its review checkbox unticked and no
-committed note — **is now mechanically blocked** by GitHub. "Stops depending on anyone
-remembering" describes all twelve gates. **This paragraph said the opposite until it was
-corrected**, which is why it is worth reading the newest decision-log entry rather than this
-file's older prose.
-
-### Open
-
-- ~~**`gh` is not authenticated.**~~ **RESOLVED 2026-09-06.** `gh` is authenticated and
-  carries the Project scope. Pull requests are opened from the CLI, the PR #13 review is
-  posted, and the Project board exists — project 1, *TaskDesk v2 — P0*, with the six
-  agreed columns. Kept as a line rather than deleted because it was the top blocker for a
-  day and its absence changed how several things were done.
-- ~~**#6 must relocate the SSRF guard before it deletes anything.**~~ **RESOLVED by #16
-  (2026-09-07).** `assertPublicWebhookDestination` now lives at
-  `apps/api/src/utils/assert-public-destination.ts`, and both retained importers —
-  `notification-preferences/delivery.ts` and `service.ts` — point at it there. The
-  validation was moved, not dropped, which was the failure mode this entry existed to
-  prevent. Kept as a line because the ordering rule still applies to every future removal.
-- **Deleting the MCP OAuth route does not revoke the sessions it already minted.** A consent
-  click created a full 30-day better-auth session row. #6 removes the route; something else
-  has to invalidate outstanding tokens. **Tracked by #17.** *Blast radius: one lane.*
-- ~~**`scripts/openapi/` has no destination.**~~ **DECIDED 2026-09-06** (decision log):
-  the committed baseline the drift check compares against is
-  `tests/api-contract/openapi.json`; a published `apps/site/public/openapi.json` is
-  generated output, not the baseline. **RESOLVED, on `main` since #19 (2026-09-09).**
-  `scripts/ci/check-openapi.mjs` and the baseline file are on `main`, and the `contract -
-  OpenAPI drift` job passes on every push (122 operations, verified with `check:openapi`).
-  *Blast radius: one lane.*
-- **v2 UAT is not deployable yet, and the remaining reasons are application-side.**
-  **All four numbered gaps below are now CLOSED** (`TASKDESK_PORT` and the health routes by
-  PR #132, static serving by PR #144, `storage.filesystem` by PR #164 — all 2026-09-16 or
-  earlier) **and independently verified end-to-end** — see the "UAT/deployability lane" table
-  in `## Scheduler`, above, and this session's newest log entry for the from-scratch
-  boot/health verification. Kept below as the historical record of what #11 actually needed,
-  not as current state.
-  The deployment skeleton is **ON MAIN** — PR #20 merged 2026-09-06 as `38ff9ac`. A
-  `Dockerfile` that builds, base + local + production + UAT compose files, Traefik
-  middlewares, a hardened `charts/taskdesk` that fails closed on every bootstrap secret,
-  and `scripts/deploy.sh`. `Dockerfile.kaneo` is deleted.
-
-  **#20 merging did not complete #11**, which stays **In Progress**. What is still missing
-  is in the application, not the deployment:
-  1. **The API listens on a hard-coded `1337`** (`apps/api/src/index.ts`, `startServer(…,
-     port = 1337)`). `TASKDESK_PORT` is documented but never read, so the image, the
-     compose files, the Helm Service and the healthcheck all point at 5173 and nothing
-     answers.
-  2. **`/api/public/health/live` and `/api/public/health/ready` do not exist.** The only
-     health route is kaneo's `/api/health`. Until they do, the container's HEALTHCHECK can
-     never pass and `up -d --wait` blocks on it — which is exactly the failure
-     [container-image.md](../05-operations/container-image.md) warns about.
-  3. **The Node process serves no static files.** kaneo used nginx; the TaskDesk image has
-     none, by design. The web bundles ship at `/app/public` and nothing reads them.
-  4. **There is no `storage.filesystem` driver.** `apps/api/src/storage/` contains only
-     `s3.ts`. The compose and Helm shape for it exists (a named volume at `/app/data`,
-     attachments under `/app/data/attachments`, owned by uid 10001); the driver, and the
-     God Mode setting that points at that path, do not.
-  **These four are #11 prerequisites, or dedicated prerequisite work — they are NOT
-  automatically #6 or #9 scope.** An earlier revision of this file assigned them to Lane A
-  and #9; that was inference from where they were noticed, not a decision. Implementation
-  ownership is assigned when they are scheduled (decision log, 2026-09-06). **v2 takes
-  `ticket-v2-uat.bimats.com` / `portal-v2-uat.bimats.com` beside v1**, with its own compose
-  project, network, volumes and database. **v1 UAT stays running and untouched**, and the
-  pre-#6 import must not be exposed publicly — `deploy/compose.uat.yml` carries a
-  do-not-apply banner saying so. *Blast radius: the deployment lane, then UAT.*
-- **`X-Forwarded-Proto` reaching the application on the bimats.com host is wrong or
-  attacker-controlled, and the fix is at CloudFront.** TLS terminates at CloudFront, so
-  Traefik's `web` entrypoint is plain HTTP: it forwards a viewer-supplied
-  `X-Forwarded-Proto` verbatim, and sets `http` when none arrives. Either way the
-  application cannot learn that the viewer used HTTPS. Set an origin custom header
-  `X-Forwarded-Proto: https` on the distribution. Evidence and method:
-  [proxy-topology-evidence.md](../05-operations/proxy-topology-evidence.md).
-  *Blast radius: anything that issues a secure cookie or builds an absolute URL, on that
-  host only.* Unblocked by: Thomas (AWS console).
-- **A standalone production host has no ACME configuration**, because Let's Encrypt needs a
-  contact email and there is no environment variable for one —
-  [configuration-reference.md](../05-operations/configuration-reference.md)'s "variables the
-  application does not read" table lists four, and none is an email. It was raised rather
-  than invented. It does not block this host, which terminates TLS at CloudFront.
-  *Blast radius: a future customer install on a bare host.* Unblocked by: Thomas.
-- ~~**The GitHub Project board does not exist.**~~ **RESOLVED 2026-09-06**, with the `gh`
-  authentication that caused it. The board exists — project 1, *TaskDesk v2 — P0*, with
-  the six agreed columns, and is listed under ON MAIN above.
-
----
+The owning feature-review section for #36 is absent from `docs/07-planning/reviews/2026-09-05/`.
+Under `AGENTS.md` do-not 15, feature implementation waits until its review section is present
+and empty.
 
 ## Throttle 1 — OPEN (2026-09-16, all five conditions verified live)
 
