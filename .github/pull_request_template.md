@@ -41,11 +41,17 @@ See ci-cd.md.
 
 ## Sampled big review (optional)
 
-<!-- Non-gating random/sample audit. When selected, use Opus 5.5 and attach the packet. -->
+<!--
+Non-gating random/sample audit. When selected, GPT-6 Luna or GPT-6 Sol prepares a structured
+packet with exact SHA(s), changed files, relevant specs, risk classification, GPT review
+verdicts, tests/counts, residuals, and claims for Opus 5.5 to spot-check. The packet is
+sampled evidence, not a replacement for any required review.
+-->
 
 **Selected:** <!-- yes / no -->
 **Model:** <!-- Opus 5.5, or n/a if not selected -->
 **Packet author:** <!-- GPT-6 Luna or GPT-6 Sol; n/a if not selected -->
+**Packet:** <!-- link to the structured packet; n/a if not selected -->
 **Verdict:** <!-- clear / findings / n/a if not selected -->
 
 ## Screens opened
