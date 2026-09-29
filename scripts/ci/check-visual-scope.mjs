@@ -182,8 +182,33 @@ function hasSafeVisualTestRuntime(sourceFile) {
     return found;
   };
 
+  const isAllowedPlaywrightApiReference = (node) => {
+    const parent = node.parent;
+    const allowedDirectPropertyCalls = {
+      test: new Set(["setTimeout"]),
+      expect: new Set(["poll", "soft"]),
+    };
+    return (
+      (ts.isImportSpecifier(parent) && parent.name === node) ||
+      (ts.isCallExpression(parent) && parent.expression === node) ||
+      (ts.isPropertyAccessExpression(parent) &&
+        parent.expression === node &&
+        allowedDirectPropertyCalls[node.text]?.has(parent.name.text) &&
+        ts.isCallExpression(parent.parent) &&
+        parent.parent.expression === parent)
+    );
+  };
+
   const visit = (node) => {
     if (unsafe) return;
+    if (
+      ts.isIdentifier(node) &&
+      (node.text === "test" || node.text === "expect") &&
+      !isAllowedPlaywrightApiReference(node)
+    ) {
+      unsafe = true;
+      return;
+    }
     if (ts.isIdentifier(node) && unsafeVisualRuntimeNames.has(node.text)) {
       unsafe = true;
       return;

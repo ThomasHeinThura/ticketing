@@ -396,6 +396,21 @@ test("G8 rejects assignment aliases and computed Playwright control calls", asyn
   assert.match(result.output, /contains imports or runtime constructs/);
 });
 
+test("G8 rejects Playwright references passed through mutation and computed APIs", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({
+      runtimeCode: [
+        'Object.defineProperty(Object, "t", { value: test });',
+        'Object["t"]["con" + "figure"]({ mode: "skip" });',
+      ].join("\n"),
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /contains imports or runtime constructs/);
+});
+
 test("G8 rejects suite configuration and process exit before screenshots run", async () => {
   const configured = await runVisualScope({
     routes: ACTIVE_ROUTES,
