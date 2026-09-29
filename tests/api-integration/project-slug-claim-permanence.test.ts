@@ -20,6 +20,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
+import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -67,6 +68,31 @@ function createWorkItemRequest(
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+async function waitForAdvisoryLockWait(
+  sideClient: Client,
+  classId: number,
+  objectId: number,
+) {
+  const deadline = Date.now() + 5000;
+  for (;;) {
+    const result = await sideClient.query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM pg_locks
+       WHERE locktype = 'advisory' AND classid = $1 AND objid = $2
+         AND objsubid = 2 AND granted = false`,
+      [classId, objectId],
+    );
+    if (Number(result.rows[0]?.count ?? "0") > 0) return;
+    if (Date.now() > deadline) {
+      throw new Error("timed out waiting for project slug claim trigger");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+}
+
+function quoteSqlLiteral(value: string) {
+  return `'${value.replaceAll("'", "''")}'`;
 }
 
 // Mirrors `work-item-create-read-list.test.ts`'s own local fixture builders -- this
@@ -452,5 +478,112 @@ describe("API integration: project.slug claims are permanent (#23 D1)", () => {
       "ROUNDTRIP",
       "ROUNDTRIP-2",
     ]);
+  });
+
+  it("fails closed when another project claims the rename slug after the pre-check", async () => {
+    const connectionString = process.env.TASKDESK_DATABASE_URL;
+    if (!connectionString) {
+      throw new Error(
+        "TASKDESK_DATABASE_URL must be defined for integration tests",
+      );
+    }
+
+    const admin = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(admin.user);
+    const { app } = createApp();
+    const firstCreated = await createProjectRequest(app, {
+      workspaceId: admin.workspace.id,
+      name: "First project",
+      icon: "Folder",
+      slug: "RACEA",
+    });
+    expect(firstCreated.status).toBe(200);
+    const first = (await firstCreated.json()) as { id: string };
+    const secondCreated = await createProjectRequest(app, {
+      workspaceId: admin.workspace.id,
+      name: "Second project",
+      icon: "Folder",
+      slug: "RACEB",
+    });
+    expect(secondCreated.status).toBe(200);
+    const second = (await secondCreated.json()) as { id: string };
+
+    const targetSlug = "RACEX";
+    const lockClassId = 4711;
+    const lockObjectId = 42;
+    const triggerSuffix = randomUUID().replaceAll("-", "");
+    const functionName = `test_slug_claim_race_${triggerSuffix}`;
+    const triggerName = `test_slug_claim_race_${triggerSuffix}`;
+    const sideClient = new Client({ connectionString });
+    await sideClient.connect();
+    let renamePromise: Promise<Response> | undefined;
+
+    try {
+      // Park the rename after the pre-check, at its claim insert. The second
+      // connection then wins the unique claim before the rename's insert resumes.
+      await sideClient.query(
+        `CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$
+         BEGIN
+           IF NEW.project_id = ${quoteSqlLiteral(first.id)}
+              AND NEW.slug = ${quoteSqlLiteral(targetSlug)} THEN
+             PERFORM pg_advisory_xact_lock(${lockClassId}, ${lockObjectId});
+           END IF;
+           RETURN NEW;
+         END;
+         $$`,
+      );
+      await sideClient.query(
+        `CREATE TRIGGER ${triggerName} BEFORE INSERT ON project_slug_claim
+         FOR EACH ROW EXECUTE FUNCTION ${functionName}()`,
+      );
+      await sideClient.query("SELECT pg_advisory_lock($1, $2)", [
+        lockClassId,
+        lockObjectId,
+      ]);
+
+      const pendingRename = Promise.resolve(
+        updateProjectRequest(app, first.id, {
+          name: "First project renamed",
+          icon: "Folder",
+          slug: targetSlug,
+          description: "",
+        }),
+      );
+      renamePromise = pendingRename;
+      await waitForAdvisoryLockWait(sideClient, lockClassId, lockObjectId);
+
+      await sideClient.query(
+        `INSERT INTO project_slug_claim (slug, project_id)
+         VALUES ($1, $2)`,
+        [targetSlug, second.id],
+      );
+      await sideClient.query("SELECT pg_advisory_unlock($1, $2)", [
+        lockClassId,
+        lockObjectId,
+      ]);
+
+      const rename = await pendingRename;
+      expect(rename.status).toBe(409);
+      const project = await db.query.projectTable.findFirst({
+        where: eq(schema.projectTable.id, first.id),
+      });
+      expect(project?.slug).toBe("RACEA");
+      expect(project?.name).toBe("First project");
+      const claim = await db.query.projectSlugClaimTable.findFirst({
+        where: eq(schema.projectSlugClaimTable.slug, targetSlug),
+      });
+      expect(claim?.projectId).toBe(second.id);
+    } finally {
+      await sideClient.query("SELECT pg_advisory_unlock($1, $2)", [
+        lockClassId,
+        lockObjectId,
+      ]);
+      await renamePromise?.catch(() => undefined);
+      await sideClient.query(
+        `DROP TRIGGER IF EXISTS ${triggerName} ON project_slug_claim`,
+      );
+      await sideClient.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
+      await sideClient.end();
+    }
   });
 });

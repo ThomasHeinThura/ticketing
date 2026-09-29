@@ -97,6 +97,19 @@ async function updateProject(
           .insert(projectSlugClaimTable)
           .values({ slug, projectId: id })
           .onConflictDoNothing({ target: projectSlugClaimTable.slug });
+
+        // The pre-check above can race with another project inserting this slug. In
+        // that case `ON CONFLICT DO NOTHING` would otherwise let the rename commit
+        // while the permanent registry still names the other project. Re-read the
+        // claim in this transaction and fail closed unless this project owns it.
+        const [claimAfterInsert] = await tx
+          .select({ projectId: projectSlugClaimTable.projectId })
+          .from(projectSlugClaimTable)
+          .where(eq(projectSlugClaimTable.slug, slug))
+          .limit(1);
+        if (!claimAfterInsert || claimAfterInsert.projectId !== id) {
+          throw new ProjectSlugTakenError(slug);
+        }
       }
 
       return updatedProject;
