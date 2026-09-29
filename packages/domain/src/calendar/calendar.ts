@@ -488,7 +488,7 @@ export function nextWindowOpening(
     month: cursor.month,
     day: cursor.day,
   };
-  let minuteFloor = cursor.minuteOfDay;
+  const instantMs = instant.getTime();
 
   // A year plus slack is far beyond any real holiday run; this only guards against an
   // unreachable calendar (e.g. every weekday holidayed out forever), which is not a
@@ -498,23 +498,23 @@ export function nextWindowOpening(
       const windows = [...(calendar.windows[weekdayOf(cursorDate)] ?? [])].sort(
         (a, b) => a.from - b.from,
       );
-      for (const window of windows) {
-        if (window.to <= minuteFloor) {
+      for (const interval of coveredIntervalsForLocalDay(
+        calendar.timezone,
+        cursorDate,
+        windows,
+      )) {
+        if (interval.endMs <= instantMs) {
           continue;
         }
-        if (window.from <= minuteFloor) {
-          // Already inside this window.
+        if (interval.startMs <= instantMs) {
+          // Already inside real covered time. This also rejects the second occurrence
+          // of an ambiguous wall-clock minute, which is intentionally uncovered (CAL-7).
           return instant;
         }
-        return zonedDateTimeToInstant(
-          calendar.timezone,
-          cursorDate,
-          window.from,
-        );
+        return new Date(interval.startMs);
       }
     }
     cursorDate = addDays(cursorDate, 1);
-    minuteFloor = 0;
   }
 
   return null;

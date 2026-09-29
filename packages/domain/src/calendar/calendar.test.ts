@@ -811,6 +811,21 @@ describe("nextWindowOpening", () => {
     expect(nextWindowOpening(PRESET_8X5, instant)).toEqual(instant);
   });
 
+  it("skips the uncovered second occurrence of a repeated wall-clock window", () => {
+    const calendar: ServiceCalendar = {
+      timezone: "Europe/London",
+      windows: { sun: [{ from: 60, to: 120 }] },
+      holidays: [],
+    };
+
+    expect(nextWindowOpening(calendar, utc(2026, 10, 25, 0, 10))).toEqual(
+      utc(2026, 10, 25, 0, 10),
+    );
+    expect(nextWindowOpening(calendar, utc(2026, 10, 25, 1, 10))).toEqual(
+      utc(2026, 11, 1, 1, 0),
+    );
+  });
+
   it("finds the same day's opening when called before it", () => {
     const instant = utc(2026, 6, 1, 7, 0); // Monday 07:00, before 09:00 open
     expect(nextWindowOpening(PRESET_8X5, instant)).toEqual(
