@@ -13,16 +13,21 @@ type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
  * project liveness check and write inside this same transaction.
  */
 export async function lockLegacyTaskRow(tx: DbOrTx, taskId: string) {
-  const [task] = await tx
-    .select()
-    .from(taskTable)
-    .where(eq(taskTable.id, taskId))
-    .for("update");
+  const task = await lockLegacyTaskRowIfPresent(tx, taskId);
 
   if (!task) {
     throw new HTTPException(404, { message: "Task not found" });
   }
 
+  return task;
+}
+
+export async function lockLegacyTaskRowIfPresent(tx: DbOrTx, taskId: string) {
+  const [task] = await tx
+    .select()
+    .from(taskTable)
+    .where(eq(taskTable.id, taskId))
+    .for("update");
   return task;
 }
 

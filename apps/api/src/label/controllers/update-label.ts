@@ -1,9 +1,9 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { labelTable } from "../../database/schema";
 import {
-  lockLegacyTaskRow,
+  lockLegacyTaskRowIfPresent,
   lockProjectsAndAssertLive,
   lockTaskAndAssertProjectLive,
 } from "../../task/assert-task-project-live";
@@ -47,6 +47,7 @@ async function updateLabel(id: string, name: string, color: string) {
       });
     }
 
+    let remainingCopyIds: string[] = [];
     if (!label.taskId && label.workspaceId) {
       const copies = await tx
         .select({ taskId: labelTable.taskId })
@@ -67,12 +68,30 @@ async function updateLabel(id: string, name: string, color: string) {
       ].sort();
       const tasks = [];
       for (const taskId of taskIds) {
-        tasks.push(await lockLegacyTaskRow(tx, taskId));
+        const task = await lockLegacyTaskRowIfPresent(tx, taskId);
+        if (task) tasks.push(task);
       }
       await lockProjectsAndAssertLive(
         tx,
         tasks.map((task) => task.projectId),
       );
+      const lockedTaskIds = tasks.map((task) => task.id);
+      const remainingCopies = lockedTaskIds.length
+        ? await tx
+            .select({ id: labelTable.id })
+            .from(labelTable)
+            .where(
+              and(
+                eq(labelTable.workspaceId, label.workspaceId),
+                eq(labelTable.name, label.name),
+                isNotNull(labelTable.taskId),
+                inArray(labelTable.taskId, lockedTaskIds),
+              ),
+            )
+            .orderBy(asc(labelTable.taskId), asc(labelTable.id))
+            .for("update")
+        : [];
+      remainingCopyIds = remainingCopies.map((copy) => copy.id);
     }
 
     const [updatedLabel] = await tx
@@ -81,19 +100,11 @@ async function updateLabel(id: string, name: string, color: string) {
       .where(eq(labelTable.id, id))
       .returning();
 
-    // If this is a workspace-level label, cascade the changes to all
-    // task-level copies so existing label assignments reflect the new color/name
-    if (!label.taskId && label.workspaceId) {
+    if (remainingCopyIds.length > 0) {
       await tx
         .update(labelTable)
         .set({ name, color })
-        .where(
-          and(
-            eq(labelTable.workspaceId, label.workspaceId),
-            eq(labelTable.name, label.name),
-            isNotNull(labelTable.taskId),
-          ),
-        );
+        .where(inArray(labelTable.id, remainingCopyIds));
     }
 
     return updatedLabel;

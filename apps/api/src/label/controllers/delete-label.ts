@@ -1,10 +1,11 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { labelTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
-  lockLegacyTaskRow,
+  type lockLegacyTaskRow,
+  lockLegacyTaskRowIfPresent,
   lockProjectsAndAssertLive,
   lockTaskAndAssertProjectLive,
 } from "../../task/assert-task-project-live";
@@ -93,12 +94,31 @@ async function deleteLabel(id: string, userId: string) {
       Awaited<ReturnType<typeof lockLegacyTaskRow>>
     >();
     for (const taskId of taskIds) {
-      tasks.set(taskId, await lockLegacyTaskRow(tx, taskId));
+      const task = await lockLegacyTaskRowIfPresent(tx, taskId);
+      if (task) tasks.set(taskId, task);
     }
     await lockProjectsAndAssertLive(
       tx,
       [...tasks.values()].map((task) => task.projectId),
     );
+
+    const remainingTaskIds = [...tasks.keys()];
+    const remainingCopies =
+      label.workspaceId && remainingTaskIds.length
+        ? await tx
+            .select({ id: labelTable.id })
+            .from(labelTable)
+            .where(
+              and(
+                eq(labelTable.workspaceId, label.workspaceId),
+                eq(labelTable.name, label.name),
+                isNotNull(labelTable.taskId),
+                inArray(labelTable.taskId, remainingTaskIds),
+              ),
+            )
+            .orderBy(asc(labelTable.taskId), asc(labelTable.id))
+            .for("update")
+        : [];
 
     const [deletedLabel] = await tx
       .delete(labelTable)
@@ -108,22 +128,23 @@ async function deleteLabel(id: string, userId: string) {
       throw new HTTPException(404, { message: "Label not found" });
     }
 
-    if (label.workspaceId) {
-      await tx
-        .delete(labelTable)
-        .where(
-          and(
-            eq(labelTable.workspaceId, label.workspaceId),
-            eq(labelTable.name, label.name),
-            isNotNull(labelTable.taskId),
-          ),
-        );
-    }
-
-    const emittedRows = affectedLabels.map(({ label: child, taskId }) => {
-      const task = tasks.get(taskId);
-      if (!task) throw new HTTPException(404, { message: "Task not found" });
-      return { label: child, taskId, projectId: task.projectId };
+    const deletedCopies = remainingCopies.length
+      ? await tx
+          .delete(labelTable)
+          .where(
+            inArray(
+              labelTable.id,
+              remainingCopies.map((copy) => copy.id),
+            ),
+          )
+          .returning()
+      : [];
+    const emittedRows = deletedCopies.flatMap((child) => {
+      const taskId = child.taskId;
+      const task = taskId ? tasks.get(taskId) : undefined;
+      return task && taskId
+        ? [{ label: child, taskId, projectId: task.projectId }]
+        : [];
     });
     return {
       deletedLabel,
