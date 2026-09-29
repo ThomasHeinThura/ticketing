@@ -14,6 +14,7 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import { raceWorkItemArchive } from "./helpers/race-soft-delete";
 
 async function makeWorkItemType(workspaceId: string) {
   const now = new Date();
@@ -376,40 +377,13 @@ describe("API integration: work item watch/unwatch (#23 fourth slice)", () => {
       })
     ).json()) as { key: string; id: string };
 
-    let releaseLock!: () => void;
-    const releaseLockGate = new Promise<void>((resolve) => {
-      releaseLock = resolve;
-    });
-    let lockHeld!: () => void;
-    const lockHeldGate = new Promise<void>((resolve) => {
-      lockHeld = resolve;
-    });
-    // Holds the work item row's own write lock via an uncommitted rival transaction --
-    // `requireWorkItemReach()`'s own read is unlocked and so is not blocked by this (it
-    // sees the item still alive), but `watchWorkItem`'s new `.for("share")` read IS,
-    // parking the racing request exactly inside the transaction this issue adds.
-    const rival = db.transaction(async (tx) => {
-      await tx
-        .update(schema.workItemTable)
-        .set({ title: "Locked by rival" })
-        .where(eq(schema.workItemTable.id, created.id));
-      lockHeld();
-      await releaseLockGate;
-      // `archivedAt`, deliberately, never `deletedAt` -- the exact column the OLD code
-      // never checked at all.
-      await tx
-        .update(schema.workItemTable)
-        .set({ archivedAt: new Date() })
-        .where(eq(schema.workItemTable.id, created.id));
-    });
-    await lockHeldGate;
-
-    const racedCall = watchRequest(app, created.key);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    releaseLock();
-    await rival;
-
-    const response = await racedCall;
+    const race = await raceWorkItemArchive(
+      created.id,
+      async () => await watchRequest(app, created.key),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    const response = race.operation.value;
     expect(response.status).toBe(404);
 
     const watchers = await db

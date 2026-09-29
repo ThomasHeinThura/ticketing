@@ -1,12 +1,13 @@
 import { Client } from "pg";
 
-type SoftDeleteTarget = {
+type FreezeTarget = {
   table: "project" | "work_item";
   id: string;
+  freeze: "delete" | "archive";
 };
 
-async function raceSoftDelete<T>(
-  target: SoftDeleteTarget,
+async function raceProjectOrItemFreeze<T>(
+  target: FreezeTarget,
   operation: () => Promise<T>,
 ): Promise<{
   blockedOnRowLock: boolean;
@@ -21,13 +22,17 @@ async function raceSoftDelete<T>(
   try {
     await client.query("BEGIN");
     transactionOpen = true;
-    const deletion =
-      target.table === "project"
-        ? "UPDATE project SET deleted_at = now(), purge_after = now() WHERE id = $1"
-        : "UPDATE work_item SET deleted_at = now() WHERE id = $1";
-    const deleted = await client.query(deletion, [target.id]);
-    if (deleted.rowCount !== 1) {
-      throw new Error("raceSoftDelete: update matched no row");
+    const freeze =
+      target.freeze === "archive"
+        ? target.table === "project"
+          ? "UPDATE project SET archived_at = now() WHERE id = $1"
+          : "UPDATE work_item SET archived_at = now() WHERE id = $1"
+        : target.table === "project"
+          ? "UPDATE project SET deleted_at = now(), purge_after = now() WHERE id = $1"
+          : "UPDATE work_item SET deleted_at = now() WHERE id = $1";
+    const frozen = await client.query(freeze, [target.id]);
+    if (frozen.rowCount !== 1) {
+      throw new Error("raceProjectOrItemFreeze: update matched no row");
     }
 
     const lockOwner = await client.query<{ pid: number }>(
@@ -35,7 +40,7 @@ async function raceSoftDelete<T>(
     );
     const lockOwnerPid = lockOwner.rows[0]?.pid;
     if (lockOwnerPid === undefined) {
-      throw new Error("raceSoftDelete: could not read lock owner pid");
+      throw new Error("raceProjectOrItemFreeze: could not read lock owner pid");
     }
 
     let operationResult: PromiseSettledResult<T> | undefined;
@@ -81,7 +86,7 @@ async function raceSoftDelete<T>(
     await pendingOperation;
 
     if (operationResult === undefined) {
-      throw new Error("raceSoftDelete: operation did not settle");
+      throw new Error("raceProjectOrItemFreeze: operation did not settle");
     }
 
     return { blockedOnRowLock, operation: operationResult };
@@ -95,12 +100,38 @@ export function raceProjectSoftDelete<T>(
   projectId: string,
   operation: () => Promise<T>,
 ) {
-  return raceSoftDelete({ table: "project", id: projectId }, operation);
+  return raceProjectOrItemFreeze(
+    { table: "project", id: projectId, freeze: "delete" },
+    operation,
+  );
+}
+
+export function raceProjectArchive<T>(
+  projectId: string,
+  operation: () => Promise<T>,
+) {
+  return raceProjectOrItemFreeze(
+    { table: "project", id: projectId, freeze: "archive" },
+    operation,
+  );
 }
 
 export function raceWorkItemSoftDelete<T>(
   workItemId: string,
   operation: () => Promise<T>,
 ) {
-  return raceSoftDelete({ table: "work_item", id: workItemId }, operation);
+  return raceProjectOrItemFreeze(
+    { table: "work_item", id: workItemId, freeze: "delete" },
+    operation,
+  );
+}
+
+export function raceWorkItemArchive<T>(
+  workItemId: string,
+  operation: () => Promise<T>,
+) {
+  return raceProjectOrItemFreeze(
+    { table: "work_item", id: workItemId, freeze: "archive" },
+    operation,
+  );
 }

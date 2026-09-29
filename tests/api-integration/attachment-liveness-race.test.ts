@@ -26,6 +26,7 @@ import {
   createWorkspaceMember,
   requireRow,
 } from "./helpers/fixtures";
+import { raceWorkItemSoftDelete } from "./helpers/race-soft-delete";
 
 const PNG_BYTES = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
@@ -115,44 +116,6 @@ function presignRequest(app: ReturnType<typeof createApp>["app"], key: string) {
   });
 }
 
-/** Parks `call` inside the controller's own new `.for("share")` read by holding the work
- * item row's write lock via an uncommitted rival transaction, then commits the soft-delete
- * that lock was protecting -- the racing call resumes against the now-dead item. */
-async function raceSoftDeleteAgainstWorkItemRow(
-  workItemId: string,
-  call: () => unknown | Promise<unknown>,
-) {
-  let releaseLock!: () => void;
-  const releaseLockGate = new Promise<void>((resolve) => {
-    releaseLock = resolve;
-  });
-  let lockHeld!: () => void;
-  const lockHeldGate = new Promise<void>((resolve) => {
-    lockHeld = resolve;
-  });
-  const rival = db.transaction(async (tx) => {
-    await tx
-      .update(schema.workItemTable)
-      .set({ title: "Locked by rival" })
-      .where(eq(schema.workItemTable.id, workItemId));
-    lockHeld();
-    await releaseLockGate;
-    await tx
-      .update(schema.workItemTable)
-      .set({ deletedAt: new Date() })
-      .where(eq(schema.workItemTable.id, workItemId));
-  });
-  await lockHeldGate;
-
-  const racedCall = call();
-  // Give the racing call's own `.for("share")` read time to reach Postgres and start
-  // blocking on the still-open rival transaction above before it is released.
-  await new Promise((resolve) => setTimeout(resolve, 300));
-  releaseLock();
-  await rival;
-  return racedCall;
-}
-
 describe("API integration: attachment liveness race (#493)", () => {
   let root: string;
   const originalRoot = process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT;
@@ -183,9 +146,13 @@ describe("API integration: attachment liveness race (#493)", () => {
       type.id,
     );
 
-    const response = await raceSoftDeleteAgainstWorkItemRow(workItemId, () =>
-      presignRequest(app, key),
+    const race = await raceWorkItemSoftDelete(
+      workItemId,
+      async () => await presignRequest(app, key),
     );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    const response = race.operation.value;
 
     // Pre-fix: this route had no in-transaction liveness re-check at all, so the insert
     // landed anyway. Post-fix: the locked re-read sees the now-committed soft-delete.
@@ -223,11 +190,19 @@ describe("API integration: attachment liveness race (#493)", () => {
     });
     expect(uploadResponse.status).toBe(204);
 
-    const response = await raceSoftDeleteAgainstWorkItemRow(workItemId, () =>
-      app.request(`/api/attachments/${presigned.attachmentId}/complete`, {
-        method: "POST",
-      }),
+    const race = await raceWorkItemSoftDelete(
+      workItemId,
+      async () =>
+        await app.request(
+          `/api/attachments/${presigned.attachmentId}/complete`,
+          {
+            method: "POST",
+          },
+        ),
     );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    const response = race.operation.value;
 
     // Pre-fix: this route had no in-transaction liveness re-check at all before flipping
     // the row to `ready`, so the write landed anyway. Post-fix: the locked re-read sees
