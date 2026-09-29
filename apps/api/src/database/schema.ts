@@ -943,6 +943,41 @@ export const notificationTable = pgTable(
   (table) => [index("notification_userId_idx").on(table.userId)],
 );
 
+export const outboxTable = pgTable(
+  "outbox",
+  {
+    eventId: text("event_id").primaryKey(),
+    kind: text("kind").notNull(),
+    payload: jsonb("payload").notNull(),
+    dedupeKey: text("dedupe_key"),
+    workspaceId: text("workspace_id").notNull(),
+    organisationId: text("organisation_id"),
+    state: text("state").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+    lastError: text("last_error"),
+  },
+  (table) => [
+    check(
+      "outbox_state_check",
+      sql`${table.state} in ('pending', 'delivered', 'dead')`,
+    ),
+    check("outbox_attempts_nonnegative", sql`${table.attempts} >= 0`),
+    index("outbox_state_next_attempt_idx")
+      .on(table.state, table.nextAttemptAt)
+      .where(sql`${table.state} = 'pending'`),
+    index("outbox_workspace_state_idx").on(table.workspaceId, table.state),
+    index("outbox_dedupe_key_idx")
+      .on(table.dedupeKey)
+      .where(sql`${table.dedupeKey} is not null`),
+  ],
+);
+
 export const userNotificationPreferenceTable = pgTable(
   "user_notification_preference",
   {

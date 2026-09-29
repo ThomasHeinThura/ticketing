@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import {
   createPendingAction,
@@ -9,7 +9,7 @@ import {
 } from "../../apps/api/src/pending-action/service";
 import { resetTestDatabase } from "./helpers/database";
 
-function requestInput(requesterPersonId = `person-${randomUUID()}`) {
+function requestInput(requesterPersonId = "person-pending-action-test") {
   return {
     requesterPersonId,
     credentialType: "session" as const,
@@ -20,7 +20,7 @@ function requestInput(requesterPersonId = `person-${randomUUID()}`) {
     targetType: "work_item",
     targetIds: ["SUP-1"],
     summary: { key: "SUP-1", title: "Test request" },
-    workspaceId: `workspace-${randomUUID()}`,
+    workspaceId: "workspace-pending-action-test",
     projectId: `project-${randomUUID()}`,
     organisationId: null,
     confirmationRequired: "click" as const,
@@ -32,6 +32,29 @@ function requestInput(requesterPersonId = `person-${randomUUID()}`) {
 describe("pending-action service persistence", () => {
   beforeEach(async () => {
     await resetTestDatabase();
+    await db.insert(schema.organisationTable).values({
+      id: "organisation-pending-action-test",
+      key: "organisation-pending-action-test",
+      name: "Pending Action Test Organisation",
+    });
+    await db.insert(schema.userTable).values({
+      id: "user-pending-action-test",
+      name: "Pending Action Requester",
+      email: "pending-action-requester@example.test",
+    });
+    await db.insert(schema.personTable).values({
+      id: "person-pending-action-test",
+      userId: "user-pending-action-test",
+      organisationId: "organisation-pending-action-test",
+      side: "staff",
+    });
+    await db.insert(schema.workspaceTable).values({
+      id: "workspace-pending-action-test",
+      organisationId: "organisation-pending-action-test",
+      name: "Pending Action Test Workspace",
+      slug: "pending-action-test",
+      createdAt: new Date(),
+    });
   });
 
   it("PA-2: persists the bound request and audit row before returning its approval details", async () => {
@@ -53,6 +76,10 @@ describe("pending-action service persistence", () => {
           eq(schema.auditLogTable.entityId, response.pendingActionId),
         ),
       );
+    const outboxRows = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "pending_action.requested"));
 
     expect(response).toMatchObject({
       action: "delete",
@@ -74,6 +101,106 @@ describe("pending-action service persistence", () => {
         entityId: response.pendingActionId,
       },
     ]);
+    expect(outboxRows).toHaveLength(1);
+    expect(outboxRows[0]).toMatchObject({
+      kind: "pending_action.requested",
+      state: "pending",
+      workspaceId: input.workspaceId,
+      organisationId: "organisation-pending-action-test",
+      payload: {
+        id: expect.stringMatching(/^evt_/),
+        kind: "pending_action.requested",
+        actor: {
+          type: "person",
+          id: input.requesterPersonId,
+          name: "Pending Action Requester",
+        },
+        scope: {
+          workspaceId: input.workspaceId,
+          organisationId: "organisation-pending-action-test",
+        },
+        payload: {
+          key: response.pendingActionId,
+          url: response.approveUrl,
+          targetCount: 1,
+        },
+      },
+    });
+  });
+
+  it("rejects an unregistered route key before writing a pending action", async () => {
+    const input = requestInput();
+    const invalidInput = {
+      ...input,
+      routeKey: "DELETE /api/not-registered/{id}" as typeof input.routeKey,
+    };
+
+    await expect(createPendingAction(invalidInput)).rejects.toThrow(
+      /Unknown pending-action route key/,
+    );
+    const rows = await db.select().from(schema.pendingActionTable);
+    expect(rows).toHaveLength(0);
+  });
+
+  it("AU-14: commits the request and outbox when its audit insert fails", async () => {
+    const input = requestInput();
+    const auditFailure = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    await db.execute(
+      sql.raw(`
+        CREATE OR REPLACE FUNCTION fail_pending_action_audit_insert()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.action = 'pending_action.requested' THEN
+            RAISE EXCEPTION 'test audit failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `),
+    );
+    await db.execute(
+      sql.raw(`
+        CREATE TRIGGER fail_pending_action_audit_insert
+        BEFORE INSERT ON audit_log
+        FOR EACH ROW EXECUTE FUNCTION fail_pending_action_audit_insert()
+      `),
+    );
+
+    try {
+      const response = await createPendingAction(input);
+      const pendingRows = await db
+        .select({ id: schema.pendingActionTable.id })
+        .from(schema.pendingActionTable)
+        .where(eq(schema.pendingActionTable.id, response.pendingActionId));
+      const outboxRows = await db
+        .select({ eventId: schema.outboxTable.eventId })
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "pending_action.requested"));
+      const auditRows = await db
+        .select({ id: schema.auditLogTable.id })
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "pending_action.requested"));
+
+      expect(pendingRows).toEqual([{ id: response.pendingActionId }]);
+      expect(outboxRows).toHaveLength(1);
+      expect(auditRows).toHaveLength(0);
+      expect(auditFailure).toHaveBeenCalledWith(
+        expect.stringContaining("AU-14:"),
+        expect.anything(),
+      );
+    } finally {
+      auditFailure.mockRestore();
+      await db.execute(
+        sql.raw(
+          "DROP TRIGGER IF EXISTS fail_pending_action_audit_insert ON audit_log",
+        ),
+      );
+      await db.execute(
+        sql.raw("DROP FUNCTION IF EXISTS fail_pending_action_audit_insert()"),
+      );
+    }
   });
 
   it("PA-4: rejects a second pending request for the same requester, action and targets", async () => {
