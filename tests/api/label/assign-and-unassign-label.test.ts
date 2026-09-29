@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mockFindFirst = vi.fn();
 const mockSelect = vi.fn();
 const mockTxSelect = vi.fn();
+const mockTxExecute = vi.fn(async (..._args: unknown[]) => ({ rows: [] }));
 const mockDelete = vi.fn();
 const mockInsert = vi.fn();
 const mockPublishEvent = vi.fn();
 
 function createMockTxContext() {
   return {
+    execute: (...args: unknown[]) => mockTxExecute(...args),
     select: (...args: unknown[]) => mockTxSelect(...args),
     insert: (...args: unknown[]) => mockInsert(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
@@ -117,6 +119,9 @@ function makeInsertMock(insertedRow: unknown) {
 describe("unassignLabelFromTask", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockTxExecute.mockImplementation(async (..._args: unknown[]) => ({
+      rows: [],
+    }));
     mockTxSelect.mockImplementation(() => makeSelectMock([]));
     mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) =>
       cb(createMockTxContext()),
@@ -135,6 +140,7 @@ describe("unassignLabelFromTask", () => {
     await unassignLabelFromTask("label-task-1", "user-1");
 
     expect(mockDelete).toHaveBeenCalledTimes(1);
+    expect(mockTxExecute).toHaveBeenCalledTimes(1);
     expect(mockPublishEvent).toHaveBeenCalledWith("task.label_unassigned", {
       label: TASK_LABEL,
       task: { id: TASK.id, projectId: TASK.projectId },
@@ -162,6 +168,9 @@ describe("unassignLabelFromTask", () => {
 describe("assignLabelToTask", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockTxExecute.mockImplementation(async (..._args: unknown[]) => ({
+      rows: [],
+    }));
     mockTxSelect.mockImplementation(() => makeSelectMock([]));
     mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) =>
       cb(createMockTxContext()),
@@ -188,6 +197,7 @@ describe("assignLabelToTask", () => {
     const result = await assignLabelToTask("label-ws-1", "task-1", "user-1");
 
     expect(result).toEqual(insertedCopy);
+    expect(mockTxExecute).toHaveBeenCalledTimes(1);
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(mockDelete).not.toHaveBeenCalled();
     expect(insertChain.onConflict).toHaveBeenCalledWith({
@@ -217,6 +227,7 @@ describe("assignLabelToTask", () => {
     const result = await assignLabelToTask("label-task-1", "task-1", "user-1");
 
     expect(result).toEqual({ ...TASK_LABEL, taskId: "task-1" });
+    expect(mockTxExecute).toHaveBeenCalledTimes(1);
     expect(mockInsert).not.toHaveBeenCalled();
     expect(mockDelete).not.toHaveBeenCalled();
     expect(mockPublishEvent).not.toHaveBeenCalled();
@@ -242,6 +253,7 @@ describe("assignLabelToTask", () => {
     mockInsert.mockReturnValue(insertChain);
 
     await assignLabelToTask("label-task-1", "task-1", "user-1");
+    expect(mockTxExecute).toHaveBeenCalledTimes(1);
     expect(mockPublishEvent).toHaveBeenCalledWith(
       "task.label_assigned",
       expect.objectContaining({
@@ -266,6 +278,7 @@ describe("assignLabelToTask", () => {
     const result = await assignLabelToTask("label-ws-1", "task-1", "user-1");
 
     expect(result).toEqual(TASK_LABEL);
+    expect(mockTxExecute).toHaveBeenCalledTimes(1);
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(mockPublishEvent).not.toHaveBeenCalled();
   });
@@ -286,6 +299,7 @@ describe("assignLabelToTask", () => {
     await assignLabelToTask("label-ws-1", "task-1", "user-1");
 
     expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockTxExecute).toHaveBeenCalledTimes(1);
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(mockFindFirst).toHaveBeenCalledTimes(2);
   });
@@ -308,6 +322,7 @@ describe("assignLabelToTask", () => {
     ).rejects.toMatchObject({
       status: 500,
     });
+    expect(mockTxExecute).toHaveBeenCalledTimes(1);
     expect(mockPublishEvent).not.toHaveBeenCalled();
   });
 
@@ -322,6 +337,7 @@ describe("assignLabelToTask", () => {
       status: 404,
     });
 
+    expect(mockTxExecute).toHaveBeenCalledTimes(1);
     expect(mockDelete).not.toHaveBeenCalled();
     expect(mockInsert).not.toHaveBeenCalled();
   });

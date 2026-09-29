@@ -10,6 +10,7 @@ import {
 
 const mockFindFirst = vi.fn();
 const mockTxSelect = vi.fn();
+const mockTxExecute = vi.fn(async (..._args: unknown[]) => ({ rows: [] }));
 const mockDelete = vi.fn();
 const mockPublishEvent = vi.fn();
 const mockTransaction = vi.fn(async (cb: (tx: unknown) => unknown) =>
@@ -18,6 +19,7 @@ const mockTransaction = vi.fn(async (cb: (tx: unknown) => unknown) =>
 
 function createMockTxContext() {
   return {
+    execute: (...args: unknown[]) => mockTxExecute(...args),
     select: (...args: unknown[]) => mockTxSelect(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
   };
@@ -131,6 +133,9 @@ function makeDeleteMock(deletedRow: unknown) {
 describe("deleteLabel", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockTxExecute.mockImplementation(async (..._args: unknown[]) => ({
+      rows: [],
+    }));
     mockTxSelect.mockImplementation(() => makeSelectMock([]));
     mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) =>
       cb(createMockTxContext()),
@@ -169,6 +174,7 @@ describe("deleteLabel", () => {
 
       await deleteLabel("label-ws-1", "user-1");
 
+      expect(mockTxExecute).toHaveBeenCalledTimes(1);
       expect(mockPublishEvent).toHaveBeenCalledTimes(2);
       expect(mockPublishEvent).toHaveBeenCalledWith("task.label_deleted", {
         label: TASK_LABEL_1,
@@ -195,6 +201,7 @@ describe("deleteLabel", () => {
 
       await deleteLabel("label-ws-1", "user-1");
 
+      expect(mockTxExecute).toHaveBeenCalledTimes(1);
       expect(mockPublishEvent).not.toHaveBeenCalled();
     });
   });
