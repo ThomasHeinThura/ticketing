@@ -684,6 +684,149 @@ function hasUnknownPageOperation(callback) {
   return unsafe;
 }
 
+function collectMatchingNodes(node, predicate) {
+  const matches = [];
+  const visit = (current) => {
+    if (predicate(current)) matches.push(current);
+    current.forEachChild(visit);
+  };
+  visit(node);
+  return matches;
+}
+
+function normalizedCallbackText(callback) {
+  return callback.getText().replace(/\s+/gu, "").replace(/,\)/gu, ")");
+}
+
+function isWithinNode(node, ancestor) {
+  let current = node;
+  while (current) {
+    if (current === ancestor) return true;
+    current = current.parent;
+  }
+  return false;
+}
+
+function isStoryReadinessCallback(callback) {
+  return (
+    ts.isArrowFunction(callback) &&
+    normalizedCallbackText(callback) ===
+      'async()=>{conststoryRoot=page.locator("#storybook-root");conststoryRendered=awaitstoryRoot.evaluate((root)=>root.childElementCount>0||Boolean(root.textContent?.trim()));returnstoryRendered||(awaitpage.getByRole("dialog").isVisible());}'
+  );
+}
+
+function isStoryRootReadCallback(callback) {
+  return (
+    ts.isArrowFunction(callback) &&
+    normalizedCallbackText(callback) ===
+      "(root)=>root.childElementCount>0||Boolean(root.textContent?.trim())"
+  );
+}
+
+function isFontsReadyCallback(callback) {
+  return (
+    ts.isArrowFunction(callback) &&
+    normalizedCallbackText(callback) ===
+      "async()=>{awaitdocument.fonts.ready;awaitnewPromise<void>((resolve)=>requestAnimationFrame(()=>resolve()));}"
+  );
+}
+
+function hasReadOnlyStoryCaptureCallbacks(callback, loop) {
+  if (!ts.isBlock(callback.body) || !ts.isBlock(loop.statement)) return false;
+  const loopBody = loop.statement;
+  const calls = collectMatchingNodes(loopBody, ts.isCallExpression);
+  const callsWithProperty = (name, receiver) =>
+    calls.filter(
+      (call) =>
+        isNamedProperty(call.expression, name) &&
+        ts.isIdentifier(call.expression.expression) &&
+        call.expression.expression.text === receiver,
+    );
+  const pageEvaluateCalls = callsWithProperty("evaluate", "page");
+  const locatorEvaluateCalls = callsWithProperty("evaluate", "storyRoot");
+  const allEvaluateCalls = calls.filter((call) =>
+    isNamedProperty(call.expression, "evaluate"),
+  );
+  const readinessCalls = calls.filter(
+    (call) =>
+      isNamedProperty(call.expression, "poll") &&
+      ts.isIdentifier(call.expression.expression) &&
+      call.expression.expression.text === "expect",
+  );
+  const locatorCalls = callsWithProperty("locator", "page");
+  const dialogCalls = callsWithProperty("getByRole", "page");
+  const dialogVisibilityCalls = calls.filter(
+    (call) =>
+      isNamedProperty(call.expression, "isVisible") &&
+      ts.isCallExpression(call.expression.expression) &&
+      isNamedProperty(call.expression.expression.expression, "getByRole") &&
+      ts.isIdentifier(call.expression.expression.expression.expression) &&
+      call.expression.expression.expression.expression.text === "page",
+  );
+  const readinessCallback = readinessCalls[0]?.arguments[0];
+  const fontWaitCallback = pageEvaluateCalls[0]?.arguments[0];
+  const browserDocumentReferences = collectMatchingNodes(
+    callback.body,
+    (node) =>
+      ts.isIdentifier(node) &&
+      (node.text === "document" || node.text === "requestAnimationFrame"),
+  );
+  const storyRootReferences = collectMatchingNodes(
+    callback.body,
+    (node) => ts.isIdentifier(node) && node.text === "storyRoot",
+  );
+  const isReadinessAssertion = (statement) => {
+    return (
+      ts.isExpressionStatement(statement) &&
+      readinessCalls.length === 1 &&
+      normalizedCallbackText(statement) ===
+        `awaitexpect.poll(${normalizedCallbackText(readinessCalls[0].arguments[0])}).toBe(true);`
+    );
+  };
+  const readinessAssertionStatements =
+    loopBody.statements.filter(isReadinessAssertion);
+
+  return (
+    pageEvaluateCalls.length === 1 &&
+    locatorEvaluateCalls.length === 1 &&
+    allEvaluateCalls.length === 2 &&
+    readinessCalls.length === 1 &&
+    readinessCalls[0].arguments.length === 1 &&
+    isStoryReadinessCallback(readinessCallback) &&
+    isStoryRootReadCallback(locatorEvaluateCalls[0].arguments[0]) &&
+    isFontsReadyCallback(fontWaitCallback) &&
+    browserDocumentReferences.every((node) =>
+      isWithinNode(node, fontWaitCallback),
+    ) &&
+    storyRootReferences.length === 2 &&
+    storyRootReferences.every((node) =>
+      isWithinNode(node, readinessCallback),
+    ) &&
+    locatorCalls.length === 1 &&
+    locatorCalls[0].arguments.length === 1 &&
+    ts.isStringLiteral(locatorCalls[0].arguments[0]) &&
+    locatorCalls[0].arguments[0].text === "#storybook-root" &&
+    dialogCalls.length === 1 &&
+    dialogCalls[0].arguments.length === 1 &&
+    ts.isStringLiteral(dialogCalls[0].arguments[0]) &&
+    dialogCalls[0].arguments[0].text === "dialog" &&
+    dialogVisibilityCalls.length === 1 &&
+    dialogVisibilityCalls[0].arguments.length === 0 &&
+    readinessAssertionStatements.length === 1 &&
+    collectMatchingNodes(
+      callback.body,
+      (node) =>
+        ts.isArrowFunction(node) ||
+        ts.isFunctionExpression(node) ||
+        ts.isFunctionDeclaration(node) ||
+        ts.isMethodDeclaration(node) ||
+        ts.isConstructorDeclaration(node) ||
+        ts.isGetAccessorDeclaration(node) ||
+        ts.isSetAccessorDeclaration(node),
+    ).length === 9
+  );
+}
+
 function isScreenshotCall(node) {
   return (
     ts.isCallExpression(node) &&
@@ -1759,6 +1902,7 @@ function hasStoryScreenshotLoop(callback) {
   if (!hasImmutableStoryBinding(loop, declaration)) return false;
   if (hasPageObjectAlias(callback)) return false;
   if (hasUnknownPageOperation(callback)) return false;
+  if (!hasReadOnlyStoryCaptureCallbacks(callback, loop)) return false;
   if (hasStoryLoopControlBypass(loop)) return false;
 
   const navigationStatements = loop.statement.statements.filter((statement) =>

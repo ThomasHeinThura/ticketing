@@ -185,6 +185,11 @@ function storybookSpec({
   shadowStory = false,
   excessiveInlineThreshold = false,
   pageAliasNavigation = "",
+  pageEvaluateCallback = "async () => { await document.fonts.ready; await new Promise<void>((resolve) => requestAnimationFrame(() => resolve())); }",
+  storyRootReadCallback = "(root) => root.childElementCount > 0 || Boolean(root.textContent?.trim())",
+  additionalPageEvaluation = "",
+  additionalLocatorEvaluation = "",
+  outsideLoopMutation = "",
   mutateStoriesAfterAssertion = false,
   deleteIndexEntriesBeforeFreeze = false,
   rewriteIndexEntryBeforeFreeze = false,
@@ -284,6 +289,7 @@ function storybookSpec({
           ...(mutateStoriesAfterAssertion
             ? ["stories.splice(0, stories.length);"]
             : []),
+          ...(outsideLoopMutation ? [outsideLoopMutation] : []),
           `for (${reassignStory ? "let" : "const"} story of stories) {`,
           ...(reassignStory ? ['  story = { id: "Button--primary" };'] : []),
           ...(shadowStory
@@ -297,6 +303,14 @@ function storybookSpec({
                   ? "  await page.goto(`http://127.0.0.1:6006/iframe.html?id=Button--primary&viewMode=\u0024{story.id}`);"
                   : "  await page.goto(`http://127.0.0.1:6006/iframe.html?id=\u0024{story.id}&viewMode=story`);",
               ]),
+          "  await expect.poll(async () => {",
+          '    const storyRoot = page.locator("#storybook-root");',
+          `    const storyRendered = await storyRoot.evaluate(${storyRootReadCallback});`,
+          '    return storyRendered || (await page.getByRole("dialog").isVisible());',
+          "  }).toBe(true);",
+          `  await page.evaluate(${pageEvaluateCallback});`,
+          ...(additionalPageEvaluation ? [additionalPageEvaluation] : []),
+          ...(additionalLocatorEvaluation ? [additionalLocatorEvaluation] : []),
           ...(skipStoryCaptureInCi ? ["  if (process.env.CI) continue;"] : []),
           excessiveInlineThreshold
             ? "  await expect(page).toHaveScreenshot(`\u0024{story.id}.png`, { fullPage: true, maxDiffPixels: 100000000 });"
@@ -1150,6 +1164,53 @@ test("G8 rejects navigation through a page alias and nearby alias forms", async 
       result.output,
       /Storybook visual test must load the exported-story index/,
       pageAliasNavigation,
+    );
+  }
+});
+
+test("G8 rejects arbitrary or mutating Storybook evaluation callbacks", async () => {
+  const mutationProbes = [
+    {
+      pageEvaluateCallback:
+        "() => { document.body.innerHTML = '<main>not the story</main>'; }",
+    },
+    {
+      pageEvaluateCallback:
+        "() => { document.documentElement.replaceChildren(); }",
+    },
+    {
+      pageEvaluateCallback:
+        "async () => { await document.fonts.ready; document.body.replaceChildren(); await new Promise<void>((resolve) => requestAnimationFrame(() => resolve())); }",
+    },
+    {
+      storyRootReadCallback:
+        "(root) => { root.innerHTML = '<main>not the story</main>'; return true; }",
+    },
+    {
+      additionalPageEvaluation:
+        "  await page.evaluate(() => document.body.innerHTML = '<main>not the story</main>');",
+    },
+    {
+      additionalLocatorEvaluation:
+        '  await page.locator("body").evaluate((body) => body.innerHTML = "<main>not the story</main>");',
+    },
+    {
+      outsideLoopMutation:
+        'document.body.innerHTML = "<main>not the story</main>";',
+    },
+  ];
+
+  for (const mutationProbe of mutationProbes) {
+    const result = await runVisualScope({
+      routes: ACTIVE_ROUTES,
+      storySource: storybookSpec(mutationProbe),
+    });
+
+    assert.notEqual(result.status, 0, JSON.stringify(mutationProbe));
+    assert.match(
+      result.output,
+      /Storybook visual test must load the exported-story index/,
+      JSON.stringify(mutationProbe),
     );
   }
 });
