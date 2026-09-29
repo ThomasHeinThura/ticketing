@@ -91,9 +91,20 @@ unique key, digest values, and per-person quiet-hours fields are defined in
 - `NO-2` Every notification email carries a link to the exact preference that produced it.
   The signed, single-purpose token binds `purpose: notification_pref`, the recipient,
   `event_kind`, channel, scope and optional `scope_id`, and expires after 30 days. Opening
-  the link never changes a preference: `GET` validates it and opens the authenticated
-  preference screen preselected to that setting; a change takes effect only after the
-  recipient explicitly saves while authenticated as that person.
+  the link never changes a preference. Staff links open
+  `/agent/settings/profile/notifications#preference_token={token}` and customer links open
+  `/portal/account#preference_token={token}`. The page removes the fragment from the
+  address bar immediately and holds the token only in same-origin transient session state
+  while authentication completes; it must not put the token in a query string, sign-in
+  return URL, referrer, analytics event or application log. Once authenticated, the page
+  sends it in the `Authorization: Notification-Preference` header to the read-only
+  validation route below. That route returns the bound event, channel and scope only when
+  the signed-in person is the token recipient. The screen preselects that setting; the
+  recipient must explicitly save to change it. If the signed-in person does not match,
+  show no preference or token details, clear the transient token, and require sign-out and
+  sign-in as the recipient before reopening the email link. Invalid, expired or
+  wrong-purpose tokens show a generic invalid-or-expired-link message. The landing `GET`
+  never mutates or consumes the preference; only the authenticated explicit save does.
 - `NO-3` A person may set quiet hours. At each external-delivery drain, evaluate the
   recipient's current quiet-hours setting and defer non-urgent delivery until the next
   allowed time; preference changes therefore apply immediately. In-app notifications still
@@ -185,6 +196,7 @@ PUT    /api/notification-preferences/workspaces/{workspaceId} (self; workspace r
 DELETE /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked)
 PUT    /api/notification-preferences/projects/{projectId}    (self; project reach checked)
 DELETE /api/notification-preferences/projects/{projectId}    (self; project reach checked)
+GET    /api/notification-preferences/email-link                (self; signed preference token in Authorization header; recipient match required; no mutation)
 POST   /api/instance/plugins/{id}/test                        instance:manage_plugins
 GET    /api/instance/deliveries                               instance:admin
 POST   /api/instance/deliveries/{id}/requeue                  instance:admin
@@ -194,6 +206,13 @@ DELETE /api/instance/deliveries/{id}                          instance:admin
 The mark-unread route is a target route required by `NO-15`; it must use the same recipient
 and task-reach checks as mark-read. Project preference overrides use the same per-person
 scope model and are target routes; both are not yet implemented.
+
+The email-link validation route is a target route required by `NO-2`. It requires an
+authenticated session and a valid, unexpired `notification_pref` token whose recipient
+matches that session. It returns only the token-bound preference selector, sets
+`Cache-Control: no-store`, and never consumes the token or changes a preference. Invalid,
+expired, wrong-purpose and recipient-mismatch cases share a generic response. It must not
+log the token or return recipient identity details.
 
 ## Data
 
