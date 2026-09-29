@@ -376,6 +376,103 @@ describe("better-auth optional TOTP and backup-code support", () => {
     await assertPasswordlessNeedsTotp(app, account.email, enrollment.totpURI);
   });
 
+  it("rejects trusted-device MFA bypasses and still challenges the next login", async () => {
+    const { app } = createApp();
+    const account = await signUp(app);
+    const enrollment = await enrollTotp(app, account.cookies, account.password);
+    const backupCode = enrollment.backupCodes[0];
+    if (!backupCode) throw new Error("Enrollment returned no backup code");
+
+    await postJson(app, "/api/auth/sign-out", {}, enrollment.cookies);
+
+    const totpChallenge = await signIn(app, account.email, account.password);
+    const trustedTotp = await postJson(
+      app,
+      "/api/auth/two-factor/verify-totp",
+      { code: totpCode(enrollment.totpURI), trustDevice: true },
+      totpChallenge.cookies,
+      freshTestClientIp(),
+    );
+    expect(trustedTotp.status).toBe(400);
+    expect(
+      trustedTotp.headers
+        .getSetCookie()
+        .some((cookie) => cookie.startsWith("trust_device=")),
+    ).toBe(false);
+
+    const totpVerified = await postJson(
+      app,
+      "/api/auth/two-factor/verify-totp",
+      { code: totpCode(enrollment.totpURI) },
+      totpChallenge.cookies,
+      freshTestClientIp(),
+    );
+    expect(totpVerified.status).toBe(200);
+    await postJson(
+      app,
+      "/api/auth/sign-out",
+      {},
+      applyCookies(totpChallenge.cookies, totpVerified),
+    );
+
+    const nextTotpChallenge = await signIn(
+      app,
+      account.email,
+      account.password,
+    );
+    expect(nextTotpChallenge.response.status).toBe(200);
+    expect((await nextTotpChallenge.response.json()).twoFactorMethods).toEqual([
+      "totp",
+    ]);
+    const unauthenticated = await app.request("/api/auth/get-session", {
+      headers: { cookie: nextTotpChallenge.cookies },
+    });
+    expect(await unauthenticated.json()).toBeNull();
+
+    const trustedBackupCode = await postJson(
+      app,
+      "/api/auth/two-factor/verify-backup-code",
+      { code: backupCode, trustDevice: true },
+      nextTotpChallenge.cookies,
+      freshTestClientIp(),
+    );
+    expect(trustedBackupCode.status).toBe(400);
+    expect(
+      trustedBackupCode.headers
+        .getSetCookie()
+        .some((cookie) => cookie.startsWith("trust_device=")),
+    ).toBe(false);
+
+    const backupVerified = await postJson(
+      app,
+      "/api/auth/two-factor/verify-backup-code",
+      { code: backupCode },
+      nextTotpChallenge.cookies,
+      freshTestClientIp(),
+    );
+    expect(backupVerified.status).toBe(200);
+    await postJson(
+      app,
+      "/api/auth/sign-out",
+      {},
+      applyCookies(nextTotpChallenge.cookies, backupVerified),
+    );
+
+    const nextBackupChallenge = await signIn(
+      app,
+      account.email,
+      account.password,
+    );
+    expect(nextBackupChallenge.response.status).toBe(200);
+    expect(
+      (await nextBackupChallenge.response.json()).twoFactorMethods,
+    ).toEqual(["totp"]);
+    const stillUnauthenticated = await app.request("/api/auth/get-session", {
+      headers: { cookie: nextBackupChallenge.cookies },
+    });
+    expect(await stillUnauthenticated.json()).toBeNull();
+  });
+
   it("accepts a backup code once and rejects it on a later challenge", async () => {
     const { app } = createApp();
     const account = await signUp(app);

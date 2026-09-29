@@ -600,6 +600,16 @@ export const auth = betterAuth({
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       if (ctx.path.startsWith("/two-factor/")) {
+        // Accounts with TOTP enabled must present a fresh factor at each login.
+        // Better Auth accepts `trustDevice: true` on TOTP and backup-code
+        // verification and otherwise skips that challenge for up to 30 days,
+        // so reject the override before the plugin can mint a trusted-device cookie.
+        if (ctx.body?.trustDevice === true) {
+          throw new APIError("BAD_REQUEST", {
+            message: "Trusted devices are not available for MFA sign-in.",
+          });
+        }
+
         const currentSession = await auth.api.getSession({
           headers: ctx.headers ?? new Headers(),
         });
