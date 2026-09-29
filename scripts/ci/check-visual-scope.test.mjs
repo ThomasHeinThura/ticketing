@@ -184,6 +184,7 @@ function storybookSpec({
   reassignStory = false,
   shadowStory = false,
   excessiveInlineThreshold = false,
+  pageAliasNavigation = "",
   mutateStoriesAfterAssertion = false,
   deleteIndexEntriesBeforeFreeze = false,
   rewriteIndexEntryBeforeFreeze = false,
@@ -288,6 +289,7 @@ function storybookSpec({
           ...(shadowStory
             ? ['  { const story = { id: "Button--primary" }; void story; }']
             : []),
+          ...(pageAliasNavigation ? [pageAliasNavigation] : []),
           ...(omitStoryNavigation
             ? []
             : [
@@ -1123,6 +1125,33 @@ test("G8 requires the story id in the iframe id query parameter", async () => {
     result.output,
     /Storybook visual test must load the exported-story index/,
   );
+});
+
+test("G8 rejects navigation through a page alias and nearby alias forms", async () => {
+  const aliasProbes = [
+    "  const p = page; await p.goto('/');",
+    "  let p; p = page; await p.goto('/');",
+    "  const { goto } = page; await goto.call(page, '/');",
+    "  const go = page.goto.bind(page); await go('/');",
+    "  const p = await Promise.resolve(page); await p.goto('/');",
+    "  let p; p ??= page; await p.goto('/');",
+    "  const navigate = async (targetPage) => targetPage.goto('/'); await navigate(page);",
+    '  await page.setContent("<main>not the story</main>");',
+  ];
+
+  for (const pageAliasNavigation of aliasProbes) {
+    const result = await runVisualScope({
+      routes: ACTIVE_ROUTES,
+      storySource: storybookSpec({ pageAliasNavigation }),
+    });
+
+    assert.notEqual(result.status, 0, pageAliasNavigation);
+    assert.match(
+      result.output,
+      /Storybook visual test must load the exported-story index/,
+      pageAliasNavigation,
+    );
+  }
 });
 
 test("G8 requires an immutable story loop binding", async () => {

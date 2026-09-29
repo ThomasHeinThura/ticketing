@@ -556,6 +556,134 @@ function isPageNavigationCall(node) {
   );
 }
 
+function containsPageFixtureReference(node) {
+  let found = false;
+  const visit = (current) => {
+    if (found) return;
+    const isPropertyName =
+      (ts.isPropertyAccessExpression(current.parent) &&
+        current.parent.name === current) ||
+      (ts.isPropertyAssignment(current.parent) &&
+        current.parent.name === current);
+    if (
+      ts.isIdentifier(current) &&
+      current.text === "page" &&
+      !isPropertyName
+    ) {
+      found = true;
+      return;
+    }
+    current.forEachChild(visit);
+  };
+  visit(node);
+  return found;
+}
+
+function isAllowedStoryRootLocator(initializer) {
+  const expression = unwrapTypeWrappers(initializer);
+  return (
+    ts.isCallExpression(expression) &&
+    isNamedProperty(expression.expression, "locator") &&
+    ts.isIdentifier(expression.expression.expression) &&
+    expression.expression.expression.text === "page"
+  );
+}
+
+function hasPageObjectAlias(callback) {
+  let unsafe = false;
+  const visit = (node) => {
+    if (unsafe) return;
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.initializer &&
+      containsPageFixtureReference(node.initializer) &&
+      !isAllowedStoryRootLocator(node.initializer)
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+      node.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
+      containsPageFixtureReference(node.right)
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isPropertyAccessExpression(node) &&
+      node.name.text === "goto" &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "page" &&
+      !(
+        ts.isCallExpression(node.parent) &&
+        node.parent.expression === node &&
+        ts.isAwaitExpression(node.parent.parent) &&
+        node.parent.parent.expression === node.parent &&
+        ts.isExpressionStatement(node.parent.parent.parent) &&
+        node.parent.parent.parent.expression === node.parent.parent &&
+        isStoryNavigation(node.parent.parent.parent)
+      )
+    ) {
+      unsafe = true;
+      return;
+    }
+    node.forEachChild(visit);
+  };
+  visit(callback.body);
+  return unsafe;
+}
+
+function hasUnknownPageOperation(callback) {
+  const allowedPageMethods = new Set([
+    "evaluate",
+    "getByRole",
+    "goto",
+    "locator",
+  ]);
+  let unsafe = false;
+  const visit = (node) => {
+    if (unsafe) return;
+    if (
+      ts.isPropertyAccessExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "page" &&
+      (!allowedPageMethods.has(node.name.text) ||
+        !ts.isCallExpression(node.parent) ||
+        node.parent.expression !== node)
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (ts.isCallExpression(node)) {
+      const passesPage = node.arguments.some(containsPageFixtureReference);
+      const isPageExpectation =
+        (ts.isIdentifier(node.expression) &&
+          node.expression.text === "expect" &&
+          ts.isIdentifier(node.arguments[0]) &&
+          node.arguments[0].text === "page") ||
+        (ts.isPropertyAccessExpression(node.expression) &&
+          ts.isIdentifier(node.expression.expression) &&
+          node.expression.expression.text === "expect" &&
+          node.expression.name.text === "soft" &&
+          ts.isIdentifier(node.arguments[0]) &&
+          node.arguments[0].text === "page") ||
+        (ts.isPropertyAccessExpression(node.expression) &&
+          ts.isIdentifier(node.expression.expression) &&
+          node.expression.expression.text === "expect" &&
+          node.expression.name.text === "poll");
+      if (passesPage && !isPageExpectation) {
+        unsafe = true;
+        return;
+      }
+    }
+    node.forEachChild(visit);
+  };
+  visit(callback.body);
+  return unsafe;
+}
+
 function isScreenshotCall(node) {
   return (
     ts.isCallExpression(node) &&
@@ -1629,6 +1757,8 @@ function hasStoryScreenshotLoop(callback) {
     return false;
   }
   if (!hasImmutableStoryBinding(loop, declaration)) return false;
+  if (hasPageObjectAlias(callback)) return false;
+  if (hasUnknownPageOperation(callback)) return false;
   if (hasStoryLoopControlBypass(loop)) return false;
 
   const navigationStatements = loop.statement.statements.filter((statement) =>
