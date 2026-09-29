@@ -24,6 +24,13 @@ import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import { extractDescription } from "@/types/work-item";
 
+function dateInputToIso(value: string) {
+  // The API schema stores these as UTC instants and requires an ISO date-time.
+  // A date input is a calendar date, so represent it at UTC midnight without
+  // letting the browser's local timezone shift the selected day.
+  return value ? `${value}T00:00:00.000Z` : null;
+}
+
 export default function WorkItemJourney({
   item,
   onSaved,
@@ -81,8 +88,8 @@ export default function WorkItemJourney({
         description: descriptionChanged
           ? description || null
           : item.description,
-        startDate: startDate || null,
-        dueDate: dueDate || null,
+        startDate: dateInputToIso(startDate),
+        dueDate: dateInputToIso(dueDate),
       }),
     onSuccess: async () => {
       setEditing(false);

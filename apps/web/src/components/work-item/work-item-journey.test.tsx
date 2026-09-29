@@ -104,4 +104,45 @@ describe("WorkItemJourney", () => {
       dueDate: null,
     });
   });
+
+  it("sends populated calendar date inputs in the API's UTC ISO date-time format", async () => {
+    updateWorkItem.mockResolvedValue({});
+    const item = makeItem();
+    item.startDate = "2026-09-20T00:00:00.000Z";
+    item.dueDate = "2026-10-10T00:00:00.000Z";
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney item={item} onSaved={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.edit" }),
+    );
+    expect(screen.getByLabelText("workItems:journey.startDate")).toHaveValue(
+      "2026-09-20",
+    );
+    expect(screen.getByLabelText("workItems:journey.dueDate")).toHaveValue(
+      "2026-10-10",
+    );
+    fireEvent.change(screen.getByLabelText("workItems:journey.title"), {
+      target: { value: "Updated title" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.save" }),
+    );
+
+    await waitFor(() => expect(updateWorkItem).toHaveBeenCalledTimes(1));
+    expect(updateWorkItem).toHaveBeenCalledWith({
+      key: "WLP-1",
+      version: 7,
+      title: "Updated title",
+      description: "Notes",
+      startDate: "2026-09-20T00:00:00.000Z",
+      dueDate: "2026-10-10T00:00:00.000Z",
+    });
+  });
 });
