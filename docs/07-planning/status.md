@@ -1,31 +1,75 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
-**2026-09-29 orchestrator snapshot — `main` at `6e3f9425`**, after **#500** (OpenAI
-review policy) and **#501** (G4 accessibility gate) merged. The active review tiers are
-GPT-6 Luna for implementation and ordinary review, GPT-6 Sol for required security reviews
-and phase finalizers; Opus 5.5 remains an optional sampled reviewer. Historical review records
-below retain the model names and verdicts that applied when they were written.
+## 2026-09-29 — OpenAI review-policy transition
 
-**UAT smoke evidence:** image `v2-uat-shadow-0b95ed08`, shadow mode on. Health endpoints
-returned 200. The browser HAR contained 54 requests, with no `localhost:1337` requests and no
-4xx responses. This is smoke-level evidence only: 12 route groups were examined, many are
-missing, notification outcome is `legacy_outcome_unknown`, and the seven-day shadow soak has
-not completed. **Issue #8 remains open** pending the required evidence and cutover.
+Thomas's 2026-09-29 decision moves ordinary implementation and review to GPT-6 Luna and
+mandatory security/critical reviews and phase finalizers to GPT-6 Sol. The earlier Opus
+capacity blocker below is retained as an accurate 2026-09-28 snapshot, but it no longer
+blocks current work. Opus 5.5 is an optional sampled reviewer after a GPT-prepared packet.
 
-**P0 gates:** issue **#9** and issue **#11** are closed. Issue **#10** remains open; G8 visual
-regression and G11 performance remain open gates. These facts preserve the gate state after
-#501's G4 accessibility addition.
+At the cutover, every still-open security-scope PR needs a fresh GPT-6 Sol review of its
+current exact head and an updated PR body and committed review note before merge. Historical
+reviews remain historical evidence; CI has no Opus fallback for the required GPT-6 Sol
+review. Recheck GitHub's live PR list at cutover and complete this transition before merging
+those candidates.
 
-**Review candidates:** local candidate `8361fe11` for #498 received fresh reviews from three
-GPT-6 Luna reviewers and GPT-6 Sol, all CLEAR WITH FINDINGS. That local SHA is not the remote
-PR head, so these reviews do not establish the remote PR's current review state. PR #447 remains
-stale and behind; its earlier CI run showed unit and register failures. No current remote PR
-state is asserted here.
+---
 
-Source basis for this snapshot: `origin/main` at `6e3f9425` and its #500/#501 merge history;
-UAT health checks, browser HAR, and shadow smoke capture; candidate-specific #498 review
-records; and the prior #447 CI run. GitHub's API was unreachable during this refresh, so no
-live PR-head or check state was inferred.
+**2026-09-29 orchestrator snapshot — `main` at `4b64d506`**, after **#500** (OpenAI
+review policy), **#501** (G4 accessibility gate), and **#498** (work-item liveness sweep)
+merged. The active review tiers are GPT-6 Luna for implementation and ordinary review,
+GPT-6 Sol for required security reviews and phase finalizers; Opus 5.5 remains an optional
+sampled reviewer. Historical review records below retain the model names and verdicts that
+applied when they were written.
+
+**#498 merged:** PR #498 merged at `4b64d506dfce4ccec13864d4e5292ace24378078` after every
+required check passed, including unit/component and Postgres integration. Three fresh GPT-6
+Luna reviews and one GPT-6 Sol security review examined code head
+`8361fe11e3c64c0c47e185872b74108c2b444da2`; the final commit only added review records.
+Reviews found no blocker and documented two low residuals: the no-op unassign response after
+archive, and possible orphaned private storage after a failed best-effort deletion. Legacy
+`/api/task` enforcement remains tracked separately in #502.
+
+**UAT smoke evidence:** the running container uses image
+`ghcr.io/thomasheinthura/taskdesk:v2-uat-shadow-0b95ed08` and its Docker health status is
+healthy. The last browser HAR contained 54 requests, with no `localhost:1337` requests and no
+4xx responses. On this refresh, the orchestrator could not resolve `uat.taskdesk.app`, so it
+could not repeat the external health/browser check. The UAT Postgres read at 2026-09-29
+09:39 UTC found 25 shadow tallies across 12 router groups: 21 `agree`, 4 `unevaluated`
+(notification and platform fallback); all four event rows are `unevaluated`, with no
+mismatch or evaluator-error rows. The most recent tally is from 2026-09-28 16:46 UTC, so
+this is low-volume evidence with no activity for nearly 17 hours and incomplete route-group
+coverage. The 54-request HAR is login-page smoke only. Shadow telemetry covers just 12
+router groups; many routers remain unobserved and the notification router is unevaluated.
+The seven-day shadow soak has not completed. **Issue #8 remains open** pending sufficient
+evidence and the cutover.
+
+**P0 gates:** issues **#9** and **#11** are closed. Issue **#10** remains open: G8 visual
+regression and G11 performance gates are still skipped on `main`; the G8 candidate is under
+development. The #8 shadow soak is also open.
+
+**P1/P2/P3 lanes:** PR #447's remote candidate is stale and has failed `registers` and
+`unit + component`; its local branch has now merged #498 and is under integration check.
+The PR body has been narrowed to the saved-view CRUD/pin slice governed by
+`search-and-saved-views.md`; it explicitly leaves #24's layouts unfinished. Nine rows remain
+in the separate `views.md` review section, so the broader layout UI remains blocked there.
+P2 issues #31–#37 remain open; their owning feature review sections are empty for #31–35 and
+#37, with no #36 section in that review file. Service calendar API/persistence is the
+selected next P2 slice; it shares router/schema files with #447, so implementation starts
+after that lane releases them. P3's old lane-prep questions
+are superseded by the current specs, migration 0052/0053, and the 2026-09-23 decision. The
+next #39 slice is persistence for the six specified identity/SCIM tables, after #447 releases
+the shared Drizzle schema files; the 25-test real Microsoft Entra suite remains a completion
+gate. #38 remains behind its request/catalogue/intake/approval and portal dependencies.
+
+**Open PRs at refresh:** #503 (Dependabot; behind `main`), #492 (this status refresh; stale
+base), and #447 (saved views; stale base and prior CI failures). The new status candidate is
+local and not yet pushed. No other open PR was returned by the GitHub API.
+
+Sources: `origin/main` at `4b64d506`; live PR/issue state queried on 2026-09-29; #498's merged
+checks and committed Luna/Sol review evidence; UAT container health, prior browser HAR, and
+shadow smoke capture. The PR #447 details above describe its remote head; its refreshed local
+branch is not yet a GitHub candidate.
 
 ---
 
