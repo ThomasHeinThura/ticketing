@@ -112,6 +112,8 @@ describe("check:events — the shipped tree", () => {
     // empty scan. #451 added a 30th: work_item.commented (comment POST on a work item).
     // #442/PR #457 added a 31st: work_item.transitioned (POST .../transition) --
     // events.md already documented this key, but nothing published it until this route.
+    // PR #515 persists pending_action.decided through the durable outbox, not
+    // publishEvent; this checker counts only process-local publishEvent call sites.
     assert.match(result.output, /31 published event key/);
   });
 });
