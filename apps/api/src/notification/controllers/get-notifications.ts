@@ -8,6 +8,19 @@ import {
 } from "../../database/schema";
 import { reachableWorkspacePredicate } from "../../utils/workspace-access-middleware";
 
+function redactUnreachableTaskNotification(
+  notification: typeof notificationTable.$inferSelect,
+) {
+  return {
+    ...notification,
+    title: null,
+    content: null,
+    eventData: null,
+    resourceId: null,
+    resourceType: null,
+  };
+}
+
 async function getNotifications(userId: string) {
   const rows = await db
     .select({
@@ -49,12 +62,7 @@ async function getNotifications(userId: string) {
     // outside the caller's reachable workspaces has no verified boundary for its
     // stored payload. Fail closed instead of returning stale ids or task data.
     if (notification.resourceType === "task" && (!taskId || !projectId)) {
-      return {
-        ...notification,
-        resourceId: null,
-        resourceType: null,
-        eventData: null,
-      };
+      return redactUnreachableTaskNotification(notification);
     }
 
     if (!projectId && !workspaceId) {

@@ -520,12 +520,14 @@ describe("#8 notification self-read shadow evidence", () => {
       taskId: string,
       title: string,
       eventData: Record<string, unknown> = { taskTitle: title },
+      content = `Sensitive content for ${title}`,
     ) {
       const response = await fresh.app.request("/api/notification", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           title,
+          message: content,
           type: "info",
           eventData,
           relatedEntityId: taskId,
@@ -588,6 +590,8 @@ describe("#8 notification self-read shadow evidence", () => {
     expect(notifications).toContainEqual(
       expect.objectContaining({
         id: privateNotification.id,
+        title: null,
+        content: null,
         resourceId: null,
         resourceType: null,
         eventData: null,
@@ -596,6 +600,8 @@ describe("#8 notification self-read shadow evidence", () => {
     expect(notifications).toContainEqual(
       expect.objectContaining({
         id: ownNotification.id,
+        title: "Own task notification",
+        content: "Sensitive content for Own task notification",
         resourceId: ownTask.id,
         resourceType: "task",
         eventData: {
@@ -608,6 +614,8 @@ describe("#8 notification self-read shadow evidence", () => {
     expect(notifications).toContainEqual(
       expect.objectContaining({
         id: deletedTaskNotification.id,
+        title: null,
+        content: null,
         resourceId: null,
         resourceType: null,
         eventData: null,
