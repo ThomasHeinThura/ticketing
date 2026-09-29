@@ -135,14 +135,20 @@ const deleteViewRoute = createRoute({
   operationId: "deleteView",
   path: "/{id}",
   tags: ["Views"],
-  summary: "Delete saved view",
+  summary: "Request saved-view deletion",
+  description:
+    "Deletion requires the durable pending-action approval flow (pending-actions.md PA-1/PA-2). " +
+    "Until that shared mechanism is implemented, this endpoint returns 501 after authorization " +
+    "checks and leaves the saved view unchanged (issue #428).",
   middleware: [
     workspaceAccess.fromSavedView(),
     requireWorkspaceCapability("saved_view:create"),
   ] as const,
   request: { params: savedViewIdParam },
   responses: {
-    202: jsonResponse("The deleted saved view", savedViewSchema),
+    501: errorResponse(
+      "Pending-action deletion is not implemented; the saved view was not deleted",
+    ),
     403: errorResponse(
       "Not the view's owner, and missing workspace:manage_settings",
     ),
@@ -197,7 +203,7 @@ const view = apiRouter()
     const { id } = c.req.valid("param");
     const userId = c.get("userId");
     const personId = await resolveCallerPersonId(userId);
-    return c.json(await deleteView(id, personId, userId), 202);
+    return c.text(await deleteView(id, personId, userId), 501);
   })
   .openapi(pinViewRoute, async (c) => {
     const { id } = c.req.valid("param");

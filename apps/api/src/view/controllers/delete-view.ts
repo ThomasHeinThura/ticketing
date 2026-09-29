@@ -1,17 +1,12 @@
-import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { savedViewTable } from "../../database/schema";
-import { publishEvent } from "../../events";
 import { assertCanEditView } from "../assert-can-edit-view";
 
-// search-and-saved-views.md's API table marks this "202 pending action" -- this codebase
-// has no async delete-queue mechanism for any resource yet (grep across `apps/api/src`
-// found none; `project`'s own soft-delete, the closest analogue, answers 200 synchronously
-// with the deleted row). Rather than invent a queue this PR does not otherwise need, the
-// delete runs synchronously and the ROUTE answers 202 (the literal status code the spec
-// names), carrying the deleted view -- honest about being synchronous today, without
-// silently downgrading the documented contract to 200. Disclosed in this PR's body.
+// `pending-actions.md` PA-1/PA-2 requires a durable pending_action before any delete and
+// explicitly says nothing is deleted at request time. The shared mechanism is tracked by
+// #428 and is not implemented yet. Until it exists, fail closed after the route's normal
+// reach/capability/owner checks: do not mutate the view, create a fake pending record, or
+// return 202 as if approval could be completed.
 async function deleteView(id: string, personId: string, userId: string) {
   const view = await db.query.savedViewTable.findFirst({
     where: (savedView, { eq }) => eq(savedView.id, id),
@@ -23,22 +18,7 @@ async function deleteView(id: string, personId: string, userId: string) {
 
   await assertCanEditView(view, personId, userId);
 
-  const [deleted] = await db
-    .delete(savedViewTable)
-    .where(eq(savedViewTable.id, id))
-    .returning();
-
-  if (!deleted) {
-    throw new HTTPException(404, { message: "Saved view not found" });
-  }
-
-  await publishEvent("saved_view.deleted", {
-    savedViewId: id,
-    workspaceId: view.workspaceId,
-    userId,
-  });
-
-  return deleted;
+  return "Saved-view deletion is unavailable until the pending-action approval flow is implemented (#428); nothing was deleted.";
 }
 
 export default deleteView;

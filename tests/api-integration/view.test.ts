@@ -205,9 +205,14 @@ describe("API integration: saved views", () => {
       body: JSON.stringify({ name: "Hijacked name" }),
     });
     expect(updateResponse.status).toBe(403);
+
+    const deleteResponse = await editorApp.request(`/api/views/${created.id}`, {
+      method: "DELETE",
+    });
+    expect(deleteResponse.status).toBe(403);
   });
 
-  it("lets the owner update and delete their own view (delete answers 202)", async () => {
+  it("lets the owner update their view but does not delete before pending-action support exists", async () => {
     const member = await createWorkspaceMember();
     await addPerson(member.user.id);
     mockAuthenticatedSession(member.user);
@@ -240,12 +245,16 @@ describe("API integration: saved views", () => {
     const deleteResponse = await app.request(`/api/views/${created.id}`, {
       method: "DELETE",
     });
-    expect(deleteResponse.status).toBe(202);
+    expect(deleteResponse.status).toBe(501);
+    expect(await deleteResponse.text()).toContain("nothing was deleted");
 
     const persisted = await db.query.savedViewTable.findFirst({
       where: eq(schema.savedViewTable.id, created.id),
     });
-    expect(persisted).toBeUndefined();
+    expect(persisted).toMatchObject({
+      id: created.id,
+      name: "Renamed",
+    });
   });
 
   it("toggles a view's pin state, persisted per person per workspace", async () => {
@@ -510,9 +519,9 @@ describe("API integration: saved views", () => {
 
   // LOW: the `workspace:manage_settings` admin-override branch of `assertCanEditView` was
   // reviewed and confirmed correct by hand but had no committed test exercising its
-  // success path -- an admin (holds `workspace:manage_settings` but did not create the
-  // view) editing then deleting someone else's view.
-  it("lets a caller with workspace:manage_settings edit then delete another member's view", async () => {
+  // edit path -- an admin (holds `workspace:manage_settings` but did not create the view)
+  // can edit it. The delete route remains fail-closed until pending-action support exists.
+  it("lets workspace administrators edit but not delete another member's view before pending-action support", async () => {
     const owner = await createWorkspaceMember({ role: "member" });
     await addPerson(owner.user.id);
 
@@ -578,11 +587,15 @@ describe("API integration: saved views", () => {
     const deleteResponse = await adminApp.request(`/api/views/${created.id}`, {
       method: "DELETE",
     });
-    expect(deleteResponse.status).toBe(202);
+    expect(deleteResponse.status).toBe(501);
+    expect(await deleteResponse.text()).toContain("nothing was deleted");
 
     const persisted = await db.query.savedViewTable.findFirst({
       where: eq(schema.savedViewTable.id, created.id),
     });
-    expect(persisted).toBeUndefined();
+    expect(persisted).toMatchObject({
+      id: created.id,
+      name: "Renamed by admin",
+    });
   });
 });
