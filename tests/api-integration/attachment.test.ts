@@ -765,6 +765,22 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       { method: "DELETE" },
     );
     expect(deleteResponse.status).toBe(403);
+
+    mockAuthenticatedSession(creator);
+    const ownerDelete = await app.request(
+      `/api/attachments/${presigned.attachmentId}`,
+      { method: "DELETE" },
+    );
+    expect(ownerDelete.status).toBe(200);
+    await ownerDelete.text();
+
+    mockAuthenticatedSession(otherUser);
+    const tombstoneDelete = await app.request(
+      `/api/attachments/${presigned.attachmentId}`,
+      { method: "DELETE" },
+    );
+    expect(tombstoneDelete.status).toBe(403);
+    await tombstoneDelete.text();
   });
 
   it("issue #480: 404s download and delete against an attachment whose work item is soft-deleted", async () => {

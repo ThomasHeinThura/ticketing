@@ -418,6 +418,28 @@ describe("API integration: work-item comments (#27)", () => {
     expect(again.status).toBe(200);
   });
 
+  it("does not return a tombstoned comment to a member without delete authority", async () => {
+    const { app, workItem, creator } = await setupWorkItem("member");
+    const created = await postComment(app, workItem.key, {
+      body: { type: "doc", content: [] },
+      visibility: "internal",
+    });
+    const { id } = (await created.json()) as { id: string };
+
+    const ownerDelete = await deleteComment(app, id);
+    expect(ownerDelete.status).toBe(200);
+    await ownerDelete.text();
+
+    const otherMember = await addWorkspaceMember(
+      creator.workspace.id,
+      "member",
+    );
+    mockAuthenticatedSession(otherMember);
+    const unauthorizedDelete = await deleteComment(app, id);
+    expect(unauthorizedDelete.status).toBe(403);
+    await unauthorizedDelete.text();
+  });
+
   it("refuses a delete by a non-author holding only comment:delete_own", async () => {
     const { app, workItem, creator } = await setupWorkItem("member");
     const created = await postComment(app, workItem.key, {

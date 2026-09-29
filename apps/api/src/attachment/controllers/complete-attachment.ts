@@ -25,6 +25,43 @@ const SNIFF_BYTES = 512;
 // the singleton `instance_setting` row is somehow missing (never true after a real boot).
 const FALLBACK_MAX_BYTES = 25 * 1024 * 1024;
 
+async function deleteRejectedPendingAttachmentRow(input: {
+  attachmentId: string;
+  workspaceId: string;
+  workItemId: string;
+}) {
+  return db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select({
+        projectId: workItemTable.projectId,
+        deletedAt: workItemTable.deletedAt,
+        archivedAt: workItemTable.archivedAt,
+      })
+      .from(workItemTable)
+      .where(
+        and(
+          eq(workItemTable.id, input.workItemId),
+          eq(workItemTable.workspaceId, input.workspaceId),
+        ),
+      )
+      .for("share");
+    assertWorkItemStillLive(locked);
+    await assertProjectStillLive(tx, locked.projectId);
+
+    return tx
+      .delete(attachmentTable)
+      .where(
+        and(
+          eq(attachmentTable.id, input.attachmentId),
+          eq(attachmentTable.workspaceId, input.workspaceId),
+          eq(attachmentTable.workItemId, input.workItemId),
+          eq(attachmentTable.state, "pending"),
+        ),
+      )
+      .returning({ id: attachmentTable.id });
+  });
+}
+
 export type CompleteAttachmentInput = {
   attachmentId: string;
   workspaceId: string;
@@ -114,21 +151,19 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
   // object's content -- the whole point of B3 is to reject an oversized object without
   // ever reading its bytes.
   if (contentLength === undefined || contentLength > maxBytes) {
+    try {
+      await deleteRejectedPendingAttachmentRow({
+        attachmentId,
+        workspaceId,
+        workItemId,
+      });
+    } catch (error) {
+      // Preserve the pending row if the project/work item froze first. The invalid
+      // upload object is still discarded; the pending-row cleanup job owns its expiry.
+      await deleteStorageObject(finalObjectKey).catch(() => {});
+      throw error;
+    }
     await deleteStorageObject(finalObjectKey).catch(() => {});
-    // N5 security-review fix (2026-09-28): guard this DELETE the same way the `ready`
-    // UPDATE below is guarded -- without `state = 'pending'`, a losing call whose own
-    // check fails here could delete the ROW a concurrent call already marked `ready`
-    // (the final object key is unique per call as of the fix above, so this no longer
-    // touches another call's object, but it could still erase another call's already-
-    // successful row without this).
-    await db
-      .delete(attachmentTable)
-      .where(
-        and(
-          eq(attachmentTable.id, attachmentId),
-          eq(attachmentTable.state, "pending"),
-        ),
-      );
     throw new HTTPException(400, {
       message:
         contentLength === undefined
@@ -138,16 +173,19 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
   }
 
   if (!magicBytesMatchDeclaredMime(header, attachment.mimeType)) {
+    try {
+      await deleteRejectedPendingAttachmentRow({
+        attachmentId,
+        workspaceId,
+        workItemId,
+      });
+    } catch (error) {
+      // Preserve the pending row if the project/work item froze first. The invalid
+      // upload object is still discarded; the pending-row cleanup job owns its expiry.
+      await deleteStorageObject(finalObjectKey).catch(() => {});
+      throw error;
+    }
     await deleteStorageObject(finalObjectKey).catch(() => {});
-    // N5 security-review fix (2026-09-28): same guard as the size-check delete above.
-    await db
-      .delete(attachmentTable)
-      .where(
-        and(
-          eq(attachmentTable.id, attachmentId),
-          eq(attachmentTable.state, "pending"),
-        ),
-      );
     throw new HTTPException(400, {
       message: `The uploaded file's content does not match its declared type (${attachment.mimeType}).`,
     });

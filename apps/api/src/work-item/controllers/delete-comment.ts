@@ -44,28 +44,6 @@ export async function deleteComment(
       throw new HTTPException(404, { message: "Comment not found" });
     }
 
-    if (locked.deletedAt !== null) {
-      return locked;
-    }
-
-    const [workItem] = await tx
-      .select({
-        id: workItemTable.id,
-        projectId: workItemTable.projectId,
-        deletedAt: workItemTable.deletedAt,
-        archivedAt: workItemTable.archivedAt,
-      })
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.id, locked.workItemId),
-          eq(workItemTable.workspaceId, workspaceId),
-        ),
-      )
-      .for("share");
-    assertWorkItemStillLive(workItem);
-    await assertProjectStillLive(tx, workItem.projectId);
-
     const roles = await workspaceMemberRoles(tx, workspaceId, actorId);
     if (!isUnambiguousMembership(roles)) {
       throw new HTTPException(403, { message: "Insufficient permissions" });
@@ -96,6 +74,30 @@ export async function deleteComment(
         });
       }
     }
+
+    // Check authority before the idempotent return so knowing a tombstone id does not
+    // reveal its retained metadata to a member who cannot delete that comment.
+    if (locked.deletedAt !== null) {
+      return locked;
+    }
+
+    const [workItem] = await tx
+      .select({
+        id: workItemTable.id,
+        projectId: workItemTable.projectId,
+        deletedAt: workItemTable.deletedAt,
+        archivedAt: workItemTable.archivedAt,
+      })
+      .from(workItemTable)
+      .where(
+        and(
+          eq(workItemTable.id, locked.workItemId),
+          eq(workItemTable.workspaceId, workspaceId),
+        ),
+      )
+      .for("share");
+    assertWorkItemStillLive(workItem);
+    await assertProjectStillLive(tx, workItem.projectId);
 
     const [deleted] = await tx
       .update(commentTable)
