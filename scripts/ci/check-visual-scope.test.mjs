@@ -175,6 +175,8 @@ function storybookSpec({
   mutateObjectValues = false,
   mutateObjectValuesByAlias = false,
   mutateObjectValuesByOuterAlias = false,
+  mutateReflect = false,
+  mutateReflectByAlias = false,
   computedSkip = false,
   fakeTestBinding = false,
 } = {}) {
@@ -208,6 +210,17 @@ function storybookSpec({
           ...(mutateObjectValuesByOuterAlias
             ? [
                 "objectNamespace.values = (value) => [value[Object.keys(value)[0]]];",
+              ]
+            : []),
+          ...(mutateReflect
+            ? [
+                'Reflect.set(Object, "values", (value) => [value[Object.keys(value)[0]]]);',
+              ]
+            : []),
+          ...(mutateReflectByAlias
+            ? [
+                "const reflectAlias = Reflect;",
+                'reflectAlias.set(Object, "values", (value) => [value[Object.keys(value)[0]]]);',
               ]
             : []),
           'const response = await fetch("http://127.0.0.1:6006/index.json");',
@@ -765,6 +778,32 @@ test("G8 rejects overwriting Object.values through an outer alias", async () => 
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,
     storySource: storybookSpec({ mutateObjectValuesByOuterAlias: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects Reflect.set overwriting Object.values", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ mutateReflect: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects Reflect.set overwriting Object.values through an alias", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ mutateReflectByAlias: true }),
   });
 
   assert.notEqual(result.status, 0);

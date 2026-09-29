@@ -1078,6 +1078,27 @@ function hasObjectIntrinsicMutation(sourceFile) {
   const visit = (node) => {
     if (unsafe) return;
     if (
+      ts.isIdentifier(node) &&
+      ["Reflect", "global", "globalThis", "self", "window"].includes(node.text)
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (ts.isIdentifier(node) && node.text === "Object") {
+      const access = node.parent;
+      const call = access?.parent;
+      if (
+        !ts.isPropertyAccessExpression(access) ||
+        access.expression !== node ||
+        !ts.isCallExpression(call) ||
+        call.expression !== access ||
+        !["freeze", "values"].includes(access.name.text)
+      ) {
+        unsafe = true;
+        return;
+      }
+    }
+    if (
       ts.isVariableDeclaration(node) &&
       node.initializer &&
       !bindingContainsName(node.name, "Object") &&
