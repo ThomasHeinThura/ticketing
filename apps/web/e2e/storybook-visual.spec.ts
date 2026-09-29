@@ -20,14 +20,16 @@ test("every exported Storybook story has a visual baseline @visual", async ({
     await page.goto(
       `http://127.0.0.1:6006/iframe.html?id=${story.id}&viewMode=story`,
     );
-    // Modal stories put the preview canvas in an inert subtree, so the dialog itself is
-    // the visible render surface in that case.
+    // Wait for the renderer to attach story content. Some modal stories put their only
+    // visible surface in a portal because Storybook makes the canvas inert.
     await expect
       .poll(async () => {
-        return (
-          (await page.locator("#storybook-root").isVisible()) ||
-          (await page.getByRole("dialog").isVisible())
+        const storyRoot = page.locator("#storybook-root");
+        const storyRendered = await storyRoot.evaluate(
+          (root) =>
+            root.childElementCount > 0 || Boolean(root.textContent?.trim()),
         );
+        return storyRendered || (await page.getByRole("dialog").isVisible());
       })
       .toBe(true);
     await page.evaluate(async () => {
