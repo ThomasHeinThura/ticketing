@@ -1,21 +1,15 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  type Mock,
-  vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockFindFirst = vi.fn();
 const mockSelect = vi.fn();
+const mockTxSelect = vi.fn();
 const mockDelete = vi.fn();
 const mockInsert = vi.fn();
 const mockPublishEvent = vi.fn();
 
 function createMockTxContext() {
   return {
+    select: (...args: unknown[]) => mockTxSelect(...args),
     insert: (...args: unknown[]) => mockInsert(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
     query: {
@@ -77,14 +71,29 @@ const TASK = {
   workspaceId: "ws-1",
 };
 
+const LIVE_PROJECT = {
+  id: "proj-1",
+  workspaceId: "ws-1",
+  deletedAt: null,
+  archivedAt: null,
+};
+
 function makeSelectMock(rows: unknown[]) {
-  const chain: Record<string, Mock> = {
+  const result = Promise.resolve(rows);
+  const chain = Object.assign(result, {
     from: vi.fn(() => chain),
     innerJoin: vi.fn(() => chain),
     where: vi.fn(() => chain),
-    limit: vi.fn(() => Promise.resolve(rows)),
-  };
+    limit: vi.fn(() => result),
+    for: vi.fn(() => result),
+  });
   return chain;
+}
+
+function queueTxSelectRows(...rows: unknown[][]) {
+  for (const result of rows) {
+    mockTxSelect.mockReturnValueOnce(makeSelectMock(result));
+  }
 }
 
 function makeDeleteMock(deletedRow: unknown) {
@@ -108,6 +117,7 @@ function makeInsertMock(insertedRow: unknown) {
 describe("unassignLabelFromTask", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockTxSelect.mockImplementation(() => makeSelectMock([]));
     mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) =>
       cb(createMockTxContext()),
     );
@@ -119,7 +129,7 @@ describe("unassignLabelFromTask", () => {
 
   it("deletes the task assignment instead of nulling taskId", async () => {
     mockFindFirst.mockResolvedValue(TASK_LABEL);
-    mockSelect.mockReturnValue(makeSelectMock([TASK]));
+    queueTxSelectRows([TASK_LABEL], [TASK], [LIVE_PROJECT], [TASK_LABEL]);
     mockDelete.mockReturnValue(makeDeleteMock(TASK_LABEL));
 
     await unassignLabelFromTask("label-task-1", "user-1");
@@ -127,7 +137,7 @@ describe("unassignLabelFromTask", () => {
     expect(mockDelete).toHaveBeenCalledTimes(1);
     expect(mockPublishEvent).toHaveBeenCalledWith("task.label_unassigned", {
       label: TASK_LABEL,
-      task: TASK,
+      task: { id: TASK.id, projectId: TASK.projectId },
       projectId: TASK.projectId,
       taskId: TASK_LABEL.taskId,
       userId: "user-1",
@@ -137,6 +147,7 @@ describe("unassignLabelFromTask", () => {
 
   it("rejects when the label is a workspace definition (taskId is null)", async () => {
     mockFindFirst.mockResolvedValue(WORKSPACE_LABEL);
+    queueTxSelectRows([WORKSPACE_LABEL]);
 
     await expect(
       unassignLabelFromTask("label-ws-1", "user-1"),
@@ -151,6 +162,7 @@ describe("unassignLabelFromTask", () => {
 describe("assignLabelToTask", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockTxSelect.mockImplementation(() => makeSelectMock([]));
     mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) =>
       cb(createMockTxContext()),
     );
@@ -163,6 +175,12 @@ describe("assignLabelToTask", () => {
   it("creates a task-level copy without mutating the workspace definition", async () => {
     mockFindFirst.mockResolvedValue(WORKSPACE_LABEL);
     mockSelect.mockReturnValue(makeSelectMock([TASK]));
+    queueTxSelectRows(
+      [WORKSPACE_LABEL],
+      [TASK],
+      [LIVE_PROJECT],
+      [LIVE_PROJECT],
+    );
     const insertedCopy = { ...TASK_LABEL, id: "label-task-2" };
     const insertChain = makeInsertMock(insertedCopy);
     mockInsert.mockReturnValue(insertChain);
@@ -188,6 +206,13 @@ describe("assignLabelToTask", () => {
   it("is idempotent when the same label is already attached to the same task", async () => {
     mockFindFirst.mockResolvedValueOnce({ ...TASK_LABEL, taskId: "task-1" });
     mockSelect.mockReturnValue(makeSelectMock([TASK]));
+    queueTxSelectRows(
+      [TASK],
+      [TASK],
+      [TASK_LABEL],
+      [LIVE_PROJECT],
+      [LIVE_PROJECT],
+    );
 
     const result = await assignLabelToTask("label-task-1", "task-1", "user-1");
 
@@ -201,6 +226,16 @@ describe("assignLabelToTask", () => {
     const stale = { ...TASK_LABEL, taskId: "task-old" };
     mockFindFirst.mockResolvedValue(stale);
     mockSelect.mockReturnValue(makeSelectMock([TASK]));
+    const oldTask = { ...TASK, id: "task-old", projectId: "proj-old" };
+    const oldProject = { ...LIVE_PROJECT, id: "proj-old" };
+    queueTxSelectRows(
+      [TASK],
+      [oldTask],
+      [stale],
+      [LIVE_PROJECT],
+      [oldProject],
+      [LIVE_PROJECT, oldProject],
+    );
     mockDelete.mockReturnValue(makeDeleteMock(stale));
     const insertedCopy = { ...TASK_LABEL, id: "label-task-2" };
     const insertChain = makeInsertMock(insertedCopy);
@@ -218,9 +253,14 @@ describe("assignLabelToTask", () => {
   it("is idempotent when the workspace label is re-attached to the same task", async () => {
     mockFindFirst.mockResolvedValueOnce(WORKSPACE_LABEL);
     mockSelect.mockReturnValue(makeSelectMock([TASK]));
+    queueTxSelectRows(
+      [WORKSPACE_LABEL],
+      [TASK],
+      [LIVE_PROJECT],
+      [LIVE_PROJECT],
+    );
     const insertChain = makeInsertMock(undefined);
     mockInsert.mockReturnValue(insertChain);
-    mockFindFirst.mockResolvedValueOnce(WORKSPACE_LABEL);
     mockFindFirst.mockResolvedValueOnce(TASK_LABEL);
 
     const result = await assignLabelToTask("label-ws-1", "task-1", "user-1");
@@ -233,24 +273,34 @@ describe("assignLabelToTask", () => {
   it("falls back to the existing task label when the workspace insert returns no row", async () => {
     mockFindFirst.mockResolvedValueOnce(WORKSPACE_LABEL);
     mockSelect.mockReturnValue(makeSelectMock([TASK]));
+    queueTxSelectRows(
+      [WORKSPACE_LABEL],
+      [TASK],
+      [LIVE_PROJECT],
+      [LIVE_PROJECT],
+    );
     const insertChain = makeInsertMock(undefined);
     mockInsert.mockReturnValue(insertChain);
-    mockFindFirst.mockResolvedValueOnce(WORKSPACE_LABEL);
     mockFindFirst.mockResolvedValueOnce(WORKSPACE_LABEL);
 
     await assignLabelToTask("label-ws-1", "task-1", "user-1");
 
     expect(mockTransaction).toHaveBeenCalledTimes(1);
     expect(mockInsert).toHaveBeenCalledTimes(1);
-    expect(mockFindFirst).toHaveBeenCalledTimes(3);
+    expect(mockFindFirst).toHaveBeenCalledTimes(2);
   });
 
   it("throws HTTP 500 when the insert and fallback lookup both return no row", async () => {
     mockFindFirst.mockResolvedValueOnce(WORKSPACE_LABEL);
     mockSelect.mockReturnValue(makeSelectMock([TASK]));
+    queueTxSelectRows(
+      [WORKSPACE_LABEL],
+      [TASK],
+      [LIVE_PROJECT],
+      [LIVE_PROJECT],
+    );
     const insertChain = makeInsertMock(undefined);
     mockInsert.mockReturnValue(insertChain);
-    mockFindFirst.mockResolvedValueOnce(WORKSPACE_LABEL);
     mockFindFirst.mockResolvedValueOnce(undefined);
 
     await expect(
@@ -263,8 +313,8 @@ describe("assignLabelToTask", () => {
 
   it("throws HTTP 404 when the label is removed before the transaction begins", async () => {
     mockFindFirst.mockResolvedValueOnce(WORKSPACE_LABEL);
-    mockFindFirst.mockResolvedValueOnce(undefined);
     mockSelect.mockReturnValue(makeSelectMock([TASK]));
+    queueTxSelectRows([undefined]);
 
     await expect(
       assignLabelToTask("label-ws-1", "task-1", "user-1"),

@@ -9,9 +9,19 @@ import {
 } from "vitest";
 
 const mockFindFirst = vi.fn();
-const mockSelect = vi.fn();
+const mockTxSelect = vi.fn();
 const mockDelete = vi.fn();
 const mockPublishEvent = vi.fn();
+const mockTransaction = vi.fn(async (cb: (tx: unknown) => unknown) =>
+  cb(createMockTxContext()),
+);
+
+function createMockTxContext() {
+  return {
+    select: (...args: unknown[]) => mockTxSelect(...args),
+    delete: (...args: unknown[]) => mockDelete(...args),
+  };
+}
 
 vi.mock("../../../apps/api/src/database", () => ({
   default: {
@@ -20,8 +30,7 @@ vi.mock("../../../apps/api/src/database", () => ({
         findFirst: (...args: unknown[]) => mockFindFirst(...args),
       },
     },
-    select: (...args: unknown[]) => mockSelect(...args),
-    delete: (...args: unknown[]) => mockDelete(...args),
+    transaction: (cb: (tx: unknown) => unknown) => mockTransaction(cb),
   },
 }));
 
@@ -63,17 +72,39 @@ const TASK_LABEL_2 = {
   workspaceId: "ws-1",
 };
 
+const TASK_1 = { id: "task-1", projectId: "proj-1" };
+const TASK_2 = { id: "task-2", projectId: "proj-2" };
+const LIVE_PROJECT_1 = {
+  id: "proj-1",
+  deletedAt: null,
+  archivedAt: null,
+};
+const LIVE_PROJECT_2 = {
+  id: "proj-2",
+  deletedAt: null,
+  archivedAt: null,
+};
+
 /**
- * Build a mock chain for `db.select().from().innerJoin().innerJoin().where()`.
- * The terminal `.where()` returns a Promise resolved to `rows`.
+ * Build a thenable mock chain for transaction-scoped select queries.
+ * `.for()` and awaiting `.where()` both resolve to `rows`.
  */
 function makeSelectMock(rows: unknown[]) {
-  const chain: Record<string, Mock> = {
+  const result = Promise.resolve(rows);
+  const chain = Object.assign(result, {
     from: vi.fn(() => chain),
     innerJoin: vi.fn(() => chain),
-    where: vi.fn(() => Promise.resolve(rows)),
-  };
+    where: vi.fn(() => chain),
+    limit: vi.fn(() => result),
+    for: vi.fn(() => result),
+  });
   return chain;
+}
+
+function queueTxSelectRows(...rows: unknown[][]) {
+  for (const result of rows) {
+    mockTxSelect.mockReturnValueOnce(makeSelectMock(result));
+  }
 }
 
 /**
@@ -99,7 +130,11 @@ function makeDeleteMock(deletedRow: unknown) {
 
 describe("deleteLabel", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
+    mockTxSelect.mockImplementation(() => makeSelectMock([]));
+    mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) =>
+      cb(createMockTxContext()),
+    );
   });
 
   afterEach(() => {
@@ -109,8 +144,9 @@ describe("deleteLabel", () => {
   describe("workspace-level label deletion (taskId is null)", () => {
     it("emits task.label_deleted events for each affected task-level label", async () => {
       mockFindFirst.mockResolvedValue(WORKSPACE_LABEL);
-      mockSelect.mockReturnValue(
-        makeSelectMock([
+      queueTxSelectRows(
+        [WORKSPACE_LABEL],
+        [
           {
             label: TASK_LABEL_1,
             taskId: "task-1",
@@ -123,7 +159,11 @@ describe("deleteLabel", () => {
             projectId: "proj-2",
             workspaceId: "ws-1",
           },
-        ]),
+        ],
+        [TASK_1],
+        [TASK_2],
+        [LIVE_PROJECT_1],
+        [LIVE_PROJECT_2],
       );
       mockDelete.mockReturnValue(makeDeleteMock(DELETED_WORKSPACE_LABEL));
 
@@ -150,7 +190,7 @@ describe("deleteLabel", () => {
 
     it("fires no events when no task-level labels are affected", async () => {
       mockFindFirst.mockResolvedValue(WORKSPACE_LABEL);
-      mockSelect.mockReturnValue(makeSelectMock([]));
+      queueTxSelectRows([WORKSPACE_LABEL], []);
       mockDelete.mockReturnValue(makeDeleteMock(DELETED_WORKSPACE_LABEL));
 
       await deleteLabel("label-ws-1", "user-1");
