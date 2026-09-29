@@ -1,11 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import WorkItemActivityComment from "./work-item-activity-comment";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
+
+afterEach(() => {
+  cleanup();
+});
 
 describe("WorkItemActivityComment", () => {
   it("renders persisted work-item link nodes from submitted comments", async () => {
@@ -45,5 +49,49 @@ describe("WorkItemActivityComment", () => {
       "https://example.test/work-items/PROJ-42",
     );
     expect(link).toHaveTextContent("PROJ-42");
+  });
+
+  it("strips unsafe stored links while preserving comment text", async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <WorkItemActivityComment
+          body={{
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [
+                  {
+                    type: "text",
+                    text: "script link",
+                    marks: [
+                      {
+                        type: "link",
+                        attrs: { href: "javascript:alert(document.domain)" },
+                      },
+                    ],
+                  },
+                  {
+                    type: "taskdeskIssueLink",
+                    attrs: {
+                      url: "//attacker.example/path",
+                      issueKey: "EVIL-1",
+                      taskId: "",
+                    },
+                  },
+                ],
+              },
+            ],
+          }}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("script link")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
   });
 });

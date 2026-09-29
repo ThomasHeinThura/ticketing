@@ -65,6 +65,41 @@ describe("the capability vocabulary matches the client's fan-out exactly (A1-P5)
 });
 
 describe("GET /api/capabilities", () => {
+  it("exposes project settings authority separately from project update", async () => {
+    const manager = await createWorkspaceMember({ role: "manager" });
+    const lead = await createWorkspaceMember({ role: "lead" });
+    const now = new Date();
+    for (const member of [manager, lead]) {
+      await db.insert(schema.workspaceRoleTable).values({
+        workspaceId: member.workspace.id,
+        role: member.workspace.id === manager.workspace.id ? "manager" : "lead",
+        permission: JSON.stringify({}),
+        isSystem: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    mockAuthenticatedSession(manager.user);
+    const { app } = createApp();
+    const managerResponse = await app.request(
+      `/api/capabilities?workspaceId=${manager.workspace.id}`,
+    );
+    expect(managerResponse.status).toBe(200);
+    await expect(managerResponse.json()).resolves.toMatchObject({
+      manageProjectSettings: true,
+    });
+
+    mockAuthenticatedSession(lead.user);
+    const leadResponse = await app.request(
+      `/api/capabilities?workspaceId=${lead.workspace.id}`,
+    );
+    expect(leadResponse.status).toBe(200);
+    await expect(leadResponse.json()).resolves.toMatchObject({
+      manageProjectSettings: false,
+    });
+  });
+
   it("scopes to the requested workspace -- same user, different roles in two workspaces, different answers (A1-P4)", async () => {
     const owner = await createWorkspaceMember({
       workspaceName: "Workspace Owner-side",

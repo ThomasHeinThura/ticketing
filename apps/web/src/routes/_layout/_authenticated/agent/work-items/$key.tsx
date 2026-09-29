@@ -56,10 +56,10 @@ function WorkItemDetailRouteComponent() {
   // purpose (a guessable `{slug}-{number}` key), so a 404 is shown as one not-found
   // state, not split into "missing" vs "no access".
   const isNotFound = error instanceof HttpError && error.status === 404;
-  // TanStack Query retains cached data when a refetch fails. Once the server says
-  // this key is missing or outside the caller's reach, stop rendering every cached
-  // projection (including the journey's separately cached activity stream).
-  const visibleItem = isError ? undefined : item;
+  // Hide every cached projection only after the authoritative reach/missing 404.
+  // A transient network or server error keeps still-authorized cached content visible
+  // with a retry notice in WorkItemDetail.
+  const visibleItem = isNotFound ? undefined : item;
   const project = visibleItem
     ? projects?.find((candidate) => candidate.id === visibleItem.projectId)
     : undefined;

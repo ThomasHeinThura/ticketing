@@ -136,7 +136,8 @@ function RouteComponent() {
   const { mutateAsync: updateProject } = useUpdateProject();
   const { mutateAsync: deleteProject, isPending: isDeleting } =
     useDeleteProject();
-  const { canManageProjects, canDeleteProjects } = useWorkspacePermission();
+  const { canManageProjects, canManageProjectSettings, canDeleteProjects } =
+    useWorkspacePermission();
   const canEdit = canManageProjects();
   const canDelete = canDeleteProjects();
 
@@ -614,7 +615,11 @@ function RouteComponent() {
                           <Select
                             value={field.value}
                             onValueChange={field.onChange}
-                            disabled={!canEdit || !projectSettingsLoaded}
+                            disabled={
+                              !canEdit ||
+                              !canManageProjectSettings() ||
+                              !projectSettingsLoaded
+                            }
                           >
                             <SelectTrigger className="w-full sm:w-64">
                               <SelectValue />

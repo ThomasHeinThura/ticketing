@@ -7,6 +7,7 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import addDocumentLinkCtrl from "./controllers/add-document-link";
@@ -658,6 +659,31 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
     const { name, icon, slug, description, defaultCommentVisibility } =
       c.req.valid("json");
     const workspaceId = c.get("workspaceId");
+    if (defaultCommentVisibility !== undefined) {
+      const userId = c.get("userId");
+      if (!workspaceId || !userId) {
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
+
+      // API-key scopes intersect the caller's current capability, just as the
+      // route-level project:update scope does above. A key that was not granted
+      // this setting action cannot acquire it from its owner's role.
+      const apiKey = c.get("apiKey") as
+        | { permissions?: Record<string, string[]> | null }
+        | undefined;
+      if (
+        apiKey?.permissions &&
+        !apiKey.permissions.project?.includes("manage_settings")
+      ) {
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
+
+      await assertCallerHasCapability(
+        workspaceId,
+        userId,
+        "project:manage_settings",
+      );
+    }
     try {
       const updatedProject = await updateProjectCtrl(
         id,

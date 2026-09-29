@@ -1,5 +1,5 @@
 /**
- * The 18 capability checks the client's `useWorkspacePermission` hook fans
+ * The legacy permission checks the client's `useWorkspacePermission` hook fans
  * out, one HTTP round trip each, to the better-auth `organization()`
  * plugin's `has-permission` route
  * (`apps/web/src/hooks/use-workspace-permission.ts:15-32`). `GET
@@ -17,9 +17,9 @@
  * leaves this endpoint short a capability. The permission-map SHAPE
  * (`Record<string, string[]>`, better-auth's `statement` vocabulary) is
  * the pre-existing shape every caller of `hasWorkspacePermission` already
- * uses; the capability-NAME vocabulary this route may grow into later
- * (`docs/01-architecture/rbac.md`'s `resource:action` strings) is #7's
- * contract to define, not this one's (retrofit plan §3, S2 row).
+ * uses. The `manageProjectSettings` response field is separately computed from the
+ * canonical `project:manage_settings` capability because the legacy statement map cannot
+ * express its narrower authority.
  */
 export const CAPABILITY_CHECKS = {
   manageProjects: { project: ["create", "update", "delete"] },
@@ -42,4 +42,6 @@ export const CAPABILITY_CHECKS = {
   createInternalComments: { comment: ["create_internal"] },
 } satisfies Record<string, Record<string, string[]>>;
 
-export type CapabilityName = keyof typeof CAPABILITY_CHECKS;
+export type CapabilityName =
+  | keyof typeof CAPABILITY_CHECKS
+  | "manageProjectSettings";

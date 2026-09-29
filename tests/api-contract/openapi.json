@@ -118,6 +118,9 @@
           "manageProjects": {
             "type": "boolean"
           },
+          "manageProjectSettings": {
+            "type": "boolean"
+          },
           "createProjects": {
             "type": "boolean"
           },
@@ -172,6 +175,7 @@
         },
         "required": [
           "manageProjects",
+          "manageProjectSettings",
           "createProjects",
           "updateProjects",
           "deleteProjects",

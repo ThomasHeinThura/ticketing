@@ -131,6 +131,54 @@ describe("API integration: project creation", () => {
     });
   });
 
+  it("requires project:manage_settings for the default comment visibility field only", async () => {
+    const lead = await createWorkspaceMember({ role: "lead" });
+    const now = new Date();
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId: lead.workspace.id,
+      role: "lead",
+      permission: JSON.stringify({
+        project: ["create", "read", "update", "delete", "share"],
+      }),
+      isSystem: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const { project } = await createProjectFixture({
+      workspaceId: lead.workspace.id,
+    });
+    mockAuthenticatedSession(lead.user);
+    const { app } = createApp();
+
+    const settingResponse = await app.request(`/api/project/${project.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: project.name,
+        icon: project.icon ?? "Layout",
+        slug: project.slug,
+        description: project.description ?? "",
+        defaultCommentVisibility: "public",
+      }),
+    });
+    expect(settingResponse.status).toBe(403);
+
+    const ordinaryUpdateResponse = await app.request(
+      `/api/project/${project.id}`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "Lead may update the project name",
+          icon: project.icon ?? "Layout",
+          slug: project.slug,
+          description: project.description ?? "",
+        }),
+      },
+    );
+    expect(ordinaryUpdateResponse.status).toBe(200);
+  });
+
   it("rejects project creation for users outside the workspace", async () => {
     const member = await createWorkspaceMember();
     const outsiderId = "user-outsider";

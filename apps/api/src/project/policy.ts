@@ -29,7 +29,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `project:*` capability name the same authority today; there is no re-keying gap to record
  * here the way there was for `workspace:update` vs the legacy `organization:update`.
  *
- * **There IS a granularity gap, on the mutation routes below `project:update`.** rbac.md
+ * **There IS a granularity gap, on most mutation routes below `project:update`.** rbac.md
  * defines two narrower Projects-group capabilities the legacy `statement.project` never had a
  * matching action for: `project:archive` ("Archive and restore", implies `project:update`) and
  * `project:manage_settings` ("Project states, features, labels, SLA and calendar assignment,
@@ -39,11 +39,11 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * capability here would not close that gap, it would just make the declaration claim a
  * stricter requirement than what the route actually enforces — the same reasoning
  * `workspace/policy.ts` gives for declaring `workspace:update` over a hypothetically "more
- * correct" string. So archive, unarchive and reorder below declare `project:update`, matching
- * the actual `requireWorkspacePermission({ project: ["update"] })` check, and this comment is
- * where the gap is recorded for #7's capability migration rather than pretended away. (Column
- * and workflow-rule mutations, classified alongside this file, have the same
- * `project:manage_settings` gap for the same textual reason — see those files.)
+ * correct" string. Archive, unarchive and reorder below declare `project:update`, matching
+ * their actual checks. The general project PUT route also declares `project:update` as its
+ * baseline, but its `defaultCommentVisibility` field has an additional handler-level
+ * `project:manage_settings` check after body validation. (Other mutations and workflow-rule
+ * routes retain the migration gap recorded here and in their own policy files.)
  *
  * **Scope: the container that genuinely has an id at request time, per rbac.md's own
  * `work_item:create` example (`scope: 'project'` for a work item created inside a project, not

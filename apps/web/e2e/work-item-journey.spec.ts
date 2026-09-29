@@ -37,6 +37,7 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   let created = false;
   let assigned = false;
   let permissioned = true;
+  let settingsPermissioned = true;
   let accessDenied = false;
   let postedComment = false;
   let projectDefaultCommentVisibility: "public" | "internal" = "internal";
@@ -192,6 +193,7 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
     if (path === "/api/capabilities")
       return json({
         manageProjects: true,
+        manageProjectSettings: settingsPermissioned,
         createProjects: false,
         updateProjects: true,
         deleteProjects: false,
@@ -440,6 +442,12 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await page.getByLabel("Default comment visibility").click();
   await page.getByRole("option", { name: "Public" }).click();
   await expect.poll(() => projectDefaultCommentVisibility).toBe("public");
+  settingsPermissioned = false;
+  await page.reload();
+  await expect(page.getByLabel("Default comment visibility")).toBeDisabled();
+  settingsPermissioned = true;
+  await page.reload();
+  await expect(page.getByLabel("Default comment visibility")).toBeEnabled();
   await page.goto("/agent/work-items/WLP-1");
   await expect(page.getByTestId("work-item-detail")).toBeVisible();
   await page.getByRole("button", { name: "Edit", exact: true }).click();

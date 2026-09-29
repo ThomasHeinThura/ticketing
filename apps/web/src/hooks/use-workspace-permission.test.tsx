@@ -6,7 +6,7 @@ import { useWorkspacePermission } from "./use-workspace-permission";
 
 // S3 (issue #6, retrofit plan §3): rewritten against GET /api/capabilities,
 // which replaces the authClient.organization.hasPermission() fan-out
-// this test used to mock. The mocked payload's 16 keys are copied verbatim
+// this test used to mock. The mocked payload's keys are copied verbatim
 // from apps/api/src/capabilities/response.ts's capabilitiesResponseSchema --
 // not invented -- so a key renamed or dropped on either side of the wire
 // shows up here as a real assertion failure, not a passing test that never
@@ -43,13 +43,14 @@ function createWrapper() {
   };
 }
 
-// One full CapabilityMap, matching capabilitiesResponseSchema's 18 keys
+// One full CapabilityMap, matching capabilitiesResponseSchema's keys
 // exactly. Callers below start from this and only flip the keys a given
 // test cares about, so an accidental typo in an unrelated key still
 // produces a real (defined) boolean rather than `undefined`.
 function fullCapabilityMap(overrides: Partial<Record<string, boolean>> = {}) {
   return {
     manageProjects: false,
+    manageProjectSettings: false,
     createProjects: false,
     updateProjects: false,
     deleteProjects: false,
@@ -151,6 +152,7 @@ describe("useWorkspacePermission", () => {
     });
 
     expect(result.current.canManageProjects()).toBe(true);
+    expect(result.current.canManageProjectSettings()).toBe(false);
     expect(result.current.canCreateProjects()).toBe(false);
     expect(result.current.canUpdateProjects()).toBe(false);
     expect(result.current.canDeleteProjects()).toBe(false);
@@ -173,6 +175,7 @@ describe("useWorkspacePermission", () => {
 
     expect(result.current.isCheckingPermissions).toBe(true);
     expect(result.current.canManageProjects()).toBe(false);
+    expect(result.current.canManageProjectSettings()).toBe(false);
     expect(result.current.canRemoveMembers()).toBe(false);
     expect(result.current.canCreatePublicComments()).toBe(false);
     expect(result.current.canCreateInternalComments()).toBe(false);

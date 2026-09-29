@@ -118,7 +118,7 @@ function WorkItemDetail({
     );
   }
 
-  if (isError) {
+  if (isError && !item) {
     return (
       <Alert variant="error" data-testid="work-item-detail-error">
         <TriangleAlert />
@@ -169,6 +169,18 @@ function WorkItemDetail({
 
   return (
     <div className="flex flex-col gap-6" data-testid="work-item-detail">
+      {isError && (
+        <Alert variant="warning" data-testid="work-item-detail-stale-error">
+          <TriangleAlert />
+          <AlertTitle>{t("workItems:detail.errorTitle")}</AlertTitle>
+          <AlertDescription>
+            <p>{t("workItems:detail.errorDescription")}</p>
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              {t("workItems:detail.retry")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       {hasPartialFailure && (
         <Alert variant="warning" data-testid="work-item-detail-partial-notice">
           <Info />

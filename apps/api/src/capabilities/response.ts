@@ -3,6 +3,7 @@ import { z } from "../openapi";
 export const capabilitiesResponseSchema = z
   .object({
     manageProjects: z.boolean(),
+    manageProjectSettings: z.boolean(),
     createProjects: z.boolean(),
     updateProjects: z.boolean(),
     deleteProjects: z.boolean(),

@@ -21,6 +21,7 @@ type CapabilityMap = Record<Capability, boolean>;
 // always come from the server.
 const EMPTY_CAPABILITIES = {
   manageProjects: false,
+  manageProjectSettings: false,
   createProjects: false,
   updateProjects: false,
   deleteProjects: false,
@@ -80,6 +81,7 @@ export function useWorkspacePermission() {
   const helpers = useMemo(() => {
     return {
       canManageProjects: () => can.manageProjects,
+      canManageProjectSettings: () => can.manageProjectSettings,
       canCreateProjects: () => can.createProjects,
       canUpdateProjects: () => can.updateProjects,
       canDeleteProjects: () => can.deleteProjects,
