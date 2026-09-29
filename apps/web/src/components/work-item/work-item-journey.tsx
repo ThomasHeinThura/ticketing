@@ -18,16 +18,20 @@ import {
   SelectValue,
   Textarea,
 } from "@taskdesk/ui";
+import type { JSONContent } from "@tiptap/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import CommentEditor from "@/components/activity/comment-editor";
 import WorkItemActivityComment from "@/components/work-item/work-item-activity-comment";
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
+import createWorkItemComment from "@/fetchers/work-item/create-work-item-comment";
 import getAssignablePeople from "@/fetchers/work-item/get-assignable-people";
 import getWorkItemActivity from "@/fetchers/work-item/get-work-item-activity";
 import unassignWorkItem from "@/fetchers/work-item/unassign-work-item";
 import updateWorkItem from "@/fetchers/work-item/update-work-item";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
+import type { WorkItemActivityFilter } from "@/lib/routes";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import { extractDescription } from "@/types/work-item";
@@ -39,17 +43,32 @@ function dateInputToIso(value: string) {
   return value ? `${value}T00:00:00.000Z` : null;
 }
 
-export default function WorkItemJourney({
-  item,
-  onSaved,
-}: {
+type WorkItemJourneyProps = {
   item: WorkItemDetailRow;
   onSaved: () => void;
-}) {
+  activityFilter?: WorkItemActivityFilter;
+  onActivityFilterChange?: (filter: WorkItemActivityFilter) => void;
+};
+
+export default function WorkItemJourney(props: WorkItemJourneyProps) {
+  return <WorkItemJourneyForItem key={props.item.key} {...props} />;
+}
+
+function WorkItemJourneyForItem({
+  item,
+  onSaved,
+  activityFilter = "all",
+  onActivityFilterChange = () => {},
+}: WorkItemJourneyProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { canUpdateTasks, canAssignTasks, isCheckingPermissions } =
-    useWorkspacePermission();
+  const {
+    canUpdateTasks,
+    canAssignTasks,
+    canCreatePublicComments,
+    canCreateInternalComments,
+    isCheckingPermissions,
+  } = useWorkspacePermission();
   const mayEdit = !isCheckingPermissions && canUpdateTasks();
   const mayAssign =
     !isCheckingPermissions && (canUpdateTasks() || canAssignTasks());
@@ -72,6 +91,30 @@ export default function WorkItemJourney({
   const [confirmReassign, setConfirmReassign] = useState(false);
   const [editError, setEditError] = useState("");
   const [assignError, setAssignError] = useState("");
+  const [commentText, setCommentText] = useState("");
+  const [commentBody, setCommentBody] = useState<JSONContent>({
+    type: "doc",
+    content: [{ type: "paragraph" }],
+  });
+  const [commentVisibility, setCommentVisibility] = useState<
+    "public" | "internal"
+  >("internal");
+  const [commentError, setCommentError] = useState("");
+  const mayCreatePublicComment =
+    !isCheckingPermissions && canCreatePublicComments();
+  const mayCreateInternalComment =
+    !isCheckingPermissions && canCreateInternalComments();
+  const allowedCommentVisibilities = [
+    ...(mayCreateInternalComment ? (["internal"] as const) : []),
+    ...(mayCreatePublicComment ? (["public"] as const) : []),
+  ];
+  const effectiveCommentVisibility = allowedCommentVisibilities.includes(
+    commentVisibility,
+  )
+    ? commentVisibility
+    : mayCreateInternalComment
+      ? "internal"
+      : "public";
   const activity = useInfiniteQuery({
     queryKey: ["work-items", "activity", item.key],
     initialPageParam: undefined as string | undefined,
@@ -174,6 +217,29 @@ export default function WorkItemJourney({
       }
     },
   });
+  const commentMutation = useMutation({
+    mutationFn: () =>
+      createWorkItemComment({
+        key: item.key,
+        body: commentBody,
+        visibility: effectiveCommentVisibility,
+      }),
+    onSuccess: async () => {
+      setCommentText("");
+      setCommentBody({ type: "doc", content: [{ type: "paragraph" }] });
+      setCommentError("");
+      await queryClient.invalidateQueries({
+        queryKey: ["work-items", "activity", item.key],
+      });
+    },
+    onError: (error) => {
+      setCommentError(
+        error instanceof HttpError && error.status === 403
+          ? t("workItems:journey.commentForbidden")
+          : t("workItems:journey.commentError"),
+      );
+    },
+  });
   const startEditing = () => {
     setTitle(item.title);
     const value = extractDescription(item.description);
@@ -200,6 +266,17 @@ export default function WorkItemJourney({
             (person) => person.personId === item.assigneeId,
           ))),
   );
+  const activityRows = [
+    ...(activity.data?.pages.flatMap((page) => page.data) ?? []),
+  ]
+    .reverse()
+    .filter((row) =>
+      activityFilter === "comments"
+        ? row.kind === "comment"
+        : activityFilter === "public"
+          ? row.visibility === "public"
+          : true,
+    );
 
   return (
     <div className="flex flex-col gap-6" data-testid="work-item-journey">
@@ -437,55 +514,74 @@ export default function WorkItemJourney({
         <h2 id="work-item-activity-heading" className="font-medium text-lg">
           {t("workItems:journey.activityHeading")}
         </h2>
+        <fieldset className="flex flex-wrap gap-2">
+          <legend className="sr-only">
+            {t("workItems:journey.activityFilters")}
+          </legend>
+          {(["all", "comments", "public"] as const).map((filter) => (
+            <Button
+              key={filter}
+              type="button"
+              size="sm"
+              variant={activityFilter === filter ? "default" : "outline"}
+              aria-pressed={activityFilter === filter}
+              onClick={() => onActivityFilterChange(filter)}
+            >
+              {t(
+                `workItems:journey.filter${filter[0]?.toUpperCase()}${filter.slice(1)}`,
+              )}
+            </Button>
+          ))}
+        </fieldset>
         {activity.isLoading ? (
           <p role="status">{t("workItems:journey.loadingActivity")}</p>
         ) : activity.isError ? (
           <p role="alert">{t("workItems:journey.activityError")}</p>
-        ) : activity.data?.pages.some((page) => page.data.length) ? (
+        ) : activityRows.length ? (
           <ol className="flex flex-col gap-3">
-            {[...activity.data.pages.flatMap((page) => page.data)]
-              .reverse()
-              .map((row) => (
-                <li
-                  key={`${row.kind ?? "activity"}-${row.id}`}
-                  className="rounded-md border p-3 text-sm"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <strong>
-                      {row.kind === "comment"
-                        ? t("workItems:journey.comment")
-                        : row.verb}
-                    </strong>
-                    <time dateTime={row.createdAt}>
-                      {new Date(row.createdAt).toLocaleString()}
-                    </time>
-                  </div>
-                  <p className="text-muted-foreground">
-                    {row.visibility === "internal"
-                      ? t("workItems:journey.internal")
-                      : row.visibility === "public"
-                        ? t("workItems:journey.public")
-                        : t("workItems:journey.visibilityUnavailable")}
-                  </p>
-                  {row.kind === "comment" ? (
-                    row.body ? (
-                      <WorkItemActivityComment body={row.body} />
-                    ) : (
-                      <p>{t("workItems:journey.commentDeleted")}</p>
-                    )
+            {activityRows.map((row) => (
+              <li
+                key={`${row.kind ?? "activity"}-${row.id}`}
+                className="rounded-md border p-3 text-sm"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <strong>
+                    {row.kind === "comment"
+                      ? t("workItems:journey.comment")
+                      : row.verb}
+                  </strong>
+                  <time dateTime={row.createdAt}>
+                    {new Date(row.createdAt).toLocaleString()}
+                  </time>
+                </div>
+                <p className="text-muted-foreground">
+                  {row.visibility === "internal"
+                    ? t("workItems:journey.internal")
+                    : row.visibility === "public"
+                      ? t("workItems:journey.public")
+                      : t("workItems:journey.visibilityUnavailable")}
+                </p>
+                {row.kind === "comment" ? (
+                  row.body ? (
+                    <WorkItemActivityComment body={row.body} />
                   ) : (
-                    <p>
-                      {row.field
-                        ? `${row.field}: ${String(row.oldValue ?? "—")} → ${String(row.newValue ?? "—")}`
-                        : row.verb}
-                    </p>
-                  )}
-                </li>
-              ))}
+                    <p>{t("workItems:journey.commentDeleted")}</p>
+                  )
+                ) : (
+                  <p>
+                    {row.field
+                      ? `${row.field}: ${String(row.oldValue ?? "—")} → ${String(row.newValue ?? "—")}`
+                      : row.verb}
+                  </p>
+                )}
+              </li>
+            ))}
           </ol>
         ) : (
           <p className="text-muted-foreground">
-            {t("workItems:journey.noActivity")}
+            {activityFilter === "all"
+              ? t("workItems:journey.noActivity")
+              : t("workItems:journey.noFilteredActivity")}
           </p>
         )}
         {activity.hasNextPage && (
@@ -499,6 +595,65 @@ export default function WorkItemJourney({
               ? t("workItems:journey.loadingOlderActivity")
               : t("workItems:journey.loadOlderActivity")}
           </Button>
+        )}
+        {allowedCommentVisibilities.length > 0 && (
+          <div
+            className={
+              effectiveCommentVisibility === "internal"
+                ? "flex flex-col gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-3"
+                : "flex flex-col gap-3 rounded-md border bg-card p-3"
+            }
+          >
+            <Label
+              htmlFor={
+                allowedCommentVisibilities.length > 1
+                  ? "work-item-comment-visibility"
+                  : undefined
+              }
+            >
+              {t("workItems:journey.commentVisibility")}:{" "}
+              {t(`workItems:journey.${effectiveCommentVisibility}`)}
+            </Label>
+            {allowedCommentVisibilities.length > 1 && (
+              <Select
+                value={effectiveCommentVisibility}
+                onValueChange={(value) => {
+                  if (value === "internal" || value === "public")
+                    setCommentVisibility(value);
+                }}
+              >
+                <SelectTrigger id="work-item-comment-visibility">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {allowedCommentVisibilities.map((visibility) => (
+                    <SelectItem key={visibility} value={visibility}>
+                      {t(`workItems:journey.${visibility}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <CommentEditor
+              ariaLabel={t("workItems:journey.commentEditor")}
+              value={commentText}
+              onChange={setCommentText}
+              onDocumentChange={setCommentBody}
+              placeholder={t("workItems:journey.commentPlaceholder")}
+              showQuickAttachButton={false}
+            />
+            {commentError && <p role="alert">{commentError}</p>}
+            <Button
+              type="button"
+              className="self-end"
+              disabled={commentMutation.isPending || !commentText.trim()}
+              onClick={() => commentMutation.mutate()}
+            >
+              {commentMutation.isPending
+                ? t("workItems:journey.commentSending")
+                : t("workItems:journey.commentSend")}
+            </Button>
+          </div>
         )}
       </section>
     </div>

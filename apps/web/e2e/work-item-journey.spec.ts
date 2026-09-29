@@ -38,6 +38,7 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   let assigned = false;
   let permissioned = true;
   let accessDenied = false;
+  let postedComment = false;
   const activity: Array<Record<string, unknown>> = [];
   const richComment = {
     id: "comment-rich",
@@ -77,6 +78,7 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
     },
   };
   const routeCalls: string[] = [];
+  page.on("pageerror", (error) => console.error("Browser page error:", error));
   const session = {
     session: {
       id: "session-e2e",
@@ -187,6 +189,8 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
         inviteUsers: false,
         manageTeam: false,
         removeMembers: false,
+        createPublicComments: permissioned,
+        createInternalComments: permissioned,
       });
     if (path === `/api/workspace/${workspaceId}/work-item-types`)
       return json([{ id: typeId, key: "task", name: "Task" }]);
@@ -266,6 +270,31 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
           openWorkCount: 0,
         },
       ]);
+    if (
+      path === "/api/work-items/WLP-1/comments" &&
+      request.method() === "POST"
+    ) {
+      const body = request.postDataJSON() as {
+        body: Record<string, unknown>;
+        visibility: string;
+      };
+      expect(body.visibility).toBe("public");
+      expect(JSON.stringify(body.body)).toContain("Customer-safe update");
+      postedComment = true;
+      const comment = {
+        id: "comment-posted",
+        workItemId: item.id,
+        actorId: "person-agent",
+        actorType: "person",
+        verb: "commented",
+        visibility: body.visibility,
+        body: body.body,
+        createdAt: "2026-09-29T10:03:00.000Z",
+        kind: "comment",
+      };
+      activity.unshift(comment);
+      return json(comment);
+    }
     if (
       path === "/api/work-items/WLP-1/assign" &&
       request.method() === "POST"
@@ -377,6 +406,36 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(displayedActivity.first()).toContainText("Older note");
   await expect(displayedActivity.last()).toContainText("Tiptap note");
 
+  await page.getByLabel("Comment visibility").click();
+  await page.getByRole("option", { name: "Public" }).click();
+  await page
+    .locator('[contenteditable="true"][aria-label="Write a comment"]')
+    .fill("Customer-safe update");
+  await page.getByRole("button", { name: "Send comment" }).click();
+  await expect.poll(() => postedComment).toBe(true);
+  await expect(
+    page.getByText("Customer-safe update", { exact: true }),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Comments only" }).click();
+  await expect(page).toHaveURL(/activity=comments/);
+  await expect(
+    page.getByText("assignee: person-existing → person-e2e"),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Customer-safe update", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Public only" }).click();
+  await expect(page).toHaveURL(/activity=public/);
+  await expect(
+    page.getByText("assignee: person-existing → person-e2e"),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Customer-safe update", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Everything" }).click();
+  await expect(page).not.toHaveURL(/activity=/);
+
   permissioned = false;
   await page.reload();
   await expect(page.getByTestId("work-item-detail")).toBeVisible();
@@ -400,4 +459,7 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(page.getByTestId("work-item-journey")).toHaveCount(0);
   await expect(page.getByText("Tiptap note", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Older note", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByText("Customer-safe update", { exact: true }),
+  ).toHaveCount(0);
 });

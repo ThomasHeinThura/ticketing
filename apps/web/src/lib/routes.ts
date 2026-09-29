@@ -25,6 +25,23 @@ export type WorkItemSortField = (typeof WORK_ITEM_SORT_FIELDS)[number];
 export const WORK_ITEM_SORT_DIRECTIONS = ["asc", "desc"] as const;
 export type WorkItemSortDirection = (typeof WORK_ITEM_SORT_DIRECTIONS)[number];
 
+export const WORK_ITEM_ACTIVITY_FILTERS = [
+  "all",
+  "comments",
+  "public",
+] as const;
+export type WorkItemActivityFilter =
+  (typeof WORK_ITEM_ACTIVITY_FILTERS)[number];
+
+export function parseWorkItemActivityFilter(
+  value: unknown,
+): WorkItemActivityFilter {
+  return typeof value === "string" &&
+    (WORK_ITEM_ACTIVITY_FILTERS as readonly string[]).includes(value)
+    ? (value as WorkItemActivityFilter)
+    : "all";
+}
+
 // The screen inventory names three `layout` values on this one route
 // (`/agent/projects/{key}/work?layout=board|list|table`). Only `list` is built by this
 // slice -- board and table are separate, not-yet-built P1 rows in
@@ -122,8 +139,14 @@ export const routes = {
    */
   workItemDetail: {
     path: "/agent/work-items/$key" as const,
-    build: (params: { key: string }) =>
-      `/agent/work-items/${encodeURIComponent(params.key)}`,
+    build: (
+      params: { key: string },
+      search: { activity?: WorkItemActivityFilter } = {},
+    ) => {
+      const path = `/agent/work-items/${encodeURIComponent(params.key)}`;
+      const activity = parseWorkItemActivityFilter(search.activity);
+      return activity === "all" ? path : `${path}?activity=${activity}`;
+    },
   },
 };
 

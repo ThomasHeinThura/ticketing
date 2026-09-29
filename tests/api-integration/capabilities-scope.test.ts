@@ -13,7 +13,7 @@ import { createWorkspaceMember } from "./helpers/fixtures";
 // CAPABILITY_CHECKS itself, so they cannot catch a capability being pointed
 // at the WRONG permission (both sides of that comparison would move
 // together). This is the test that actually catches that: an edit to
-// capability-checks.ts that changes what any of the 16 keys checks, without
+// capability-checks.ts that changes what any key checks, without
 // updating the client to match, fails here first.
 const EXPECTED_CAPABILITY_CHECKS: Record<string, Record<string, string[]>> = {
   manageProjects: { project: ["create", "update", "delete"] },
@@ -32,9 +32,11 @@ const EXPECTED_CAPABILITY_CHECKS: Record<string, Record<string, string[]>> = {
   inviteUsers: { invitation: ["create"] },
   manageTeam: { member: ["update", "delete"] },
   removeMembers: { member: ["delete"] },
+  createPublicComments: { comment: ["create"] },
+  createInternalComments: { comment: ["create_internal"] },
 };
 
-// GET /api/capabilities -- one call replacing the client's 16-way
+// GET /api/capabilities -- one call replacing the client's
 // has-permission fan-out (retrofit plan, S2 row / matrix row 15, issue
 // #6). Scope tests: it must never answer for a workspace other than the
 // one asked about.
@@ -56,7 +58,7 @@ beforeEach(async () => {
   await resetTestDatabase();
 });
 
-describe("the 16-key capability vocabulary matches the client's fan-out exactly (A1-P5)", () => {
+describe("the capability vocabulary matches the client's fan-out exactly (A1-P5)", () => {
   it("checks the exact same permission map per key as apps/web/src/hooks/use-workspace-permission.ts", () => {
     expect(CAPABILITY_CHECKS).toEqual(EXPECTED_CAPABILITY_CHECKS);
   });

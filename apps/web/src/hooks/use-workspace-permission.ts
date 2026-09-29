@@ -7,9 +7,9 @@ import { useGetActiveWorkspaceUser } from "@/hooks/queries/workspace-users/use-a
 export type PermissionLevel = "owner" | "admin" | "member";
 
 // S3 (issue #6, retrofit plan §3, matrix row 15): native replacement for the
-// 16-way authClient.organization.hasPermission() fan-out, replaced by one
+// authClient.organization.hasPermission() fan-out, replaced by one
 // call to GET /api/capabilities (apps/api/src/capabilities/index.ts), which
-// computes the exact same 16 keys server-side over hasWorkspacePermission --
+// computes the same capability keys server-side over hasWorkspacePermission --
 // see apps/api/src/capabilities/capability-checks.ts, a deliberate
 // server-side duplicate of the map this file used to carry.
 type Capability = keyof typeof EMPTY_CAPABILITIES;
@@ -36,6 +36,8 @@ const EMPTY_CAPABILITIES = {
   inviteUsers: false,
   manageTeam: false,
   removeMembers: false,
+  createPublicComments: false,
+  createInternalComments: false,
 } as const satisfies Record<string, boolean>;
 
 export function useWorkspacePermission() {
@@ -44,7 +46,7 @@ export function useWorkspacePermission() {
   const workspaceId = activeWorkspace?.id;
   const role = activeMember?.role as string | undefined;
 
-  // One query per (workspaceId, role) that replaces all 16 round trips with
+  // One query per (workspaceId, role) that replaces all round trips with
   // a single GET /api/capabilities call. Refetches when either changes,
   // e.g. when the admin edits the role's permissions in the Roles UI and we
   // invalidate this key -- see use-update-workspace-user-role.ts and
@@ -93,6 +95,8 @@ export function useWorkspacePermission() {
       canInviteUsers: () => can.inviteUsers,
       canManageTeam: () => can.manageTeam,
       canRemoveMembers: () => can.removeMembers,
+      canCreatePublicComments: () => can.createPublicComments,
+      canCreateInternalComments: () => can.createInternalComments,
     };
   }, [can]);
 

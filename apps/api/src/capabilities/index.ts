@@ -22,7 +22,7 @@ const getCapabilitiesRoute = createRoute({
   tags: ["Capabilities"],
   summary: "Get the caller's capabilities in a workspace",
   description:
-    "One call replacing the 16-way has-permission fan-out the client made against the organization() plugin's /organization/has-permission (apps/web/src/hooks/use-workspace-permission.ts). Computed over hasWorkspacePermission -- the same TaskDesk-native authorization check every other route already uses.",
+    "One call replacing the has-permission fan-out the client made against the organization() plugin's /organization/has-permission (apps/web/src/hooks/use-workspace-permission.ts). Computed over hasWorkspacePermission -- the same TaskDesk-native authorization check every other route already uses.",
   middleware: [requireSessionOnly(), workspaceAccess.fromQuery()] as const,
   request: { query: workspaceIdQuery },
   responses: {
@@ -42,7 +42,7 @@ const getCapabilitiesRoute = createRoute({
 const capabilities = apiRouter<
   BaseVariables & { workspaceId: string }
 >().openapi(getCapabilitiesRoute, async (c) => {
-  // Issue #82. Asked BEFORE the sixteen checks, and asked through the evaluator's own
+  // Issue #82. Asked BEFORE the eighteen checks, and asked through the evaluator's own
   // resolution rather than a second reading of the same rows, so this endpoint cannot
   // disagree with `hasWorkspacePermission` about what the row means -- a second reading
   // that drifts is the precise defect #82 is about.

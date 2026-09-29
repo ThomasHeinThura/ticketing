@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_WORK_ITEM_LIST_SEARCH,
+  parseWorkItemActivityFilter,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   routes,
@@ -108,5 +109,22 @@ describe("routes.workItemDetail", () => {
     expect(routes.workItemDetail.build({ key: "a/b" })).toBe(
       "/agent/work-items/a%2Fb",
     );
+  });
+
+  it("round-trips each activity filter in the work item URL", () => {
+    for (const activity of ["all", "comments", "public"] as const) {
+      const url = routes.workItemDetail.build(
+        { key: "PROJ-123" },
+        { activity },
+      );
+      const parsed = parseWorkItemActivityFilter(
+        new URL(url, "https://taskdesk.example").searchParams.get("activity"),
+      );
+      expect(parsed).toBe(activity);
+    }
+  });
+
+  it("falls back to all for malformed activity filters", () => {
+    expect(parseWorkItemActivityFilter("internal-only")).toBe("all");
   });
 });

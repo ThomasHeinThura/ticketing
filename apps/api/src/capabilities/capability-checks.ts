@@ -1,10 +1,10 @@
 /**
- * The 16 capability checks the client's `useWorkspacePermission` hook fans
+ * The 18 capability checks the client's `useWorkspacePermission` hook fans
  * out, one HTTP round trip each, to the better-auth `organization()`
  * plugin's `has-permission` route
  * (`apps/web/src/hooks/use-workspace-permission.ts:15-32`). `GET
  * /api/capabilities` (S2, issue #6, retrofit plan matrix row 15) computes
- * the same 16 keys server-side, in one round trip, over
+ * the same capability keys server-side, in one round trip, over
  * `hasWorkspacePermission`
  * (`apps/api/src/utils/require-workspace-permission.ts:87`) -- the exact
  * TaskDesk-native check every other authenticated route already goes
@@ -38,6 +38,8 @@ export const CAPABILITY_CHECKS = {
   inviteUsers: { invitation: ["create"] },
   manageTeam: { member: ["update", "delete"] },
   removeMembers: { member: ["delete"] },
+  createPublicComments: { comment: ["create"] },
+  createInternalComments: { comment: ["create_internal"] },
 } satisfies Record<string, Record<string, string[]>>;
 
 export type CapabilityName = keyof typeof CAPABILITY_CHECKS;

@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
   Input,
 } from "@taskdesk/ui";
-import type { Editor } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Table } from "@tiptap/extension-table";
@@ -78,7 +78,9 @@ import { uploadTaskImage } from "@/lib/upload-task-image";
 type CommentEditorProps = {
   value: string;
   onChange?: (value: string) => void;
+  onDocumentChange?: (value: JSONContent) => void;
   placeholder?: string;
+  ariaLabel?: string;
   className?: string;
   contentClassName?: string;
   proseClassName?: string;
@@ -172,7 +174,9 @@ type EmbedComposerState = {
 export default function CommentEditor({
   value,
   onChange,
+  onDocumentChange,
   placeholder,
+  ariaLabel,
   className,
   contentClassName,
   proseClassName,
@@ -218,8 +222,10 @@ export default function CommentEditor({
   const uploadSurfaceRef = useRef(uploadSurface);
   const onSubmitShortcutRef = useRef(onSubmitShortcut);
   const onCancelShortcutRef = useRef(onCancelShortcut);
+  const onDocumentChangeRef = useRef(onDocumentChange);
   onSubmitShortcutRef.current = onSubmitShortcut;
   onCancelShortcutRef.current = onCancelShortcut;
+  onDocumentChangeRef.current = onDocumentChange;
   const readOnlyRef = useRef(readOnly);
   readOnlyRef.current = readOnly;
   const pendingImageInsertRef = useRef<{
@@ -663,6 +669,7 @@ export default function CommentEditor({
             proseClassName || "taskdesk-comment-editor-prose",
             readOnly && "taskdesk-comment-editor-prose-readonly",
           ),
+          ...(ariaLabel ? { "aria-label": ariaLabel } : {}),
         },
         handlePaste: (view, event) => {
           if (readOnly || disabled) return false;
@@ -903,7 +910,9 @@ export default function CommentEditor({
         },
       },
       onUpdate: ({ editor: activeEditor }) => {
-        if (readOnly || disabled || !onChange || isSyncingRef.current) return;
+        if (readOnly || disabled || isSyncingRef.current) return;
+        onDocumentChangeRef.current?.(activeEditor.getJSON());
+        if (!onChange) return;
         const markdown = normalizeMarkdown(activeEditor.getMarkdown());
         latestValueRef.current = markdown;
         onChange(markdown);

@@ -1,24 +1,43 @@
 import type { Context } from "hono";
+import hasCommentCapability from "../../comment/has-comment-capability";
 import { hasWorkspacePermission } from "../../utils/require-workspace-permission";
 import { CAPABILITY_CHECKS, type CapabilityName } from "../capability-checks";
 
 export type CapabilityMap = Record<CapabilityName, boolean>;
 
 /**
- * Computes all 16 capability checks in parallel over `hasWorkspacePermission`,
- * which reads `c.get("workspaceId")` / `c.get("userId")` / `c.get("apiKey")`
- * itself -- the same context vars every other authenticated route already
- * relies on. No new authorization primitive is introduced here.
+ * Computes the existing capability checks over `hasWorkspacePermission` and
+ * the comment capabilities over the same canonical check used by comment
+ * creation. Both use the caller identity and workspace resolved by this route.
  */
 async function getCapabilities(c: Context): Promise<CapabilityMap> {
   const entries = Object.entries(CAPABILITY_CHECKS) as Array<
     [CapabilityName, Record<string, string[]>]
   >;
   const results = await Promise.all(
-    entries.map(
-      async ([name, permissions]) =>
-        [name, await hasWorkspacePermission(c, permissions)] as const,
-    ),
+    entries.map(async ([name, permissions]) => {
+      if (name === "createPublicComments") {
+        return [
+          name,
+          await hasCommentCapability(
+            c.get("workspaceId"),
+            c.get("userId"),
+            "comment:create",
+          ),
+        ] as const;
+      }
+      if (name === "createInternalComments") {
+        return [
+          name,
+          await hasCommentCapability(
+            c.get("workspaceId"),
+            c.get("userId"),
+            "comment:create_internal",
+          ),
+        ] as const;
+      }
+      return [name, await hasWorkspacePermission(c, permissions)] as const;
+    }),
   );
   return Object.fromEntries(results) as CapabilityMap;
 }

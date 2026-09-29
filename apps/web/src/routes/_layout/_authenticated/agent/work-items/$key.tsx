@@ -6,6 +6,10 @@ import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { HttpError } from "@/lib/http-error";
+import {
+  parseWorkItemActivityFilter,
+  type WorkItemActivityFilter,
+} from "@/lib/routes";
 
 /**
  * `docs/02-design/screen-inventory.md` "Work item — full page" (P1),
@@ -20,11 +24,20 @@ import { HttpError } from "@/lib/http-error";
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/work-items/$key",
 )({
+  validateSearch: (search) => ({
+    activity:
+      search.activity === undefined
+        ? undefined
+        : parseWorkItemActivityFilter(search.activity),
+  }),
   component: WorkItemDetailRouteComponent,
 });
 
 function WorkItemDetailRouteComponent() {
   const { key } = Route.useParams();
+  const { activity: searchActivity } = Route.useSearch();
+  const activity: WorkItemActivityFilter = searchActivity ?? "all";
+  const navigate = Route.useNavigate();
 
   const { data: workspace } = useActiveWorkspace();
   const { data: projects } = useGetProjects({
@@ -69,7 +82,16 @@ function WorkItemDetailRouteComponent() {
         />
         {visibleItem && (
           <WorkItemJourney
+            key={visibleItem.key}
             item={visibleItem}
+            activityFilter={activity}
+            onActivityFilterChange={(nextFilter) => {
+              void navigate({
+                search: {
+                  activity: nextFilter === "all" ? undefined : nextFilter,
+                },
+              });
+            }}
             onSaved={() => {
               void refetch();
             }}

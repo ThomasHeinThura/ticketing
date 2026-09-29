@@ -11,12 +11,18 @@ import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemJourney from "./work-item-journey";
 
-const permissionFlags = vi.hoisted(() => ({ update: true, assign: true }));
+const permissionFlags = vi.hoisted(() => ({
+  update: true,
+  assign: true,
+  publicComments: false,
+  internalComments: false,
+}));
 const activityFetcher = vi.hoisted(() => vi.fn());
 const updateWorkItem = vi.fn();
 const assignWorkItem = vi.fn();
 const unassignWorkItem = vi.fn();
 const getAssignablePeople = vi.fn();
+const createWorkItemComment = vi.fn();
 vi.mock("@/fetchers/work-item/update-work-item", () => ({
   default: (...args: unknown[]) => updateWorkItem(...args),
 }));
@@ -32,10 +38,44 @@ vi.mock("@/fetchers/work-item/assign-work-item", () => ({
 vi.mock("@/fetchers/work-item/unassign-work-item", () => ({
   default: (...args: unknown[]) => unassignWorkItem(...args),
 }));
+vi.mock("@/fetchers/work-item/create-work-item-comment", () => ({
+  default: (...args: unknown[]) => createWorkItemComment(...args),
+}));
+vi.mock("@/components/activity/comment-editor", () => ({
+  default: (props: {
+    ariaLabel: string;
+    value: string;
+    onChange: (value: string) => void;
+    onDocumentChange: (value: unknown) => void;
+  }) => (
+    <textarea
+      aria-label={props.ariaLabel}
+      value={props.value}
+      onChange={(event) => {
+        const value = event.target.value;
+        props.onChange(value);
+        props.onDocumentChange({
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: value ? [{ type: "text", text: value }] : [],
+            },
+          ],
+        });
+      }}
+    />
+  ),
+}));
+vi.mock("react-i18next", () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
 vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canUpdateTasks: () => permissionFlags.update,
     canAssignTasks: () => permissionFlags.assign,
+    canCreatePublicComments: () => permissionFlags.publicComments,
+    canCreateInternalComments: () => permissionFlags.internalComments,
     isCheckingPermissions: false,
   }),
 }));
@@ -59,6 +99,10 @@ beforeEach(() => {
   getAssignablePeople.mockResolvedValue([]);
   permissionFlags.update = true;
   permissionFlags.assign = true;
+  permissionFlags.publicComments = false;
+  permissionFlags.internalComments = false;
+  createWorkItemComment.mockReset();
+  createWorkItemComment.mockResolvedValue({});
 });
 
 function makeItem(): WorkItemDetailRow {
@@ -328,5 +372,180 @@ describe("WorkItemJourney", () => {
       await screen.findByRole("button", { name: "workItems:journey.unassign" }),
     );
     await waitFor(() => expect(unassignWorkItem).toHaveBeenCalledWith("WLP-1"));
+  });
+
+  it("resets edit and assignment drafts when the mounted journey changes work items", async () => {
+    updateWorkItem.mockResolvedValue({});
+    const first = makeItem();
+    first.assigneeId = "person-a";
+    const second = {
+      ...makeItem(),
+      id: "wi_2",
+      key: "WLP-2",
+      title: "Second item",
+      version: 12,
+      assigneeId: "person-b",
+    };
+    getAssignablePeople.mockResolvedValue([
+      { personId: "person-a", name: "Person A", roleName: "Member" },
+      { personId: "person-b", name: "Person B", roleName: "Member" },
+      { personId: "person-c", name: "Person C", roleName: "Member" },
+    ]);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney item={first} onSaved={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.edit" }),
+    );
+    fireEvent.change(screen.getByLabelText("workItems:journey.title"), {
+      target: { value: "Draft for first item" },
+    });
+    const firstAssignee = await screen.findByRole("combobox", {
+      name: "workItems:journey.assignee",
+    });
+    fireEvent.click(firstAssignee);
+    fireEvent.click(
+      await screen.findByRole("option", {
+        name: "Person C · Member",
+      }),
+    );
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney item={second} onSaved={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "workItems:journey.edit" }),
+    );
+    expect(screen.getByLabelText("workItems:journey.title")).toHaveValue(
+      "Second item",
+    );
+    expect(screen.queryByDisplayValue("Draft for first item")).toBeNull();
+    const secondAssignee = screen.getByRole("combobox", {
+      name: "workItems:journey.assignee",
+    });
+    expect(secondAssignee).toHaveTextContent("person-b");
+    fireEvent.change(screen.getByLabelText("workItems:journey.title"), {
+      target: { value: "Second item edited" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.save" }),
+    );
+    await waitFor(() =>
+      expect(updateWorkItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          key: "WLP-2",
+          version: 12,
+          title: "Second item edited",
+        }),
+      ),
+    );
+  });
+
+  it("filters activity and only shows a composer for allowed comment visibility", async () => {
+    permissionFlags.update = false;
+    permissionFlags.assign = false;
+    permissionFlags.internalComments = true;
+    const publicActivity = {
+      id: "public-change",
+      kind: "activity",
+      verb: "updated",
+      field: "title",
+      visibility: "public",
+      createdAt: "2026-09-29T10:00:00.000Z",
+    };
+    const internalComment = {
+      id: "internal-note",
+      kind: "comment",
+      verb: "commented",
+      visibility: "internal",
+      body: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text: "Staff-only note" }],
+          },
+        ],
+      },
+      createdAt: "2026-09-29T09:00:00.000Z",
+    };
+    activityFetcher.mockResolvedValue({
+      data: [publicActivity, internalComment],
+      page: { hasMore: false, nextCursor: null },
+    });
+    const onActivityFilterChange = vi.fn();
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney
+          item={makeItem()}
+          activityFilter="comments"
+          onActivityFilterChange={onActivityFilterChange}
+          onSaved={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Staff-only note")).toBeInTheDocument();
+    expect(screen.queryByText("title: — → —")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "workItems:journey.filterComments" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.filterPublic" }),
+    );
+    expect(onActivityFilterChange).toHaveBeenCalledWith("public");
+
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney
+          item={makeItem()}
+          activityFilter="public"
+          onActivityFilterChange={onActivityFilterChange}
+          onSaved={vi.fn()}
+        />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("title: — → —")).toBeInTheDocument();
+    expect(screen.queryByText("Staff-only note")).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "workItems:journey.commentVisibility: workItems:journey.internal",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.change(
+      screen.getByRole("textbox", {
+        name: "workItems:journey.commentEditor",
+      }),
+      { target: { value: "Staff-only draft" } },
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.commentSend" }),
+    );
+    await waitFor(() =>
+      expect(createWorkItemComment).toHaveBeenCalledWith({
+        key: "WLP-1",
+        body: {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [{ type: "text", text: "Staff-only draft" }],
+            },
+          ],
+        },
+        visibility: "internal",
+      }),
+    );
   });
 });

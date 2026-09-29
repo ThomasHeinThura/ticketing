@@ -162,6 +162,12 @@
           },
           "removeMembers": {
             "type": "boolean"
+          },
+          "createPublicComments": {
+            "type": "boolean"
+          },
+          "createInternalComments": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -180,7 +186,9 @@
           "deleteWorkspace",
           "inviteUsers",
           "manageTeam",
-          "removeMembers"
+          "removeMembers",
+          "createPublicComments",
+          "createInternalComments"
         ]
       },
       "MalformedMembershipRole": {

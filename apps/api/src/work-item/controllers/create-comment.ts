@@ -1,13 +1,9 @@
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import hasCommentCapability from "../../comment/has-comment-capability";
 import db from "../../database";
 import { commentTable, workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { builtInRoleHasCapability } from "../../utils/require-workspace-capability";
-import {
-  isUnambiguousMembership,
-  workspaceMemberRoles,
-} from "../../utils/workspace-member-roles";
 import type { ActivityActorType } from "../activity";
 import {
   assertProjectStillLive,
@@ -44,11 +40,7 @@ export async function createComment(
       ? "comment:create"
       : "comment:create_internal";
 
-  const roles = await workspaceMemberRoles(db, workspaceId, actorId);
-  if (
-    !isUnambiguousMembership(roles) ||
-    !(await builtInRoleHasCapability(workspaceId, roles[0], requiredCapability))
-  ) {
+  if (!(await hasCommentCapability(workspaceId, actorId, requiredCapability))) {
     throw new HTTPException(403, {
       message: `Missing ${requiredCapability} permission`,
     });
