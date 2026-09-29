@@ -35,7 +35,8 @@ archive, and possible orphaned private storage after a failed best-effort deleti
 healthy. The last browser HAR contained 54 requests, with no `localhost:1337` requests and no
 4xx responses. On this refresh, the orchestrator could not resolve `uat.taskdesk.app`, so it
 could not repeat the external health/browser check. The UAT Postgres read at 2026-09-29
-09:39 UTC found 25 shadow tallies across 12 router groups: 21 `agree`, 4 `unevaluated`
+09:39 UTC found 25 shadow observations across 12 router groups, aggregated into 17
+tally rows: 21 `agree`, 4 `unevaluated`
 (notification and platform fallback); all four event rows are `unevaluated`, with no
 mismatch or evaluator-error rows. The most recent tally is from 2026-09-28 16:46 UTC, so
 this is low-volume evidence with no activity for nearly 17 hours and incomplete route-group
