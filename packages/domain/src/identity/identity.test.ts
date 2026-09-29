@@ -210,6 +210,34 @@ describe("P3 identity core", () => {
     ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
   });
 
+  it.each([undefined, "", "   "])(
+    "IP-9: rejects matching bindings with an empty owner id %s",
+    (identityConnectionId) => {
+      const malformedOwner = {
+        domain: "example.com",
+        identityConnectionId,
+      } as unknown as IdentityDomainOwner;
+
+      expect(
+        normalise(claims({ email: "person@example.com" }), connection(), [
+          malformedOwner,
+        ]),
+      ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
+    },
+  );
+
+  it("IP-9: rejects duplicate matching bindings when an owner id is missing", () => {
+    const missingOwner = {
+      domain: "example.com",
+    } as unknown as IdentityDomainOwner;
+    expect(
+      normalise(claims({ email: "person@example.com" }), connection(), [
+        { domain: "EXAMPLE.COM", identityConnectionId: CONNECTION_ID },
+        missingOwner,
+      ]),
+    ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
+  });
+
   it("IP-28: accepts group object ids and ignores overage claims without a Graph lookup", () => {
     expect(
       normalise(

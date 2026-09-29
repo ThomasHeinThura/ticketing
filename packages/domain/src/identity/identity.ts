@@ -121,21 +121,28 @@ export function normaliseEntraClaims(
   }
 
   const addressDomain = address.slice(address.lastIndexOf("@") + 1);
+  let matchingBindingCount = 0;
   let domainOwner: string | undefined;
   for (const binding of domainOwners) {
     const bindingDomain = normaliseEmailDomain(binding.domain);
+    const bindingOwnerId: unknown = binding.identityConnectionId;
     // Invalid configured data must not silently turn off a domain restriction.
-    if (bindingDomain === undefined) {
+    if (
+      bindingDomain === undefined ||
+      typeof bindingOwnerId !== "string" ||
+      bindingOwnerId.trim().length === 0
+    ) {
       return { ok: false, reason: "ambiguous_domain_binding" };
     }
     if (bindingDomain !== addressDomain) continue;
-    if (domainOwner !== undefined) {
+    matchingBindingCount += 1;
+    if (matchingBindingCount > 1) {
       return { ok: false, reason: "ambiguous_domain_binding" };
     }
-    domainOwner = binding.identityConnectionId;
+    domainOwner = bindingOwnerId;
   }
   if (
-    domainOwner !== undefined &&
+    matchingBindingCount > 0 &&
     domainOwner !== connection.identityConnectionId
   ) {
     return { ok: false, reason: "domain_bound_elsewhere" };
