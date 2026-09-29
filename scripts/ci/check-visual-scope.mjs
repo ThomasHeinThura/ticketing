@@ -134,46 +134,81 @@ function awaitedScreenshotName(statement) {
     return undefined;
   }
   const [name] = statement.expression.expression.arguments;
-  return ts.isStringLiteral(name) ? name.text : undefined;
+  if (!ts.isStringLiteral(name)) return undefined;
+  return {
+    name: name.text,
+    start: statement.getStart(),
+    end: statement.expression.expression.end,
+  };
 }
 
-function directTestScreenshots(callback) {
-  if (!ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) {
-    return new Set();
-  }
-  return new Set(
-    callback.body.statements
-      .map(awaitedScreenshotName)
-      .filter((name) => name !== undefined),
+function isPageNavigationCall(node) {
+  return (
+    ts.isCallExpression(node) &&
+    isNamedProperty(node.expression, "goto") &&
+    ts.isIdentifier(node.expression.expression) &&
+    node.expression.expression.text === "page"
   );
 }
 
-function awaitedPageNavigation(statement) {
-  if (
-    !ts.isExpressionStatement(statement) ||
-    !ts.isAwaitExpression(statement.expression) ||
-    !ts.isCallExpression(statement.expression.expression) ||
-    !isNamedProperty(statement.expression.expression.expression, "goto") ||
-    !ts.isIdentifier(statement.expression.expression.expression.expression) ||
-    statement.expression.expression.expression.expression.text !== "page"
-  ) {
-    return undefined;
-  }
-
-  const [url] = statement.expression.expression.arguments;
-  return ts.isStringLiteral(url) ? url.text : undefined;
+function isScreenshotCall(node) {
+  return (
+    ts.isCallExpression(node) &&
+    isNamedProperty(node.expression, "toHaveScreenshot")
+  );
 }
 
-function directTestNavigations(callback) {
+function testVisualEvidence(callback) {
   if (!ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) {
-    return [];
+    return {
+      screenshots: [],
+      directScreenshots: [],
+      navigations: [],
+      directNavigations: [],
+    };
   }
-  return callback.body.statements
-    .map(awaitedPageNavigation)
-    .filter((url) => url !== undefined);
+
+  const screenshots = [];
+  const navigations = [];
+  const visit = (node) => {
+    if (isScreenshotCall(node)) screenshots.push(node);
+    if (isPageNavigationCall(node)) navigations.push(node);
+    node.forEachChild(visit);
+  };
+  visit(callback.body);
+
+  const directScreenshots = callback.body.statements
+    .map((statement) => ({
+      statement,
+      evidence: awaitedScreenshotName(statement),
+    }))
+    .filter(({ evidence }) => evidence !== undefined)
+    .map(({ evidence }) => evidence);
+  const directNavigations = callback.body.statements
+    .filter(
+      (statement) =>
+        ts.isExpressionStatement(statement) &&
+        ts.isAwaitExpression(statement.expression) &&
+        isPageNavigationCall(statement.expression.expression),
+    )
+    .map((statement) => {
+      const call = statement.expression.expression;
+      const [url] = call.arguments;
+      return {
+        url: ts.isStringLiteral(url) ? url.text : undefined,
+        start: statement.getStart(),
+        end: statement.end,
+      };
+    });
+
+  return { screenshots, directScreenshots, navigations, directNavigations };
 }
 
-function navigationMatchesApplicationRoute(navigation, applicationRoute) {
+function navigationMatchesApplicationRoute(
+  navigation,
+  applicationRoute,
+  inventoryRoute,
+) {
   // Visual route tests use a concrete path through Playwright's configured base
   // URL. Require that the path itself is the app route; an alias or redirect
   // must be declared explicitly in the manifest instead of silently standing in
@@ -182,8 +217,19 @@ function navigationMatchesApplicationRoute(navigation, applicationRoute) {
     return false;
   }
 
-  const actualPath = navigation.split(/[?#]/u, 1)[0];
-  const expectedPath = applicationRoute.split("?", 1)[0];
+  const actualUrl = new URL(navigation, "http://visual.invalid");
+  const expectedUrl = new URL(
+    inventoryRoute ?? applicationRoute,
+    "http://visual.invalid",
+  );
+  const actualPath = actualUrl.pathname;
+  const expectedPath = applicationRoute;
+  if (
+    actualUrl.search !== expectedUrl.search ||
+    actualUrl.hash !== expectedUrl.hash
+  ) {
+    return false;
+  }
   const actualSegments = actualPath.split("/").filter(Boolean);
   const expectedSegments = expectedPath.split("/").filter(Boolean);
   if (actualSegments.length !== expectedSegments.length) {
@@ -518,6 +564,8 @@ if (findDisabledSuite(visualSourceFile)) {
   );
 }
 
+let mappedPageNavigations = 0;
+let mappedScreenshotAssertions = 0;
 for (const screen of manifest) {
   if (seenTests.has(screen.test))
     failures.push(`duplicate test name: ${screen.test}`);
@@ -528,35 +576,54 @@ for (const screen of manifest) {
   const matchingCallbacks = visualSourceFile
     ? testCallbacks(visualSourceFile, screen.test)
     : [];
-  const matchingTests = matchingCallbacks.map(directTestScreenshots);
-  const matchingNavigations = matchingCallbacks.map(directTestNavigations);
+  const matchingEvidence = matchingCallbacks.map(testVisualEvidence);
   if (matchingCallbacks.some(findTestDisable)) {
     failures.push(`${screen.name} visual test cannot be skipped or fixme`);
   }
-  if (matchingTests.length === 0) {
+  if (matchingCallbacks.length === 0) {
     failures.push(
       `${screen.name} has no matching test in apps/web/e2e/visual.spec.ts`,
     );
-  } else if (matchingTests.length > 1) {
+  } else if (matchingCallbacks.length > 1) {
     failures.push(
       `${screen.name} has duplicate tests named ${JSON.stringify(screen.test)} in apps/web/e2e/visual.spec.ts`,
     );
-  } else if (!matchingTests[0].has(screen.screenshot)) {
+  } else if (
+    matchingEvidence[0].directScreenshots.length !== 1 ||
+    matchingEvidence[0].directScreenshots[0]?.name !== screen.screenshot ||
+    matchingEvidence[0].screenshots.length !== 1 ||
+    matchingEvidence[0].directScreenshots[0].end !==
+      matchingEvidence[0].screenshots[0].end
+  ) {
     failures.push(
-      `${screen.name} test does not capture its declared screenshot baseline`,
+      `${screen.name} test does not capture its declared screenshot baseline directly and exactly once`,
     );
   }
-  if (matchingNavigations.length === 1) {
-    const [navigations] = matchingNavigations;
+  if (matchingEvidence.length === 1) {
+    const evidence = matchingEvidence[0];
+    mappedPageNavigations += evidence.navigations.length;
+    mappedScreenshotAssertions += evidence.screenshots.length;
     if (
-      navigations.length !== 1 ||
+      evidence.navigations.length !== 1 ||
+      evidence.directNavigations.length !== 1 ||
+      evidence.directNavigations[0]?.url === undefined ||
       !navigationMatchesApplicationRoute(
-        navigations[0] ?? "",
+        evidence.directNavigations[0]?.url ?? "",
         screen.applicationRoute,
+        screen.inventoryRoute,
       )
     ) {
       failures.push(
-        `${screen.name} visual test does not navigate directly to its declared application route ${screen.applicationRoute}`,
+        `${screen.name} visual test must have exactly one direct awaited literal navigation to its declared application route ${screen.inventoryRoute ?? screen.applicationRoute}`,
+      );
+    }
+    if (
+      evidence.directNavigations.length === 1 &&
+      evidence.directScreenshots.length === 1 &&
+      evidence.directScreenshots[0].start < evidence.directNavigations[0].end
+    ) {
+      failures.push(
+        `${screen.name} visual test captures its screenshot before navigating to its declared route`,
       );
     }
   }
@@ -622,6 +689,23 @@ for (const screen of manifest) {
       `${screen.name} has no committed Playwright baseline at ${path.relative(repoRoot, baseline)}`,
     );
   }
+}
+
+let visualFilePageNavigations = 0;
+let visualFileScreenshotAssertions = 0;
+const countVisualFileNavigations = (node) => {
+  if (isPageNavigationCall(node)) visualFilePageNavigations += 1;
+  if (isScreenshotCall(node)) visualFileScreenshotAssertions += 1;
+  node.forEachChild(countVisualFileNavigations);
+};
+if (visualSourceFile) countVisualFileNavigations(visualSourceFile);
+if (
+  visualFilePageNavigations !== mappedPageNavigations ||
+  visualFileScreenshotAssertions !== mappedScreenshotAssertions
+) {
+  failures.push(
+    `${path.basename(visualSpecPath)} contains page navigation or screenshot assertions outside its named visual tests`,
+  );
 }
 
 for (const { name, route } of activeInventoryRows) {

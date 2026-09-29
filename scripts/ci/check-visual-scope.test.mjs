@@ -38,25 +38,62 @@ const SCREENS = [
 
 function visualSpec(
   screens,
-  { omitScreenshotFor, nestedScreenshotFor, disabledFor, wrongRouteFor } = {},
+  {
+    omitScreenshotFor,
+    nestedScreenshotFor,
+    disabledFor,
+    wrongRouteFor,
+    wrongQueryFor,
+    additionalNavigationFor,
+    helperNavigationFor,
+    nestedNavigationFor,
+    screenshotBeforeNavigationFor,
+  } = {},
 ) {
   return screens
-    .map(({ test: testName, screenshot, applicationRoute }) => {
+    .map(({ test: testName, screenshot, applicationRoute, inventoryRoute }) => {
+      const applicationPath = applicationRoute.replace(
+        /\$[A-Za-z0-9_]+/gu,
+        "sample",
+      );
+      const routeState = inventoryRoute
+        ? new URL(inventoryRoute, "http://visual.invalid").search
+        : "";
       const navigation =
         testName === wrongRouteFor
           ? "/agent/inbox"
-          : applicationRoute.replace(/\$[A-Za-z0-9_]+/gu, "sample");
+          : `${applicationPath}${testName === wrongQueryFor ? "?layout=board" : routeState}`;
       const screenshotEvidence =
         testName === omitScreenshotFor
-          ? "await page.goto('/');"
+          ? ""
           : testName === nestedScreenshotFor
             ? `const unused = () => expect(page).toHaveScreenshot(${JSON.stringify(screenshot)});`
             : `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)});`;
+      const additionalNavigation =
+        testName === additionalNavigationFor ? "await page.goto(target);" : "";
+      const targetDeclaration =
+        testName === additionalNavigationFor
+          ? 'const target = "/agent/inbox";'
+          : "";
+      const nestedNavigation =
+        testName === nestedNavigationFor
+          ? "if (true) { await page.goto('/'); }"
+          : "";
+      const helperNavigation =
+        testName === helperNavigationFor
+          ? "await navigateElsewhere(page);"
+          : "";
+      const beforeNavigation =
+        testName === screenshotBeforeNavigationFor
+          ? `${screenshotEvidence} `
+          : "";
+      const afterNavigation =
+        testName === screenshotBeforeNavigationFor ? "" : screenshotEvidence;
       return `test(${JSON.stringify(testName)}, async ({ page }) => { ${
         testName === disabledFor
           ? 'if (process.env.CI) test.fixme(true, "known issue");'
           : ""
-      } await page.goto(${JSON.stringify(navigation)}); ${screenshotEvidence} });`;
+      } ${targetDeclaration} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${additionalNavigation} ${nestedNavigation} ${helperNavigation} ${afterNavigation} });`;
     })
     .join("\n");
 }
@@ -197,7 +234,7 @@ test("G8 binds each declared screenshot to its own named test", async () => {
   );
 });
 
-test("G8 binds each visual test to its declared application route", async () => {
+test("G8 rejects a visual test that navigates to another application route", async () => {
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,
     source: visualSpec(SCREENS, { wrongRouteFor: "work list @visual" }),
@@ -206,7 +243,81 @@ test("G8 binds each visual test to its declared application route", async () => 
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /work-list visual test does not navigate directly to its declared application route \/agent\/projects\/\$projectKey\/work/,
+    /work-list visual test must have exactly one direct awaited literal navigation/,
+  );
+});
+
+test("G8 binds each visual test to its declared application route and query state", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, { wrongQueryFor: "work list @visual" }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /must have exactly one direct awaited literal navigation/,
+  );
+});
+
+test("G8 rejects an additional nonliteral route navigation", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      additionalNavigationFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list visual test must have exactly one direct awaited literal navigation/,
+  );
+});
+
+test("G8 rejects a nested conditional route navigation", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      nestedNavigationFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list visual test must have exactly one direct awaited literal navigation/,
+  );
+});
+
+test("G8 rejects route navigation hidden in an external helper", async () => {
+  const source = `async function navigateElsewhere(page) { await page.goto("/agent/inbox"); }\n${visualSpec(
+    SCREENS,
+    {
+      helperNavigationFor: "work list @visual",
+    },
+  )}`;
+  const result = await runVisualScope({ routes: ACTIVE_ROUTES, source });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /visual\.spec\.ts contains page navigation or screenshot assertions outside its named visual tests/,
+  );
+});
+
+test("G8 requires the screenshot capture to follow its declared route navigation", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      screenshotBeforeNavigationFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list visual test captures its screenshot before navigating to its declared route/,
   );
 });
 
