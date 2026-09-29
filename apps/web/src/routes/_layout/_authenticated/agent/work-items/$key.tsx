@@ -10,11 +10,9 @@ import { HttpError } from "@/lib/http-error";
 /**
  * `docs/02-design/screen-inventory.md` "Work item — full page" (P1),
  * `/agent/work-items/{key}` -- decision log "2026-09-23 · P1's UI path: new v2 work-item
- * screens on the new API". Read-only first slice: the header (state, assignee, priority,
- * due date), the description, and a details section, on `GET /api/work-items/{key}`.
- * The spec's other sections (activity and comments, relations, attachments, approvals,
- * SLA, time entries), edit/delete actions and the `?item=` side pane are separate
- * `screen-inventory.md` rows and separate slices.
+ * screens on the new API". The detail view reads `GET /api/work-items/{key}` and the
+ * supported P1 journey adds capability-gated edits, assignment, and the staff activity
+ * stream.
  *
  * The route has existed as a registered stub since #306 (the list's row links resolve
  * here); this replaces the stub, so the URL contract does not change.

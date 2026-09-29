@@ -1,10 +1,13 @@
 import { client } from "@taskdesk/libs";
 import { HttpError } from "@/lib/http-error";
 
-export default async function getWorkItemActivity(key: string) {
+export default async function getWorkItemActivity(
+  key: string,
+  cursor?: string,
+) {
   const response = await client["work-items"][":key"].activity.$get({
     param: { key },
-    query: {},
+    query: cursor ? { cursor } : {},
   });
   if (!response.ok)
     throw new HttpError(response.status, "Failed to load work item activity");

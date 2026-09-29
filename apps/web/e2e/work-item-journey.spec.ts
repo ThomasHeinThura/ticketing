@@ -36,7 +36,45 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   };
   let created = false;
   let assigned = false;
+  let permissioned = true;
   const activity: Array<Record<string, unknown>> = [];
+  const richComment = {
+    id: "comment-rich",
+    workItemId: "item-e2e",
+    actorId: "person-agent",
+    actorType: "person",
+    verb: "commented",
+    field: null,
+    oldValue: null,
+    newValue: null,
+    payload: null,
+    visibility: "internal",
+    workflowVersionId: null,
+    createdAt: "2026-09-29T10:02:00.000Z",
+    kind: "comment",
+    body: {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Tiptap note", marks: [{ type: "bold" }] },
+          ],
+        },
+      ],
+    },
+  };
+  const olderComment = {
+    ...richComment,
+    id: "comment-older",
+    createdAt: "2026-09-29T09:00:00.000Z",
+    body: {
+      type: "doc",
+      content: [
+        { type: "paragraph", content: [{ type: "text", text: "Older note" }] },
+      ],
+    },
+  };
   const routeCalls: string[] = [];
   const session = {
     session: {
@@ -136,10 +174,10 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
         createProjects: false,
         updateProjects: false,
         deleteProjects: false,
-        updateTasks: true,
+        updateTasks: permissioned,
         createTasks: true,
         deleteTasks: false,
-        assignTasks: true,
+        assignTasks: permissioned,
         createLabels: false,
         updateLabels: false,
         deleteLabels: false,
@@ -262,11 +300,22 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
         version: item.version,
       });
     }
-    if (path === "/api/work-items/WLP-1/activity")
+    if (path === "/api/work-items/WLP-1/activity") {
+      if (url.searchParams.has("cursor"))
+        return json({
+          data: [olderComment],
+          page: { hasMore: false, nextCursor: null },
+        });
+      const rows = [...activity, richComment].sort(
+        (left, right) =>
+          Date.parse(String(right.createdAt)) -
+          Date.parse(String(left.createdAt)),
+      );
       return json({
-        data: activity,
-        page: { hasMore: false, nextCursor: null },
+        data: rows,
+        page: { hasMore: true, nextCursor: "older-page" },
       });
+    }
     return json({}, 404);
   });
 
@@ -299,5 +348,28 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(
     page.getByText("assignee: person-existing → person-e2e"),
   ).toBeVisible();
-  await expect(page.getByText("Internal", { exact: true })).toBeVisible();
+  await expect(page.getByText("Internal", { exact: true })).toHaveCount(2);
+  await expect(page.getByText("Tiptap note", { exact: true })).toBeVisible();
+  await expect(page.getByText("Tiptap note", { exact: true })).toHaveJSProperty(
+    "tagName",
+    "STRONG",
+  );
+  await page.getByRole("button", { name: "Load older activity" }).click();
+  await expect(page.getByText("Older note", { exact: true })).toBeVisible();
+  const displayedActivity = page
+    .getByTestId("work-item-journey")
+    .getByRole("listitem");
+  await expect(displayedActivity.first()).toContainText("Older note");
+  await expect(displayedActivity.last()).toContainText("Tiptap note");
+
+  permissioned = false;
+  await page.reload();
+  await expect(page.getByTestId("work-item-detail")).toBeVisible();
+  const journey = page.getByTestId("work-item-journey");
+  await expect(
+    journey.getByRole("button", { name: "Edit", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    journey.getByRole("heading", { name: "Assignment" }),
+  ).toHaveCount(0);
 });

@@ -2288,7 +2288,10 @@
 			"title": "Title",
 			"unnamedPerson": "Unnamed person",
 			"assigneePlaceholder": "Choose a person",
-			"visibilityUnavailable": "Visibility unavailable"
+			"visibilityUnavailable": "Visibility unavailable",
+			"assignToMe": "Assign to me",
+			"loadOlderActivity": "Load older activity",
+			"loadingOlderActivity": "Loading older activity…"
 		}
 	}
 }

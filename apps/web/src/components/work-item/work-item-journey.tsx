@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
@@ -15,10 +20,12 @@ import {
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import WorkItemActivityComment from "@/components/work-item/work-item-activity-comment";
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
 import getAssignablePeople from "@/fetchers/work-item/get-assignable-people";
 import getWorkItemActivity from "@/fetchers/work-item/get-work-item-activity";
 import updateWorkItem from "@/fetchers/work-item/update-work-item";
+import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { HttpError } from "@/lib/http-error";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 import type { WorkItemDetailRow } from "@/types/work-item";
@@ -40,6 +47,13 @@ export default function WorkItemJourney({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { canUpdateTasks, canAssignTasks, isCheckingPermissions } =
+    useWorkspacePermission();
+  const mayEdit = !isCheckingPermissions && canUpdateTasks();
+  const mayAssign =
+    !isCheckingPermissions && (canUpdateTasks() || canAssignTasks());
+  const selfAssignmentOnly =
+    !isCheckingPermissions && canUpdateTasks() && !canAssignTasks();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(item.title);
   const [description, setDescription] = useState(() => {
@@ -57,13 +71,19 @@ export default function WorkItemJourney({
   const [confirmReassign, setConfirmReassign] = useState(false);
   const [editError, setEditError] = useState("");
   const [assignError, setAssignError] = useState("");
-  const activity = useQuery({
+  const activity = useInfiniteQuery({
     queryKey: ["work-items", "activity", item.key],
-    queryFn: () => getWorkItemActivity(item.key),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => getWorkItemActivity(item.key, pageParam),
+    getNextPageParam: (lastPage) =>
+      lastPage.page.hasMore
+        ? (lastPage.page.nextCursor ?? undefined)
+        : undefined,
   });
   const assignees = useQuery({
     queryKey: ["projects", item.projectId, "assignable"],
     queryFn: () => getAssignablePeople(item.projectId),
+    enabled: mayAssign,
   });
   const invalidate = async () => {
     await Promise.all([
@@ -113,10 +133,10 @@ export default function WorkItemJourney({
     },
   });
   const assignMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (assigneeId: string) =>
       assignWorkItem({
         key: item.key,
-        assigneeId: selectedAssignee,
+        assigneeId,
         expectedCurrentAssigneeId: item.assigneeId,
       }),
     onSuccess: async () => {
@@ -146,13 +166,13 @@ export default function WorkItemJourney({
     setEditing(true);
     setEditError("");
   };
-  const submitAssignment = () => {
-    if (!selectedAssignee || selectedAssignee === item.assigneeId) return;
+  const submitAssignment = (assigneeId: string) => {
+    if (!assigneeId || assigneeId === item.assigneeId) return;
     if (item.assigneeId && !confirmReassign) {
       setConfirmReassign(true);
       return;
     }
-    assignMutation.mutate();
+    assignMutation.mutate(assigneeId);
   };
 
   return (
@@ -165,13 +185,13 @@ export default function WorkItemJourney({
           <h2 id="work-item-edit-heading" className="font-medium text-lg">
             {t("workItems:journey.editHeading")}
           </h2>
-          {!editing && (
+          {!editing && mayEdit && (
             <Button variant="outline" size="sm" onClick={startEditing}>
               {t("workItems:journey.edit")}
             </Button>
           )}
         </div>
-        {editing && (
+        {editing && mayEdit && (
           <form
             className="flex flex-col gap-3"
             onSubmit={(event) => {
@@ -245,81 +265,124 @@ export default function WorkItemJourney({
         )}
       </section>
 
-      <section
-        aria-labelledby="work-item-assignment-heading"
-        className="flex flex-col gap-3"
-      >
-        <h2 id="work-item-assignment-heading" className="font-medium text-lg">
-          {t("workItems:journey.assignmentHeading")}
-        </h2>
-        {assignees.isLoading ? (
-          <p role="status">{t("workItems:journey.loadingPeople")}</p>
-        ) : assignees.isError ? (
-          <p role="alert">{t("workItems:journey.peopleError")}</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="work-item-assignee">
-              {t("workItems:journey.assignee")}
-            </Label>
-            <Select
-              value={selectedAssignee}
-              onValueChange={(value) => {
-                setSelectedAssignee(value ?? "");
-                setConfirmReassign(false);
-              }}
-            >
-              <SelectTrigger id="work-item-assignee">
-                <SelectValue
-                  placeholder={t("workItems:journey.assigneePlaceholder")}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {assignees.data?.map((person) => (
-                  <SelectItem key={person.personId} value={person.personId}>
-                    {person.name ?? t("workItems:journey.unnamedPerson")} ·{" "}
-                    {person.roleName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {confirmReassign && (
-              <Alert variant="warning">
-                <AlertTitle>
-                  {t("workItems:journey.confirmReassign")}
-                </AlertTitle>
-                <AlertDescription>
-                  {t("workItems:journey.confirmReassignDescription")}
-                </AlertDescription>
-              </Alert>
-            )}
-            {assignError && <p role="alert">{assignError}</p>}
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                disabled={
-                  !selectedAssignee ||
-                  selectedAssignee === item.assigneeId ||
-                  assignMutation.isPending
-                }
-                onClick={submitAssignment}
-              >
-                {confirmReassign
-                  ? t("workItems:journey.confirmAssignment")
-                  : t("workItems:journey.assign")}
-              </Button>
+      {mayAssign && (
+        <section
+          aria-labelledby="work-item-assignment-heading"
+          className="flex flex-col gap-3"
+        >
+          <h2 id="work-item-assignment-heading" className="font-medium text-lg">
+            {t("workItems:journey.assignmentHeading")}
+          </h2>
+          {assignees.isLoading ? (
+            <p role="status">{t("workItems:journey.loadingPeople")}</p>
+          ) : assignees.isError ? (
+            <p role="alert">{t("workItems:journey.peopleError")}</p>
+          ) : selfAssignmentOnly ? (
+            <div className="flex flex-col gap-2">
+              {assignError && <p role="alert">{assignError}</p>}
               {confirmReassign && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setConfirmReassign(false)}
-                >
-                  {t("workItems:journey.cancel")}
-                </Button>
+                <Alert variant="warning">
+                  <AlertTitle>
+                    {t("workItems:journey.confirmReassign")}
+                  </AlertTitle>
+                  <AlertDescription>
+                    {t("workItems:journey.confirmReassignDescription")}
+                  </AlertDescription>
+                </Alert>
               )}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={
+                    !assignees.data?.[0] ||
+                    assignees.data[0].personId === item.assigneeId ||
+                    assignMutation.isPending
+                  }
+                  onClick={() => {
+                    const self = assignees.data?.[0];
+                    if (self) submitAssignment(self.personId);
+                  }}
+                >
+                  {confirmReassign
+                    ? t("workItems:journey.confirmAssignment")
+                    : t("workItems:journey.assignToMe")}
+                </Button>
+                {confirmReassign && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmReassign(false)}
+                  >
+                    {t("workItems:journey.cancel")}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </section>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="work-item-assignee">
+                {t("workItems:journey.assignee")}
+              </Label>
+              <Select
+                value={selectedAssignee}
+                onValueChange={(value) => {
+                  setSelectedAssignee(value ?? "");
+                  setConfirmReassign(false);
+                }}
+              >
+                <SelectTrigger id="work-item-assignee">
+                  <SelectValue
+                    placeholder={t("workItems:journey.assigneePlaceholder")}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {assignees.data?.map((person) => (
+                    <SelectItem key={person.personId} value={person.personId}>
+                      {person.name ?? t("workItems:journey.unnamedPerson")} ·{" "}
+                      {person.roleName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {confirmReassign && (
+                <Alert variant="warning">
+                  <AlertTitle>
+                    {t("workItems:journey.confirmReassign")}
+                  </AlertTitle>
+                  <AlertDescription>
+                    {t("workItems:journey.confirmReassignDescription")}
+                  </AlertDescription>
+                </Alert>
+              )}
+              {assignError && <p role="alert">{assignError}</p>}
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={
+                    !selectedAssignee ||
+                    selectedAssignee === item.assigneeId ||
+                    assignMutation.isPending
+                  }
+                  onClick={() => submitAssignment(selectedAssignee)}
+                >
+                  {confirmReassign
+                    ? t("workItems:journey.confirmAssignment")
+                    : t("workItems:journey.assign")}
+                </Button>
+                {confirmReassign && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setConfirmReassign(false)}
+                  >
+                    {t("workItems:journey.cancel")}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       <section
         aria-labelledby="work-item-activity-heading"
@@ -332,52 +395,64 @@ export default function WorkItemJourney({
           <p role="status">{t("workItems:journey.loadingActivity")}</p>
         ) : activity.isError ? (
           <p role="alert">{t("workItems:journey.activityError")}</p>
-        ) : activity.data?.data.length ? (
+        ) : activity.data?.pages.some((page) => page.data.length) ? (
           <ol className="flex flex-col gap-3">
-            {activity.data.data.map((row) => (
-              <li
-                key={`${row.kind ?? "activity"}-${row.id}`}
-                className="rounded-md border p-3 text-sm"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <strong>
-                    {row.kind === "comment"
-                      ? t("workItems:journey.comment")
-                      : row.verb}
-                  </strong>
-                  <time dateTime={row.createdAt}>
-                    {new Date(row.createdAt).toLocaleString()}
-                  </time>
-                </div>
-                <p className="text-muted-foreground">
-                  {row.visibility === "internal"
-                    ? t("workItems:journey.internal")
-                    : row.visibility === "public"
-                      ? t("workItems:journey.public")
-                      : t("workItems:journey.visibilityUnavailable")}
-                </p>
-                {row.kind === "comment" ? (
-                  <p className="whitespace-pre-wrap">
-                    {typeof row.body === "string"
-                      ? row.body
-                      : row.body
-                        ? JSON.stringify(row.body)
-                        : t("workItems:journey.commentDeleted")}
+            {[...activity.data.pages.flatMap((page) => page.data)]
+              .reverse()
+              .map((row) => (
+                <li
+                  key={`${row.kind ?? "activity"}-${row.id}`}
+                  className="rounded-md border p-3 text-sm"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <strong>
+                      {row.kind === "comment"
+                        ? t("workItems:journey.comment")
+                        : row.verb}
+                    </strong>
+                    <time dateTime={row.createdAt}>
+                      {new Date(row.createdAt).toLocaleString()}
+                    </time>
+                  </div>
+                  <p className="text-muted-foreground">
+                    {row.visibility === "internal"
+                      ? t("workItems:journey.internal")
+                      : row.visibility === "public"
+                        ? t("workItems:journey.public")
+                        : t("workItems:journey.visibilityUnavailable")}
                   </p>
-                ) : (
-                  <p>
-                    {row.field
-                      ? `${row.field}: ${String(row.oldValue ?? "—")} → ${String(row.newValue ?? "—")}`
-                      : row.verb}
-                  </p>
-                )}
-              </li>
-            ))}
+                  {row.kind === "comment" ? (
+                    row.body ? (
+                      <WorkItemActivityComment body={row.body} />
+                    ) : (
+                      <p>{t("workItems:journey.commentDeleted")}</p>
+                    )
+                  ) : (
+                    <p>
+                      {row.field
+                        ? `${row.field}: ${String(row.oldValue ?? "—")} → ${String(row.newValue ?? "—")}`
+                        : row.verb}
+                    </p>
+                  )}
+                </li>
+              ))}
           </ol>
         ) : (
           <p className="text-muted-foreground">
             {t("workItems:journey.noActivity")}
           </p>
+        )}
+        {activity.hasNextPage && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={activity.isFetchingNextPage}
+            onClick={() => void activity.fetchNextPage()}
+          >
+            {activity.isFetchingNextPage
+              ? t("workItems:journey.loadingOlderActivity")
+              : t("workItems:journey.loadOlderActivity")}
+          </Button>
         )}
       </section>
     </div>

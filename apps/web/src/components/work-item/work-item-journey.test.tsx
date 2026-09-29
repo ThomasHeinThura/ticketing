@@ -6,31 +6,53 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
 import type { WorkItemDetailRow } from "@/types/work-item";
 import WorkItemJourney from "./work-item-journey";
 
+const permissionFlags = vi.hoisted(() => ({ update: true, assign: true }));
+const activityFetcher = vi.hoisted(() => vi.fn());
 const updateWorkItem = vi.fn();
+const assignWorkItem = vi.fn();
+const getAssignablePeople = vi.fn();
 vi.mock("@/fetchers/work-item/update-work-item", () => ({
   default: (...args: unknown[]) => updateWorkItem(...args),
 }));
 vi.mock("@/fetchers/work-item/get-work-item-activity", () => ({
-  default: async () => ({
-    data: [],
-    page: { hasMore: false, nextCursor: null },
-  }),
+  default: (...args: unknown[]) => activityFetcher(...args),
 }));
 vi.mock("@/fetchers/work-item/get-assignable-people", () => ({
-  default: async () => [],
+  default: (...args: unknown[]) => getAssignablePeople(...args),
 }));
 vi.mock("@/fetchers/work-item/assign-work-item", () => ({
-  default: async () => ({}),
+  default: (...args: unknown[]) => assignWorkItem(...args),
+}));
+vi.mock("@/hooks/use-workspace-permission", () => ({
+  useWorkspacePermission: () => ({
+    canUpdateTasks: () => permissionFlags.update,
+    canAssignTasks: () => permissionFlags.assign,
+    isCheckingPermissions: false,
+  }),
 }));
 
 afterEach(() => {
   cleanup();
+});
+
+beforeEach(() => {
   updateWorkItem.mockReset();
+  assignWorkItem.mockReset();
+  assignWorkItem.mockResolvedValue({});
+  activityFetcher.mockReset();
+  activityFetcher.mockResolvedValue({
+    data: [],
+    page: { hasMore: false, nextCursor: null },
+  });
+  getAssignablePeople.mockReset();
+  getAssignablePeople.mockResolvedValue([]);
+  permissionFlags.update = true;
+  permissionFlags.assign = true;
 });
 
 function makeItem(): WorkItemDetailRow {
@@ -144,5 +166,102 @@ describe("WorkItemJourney", () => {
       startDate: "2026-09-20T00:00:00.000Z",
       dueDate: "2026-10-10T00:00:00.000Z",
     });
+  });
+
+  it("hides edit and assignment controls when the capability response grants neither", async () => {
+    permissionFlags.update = false;
+    permissionFlags.assign = false;
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney item={makeItem()} onSaved={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("heading", {
+          name: "workItems:journey.activityHeading",
+        }),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole("button", { name: "workItems:journey.edit" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: "workItems:journey.assignmentHeading",
+      }),
+    ).not.toBeInTheDocument();
+    expect(getAssignablePeople).not.toHaveBeenCalled();
+  });
+
+  it("shows only self-assignment for update-only callers and loads older rich-text activity", async () => {
+    permissionFlags.assign = false;
+    getAssignablePeople.mockResolvedValue([
+      { personId: "self", name: "Current Agent", roleName: "Member" },
+    ]);
+    assignWorkItem.mockRejectedValue(new Error("Expected isolated test"));
+    const row = (id: string, text: string, createdAt: string) => ({
+      id,
+      kind: "comment",
+      verb: "commented",
+      createdAt,
+      visibility: "internal",
+      body: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [{ type: "text", text, marks: [{ type: "bold" }] }],
+          },
+        ],
+      },
+    });
+    activityFetcher
+      .mockResolvedValueOnce({
+        data: [row("new", "Newer comment", "2026-09-29T10:00:00.000Z")],
+        page: { hasMore: true, nextCursor: "older-cursor" },
+      })
+      .mockResolvedValueOnce({
+        data: [row("old", "Older comment", "2026-09-29T09:00:00.000Z")],
+        page: { hasMore: false, nextCursor: null },
+      });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney item={makeItem()} onSaved={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    const selfAssign = await screen.findByRole("button", {
+      name: "workItems:journey.assignToMe",
+    });
+    expect(
+      screen.queryByRole("combobox", { name: "workItems:journey.assignee" }),
+    ).not.toBeInTheDocument();
+    expect(await screen.findByText("Newer comment")).toBeInTheDocument();
+    expect(screen.getByText("Newer comment").tagName).toBe("STRONG");
+    fireEvent.click(selfAssign);
+    await waitFor(() =>
+      expect(assignWorkItem).toHaveBeenCalledWith({
+        key: "WLP-1",
+        assigneeId: "self",
+        expectedCurrentAssigneeId: null,
+      }),
+    );
+    const loadOlder = await screen.findByRole("button", {
+      name: "workItems:journey.loadOlderActivity",
+    });
+    fireEvent.click(loadOlder);
+    expect(await screen.findByText("Older comment")).toBeInTheDocument();
+    expect(activityFetcher).toHaveBeenLastCalledWith("WLP-1", "older-cursor");
+    const rows = screen.getAllByRole("listitem");
+    expect(rows[0]).toHaveTextContent("Older comment");
+    expect(rows[1]).toHaveTextContent("Newer comment");
   });
 });

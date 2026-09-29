@@ -2281,7 +2281,10 @@
 			"internal": "Internal",
 			"public": "Public",
 			"visibilityUnavailable": "Visibility unavailable",
-			"commentDeleted": "Comment deleted"
+			"commentDeleted": "Comment deleted",
+			"assignToMe": "Assign to me",
+			"loadOlderActivity": "Load older activity",
+			"loadingOlderActivity": "Loading older activity…"
 		}
 	}
 }
