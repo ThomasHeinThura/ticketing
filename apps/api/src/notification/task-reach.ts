@@ -1,4 +1,4 @@
-import { and, eq, exists } from "drizzle-orm";
+import { and, eq, exists, isNull } from "drizzle-orm";
 import db from "../database";
 import { notificationTable, projectTable, taskTable } from "../database/schema";
 import { reachableWorkspacePredicate } from "../utils/workspace-access-middleware";
@@ -14,6 +14,7 @@ export async function userCanReachTask(
     .where(
       and(
         eq(taskTable.id, taskId),
+        isNull(projectTable.deletedAt),
         reachableWorkspacePredicate(projectTable.workspaceId, userId),
       ),
     )
@@ -36,6 +37,7 @@ export function reachableTaskNotificationPredicate(userId: string) {
       .where(
         and(
           eq(taskTable.id, notificationTable.resourceId),
+          isNull(projectTable.deletedAt),
           reachableWorkspacePredicate(projectTable.workspaceId, userId),
         ),
       ),

@@ -28,6 +28,7 @@ async function getNotifications(userId: string) {
       projectTable,
       and(
         eq(taskTable.projectId, projectTable.id),
+        isNull(projectTable.deletedAt),
         reachableWorkspacePredicate(projectTable.workspaceId, userId),
       ),
     )

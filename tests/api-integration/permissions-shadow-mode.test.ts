@@ -550,6 +550,8 @@ describe("#8 notification self-read shadow evidence", () => {
       caller.workspace.id,
       "Deleted task",
     );
+    const { task: softDeletedProjectTask, project: softDeletedProject } =
+      await createTask(caller.workspace.id, "Soft-deleted project task");
     const [privateNotification] = await fresh.db
       .insert(fresh.schema.notificationTable)
       .values({
@@ -598,9 +600,41 @@ describe("#8 notification self-read shadow evidence", () => {
         workspaceId: caller.workspace.id,
       },
     );
+    const softDeletedProjectNotification = await createOwnNotification(
+      softDeletedProjectTask.id,
+      "Soft-deleted project notification",
+      {
+        taskTitle: "Soft-deleted project notification",
+        projectId: softDeletedProject.id,
+        workspaceId: caller.workspace.id,
+      },
+    );
     await fresh.db
       .delete(fresh.schema.taskTable)
       .where(eq(fresh.schema.taskTable.id, deletedTask.id));
+    await fresh.db
+      .update(fresh.schema.projectTable)
+      .set({
+        deletedAt: new Date(),
+        purgeAfter: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      })
+      .where(eq(fresh.schema.projectTable.id, softDeletedProject.id));
+    const hiddenTaskCreateResponse = await fresh.app.request(
+      "/api/notification",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: "Hidden project task attempt",
+          message: "Must not be stored",
+          type: "info",
+          relatedEntityId: softDeletedProjectTask.id,
+          relatedEntityType: "task",
+        }),
+      },
+    );
+    expect(hiddenTaskCreateResponse.status).toBe(200);
+    expect(await hiddenTaskCreateResponse.json()).toBeNull();
 
     const response = await fresh.app.request("/api/notification");
     expect(response.status).toBe(200);
@@ -627,6 +661,7 @@ describe("#8 notification self-read shadow evidence", () => {
         privateNotification.id,
         ownNotification.id,
         deletedTaskNotification.id,
+        softDeletedProjectNotification.id,
       ]),
     });
     expect(
@@ -643,18 +678,39 @@ describe("#8 notification self-read shadow evidence", () => {
         (notification) => notification.id === deletedTaskNotification.id,
       )?.isRead,
     ).toBe(false);
+    expect(
+      readAllRows.find(
+        (notification) => notification.id === softDeletedProjectNotification.id,
+      )?.isRead,
+    ).toBe(false);
 
     const readResponse = await fresh.app.request(
       `/api/notification/${privateNotification.id}/read`,
       { method: "PATCH" },
     );
     expect(readResponse.status).toBe(404);
+    const inaccessibleReadBody = await readResponse.text();
     const privateNotificationAfterRead =
       await fresh.db.query.notificationTable.findFirst({
         where: eq(fresh.schema.notificationTable.id, privateNotification.id),
       });
     expect(privateNotificationAfterRead?.isRead).toBe(false);
-    const inaccessibleReadBody = await readResponse.text();
+    const softDeletedProjectReadResponse = await fresh.app.request(
+      `/api/notification/${softDeletedProjectNotification.id}/read`,
+      { method: "PATCH" },
+    );
+    expect(softDeletedProjectReadResponse.status).toBe(404);
+    expect(await softDeletedProjectReadResponse.text()).toBe(
+      inaccessibleReadBody,
+    );
+    const softDeletedProjectNotificationAfterRead =
+      await fresh.db.query.notificationTable.findFirst({
+        where: eq(
+          fresh.schema.notificationTable.id,
+          softDeletedProjectNotification.id,
+        ),
+      });
+    expect(softDeletedProjectNotificationAfterRead?.isRead).toBe(false);
     const missingReadResponse = await fresh.app.request(
       "/api/notification/nonexistent-notification/read",
       { method: "PATCH" },
@@ -819,6 +875,55 @@ describe("#8 notification self-read shadow evidence", () => {
         ),
       );
 
+    const { project: softDeletedProject, columns: softDeletedColumns } =
+      await createProjectFixture({ workspaceId: recipient.workspace.id });
+    const [softDeletedTask] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: softDeletedProject.id,
+        title: "Soft-deleted project task",
+        description: "Soft-deleted project task",
+        status: "to-do",
+        columnId: softDeletedColumns.todo.id,
+        priority: "medium",
+        number: 2,
+        position: 2,
+      })
+      .returning();
+    if (!softDeletedTask)
+      throw new Error("soft-deleted project task insert returned no row");
+    const [softDeletedProjectNotification] = await fresh.db
+      .insert(fresh.schema.notificationTable)
+      .values({
+        userId: recipient.user.id,
+        title: "Soft-deleted project notification",
+        content: "Must not be delivered",
+        type: "info",
+        resourceId: softDeletedTask.id,
+        resourceType: "task",
+      })
+      .returning();
+    if (!softDeletedProjectNotification)
+      throw new Error(
+        "soft-deleted project notification insert returned no row",
+      );
+    await fresh.db
+      .update(fresh.schema.projectTable)
+      .set({
+        deletedAt: new Date(),
+        purgeAfter: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      })
+      .where(eq(fresh.schema.projectTable.id, softDeletedProject.id));
+
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 204 }));
+    const { deliverNotification } = await import(
+      "../../apps/api/src/notification-preferences/delivery"
+    );
+    await deliverNotification(softDeletedProjectNotification.id);
+    expect(fetchSpy).not.toHaveBeenCalled();
+
     await fresh.db
       .delete(fresh.schema.workspaceUserTable)
       .where(
@@ -847,12 +952,6 @@ describe("#8 notification self-read shadow evidence", () => {
       queuedNotification.id,
     ]);
 
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(new Response(null, { status: 204 }));
-    const { deliverNotification } = await import(
-      "../../apps/api/src/notification-preferences/delivery"
-    );
     await deliverNotification(queuedNotification.id);
     expect(fetchSpy).not.toHaveBeenCalled();
 

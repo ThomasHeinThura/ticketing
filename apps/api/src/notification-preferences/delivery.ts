@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { sendNotificationEmail } from "@taskdesk/email";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import db from "../database";
 import {
   notificationTable,
@@ -248,6 +248,7 @@ async function resolveNotificationContext(notification: {
       .where(
         and(
           eq(taskTable.id, notification.resourceId),
+          isNull(projectTable.deletedAt),
           reachableWorkspacePredicate(
             projectTable.workspaceId,
             notification.userId,
