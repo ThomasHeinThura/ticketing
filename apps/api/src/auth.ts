@@ -96,6 +96,13 @@ const mfaEnrollmentState = new WeakMap<
   { userId: string; wasEnabled: boolean }
 >();
 
+const twoFactorSensitivePaths = new Set([
+  "/two-factor/enable",
+  "/two-factor/disable",
+  "/two-factor/generate-backup-codes",
+  "/two-factor/get-totp-uri",
+]);
+
 function isPasswordlessSignInPath(path: string | undefined): boolean {
   return (
     path === "/magic-link/verify" ||
@@ -236,7 +243,11 @@ export const auth = betterAuth({
     // also let a guest arriving first consume the zero-user first-run window and
     // permanently lock an instance out of ever gaining an admin (see #18).
     lastLoginMethod(),
-    twoFactor({ issuer: "TaskDesk" }),
+    // Password-backed accounts still have to present their password for setup
+    // (Better Auth only skips it when no credential account exists). SSO-only
+    // accounts can enroll locally; their lack of a password is not a reason to
+    // make TaskDesk MFA unavailable.
+    twoFactor({ issuer: "TaskDesk", allowPasswordless: true }),
     magicLink({
       sendMagicLink: async ({ email, url }) => {
         try {
@@ -588,6 +599,54 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path.startsWith("/two-factor/")) {
+        const currentSession = await auth.api.getSession({
+          headers: ctx.headers ?? new Headers(),
+        });
+
+        // God Mode forbids credential and MFA changes during impersonation.
+        // Also refuse reading the provisioning URI there: it contains the
+        // user's TOTP secret in a form that can be enrolled elsewhere.
+        const impersonatedBy = (
+          currentSession?.session as
+            | { impersonatedBy?: string | null }
+            | undefined
+        )?.impersonatedBy;
+        if (impersonatedBy) {
+          throw new APIError("FORBIDDEN", {
+            message: "MFA operations are unavailable during impersonation.",
+          });
+        }
+
+        if (
+          twoFactorSensitivePaths.has(ctx.path) &&
+          currentSession?.user.twoFactorEnabled
+        ) {
+          const code = ctx.body?.currentTotpCode;
+          if (typeof code !== "string" || !/^\d{6}$/.test(code)) {
+            throw new APIError("BAD_REQUEST", {
+              message: "A current TOTP code is required for this operation.",
+            });
+          }
+
+          // Verify the second factor in the same request as the sensitive
+          // operation. The verifier applies Better Auth's encrypted-secret,
+          // clock-window, and code validation rules; this does not create a
+          // second session or accept a password in place of TOTP.
+          try {
+            await auth.api.verifyTOTP({
+              body: { code },
+              headers: ctx.headers ?? new Headers(),
+            });
+          } catch {
+            throw new APIError("UNAUTHORIZED", {
+              message:
+                "A valid current TOTP code is required for this operation.",
+            });
+          }
+        }
+      }
+
       if (ctx.path === "/two-factor/verify-totp") {
         const currentSession = await auth.api.getSession({
           headers: ctx.headers ?? new Headers(),

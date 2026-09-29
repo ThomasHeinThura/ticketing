@@ -114,11 +114,17 @@ async function signUp(app: ReturnType<typeof createApp>["app"]) {
   await ensureNotFirstSignup();
   const email = `two-factor-${randomUUID()}@example.com`;
   const password = passwordForTest();
-  const response = await postJson(app, "/api/auth/sign-up/email", {
-    email,
-    password,
-    name: "Two Factor Test",
-  });
+  const response = await postJson(
+    app,
+    "/api/auth/sign-up/email",
+    {
+      email,
+      password,
+      name: "Two Factor Test",
+    },
+    undefined,
+    freshTestClientIp(),
+  );
 
   expect(response.status).toBe(200);
   const cookies = applyCookies("", response);
@@ -137,10 +143,16 @@ async function signIn(
   email: string,
   password: string,
 ) {
-  const response = await postJson(app, "/api/auth/sign-in/email", {
-    email,
-    password,
-  });
+  const response = await postJson(
+    app,
+    "/api/auth/sign-in/email",
+    {
+      email,
+      password,
+    },
+    undefined,
+    freshTestClientIp(),
+  );
   return { response, cookies: applyCookies("", response) };
 }
 
@@ -154,6 +166,7 @@ async function enrollTotp(
     "/api/auth/two-factor/enable",
     { password },
     cookies,
+    freshTestClientIp(),
   );
   expect(enable.status).toBe(200);
   const enrollment = (await enable.json()) as {
@@ -406,5 +419,161 @@ describe("better-auth optional TOTP and backup-code support", () => {
       headers: { cookie: applyCookies(secondChallenge.cookies, reusedCode) },
     });
     expect(await unauthenticated.json()).toBeNull();
+  });
+
+  it("requires the current TOTP for enabled-factor changes and secret reads", async () => {
+    const { app } = createApp();
+    const account = await signUp(app);
+    const enrollment = await enrollTotp(app, account.cookies, account.password);
+    const currentCode = totpCode(enrollment.totpURI);
+    const wrongCode = currentCode === "000000" ? "000001" : "000000";
+
+    for (const [path, body] of [
+      ["/api/auth/two-factor/enable", { password: account.password }],
+      ["/api/auth/two-factor/disable", { password: account.password }],
+      [
+        "/api/auth/two-factor/generate-backup-codes",
+        { password: account.password },
+      ],
+      ["/api/auth/two-factor/get-totp-uri", { password: account.password }],
+    ] as const) {
+      const missingCode = await postJson(
+        app,
+        path,
+        body,
+        enrollment.cookies,
+        freshTestClientIp(),
+      );
+      expect(missingCode.status, path).toBe(400);
+    }
+
+    const invalidCode = await postJson(
+      app,
+      "/api/auth/two-factor/disable",
+      { password: account.password, currentTotpCode: wrongCode },
+      enrollment.cookies,
+      freshTestClientIp(),
+    );
+    expect(invalidCode.status).toBe(401);
+
+    const uriResponse = await postJson(
+      app,
+      "/api/auth/two-factor/get-totp-uri",
+      { password: account.password, currentTotpCode: currentCode },
+      enrollment.cookies,
+      freshTestClientIp(),
+    );
+    expect(uriResponse.status).toBe(200);
+    expect((await uriResponse.json()).totpURI).toContain("otpauth://totp/");
+
+    const regenerated = await postJson(
+      app,
+      "/api/auth/two-factor/generate-backup-codes",
+      { password: account.password, currentTotpCode: currentCode },
+      enrollment.cookies,
+      freshTestClientIp(),
+    );
+    expect(regenerated.status).toBe(200);
+    expect((await regenerated.json()).backupCodes.length).toBeGreaterThan(0);
+
+    const replacement = await postJson(
+      app,
+      "/api/auth/two-factor/enable",
+      { password: account.password, currentTotpCode: currentCode },
+      enrollment.cookies,
+      freshTestClientIp(),
+    );
+    expect(replacement.status).toBe(200);
+    const replacementEnrollment = (await replacement.json()) as {
+      totpURI: string;
+    };
+    const replacementVerified = await postJson(
+      app,
+      "/api/auth/two-factor/verify-totp",
+      { code: totpCode(replacementEnrollment.totpURI) },
+      enrollment.cookies,
+      freshTestClientIp(),
+    );
+    expect(replacementVerified.status).toBe(200);
+
+    const disabled = await postJson(
+      app,
+      "/api/auth/two-factor/disable",
+      {
+        password: account.password,
+        currentTotpCode: totpCode(replacementEnrollment.totpURI),
+      },
+      applyCookies(enrollment.cookies, replacementVerified),
+      freshTestClientIp(),
+    );
+    expect(disabled.status).toBe(200);
+  });
+
+  it("allows an SSO-only account to enroll in local TOTP", async () => {
+    const { app } = createApp();
+    const account = await signUp(app);
+    // Model the credential state of an SSO-only account while retaining its
+    // authenticated session for this plugin-integration test.
+    await db
+      .delete(schema.accountTable)
+      .where(eq(schema.accountTable.userId, account.userId));
+
+    const enable = await postJson(
+      app,
+      "/api/auth/two-factor/enable",
+      {},
+      account.cookies,
+      freshTestClientIp(),
+    );
+    expect(enable.status).toBe(200);
+    const enrollment = (await enable.json()) as { totpURI: string };
+    const verify = await postJson(
+      app,
+      "/api/auth/two-factor/verify-totp",
+      { code: totpCode(enrollment.totpURI) },
+      account.cookies,
+      freshTestClientIp(),
+    );
+    expect(verify.status).toBe(200);
+    const [user] = await db
+      .select({ twoFactorEnabled: schema.userTable.twoFactorEnabled })
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, account.userId));
+    expect(user?.twoFactorEnabled).toBe(true);
+  });
+
+  it("refuses TOTP management and secret reads during impersonation", async () => {
+    const { app } = createApp();
+    const account = await signUp(app);
+    const enrollment = await enrollTotp(app, account.cookies, account.password);
+    await db
+      .update(schema.sessionTable)
+      .set({ impersonatedBy: "support-actor" })
+      .where(eq(schema.sessionTable.userId, account.userId));
+
+    for (const path of [
+      "/api/auth/two-factor/enable",
+      "/api/auth/two-factor/disable",
+      "/api/auth/two-factor/generate-backup-codes",
+      "/api/auth/two-factor/get-totp-uri",
+    ]) {
+      const response = await postJson(
+        app,
+        path,
+        {
+          password: account.password,
+          currentTotpCode: totpCode(enrollment.totpURI),
+        },
+        enrollment.cookies,
+        freshTestClientIp(),
+      );
+      expect(response.status, path).toBe(403);
+    }
+
+    const [user] = await db
+      .select({ twoFactorEnabled: schema.userTable.twoFactorEnabled })
+      .from(schema.userTable)
+      .where(eq(schema.userTable.id, account.userId));
+    expect(user?.twoFactorEnabled).toBe(true);
   });
 });

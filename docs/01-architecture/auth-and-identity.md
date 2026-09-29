@@ -415,6 +415,12 @@ no account.
   on file; and the reset revokes all of their sessions and API keys.
 - Enrolment is enforced at login: a user who must have MFA and does not is routed to
   enrolment before anything else.
+- A password-backed account must re-enter its password to start TOTP setup; an SSO-only
+  account may start local TOTP enrollment from its authenticated session. Once TOTP is
+  enabled, replacing or disabling it, regenerating backup codes, and reading its provisioning
+  URI require `currentTotpCode` in the same request. These operations are refused during
+  impersonation. The TOTP code is checked by better-auth's verifier and is never accepted in
+  place of the password on a password-backed account.
 
 ## API keys and machine access
 
