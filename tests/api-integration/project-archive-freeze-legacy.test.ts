@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { Client } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Client, Pool } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { lockProjectAndAssertLiveForTaskNumber } from "../../apps/api/src/task/assert-task-project-live";
+import { claimTaskNumber } from "../../apps/api/src/task/controllers/claim-task-numbers";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -577,6 +580,274 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       await client.query(`DROP TRIGGER IF EXISTS ${triggerName} ON task`);
       await client.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
       await client.end();
+    }
+  });
+
+  it("serializes concurrent creates and imports before claiming project task numbers", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+    const [projectBefore] = await db
+      .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+    const initialNumber = projectBefore?.lastTaskNumber ?? 0;
+
+    const client = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await client.connect();
+    let transactionOpen = false;
+    const operations: Promise<Response>[] = [];
+    try {
+      await client.query("BEGIN");
+      transactionOpen = true;
+      await client.query("SELECT id FROM project WHERE id = $1 FOR SHARE", [
+        project.id,
+      ]);
+      const lockOwner = await client.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid",
+      );
+      const barrierPid = lockOwner.rows[0]?.pid;
+      if (barrierPid === undefined) {
+        throw new Error("could not read project lock barrier backend pid");
+      }
+
+      operations.push(
+        request(`/task/${project.id}`, "post", {
+          title: "Concurrent create one",
+          description: "",
+          priority: "medium",
+          status: "to-do",
+        }),
+        request(`/task/import/${project.id}`, "post", {
+          tasks: [
+            {
+              title: "Concurrent import one",
+              status: "to-do",
+              priority: "medium",
+            },
+          ],
+        }),
+        request(`/task/${project.id}`, "post", {
+          title: "Concurrent create two",
+          description: "",
+          priority: "medium",
+          status: "to-do",
+        }),
+        request(`/task/import/${project.id}`, "post", {
+          tasks: [
+            {
+              title: "Concurrent import two",
+              status: "to-do",
+              priority: "medium",
+            },
+          ],
+        }),
+      );
+
+      let blockedCount = 0;
+      const deadline = Date.now() + 10_000;
+      while (blockedCount === 0 && Date.now() < deadline) {
+        const waiters = await client.query<{
+          pid: number;
+          blockers: number[];
+        }>(
+          `
+            SELECT pid, pg_blocking_pids(pid) AS blockers
+            FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND pid <> pg_backend_pid()
+              AND wait_event_type = 'Lock'
+          `,
+        );
+        const blockedPids = new Set([barrierPid]);
+        let addedWaiter = true;
+        while (addedWaiter) {
+          addedWaiter = false;
+          for (const waiter of waiters.rows) {
+            if (
+              !blockedPids.has(waiter.pid) &&
+              waiter.blockers.some((blockerPid) => blockedPids.has(blockerPid))
+            ) {
+              blockedPids.add(waiter.pid);
+              addedWaiter = true;
+            }
+          }
+        }
+        blockedCount = blockedPids.size - 1;
+        if (blockedCount === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+      }
+      expect(
+        blockedCount,
+        "a create/import transaction reached the shared project-row barrier",
+      ).toBeGreaterThan(0);
+
+      await client.query("COMMIT");
+      transactionOpen = false;
+      const responses = await Promise.all(operations);
+      expect(responses.map((response) => response.status)).toEqual([
+        200, 200, 200, 200,
+      ]);
+      const bodies = await Promise.all(
+        responses.map((response) => response.json()),
+      );
+      expect(bodies[1]).toMatchObject({
+        results: { successful: 1, failed: 0 },
+      });
+      expect(bodies[3]).toMatchObject({
+        results: { successful: 1, failed: 0 },
+      });
+
+      const taskRows = await db
+        .select({ number: schema.taskTable.number })
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.projectId, project.id));
+      const numbers = taskRows
+        .map((row) => row.number)
+        .filter((number): number is number => number !== null);
+      expect(numbers).toHaveLength(operations.length);
+      expect(numbers.sort((a, b) => a - b)).toEqual(
+        Array.from(
+          { length: operations.length },
+          (_, index) => initialNumber + index + 1,
+        ),
+      );
+    } finally {
+      if (transactionOpen) await client.query("ROLLBACK");
+      await Promise.allSettled(operations);
+      await client.end();
+    }
+  });
+
+  it("uses exclusive liveness locks for simultaneous create and import number claims", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const [projectBefore] = await db
+      .select({ lastTaskNumber: schema.projectTable.lastTaskNumber })
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+    const initialNumber = projectBefore?.lastTaskNumber ?? 0;
+
+    const barrierClient = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    const createClient = new Pool({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+      max: 1,
+    });
+    const importClient = new Pool({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+      max: 1,
+    });
+    await Promise.all([
+      barrierClient.connect(),
+      createClient.query("SELECT 1"),
+      importClient.query("SELECT 1"),
+    ]);
+
+    let transactionOpen = false;
+    let createTransaction: Promise<number> | undefined;
+    let importTransaction: Promise<number> | undefined;
+    try {
+      await barrierClient.query("BEGIN");
+      transactionOpen = true;
+      await barrierClient.query(
+        "SELECT id FROM project WHERE id = $1 FOR SHARE",
+        [project.id],
+      );
+      const createBackend = await createClient.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid",
+      );
+      const importBackend = await importClient.query<{ pid: number }>(
+        "SELECT pg_backend_pid() AS pid",
+      );
+      const createPid = createBackend.rows[0]?.pid;
+      const importPid = importBackend.rows[0]?.pid;
+      if (createPid === undefined || importPid === undefined) {
+        throw new Error("could not read concurrent writer backend pids");
+      }
+      const writerPids = [createPid, importPid];
+
+      const createDb = drizzle(createClient, { schema });
+      const importDb = drizzle(importClient, { schema });
+      // These mirror create-task and one imported row's transaction body, each
+      // on an independent PostgreSQL session. The held share lock forces both
+      // exclusive liveness checks to queue before either number can be claimed.
+      const claimAndInsert = (
+        txDb: ReturnType<typeof drizzle<typeof schema>>,
+        title: string,
+      ) =>
+        txDb.transaction(async (tx) => {
+          await lockProjectAndAssertLiveForTaskNumber(tx, project.id);
+          const number = await claimTaskNumber(project.id, tx);
+          await tx.insert(schema.taskTable).values({
+            projectId: project.id,
+            title,
+            status: "to-do",
+            priority: "medium",
+            description: "",
+            number,
+            position: number,
+          });
+          return number;
+        });
+
+      createTransaction = claimAndInsert(createDb, "Concurrent create");
+      importTransaction = claimAndInsert(importDb, "Concurrent import");
+
+      let waitingPids: number[] = [];
+      const deadline = Date.now() + 10_000;
+      while (waitingPids.length < writerPids.length && Date.now() < deadline) {
+        const waiting = await barrierClient.query<{ pid: number }>(
+          `
+            SELECT pid
+            FROM pg_stat_activity
+            WHERE datname = current_database()
+              AND pid = ANY($1::int[])
+              AND wait_event_type = 'Lock'
+          `,
+          [writerPids],
+        );
+        waitingPids = waiting.rows.map((row) => row.pid);
+        if (waitingPids.length < writerPids.length) {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+      }
+      expect(
+        [...waitingPids].sort((a, b) => a - b),
+        "both create/import transactions wait at the project number guard",
+      ).toEqual([...writerPids].sort((a, b) => a - b));
+
+      await barrierClient.query("COMMIT");
+      transactionOpen = false;
+      const numbers = await Promise.all([createTransaction, importTransaction]);
+      expect(numbers.sort((a, b) => a - b)).toEqual([
+        initialNumber + 1,
+        initialNumber + 2,
+      ]);
+      expect(
+        await db
+          .select({ number: schema.taskTable.number })
+          .from(schema.taskTable)
+          .where(eq(schema.taskTable.projectId, project.id)),
+      ).toHaveLength(2);
+    } finally {
+      if (transactionOpen) await barrierClient.query("ROLLBACK");
+      await Promise.allSettled(
+        [createTransaction, importTransaction].filter(Boolean),
+      );
+      await Promise.all([
+        barrierClient.end(),
+        createClient.end(),
+        importClient.end(),
+      ]);
     }
   });
 });

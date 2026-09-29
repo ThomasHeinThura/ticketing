@@ -8,7 +8,7 @@ import {
   getProjectWorkspaceId,
 } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
-import { assertProjectStillLive } from "../../work-item/assert-work-item-live";
+import { lockProjectAndAssertLiveForTaskNumber } from "../assert-task-project-live";
 import { assertValidTaskStatus } from "../validate-task-fields";
 import { claimTaskNumber } from "./claim-task-numbers";
 
@@ -85,7 +85,7 @@ async function createTask({
   const nextPosition = (maxPositionResult?.maxPosition ?? 0) + 1;
 
   const createdTask = await db.transaction(async (tx) => {
-    await assertProjectStillLive(tx, projectId, "Task not found");
+    await lockProjectAndAssertLiveForTaskNumber(tx, projectId);
     const taskNumber = await claimTaskNumber(projectId, tx);
 
     const [task] = await tx

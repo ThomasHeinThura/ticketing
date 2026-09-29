@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import type db from "../database";
-import { taskTable } from "../database/schema";
+import { projectTable, taskTable } from "../database/schema";
 import { assertProjectStillLive } from "../work-item/assert-work-item-live";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -35,8 +35,41 @@ export async function lockTaskAndAssertProjectLive(tx: DbOrTx, taskId: string) {
 export async function lockProjectsAndAssertLive(
   tx: DbOrTx,
   projectIds: string[],
+  taskNumberProjectIds: string[] = [],
 ) {
+  const numberProjectIds = new Set(taskNumberProjectIds);
   for (const projectId of [...new Set(projectIds)].sort()) {
-    await assertProjectStillLive(tx, projectId, "Task not found");
+    if (numberProjectIds.has(projectId)) {
+      await lockProjectAndAssertLiveForTaskNumber(tx, projectId);
+    } else {
+      await assertProjectStillLive(tx, projectId, "Task not found");
+    }
+  }
+}
+
+/**
+ * Task creation and moves update `project.lastTaskNumber` immediately after the
+ * liveness check. Acquire the same row exclusively here so concurrent callers
+ * serialize before `claimTaskNumber` rather than upgrading compatible `FOR SHARE`
+ * locks into conflicting updates.
+ */
+export async function lockProjectAndAssertLiveForTaskNumber(
+  tx: DbOrTx,
+  projectId: string,
+) {
+  const [project] = await tx
+    .select({ id: projectTable.id })
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        isNull(projectTable.deletedAt),
+        isNull(projectTable.archivedAt),
+      ),
+    )
+    .for("update");
+
+  if (!project) {
+    throw new HTTPException(404, { message: "Task not found" });
   }
 }

@@ -167,10 +167,11 @@ async function moveTask({
     if (lockedTask.projectId !== existingTask.projectId) {
       throw new HTTPException(404, { message: "Task not found" });
     }
-    await lockProjectsAndAssertLive(tx, [
-      lockedTask.projectId,
-      destinationProjectId,
-    ]);
+    await lockProjectsAndAssertLive(
+      tx,
+      [lockedTask.projectId, destinationProjectId],
+      [destinationProjectId],
+    );
     const [nextTaskNumber, nextPosition] = await Promise.all([
       claimTaskNumber(destinationProjectId, tx),
       getNextTaskPosition(
