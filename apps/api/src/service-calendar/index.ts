@@ -17,6 +17,7 @@ import {
   jsonResponse,
 } from "../openapi";
 import { rejectNulByte } from "../utils/reject-nul-byte";
+import { requireApiKeyPermissionScope } from "../utils/require-api-key-permission-scope";
 import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -94,6 +95,7 @@ const listRoute = createRoute({
   summary: "List service calendars",
   middleware: [
     workspaceAccess.fromQuery(),
+    requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
   ] as const,
   request: { query: workspaceIdQuery },
@@ -110,6 +112,7 @@ const createRouteDef = createRoute({
   summary: "Create service calendar",
   middleware: [
     workspaceAccess.fromBody(),
+    requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
   ] as const,
   request: {
@@ -132,6 +135,7 @@ const detailRoute = createRoute({
   summary: "Get service calendar",
   middleware: [
     calendarReach,
+    requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
   ] as const,
   request: { params: calendarIdParam },
@@ -148,6 +152,7 @@ const updateRouteDef = createRoute({
   summary: "Update service calendar",
   middleware: [
     calendarReach,
+    requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
   ] as const,
   request: {
@@ -171,6 +176,7 @@ const deleteRouteDef = createRoute({
   summary: "Delete service calendar",
   middleware: [
     calendarReach,
+    requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
     requireWorkspaceCapability("sla_policy:manage"),
   ] as const,
   request: { params: calendarIdParam },
@@ -187,6 +193,7 @@ const previewRoute = createRoute({
   summary: "Preview calendar cover",
   middleware: [
     calendarReach,
+    requireApiKeyPermissionScope({ sla_policy: ["read"] }),
     requireWorkspaceCapability("sla_policy:read"),
   ] as const,
   request: { params: calendarIdParam, query: previewQuery },

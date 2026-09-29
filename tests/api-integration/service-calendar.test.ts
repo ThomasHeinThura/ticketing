@@ -1,4 +1,6 @@
+import { createHash, randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
+import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
@@ -11,6 +13,36 @@ const weekdayWindows = {
   thu: [{ from: 540, to: 1020 }],
   fri: [{ from: 540, to: 1020 }],
 };
+
+function hashApiKeyForTest(key: string): string {
+  return createHash("sha256")
+    .update(key)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+async function createApiKeyFor(
+  userId: string,
+  permissions: Record<string, string[]>,
+): Promise<string> {
+  const rawKey = `taskdesk_test_${randomUUID()}`;
+  const now = new Date();
+  await db.insert(schema.apikeyTable).values({
+    referenceId: userId,
+    userId,
+    key: hashApiKeyForTest(rawKey),
+    name: "service calendar permission test key",
+    start: rawKey.slice(0, 12),
+    prefix: "taskdesk",
+    permissions: JSON.stringify(permissions),
+    createdAt: now,
+    updatedAt: now,
+  });
+  return rawKey;
+}
 
 describe("API integration: service calendars (CAL-1–CAL-9)", () => {
   beforeEach(async () => resetTestDatabase());
@@ -133,5 +165,51 @@ describe("API integration: service calendars (CAL-1–CAL-9)", () => {
     const { app: otherApp } = createApp();
     const response = await otherApp.request(`/api/service-calendars/${id}`);
     expect(response.status).toBe(404);
+  });
+
+  it("API-key scope narrows calendar authority while retaining the caller's role check", async () => {
+    const creator = await createWorkspaceMember({ role: "admin" });
+    const readKey = await createApiKeyFor(creator.user.id, {
+      sla_policy: ["read"],
+    });
+    const manageKey = await createApiKeyFor(creator.user.id, {
+      sla_policy: ["read", "manage"],
+    });
+    const { app } = createApp();
+    const readHeaders = { Authorization: `Bearer ${readKey}` };
+    const manageHeaders = { Authorization: `Bearer ${manageKey}` };
+    const body = {
+      workspaceId: creator.workspace.id,
+      name: "API key scoped calendar",
+      timezone: "UTC",
+      windows: weekdayWindows,
+      holidays: [],
+    };
+
+    const listed = await app.request(
+      `/api/service-calendars?workspaceId=${creator.workspace.id}`,
+      { headers: readHeaders },
+    );
+    expect(listed.status).toBe(200);
+
+    const deniedCreate = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: { ...readHeaders, "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    expect(deniedCreate.status).toBe(403);
+
+    const created = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: { ...manageHeaders, "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    expect(created.status).toBe(200);
+    const calendar = (await created.json()) as { id: string };
+
+    const detail = await app.request(`/api/service-calendars/${calendar.id}`, {
+      headers: readHeaders,
+    });
+    expect(detail.status).toBe(200);
   });
 });
