@@ -172,6 +172,9 @@ function storybookSpec({
   rewriteIndexEntryBeforeFreeze = false,
   freezeStoryIndex = true,
   freezeStoryEntries = true,
+  mutateObjectValues = false,
+  mutateObjectValuesByAlias = false,
+  mutateObjectValuesByOuterAlias = false,
   computedSkip = false,
   fakeTestBinding = false,
 } = {}) {
@@ -193,6 +196,20 @@ function storybookSpec({
     ...(emptyCallback
       ? ["await page.goto('/');"]
       : [
+          ...(mutateObjectValues
+            ? ["Object.values = (value) => [value[Object.keys(value)[0]]];"]
+            : []),
+          ...(mutateObjectValuesByAlias
+            ? [
+                "const objectNamespace = Object;",
+                "objectNamespace.values = (value) => [value[Object.keys(value)[0]]];",
+              ]
+            : []),
+          ...(mutateObjectValuesByOuterAlias
+            ? [
+                "objectNamespace.values = (value) => [value[Object.keys(value)[0]]];",
+              ]
+            : []),
           'const response = await fetch("http://127.0.0.1:6006/index.json");',
           detachedIndex
             ? 'const index = { entries: { fake: { id: "Button--primary", type: "story" } } };'
@@ -224,16 +241,19 @@ function storybookSpec({
   const testImport = fakeTestBinding
     ? 'import { expect, test as playwrightTest } from "@playwright/test";\nconst test = (_title, _callback) => {};'
     : 'import { expect, test } from "@playwright/test";';
+  const outerAlias = mutateObjectValuesByOuterAlias
+    ? "\nconst objectNamespace = Object;"
+    : "";
   if (describeSkip) {
-    return `${testImport}\ntest.describe.skip("visual Storybook coverage", () => {\n${testCase}\n});`;
+    return `${testImport}${outerAlias}\ntest.describe.skip("visual Storybook coverage", () => {\n${testCase}\n});`;
   }
   if (describeConfigureSkip) {
-    return `${testImport}\ntest.describe.configure({ mode: "skip" });\n${testCase}`;
+    return `${testImport}${outerAlias}\ntest.describe.configure({ mode: "skip" });\n${testCase}`;
   }
   if (describeConfigureDynamic) {
-    return `${testImport}\ntest.describe.configure({ mode: process.env.CI ? "skip" : "default" });\n${testCase}`;
+    return `${testImport}${outerAlias}\ntest.describe.configure({ mode: process.env.CI ? "skip" : "default" });\n${testCase}`;
   }
-  return `${testImport}\n${testCase}`;
+  return `${testImport}${outerAlias}\n${testCase}`;
 }
 
 function routeTree(routes) {
@@ -706,6 +726,45 @@ test("G8 rejects edits to fetched story entries before story enumeration", async
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,
     storySource: storybookSpec({ rewriteIndexEntryBeforeFreeze: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects overwriting Object.values before story enumeration", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ mutateObjectValues: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects overwriting Object.values through a local alias", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ mutateObjectValuesByAlias: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects overwriting Object.values through an outer alias", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ mutateObjectValuesByOuterAlias: true }),
   });
 
   assert.notEqual(result.status, 0);

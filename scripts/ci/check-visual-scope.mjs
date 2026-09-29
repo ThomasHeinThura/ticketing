@@ -1006,6 +1006,17 @@ function hasStoryArrayMutation(callback) {
       return;
     }
     if (
+      ts.isVariableDeclaration(node) &&
+      node.initializer &&
+      !bindingContainsName(node.name, "Object") &&
+      (isObjectIntrinsicRoot(node.initializer) ||
+        (ts.isIdentifier(node.initializer) &&
+          node.initializer.text === "globalThis"))
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
       ts.isBinaryExpression(node) &&
       node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
       node.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
@@ -1050,6 +1061,92 @@ function hasStoryArrayMutation(callback) {
     node.forEachChild(visit);
   };
   visit(callback.body);
+  return unsafe;
+}
+
+function isObjectIntrinsicRoot(node) {
+  if (!node) return false;
+  const parts = propertyAccessPath(node);
+  return (
+    parts[0] === "Object" ||
+    (parts[0] === "globalThis" && parts[1] === "Object")
+  );
+}
+
+function hasObjectIntrinsicMutation(sourceFile) {
+  let unsafe = false;
+  const visit = (node) => {
+    if (unsafe) return;
+    if (
+      ts.isVariableDeclaration(node) &&
+      node.initializer &&
+      !bindingContainsName(node.name, "Object") &&
+      (isObjectIntrinsicRoot(node.initializer) ||
+        (ts.isIdentifier(node.initializer) &&
+          node.initializer.text === "globalThis"))
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+      node.operatorToken.kind <= ts.SyntaxKind.LastAssignment &&
+      isObjectIntrinsicRoot(node.left)
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (ts.isDeleteExpression(node) && isObjectIntrinsicRoot(node.expression)) {
+      unsafe = true;
+      return;
+    }
+    if (
+      (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
+      (node.operator === ts.SyntaxKind.PlusPlusToken ||
+        node.operator === ts.SyntaxKind.MinusMinusToken) &&
+      isObjectIntrinsicRoot(node.operand)
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (
+      (ts.isVariableDeclaration(node) ||
+        ts.isParameterDeclaration(node) ||
+        ts.isFunctionDeclaration(node) ||
+        ts.isClassDeclaration(node) ||
+        ts.isBindingElement(node) ||
+        ts.isImportClause(node) ||
+        ts.isImportSpecifier(node)) &&
+      node.name &&
+      bindingContainsName(node.name, "Object")
+    ) {
+      unsafe = true;
+      return;
+    }
+    if (ts.isCallExpression(node)) {
+      const path = propertyAccessPath(node.expression);
+      const method = path.at(-1);
+      const writesObject =
+        (path[0] === "Object" &&
+          [
+            "assign",
+            "defineProperty",
+            "defineProperties",
+            "setPrototypeOf",
+          ].includes(method) &&
+          node.arguments.some(isObjectIntrinsicRoot)) ||
+        (path[0] === "Reflect" &&
+          ["set", "defineProperty"].includes(method) &&
+          isObjectIntrinsicRoot(node.arguments[0]));
+      if (writesObject) {
+        unsafe = true;
+        return;
+      }
+    }
+    node.forEachChild(visit);
+  };
+  visit(sourceFile);
   return unsafe;
 }
 
@@ -1295,6 +1392,7 @@ function hasStorybookCoverage(sourceFile, title) {
     fetchesStoryIndex &&
     hasFrozenStorybookIndex(callback) &&
     derivesStoriesFromEveryExport &&
+    !hasObjectIntrinsicMutation(sourceFile) &&
     statements.some(isNonemptyStoriesAssertion) &&
     !hasStoryCoverageControlBypass(callback) &&
     !hasStoryArrayMutation(callback) &&
