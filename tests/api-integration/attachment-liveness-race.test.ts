@@ -26,7 +26,10 @@ import {
   createWorkspaceMember,
   requireRow,
 } from "./helpers/fixtures";
-import { raceWorkItemSoftDelete } from "./helpers/race-soft-delete";
+import {
+  raceProjectSoftDelete,
+  raceWorkItemSoftDelete,
+} from "./helpers/race-soft-delete";
 
 const PNG_BYTES = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
@@ -165,6 +168,31 @@ describe("API integration: attachment liveness race (#493)", () => {
     expect(attachments).toHaveLength(0);
   });
 
+  it("#499: presign waits for project deletion and refuses to insert a pending attachment", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key, id: workItemId } = await createWorkItem(
+      app,
+      project.id,
+      type.id,
+    );
+
+    const race = await raceProjectSoftDelete(
+      project.id,
+      async () => await presignRequest(app, key),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const attachments = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.workItemId, workItemId));
+    expect(attachments).toHaveLength(0);
+  });
+
   it("complete-attachment: a concurrent soft-delete cannot slip past the new locked read and mark an attachment ready on a dead item", async () => {
     const { creator, project, type } = await setupProject();
     mockAuthenticatedSession(creator);
@@ -221,6 +249,58 @@ describe("API integration: attachment liveness race (#493)", () => {
       .where(eq(schema.activityTable.workItemId, workItemId));
     expect(
       activityRows.filter((r) => r.verb === "attachment.added"),
+    ).toHaveLength(0);
+  });
+
+  it("#499: complete waits for project deletion and leaves the attachment pending", async () => {
+    const { creator, project, type } = await setupProject();
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key, id: workItemId } = await createWorkItem(
+      app,
+      project.id,
+      type.id,
+    );
+
+    const presignResponse = await presignRequest(app, key);
+    expect(presignResponse.status).toBe(200);
+    const presigned = (await presignResponse.json()) as {
+      attachmentId: string;
+      uploadUrl: string;
+      uploadHeaders: Record<string, string>;
+    };
+    const uploadResponse = await app.request(presigned.uploadUrl, {
+      method: "PUT",
+      headers: presigned.uploadHeaders,
+      body: PNG_BYTES,
+    });
+    expect(uploadResponse.status).toBe(204);
+
+    const race = await raceProjectSoftDelete(
+      project.id,
+      async () =>
+        await app.request(
+          `/api/attachments/${presigned.attachmentId}/complete`,
+          {
+            method: "POST",
+          },
+        ),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    if (race.operation.status === "rejected") throw race.operation.reason;
+    expect(race.operation.value.status).toBe(404);
+
+    const [row] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+    expect(row?.state).toBe("pending");
+    const activityRows = await db
+      .select()
+      .from(schema.activityTable)
+      .where(eq(schema.activityTable.workItemId, workItemId));
+    expect(
+      activityRows.filter((activity) => activity.verb === "attachment.added"),
     ).toHaveLength(0);
   });
 });

@@ -9,7 +9,10 @@ import {
   workspaceMemberRoles,
 } from "../../utils/workspace-member-roles";
 import type { ActivityActorType } from "../activity";
-import { assertWorkItemStillLive } from "../assert-work-item-live";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+} from "../assert-work-item-live";
 
 export type CreateCommentInput = {
   body: unknown;
@@ -62,6 +65,7 @@ export async function createComment(
   const created = await db.transaction(async (tx) => {
     const [locked] = await tx
       .select({
+        projectId: workItemTable.projectId,
         deletedAt: workItemTable.deletedAt,
         archivedAt: workItemTable.archivedAt,
       })
@@ -69,6 +73,7 @@ export async function createComment(
       .where(eq(workItemTable.id, workItemId))
       .for("share");
     assertWorkItemStillLive(locked);
+    await assertProjectStillLive(tx, locked.projectId);
 
     const [row] = await tx
       .insert(commentTable)
