@@ -65,4 +65,19 @@ describe("pending-action canonical payload", () => {
       hashPendingActionPayload({ invalid: undefined } as never),
     ).toThrow(/undefined/);
   });
+
+  it("rejects duplicate target ids instead of inflating the confirmed target count", () => {
+    expect(() =>
+      canonicalPendingActionPayload({
+        action: "bulk_delete",
+        route_key: "DELETE /api/work-items/{key}",
+        target_type: "work_item",
+        target_ids: ["SUP-1", "SUP-1"],
+        workspace_id: "w",
+        project_id: "p",
+        organisation_id: null,
+        confirmation_required: "typed_count",
+      }),
+    ).toThrow(/duplicate target ids/);
+  });
 });

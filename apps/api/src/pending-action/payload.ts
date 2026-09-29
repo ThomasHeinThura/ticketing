@@ -82,6 +82,9 @@ export function canonicalPendingActionPayload(
   if (targetIds.length === 0 || targetIds.some((id) => id.length === 0)) {
     throw new TypeError("A pending action must name at least one target id");
   }
+  if (new Set(targetIds).size !== targetIds.length) {
+    throw new TypeError("A pending action cannot contain duplicate target ids");
+  }
   return {
     action: input.action,
     route_key: input.route_key,

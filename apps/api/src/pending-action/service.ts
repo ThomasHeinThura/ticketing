@@ -1,10 +1,18 @@
 import { createId } from "@paralleldrive/cuid2";
+import type { PolicyMap } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
-import { pendingActionTable } from "../database/schema";
+import {
+  pendingActionTable,
+  personTable,
+  userTable,
+  workspaceTable,
+} from "../database/schema";
 import { publishEvent } from "../events";
+import { enqueueOutboxEvent } from "../events/outbox";
+import { policyRegistry } from "../policy-registry";
 import {
   type ConfirmationKind,
   canonicalPendingActionPayload,
@@ -20,12 +28,12 @@ export type CreatePendingActionInput = {
   credentialId: string | null;
   origin: "web" | "api" | "mcp";
   action: PendingActionKind;
-  routeKey: string;
+  routeKey: keyof PolicyMap;
   targetType: string;
   targetIds: readonly string[];
   targetVersions?: Record<string, unknown> | null;
   summary: Record<string, unknown>;
-  workspaceId: string | null;
+  workspaceId: string;
   projectId: string | null;
   organisationId: string | null;
   confirmationRequired: ConfirmationKind;
@@ -37,6 +45,7 @@ export type CreatePendingActionInput = {
 
 /** Creates the durable approval and its audit record before returning any 202 response. */
 export async function createPendingAction(input: CreatePendingActionInput) {
+  assertRegisteredRouteKey(input.routeKey);
   const payload = canonicalPendingActionPayload({
     action: input.action,
     route_key: input.routeKey,
@@ -83,28 +92,77 @@ export async function createPendingAction(input: CreatePendingActionInput) {
           .returning({ id: pendingActionTable.id });
 
         if (!created) throw new Error("Pending action insert returned no row");
-        await appendAuditLog(tx, {
-          actorId: input.actorId,
-          actorType: input.actorType,
-          apiKeyId:
-            input.credentialType === "api_key" ? input.credentialId : null,
-          actorIp: input.actorIp,
-          userAgent: input.userAgent,
-          traceId,
-          workspaceId: input.workspaceId,
-          projectId: input.projectId,
-          organisationId: input.organisationId,
-          action: "pending_action.requested",
-          entityType: "pending_action",
-          entityId: id,
-          after: {
+        const [eventScope] = await tx
+          .select({
+            actorName: userTable.name,
+            organisationId: workspaceTable.organisationId,
+          })
+          .from(personTable)
+          .innerJoin(userTable, eq(userTable.id, personTable.userId))
+          .innerJoin(workspaceTable, eq(workspaceTable.id, input.workspaceId))
+          .where(eq(personTable.id, input.requesterPersonId))
+          .limit(1);
+        if (!eventScope) {
+          throw new Error(
+            "Pending-action event requires a requester with a workspace-scoped identity",
+          );
+        }
+
+        await enqueueOutboxEvent(tx, {
+          id: `evt_${createId()}`,
+          kind: "pending_action.requested",
+          occurredAt: now.toISOString(),
+          actor: {
+            type: "person",
+            id: input.requesterPersonId,
+            name: eventScope.actorName,
+          },
+          scope: {
+            workspaceId: input.workspaceId,
+            organisationId: eventScope.organisationId,
+            ...(input.projectId ? { projectId: input.projectId } : {}),
+          },
+          payload: {
+            key: id,
+            url: `/agent/settings/profile/pending-actions/${id}`,
+            pendingActionId: id,
             action: input.action,
             origin: input.origin,
             targetType: input.targetType,
             targetCount: payload.target_ids.length,
             expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
           },
+          causationId: null,
+          depth: 0,
+          originAutomationId: null,
         });
+
+        try {
+          await appendAuditLog(tx, {
+            actorId: input.actorId,
+            actorType: input.actorType,
+            apiKeyId:
+              input.credentialType === "api_key" ? input.credentialId : null,
+            actorIp: input.actorIp,
+            userAgent: input.userAgent,
+            traceId,
+            workspaceId: input.workspaceId,
+            projectId: input.projectId,
+            organisationId: input.organisationId,
+            action: "pending_action.requested",
+            entityType: "pending_action",
+            entityId: id,
+            after: {
+              action: input.action,
+              origin: input.origin,
+              targetType: input.targetType,
+              targetCount: payload.target_ids.length,
+              expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
+            },
+          });
+        } catch (error) {
+          console.error("AU-14: pending-action audit write failed", error);
+        }
       });
       break;
     } catch (error) {
@@ -130,15 +188,6 @@ export async function createPendingAction(input: CreatePendingActionInput) {
       if (attempt === 1) throw error;
     }
   }
-
-  await publishEvent("pending_action.requested", {
-    pendingActionId: id,
-    action: input.action,
-    origin: input.origin,
-    targetType: input.targetType,
-    targetCount: payload.target_ids.length,
-    expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
-  });
 
   return {
     pendingActionId: id,
@@ -295,4 +344,12 @@ function isUniqueViolation(error: unknown): boolean {
     current = "cause" in current ? current.cause : undefined;
   }
   return false;
+}
+
+function assertRegisteredRouteKey(
+  routeKey: string,
+): asserts routeKey is keyof PolicyMap {
+  if (!policyRegistry.routeKeys.includes(routeKey)) {
+    throw new TypeError(`Unknown pending-action route key: ${routeKey}`);
+  }
 }
