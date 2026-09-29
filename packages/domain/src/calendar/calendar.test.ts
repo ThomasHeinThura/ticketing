@@ -640,6 +640,52 @@ describe("coveredMinutesBetween — DST, Europe/London", () => {
     );
     expect(minutes).toBe(5 * 8 * 60);
   });
+
+  it("CAL-7: counts the first occurrence of a repeated hour and omits the second fold", () => {
+    const calendar: ServiceCalendar = {
+      timezone: "Europe/London",
+      windows: { sun: [{ from: 60, to: 120 }] },
+      holidays: [],
+    };
+
+    expect(
+      coveredMinutesBetween(
+        calendar,
+        utc(2026, 10, 25, 0, 10),
+        utc(2026, 10, 25, 0, 30),
+      ),
+    ).toBe(20);
+    expect(
+      coveredMinutesBetween(
+        calendar,
+        utc(2026, 10, 25, 1, 10),
+        utc(2026, 10, 25, 1, 30),
+      ),
+    ).toBe(0);
+  });
+
+  it("CAL-7: clips a query at both sides of the fold against first-occurrence cover", () => {
+    const calendar: ServiceCalendar = {
+      timezone: "Europe/London",
+      windows: { sun: [{ from: 105, to: 135 }] },
+      holidays: [],
+    };
+
+    expect(
+      coveredMinutesBetween(
+        calendar,
+        utc(2026, 10, 25, 0, 50),
+        utc(2026, 10, 25, 1, 10),
+      ),
+    ).toBe(10);
+    expect(
+      coveredMinutesBetween(
+        calendar,
+        utc(2026, 10, 25, 1, 50),
+        utc(2026, 10, 25, 2, 10),
+      ),
+    ).toBe(10);
+  });
 });
 
 describe("coveredMinutesBetween — DST, America/New_York", () => {
