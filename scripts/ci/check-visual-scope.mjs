@@ -1,11 +1,8 @@
 #!/usr/bin/env node
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
-import {
-  createScanner,
-  LanguageVariant,
-  SyntaxKind,
-} from "typescript/unstable/ast";
+import * as ts from "typescript/unstable/ast";
+import { API } from "typescript/unstable/sync";
 import { repoRoot } from "./lib/repo.mjs";
 
 const manifestPath = "apps/web/e2e/visual-screens.json";
@@ -28,130 +25,295 @@ function canonicalInventoryRoute(route) {
     .replaceAll("{typeKey}", "$typeKey");
 }
 
-// Keep screenshot evidence inside the callback for its named Playwright test. A global
-// substring search let an assertion from another screen certify this manifest entry.
-function visualTestScreenshots(source) {
-  const scanner = createScanner(true, LanguageVariant.Standard, source);
-  const tokens = [];
-  for (
-    let kind = scanner.scan();
-    kind !== SyntaxKind.EndOfFile;
-    kind = scanner.scan()
-  ) {
-    tokens.push({
-      kind,
-      text: scanner.getTokenText(),
-      value: scanner.getTokenValue(),
-    });
-  }
-
-  const openToClose = new Map([
-    [SyntaxKind.OpenParenToken, SyntaxKind.CloseParenToken],
-    [SyntaxKind.OpenBraceToken, SyntaxKind.CloseBraceToken],
-    [SyntaxKind.OpenBracketToken, SyntaxKind.CloseBracketToken],
-  ]);
-  const closeTokens = new Set(openToClose.values());
-  const testCases = new Map();
-
-  for (let index = 0; index < tokens.length - 1; index += 1) {
-    if (
-      tokens[index].kind !== SyntaxKind.Identifier ||
-      tokens[index].text !== "test" ||
-      tokens[index + 1].kind !== SyntaxKind.OpenParenToken
-    ) {
-      continue;
-    }
-
-    const callOpen = index + 1;
-    const delimiters = [SyntaxKind.CloseParenToken];
-    let callClose = -1;
-    let argumentSeparator = -1;
-    for (let cursor = callOpen + 1; cursor < tokens.length; cursor += 1) {
-      const kind = tokens[cursor].kind;
-      if (
-        delimiters.length === 1 &&
-        kind === SyntaxKind.CommaToken &&
-        argumentSeparator < 0
-      ) {
-        argumentSeparator = cursor;
-      }
-      if (openToClose.has(kind)) {
-        delimiters.push(openToClose.get(kind));
-      } else if (closeTokens.has(kind)) {
-        if (delimiters.pop() !== kind) break;
-        if (delimiters.length === 0 && kind === SyntaxKind.CloseParenToken) {
-          callClose = cursor;
-          break;
-        }
-      }
-    }
-
-    const title = tokens[callOpen + 1];
-    if (
-      callClose < 0 ||
-      argumentSeparator < 0 ||
-      title?.kind !== SyntaxKind.StringLiteral
-    ) {
-      continue;
-    }
-
-    let arrow = -1;
-    for (let cursor = argumentSeparator + 1; cursor < callClose; cursor += 1) {
-      if (tokens[cursor].kind === SyntaxKind.EqualsGreaterThanToken) {
-        arrow = cursor;
-        break;
-      }
-    }
-
-    const screenshots = new Set();
-    const bodyStart = arrow + 1;
-    if (arrow >= 0 && tokens[bodyStart]?.kind === SyntaxKind.OpenBraceToken) {
-      const bodyDelimiters = [SyntaxKind.CloseBraceToken];
-      let bodyEnd = -1;
-      for (let cursor = bodyStart + 1; cursor < callClose; cursor += 1) {
-        const kind = tokens[cursor].kind;
-        if (openToClose.has(kind)) {
-          bodyDelimiters.push(openToClose.get(kind));
-        } else if (closeTokens.has(kind)) {
-          if (bodyDelimiters.pop() !== kind) break;
-          if (bodyDelimiters.length === 0) {
-            bodyEnd = cursor;
-            break;
-          }
-        }
-      }
-      if (bodyEnd >= 0) {
-        collectScreenshotAssertions(
-          tokens,
-          bodyStart + 1,
-          bodyEnd,
-          screenshots,
-        );
-      }
-    } else if (arrow >= 0) {
-      collectScreenshotAssertions(tokens, bodyStart, callClose, screenshots);
-    }
-
-    const matches = testCases.get(title.value) ?? [];
-    matches.push(screenshots);
-    testCases.set(title.value, matches);
-  }
-
-  return testCases;
+function isNamedProperty(node, name) {
+  return ts.isPropertyAccessExpression(node) && node.name.text === name;
 }
 
-function collectScreenshotAssertions(tokens, start, end, screenshots) {
-  for (let index = start; index + 3 < end; index += 1) {
+function testCallbacks(sourceFile, title) {
+  const callbacks = [];
+  const visit = (node) => {
     if (
-      tokens[index].kind === SyntaxKind.DotToken &&
-      tokens[index + 1].kind === SyntaxKind.Identifier &&
-      tokens[index + 1].text === "toHaveScreenshot" &&
-      tokens[index + 2].kind === SyntaxKind.OpenParenToken &&
-      tokens[index + 3].kind === SyntaxKind.StringLiteral
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "test" &&
+      ts.isStringLiteral(node.arguments[0]) &&
+      node.arguments[0].text === title
     ) {
-      screenshots.add(tokens[index + 3].value);
+      callbacks.push(node.arguments[1]);
     }
+    node.forEachChild(visit);
+  };
+  visit(sourceFile);
+  return callbacks;
+}
+
+function awaitedScreenshotName(statement) {
+  if (
+    !ts.isExpressionStatement(statement) ||
+    !ts.isAwaitExpression(statement.expression) ||
+    !ts.isCallExpression(statement.expression.expression) ||
+    !isNamedProperty(
+      statement.expression.expression.expression,
+      "toHaveScreenshot",
+    )
+  ) {
+    return undefined;
   }
+  const [name] = statement.expression.expression.arguments;
+  return ts.isStringLiteral(name) ? name.text : undefined;
+}
+
+function directTestScreenshots(callback) {
+  if (!ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) {
+    return new Set();
+  }
+  return new Set(
+    callback.body.statements
+      .map(awaitedScreenshotName)
+      .filter((name) => name !== undefined),
+  );
+}
+
+function unwrapTypeWrappers(node) {
+  let expression = node;
+  while (
+    ts.isAsExpression(expression) ||
+    ts.isParenthesizedExpression(expression)
+  ) {
+    expression = expression.expression;
+  }
+  return expression;
+}
+
+function isFetchedIndexDeclaration(declaration, responseName) {
+  if (
+    !ts.isVariableDeclaration(declaration) ||
+    !ts.isIdentifier(declaration.name) ||
+    declaration.name.text !== "index" ||
+    !declaration.initializer
+  ) {
+    return false;
+  }
+  const initializer = unwrapTypeWrappers(declaration.initializer);
+  return (
+    ts.isAwaitExpression(initializer) &&
+    ts.isCallExpression(initializer.expression) &&
+    isNamedProperty(initializer.expression.expression, "json") &&
+    ts.isIdentifier(initializer.expression.expression.expression) &&
+    initializer.expression.expression.expression.text === responseName
+  );
+}
+
+function isStoriesDeclaration(declaration) {
+  if (
+    !ts.isVariableDeclaration(declaration) ||
+    !ts.isIdentifier(declaration.name) ||
+    declaration.name.text !== "stories" ||
+    !declaration.initializer ||
+    !ts.isCallExpression(declaration.initializer) ||
+    !isNamedProperty(declaration.initializer.expression, "sort")
+  ) {
+    return false;
+  }
+
+  const filterCall = declaration.initializer.expression.expression;
+  if (
+    !ts.isCallExpression(filterCall) ||
+    !isNamedProperty(filterCall.expression, "filter")
+  ) {
+    return false;
+  }
+
+  const valuesCall = filterCall.expression.expression;
+  if (
+    !ts.isCallExpression(valuesCall) ||
+    !isNamedProperty(valuesCall.expression, "values") ||
+    !ts.isIdentifier(valuesCall.expression.expression) ||
+    valuesCall.expression.expression.text !== "Object"
+  ) {
+    return false;
+  }
+
+  const entries = valuesCall.arguments[0];
+  const indexEntries =
+    ts.isPropertyAccessExpression(entries) &&
+    entries.name.text === "entries" &&
+    ts.isIdentifier(entries.expression) &&
+    entries.expression.text === "index";
+  const predicate = filterCall.arguments[0];
+  const storyTypeFilter =
+    ts.isArrowFunction(predicate) &&
+    ts.isBinaryExpression(predicate.body) &&
+    predicate.body.operatorToken.kind ===
+      ts.SyntaxKind.EqualsEqualsEqualsToken &&
+    ts.isPropertyAccessExpression(predicate.body.left) &&
+    predicate.body.left.name.text === "type" &&
+    ts.isIdentifier(predicate.body.left.expression) &&
+    predicate.body.left.expression.text === "entry" &&
+    ts.isStringLiteral(predicate.body.right) &&
+    predicate.body.right.text === "story";
+
+  return indexEntries && storyTypeFilter;
+}
+
+function isNonemptyStoriesAssertion(statement) {
+  if (
+    !ts.isExpressionStatement(statement) ||
+    !ts.isCallExpression(statement.expression) ||
+    !isNamedProperty(statement.expression.expression, "toBeGreaterThan") ||
+    !ts.isNumericLiteral(statement.expression.arguments[0]) ||
+    statement.expression.arguments[0].text !== "0"
+  ) {
+    return false;
+  }
+  const expectCall = statement.expression.expression.expression;
+  return (
+    ts.isCallExpression(expectCall) &&
+    ts.isIdentifier(expectCall.expression) &&
+    expectCall.expression.text === "expect" &&
+    ts.isPropertyAccessExpression(expectCall.arguments[0]) &&
+    expectCall.arguments[0].name.text === "length" &&
+    ts.isIdentifier(expectCall.arguments[0].expression) &&
+    expectCall.arguments[0].expression.text === "stories"
+  );
+}
+
+function isStoryScreenshotTemplate(node) {
+  if (
+    !ts.isTemplateExpression(node) ||
+    node.head.text !== "" ||
+    node.templateSpans.length !== 1
+  ) {
+    return false;
+  }
+  const [span] = node.templateSpans;
+  return (
+    ts.isPropertyAccessExpression(span.expression) &&
+    span.expression.name.text === "id" &&
+    ts.isIdentifier(span.expression.expression) &&
+    span.expression.expression.text === "story" &&
+    span.literal.text === ".png"
+  );
+}
+
+function isStoryNavigation(statement) {
+  if (
+    !ts.isExpressionStatement(statement) ||
+    !ts.isAwaitExpression(statement.expression) ||
+    !ts.isCallExpression(statement.expression.expression) ||
+    !isNamedProperty(statement.expression.expression.expression, "goto") ||
+    !ts.isIdentifier(statement.expression.expression.expression.expression) ||
+    statement.expression.expression.expression.expression.text !== "page"
+  ) {
+    return false;
+  }
+  const [url] = statement.expression.expression.arguments;
+  return (
+    ts.isTemplateExpression(url) &&
+    url.head.text.includes("/iframe.html?id=") &&
+    url.templateSpans.some(
+      (span) =>
+        ts.isPropertyAccessExpression(span.expression) &&
+        span.expression.name.text === "id" &&
+        ts.isIdentifier(span.expression.expression) &&
+        span.expression.expression.text === "story",
+    )
+  );
+}
+
+function hasStoryScreenshotLoop(callback) {
+  if (!ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) return false;
+  const loops = callback.body.statements.filter((statement) =>
+    ts.isForOfStatement(statement),
+  );
+  if (loops.length !== 1) return false;
+
+  const [loop] = loops;
+  const declaration =
+    ts.isVariableDeclarationList(loop.initializer) &&
+    loop.initializer.declarations.length === 1
+      ? loop.initializer.declarations[0]
+      : undefined;
+  if (
+    !declaration ||
+    !ts.isIdentifier(declaration.name) ||
+    declaration.name.text !== "story" ||
+    !ts.isIdentifier(loop.expression) ||
+    loop.expression.text !== "stories" ||
+    !ts.isBlock(loop.statement)
+  ) {
+    return false;
+  }
+
+  const navigatesToEachStory =
+    loop.statement.statements.some(isStoryNavigation);
+  const capturesEachStory = loop.statement.statements.some((statement) => {
+    if (
+      !ts.isExpressionStatement(statement) ||
+      !ts.isAwaitExpression(statement.expression) ||
+      !ts.isCallExpression(statement.expression.expression) ||
+      !isNamedProperty(
+        statement.expression.expression.expression,
+        "toHaveScreenshot",
+      )
+    ) {
+      return false;
+    }
+    return isStoryScreenshotTemplate(
+      statement.expression.expression.arguments[0],
+    );
+  });
+  return navigatesToEachStory && capturesEachStory;
+}
+
+function hasStorybookCoverage(sourceFile, title) {
+  const callbacks = testCallbacks(sourceFile, title);
+  if (callbacks.length !== 1) return false;
+  const [callback] = callbacks;
+  if (!ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) return false;
+
+  const statements = callback.body.statements;
+  const declarations = statements.flatMap((statement) =>
+    ts.isVariableStatement(statement)
+      ? statement.declarationList.declarations
+      : [],
+  );
+  const responseDeclaration = declarations.find((declaration) => {
+    if (
+      !ts.isVariableDeclaration(declaration) ||
+      !ts.isIdentifier(declaration.name) ||
+      !declaration.initializer ||
+      !ts.isAwaitExpression(declaration.initializer) ||
+      !ts.isCallExpression(declaration.initializer.expression) ||
+      !ts.isIdentifier(declaration.initializer.expression.expression) ||
+      declaration.initializer.expression.expression.text !== "fetch"
+    ) {
+      return false;
+    }
+    const [url] = declaration.initializer.expression.arguments;
+    return (
+      ts.isStringLiteral(url) && url.text === "http://127.0.0.1:6006/index.json"
+    );
+  });
+  const fetchesStoryIndex =
+    responseDeclaration &&
+    ts.isVariableDeclaration(responseDeclaration) &&
+    ts.isIdentifier(responseDeclaration.name) &&
+    declarations.some((declaration) =>
+      isFetchedIndexDeclaration(declaration, responseDeclaration.name.text),
+    );
+  const derivesStoriesFromEveryExport = statements.some(
+    (statement) =>
+      ts.isVariableStatement(statement) &&
+      statement.declarationList.declarations.some(isStoriesDeclaration),
+  );
+
+  return (
+    fetchesStoryIndex &&
+    derivesStoriesFromEveryExport &&
+    statements.some(isNonemptyStoriesAssertion) &&
+    hasStoryScreenshotLoop(callback)
+  );
 }
 
 const inventoryRows = [
@@ -180,11 +342,46 @@ for (const row of inventoryRows) {
 }
 const seenTests = new Set();
 const seenInventoryRoutes = new Set();
-const visualSpec = await readFile(
-  path.join(repoRoot, "apps/web/e2e/visual.spec.ts"),
-  "utf8",
+const visualSpecPath = path.join(repoRoot, "apps/web/e2e/visual.spec.ts");
+const storySpecPath = path.join(
+  repoRoot,
+  "apps/web/e2e/storybook-visual.spec.ts",
 );
-const screenshotsByTest = visualTestScreenshots(visualSpec);
+const parser = new API({ cwd: repoRoot });
+let visualSourceFile;
+let storySourceFile;
+try {
+  const snapshot = parser.updateSnapshot({
+    openFiles: [visualSpecPath, storySpecPath],
+  });
+  try {
+    const visualProject = snapshot.getDefaultProjectForFile(visualSpecPath);
+    const storyProject = snapshot.getDefaultProjectForFile(storySpecPath);
+    visualSourceFile = visualProject?.program.getSourceFile(visualSpecPath);
+    storySourceFile = storyProject?.program.getSourceFile(storySpecPath);
+    if (
+      !visualSourceFile ||
+      visualProject.program.getSyntacticDiagnostics(visualSpecPath).length > 0
+    ) {
+      failures.push(
+        `${visualSpecPath} could not be parsed for visual-test evidence`,
+      );
+    }
+    if (
+      !storySourceFile ||
+      storyProject.program.getSyntacticDiagnostics(storySpecPath).length > 0
+    ) {
+      failures.push(
+        `${storySpecPath} could not be parsed for Storybook coverage`,
+      );
+    }
+  } finally {
+    snapshot.dispose();
+  }
+} finally {
+  parser.close();
+}
+
 for (const screen of manifest) {
   if (seenTests.has(screen.test))
     failures.push(`duplicate test name: ${screen.test}`);
@@ -192,7 +389,9 @@ for (const screen of manifest) {
   if (!screen.test.endsWith("@visual")) {
     failures.push(`${screen.name} test is not tagged @visual`);
   }
-  const matchingTests = screenshotsByTest.get(screen.test) ?? [];
+  const matchingTests = visualSourceFile
+    ? testCallbacks(visualSourceFile, screen.test).map(directTestScreenshots)
+    : [];
   if (matchingTests.length === 0) {
     failures.push(
       `${screen.name} has no matching test in apps/web/e2e/visual.spec.ts`,
@@ -292,17 +491,11 @@ for (const [applicationRoute, rows] of registeredInventoryRouteGroups) {
   }
 }
 
-const storySpec = await readFile(
-  path.join(repoRoot, "apps/web/e2e/storybook-visual.spec.ts"),
-  "utf8",
-);
-if (
-  !storySpec.includes(
-    "every exported Storybook story has a visual baseline @visual",
-  )
-) {
+const storyTitle =
+  "every exported Storybook story has a visual baseline @visual";
+if (!storySourceFile || !hasStorybookCoverage(storySourceFile, storyTitle)) {
   failures.push(
-    "Storybook visual test must enumerate every exported story and capture a baseline",
+    "Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline",
   );
 }
 
