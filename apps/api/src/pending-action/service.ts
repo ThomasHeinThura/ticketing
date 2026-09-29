@@ -52,61 +52,64 @@ export async function createPendingAction(input: CreatePendingActionInput) {
   const id = createId();
   const traceId = createId();
 
-  try {
-    await db.transaction(async (tx) => {
-      const [created] = await tx
-        .insert(pendingActionTable)
-        .values({
-          id,
-          requestedByPersonId: input.requesterPersonId,
-          credentialType: input.credentialType,
-          credentialId: input.credentialId,
-          origin: input.origin,
-          action: input.action,
-          targetType: input.targetType,
-          targetIds: payload.target_ids,
-          targetVersions: input.targetVersions ?? null,
-          payload,
-          routeKey: input.routeKey,
-          payloadHash,
-          payloadSummary: input.summary,
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      await db.transaction(async (tx) => {
+        const [created] = await tx
+          .insert(pendingActionTable)
+          .values({
+            id,
+            requestedByPersonId: input.requesterPersonId,
+            credentialType: input.credentialType,
+            credentialId: input.credentialId,
+            origin: input.origin,
+            action: input.action,
+            targetType: input.targetType,
+            targetIds: payload.target_ids,
+            targetVersions: input.targetVersions ?? null,
+            payload,
+            routeKey: input.routeKey,
+            payloadHash,
+            payloadSummary: input.summary,
+            workspaceId: input.workspaceId,
+            projectId: input.projectId,
+            organisationId: input.organisationId,
+            confirmationRequired: input.confirmationRequired,
+            state: "pending",
+            createdAt: now,
+            expiresAt: new Date(now.getTime() + ACTION_TTL_MS),
+            traceId,
+          })
+          .returning({ id: pendingActionTable.id });
+
+        if (!created) throw new Error("Pending action insert returned no row");
+        await appendAuditLog(tx, {
+          actorId: input.actorId,
+          actorType: input.actorType,
+          apiKeyId:
+            input.credentialType === "api_key" ? input.credentialId : null,
+          actorIp: input.actorIp,
+          userAgent: input.userAgent,
+          traceId,
           workspaceId: input.workspaceId,
           projectId: input.projectId,
           organisationId: input.organisationId,
-          confirmationRequired: input.confirmationRequired,
-          state: "pending",
-          createdAt: now,
-          expiresAt: new Date(now.getTime() + ACTION_TTL_MS),
-          traceId,
-        })
-        .returning({ id: pendingActionTable.id });
-
-      if (!created) throw new Error("Pending action insert returned no row");
-      await appendAuditLog(tx, {
-        actorId: input.actorId,
-        actorType: input.actorType,
-        apiKeyId:
-          input.credentialType === "api_key" ? input.credentialId : null,
-        actorIp: input.actorIp,
-        userAgent: input.userAgent,
-        traceId,
-        workspaceId: input.workspaceId,
-        projectId: input.projectId,
-        organisationId: input.organisationId,
-        action: "pending_action.requested",
-        entityType: "pending_action",
-        entityId: id,
-        after: {
-          action: input.action,
-          origin: input.origin,
-          targetType: input.targetType,
-          targetCount: payload.target_ids.length,
-          expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
-        },
+          action: "pending_action.requested",
+          entityType: "pending_action",
+          entityId: id,
+          after: {
+            action: input.action,
+            origin: input.origin,
+            targetType: input.targetType,
+            targetCount: payload.target_ids.length,
+            expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
+          },
+        });
       });
-    });
-  } catch (error) {
-    if (isUniqueViolation(error)) {
+      break;
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+
       const [existing] = await db
         .select({ id: pendingActionTable.id })
         .from(pendingActionTable)
@@ -124,8 +127,8 @@ export async function createPendingAction(input: CreatePendingActionInput) {
           message: `pending_approval: ${existing.id}`,
         });
       }
+      if (attempt === 1) throw error;
     }
-    throw error;
   }
 
   await publishEvent("pending_action.requested", {
