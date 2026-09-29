@@ -1,9 +1,11 @@
+import { randomUUID } from "node:crypto";
 import { apiKey } from "@better-auth/api-key";
 import { sendMagicLinkEmail, sendOtpEmail } from "@taskdesk/email";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
+import { deleteSessionCookie } from "better-auth/cookies";
 import {
   admin as adminPlugin,
   emailOTP,
@@ -15,6 +17,7 @@ import {
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
 import { count, eq, sql } from "drizzle-orm";
+import { appendAuditLog } from "./audit/audit-writer";
 import db, { schema } from "./database";
 import {
   isBootstrapAdminEmail,
@@ -87,6 +90,21 @@ if (!authSecretResult.ok) {
 }
 
 const authSecret = authSecretResult.secret;
+
+const mfaEnrollmentState = new WeakMap<
+  object,
+  { userId: string; wasEnabled: boolean }
+>();
+
+function isPasswordlessSignInPath(path: string | undefined): boolean {
+  return (
+    path === "/magic-link/verify" ||
+    path === "/sign-in/email-otp" ||
+    path?.startsWith("/sign-in/social") === true ||
+    path?.startsWith("/callback/") === true ||
+    path?.startsWith("/oauth2/callback/") === true
+  );
+}
 
 async function getUserLocale(email: string) {
   const [user] = await db
@@ -570,6 +588,18 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/two-factor/verify-totp") {
+        const currentSession = await auth.api.getSession({
+          headers: ctx.headers ?? new Headers(),
+        });
+        if (currentSession?.user) {
+          mfaEnrollmentState.set(ctx.context, {
+            userId: currentSession.user.id,
+            wasEnabled: currentSession.user.twoFactorEnabled === true,
+          });
+        }
+      }
+
       if (isLoginFormDisabled && isLocalSignInPath(ctx.path)) {
         throw new APIError("FORBIDDEN", {
           message:
@@ -637,6 +667,72 @@ export const auth = betterAuth({
       }
     }),
     after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path === "/two-factor/verify-totp") {
+        const previousState = mfaEnrollmentState.get(ctx.context);
+        mfaEnrollmentState.delete(ctx.context);
+        const newSession = ctx.context.newSession;
+        if (previousState && !previousState.wasEnabled && newSession) {
+          try {
+            await appendAuditLog(db, {
+              actorId: previousState.userId,
+              actorType: "person",
+              action: "auth.mfa_enrolled",
+              entityType: "user",
+              entityId: previousState.userId,
+              after: { method: "totp" },
+            });
+          } catch (error) {
+            console.error("AU-14: auth.mfa_enrolled audit write failed", error);
+          }
+        }
+      }
+
+      if (isPasswordlessSignInPath(ctx.path)) {
+        const newSession = ctx.context.newSession;
+        if (newSession?.user.twoFactorEnabled) {
+          deleteSessionCookie(ctx, true);
+          await ctx.context.internalAdapter.deleteSession(
+            newSession.session.token,
+          );
+          ctx.context.setNewSession(null);
+
+          // Better Auth 1.6.30's twoFactor verifier consumes this signed-cookie record.
+          const maxAge = 600;
+          const twoFactorCookie = ctx.context.createAuthCookie("two_factor", {
+            maxAge,
+          });
+          const identifier = `2fa-${randomUUID()}`;
+          const expiresAt = new Date(Date.now() + maxAge * 1000);
+          await ctx.context.internalAdapter.createVerificationValue({
+            value: newSession.user.id,
+            identifier,
+            expiresAt,
+          });
+          await ctx.context.internalAdapter.createVerificationValue({
+            value: "0",
+            identifier: `2fa-attempts-${identifier}`,
+            expiresAt,
+          });
+          await ctx.setSignedCookie(
+            twoFactorCookie.name,
+            identifier,
+            ctx.context.secret,
+            twoFactorCookie.attributes,
+          );
+
+          const [factor] = await db
+            .select({ verified: schema.twoFactorTable.verified })
+            .from(schema.twoFactorTable)
+            .where(eq(schema.twoFactorTable.userId, newSession.user.id))
+            .limit(1);
+          return ctx.json({
+            twoFactorRedirect: true,
+            twoFactorMethods:
+              factor && factor.verified !== false ? ["totp"] : [],
+          });
+        }
+      }
+
       if (ctx.path.startsWith("/sign-up") || ctx.path.startsWith("/sign-in")) {
         const newSession = ctx.context.newSession;
         if (newSession) {

@@ -7,6 +7,13 @@ import { resetTestDatabase } from "./helpers/database";
 import { ensureNotFirstSignup } from "./helpers/organization-http";
 
 const passwordForTest = () => `Pw-${randomUUID()}`;
+let nextTestClientIp = 1;
+
+function freshTestClientIp() {
+  const value = `192.0.2.${nextTestClientIp}`;
+  nextTestClientIp = (nextTestClientIp % 250) + 1;
+  return value;
+}
 
 function applyCookies(existing: string, response: Response) {
   const jar = new Map<string, string>();
@@ -35,6 +42,7 @@ function postJson(
   path: string,
   body: Record<string, unknown>,
   cookie?: string,
+  clientIp?: string,
 ) {
   return app.request(path, {
     method: "POST",
@@ -42,6 +50,7 @@ function postJson(
       "content-type": "application/json",
       origin: "http://localhost:1337",
       ...(cookie ? { cookie } : {}),
+      ...(clientIp ? { "x-forwarded-for": clientIp } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -159,6 +168,7 @@ async function enrollTotp(
     "/api/auth/two-factor/verify-totp",
     { code: totpCode(enrollment.totpURI) },
     cookies,
+    freshTestClientIp(),
   );
   expect(verify.status).toBe(200);
   expect((await verify.json()).user.email).toBeTruthy();
@@ -172,6 +182,91 @@ async function enrollTotp(
     cookies: applyCookies(cookies, verify),
     totpURI: enrollment.totpURI,
   };
+}
+
+async function assertPasswordlessNeedsTotp(
+  app: ReturnType<typeof createApp>["app"],
+  email: string,
+  totpURI: string,
+) {
+  const sentOtp = await postJson(
+    app,
+    "/api/auth/email-otp/send-verification-otp",
+    {
+      email,
+      type: "sign-in",
+    },
+  );
+  expect(sentOtp.status).toBe(200);
+  const [otpRecord] = await db
+    .select({ value: schema.verificationTable.value })
+    .from(schema.verificationTable)
+    .where(eq(schema.verificationTable.identifier, `sign-in-otp-${email}`));
+  const otp = otpRecord?.value.split(":")[0];
+  if (!otp) throw new Error("Email OTP was not stored");
+
+  const otpChallenge = await postJson(app, "/api/auth/sign-in/email-otp", {
+    email,
+    otp,
+  });
+  expect(otpChallenge.status).toBe(200);
+  expect((await otpChallenge.json()).twoFactorRedirect).toBe(true);
+  const otpCookies = applyCookies("", otpChallenge);
+  const otpSession = await app.request("/api/auth/get-session", {
+    headers: { cookie: otpCookies },
+  });
+  expect(await otpSession.json()).toBeNull();
+  const otpVerified = await postJson(
+    app,
+    "/api/auth/two-factor/verify-totp",
+    { code: totpCode(totpURI) },
+    otpCookies,
+    freshTestClientIp(),
+  );
+  expect(otpVerified.status).toBe(200);
+  const otpAuthenticated = await app.request("/api/auth/get-session", {
+    headers: { cookie: applyCookies(otpCookies, otpVerified) },
+  });
+  expect((await otpAuthenticated.json()).user.email).toBe(email);
+  await postJson(
+    app,
+    "/api/auth/sign-out",
+    {},
+    applyCookies(otpCookies, otpVerified),
+  );
+
+  const sentLink = await postJson(app, "/api/auth/sign-in/magic-link", {
+    email,
+  });
+  expect(sentLink.status).toBe(200);
+  const [magicLinkRecord] = await db
+    .select({ identifier: schema.verificationTable.identifier })
+    .from(schema.verificationTable)
+    .where(eq(schema.verificationTable.value, JSON.stringify({ email })));
+  const token = magicLinkRecord?.identifier;
+  if (!token) throw new Error("Magic-link token was not stored");
+  const linkChallenge = await app.request(
+    `/api/auth/magic-link/verify?token=${encodeURIComponent(token)}`,
+  );
+  expect(linkChallenge.status).toBe(200);
+  expect((await linkChallenge.json()).twoFactorRedirect).toBe(true);
+  const linkCookies = applyCookies("", linkChallenge);
+  const linkSession = await app.request("/api/auth/get-session", {
+    headers: { cookie: linkCookies },
+  });
+  expect(await linkSession.json()).toBeNull();
+  const linkVerified = await postJson(
+    app,
+    "/api/auth/two-factor/verify-totp",
+    { code: totpCode(totpURI) },
+    linkCookies,
+    freshTestClientIp(),
+  );
+  expect(linkVerified.status).toBe(200);
+  const linkAuthenticated = await app.request("/api/auth/get-session", {
+    headers: { cookie: applyCookies(linkCookies, linkVerified) },
+  });
+  expect((await linkAuthenticated.json()).user.email).toBe(email);
 }
 
 describe("better-auth optional TOTP and backup-code support", () => {
@@ -220,6 +315,19 @@ describe("better-auth optional TOTP and backup-code support", () => {
       .where(eq(schema.twoFactorTable.userId, account.userId));
     expect(user?.twoFactorEnabled).toBe(true);
     expect(factor?.verified).toBe(true);
+    const auditRows = await db
+      .select({
+        before: schema.auditLogTable.before,
+        after: schema.auditLogTable.after,
+      })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.mfa_enrolled"));
+    expect(auditRows).toHaveLength(1);
+    expect(auditRows[0]?.before).toBeNull();
+    expect(auditRows[0]?.after).toEqual({ method: "totp" });
+    expect(JSON.stringify(auditRows[0]?.after)).not.toMatch(
+      /secret|backup|code|totpURI/i,
+    );
 
     await postJson(app, "/api/auth/sign-out", {}, enrollment.cookies);
     const challenge = await signIn(app, account.email, account.password);
@@ -238,12 +346,21 @@ describe("better-auth optional TOTP and backup-code support", () => {
       "/api/auth/two-factor/verify-totp",
       { code: totpCode(enrollment.totpURI) },
       challenge.cookies,
+      freshTestClientIp(),
     );
     expect(verify.status).toBe(200);
     const authenticated = await app.request("/api/auth/get-session", {
       headers: { cookie: applyCookies(challenge.cookies, verify) },
     });
     expect((await authenticated.json()).user.email).toBe(account.email);
+
+    await postJson(
+      app,
+      "/api/auth/sign-out",
+      {},
+      applyCookies(challenge.cookies, verify),
+    );
+    await assertPasswordlessNeedsTotp(app, account.email, enrollment.totpURI);
   });
 
   it("accepts a backup code once and rejects it on a later challenge", async () => {
@@ -260,6 +377,7 @@ describe("better-auth optional TOTP and backup-code support", () => {
       "/api/auth/two-factor/verify-backup-code",
       { code: backupCode },
       firstChallenge.cookies,
+      freshTestClientIp(),
     );
     expect(firstVerification.status).toBe(200);
     const authenticated = await app.request("/api/auth/get-session", {
@@ -281,6 +399,7 @@ describe("better-auth optional TOTP and backup-code support", () => {
       "/api/auth/two-factor/verify-backup-code",
       { code: backupCode },
       secondChallenge.cookies,
+      freshTestClientIp(),
     );
     expect(reusedCode.status).toBe(401);
     const unauthenticated = await app.request("/api/auth/get-session", {
