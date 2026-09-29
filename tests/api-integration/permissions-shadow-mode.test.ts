@@ -487,6 +487,117 @@ describe("#8 notification self-read shadow evidence", () => {
       ),
     ).toEqual([]);
   });
+
+  it("keeps only reachable task links and metadata in a caller's own notifications", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const other = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    async function createTask(workspaceId: string, title: string) {
+      const { project, columns } = await createProjectFixture({ workspaceId });
+      const task = await fresh.db
+        .insert(fresh.schema.taskTable)
+        .values({
+          projectId: project.id,
+          title,
+          description: title,
+          status: "to-do",
+          columnId: columns.todo.id,
+          priority: "medium",
+          number: 1,
+          position: 1,
+        })
+        .returning();
+      if (!task[0]) throw new Error("createTask: insert returned no row");
+      return { task: task[0], project };
+    }
+
+    async function createOwnNotification(taskId: string, title: string) {
+      const response = await fresh.app.request("/api/notification", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title,
+          type: "info",
+          eventData: { taskTitle: title },
+          relatedEntityId: taskId,
+          relatedEntityType: "task",
+        }),
+      });
+      expect(response.status).toBe(200);
+      return (await response.json()) as { id: string };
+    }
+
+    const { task: privateTask } = await createTask(
+      other.workspace.id,
+      "Other workspace task",
+    );
+    const { task: ownTask, project: ownProject } = await createTask(
+      caller.workspace.id,
+      "Caller workspace task",
+    );
+    const privateNotification = await createOwnNotification(
+      privateTask.id,
+      "Private task notification",
+    );
+    const ownNotification = await createOwnNotification(
+      ownTask.id,
+      "Own task notification",
+    );
+
+    const response = await fresh.app.request("/api/notification");
+    expect(response.status).toBe(200);
+    const notifications = (await response.json()) as Array<{
+      id: string;
+      resourceId: string | null;
+      resourceType: string | null;
+      eventData: Record<string, unknown> | null;
+    }>;
+
+    expect(notifications).toHaveLength(2);
+    expect(notifications).toContainEqual(
+      expect.objectContaining({
+        id: privateNotification.id,
+        resourceId: null,
+        resourceType: null,
+        eventData: { taskTitle: "Private task notification" },
+      }),
+    );
+    expect(notifications).toContainEqual(
+      expect.objectContaining({
+        id: ownNotification.id,
+        resourceId: ownTask.id,
+        resourceType: "task",
+        eventData: {
+          taskTitle: "Own task notification",
+          projectId: ownProject.id,
+          workspaceId: caller.workspace.id,
+        },
+      }),
+    );
+
+    const agreeTally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor("GET /api/notification");
+      return rows.find((row) => row.outcome === "agree");
+    });
+    expect(agreeTally.count).toBe(1);
+    expect(
+      await shadowEventsFor(
+        "GET /api/notification",
+        "legacy_allow_policy_deny",
+      ),
+    ).toEqual([]);
+    expect(
+      await shadowEventsFor(
+        "GET /api/notification",
+        "legacy_deny_policy_allow",
+      ),
+    ).toEqual([]);
+  });
 });
 
 describe("#323 Opus S1 — a request-sourced workspace route fully evaluates to agree", () => {
