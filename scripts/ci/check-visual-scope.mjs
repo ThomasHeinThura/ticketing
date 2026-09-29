@@ -121,7 +121,106 @@ function findDisabledSuite(sourceFile) {
   return method;
 }
 
-function awaitedScreenshotName(statement) {
+function literalScreenshotOptionValue(node) {
+  const value = unwrapTypeWrappers(node);
+  if (
+    ts.isStringLiteral(value) ||
+    ts.isNoSubstitutionTemplateLiteral(value) ||
+    ts.isNumericLiteral(value) ||
+    value.kind === ts.SyntaxKind.TrueKeyword ||
+    value.kind === ts.SyntaxKind.FalseKeyword ||
+    value.kind === ts.SyntaxKind.NullKeyword
+  ) {
+    return true;
+  }
+  if (!ts.isObjectLiteralExpression(value)) return false;
+  return value.properties.every(
+    (property) =>
+      ts.isPropertyAssignment(property) &&
+      (ts.isIdentifier(property.name) || ts.isStringLiteral(property.name)) &&
+      literalScreenshotOptionValue(property.initializer),
+  );
+}
+
+function screenshotOptionsHaveFullPage(node, sourceFile) {
+  let options = unwrapTypeWrappers(node);
+  if (ts.isIdentifier(options)) {
+    const declarations = [];
+    const visit = (current) => {
+      if (!current) return;
+      if (
+        ts.isVariableDeclaration(current) &&
+        ts.isIdentifier(current.name) &&
+        current.name.text === options.text
+      ) {
+        declarations.push(current);
+      }
+      current.forEachChild(visit);
+    };
+    visit(sourceFile);
+    if (
+      declarations.length !== 1 ||
+      !declarations[0].initializer ||
+      !ts.isVariableDeclarationList(declarations[0].parent) ||
+      (declarations[0].parent.flags & ts.NodeFlags.Const) === 0
+    ) {
+      return false;
+    }
+    options = unwrapTypeWrappers(declarations[0].initializer);
+  }
+  if (
+    !ts.isObjectLiteralExpression(options) ||
+    !literalScreenshotOptionValue(options)
+  ) {
+    return false;
+  }
+  const fullPageProperties = options.properties.filter(
+    (property) =>
+      ts.isPropertyAssignment(property) &&
+      ((ts.isIdentifier(property.name) && property.name.text === "fullPage") ||
+        (ts.isStringLiteral(property.name) &&
+          property.name.text === "fullPage")),
+  );
+  return (
+    fullPageProperties.length === 1 &&
+    fullPageProperties[0].initializer.kind === ts.SyntaxKind.TrueKeyword
+  );
+}
+
+function isExpectingPage(node) {
+  if (!ts.isCallExpression(node)) return false;
+  const isExpect =
+    (ts.isIdentifier(node.expression) && node.expression.text === "expect") ||
+    (ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === "expect" &&
+      node.expression.name.text === "soft");
+  return (
+    isExpect &&
+    node.arguments.length >= 1 &&
+    ts.isIdentifier(node.arguments[0]) &&
+    node.arguments[0].text === "page" &&
+    node.arguments.slice(1).every(isSafeExpectationMessage)
+  );
+}
+
+function isSafeExpectationMessage(node) {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+    return true;
+  }
+  if (!ts.isTemplateExpression(node) || node.templateSpans.length !== 1) {
+    return false;
+  }
+  const [span] = node.templateSpans;
+  return (
+    ts.isPropertyAccessExpression(span.expression) &&
+    span.expression.name.text === "id" &&
+    ts.isIdentifier(span.expression.expression) &&
+    span.expression.expression.text === "story"
+  );
+}
+
+function awaitedScreenshotName(statement, sourceFile) {
   if (
     !ts.isExpressionStatement(statement) ||
     !ts.isAwaitExpression(statement.expression) ||
@@ -133,8 +232,17 @@ function awaitedScreenshotName(statement) {
   ) {
     return undefined;
   }
-  const [name] = statement.expression.expression.arguments;
-  if (!ts.isStringLiteral(name)) return undefined;
+  const screenshot = statement.expression.expression;
+  const [name, options] = screenshot.arguments;
+  if (
+    screenshot.arguments.length !== 2 ||
+    !ts.isStringLiteral(name) ||
+    !isExpectingPage(screenshot.expression.expression) ||
+    !options ||
+    !screenshotOptionsHaveFullPage(options, sourceFile)
+  ) {
+    return undefined;
+  }
   return {
     name: name.text,
     start: statement.getStart(),
@@ -166,12 +274,55 @@ function isRouteInterceptCall(node) {
   );
 }
 
-function isVisibleAssertionStatement(statement) {
+function isSafeLocatorArgument(node) {
+  const value = unwrapTypeWrappers(node);
+  if (literalScreenshotOptionValue(value)) return true;
+  return false;
+}
+
+function isPageLocator(node) {
   return (
+    ts.isCallExpression(node) &&
+    ts.isPropertyAccessExpression(node.expression) &&
+    ts.isIdentifier(node.expression.expression) &&
+    node.expression.expression.text === "page" &&
+    [
+      "getByLabel",
+      "getByPlaceholder",
+      "getByRole",
+      "getByTestId",
+      "getByText",
+      "locator",
+    ].includes(node.expression.name.text) &&
+    node.arguments.length > 0 &&
+    node.arguments.every(isSafeLocatorArgument)
+  );
+}
+
+function isVisibleAssertionStatement(statement) {
+  if (
     ts.isExpressionStatement(statement) &&
     ts.isAwaitExpression(statement.expression) &&
     ts.isCallExpression(statement.expression.expression) &&
     isNamedProperty(statement.expression.expression.expression, "toBeVisible")
+  ) {
+    const assertion = statement.expression.expression;
+    const expectation = assertion.expression.expression;
+    return (
+      assertion.arguments.length === 0 &&
+      isExpectCallForSafeLocator(expectation)
+    );
+  }
+  return false;
+}
+
+function isExpectCallForSafeLocator(node) {
+  return (
+    ts.isCallExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === "expect" &&
+    node.arguments.length === 1 &&
+    isPageLocator(node.arguments[0])
   );
 }
 
@@ -343,7 +494,7 @@ function hasShadowedFixtureHelper(callback) {
   return shadowed;
 }
 
-function testVisualEvidence(callback) {
+function testVisualEvidence(callback, sourceFile) {
   if (!ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) {
     return {
       screenshots: [],
@@ -381,7 +532,7 @@ function testVisualEvidence(callback) {
   const directScreenshots = callback.body.statements
     .map((statement) => ({
       statement,
-      evidence: awaitedScreenshotName(statement),
+      evidence: awaitedScreenshotName(statement, sourceFile),
     }))
     .filter(({ evidence }) => evidence !== undefined)
     .map(({ statement, evidence }) => ({
@@ -606,7 +757,91 @@ function isStoryNavigation(statement) {
   );
 }
 
-function hasStoryScreenshotLoop(callback) {
+function isPageScreenshotCall(node, sourceFile) {
+  if (
+    !ts.isCallExpression(node) ||
+    !isNamedProperty(node.expression, "toHaveScreenshot") ||
+    !isExpectingPage(node.expression.expression)
+  ) {
+    return false;
+  }
+  const [name, options] = node.arguments;
+  return (
+    node.arguments.length === 2 &&
+    (ts.isStringLiteral(name) || ts.isTemplateExpression(name)) &&
+    options !== undefined &&
+    screenshotOptionsHaveFullPage(options, sourceFile)
+  );
+}
+
+function hasStoryLoopControlBypass(loop) {
+  let unsafe = false;
+  const visit = (node) => {
+    if (unsafe) return;
+    if (
+      ts.isArrowFunction(node) ||
+      ts.isFunctionExpression(node) ||
+      ts.isFunctionDeclaration(node)
+    ) {
+      return;
+    }
+    if (
+      ts.isIfStatement(node) ||
+      ts.isSwitchStatement(node) ||
+      ts.isConditionalExpression(node) ||
+      ts.isContinueStatement(node) ||
+      ts.isBreakStatement(node) ||
+      ts.isReturnStatement(node) ||
+      ts.isThrowStatement(node) ||
+      ts.isWhileStatement(node) ||
+      ts.isDoStatement(node) ||
+      ts.isForStatement(node) ||
+      ts.isForInStatement(node) ||
+      ts.isForOfStatement(node)
+    ) {
+      unsafe = true;
+      return;
+    }
+    node.forEachChild(visit);
+  };
+  visit(loop.statement);
+  return unsafe;
+}
+
+function hasStoryCoverageControlBypass(callback) {
+  let unsafe = false;
+  const visit = (node) => {
+    if (unsafe) return;
+    if (
+      ts.isArrowFunction(node) ||
+      ts.isFunctionExpression(node) ||
+      ts.isFunctionDeclaration(node)
+    ) {
+      return;
+    }
+    if (
+      ts.isIfStatement(node) ||
+      ts.isSwitchStatement(node) ||
+      ts.isConditionalExpression(node) ||
+      ts.isContinueStatement(node) ||
+      ts.isBreakStatement(node) ||
+      ts.isReturnStatement(node) ||
+      ts.isThrowStatement(node) ||
+      ts.isWhileStatement(node) ||
+      ts.isDoStatement(node) ||
+      ts.isForStatement(node) ||
+      ts.isForInStatement(node)
+    ) {
+      unsafe = true;
+      return;
+    }
+    node.forEachChild(visit);
+  };
+  visit(callback.body);
+  return unsafe;
+}
+
+function hasStoryScreenshotLoop(callback, sourceFile) {
   if (!ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) return false;
   const loops = callback.body.statements.filter((statement) =>
     ts.isForOfStatement(statement),
@@ -629,18 +864,15 @@ function hasStoryScreenshotLoop(callback) {
   ) {
     return false;
   }
+  if (hasStoryLoopControlBypass(loop)) return false;
 
-  const navigatesToEachStory =
-    loop.statement.statements.some(isStoryNavigation);
-  const capturesEachStory = loop.statement.statements.some((statement) => {
+  const navigationStatements =
+    loop.statement.statements.filter(isStoryNavigation);
+  const screenshotStatements = loop.statement.statements.filter((statement) => {
     if (
       !ts.isExpressionStatement(statement) ||
       !ts.isAwaitExpression(statement.expression) ||
-      !ts.isCallExpression(statement.expression.expression) ||
-      !isNamedProperty(
-        statement.expression.expression.expression,
-        "toHaveScreenshot",
-      )
+      !isPageScreenshotCall(statement.expression.expression, sourceFile)
     ) {
       return false;
     }
@@ -648,7 +880,11 @@ function hasStoryScreenshotLoop(callback) {
       statement.expression.expression.arguments[0],
     );
   });
-  return navigatesToEachStory && capturesEachStory;
+  return (
+    navigationStatements.length === 1 &&
+    screenshotStatements.length === 1 &&
+    loop.statement.statements.at(-1) === screenshotStatements[0]
+  );
 }
 
 function hasStorybookCoverage(sourceFile, title) {
@@ -697,7 +933,8 @@ function hasStorybookCoverage(sourceFile, title) {
     fetchesStoryIndex &&
     derivesStoriesFromEveryExport &&
     statements.some(isNonemptyStoriesAssertion) &&
-    hasStoryScreenshotLoop(callback)
+    !hasStoryCoverageControlBypass(callback) &&
+    hasStoryScreenshotLoop(callback, sourceFile)
   );
 }
 
@@ -791,7 +1028,9 @@ for (const screen of manifest) {
   const matchingCallbacks = visualSourceFile
     ? testCallbacks(visualSourceFile, screen.test)
     : [];
-  const matchingEvidence = matchingCallbacks.map(testVisualEvidence);
+  const matchingEvidence = matchingCallbacks.map((callback) =>
+    testVisualEvidence(callback, visualSourceFile),
+  );
   if (matchingCallbacks.some(findTestDisable)) {
     failures.push(`${screen.name} visual test cannot be skipped or fixme`);
   }
