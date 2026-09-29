@@ -111,6 +111,8 @@ jobs:
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
+      - name: Build the permissions package used by the web bundle
+        run: pnpm --filter @taskdesk/permissions build
       - name: Install Chromium
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Check inventory scope and run screen and Storybook baselines

@@ -176,16 +176,108 @@ function isVisibleAssertionStatement(statement) {
 }
 
 function isApiRouteSetupStatement(statement) {
-  return (
-    ts.isExpressionStatement(statement) &&
-    ts.isAwaitExpression(statement.expression) &&
-    ts.isCallExpression(statement.expression.expression) &&
-    isNamedProperty(statement.expression.expression.expression, "route") &&
-    ts.isIdentifier(statement.expression.expression.expression.expression) &&
-    statement.expression.expression.expression.expression.text === "page" &&
-    ts.isStringLiteral(statement.expression.expression.arguments[0]) &&
-    statement.expression.expression.arguments[0].text === "**/api/**"
-  );
+  if (
+    !(
+      ts.isExpressionStatement(statement) &&
+      ts.isAwaitExpression(statement.expression) &&
+      ts.isCallExpression(statement.expression.expression) &&
+      isNamedProperty(statement.expression.expression.expression, "route") &&
+      ts.isIdentifier(statement.expression.expression.expression.expression) &&
+      statement.expression.expression.expression.expression.text === "page" &&
+      ts.isStringLiteral(statement.expression.expression.arguments[0]) &&
+      statement.expression.expression.arguments[0].text === "**/api/**"
+    )
+  )
+    return false;
+
+  const [, handler] = statement.expression.expression.arguments;
+  return hasSafeApiRouteHandler(handler);
+}
+
+function hasSafeApiRouteHandler(handler) {
+  if (!ts.isArrowFunction(handler) || !ts.isBlock(handler.body)) return false;
+  const [routeParameter] = handler.parameters;
+  if (!routeParameter || !ts.isIdentifier(routeParameter.name)) return false;
+  const routeName = routeParameter.name.text;
+  const forbiddenBrowserNames = new Set([
+    "document",
+    "window",
+    "globalThis",
+    "self",
+    "page",
+  ]);
+  const forbiddenBrowserOperations = new Set([
+    "addInitScript",
+    "evaluate",
+    "goto",
+    "innerHTML",
+    "outerHTML",
+    "reload",
+    "setContent",
+    "write",
+  ]);
+  let safe = true;
+  const visit = (node) => {
+    if (!safe) return;
+    if (
+      ts.isArrowFunction(node) ||
+      ts.isFunctionExpression(node) ||
+      ts.isFunctionDeclaration(node)
+    ) {
+      if (node !== handler) {
+        safe = false;
+        return;
+      }
+    }
+    const isPropertyName =
+      (ts.isPropertyAssignment(node.parent) && node.parent.name === node) ||
+      (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node);
+    if (
+      (ts.isIdentifier(node) &&
+        forbiddenBrowserNames.has(node.text) &&
+        !isPropertyName) ||
+      (ts.isPropertyAccessExpression(node) &&
+        forbiddenBrowserOperations.has(node.name.text))
+    ) {
+      safe = false;
+      return;
+    }
+    if (ts.isCallExpression(node)) {
+      const expression = node.expression;
+      const allowed =
+        (ts.isPropertyAccessExpression(expression) &&
+          ts.isIdentifier(expression.expression) &&
+          expression.expression.text === "JSON" &&
+          expression.name.text === "stringify") ||
+        (ts.isPropertyAccessExpression(expression) &&
+          ts.isIdentifier(expression.expression) &&
+          expression.name.text === "endsWith") ||
+        (ts.isPropertyAccessExpression(expression) &&
+          ts.isIdentifier(expression.expression) &&
+          expression.expression.text === routeName &&
+          ["request", "fulfill"].includes(expression.name.text)) ||
+        (ts.isPropertyAccessExpression(expression) &&
+          expression.name.text === "url" &&
+          ts.isCallExpression(expression.expression) &&
+          ts.isPropertyAccessExpression(expression.expression.expression) &&
+          ts.isIdentifier(expression.expression.expression.expression) &&
+          expression.expression.expression.expression.text === routeName &&
+          expression.expression.expression.name.text === "request");
+      if (!allowed) {
+        safe = false;
+        return;
+      }
+    }
+    if (ts.isNewExpression(node)) {
+      if (!ts.isIdentifier(node.expression) || node.expression.text !== "URL") {
+        safe = false;
+        return;
+      }
+    }
+    node.forEachChild(visit);
+  };
+  visit(handler.body);
+  return safe;
 }
 
 function isAuthenticatedFixtureSetupStatement(statement) {
