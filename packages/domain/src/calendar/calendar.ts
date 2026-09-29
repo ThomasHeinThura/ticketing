@@ -38,6 +38,21 @@ import { WEEKDAYS } from "./types.js";
 
 const OFFSET_FORMATTER_CACHE = new Map<string, Intl.DateTimeFormat>();
 
+/** Creates a UTC timestamp without Date.UTC's special remapping of years 0–99. */
+function utcEpochMilliseconds(
+  year: number,
+  month: number,
+  day: number,
+  hour = 0,
+  minute = 0,
+  second = 0,
+): number {
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  date.setUTCHours(hour, minute, second, 0);
+  return date.getTime();
+}
+
 function offsetFormatter(timeZone: string): Intl.DateTimeFormat {
   let formatter = OFFSET_FORMATTER_CACHE.get(timeZone);
   if (!formatter) {
@@ -61,9 +76,9 @@ function offsetMinutesAt(timeZone: string, instant: Date): number {
   const parts = offsetFormatter(timeZone).formatToParts(instant);
   const value = (type: string) =>
     Number(parts.find((p) => p.type === type)?.value);
-  const asUtc = Date.UTC(
+  const asUtc = utcEpochMilliseconds(
     value("year"),
-    value("month") - 1,
+    value("month"),
     value("day"),
     value("hour"),
     value("minute"),
@@ -109,9 +124,9 @@ export function zonedDateTimeToInstant(
   const remainder = minuteOfDay - dayOverflow * 1440;
   const hour = Math.floor(remainder / 60);
   const minute = remainder % 60;
-  const naiveUtc = Date.UTC(
+  const naiveUtc = utcEpochMilliseconds(
     date.year,
-    date.month - 1,
+    date.month,
     date.day + dayOverflow,
     hour,
     minute,
@@ -214,7 +229,7 @@ function coveredIntervalsForLocalDay(
   date: LocalDate,
   windows: readonly CalendarWindow[],
 ): TimeInterval[] {
-  const localMidnightMs = Date.UTC(date.year, date.month - 1, date.day);
+  const localMidnightMs = utcEpochMilliseconds(date.year, date.month, date.day);
   const segments = offsetSegmentsForLocalDay(timeZone, date);
   const intervals: TimeInterval[] = [];
 
@@ -259,7 +274,7 @@ function coveredIntervalsForLocalDay(
 /** The day-of-week a `LocalDate` falls on. A pure calendar fact, independent of any zone. */
 export function weekdayOf(date: LocalDate): Weekday {
   const index = new Date(
-    Date.UTC(date.year, date.month - 1, date.day),
+    utcEpochMilliseconds(date.year, date.month, date.day),
   ).getUTCDay();
   // biome-ignore lint/style/noNonNullAssertion: index is 0..6, WEEKDAYS has exactly 7 entries
   return WEEKDAYS[index]!;
@@ -267,7 +282,7 @@ export function weekdayOf(date: LocalDate): Weekday {
 
 function addDays(date: LocalDate, days: number): LocalDate {
   const shifted = new Date(
-    Date.UTC(date.year, date.month - 1, date.day + days),
+    utcEpochMilliseconds(date.year, date.month, date.day + days),
   );
   return {
     year: shifted.getUTCFullYear(),
@@ -294,7 +309,7 @@ function pad2(n: number): string {
 
 /** `YYYY-MM-DD`, matching `DatedHoliday.date`'s own format. */
 export function formatLocalDate(date: LocalDate): string {
-  return `${date.year}-${pad2(date.month)}-${pad2(date.day)}`;
+  return `${String(date.year).padStart(4, "0")}-${pad2(date.month)}-${pad2(date.day)}`;
 }
 
 // ---------------------------------------------------------------------------

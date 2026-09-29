@@ -101,7 +101,10 @@ const ZERO_COVER_CALENDAR: ServiceCalendar = {
 };
 
 function utc(y: number, m: number, d: number, h = 0, min = 0): Date {
-  return new Date(Date.UTC(y, m - 1, d, h, min));
+  const date = new Date(0);
+  date.setUTCFullYear(y, m - 1, d);
+  date.setUTCHours(h, min, 0, 0);
+  return date;
 }
 
 // ---------------------------------------------------------------------------
@@ -114,6 +117,11 @@ describe("weekdayOf", () => {
     expect(weekdayOf({ year: 2026, month: 6, day: 6 })).toBe("sat");
     expect(weekdayOf({ year: 2026, month: 6, day: 7 })).toBe("sun");
     expect(weekdayOf({ year: 2026, month: 12, day: 25 })).toBe("fri"); // 2026-12-25 is a Friday
+  });
+
+  it("handles years 1 and 99 as literal years, not 1901 and 1999", () => {
+    expect(weekdayOf({ year: 1, month: 1, day: 1 })).toBe("mon");
+    expect(weekdayOf({ year: 99, month: 1, day: 1 })).toBe("thu");
   });
 });
 
@@ -145,6 +153,47 @@ describe("formatLocalDate", () => {
     expect(formatLocalDate({ year: 2026, month: 1, day: 5 })).toBe(
       "2026-01-05",
     );
+  });
+
+  it("zero-pads years below 1000 for ISO holiday comparisons", () => {
+    expect(formatLocalDate({ year: 1, month: 1, day: 1 })).toBe("0001-01-01");
+    expect(formatLocalDate({ year: 99, month: 1, day: 1 })).toBe("0099-01-01");
+  });
+});
+
+describe("calendar dates in years 1 through 99", () => {
+  it("applies weekday windows and dated/ranged holidays across year 99", () => {
+    const calendar: ServiceCalendar = {
+      timezone: "UTC",
+      windows: {
+        mon: [{ from: 540, to: 600 }],
+        wed: [{ from: 1380, to: 1440 }],
+        thu: [
+          { from: 0, to: 60 },
+          { from: 540, to: 600 },
+        ],
+      },
+      holidays: [
+        { date: "0001-01-01", name: "First day" },
+        { from: "0098-12-31", to: "0099-01-01", name: "Year boundary" },
+      ],
+    };
+
+    expect(
+      coveredMinutesBetween(calendar, utc(1, 1, 1, 9), utc(1, 1, 1, 10)),
+    ).toBe(0);
+    expect(
+      coveredMinutesBetween(calendar, utc(99, 1, 1, 9), utc(99, 1, 1, 10)),
+    ).toBe(0);
+
+    const withoutHolidays = { ...calendar, holidays: [] };
+    expect(
+      coveredMinutesBetween(
+        withoutHolidays,
+        utc(98, 12, 31, 23, 30),
+        utc(99, 1, 1, 0, 30),
+      ),
+    ).toBe(60);
   });
 });
 
