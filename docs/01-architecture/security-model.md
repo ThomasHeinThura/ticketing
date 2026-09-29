@@ -7,8 +7,8 @@ Rewritten 2026-09-05 after the [planning review](../07-planning/review-2026-09-0
 dedicated security pass: the controls were strong, the threat model was missing, and a
 dozen boundaries (WebSocket origin and re-authorization, CSRF, egress, provisioning,
 account linking, step-up, scope-object resolution) were asserted rather than specified.
-Security review is a **mandatory GPT-6 Sol checkpoint** on every merge and every stage gate —
-[agent-workflow.md](../04-engineering/agent-workflow.md#model-policy).
+Security review is a **mandatory GPT-6 Sol checkpoint** on every security-scope merge and
+every stage gate — [agent-workflow.md](../04-engineering/agent-workflow.md#model-policy).
 
 ## Threat model
 

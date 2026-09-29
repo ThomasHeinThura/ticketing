@@ -181,4 +181,4 @@ review roles use fresh GPT-6 Luna contexts as required by the model policy.
    Thomas's call to front-load the `team.is_cab` answer).
 4. **Coordinated first P2 migration batch** — the moment the 0068 collision settles:
    calendar + SLA + submission + approval + workflow tables in one ordered PR
-   (full review tiers + mandatory Opus).
+   (full review tiers + the mandatory GPT-6 Sol security review for the migration).
