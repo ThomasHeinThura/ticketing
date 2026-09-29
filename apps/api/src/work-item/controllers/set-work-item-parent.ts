@@ -1,8 +1,8 @@
 import { validateReparent } from "@taskdesk/domain";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { projectTable, workItemTable } from "../../database/schema";
+import { workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { isRaiseException } from "../../utils/is-raise-exception";
 import {
@@ -10,6 +10,11 @@ import {
   recordWorkItemActivity,
   resolveVisibility,
 } from "../activity";
+import {
+  assertProjectStillLive,
+  assertWorkItemStillLive,
+  projectNotDeletedClause,
+} from "../assert-work-item-live";
 import { ancestorChain, descendantDepth } from "../hierarchy";
 import { WORK_ITEM_HIERARCHY_LOCK_NAMESPACE } from "../hierarchy-lock";
 import { runWithParentWriteDeadlockRetry } from "../parent-write-deadlock-retry";
@@ -74,9 +79,6 @@ export async function setWorkItemParent(
   actorId: string,
   actorType: ActivityActorType,
 ) {
-  // #202 / PR #204's freeze invariant, same shape as `update-work-item.ts`.
-  const projectNotDeleted = sql`EXISTS (SELECT 1 FROM ${projectTable} WHERE ${projectTable.id} = ${workItemTable.projectId} AND ${projectTable.deletedAt} IS NULL)`;
-
   // Read TWICE, deliberately -- the same shape `accept-invitation.ts`'s own doc comment
   // documents for its own advisory lock. This first read (outside any lock, outside the
   // transaction) exists ONLY to learn which project's advisory lock to take: nothing in
@@ -123,23 +125,8 @@ export async function setWorkItemParent(
       // window between that check and this `FOR UPDATE` re-read would otherwise let this
       // transaction still succeed against a since-deleted item -- belt-and-suspenders,
       // matching #481's own guard on the parent lookup just below.
-      if (!item || item.archivedAt || item.deletedAt) {
-        throw new HTTPException(404, { message: "Work item not found" });
-      }
-
-      const [projectAlive] = await tx
-        .select({ id: projectTable.id })
-        .from(projectTable)
-        .where(
-          and(
-            eq(projectTable.id, item.projectId),
-            isNull(projectTable.deletedAt),
-          ),
-        );
-
-      if (!projectAlive) {
-        throw new HTTPException(404, { message: "Work item not found" });
-      }
+      assertWorkItemStillLive(item);
+      await assertProjectStillLive(tx, item.projectId);
 
       const [parent] = await tx
         .select()
@@ -149,11 +136,10 @@ export async function setWorkItemParent(
             eq(workItemTable.key, parentKey),
             eq(workItemTable.workspaceId, workspaceId),
           ),
-        );
+        )
+        .for("share");
 
-      if (!parent || parent.archivedAt || parent.deletedAt) {
-        throw new HTTPException(404, { message: "Parent work item not found" });
-      }
+      assertWorkItemStillLive(parent, "Parent work item not found");
 
       // RH-6: parent and child must be in the same project. The composite self-FK on
       // `work_item.parent_id` (`schema.ts`) enforces this at the database layer too, but a
@@ -206,7 +192,7 @@ export async function setWorkItemParent(
             and(
               eq(workItemTable.id, item.id),
               eq(workItemTable.version, item.version),
-              projectNotDeleted,
+              projectNotDeletedClause,
             ),
           )
           .returning();

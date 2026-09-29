@@ -27,6 +27,10 @@ import {
   createWorkspaceMember,
   requireRow,
 } from "./helpers/fixtures";
+import {
+  raceProjectArchive,
+  raceProjectSoftDelete,
+} from "./helpers/race-soft-delete";
 
 const publishEventMock = vi.hoisted(() => vi.fn());
 
@@ -920,6 +924,74 @@ describe("API integration: work item assignment (#30, assignment.md)", () => {
     expect(
       activityRows.filter((entry) => entry.field === "assigneeId"),
     ).toHaveLength(0);
+  });
+
+  it("#493: assignment waits for a concurrent project soft-delete and refuses the write", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const target = await addPersonOnRoster({ projectId: project.id });
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItemId = requireRow([row], "row").id;
+
+    const race = await raceProjectSoftDelete(project.id, () =>
+      assignWorkItem(key, workspace.id, creator.id, "person", null, {
+        assigneeId: target.id,
+      }),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    expect(race.operation.status).toBe("rejected");
+    if (race.operation.status !== "rejected") {
+      throw new Error("assignment did not reject after project deletion");
+    }
+    expect(race.operation.reason).toMatchObject({ status: 404 });
+
+    const [after] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemId));
+    expect(after?.assigneeId).toBeNull();
+    expect(after?.deletedAt).toBeNull();
+  });
+
+  it("#493: assignment waits for a concurrent project archive and refuses the write", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const target = await addPersonOnRoster({ projectId: project.id });
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItemId = requireRow([row], "row").id;
+
+    const race = await raceProjectArchive(
+      project.id,
+      async () =>
+        await assignWorkItem(key, workspace.id, creator.id, "person", null, {
+          assigneeId: target.id,
+        }),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    expect(race.operation.status).toBe("rejected");
+    if (race.operation.status !== "rejected") {
+      throw new Error("assignment did not reject after project archive");
+    }
+    expect(race.operation.reason).toMatchObject({ status: 404 });
+
+    const [after] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemId));
+    expect(after?.assigneeId).toBeNull();
+    expect(after?.archivedAt).toBeNull();
   });
 
   it("#490: a concurrent archive cannot slip past the conditional UPDATE and assign an archived item", async () => {

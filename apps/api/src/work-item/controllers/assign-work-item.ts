@@ -10,6 +10,10 @@ import {
   type NewActivityInput,
   recordWorkItemActivity,
 } from "../activity";
+import {
+  assertProjectStillLive,
+  projectNotDeletedClause,
+} from "../assert-work-item-live";
 import { resolveAssigneeEligibility } from "../assignee-eligibility";
 
 /**
@@ -106,6 +110,7 @@ export async function assignWorkItem(
         eq(workItemTable.key, key),
         isNull(workItemTable.archivedAt),
         isNull(workItemTable.deletedAt),
+        isNull(projectTable.archivedAt),
         isNull(projectTable.deletedAt),
       ),
     )
@@ -163,6 +168,7 @@ export async function assignWorkItem(
   const previousAssigneeId = input.expectedCurrentAssigneeId ?? null;
 
   const assigned = await db.transaction(async (tx) => {
+    await assertProjectStillLive(tx, item.projectId);
     const expected = input.expectedCurrentAssigneeId ?? null;
     const [updated] = await tx
       .update(workItemTable)
@@ -189,6 +195,14 @@ export async function assignWorkItem(
           // otherwise still match on `assigneeId` alone and assign a deleted/archived item.
           isNull(workItemTable.deletedAt),
           isNull(workItemTable.archivedAt),
+          // Issue #493's project-freeze gap: the pre-read above also checked
+          // `project.deleted_at`, but that too is an unlocked read outside this
+          // transaction -- a concurrent project soft-delete in the same window would
+          // otherwise still match here, since nothing about THIS conditional UPDATE
+          // touches the project row. Zero rows matched because of this clause alone falls
+          // into the same `!updated` -> `WorkItemAssigneeConflictError` branch below as
+          // every other reason this WHERE can fail to match.
+          projectNotDeletedClause,
         ),
       )
       .returning({

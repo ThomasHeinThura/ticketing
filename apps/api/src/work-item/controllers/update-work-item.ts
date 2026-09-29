@@ -1,7 +1,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { projectTable, workItemTable } from "../../database/schema";
+import { workItemTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
   type ActivityActorType,
@@ -11,6 +11,10 @@ import {
   resolveVisibility,
   type WorkItemFieldSnapshot,
 } from "../activity";
+import {
+  assertProjectStillLive,
+  projectNotDeletedClause,
+} from "../assert-work-item-live";
 
 export type UpdateWorkItemInput = {
   title?: string;
@@ -130,10 +134,6 @@ export async function updateWorkItem(
   if (input.startDate !== undefined) values.startDate = input.startDate;
   if (input.dueDate !== undefined) values.dueDate = input.dueDate;
 
-  // #202 / PR #204's freeze invariant -- see this function's own doc comment above for
-  // why it is applied in two places now instead of one.
-  const projectNotDeleted = sql`EXISTS (SELECT 1 FROM ${projectTable} WHERE ${projectTable.id} = ${workItemTable.projectId} AND ${projectTable.deletedAt} IS NULL)`;
-
   const { updated, activityRows } = await db.transaction(async (tx) => {
     const [locked] = await tx
       .select()
@@ -159,21 +159,9 @@ export async function updateWorkItem(
       throw new HTTPException(404, { message: "Work item not found" });
     }
 
-    const [projectAlive] = await tx
-      .select({ id: projectTable.id })
-      .from(projectTable)
-      .where(
-        and(
-          eq(projectTable.id, locked.projectId),
-          isNull(projectTable.deletedAt),
-        ),
-      );
-
-    if (!projectAlive) {
-      // Its project was soft-deleted since the reach-check middleware ran (or is
-      // already soft-deleted and the middleware raced) -- 404, not a version conflict.
-      throw new HTTPException(404, { message: "Work item not found" });
-    }
+    // Its project may have been soft-deleted since the reach-check middleware ran (or
+    // is already soft-deleted and the middleware raced) -- 404, not a version conflict.
+    await assertProjectStillLive(tx, locked.projectId);
 
     if (locked.version !== assertedVersion) {
       throw new WorkItemVersionConflictError(assertedVersion, locked.version);
@@ -186,7 +174,7 @@ export async function updateWorkItem(
         and(
           eq(workItemTable.id, locked.id),
           eq(workItemTable.version, assertedVersion),
-          projectNotDeleted,
+          projectNotDeletedClause,
         ),
       )
       .returning();

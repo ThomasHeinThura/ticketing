@@ -23,6 +23,7 @@ import {
   createWorkspaceMember,
   requireRow,
 } from "./helpers/fixtures";
+import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
 
 const publishEventMock = vi.hoisted(() => vi.fn());
 
@@ -603,6 +604,41 @@ describe("API integration: work item unassignment (#30, assignment.md)", () => {
         (entry) => entry.newValue === null,
       ),
     ).toHaveLength(0);
+    expect(publishEventMock).not.toHaveBeenCalled();
+  });
+
+  it("#493: unassignment waits for a concurrent project soft-delete and refuses the write", async () => {
+    const { creator, workspace, project, type } = await setupProject();
+    const holder = await addPersonOnRoster({ projectId: project.id });
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+    await assignRequest(app, key, { assigneeId: holder.id });
+    publishEventMock.mockReset();
+
+    const [row] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItemId = requireRow([row], "row").id;
+
+    const race = await raceProjectSoftDelete(project.id, () =>
+      unassignWorkItem(key, workspace.id, creator.id, "person", holder.id),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    expect(race.operation.status).toBe("rejected");
+    if (race.operation.status !== "rejected") {
+      throw new Error("unassignment did not reject after project deletion");
+    }
+    expect(race.operation.reason).toMatchObject({ status: 404 });
+
+    const [after] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemId));
+    expect(after?.assigneeId).toBe(holder.id);
+    expect(after?.deletedAt).toBeNull();
     expect(publishEventMock).not.toHaveBeenCalled();
   });
 

@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
+import { transitionWorkItem } from "../../apps/api/src/work-item/controllers/transition-work-item";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -17,6 +18,7 @@ import {
   createWorkspaceMember,
   requireRow,
 } from "./helpers/fixtures";
+import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
 
 const publishEventMock = vi.hoisted(() => vi.fn());
 
@@ -1090,5 +1092,52 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
       .where(eq(schema.workItemTable.id, workItemId));
     expect(finalRow?.stateId).toBe(backlog.state.id);
     expect(finalRow?.archivedAt).not.toBeNull();
+  });
+
+  it("#493: a concurrent project soft-delete cannot slip past the locked read and complete a transition on a work item whose project is gone", async () => {
+    const { creator, workspace, project } = await setupProject();
+    const backlog = await makeState(workspace.id, project.id, {
+      group: "backlog",
+      isDefault: true,
+    });
+    const done = await makeState(workspace.id, project.id, {
+      group: "completed",
+    });
+    const { workflow } = await makeWorkflow(workspace.id, [
+      {
+        fromStateTemplateId: backlog.stateTemplate.id,
+        toStateTemplateId: done.stateTemplate.id,
+        roleId: null,
+      },
+    ]);
+    const type = await makeWorkItemType(workspace.id, workflow.id);
+
+    mockAuthenticatedSession(creator);
+    const { app } = createApp();
+    const { key } = await createWorkItem(app, project.id, type.id);
+
+    const [workItemRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    const workItemId = requireRow([workItemRow], "workItemRow").id;
+
+    const race = await raceProjectSoftDelete(project.id, () =>
+      transitionWorkItem(workItemId, null, creator.id, "person", {
+        toStateTemplateId: done.stateTemplate.id,
+      }),
+    );
+    expect(race.blockedOnRowLock).toBe(true);
+    expect(race.operation.status).toBe("rejected");
+    if (race.operation.status !== "rejected") {
+      throw new Error("transition did not reject after project deletion");
+    }
+    expect(race.operation.reason).toMatchObject({ status: 404 });
+
+    const [finalRow] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, workItemId));
+    expect(finalRow?.stateId).toBe(backlog.state.id);
   });
 });
