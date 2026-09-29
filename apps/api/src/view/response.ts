@@ -21,7 +21,11 @@ export const savedViewSchema = z
   })
   .openapi("SavedView");
 
-export const savedViewListSchema = z.array(savedViewSchema);
+export const reachableSavedViewSchema = savedViewSchema
+  .extend({ isPinned: z.boolean() })
+  .openapi("ReachableSavedView");
+
+export const reachableSavedViewListSchema = z.array(reachableSavedViewSchema);
 
 export const pinnedViewIdsSchema = z
   .object({ pinnedViewIds: z.array(z.string()) })

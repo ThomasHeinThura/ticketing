@@ -3224,7 +3224,11 @@ export const savedViewTable = pgTable(
     visibility: text("visibility").notNull().default("private"),
     sharedWithTeamId: text("shared_with_team_id").references(
       () => teamTable.id,
-      { onDelete: "set null", onUpdate: "cascade" },
+      // TM-7 refuses a direct team deletion while the team owns a shared view. SET NULL
+      // would violate saved_view_team_visibility_consistency because a team-visible view
+      // must retain its shared team. NO ACTION preserves that view while still allowing a
+      // workspace deletion to cascade both the team and its views in one statement.
+      { onDelete: "no action", onUpdate: "cascade" },
     ),
     // `{ entity, filter, sort, groupBy, columns, aggregate }` envelope (SV-14).
     query: jsonb("query").notNull(),

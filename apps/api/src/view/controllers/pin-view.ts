@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
-import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { userPreferenceTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import getView from "./get-view";
 
 const PINNED_VIEWS_KEY = "pinned_view_ids";
 
@@ -14,13 +14,10 @@ const PINNED_VIEWS_KEY = "pinned_view_ids";
 // generic (see `userPreferenceTable`'s schema.ts comment), this is the one concrete use
 // this PR wires up.
 async function pinView(viewId: string, personId: string, userId: string) {
-  const view = await db.query.savedViewTable.findFirst({
-    where: (savedView, { eq }) => eq(savedView.id, viewId),
-  });
-
-  if (!view) {
-    throw new HTTPException(404, { message: "Saved view not found" });
-  }
+  // workspaceAccess.fromSavedView establishes workspace reach, but private/team
+  // visibility is a separate SV-15..SV-18 rule. Apply the same check as direct reads
+  // before writing the caller's preference, so knowing an id cannot pin an invisible view.
+  const view = await getView(viewId, personId, userId);
 
   return db.transaction(async (tx) => {
     const [existing] = await tx

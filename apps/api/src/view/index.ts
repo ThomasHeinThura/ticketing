@@ -15,7 +15,7 @@ import updateView from "./controllers/update-view";
 import { resolveCallerPersonId } from "./resolve-person-id";
 import {
   pinnedViewIdsSchema,
-  savedViewListSchema,
+  reachableSavedViewListSchema,
   savedViewSchema,
 } from "./response";
 import {
@@ -33,14 +33,18 @@ const listViewsRoute = createRoute({
   summary: "List saved views",
   description:
     "Every saved view the caller can reach in this workspace: their own, workspace-visible " +
-    "views, and team views for teams they belong to (search-and-saved-views.md SV-15..18).",
+    "views, and team views for teams they belong to (search-and-saved-views.md SV-15..18). " +
+    "Each result includes the caller's restored pin state; pinned views are first (SV-20).",
   middleware: [
     workspaceAccess.fromQuery(),
     requireWorkspaceCapability("saved_view:read"),
   ] as const,
   request: { query: listViewsQuery },
   responses: {
-    200: jsonResponse("Reachable saved views", savedViewListSchema),
+    200: jsonResponse(
+      "Reachable saved views with caller pin state",
+      reachableSavedViewListSchema,
+    ),
     400: errorResponse("workspaceId could not be determined"),
     403: errorResponse("Missing saved_view:read permission"),
   },

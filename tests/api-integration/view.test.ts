@@ -268,6 +268,20 @@ describe("API integration: saved views", () => {
     });
     const created = (await createResponse.json()) as { id: string };
 
+    const secondCreateResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Not pinned",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    const secondCreated = (await secondCreateResponse.json()) as { id: string };
+
     const pinResponse = await app.request(`/api/views/${created.id}/pin`, {
       method: "POST",
     });
@@ -281,12 +295,155 @@ describe("API integration: saved views", () => {
     });
     expect(persisted?.value).toEqual([created.id]);
 
+    // GET /api/views is the persisted read/restore path: callers can restore sidebar
+    // pin state and pinned items are ordered before unpinned items after a reload.
+    const restoredResponse = await app.request(
+      `/api/views?workspaceId=${member.workspace.id}`,
+    );
+    const restored = (await restoredResponse.json()) as {
+      id: string;
+      isPinned: boolean;
+    }[];
+    expect(restored[0]).toMatchObject({ id: created.id, isPinned: true });
+    expect(
+      restored.find((view) => view.id === secondCreated.id)?.isPinned,
+    ).toBe(false);
+
     const unpinResponse = await app.request(`/api/views/${created.id}/pin`, {
       method: "POST",
     });
     expect(
       (await unpinResponse.json()) as { pinnedViewIds: string[] },
     ).toMatchObject({ pinnedViewIds: [] });
+
+    const unpinnedListResponse = await app.request(
+      `/api/views?workspaceId=${member.workspace.id}`,
+    );
+    const unpinnedList = (await unpinnedListResponse.json()) as {
+      id: string;
+      isPinned: boolean;
+    }[];
+    expect(unpinnedList.find((view) => view.id === created.id)?.isPinned).toBe(
+      false,
+    );
+  });
+
+  it("refuses to pin a private view the caller cannot read", async () => {
+    const owner = await createWorkspaceMember();
+    await addPerson(owner.user.id);
+    const otherUserId = `user-view-pin-outsider-${randomUUID()}`;
+    const other = requireRow(
+      await db
+        .insert(schema.userTable)
+        .values({
+          id: otherUserId,
+          email: `${otherUserId}@example.com`,
+          emailVerified: true,
+          name: "Pin Outsider",
+        })
+        .returning(),
+      "pin outsider user",
+    );
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: owner.workspace.id,
+      userId: other.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    const outsiderPerson = await addPerson(other.id);
+
+    mockAuthenticatedSession(owner.user);
+    const { app: ownerApp } = createApp();
+    const createResponse = await ownerApp.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: owner.workspace.id,
+        name: "Private pinned view",
+        scope: "workspace",
+        scopeId: owner.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    const created = (await createResponse.json()) as { id: string };
+
+    mockAuthenticatedSession(other);
+    const { app: otherApp } = createApp();
+    const pinResponse = await otherApp.request(`/api/views/${created.id}/pin`, {
+      method: "POST",
+    });
+    expect(pinResponse.status).toBe(404);
+    const preference = await db.query.userPreferenceTable.findFirst({
+      where: eq(schema.userPreferenceTable.personId, outsiderPerson.id),
+    });
+    expect(preference).toBeUndefined();
+  });
+
+  it("refuses team deletion while a shared view references the team (TM-7)", async () => {
+    const member = await createWorkspaceMember();
+    await addPerson(member.user.id);
+    const teamId = `team-view-delete-${randomUUID()}`;
+    await db.insert(schema.teamTable).values({
+      id: teamId,
+      name: "Saved View Team",
+      workspaceId: member.workspace.id,
+      createdAt: new Date(),
+    });
+    await db.insert(schema.teamMemberTable).values({
+      id: `team-member-view-delete-${randomUUID()}`,
+      teamId,
+      userId: member.user.id,
+      createdAt: new Date(),
+    });
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const createResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Team-owned view",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        visibility: "team",
+        sharedWithTeamId: teamId,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(createResponse.status).toBe(200);
+    const created = (await createResponse.json()) as { id: string };
+
+    // TM-7 says deletion is refused while the team owns a shared view. The restrictive
+    // FK enforces that invariant and avoids SET NULL violating the view's visibility CHECK.
+    await expect(
+      db.delete(schema.teamTable).where(eq(schema.teamTable.id, teamId)),
+    ).rejects.toThrow();
+    const survivingView = await db.query.savedViewTable.findFirst({
+      where: eq(schema.savedViewTable.id, created.id),
+    });
+    expect(survivingView).toMatchObject({
+      visibility: "team",
+      sharedWithTeamId: teamId,
+    });
+
+    // A workspace deletion cascades both rows from their workspace parents; NO ACTION
+    // permits that single-statement cleanup, unlike an immediate RESTRICT action.
+    await db
+      .delete(schema.workspaceTable)
+      .where(eq(schema.workspaceTable.id, member.workspace.id));
+    expect(
+      await db.query.teamTable.findFirst({
+        where: eq(schema.teamTable.id, teamId),
+      }),
+    ).toBeUndefined();
+    expect(
+      await db.query.savedViewTable.findFirst({
+        where: eq(schema.savedViewTable.id, created.id),
+      }),
+    ).toBeUndefined();
   });
 
   // HIGH: `update-view.ts`'s `sharedWithTeamId` check only verified team membership, not

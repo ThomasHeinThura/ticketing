@@ -118,7 +118,7 @@ Routes and status in the [screen inventory](../02-design/screen-inventory.md).
 ```
 POST /api/work-items/search                    work_item:read
 GET  /api/search?q=…&kinds=…                   work_item:read (scope workspace via `X-Workspace-Id`; results reach-filtered)
-GET  /api/views                                saved_view:read (scope workspace)
+GET  /api/views                                saved_view:read (scope workspace; each reachable view includes the caller's `isPinned` state, pinned views first)
 POST /api/views                                saved_view:create (scope workspace)
 GET  /api/views/{id}                           saved_view:read — the view's own workspace; shared-with is part of reach
 PATCH /api/views/{id}                          workspace:manage_settings · orOwner(created_by, saved_view:create)

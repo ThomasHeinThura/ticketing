@@ -31,7 +31,7 @@ CREATE TABLE "user_preference" (
 --> statement-breakpoint
 ALTER TABLE "saved_view" ADD CONSTRAINT "saved_view_workspace_id_workspace_id_fk" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspace"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "saved_view" ADD CONSTRAINT "saved_view_created_by_person_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."person"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-ALTER TABLE "saved_view" ADD CONSTRAINT "saved_view_shared_with_team_id_team_id_fk" FOREIGN KEY ("shared_with_team_id") REFERENCES "public"."team"("id") ON DELETE set null ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "saved_view" ADD CONSTRAINT "saved_view_shared_with_team_id_team_id_fk" FOREIGN KEY ("shared_with_team_id") REFERENCES "public"."team"("id") ON DELETE no action ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "user_preference" ADD CONSTRAINT "user_preference_person_id_person_id_fk" FOREIGN KEY ("person_id") REFERENCES "public"."person"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 CREATE INDEX "saved_view_workspace_id_idx" ON "saved_view" USING btree ("workspace_id");--> statement-breakpoint
 CREATE INDEX "saved_view_created_by_idx" ON "saved_view" USING btree ("created_by");--> statement-breakpoint

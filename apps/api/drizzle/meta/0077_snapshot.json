@@ -952,7 +952,7 @@
 					"tableTo": "organisation",
 					"columnsFrom": ["organisation_id"],
 					"columnsTo": ["id"],
-					"onDelete": "restrict",
+					"onDelete": "no action",
 					"onUpdate": "cascade"
 				},
 				"attachment_uploaded_by_person_id_fk": {
@@ -3728,7 +3728,7 @@
 					"tableTo": "team",
 					"columnsFrom": ["shared_with_team_id"],
 					"columnsTo": ["id"],
-					"onDelete": "set null",
+					"onDelete": "restrict",
 					"onUpdate": "cascade"
 				}
 			},

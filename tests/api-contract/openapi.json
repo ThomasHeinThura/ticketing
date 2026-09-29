@@ -4188,6 +4188,24 @@
           "deleted"
         ]
       },
+      "ReachableSavedView": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SavedView"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "isPinned": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "isPinned"
+            ]
+          }
+        ]
+      },
       "SavedView": {
         "type": "object",
         "properties": {
@@ -16545,7 +16563,7 @@
           "Views"
         ],
         "summary": "List saved views",
-        "description": "Every saved view the caller can reach in this workspace: their own, workspace-visible views, and team views for teams they belong to (search-and-saved-views.md SV-15..18).",
+        "description": "Every saved view the caller can reach in this workspace: their own, workspace-visible views, and team views for teams they belong to (search-and-saved-views.md SV-15..18). Each result includes the caller's restored pin state; pinned views are first (SV-20).",
         "parameters": [
           {
             "schema": {
@@ -16559,13 +16577,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Reachable saved views",
+            "description": "Reachable saved views with caller pin state",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/SavedView"
+                    "$ref": "#/components/schemas/ReachableSavedView"
                   }
                 }
               }
