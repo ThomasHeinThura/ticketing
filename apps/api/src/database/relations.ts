@@ -20,6 +20,7 @@ import {
   projectTable,
   roleTable,
   scheduledTransitionTable,
+  serviceCalendarTable,
   sessionTable,
   stakeholderTable,
   stateTable,
@@ -714,3 +715,13 @@ export const watcherTableRelations = relations(watcherTable, ({ one }) => ({
     references: [personTable.id],
   }),
 }));
+
+export const serviceCalendarTableRelations = relations(
+  serviceCalendarTable,
+  ({ one }) => ({
+    workspace: one(workspaceTable, {
+      fields: [serviceCalendarTable.workspaceId],
+      references: [workspaceTable.id],
+    }),
+  }),
+);

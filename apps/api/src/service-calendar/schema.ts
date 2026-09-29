@@ -1,0 +1,61 @@
+import { z } from "../openapi";
+
+const windowSchema = z.object({
+  from: z.number().int().min(0).max(1439),
+  to: z.number().int().min(1).max(1440),
+});
+
+const datedHoliday = z.object({
+  date: z.iso.date(),
+  name: z.string().optional(),
+});
+const rangedHoliday = z.object({
+  from: z.iso.date(),
+  to: z.iso.date(),
+  name: z.string().optional(),
+});
+const recurringHoliday = z.object({
+  recurs: z.literal("annually"),
+  month: z.number().int().min(1).max(12),
+  day: z.number().int().min(1).max(31),
+  name: z.string().optional(),
+});
+const holidaySchema = z.union([datedHoliday, rangedHoliday, recurringHoliday]);
+
+export const calendarDataSchema = z.object({
+  timezone: z
+    .string()
+    .min(1)
+    .refine((timezone) => {
+      try {
+        new Intl.DateTimeFormat("en", { timeZone: timezone });
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Expected an IANA timezone"),
+  windows: z.object({
+    sun: z.array(windowSchema).optional(),
+    mon: z.array(windowSchema).optional(),
+    tue: z.array(windowSchema).optional(),
+    wed: z.array(windowSchema).optional(),
+    thu: z.array(windowSchema).optional(),
+    fri: z.array(windowSchema).optional(),
+    sat: z.array(windowSchema).optional(),
+  }),
+  holidays: z.array(holidaySchema),
+});
+
+export const workspaceIdQuery = z.object({ workspaceId: z.string().min(1) });
+export const calendarIdParam = z.object({ id: z.string().min(1) });
+export const previewQuery = z.object({
+  year: z.coerce.number().int().min(1).max(9998),
+});
+export const createCalendarBody = calendarDataSchema.extend({
+  workspaceId: z.string().min(1),
+  name: z.string().trim().min(1).max(120),
+});
+export const updateCalendarBody = calendarDataSchema
+  .partial()
+  .extend({ name: z.string().trim().min(1).max(120).optional() })
+  .refine((value) => Object.keys(value).length > 0);
