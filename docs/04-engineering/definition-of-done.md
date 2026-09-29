@@ -34,7 +34,7 @@ why, if it does not — never delete it. An unticked, unmarked box is a blocker,
 - [ ] Destructive migration is two-phase
 - [ ] Domain logic lives in `packages/domain` and is pure
 - [ ] No secret is logged or serialised
-- [ ] Opus security review completed and recorded in the pull request's `## Security
+- [ ] GPT-6 Sol security review completed and recorded in the pull request's `## Security
       review` section
 
 ---
@@ -96,7 +96,7 @@ Everything above, plus:
 - [ ] Configuration reference updated if settings were added
 - [ ] i18n strings extracted; `en-US` complete
 - [ ] [status.md](../07-planning/status.md) updated
-- [ ] Opus security review completed and recorded in the pull request's `## Security
+- [ ] GPT-6 Sol security review completed and recorded in the pull request's `## Security
       review` section
 
 ---
@@ -146,7 +146,7 @@ they stop colliding with the delivery-stage numbering (`P0`–`P5+`) used everyw
 - [ ] Run against realistic data — 10,000 work items, 50 projects, 200 people (PG6)
 - [ ] Load test baseline recorded
 - [ ] Backup and restore verified
-- [ ] **Stage-level Opus security review** — a holistic pass over the whole stage's
+- [ ] **Stage-level GPT-6 Sol security review** — a holistic pass over the whole stage's
       surface, not only the per-feature reviews already passed
 - [ ] Written stage review in `07-planning/`, **including what went wrong**
 - [ ] [Screen inventory](../02-design/screen-inventory.md),
@@ -206,7 +206,7 @@ review H1–H6` (Thomas only — agents leave it blank), and `Not done`.
 
 CI checks the template mechanically: every section present; no section left both empty
 and unmarked; `Reviewed by` names a different session or model from `Implemented by`;
-`Security review`'s model matches `^Opus`, with a link to the committed note at
+`Security review`'s model is exactly `GPT-6 Sol`, with a link to the committed note at
 `docs/07-planning/security-reviews/<pr>-<slug>.md`; `Screens opened` non-empty whenever
 `apps/web/**` changed; every checklist box ticked or marked `n/a`. See
 [ci-cd.md](ci-cd.md) for the exact check.

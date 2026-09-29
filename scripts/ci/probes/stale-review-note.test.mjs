@@ -12,9 +12,10 @@
  *   H3  apps/api/src/auth.ts changed again       FAIL — the reviewer never read it
  *   H4  the note gains **Reviewed head:** H3     PASS — a fresh delta review, recorded
  *
- * Non-vacuity is asserted at H3 by evaluating the OLD predicate in the same repository:
- * the note file still exists and **Model:** still reads Opus, so the pre-fix check —
- * which verified exactly those two things — would have exited 0.
+ * Non-vacuity is asserted at H3 by evaluating the note-existence predicate in the same
+ * repository. The original check used an Opus model prefix and note existence; this
+ * migrated probe uses the canonical GPT-6 Sol model and isolates the separate head-binding
+ * requirement.
  */
 
 import assert from "node:assert/strict";
@@ -55,7 +56,7 @@ const CI_CD = [
   "│ pnpm test:integration                            │",
   "```",
   "",
-  "CI checks it non-empty, naming Opus, whenever the diff touches **any** of:",
+  "CI requires the exact model GPT-6 Sol whenever the diff touches **any** of:",
   "",
   "```",
   "apps/api/src/auth*                   packages/permissions/**",
@@ -81,7 +82,7 @@ function note(heads, extra = "") {
 
 function bodyWithNote() {
   return bodyFile(
-    completeBody({ securityModel: "Opus 5", securityNote: NOTE_PATH }),
+    completeBody({ securityModel: "GPT-6 Sol", securityNote: NOTE_PATH }),
   );
 }
 
@@ -125,7 +126,8 @@ describe("GPT-F2 — the committed note is bound to the code it reviewed", () =>
     write(dir, "apps/api/src/auth.ts", "export const secret = 3;\n");
     const h3 = commit(dir, "feat: change the auth surface again");
 
-    // Non-vacuity: the OLD predicate was "the linked note exists and Model is Opus".
+    // Non-vacuity: the note still exists, so this failure is about stale binding rather
+    // than a missing artefact. The historical model-prefix assertion was `^Opus`.
     const old = evaluateInRepo(
       dir,
       `import { exists, repoRoot } from "./scripts/ci/lib/repo.mjs";

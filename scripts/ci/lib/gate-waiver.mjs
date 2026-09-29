@@ -51,7 +51,7 @@
  *
  * UPDATED 2026-09-15: this comment used to end "authorship is Thomas's to confirm at the
  * merge button" — that was the real control, informal as it was, because Thomas was the
- * one merging. Merge execution is now delegated to the orchestrating Claude session once
+ * one merging. Merge execution is now delegated to the top-level orchestrating session once
  * required gates are green (AGENTS.md, decision log 2026-09-15), and the orchestrator does
  * NOT count as that check. AGENTS.md and CLAUDE.md now both say explicitly: a candidate
  * citing any waiver is outside the delegation and always needs Thomas's own action to

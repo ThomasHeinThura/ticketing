@@ -7,8 +7,8 @@ Rewritten 2026-09-05 after the [planning review](../07-planning/review-2026-09-0
 dedicated security pass: the controls were strong, the threat model was missing, and a
 dozen boundaries (WebSocket origin and re-authorization, CSRF, egress, provisioning,
 account linking, step-up, scope-object resolution) were asserted rather than specified.
-Security review is a **mandatory Opus checkpoint** on every merge and every stage gate —
-[agent-workflow.md](../04-engineering/agent-workflow.md#model-tiers-within-claude-code).
+Security review is a **mandatory GPT-6 Sol checkpoint** on every security-scope merge and
+every stage gate — [agent-workflow.md](../04-engineering/agent-workflow.md#model-policy).
 
 ## Threat model
 
@@ -54,7 +54,7 @@ in the project and is treated as one: `public-project` (anonymous boards) is **d
 fork**, not flagged off; every remaining inherited router is retrofitted into the five
 policy kinds by a human-reviewed pass, router by router; the route-coverage test must go
 green on the inherited surface, not on an empty application; and the retrofit gets its own
-Opus security review before P0 closes ([phases.md](../07-planning/phases.md#p0--foundation),
+GPT-6 Sol security review before P0 closes ([phases.md](../07-planning/phases.md#p0--foundation),
 [inherited-features.md](inherited-features.md)).
 
 ## The structural controls
@@ -478,8 +478,8 @@ exit criteria cite this table, not the prose above:
 | Entra SCIM is tenant-bound | `04-scim-token-cannot-touch-other-organisation.test.ts`, `06-customer-connection-cannot-create-staff-or-authority.test.ts` green against a real Entra tenant |
 | OIDC is safe | `15-oidc-protocol-failures-block-sign-in.test.ts` green |
 | Deletion is never immediate | `delete-returns-202-and-deletes-nothing.test.ts` green |
-| Opus security review | PR template, stage gate | Every PR touching security surfaces; every stage; **the P0 router retrofit explicitly** |
-| Independent red-team pass — authorization surface, portal boundary, inherited kaneo routes | Internal (a fresh Opus context with the hostile seed, not the authoring session) | **At the go-live gate**, before real customer data — the calendar does not move this |
+| GPT-6 Sol security review | PR template, stage gate | Every PR touching security surfaces; every stage; **the P0 router retrofit explicitly** |
+| Independent red-team pass — authorization surface, portal boundary, inherited kaneo routes | Internal (a fresh GPT-6 Sol context with the hostile seed, not the authoring session) | **At the go-live gate**, before real customer data — the calendar does not move this |
 | Penetration test | External | Before first external customer, then annually ([risks.md](../07-planning/risks.md) R19) |
 
 ## Incident response

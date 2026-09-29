@@ -26,8 +26,8 @@
  * "stays the single definition, exactly as it already does for the H2 list above" — which
  * had just stopped being true. So the identical bypass survived one level down: delete
  * `### Backend change` from the template and from the body in one diff, and the checklist
- * that carries "every new or changed route has a policy entry" and "Opus security review
- * completed and recorded" stops being required by the pull request that deletes it.
+ * that carries "every new or changed route has a policy entry" and the independent
+ * security-review checkbox stops being required by the pull request that deletes it.
  *
  * Both lists are therefore computed here, from the same two template revisions and one
  * merge-base resolution. A requirement is required when the template requires it at the
@@ -72,6 +72,11 @@ import { readText, repoRoot } from "./repo.mjs";
 export const TEMPLATE_RELATIVE_PATH = ".github/pull_request_template.md";
 export const templatePath = path.join(repoRoot, TEMPLATE_RELATIVE_PATH);
 
+/** Sections that are informational and never participate in the required-section union. */
+const OPTIONAL_SECTION_HEADINGS = new Set([
+  normaliseHeading("Sampled big review (optional)"),
+]);
+
 export class TemplateScopeUnavailableError extends Error {
   constructor(message) {
     super(message);
@@ -80,15 +85,21 @@ export class TemplateScopeUnavailableError extends Error {
 }
 
 /**
- * The H2 headings a template declares, in document order.
+ * The required H2 headings a template declares, in document order.
  *
- * Throws when the document declares none. A template with no fixed sections is
- * indistinguishable from "every requirement was deleted", so it is never an empty list.
+ * The sampled big-review section is explicitly optional and is excluded from the union.
+ * Throws when the document declares no required sections. A template with no fixed
+ * sections is indistinguishable from "every requirement was deleted", so it is never an
+ * empty list.
  */
 export function parseTemplateSections(source, origin = TEMPLATE_RELATIVE_PATH) {
   let headings;
   try {
-    headings = [...sections(source).values()].map((section) => section.heading);
+    headings = [...sections(source).values()]
+      .map((section) => section.heading)
+      .filter(
+        (heading) => !OPTIONAL_SECTION_HEADINGS.has(normaliseHeading(heading)),
+      );
   } catch (error) {
     if (!(error instanceof DuplicateSectionError)) throw error;
     // Fail closed with the same typed error the rest of this scope-resolution already

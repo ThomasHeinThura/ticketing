@@ -337,7 +337,7 @@ real tenant, or only the original subset the issue names? Concretely from the sp
 
 ---
 
-## 4. Threat surface — for the Opus reviewer
+## 4. Threat surface — for the GPT-6 Sol security reviewer
 
 *(Written for the reader who opens this section first.)*
 

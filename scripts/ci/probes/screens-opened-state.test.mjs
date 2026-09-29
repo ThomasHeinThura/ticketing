@@ -62,7 +62,7 @@ const CI_CD = [
   "│ pnpm test:integration                            │",
   "```",
   "",
-  "CI checks it non-empty, naming Opus, whenever the diff touches **any** of:",
+  "CI requires the exact model GPT-6 Sol whenever the diff touches **any** of:",
   "",
   "```",
   "apps/api/src/auth*                   packages/permissions/**",

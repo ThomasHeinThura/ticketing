@@ -2,9 +2,11 @@
  * Bind a committed security-review note to the code it actually reviewed.
  *
  * **GPT-F2 — the note was not bound to the reviewed code.** The PR-template check
- * verified two things about `## Security review`: that **Model:** matched `^Opus`, and
- * that the linked `docs/07-planning/security-reviews/<pr>-<slug>.md` existed in the
- * branch. Both are properties of the pull-request body and of a filename. Neither says
+ * verified two things about `## Security review`: at the time, that **Model:** matched
+ * `^Opus`, and that the linked `docs/07-planning/security-reviews/<pr>-<slug>.md` existed
+ * in the branch. (The active exact `GPT-6 Sol` model check lives in
+ * `check-pr-template.mjs`.) Both are properties of the pull-request body and of a
+ * filename. Neither says
  * anything about *which code* was reviewed, so once a note existed it stayed valid
  * forever:
  *

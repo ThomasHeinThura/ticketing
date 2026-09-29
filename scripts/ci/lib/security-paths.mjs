@@ -8,7 +8,7 @@ import { readText, repoRoot } from "./repo.mjs";
 
 /**
  * docs/04-engineering/ci-cd.md holds the authoritative list of paths whose change requires
- * a recorded Opus security review — it says so itself: "this list is the authoritative
+ * a recorded GPT-6 Sol security review — it says so itself: "this list is the authoritative
  * scope; sdlc.md and security-model.md cite it and do not restate it".
  *
  * So the list is parsed out of that document rather than copied here. If the block cannot
