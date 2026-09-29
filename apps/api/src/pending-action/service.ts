@@ -1,5 +1,5 @@
 import { createId } from "@paralleldrive/cuid2";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
@@ -114,7 +114,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
           and(
             eq(pendingActionTable.requestedByPersonId, input.requesterPersonId),
             eq(pendingActionTable.action, input.action),
-            sql`${pendingActionTable.targetIds} = ${payload.target_ids}`,
+            eq(pendingActionTable.targetIds, payload.target_ids),
             eq(pendingActionTable.state, "pending"),
           ),
         )
@@ -283,10 +283,13 @@ function toPublicPendingAction(row: typeof pendingActionTable.$inferSelect) {
 }
 
 function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: unknown }).code === "23505"
-  );
+  const seen = new Set<object>();
+  let current = error;
+  while (typeof current === "object" && current !== null) {
+    if (seen.has(current)) return false;
+    seen.add(current);
+    if ("code" in current && current.code === "23505") return true;
+    current = "cause" in current ? current.cause : undefined;
+  }
+  return false;
 }
