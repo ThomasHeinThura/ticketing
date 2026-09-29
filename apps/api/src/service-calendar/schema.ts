@@ -14,12 +14,22 @@ const rangedHoliday = z.object({
   to: z.iso.date(),
   name: z.string().optional(),
 });
-const recurringHoliday = z.object({
-  recurs: z.literal("annually"),
-  month: z.number().int().min(1).max(12),
-  day: z.number().int().min(1).max(31),
-  name: z.string().optional(),
-});
+const recurringHoliday = z
+  .object({
+    recurs: z.literal("annually"),
+    month: z.number().int().min(1).max(12),
+    day: z.number().int().min(1).max(31),
+    name: z.string().optional(),
+  })
+  .refine(
+    ({ month, day }) => {
+      const maximumDays = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][
+        month - 1
+      ];
+      return maximumDays !== undefined && day <= maximumDays;
+    },
+    { message: "Recurring holiday must be a valid calendar date" },
+  );
 const holidaySchema = z.union([datedHoliday, rangedHoliday, recurringHoliday]);
 
 export const calendarDataSchema = z.object({

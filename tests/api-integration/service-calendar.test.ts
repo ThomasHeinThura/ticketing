@@ -88,6 +88,30 @@ describe("API integration: service calendars (CAL-1–CAL-9)", () => {
     expect(response.status).toBe(400);
   });
 
+  it("CAL-12: rejects impossible recurring dates and accepts leap day", async () => {
+    const creator = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const create = (month: number, day: number) =>
+      app.request("/api/service-calendars", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: creator.workspace.id,
+          name: `Holiday ${month}-${day}`,
+          timezone: "UTC",
+          windows: {},
+          holidays: [
+            { recurs: "annually", month, day, name: "Annual holiday" },
+          ],
+        }),
+      });
+
+    expect((await create(2, 30)).status).toBe(400);
+    expect((await create(4, 31)).status).toBe(400);
+    expect((await create(2, 29)).status).toBe(200);
+  });
+
   it("CAL permissions: hides another workspace's calendar", async () => {
     const creator = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(creator.user);
