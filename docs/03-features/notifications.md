@@ -15,8 +15,9 @@ to filter it, and then the one message that mattered is missed too.
 
 ## Channels
 
-Every channel is a `notify.*` plugin, configured in God Mode. An administrator decides
-which exist on this instance; each user decides which they use.
+External channels are `notify.*` plugins, configured in God Mode. The `in_app` channel is
+the built-in exception: it is always on and is not a plugin. An administrator decides
+which external channels exist on this instance; each person decides which they use.
 
 | Channel | Notes |
 | --- | --- |
@@ -31,9 +32,9 @@ which exist on this instance; each user decides which they use.
 The event keys are the **N** column of the canonical catalogue in
 [events.md](../01-architecture/events.md) — this document owns only the **default
 recipients** per event, never the list of events itself. `notification_preference.event_kind`
-stores these keys. *(The former `mention.in_comment` was a duplicate of
-`work_item.mentioned` and is removed; `work_item.mentioned` covers mentions in descriptions
-and comments alike.)*
+stores these keys. `work_item.mentioned` covers mentions in descriptions and comments alike;
+there is no separate `mention.in_comment` event. Escalation timing and stakeholder order
+follow [SLA-17](sla.md#behaviour), with the stop conditions specified by `NO-22` below.
 
 | Event | Default recipients |
 | --- | --- |
@@ -62,28 +63,41 @@ and comments alike.)*
 | `api_key.auto_disabled` | The key's owner |
 | `automation.run_failed` | The rule's creator |
 
-- `NO-22` **Escalation path.** Where a recipient list ends "then the escalation path", the
-  path is the project's `stakeholder` rows ordered by `escalation_order`: the first is
-  notified immediately; each next one is notified after the previous one's
-  `escalation_wait_minutes` has elapsed without the work item leaving the triggering
-  condition (still overdue, still breached). Acknowledgement is implicit — a state change,
-  an assignment change or a comment by any staff member stops the walk. The walk is a
-  scheduled job, not a chain of timers, so a restart never loses a step.
+- `NO-22` **Escalation path.** Where a recipient list ends "then the escalation path", use
+  the project's `stakeholder` rows ordered by `escalation_order`, as specified by
+  [SLA-17](sla.md#behaviour). Notify the first immediately; notify each next stakeholder
+  after the previous one's `escalation_wait_minutes` elapses while the work item remains in
+  the triggering condition. A state change, assignment change, or staff comment stops the
+  walk. A scheduled job advances it, so restarts do not lose a step.
 
 ## Preferences
 
-Three levels, resolved most-specific-first.
+Preferences are per person and resolve most-specific-first across three scopes. Within a
+scope, each event can be configured per channel.
 
-1. **Per event, per channel** — "email me about assignments, not about comments".
-2. **Per workspace** — "everything from Contoso Support, nothing from Internal IT".
-3. **Per project** — an override within a workspace.
+1. **Global** — per event and channel, for example "email me about assignments, not about
+   comments".
+2. **Workspace** — overrides global choices for one workspace.
+3. **Project** — overrides workspace or global choices for one project.
+
+`notification_preference.scope` is `global`, `workspace`, or `project`; `scope_id` is null
+for global preferences and the corresponding workspace or project id otherwise. Its
+`channel` is `in_app` or the configured plugin id (for example `notify.email`). The schema,
+unique key, digest values, and per-person quiet-hours fields are defined in
+[data-model.md](../01-architecture/data-model.md#11-automations-notifications-integrations-audit).
 
 - `NO-1` Sensible defaults on account creation: in-app for everything, email for
   assignment, mention, approval and SLA breach only.
-- `NO-2` Every notification email carries a working one-click link to the exact preference
-  that produced it. Not to a preferences page — to *that setting*.
-- `NO-3` A user may set quiet hours; non-urgent notifications queue until they end.
-  SLA breach and approval expiry ignore quiet hours.
+- `NO-2` Every notification email carries a link to the exact preference that produced it.
+  The signed, single-purpose token binds `purpose: notification_pref`, the recipient,
+  `event_kind`, channel, scope and optional `scope_id`, and expires after 30 days. Opening
+  the link never changes a preference: `GET` validates it and opens the authenticated
+  preference screen preselected to that setting; a change takes effect only after the
+  recipient explicitly saves while authenticated as that person.
+- `NO-3` A person may set quiet hours. At each external-delivery drain, evaluate the
+  recipient's current quiet-hours setting and defer non-urgent delivery until the next
+  allowed time; preference changes therefore apply immediately. In-app notifications still
+  arrive live. SLA breach and approval expiry ignore quiet hours.
 - `NO-4` You are never notified about your own action.
 
 ## Digests
@@ -101,8 +115,14 @@ Three levels, resolved most-specific-first.
 - `NO-9` `outbox-drain` delivers with retry and exponential backoff. Dead letters after
   six attempts and are visible in God Mode.
 - `NO-10` Delivery failure never fails the originating request.
-- `NO-11` Duplicate suppression: the same event to the same person through the same
-  channel within five minutes is collapsed.
+- `NO-11` Duplicate suppression: for notifications, compute `outbox.dedupe_key` from
+  `event_kind + resource_type + resource_id + person_id + channel`. At drain time, suppress
+  a new row when a matching notification delivery succeeded in the previous five minutes.
+  Retries of that same outbox row use its retry state and do not count as a duplicate. The
+  channel is part of the key, so the same event may still reach the person over two
+  different channels. The key and drain behavior are defined in
+  [data-model.md](../01-architecture/data-model.md#11-automations-notifications-integrations-audit)
+  and [background-jobs.md](../01-architecture/background-jobs.md).
 
 v1's notifications were fire-and-forget, so failures were invisible. The outbox is the
 correction.
@@ -116,7 +136,8 @@ correction.
   item.
 - `NO-15` Mark one read, mark all read, and mark unread again.
 - `NO-16` Arrives live over WebSocket. No polling.
-- `NO-17` Read notifications are purged after 90 days.
+- `NO-17` Read notifications are purged after the instance's configured notification
+  retention period (90 days by default; configurable in God Mode).
 
 ## Customer notifications
 
@@ -124,8 +145,8 @@ correction.
 - `NO-19` Never about internal comments, internal activity or staff assignment changes.
 - `NO-20` Notification content is customer-facing language throughout, with no internal
   terminology and no staff names.
-- `NO-21` Customers have the same preference control as staff, over the smaller set of
-  events that apply to them.
+- `NO-21` Customers have the same preference controls as staff for the smaller set of
+  events that apply to them. In the portal, those controls live under `/portal/account`.
 
 ## Permissions
 
@@ -133,27 +154,61 @@ Notifications are always scoped to the recipient. There is no capability to read
 else's notifications, and no administrative override — an administrator investigating a
 delivery problem uses the audit log and the outbox, not another person's inbox.
 
+| Action | Policy |
+| --- | --- |
+| Read, clear, or change read state for own notifications | Authenticated self; recipient id is taken from the session |
+| Create an integration notification for self | Authenticated self; recipient id is taken from the session |
+| Read or change own notification preferences | Authenticated self; workspace/project scopes are validated against reach |
+| Configure or test instance notification plugins | `instance:manage_plugins` |
+| Inspect, requeue, or discard external deliveries | `instance:admin` |
+
 ## Screens
 
-Inbox; notification preferences under profile settings; per-workspace notification rules;
-God Mode channel configuration with a test send.
+Notifications inbox at `/agent/notifications`; scoped preferences under
+`/agent/settings/profile/notifications` and portal `/portal/account`; God Mode channel
+configuration at `/agent/god-mode/notifications`;
+delivery operations at `/agent/god-mode/deliveries`. Workspace and project choices are
+per-person preference scopes on the profile screen, not administrator-managed rule screens.
 
 ## API
 
 ```
-GET   /api/notifications                    (self)
-POST  /api/notifications/{id}/read          (self)
-POST  /api/notifications/read-all           (self)
-GET   /api/notification-preferences         (self)
-PATCH /api/notification-preferences         (self)
-POST  /api/instance/notify/{channel}/test   instance:admin
+GET    /api/notification                                      (self)
+POST   /api/notification                                      (self; integration notification)
+PATCH  /api/notification/{id}/read                           (self)
+PATCH  /api/notification/read-all                             (self)
+PATCH  /api/notification/{id}/unread                          (self; target route for NO-15)
+DELETE /api/notification/clear-all                            (self)
+GET    /api/notification-preferences                         (self)
+PATCH  /api/notification-preferences                         (self)
+PUT    /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked)
+DELETE /api/notification-preferences/workspaces/{workspaceId} (self; workspace reach checked)
+PUT    /api/notification-preferences/projects/{projectId}    (self; project reach checked)
+DELETE /api/notification-preferences/projects/{projectId}    (self; project reach checked)
+POST   /api/instance/plugins/{id}/test                        instance:manage_plugins
+GET    /api/instance/deliveries                               instance:admin
+POST   /api/instance/deliveries/{id}/requeue                  instance:admin
+DELETE /api/instance/deliveries/{id}                          instance:admin
 ```
+
+The mark-unread route is a target route required by `NO-15`; it must use the same recipient
+and task-reach checks as mark-read. Project preference overrides use the same per-person
+scope model and are target routes; both are not yet implemented.
+
+## Data
+
+The canonical fields and constraints are in
+[data-model.md §11](../01-architecture/data-model.md#11-automations-notifications-integrations-audit):
+`notification`, scoped `notification_preference`, and `outbox` with `dedupe_key`. Event keys
+and notification fan-out flags are in [events.md](../01-architecture/events.md). Delivery
+retry and digest scheduling are in [background-jobs.md](../01-architecture/background-jobs.md).
 
 ## Edge cases
 
 | Case | Behaviour |
 | --- | --- |
 | Recipient loses reach before delivery | Suppressed at delivery time, not just at creation |
+| Task is unreachable, deleted, or in a deleted project | Omitted from inbox; read-all leaves it unread; individual mark-read returns not found |
 | Recipient's account is deleted | Outbox rows for them are dropped |
 | Channel disabled after queueing | Queued messages are dropped with a log line |
 | SMTP down for hours | Retries with backoff; God Mode shows the backlog |
@@ -163,15 +218,30 @@ POST  /api/instance/notify/{channel}/test   instance:admin
 
 ## Testing
 
-Unit: preference resolution across the three levels; duplicate suppression; quiet-hours
-bypass rules.
+Acceptance tests cover preference resolution across the three scopes, duplicate suppression,
+and quiet-hours bypass rules. Existing focused coverage includes
+`tests/api/notification-preferences/delivery-ssrf.test.ts`.
 
-Integration: notification and outbox rows written in the same transaction as the change;
-outbox retry and dead-lettering; a customer never receives an internal-comment
-notification.
+Integration tests cover notification/outbox transactionality, retry and dead-lettering,
+hidden-task reach, and that a customer never receives an internal-comment notification.
+Current task-reach coverage lives in `tests/api-integration/permissions-shadow-mode.test.ts`.
+Add `tests/api-integration/notification-preferences.test.ts` for scoped preference
+resolution and delivery scheduling, and `tests/api-integration/customer-notification-privacy.test.ts`
+for `NO-19` and `NO-20`.
 
-E2E: assign a work item and see the in-app notification arrive live; change a preference
-from an email link and confirm it took effect.
+Browser acceptance: assign a work item and see its in-app notification arrive live; open an
+email preference link, verify it makes no change on GET, then authenticate and explicitly
+save the selected setting. Browser acceptance remains pending until its route and test exist.
+
+## Out of scope
+
+- Workspace-admin-managed notification rules. Workspace and project preferences belong to
+  each recipient.
+- Future channels not listed as core in [plugin-architecture.md](../01-architecture/plugin-architecture.md#notify--notification-channels).
+
+## Open questions
+
+None.
 
 ## Related
 

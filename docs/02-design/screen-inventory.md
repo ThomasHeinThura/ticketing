@@ -24,6 +24,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 | Accept invitation | `/agent/invite` | route | P3 | ⬜ |
 | Workspace home (default dashboard) | `/agent` | route | P1 | ⬜ |
 | Inbox | `/agent/inbox` | route | P1 | ⬜ |
+| Notifications inbox | `/agent/notifications` | route | P1 | ⬜ |
 | My work | `/agent/my-work` | route | P1 | ⬜ |
 | Triage | `/agent/triage` | route | P2 | ⬜ |
 | Command palette | — | overlay | P1 | ⬜ |

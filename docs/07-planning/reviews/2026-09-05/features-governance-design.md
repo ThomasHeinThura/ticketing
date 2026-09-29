@@ -69,34 +69,6 @@ Data references: `custom_field_section`, `custom_field`, `custom_field_type_visi
 
 ## 5. `notifications.md`
 
-**Verdict: not-ready.** 21 numbered rules, a strong events table and a good edge-case
-table — the best *behavioural* spec of the governance set. It is let down by the same
-class of problem as custom fields: the three-level preference model it specifies cannot be
-stored in the table the data model provides, and its channel-test route contradicts God
-Mode's.
-
-| Severity | Issue | Concrete fix |
-| --- | --- | --- |
-| high | **The preference model does not fit `notification_preference`.** The spec defines three levels ("per event, per channel"; "per workspace"; "per project"), plus quiet hours (`NO-3`) and digest cadence (`NO-5`). `data-model.md` §11 gives `notification_preference (person_id, channel, event_kind, enabled)` — no scope, no `workspace_id`, no `project_id`, no quiet-hours columns, no digest column. Levels 2 and 3, quiet hours and digests are all unstorable. | Add `scope (global\|workspace\|project)`, `scope_id text null`, and `digest (off\|hourly\|daily)` to `notification_preference`; add `quiet_hours_start`, `quiet_hours_end`, `quiet_hours_timezone` to `person` (or a `notification_setting` singleton per person). Add a unique index on `(person_id, scope, scope_id, channel, event_kind)`. |
-| high | **Two different routes test a notification channel.** This spec: `POST /api/instance/notify/{channel}/test` (`instance:admin`). `god-mode.md`: `POST /api/instance/plugins/{id}/test` (`instance:admin`). Channels *are* plugins, and `notify.slack` etc. may be multi-instance, so `{channel}` cannot address a specific configured instance. | Delete `POST /api/instance/notify/{channel}/test`; use the generic plugin test route and say so here. |
-| high | **`work_item.mentioned` and `mention.in_comment` are two events with identical default recipients ("The mentioned person").** An implementer cannot know whether to emit one, the other, or both — and a user configuring preferences sees two switches for one thing. | Delete one. Keep `work_item.mentioned` (consistent with the `work_item.*` prefix) and state that it covers mentions in descriptions and comments alike. |
-| medium | **The `channel` vocabulary is never enumerated.** Is `notification_preference.channel` the plugin id (`notify.email`) or a short name (`email`)? Where does `in-app` sit, given it is "always on. Cannot be disabled" and is not a `notify.*` plugin in `plugin-architecture.md`? | State it: `channel ∈ {'in_app'} ∪ {plugin ids of kind 'notify'}`, `in_app` always enabled and not writable. Add the enum to `plugin-architecture.md`'s notify table. |
-| medium | `NO-9` "Dead letters after six attempts and are visible in God Mode" and the edge case "SMTP down for hours — God Mode shows the backlog" both require a **God Mode outbox / dead-letter screen that does not exist** in `god-mode.md` or the screen inventory. | Add a `God Mode — Delivery / outbox` screen and `GET /api/instance/outbox` (`instance:admin`), with requeue and discard actions. |
-| medium | **"Per-workspace notification rules" is listed under Screens with no row in the screen inventory** and no route. It is also the only place a *workspace administrator* (rather than a person) touches notifications, so its capability is undefined. | Add the screen and route, or delete it from Screens if `NO-1`'s defaults plus per-person preferences are the whole story. |
-| medium | `NO-2` "Every notification email carries a working one-click link to the exact preference that produced it." No token scheme, no route, no expiry, no rule about whether the link authenticates. An unauthenticated link that mutates a preference is a real security decision being left to the implementer. | Specify: a signed, single-purpose token (`purpose: 'notification_pref'`, `person_id`, `event_kind`, `channel`, 30-day expiry) redeemed at `GET /api/notification-preferences/unsubscribe?token=…`, which lands on an authenticated page pre-filtered to that setting rather than mutating on GET. |
-| medium | `NO-11` duplicate suppression "within five minutes" — no dedupe key is defined and `outbox` has no column to hold one. Suppression on what tuple? | Define the key (`event_kind + resource_type + resource_id + person_id + channel`), add `dedupe_key text` + a partial index to `outbox`, and state whether suppression is at write time or at drain time. |
-| medium | **No `## Permissions` table** (the template requires one) — replaced by a prose paragraph. **No `## Open questions` section** at all. | Add both. The Permissions table can be short and should include the God Mode channel actions and the workspace-rules screen. |
-| medium | `NO-3` quiet hours "queue until they end" — no mechanism. Does the outbox row get `next_attempt_at` set forward, or is the decision made at drain time? The two differ observably when a preference changes mid-window. | State it: computed at drain time against the recipient's current quiet hours, so a preference change takes effect immediately (consistent with `RL-9` and `ST-7`). |
-| medium | `work_item.overdue` and `sla.breached` route to "then **the escalation path**". The escalation path is `stakeholder.escalation_order` / `escalation_wait_minutes` in the data model, but no rule here or cross-reference says how it is walked (wait then next? notify all? stop on acknowledgement?). | Cross-reference `sla.md` if it owns the algorithm; if not, add numbered rules `NO-22`–`NO-24` here. |
-| low | `NO-17` "Read notifications are purged after 90 days" vs `data-model.md` Retention: "`notification` — 90 days once read — **configurable: yes**". The spec states it as fixed. | Reword `NO-17` to "after the instance's notification retention period (default 90 days)". |
-| low | `NO-21` gives customers "the same preference control as staff", but the portal screen list has no preferences screen — only `/portal/account`. | Say preferences live under `/portal/account`, and add a row or a note to the inventory. |
-| low | Testing is prose; no file names. `NO-19` (a customer never receives an internal-comment notification) is a security assertion and deserves a named test. | Name `customer-never-sees-internal.spec.ts` (`NO-19`, `NO-20`), `outbox-transactional.spec.ts` (`NO-8`), `preference-resolution.spec.ts` (`NO-1`, preferences).
-
-Data references: `notification`, `outbox` ✓; `notification_preference` present but
-under-specified (above). Channels align with `plugin-architecture.md`'s `notify` kind ✓
-except `in-app`, which is correctly not a plugin but is not documented as an exception.
-
----
 
 ## 6. `automations.md`
 
