@@ -1171,6 +1171,21 @@ function hasObjectIntrinsicMutation(sourceFile) {
   return unsafe;
 }
 
+/** Dynamic source execution can change the loop's iterator after static inspection. */
+function hasDynamicCodeExecution(sourceFile) {
+  let unsafe = false;
+  const dynamicExecutors = new Set(["eval", "Function"]);
+  const visit = (node) => {
+    if (ts.isIdentifier(node) && dynamicExecutors.has(node.text)) {
+      unsafe = true;
+      return;
+    }
+    node.forEachChild(visit);
+  };
+  visit(sourceFile);
+  return unsafe;
+}
+
 function isNonemptyStoriesAssertion(statement) {
   if (
     !ts.isExpressionStatement(statement) ||
@@ -1414,6 +1429,7 @@ function hasStorybookCoverage(sourceFile, title) {
     hasFrozenStorybookIndex(callback) &&
     derivesStoriesFromEveryExport &&
     !hasObjectIntrinsicMutation(sourceFile) &&
+    !hasDynamicCodeExecution(sourceFile) &&
     statements.some(isNonemptyStoriesAssertion) &&
     !hasStoryCoverageControlBypass(callback) &&
     !hasStoryArrayMutation(callback) &&

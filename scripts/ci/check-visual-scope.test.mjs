@@ -177,6 +177,9 @@ function storybookSpec({
   mutateObjectValuesByOuterAlias = false,
   mutateReflect = false,
   mutateReflectByAlias = false,
+  mutateWithEval = false,
+  mutateWithEvalAlias = false,
+  mutateWithFunction = false,
   computedSkip = false,
   fakeTestBinding = false,
 } = {}) {
@@ -195,6 +198,20 @@ function storybookSpec({
       ? ['if (process.env.CI) test.skip(true, "temporarily disabled");']
       : []),
     ...(computedSkip ? ['test["skip"](true, "temporarily disabled");'] : []),
+    ...(mutateWithEval
+      ? ['eval("Array.prototype[Symbol.iterator] = function* () {}");']
+      : []),
+    ...(mutateWithEvalAlias
+      ? [
+          "const executeSource = eval;",
+          'executeSource("Array.prototype[Symbol.iterator] = function* () {}");',
+        ]
+      : []),
+    ...(mutateWithFunction
+      ? [
+          'new Function("Array.prototype[Symbol.iterator] = function* () {}")();',
+        ]
+      : []),
     ...(emptyCallback
       ? ["await page.goto('/');"]
       : [
@@ -804,6 +821,45 @@ test("G8 rejects Reflect.set overwriting Object.values through an alias", async 
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,
     storySource: storybookSpec({ mutateReflectByAlias: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects eval that can replace the Storybook story iterator", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ mutateWithEval: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects aliased eval that can replace the Storybook story iterator", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ mutateWithEvalAlias: true }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /Storybook visual test must load the exported-story index, enumerate every story, reject an empty set, and await its per-story screenshot baseline/,
+  );
+});
+
+test("G8 rejects the Function constructor in Storybook coverage", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    storySource: storybookSpec({ mutateWithFunction: true }),
   });
 
   assert.notEqual(result.status, 0);
