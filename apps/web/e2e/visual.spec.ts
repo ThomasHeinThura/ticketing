@@ -139,15 +139,6 @@ async function installAuthenticatedFixture(page: Page) {
   });
 }
 
-async function settleVisuals(page: Page) {
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-    await new Promise<void>((resolve) =>
-      requestAnimationFrame(() => resolve()),
-    );
-  });
-}
-
 test("sign-in screen @visual", async ({ page }) => {
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
@@ -175,7 +166,6 @@ test("sign-in screen @visual", async ({ page }) => {
 
   await page.goto("/auth/sign-in");
   await expect(page.getByText("Welcome back", { exact: true })).toBeVisible();
-  await settleVisuals(page);
   await expect(page).toHaveScreenshot("sign-in.png", SCREENSHOT_OPTIONS);
 });
 
@@ -185,7 +175,6 @@ test("work-item list screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Customer cannot reset their password"),
   ).toBeVisible();
-  await settleVisuals(page);
   await expect(page).toHaveScreenshot("work-item-list.png", SCREENSHOT_OPTIONS);
 });
 
@@ -195,7 +184,6 @@ test("work-item detail screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Customer cannot reset their password", { exact: true }),
   ).toBeVisible();
-  await settleVisuals(page);
   await expect(page).toHaveScreenshot(
     "work-item-detail.png",
     SCREENSHOT_OPTIONS,

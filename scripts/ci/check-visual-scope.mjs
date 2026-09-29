@@ -175,38 +175,69 @@ function isVisibleAssertionStatement(statement) {
   );
 }
 
-function isSettleVisualsStatement(statement) {
+function isApiRouteSetupStatement(statement) {
+  return (
+    ts.isExpressionStatement(statement) &&
+    ts.isAwaitExpression(statement.expression) &&
+    ts.isCallExpression(statement.expression.expression) &&
+    isNamedProperty(statement.expression.expression.expression, "route") &&
+    ts.isIdentifier(statement.expression.expression.expression.expression) &&
+    statement.expression.expression.expression.expression.text === "page" &&
+    ts.isStringLiteral(statement.expression.expression.arguments[0]) &&
+    statement.expression.expression.arguments[0].text === "**/api/**"
+  );
+}
+
+function isAuthenticatedFixtureSetupStatement(statement) {
   return (
     ts.isExpressionStatement(statement) &&
     ts.isAwaitExpression(statement.expression) &&
     ts.isCallExpression(statement.expression.expression) &&
     ts.isIdentifier(statement.expression.expression.expression) &&
-    statement.expression.expression.expression.text === "settleVisuals" &&
+    statement.expression.expression.expression.text ===
+      "installAuthenticatedFixture" &&
     statement.expression.expression.arguments.length === 1 &&
     ts.isIdentifier(statement.expression.expression.arguments[0]) &&
     statement.expression.expression.arguments[0].text === "page"
   );
 }
 
-function hasSafeSettleVisualsHelper(sourceFile) {
+function hasSafeAuthenticatedFixtureHelper(sourceFile) {
   if (!sourceFile) return false;
-  const helpers = [];
+  const helpers = sourceFile.statements.filter(
+    (node) =>
+      ts.isFunctionDeclaration(node) &&
+      node.name?.text === "installAuthenticatedFixture",
+  );
+  if (helpers.length !== 1) return false;
+  const body = helpers[0].body;
+  return (
+    body !== undefined &&
+    body.statements.length === 1 &&
+    isApiRouteSetupStatement(body.statements[0])
+  );
+}
+
+function hasShadowedFixtureHelper(callback) {
+  if (!ts.isArrowFunction(callback) || !ts.isBlock(callback.body)) return true;
+  const allowedNames = new Set(
+    callback.body.statements
+      .filter(isAuthenticatedFixtureSetupStatement)
+      .map((statement) => statement.expression.expression.expression),
+  );
+  let shadowed = false;
   const visit = (node) => {
-    if (ts.isFunctionDeclaration(node) && node.name?.text === "settleVisuals") {
-      helpers.push(node);
+    if (
+      ts.isIdentifier(node) &&
+      node.text === "installAuthenticatedFixture" &&
+      !allowedNames.has(node)
+    ) {
+      shadowed = true;
     }
     node.forEachChild(visit);
   };
-  visit(sourceFile);
-  if (helpers.length !== 1) return false;
-
-  // This is the only post-navigation helper allowed before capture. Keep its
-  // implementation narrowly bound to waiting for fonts and one animation frame.
-  const normalized = helpers[0].getText(sourceFile).replaceAll(/\s+/gu, "");
-  return (
-    normalized ===
-    "asyncfunctionsettleVisuals(page:Page){awaitpage.evaluate(async()=>{awaitdocument.fonts.ready;awaitnewPromise<void>((resolve)=>requestAnimationFrame(()=>resolve()),);});}"
-  );
+  visit(callback);
+  return shadowed;
 }
 
 function testVisualEvidence(callback) {
@@ -723,18 +754,23 @@ for (const screen of manifest) {
         navigationIndex + 1,
         screenshotIndex,
       );
-      const safeSettleVisuals = hasSafeSettleVisualsHelper(visualSourceFile);
+      const preNavigation = callbackBody.statements.slice(0, navigationIndex);
       if (
         screenshotIndex !== callbackBody.statements.length - 1 ||
         postNavigation.some(
-          (statement) =>
-            !isVisibleAssertionStatement(statement) &&
-            !(safeSettleVisuals && isSettleVisualsStatement(statement)),
+          (statement) => !isVisibleAssertionStatement(statement),
         ) ||
-        !postNavigation.some(isVisibleAssertionStatement)
+        !postNavigation.some(isVisibleAssertionStatement) ||
+        preNavigation.some(
+          (statement) =>
+            !isApiRouteSetupStatement(statement) &&
+            !isAuthenticatedFixtureSetupStatement(statement),
+        ) ||
+        !hasSafeAuthenticatedFixtureHelper(visualSourceFile) ||
+        hasShadowedFixtureHelper(matchingCallbacks[0])
       ) {
         failures.push(
-          `${screen.name} visual test must navigate, assert visible route content, use only the safe visual settle helper, and finish with its declared screenshot assertion`,
+          `${screen.name} visual test must use only API fixture setup before navigation, assert visible route content afterward, and finish with its declared screenshot assertion`,
         );
       }
     }

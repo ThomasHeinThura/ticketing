@@ -51,15 +51,12 @@ function visualSpec(
     earlyReturnFor,
     setContentAfterNavigationFor,
     documentInterceptFor,
+    shadowedSettleHelperFor,
+    shadowedFixtureHelperFor,
   } = {},
 ) {
-  const helper = `async function settleVisuals(page: Page) {
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-    await new Promise<void>((resolve) =>
-      requestAnimationFrame(() => resolve()),
-    );
-  });
+  const helper = `async function installAuthenticatedFixture(page: Page) {
+  await page.route("**/api/**", async (route) => route.fulfill({ status: 200 }));
 }`;
   const tests = screens
     .map(({ test: testName, screenshot, applicationRoute, inventoryRoute }) => {
@@ -104,6 +101,18 @@ function visualSpec(
         testName === documentInterceptFor
           ? 'await page.route("**/*", (route) => route.fulfill({ body: "<main>pretend screen</main>" }));'
           : "";
+      const shadowedSettleHelper =
+        testName === shadowedSettleHelperFor
+          ? 'const settleVisuals = async (page) => page.setContent("<main>pretend screen</main>");'
+          : "";
+      const shadowedFixtureHelper =
+        testName === shadowedFixtureHelperFor
+          ? 'const installAuthenticatedFixture = async (page) => page.setContent("<main>pretend screen</main>");'
+          : "";
+      const useShadowedSettleHelper =
+        testName === shadowedSettleHelperFor
+          ? "await settleVisuals(page);"
+          : "";
       const beforeNavigation =
         testName === screenshotBeforeNavigationFor
           ? `${screenshotEvidence} `
@@ -114,7 +123,7 @@ function visualSpec(
         testName === disabledFor
           ? 'if (process.env.CI) test.fixme(true, "known issue");'
           : ""
-      } ${targetDeclaration} ${documentIntercept} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${nestedNavigation} ${helperNavigation} await expect(page.getByText("screen ready")).toBeVisible(); await settleVisuals(page); ${afterNavigation} });`;
+      } ${targetDeclaration} ${documentIntercept} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${nestedNavigation} ${helperNavigation} await expect(page.getByText("screen ready")).toBeVisible(); ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
     })
     .join("\n");
   return `${helper}\n${tests}`;
@@ -367,7 +376,37 @@ test("G8 rejects replacing the declared route document before capture", async ()
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /work-list visual test must navigate, assert visible route content/,
+    /work-list visual test must use only API fixture setup before navigation/,
+  );
+});
+
+test("G8 rejects a shadowed visual helper that can replace the page document", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      shadowedSettleHelperFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list visual test must use only API fixture setup before navigation/,
+  );
+});
+
+test("G8 rejects a shadowed pre-navigation fixture helper", async () => {
+  const result = await runVisualScope({
+    routes: ACTIVE_ROUTES,
+    source: visualSpec(SCREENS, {
+      shadowedFixtureHelperFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list visual test must use only API fixture setup before navigation/,
   );
 });
 
