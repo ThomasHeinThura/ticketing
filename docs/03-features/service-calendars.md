@@ -136,6 +136,24 @@ GET    /api/service-calendars/{id}/preview?year=2026 sla_policy:read
 GET    /api/service-calendars/{id}/usage             sla_policy:read
 ```
 
+### Backend slice status (2026-09-29)
+
+The persisted CRUD/list/detail and annual preview routes are implemented. The preview uses
+the shared `packages/domain/src/calendar/` calculations. The remaining routes are not
+implemented in this slice:
+
+- `/usage` waits on project calendar references (tracked by #437) and the not-yet-created
+  `sla_policy` table. It must report real references before CAL-9 deletion protection can
+  be enforced.
+- Holiday import waits on a written `.ics` profile: supported component/property set,
+  timezone handling, recurrence expansion, invalid-entry behavior and duplicate handling.
+- Country presets wait on an authoritative bundled dataset specification naming supported
+  country codes, dataset provenance/version and refresh process. No jurisdiction list or
+  source is inferred here.
+
+The API codebase has no runtime feature-flag enforcement helper or persisted flag lookup
+for `feature.sla` yet, so this route slice does not add a second, ad-hoc flag mechanism.
+
 ## Edge cases
 
 | Case | Behaviour |

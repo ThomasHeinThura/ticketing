@@ -21,6 +21,7 @@ import {
   roleTable,
   savedViewTable,
   scheduledTransitionTable,
+  serviceCalendarTable,
   sessionTable,
   stakeholderTable,
   stateTable,
@@ -731,6 +732,16 @@ export const savedViewTableRelations = relations(savedViewTable, ({ one }) => ({
     references: [teamTable.id],
   }),
 }));
+
+export const serviceCalendarTableRelations = relations(
+  serviceCalendarTable,
+  ({ one }) => ({
+    workspace: one(workspaceTable, {
+      fields: [serviceCalendarTable.workspaceId],
+      references: [workspaceTable.id],
+    }),
+  }),
+);
 
 export const userPreferenceTableRelations = relations(
   userPreferenceTable,

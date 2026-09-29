@@ -2786,6 +2786,26 @@ export const cannedResponseTable = pgTable(
   ],
 );
 
+export const serviceCalendarTable = pgTable(
+  "service_calendar",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    timezone: text("timezone").notNull(),
+    windows: jsonb("windows").notNull(),
+    holidays: jsonb("holidays").notNull(),
+  },
+  (table) => [index("service_calendar_workspace_id_idx").on(table.workspaceId)],
+);
+
 export const workItemKeyAliasTable = pgTable(
   "work_item_key_alias",
   {
