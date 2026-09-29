@@ -159,6 +159,11 @@ export {
 export { Button, type ButtonProps, buttonVariants } from "./components/button";
 export { Calendar } from "./components/calendar";
 export {
+  CapabilityMatrix,
+  type CapabilityMatrixItem,
+  type CapabilityMatrixProps,
+} from "./components/capability-matrix";
+export {
   Card,
   CardAction,
   CardContent,
