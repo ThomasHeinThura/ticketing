@@ -97,6 +97,37 @@ describe("pending-action service persistence", () => {
     expect(rows).toEqual([{ id: first.pendingActionId }]);
   });
 
+  it("PA-4: allows exactly one of two concurrent identical requests", async () => {
+    const input = requestInput();
+    const results = await Promise.allSettled([
+      createPendingAction(input),
+      createPendingAction(input),
+    ]);
+    const fulfilled = results.filter((result) => result.status === "fulfilled");
+    const rejected = results.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    );
+    const rows = await db
+      .select({ id: schema.pendingActionTable.id })
+      .from(schema.pendingActionTable)
+      .where(
+        and(
+          eq(
+            schema.pendingActionTable.requestedByPersonId,
+            input.requesterPersonId,
+          ),
+          eq(schema.pendingActionTable.state, "pending"),
+        ),
+      );
+
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toBeDefined();
+    expect(rejected?.reason).toBeInstanceOf(HTTPException);
+    if (!rejected) throw new Error("Expected one concurrent request to fail");
+    expect((rejected.reason as HTTPException).status).toBe(409);
+    expect(rows).toHaveLength(1);
+  });
+
   it.each([
     ["denied", "denied"],
     ["cancelled", "cancelled"],
