@@ -36,9 +36,10 @@ Every gate whose failure must block merging is also listed by its exact check co
 the active `protect-main` ruleset. Adding a new standalone job here is not sufficient by
 itself: update the ruleset to require its context and verify the live rule after the change.
 As of 2026-09-23, `domain coverage (90%)` is required alongside the contexts listed in the
-repository's active ruleset. The full-stage `integration - Postgres 18` and
-`e2e - protected-route redirect` contexts are also required; do not infer that a workflow
-configured to run before merge is enforced unless its exact context appears in the ruleset.
+repository's active ruleset. The full-stage `integration - Postgres 18`,
+`e2e - protected-route redirect`, and `a11y - accessibility (G4, axe)` contexts are also
+required; do not infer that a workflow configured to run before merge is enforced unless its
+exact context appears in the ruleset.
 
 ```
 ┌─ Setup ──────────────────────────────────────────┐
@@ -165,8 +166,9 @@ The current Playwright suite is a real-browser smoke for the already-specified l
 protected-route redirect and its preserved destination. The `security`, `reduced-motion`,
 and `mobile-320` project commands above document future suites; none are enabled yet. The
 current smoke does not yet satisfy authenticated agent/portal journeys; these still need
-deterministic application fixtures and acceptance flows. The narrow
-`e2e - protected-route redirect` smoke is a required branch-protection status check.
+deterministic application fixtures and acceptance flows. The `e2e - protected-route
+redirect` smoke and G4's `a11y - accessibility (G4, axe)` scan are required branch-protection
+status checks.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
@@ -445,8 +447,12 @@ authority document; **`check:skips`** on `.skip(`, `.only(` or `describe.skip`.
 `@octokit/webhooks` are absent from the lockfile, and that the better-auth plugin list equals
 the approved list (no `anonymous`, `deviceAuthorization` or `bearer`) — the fork-time removal
 list made executable ([decision log](../07-planning/decision-log.md)).
-`pnpm test:a11y` and `pnpm test:perf` are Playwright projects invoked separately in the full
-stage; [testing-strategy.md](testing-strategy.md) describes them the same way.
+`pnpm test:a11y` runs axe against every exported `packages/ui` Storybook story and the
+screens exercised by the current Playwright E2E suite. It uses the existing `axe-core`
+dependency declared by `packages/ui` and scans the logged-out protected-route redirect's
+sign-in screen in a real browser. The workflow job's required context is
+`a11y - accessibility (G4, axe)`. `pnpm test:perf` remains a separate Playwright project in
+the full stage; [testing-strategy.md](testing-strategy.md) describes both commands.
 
 ## Main pipeline
 

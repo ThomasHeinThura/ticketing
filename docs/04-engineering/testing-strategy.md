@@ -294,10 +294,10 @@ review ([reviews/2026-09-05/security.md](../07-planning/reviews/2026-09-05/secur
 each names the finding it closes in its file header.
 
 ### Accessibility
-Runs as its own Playwright project, invoked by `pnpm test:a11y` / `pnpm test:perf` in the full
-stage ([ci-cd.md](ci-cd.md)) — one shape in both documents.
-
-`@axe-core/playwright` runs on every screen the E2E suite visits. Zero critical or serious.
+`pnpm test:a11y` runs the UI Storybook-story axe scan and the tagged Playwright browser scan
+in the full stage ([ci-cd.md](ci-cd.md)). The browser scan injects the existing
+`packages/ui` `axe-core` source into the page and checks the logged-out protected-route
+redirect's sign-in screen. Zero critical or serious violations.
 
 ### Visual
 

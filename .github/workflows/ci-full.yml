@@ -6,9 +6,9 @@
 #
 # The E2E job currently runs a browser-level logged-out redirect smoke. The full
 # agent/portal journey suite still needs deterministic browser fixtures and acceptance flows.
-# A11y and performance need scope/budgets; visual baselines need a deterministic screen
-# fixture. Do not treat the remaining `if: false` jobs as passing gates or make their skipped
-# statuses required.
+# The a11y job scans every UI Storybook story and tagged browser screen. Performance still
+# needs scope/budgets; visual baselines need a deterministic screen fixture. Do not treat the
+# remaining `if: false` jobs as passing gates or make their skipped statuses required.
 
 name: CI - full
 
@@ -86,12 +86,25 @@ jobs:
           retention-days: 7
 
   a11y:
-    name: NOT ENABLED - a11y (G4, axe)
-    if: false
-    # Blocked by: an agreed browser accessibility scope and axe dependency are not yet present.
+    name: a11y - accessibility (G4, axe)
     runs-on: ubuntu-latest
     steps:
-      - run: exit 1
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: Build the web app and workspace dependencies
+        run: pnpm build
+      - name: Install Chromium
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Scan Storybook stories and browser screens
+        run: pnpm test:a11y
+      - name: Upload accessibility browser evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-a11y
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7
 
   visual:
     name: NOT ENABLED - visual regression (G8)

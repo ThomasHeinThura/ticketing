@@ -245,8 +245,8 @@ const manifest = [
   {
     gate: "pnpm test:a11y",
     stage: "full",
-    run: null,
-    why: "no Playwright suite and no screens to run axe against (G4).",
+    run: ["pnpm", "test:a11y"],
+    note: "runs axe against every exported packages/ui Storybook story and every screen exercised by the current Playwright E2E suite; browser checks use axe-core already declared by packages/ui.",
   },
   {
     gate: "pnpm test:visual",
