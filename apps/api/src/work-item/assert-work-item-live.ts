@@ -40,8 +40,10 @@ export function assertWorkItemStillLive<
  * `transition-work-item.ts`/`assign-work-item.ts`/`unassign-work-item.ts` never re-checked
  * their work item's PROJECT for a soft-delete inside their own transaction, unlike this
  * shape). A work item's row lock does not serialise a concurrent `UPDATE project SET
- * deleted_at = ...` -- that is a different row entirely -- so this is its own query, run
- * inside the same transaction, not folded into `assertWorkItemStillLive` above.
+ * deleted_at = ...` -- that is a different row entirely -- so this query also locks the
+ * project row with `FOR SHARE` inside the same transaction. Project deletion must wait
+ * for this check and its guarded writes to commit; if deletion wins the lock first, the
+ * query waits and PostgreSQL rechecks the live-row predicate after the delete commits.
  */
 export async function assertProjectStillLive(
   tx: DbOrTx,
@@ -51,7 +53,8 @@ export async function assertProjectStillLive(
   const [projectAlive] = await tx
     .select({ id: projectTable.id })
     .from(projectTable)
-    .where(and(eq(projectTable.id, projectId), isNull(projectTable.deletedAt)));
+    .where(and(eq(projectTable.id, projectId), isNull(projectTable.deletedAt)))
+    .for("share");
 
   if (!projectAlive) {
     throw new HTTPException(404, { message });
