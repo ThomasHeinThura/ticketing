@@ -61,6 +61,7 @@ follow [SLA-17](sla.md#behaviour), with the stop conditions specified by `NO-22`
 | `budget.threshold_reached` | The project manager (`project.manager_id`) only, as required by [TC-18](time-and-cost.md#budgets); if no current manager can be resolved, do not substitute another recipient |
 | `work_item.unblocked` | The assignee of the formerly blocked work item, as required by [RH-18](relations-and-hierarchy.md#blocking-behaviour) |
 | `workspace.created` | The new workspace's owner |
+| `pending_action.requested` | The requester, only when the event origin is `api` or `mcp`; no notification is sent for `web` origin |
 | `approval.withdrawn` | The approver |
 | `pending_action.executed` | The requester, on failure only |
 | `identity.deprovisioned` | Instance administrators |
@@ -277,7 +278,7 @@ reach sources are:
 | `webhook` | `webhook.auto_disabled` | Webhook id; require current `webhook:manage` reach or creator ownership, matching the event recipient rule. |
 | `api_key` | `api_key.auto_disabled` | API-key id; require current owner identity; only the key owner is a recipient. |
 | `automation` | `automation.run_failed` | Automation id; require current automation/project reach and creator ownership, matching the event recipient rule. |
-| `pending_action` | `pending_action.requested`, `pending_action.executed` | Pending-action id; require requester ownership. Failure notifications are only for the requester. |
+| `pending_action` | `pending_action.requested`, `pending_action.executed` | Pending-action id; require requester ownership. `requested` is supported only for `api`/`mcp` origins and `executed` only on failure; an unresolved requester fails closed. |
 | `identity_connection` | `identity.deprovisioned`, `identity.request_denied`, `identity_connection.changed` | Identity-connection id from the event payload; require current `instance:admin`. Do not expose identity-provider payloads or person data in the notification. |
 
 These mappings name supported event classes; they do not grant permission. The event's
@@ -415,8 +416,13 @@ and missing budget/project/manager or lost project reach fails closed. For unblo
 notifications, prove the event envelope's item is the formerly blocked work item and no
 recipient is invented when it has no assignee. Prove unreachable rows are omitted before
 counts, direct access returns not found, and unknown, missing, or unmapped types are neither
-created nor returned. It also includes configured-30-day read-purge/unread-retained and 90-day-default
-cases described in `NO-17`. Test a normal adapter success before the deadline, a hung adapter
+created nor returned. Cover `pending_action.requested` for API and MCP origins to the named
+requester, no notification for web origin, and fail-closed behavior when the requester cannot
+be resolved; never substitute an administrator or event actor. It also includes configured-
+30-day read-purge/unread-retained, 90-day-default, and legal-hold cases: person hold retains
+that person's old read notifications, organisation hold retains notifications referencing
+that organisation even for a staff recipient, and unheld rows remain eligible. Cases described
+in `NO-17` also verify that unread notifications remain. Test a normal adapter success before the deadline, a hung adapter
 that ignores abort and is no longer awaited at 30 seconds, periodic lease renewal while
 active, no early release on timeout, reclaim only after expiry, a fresh takeover token, and
 stale-token success rejection. A second worker presenting the **same** outbox row id while
@@ -428,7 +434,9 @@ operation must use a fresh post-lock DB wall-clock sample, take over a logically
 lease before daily cleanup physically deletes its row, and not suppress a success that is now
 older than five minutes. Separately assert that daily `session-cleanup` physically deletes
 expired rows and person/organisation hard-delete cascades remove every matching reservation
-row and recipient-person identifier. A provider-accepted-but-uncommitted crash must assert
+row and recipient-person identifier. Under open person or organisation holds, expired
+reservation rows remain logically reclaimable and are still physically deleted by daily
+cleanup. A provider-accepted-but-uncommitted crash must assert
 at-least-once residual behavior rather than exactly-once delivery.
 
 Add `tests/api-integration/notification-preference-link-handoff.test.ts` for expired and

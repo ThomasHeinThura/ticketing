@@ -100,7 +100,7 @@ finally { clearInterval(heartbeat); await lease.release(); }
 | `metrics-snapshot` | hourly | 15 min | Writes `metric_snapshot` (hourly grain; daily rollup at 00:15) and, daily, `cycle_snapshot` |
 | `search-reindex` | 10 min | 10 min | Catches up rows whose search vector is stale |
 | `audit-purge` | daily 03:00 | 30 min | Deletes `audit_log` rows past retention as `taskdesk_maint`; **skips rows whose `organisation_id` or actor is under an open `legal_hold`** (join `legal_hold` on `lifted_at is null`); writes an `audit_chain_anchor` row **before** deleting, and does not delete if the anchor cannot be written; writes its own audit row |
-| `session-cleanup` | daily 03:15 | 5 min | Physically deletes expired sessions, invitations, idempotency keys, expired `notification_preference_handoff` rows, expired `outbox_dedupe_reservation` rows, read `notification` rows older than `instance_setting.notification_retention_days` (90 by default; unread rows are retained), and soft-deleted rows past their window — **the soft-delete purge skips any row whose organisation or person is under an open `legal_hold`**, and leaves it soft-deleted until the hold lifts. Reservation lease validity and takeover are enforced at `lease_expires_at`; they do not wait for this daily physical cleanup. |
+| `session-cleanup` | daily 03:15 | 5 min | Physically deletes expired sessions, invitations, idempotency keys, expired `notification_preference_handoff` rows, and expired `outbox_dedupe_reservation` rows; purges eligible read notifications and terminal outbox rows per the retention and legal-hold rules below; and purges soft-deleted rows past their window — **the soft-delete purge skips any row whose organisation or person is under an open `legal_hold`**, and leaves it soft-deleted until the hold lifts. Reservation lease validity and takeover are enforced at `lease_expires_at`; they do not wait for this daily physical cleanup. |
 | `attachment-gc` | daily 03:30 | 30 min | Removes objects for `attachment.state = 'deleted'` rows and orphans; **skips attachments whose `organisation_id` is under an open `legal_hold`** — which is why `attachment.workspace_id` / `organisation_id` are stored on the row ([data-model.md](data-model.md)) |
 | `attachment-pending-cleanup` | hourly | 5 min | Deletes `attachment` rows still `pending` after an hour (presign never completed) |
 | `timer-sweeper` | 15 min | 5 min | Stops `running_timer` rows older than 12 h, writing a capped `time_entry` |
@@ -112,6 +112,39 @@ finally { clearInterval(heartbeat); await lease.release(); }
 | `secrets-rekey` | on demand | 30 min | Re-encrypts every `instance_plugin_config.secrets` **and `identity_connection.client_secret`** from `TASKDESK_ENCRYPTION_KEY_PREVIOUS` to the current key, writing `key_id` per row — see the [runbook](../05-operations/runbook.md) |
 | `automation-schedule` | 1 min | 1 min, **per rule** | Evaluates every enabled `automation` whose `trigger = 'schedule'` and whose `schedule_cron` is due against the rule's `project_filter`, then invokes it. Rule crons are stored rows, not `croner` registrations: the job wakes each minute, selects the due rules and runs them, so a rule edited in the UI takes effect on the next tick with no scheduler reload. The lease name is **one per rule** — `automation:<automation_id>` — so 40 replicas run each rule once and a slow rule does not block the others. This is the runner behind the `schedule` trigger that [events.md](events.md) calls "not an event" |
 | `pending-action-expire` | 1 min | 1 min | Marks `pending_action` rows past `expires_at` as `expired` and emits `pending_action.decided` (`PA-8`); invalidates pending rows whose requester was deactivated or whose credential was revoked since (`PA-9`) |
+
+`session-cleanup`'s read-notification retention purge skips a row when an open person hold
+matches `notification.person_id`, or an open organisation hold matches either that
+recipient's organisation or the organisation that owns the referenced resource (resolved
+using `notification.resource_type` in
+[notifications.md](../03-features/notifications.md#permissions)). If a resource's owning
+organisation cannot be resolved, retain the row while any organisation hold is open rather
+than risk deleting held data. Unread notifications remain ineligible regardless of holds.
+
+The outbox retention purge deletes only rows in terminal states `delivered`, `dead`, or
+`suppressed` whose `updated_at` is at least 30 days old; `pending` rows are never purged by
+retention, regardless of age. It skips terminal rows whose recipient person or owning
+organisation is under an open hold. Held-scope resolution uses `outbox.recipient_person_id`,
+`outbox.organisation_id`, and the organisation owning `outbox.workspace_id`.
+
+Expired `outbox_dedupe_reservation` cleanup is explicitly exempt from legal holds. Lease
+authority ends at `lease_expires_at` and takeover may proceed immediately; daily cleanup
+physically removes expired rows even for held people or organisations. These rows contain
+only short-lived delivery-coordination identifiers, not the outbox payload or notification
+history. Credential, session, invitation, idempotency-key, and preference-handoff expiry
+cleanup also continues during holds; hard delete and the history-retention purges remain
+subject to their listed hold rules.
+
+**Acceptance for `session-cleanup` retention:** a terminal outbox row at 29 days after its
+terminal `updated_at` remains; once it passes 30 days it is purged on the next daily run if
+no matching hold exists. A pending row remains regardless of age, and requeueing a terminal
+row changes it back to pending so retention cannot drop work awaiting delivery. An open
+recipient-person or owning-organisation hold preserves an otherwise eligible terminal row
+until the hold lifts; the next eligible cleanup then purges it. A read notification past its
+configured cutoff is likewise retained under a matching person/resource organisation hold,
+while an unheld row is purged and unread rows remain. An expired reservation under the same
+hold is nevertheless physically removed by cleanup, and takeover remains possible before
+that deletion.
 
 All cadences are configurable in God Mode → Jobs (`instance:manage_jobs`). A job can be
 disabled, and a job can be triggered manually for debugging; both are audited.
