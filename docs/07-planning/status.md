@@ -1,5 +1,121 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+**2026-09-27 orchestrator snapshot (3) — `main` at `643a52e` (#438 merged). Throttle 1 open.
+Prior snapshot (2), immediately below, was stale by ~15 merges and is kept only as history —
+do not act on its "open PRs" list; it no longer reflects live GitHub.**
+
+Merged since snapshot (2), each with every required check green and review recorded at the
+merged head: **#416** (field multiline-truncation fix, 4 Opus passes), **#418** (comment-regex
+division fix, 3 Opus passes), **#423** (env-reads AST rewrite, 5 Opus passes, F7 follow-up
+filed as #427), **#426** (pal-mcp governance docs), **#429** (#28 attachments spec-review
+closure, docs-only), **#430** (#30 DELETE work-item assign, recreated from previously-cleared
+#365), **#431** (#29 search-and-saved-views spec-review closure, docs-only, one real citation
+error found and fixed), **#432** (#26 hierarchy routes: parent set/detach, tree — a real
+concurrent-request depth-cap race found live by Opus, fixed with a per-project advisory lock,
+plus a non-deterministic regression test found and fixed in a second Opus pass), **#433**
+(#23 work-item missing routes: delete/rank/watch/bulk/activity-read — a real bug found by
+Opus where bulk delete/assign bypassed the soft-deleted-project freeze that single-item
+routes correctly enforce; fixed), **#417**/**#419** (two small CI gate-machinery fixes,
+retargeted onto `main` from a stale intermediate branch; a real cross-PR interaction was
+found — one PR's own regression test would have broken once the other's fix landed — and
+fixed before merge), **#438** (#25 project/engagement missing routes: milestones,
+prerequisites, stakeholders, document links — Opus found a real cross-organisation
+data-isolation gap in stakeholder-attachment, and separately a stored-XSS-class URL-scheme
+gap in document links; both fixed and confirmed across three Opus passes).
+
+**Recurring operational pattern this session, worth keeping in mind:** every merge advances
+`main`, which puts every other open branch touching `apps/api/src/work-item/**` one step
+further behind — expect routine `update-branch` cycles and, when two lanes both add routes
+to the same shared router/policy file (as #430 and #432/#433 did), a real merge conflict
+that needs careful manual resolution preserving both sides' routes, not a mechanical
+reconciliation. Also found and fixed a real gap in the orchestrating session's own process:
+local "verified clean" checks after `gh pr update-branch` were silently stale unless the
+local worktree was `git reset --hard` to the actual pushed head first — `git fetch` alone
+does not move a checked-out branch forward. Every reconfirmation in this session now resets
+first.
+
+**Currently running in parallel (dispatched this snapshot, none yet returned as of writing)**:
+a conservative first-slice runtime-authorization-integration PR for **#8** (P0's last open
+gateway — the policy registry exists but is not yet imported/enforced by the production
+module graph; scoped to boot-time refusal + request-path enforcement only, with the larger
+per-route `RowScope`/`RequestScope` evidence retrofit deliberately deferred to a follow-up
+issue rather than attempted in one diff), **#28** (attachments, built from scratch — no
+`apps/api/src/attachment/` existed before this), **#27** (comments and activity gap survey +
+build), **#24** (views and layouts, likely overlapping `saved_view` with #29's spec — lane
+told to reconcile honestly, not double-claim), **#31** (P2 workflow-transition HTTP route,
+wiring the already-tested pure `packages/domain/src/workflow` engine to a route for the
+first time), and **#9**'s closure (issue #403's remaining 15 missing Storybook stories + 4
+missing component tests). **P3 (#39, identity/SCIM) is queued but deliberately not yet
+dispatched** — 8 concurrent lanes already load-test the shared `td-lane-pg` container and
+this host's resources; dispatch once several of the above clear. Note also: #39's own stage
+gate requires 25 acceptance tests against a **real Microsoft Entra test tenant** — an
+external dependency Thomas needs to provision; the buildable HTTP/domain-wiring slice can
+proceed without it, but the stage-gate assertion itself cannot close without that tenant.
+
+None of the above are merged yet — do not treat this paragraph as a merge list. Verify each
+with `gh pr list --state open` before acting on it; it is a snapshot of what was dispatched,
+not a log of what landed.
+
+---
+
+**2026-09-27 orchestrator snapshot (2) — `main` at `64ec22a` (#375, `audit_log.project_id` +
+reach filter, merged). P0/P1/P2/P3 lanes running in parallel under Throttle 1; this session
+is continuing all of them per Thomas's "if not finished P0 then continue, and continue all."**
+
+Merged since the previous snapshot (`0b1bcc1`), each with every required check green and its
+review recorded at the exact merged head: **#380** (`e311fce`, #324's coverage-report SQL
+query — closes issue #324, all 6 acceptance criteria resolved or disclosed as residual),
+**#384** (`7dbe214`, this file's own prior snapshot), **#375** (`64ec22a`, `audit_log`
+gains `project_id`; two Opus-blocking findings from its first pass, S1 and T1, were found
+and closed by a fix round, confirmed by delta review).
+
+Open PRs and their real review state (verify live with `gh pr list`/`gh pr view` before acting
+on this — it is a snapshot, not a log):
+
+- **#353** (assign a work item, #30) — ordinary + Opus both CLEAR. **Was blocked on #375's
+  `audit_log` dependency; that dependency merged, and the actual missing piece (the route
+  never called `appendAuditLog` at all — #353 is meant to be the first project-scoped audit
+  writer per the 2026-09-23 decision log) is now being implemented** by a dispatched lane, not
+  yet returned. Needs a fresh ordinary + Opus review of that addition before merge.
+- **#365** (clear a work item's assignment, #30) — ordinary + Opus both CLEAR (two low
+  test-strength findings, non-blocking). Stacked on #353; same audit-write gap, to be done as
+  a follow-up once #353's version lands (identical treatment, separate branch).
+- **#346** (P3 identity domain foundation) — ordinary APPROVE; Opus found a real
+  prototype-pollution bypass (P1, blocking) and a PATCH path-case bug (N1, non-blocking); both
+  fixed and confirmed CLEAR by a lightweight Opus delta pass. Still a **draft** — identity
+  persistence, migrations, OIDC/SCIM routes and browser evidence remain unbuilt; this closes
+  only the security gate for the domain code that exists today, not #346 itself.
+- **#381** (#354 S1 fix: unvalidated `workspace_id` could reach shadow-mode evidence) —
+  ordinary APPROVE, Opus CLEAR WITH FINDINGS (R1: an instance-admin bypass of the same class,
+  non-blocking but should be closed before shadow mode runs in a shared deployment; T1: a test
+  gap). Merge-ready pending final CI.
+- **#382** (#342 D3: 12 more static `process`/`globalThis`/`import.meta` access shapes for the
+  `check:env` CI gate) — ordinary APPROVE, Opus CLEAR WITH FINDINGS. **Does not fully close
+  #342** — the Opus review found a further real class (H1, a JSX-text-apostrophe lexer
+  desync, same class as #361's F1) plus narrower gaps (M1-M4, L1); do not use a closing
+  keyword when merging, and #342 stays open. Recommended next step, not yet queued: rebuild
+  the detector on the TypeScript compiler API instead of another lexer-patch round, same
+  fix #361 already needed for `check-deps.mjs`.
+- **#383** (#317: asset/websocket query-timing oracle + invitation-cancel existence oracle) —
+  ordinary APPROVE, Opus CLEAR WITH FINDINGS (six non-blocking findings, F1-F6 — an invitation
+  timing residue, a reach-check keyed on `project.workspace_id` instead of `asset.workspace_id`,
+  two test gaps, a shadow-evidence gap, a nit). Merge-ready pending final CI.
+- **#327** (P2 execution ledger docs) — open, untouched this wave.
+- **#107** (S10 zero-caller tripwire) — still needs Thomas's explicit decision on whether #161
+  supersedes it.
+
+**Operational note:** the shared checkout at `/home/ubuntu/ticketing.v2` had 5 stale git
+stashes left by concurrent lanes stepping on each other's uncommitted work (all verified
+content-superseded by already-committed history before being dropped, with Thomas's
+confirmation) and accumulates well over 100 stale worktrees across `/tmp`, `.taskdesk-lanes`
+and `.agent-tmp` from past sessions — harmless but real hygiene debt, not cleaned up this
+session since it isn't blocking anything. Every dispatched lane has been told to use its own
+worktree, not the shared directory, but several have reported the shared checkout's
+branch/HEAD moving under them mid-task anyway — worth a durable fix (e.g. dedicating this
+checkout to the orchestrator only, never handing it to a lane task) if it keeps happening.
+
+---
+
 **2026-09-26 orchestrator continuation — `main` at `ecd88b0` (#373; corrected from a stale
 `8a51415`/#374 reading of this line — verified live via `git log`, not carried forward from
 memory).** The decision authorizing one-at-a-time follow-up PRs for #354, #341, #362, #367
@@ -1497,6 +1613,27 @@ completeness fix, then the PR body/checklist need a final pass before merge. Thi
 merge with `pal-mcp` "must-use" framing — it merges recording what was tried, what was found,
 and what is suspended, which is itself the useful governance outcome here.
 
+**Update 2026-09-27:** Thomas fixed the underlying `pal-mcp-server` bug (a shared-singleton
+tool instance in `server.py`) and redeployed it. Two independent sessions ran adversarial
+concurrency tests against the redeployed server the same day and found it clean, including on
+the exact `calling_expert_analysis` round-trip that reproduced the leak before. Thomas then
+made the call himself (asked directly, chose the middle option): **`pal-mcp` is now PARTIALLY
+UNSUSPENDED** — usable again for ordinary review/audit/report/alignment on changes that touch
+no path in `ci-cd.md`'s security-review-scope list; still suspended for anything that does.
+See the decision log's 2026-09-27 entry for the test detail and reasoning, and `CLAUDE.md`,
+`agent-workflow.md`, `pal-reviewer.md` (all updated in the same pass) for the current rule.
+This does not retroactively change PR #376's own history above — that record stands — and
+does not by itself reopen or change PR #376's merge readiness.
+
+**Further update, same day:** Thomas then lifted the remaining restriction — `pal-mcp` is now
+**FULLY UNSUSPENDED** for reading/ordinary-review/audit/analysis on any branch, any scope,
+including security-review-scope changes. The mandatory final Opus security/critical review is
+completely unaffected — still required, separately, on every security-scope PR. See the
+decision log's second 2026-09-27 entry (naming the first as what it supersedes). Also
+recorded there: a real process gap where a subagent's own `CLAUDE.md` snapshot lagged this
+session's live edits — noted in `CLAUDE.md` itself with a workaround (`Read` the decision log
+directly when a subagent flags the conflict).
+
 ### PR #377 — UAT deploy verified end-to-end through the real host Traefik
 
 Issue #11's deployment skeleton was mostly already built on `main`; verified live rather than
@@ -1731,6 +1868,60 @@ defaults surviving the fork.
 ## Session log
 
 Newest first. One entry per working session.
+
+### 2026-09-27 · pal-mcp fully unsuspended; CI-tooling batch merged; real bug found on #423
+
+`main` at `01063ad` as of this entry (verify live — this session merged rapidly and `main`
+kept advancing every few minutes; do not trust this SHA past the next merge).
+
+**pal-mcp governance:** Thomas lifted the 2026-09-26 suspension in two stages, ending in a
+full unsuspension for all reading/ordinary-review/audit/analysis, any branch, any scope
+including security-scope — the confirmed cross-call content leak was fixed server-side and
+independently re-tested clean. The mandatory Opus final security/critical review is
+unaffected in every respect; pal-mcp can never satisfy it. See the decision log's two
+2026-09-27 entries and `CLAUDE.md`'s "Model tiers" for the full account.
+
+**Merged this session**, each with an independent ordinary review and (where
+`scripts/ci/**` made it security-scope) a passed Opus review at the exact merged head:
+#413 (check-ui.mjs rebuilt on the real TS parser, closing #255's import-evasion class),
+#410 (repoRoot resolves against cwd, not script location — #399), #412 (null-vs-epoch
+activity diff + event-source-before-commit ordering — #298 S1/S2), #420 (tenant-attribution
+test rigor — asserts the specific FK constraint name, not a bare `rejects.toThrow()` — #240,
+no security review required, out of `ci-cd.md`'s scope).
+
+**Merge-ready, clear at their current heads, mid the routine "main advanced, re-verify
+exact-head, remerge" cycle every fast-moving merge train hits:** #416 (`field()` multi-line
+capture, four Opus passes — #150), #418 (regex-vs-division disambiguation in
+strip-code-comments.mjs, three Opus passes — #143), #422 (check-deps.mjs ambient-module-
+augmentation misattribution — #393).
+
+**#423 (env-reads.mjs rebuilt on the real TS parser — #342) found a real, substantive bug
+via the review process working as designed, not yet merged.** Ordinary review found the
+rewrite's shadow-tracking was file-wide instead of scoped (a legitimate local shadow of
+`process` in one function silently hid an unrelated real `process.env.X` read elsewhere in
+the same file) plus a missing container-escape charge; both independently re-confirmed by
+direct source read before commissioning a fix. That fix's own Opus pass then found something
+larger: the rewrite's allow-list design (only charge contexts the tree-walk explicitly
+names) drops coverage for roughly 26 shapes the old tokenizer's blanket fail-closed default
+caught — verified empirically by running 42 probe files through both detectors. A structural
+fix (flip the default: charge unless a specific consumer narrows it, restoring the old
+fail-closed shape) is in progress. Not merged; do not build on this branch.
+
+**Also picked up mid-session:** PR #327 (P2 execution ledger, docs-only, authored by a
+non-Claude agent, sitting unreviewed since 2026-09-26) — ordinary review dispatched.
+
+**New follow-up issues filed:** #424 (three non-blocking doc-accuracy/wording findings from
+#422's Opus pass, plus a pre-existing narrow gap, all out of scope for that PR).
+
+**Known process gaps worth knowing, not yet fixed:** `check-pr-template.mjs` reads
+`$GITHUB_EVENT_PATH`, a snapshot of the PR body taken at the triggering push/edit — editing
+the body via `gh pr edit` shortly after a push (rather than before it, or via a fresh push)
+can leave a stale snapshot that fails the Note-link check even though the live body is
+correct; a branch update (or any new push) clears it by forcing a fresh event. This recurred
+several times this session on #416/#418. Also: `gh pr merge` intermittently fails with
+"15 of 15 required status checks are expected" moments after every check shows SUCCESS —
+transient GitHub check-registration timing, clears on retry a few seconds later, not a real
+gate failure.
 
 ### 2026-09-24 · P0 #10 Opus re-review and parser/scope hardening
 

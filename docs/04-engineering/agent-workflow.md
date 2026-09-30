@@ -69,16 +69,26 @@ B, tests for feature C. Do not parallelise across a shared file.
 
 ## Model tiers within Claude Code
 
-> **`pal-mcp` is SUSPENDED as of 2026-09-26 — do not use it for any review, audit, or report
-> that a gate depends on until this notice is removed.** A confirmed, reproducible cross-call
-> content leak persisted even after Thomas changed the underlying model config (fusion panel
-> → failover) — this is a server-side issue observed from outside, not something the
-> model-routing config controls. Use fresh Sonnet contexts for ordinary review, audit,
-> reporting, and the alignment check instead. See the decision log's newest entries for the
-> full account. The section below (added 2026-09-26, "`pal-mcp` becomes the primary ordinary
-> review/audit/report/alignment tool") describes the design as originally intended — it is
-> suspended, not deleted, so every `pal-mcp`/`pal-reviewer` mention below is read against
-> this notice, not as current instruction.
+> **`pal-mcp` is FULLY UNSUSPENDED as of 2026-09-27 (Thomas — see the decision log's newest
+> entry).** Usable again for ordinary review, audit, reporting, and the alignment check, on
+> any branch, any scope, including changes in `ci-cd.md`'s security-review-scope list. The
+> one unchanged thing: the mandatory final Opus security/critical review is still required,
+> separately, on every security-scope PR — never satisfied by `pal-mcp`. The original finding
+> (a confirmed, reproducible cross-call content leak that persisted even after Thomas's first
+> fix attempt, a fusion-panel → failover config change, on 2026-09-26) was a server-side issue
+> in `pal-mcp-server` itself; Thomas fixed and redeployed it, and independent sessions'
+> adversarial concurrency tests against the redeployed server on 2026-09-27 came back clean —
+> a real `pal-mcp` review of an in-flight PR then produced a substantive, correct finding,
+> further evidence of real reviewing capability. See the decision log's two 2026-09-27
+> entries (partial, then full) for the full account. The section below (added 2026-09-26,
+> "`pal-mcp` becomes the primary ordinary review/audit/report/alignment tool") now applies as
+> originally written, with no scope carve-out.
+>
+> **A live process gap:** a subagent's own `CLAUDE.md`/this file's system-reminder snapshot
+> can lag mid-session edits, even though `.claude/agents/**` role prompts are read fresh at
+> spawn. If a subagent flags that conflict, have it `Read`
+> `docs/07-planning/decision-log.md` directly rather than trusting either side blindly — see
+> the decision log's full-unsuspension entry.
 
 **Updated 2026-09-26 — see the [decision log](../07-planning/decision-log.md), 2026-09-26,
 "`pal-mcp` becomes the primary ordinary review/audit/report/alignment tool."** This
@@ -120,9 +130,9 @@ send nothing that is not already public.
 | --- | --- | --- |
 | Main / orchestrating session | **Whatever model this session already is** | No longer restricted to Opus/Fable — a Sonnet session orchestrating its own subagents is normal. What matters is that the orchestrating session does not clear its own work |
 | Implementation subagents — writing code or tests to an already-agreed spec | **Sonnet, spawned explicitly** | This repository's whole premise is that the spec is detailed enough for mechanical implementation ([AGENTS.md](../../AGENTS.md), [SDLC](sdlc.md)) |
-| Ordinary review — ordinary bugs/tests/quality, architecture fit, QA pass | ~~`pal-mcp` (`pal-reviewer` subagent)~~ **SUSPENDED — Sonnet fresh context** (was: `pal-mcp` primary, Sonnet fallback) | A different tool/context catches what the authoring context is structurally blind to. Two independent reviewer invocations minimum for ordinary work; three for broad/high-coupling work — see [AGENTS.md § Review tiers](../../AGENTS.md#review-tiers) |
-| Audit / reporting | ~~`pal-mcp` (`pal-reviewer` subagent)~~ **SUSPENDED — Sonnet fresh context** | Same reasoning as ordinary review — I/O- and pattern-matching-heavy relative to the final security gate |
-| Project-alignment / misalignment check | ~~`pal-mcp` (`pal-reviewer` subagent)~~ **SUSPENDED — Sonnet fresh context** | Does this change match the spec, the vocabulary, the shared contracts, the five rules |
+| Ordinary review — ordinary bugs/tests/quality, architecture fit, QA pass | `pal-mcp` (`pal-reviewer` subagent), any scope including security-scope (decision log, 2026-09-27 full unsuspension); Sonnet fresh context as fallback | A different tool/context catches what the authoring context is structurally blind to. Two independent reviewer invocations minimum for ordinary work; three for broad/high-coupling work — see [AGENTS.md § Review tiers](../../AGENTS.md#review-tiers). A security-scope PR's separate Opus pass is unaffected — required regardless of who does ordinary review |
+| Audit / reporting | Same as above: `pal-mcp`, any scope | Same reasoning as ordinary review — I/O- and pattern-matching-heavy relative to the final security gate |
+| Project-alignment / misalignment check | Same as above | Does this change match the spec, the vocabulary, the shared contracts, the five rules |
 | **Review — final independent security / critical review** | **Opus. Always. Not optional, not cost-negotiable. Never `pal-mcp`.** Spawned as an explicit, separate subagent, or a fresh top-level Opus context. Default build: **Opus 5.5** (decision log, 2026-09-23) — record that version in the review | The one checkpoint this repository will not discount for budget, convenience, or tool choice. See below |
 | **Phase finalizer** (P0–P7, additive) | **Opus**, once per completed stage, across everything merged for it | Catches cross-PR interaction the per-PR gate can't see — never a substitute for the row above ([AGENTS.md § Review tiers](../../AGENTS.md#review-tiers)) |
 
@@ -144,15 +154,15 @@ old rule existed to prevent. So:
 
 - **Implementation subagents are Sonnet, set explicitly at spawn.** Still no accidental
   inheritance, still one implementation agent per active code slice as the default scale.
-  **`pal-mcp` is SUSPENDED as the default ordinary reviewer as of 2026-09-26 — see "Model
-  tiers" above and the decision log.** A cross-call content leak was found, and confirmed
-  still present after a config change meant to fix it; use fresh Sonnet contexts for ordinary
-  review, audit, reporting and the alignment check until this clears. **`pal-mcp`'s `coder`
-  failover chain would not count as independent for a pull request authored by GPT-6 Luna,
-  Gemini 3.8 Flash, DeepSeek 4.1 Flash, or GLM 5.3 Flash** even once unsuspended — any of the
-  four could be the model that actually answers a given call under failover, so none of the
-  four's PRs can be treated as independently reviewed by it. For those authors, use Sonnet,
-  and have `## Reviewed by` name the actual reviewer, not just "pal-mcp".
+  **`pal-mcp` is FULLY UNSUSPENDED as the default ordinary reviewer as of 2026-09-27 — see
+  "Model tiers" above and the decision log's newest entry.** Usable for any candidate, any
+  scope, including security-scope — the separate, mandatory Opus pass on a security-scope
+  candidate is unaffected either way. **`pal-mcp`'s `coder` failover chain does not count
+  as independent for a pull request authored by GPT-6 Luna, Gemini 3.8 Flash, DeepSeek 4.1
+  Flash, or GLM 5.3 Flash** — any of the four could be the model that actually answers a given
+  call under failover, so none of the four's PRs can be treated as independently reviewed by
+  it. For those authors, use Sonnet, and have `## Reviewed by` name the actual reviewer, not
+  just "pal-mcp".
 - **The final security/critical review may be an explicitly-spawned Opus subagent.** The
   constraint is on the *reviewing subagent's* independence, not on who is allowed to press
   spawn: any top-level session — Sonnet or Opus — may spawn it, **as long as the spawned
@@ -354,9 +364,10 @@ Prefer a skill over freehand work — it encodes decisions already made.
 Every pull request gets:
 
 1. **Independent review** — a fresh context, not the one that wrote it. Two reviewer
-   invocations minimum for ordinary work (Sonnet — `pal-mcp`'s `pal-reviewer` is SUSPENDED,
+   invocations minimum for ordinary work (`pal-mcp`'s `pal-reviewer`, any scope, or Sonnet —
    see "Model tiers" above), three for broad/high-coupling work
-   ([AGENTS.md § Review tiers](../../AGENTS.md#review-tiers)).
+   ([AGENTS.md § Review tiers](../../AGENTS.md#review-tiers)). A security-scope candidate
+   still requires the separate, mandatory Opus pass below regardless of who does this step.
 2. **Automated gates** — everything in CI.
 3. **The required security/critical review**, Opus, when the change is in security scope.
 4. **Merge**, through the normal protected pull-request flow, by the orchestrating Claude

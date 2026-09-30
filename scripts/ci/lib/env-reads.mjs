@@ -1,17 +1,67 @@
 /**
  * Finds and classifies every environment read in a source file.
  *
- * This is deliberately not `grep process.env`. The kaneo import proved a grep for named
- * reads misses the reads that matter: the seven S3 connection variables go through a local
- * `env(name)` helper backed by `process.env[name]`, four `CREEM_PRODUCT_*` names are built
- * from a lookup table, and the eight `SMTP_*` names arrive through the parameter default
- * `env: SmtpEnv = process.env`. None of those is a `process.env.NAME` expression.
+ * **#342, #352, #382 — from a hand-written tokenizer to a real parser.** The original
+ * detector (a small hand-rolled lexer, see git history) had to re-derive comment/string/
+ * regex/JSX-text boundaries itself, and every round of review against it found another real
+ * spelling it missed: object-spread (`{ ...process.env }`), `globalThis.process.env`,
+ * bracket/optional-chaining access, destructuring or aliasing `process` itself, `Reflect.get`,
+ * `node:process` imports, and a comment between `process` and `.env` (#342 E1/E2, all closed
+ * by #352); then a further round (#382's Opus review, "D3") found the same class recurring at
+ * a narrower scope — casts (`(process as any).env`), string-literal escapes
+ * (`process['\x65nv']`), nested `globalThis` destructuring, and — the fundamental one — JSX
+ * text that merely *looks* like a comment or a regex confusing the lexer's own grammar
+ * (H1, the same class as check-ui.mjs's own pre-#255 regex). That review's own recommendation,
+ * matching this repo's established pattern for exactly this class of gate
+ * (check-deps.mjs, check-ui.mjs's #255 rewrite): stop patching lexer special cases and parse
+ * with a real grammar. `typescript/unstable/ast` via `typescript/unstable/sync`'s `API` is
+ * the same real TypeScript parser the rest of the toolchain uses, so a JSX text node, a
+ * comment, a string, and a regex are never ambiguous with real syntax — the class H1 named is
+ * closed structurally, not by one more special case.
  *
- * So every occurrence of the environment object is classified, and anything whose name
- * cannot be resolved to a string literal is reported as **unattributable** rather than
- * ignored. That is the invariant check:env enforces: every environment read is
- * attributable to an approved entry in docs/05-operations/configuration-reference.md.
+ * The design below is not "detect `process.env.NAME`" — the kaneo import proved a check for
+ * that exact shape misses the reads that matter: the seven S3 connection variables go through
+ * a local `env(name)` helper backed by `process.env[name]`, four `CREEM_PRODUCT_*` names are
+ * built from a lookup table, and the eight `SMTP_*` names arrive through the parameter default
+ * `env: SmtpEnv = process.env`. None of those is a `process.env.NAME` expression. So instead:
+ *
+ *  1. `classify(node)` answers "what does this expression *denote*" — the `process` global
+ *     itself, `globalThis`/`global`, `import.meta`, or the environment bag reachable from any
+ *     of those (`process.env` / `import.meta.env`), seeing through parens, `as`/`satisfies`/
+ *     `<Type>`/`!` casts, `await`, a `require`/dynamic `import` of `"process"`/`"node:process"`,
+ *     `Reflect.get`/`Object.getOwnPropertyDescriptor`, and any alias created by a plain
+ *     `const x = <one of the above>` (including chains: an alias of an alias).
+ *  2. The tree walk uses that purely to decide, at every real property/element access,
+ *     destructuring pattern, spread, assignment, and module export in the file, whether it is
+ *     a **named** read (a literal variable name — attributable), a **computed** read (a
+ *     dynamic key into the bag — cannot be attributed to a name), or an **alias** read (the
+ *     whole bag, or the bare `process`/`import.meta` object itself, escapes as a value — a
+ *     parameter default, an object spread, a non-flat destructure, or crossing a module
+ *     boundary via `export`). Nothing here is a special case for one shape; every shape above
+ *     is just what `classify` returns at a real AST node the grammar already distinguishes.
+ *
+ * `process[X]`/`globalThis[X]`/`import.meta[X]` with anything other than a literal string
+ * that plainly is NOT the property being reached (or a numeric index) fails closed as a match
+ * — see `memberMatch`. A concatenation, a variable, a substituted template: all assumed to be
+ * reaching `.env`/`.process` rather than proven not to. Nothing is exempted from this — see
+ * `check-env.mjs`'s test-vs-application scope note for the one carve-out this gate has at all.
+ *
+ * Accepted limits, by design (documented so the next reviewer finds the answer here, not by
+ * re-discovering it): cross-file dataflow (a raw `process`/`process.env` passed as a bare
+ * function argument, or returned from a function that is never itself exported, is not
+ * traced into its callee); a `.then(cb => ...)` callback on `import('node:process')` (the
+ * awaited/`await import(...)` form is handled, the promise-chaining form is not); legacy
+ * `<Type>expr` angle-bracket assertions in a `.tsx`-parsed fixture (real files keep their own
+ * extension and are unaffected — this is a unit-test-harness limitation only, see
+ * `parseAdHocSourceFile`, not a real detection gap: `as`/`satisfies`/non-null casts exercise
+ * the identical `unwrap` code path this shape would).
  */
+
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import * as ts from "typescript/unstable/ast";
+import { API } from "typescript/unstable/sync";
 
 /** `import.meta.env` members Vite defines itself; they are not deployment configuration. */
 export const viteBuiltIns = new Set([
@@ -23,577 +73,222 @@ export const viteBuiltIns = new Set([
   "LEGACY",
 ]);
 
-function tokenize(source) {
-  const tokens = [];
-  const comments = [];
-  const add = (value, type, start, end) =>
-    tokens.push({ value, type, start, end });
-  const regexPrefixKeywords = new Set([
-    "await",
-    "case",
-    "delete",
-    "do",
-    "else",
-    "in",
-    "instanceof",
-    "return",
-    "throw",
-    "typeof",
-    "void",
-    "yield",
-  ]);
-  const regexPrefixPunctuation = new Set([
-    "(",
-    "[",
-    "{",
-    "=",
-    ":",
-    ",",
-    ";",
-    "!",
-    "?",
-    "?.",
-    "=>",
-    "&&",
-    "||",
-    "??",
-    "+",
-    "-",
-    "*",
-    "%",
-    "&",
-    "|",
-    "^",
-    "<",
-    ">",
-  ]);
-  const expressionPrefixKeywords = new Set([
-    "await",
-    "return",
-    "throw",
-    "yield",
-    "typeof",
-    "void",
-    "delete",
-    "new",
-  ]);
-  const expressionPrefixPunctuation = new Set([
-    "=",
-    "(",
-    "[",
-    ":",
-    ",",
-    "=>",
-    "+",
-    "-",
-    "!",
-    "~",
-  ]);
-  const isExpressionPrefix = (value) =>
-    expressionPrefixKeywords.has(value) ||
-    expressionPrefixPunctuation.has(value);
-  const canStartRegex = (previous) => {
-    if (!previous) return true;
-    if (
-      regexPrefixKeywords.has(previous.value) ||
-      regexPrefixPunctuation.has(previous.value)
-    )
-      return true;
-    if (previous.value === ")") {
-      let depth = 0;
-      for (
-        let tokenIndex = tokens.length - 1;
-        tokenIndex >= 0;
-        tokenIndex -= 1
-      ) {
-        const value = tokens[tokenIndex].value;
-        if (value === ")") depth += 1;
-        else if (value === "(" && --depth === 0) {
-          return new Set(["if", "while", "for", "with", "switch", "catch"]).has(
-            tokens[tokenIndex - 1]?.value,
-          );
-        }
-      }
-    }
-    // A slash after a statement block starts a new expression. Distinguish that
-    // closing brace from an object literal by inspecting the token that opened it.
-    if (previous.value === "}") {
-      let depth = 0;
-      for (
-        let tokenIndex = tokens.length - 1;
-        tokenIndex >= 0;
-        tokenIndex -= 1
-      ) {
-        const value = tokens[tokenIndex].value;
-        if (value === "}") depth += 1;
-        else if (value === "{" && --depth === 0) {
-          const beforeBlock = tokens[tokenIndex - 1]?.value;
-          if (
-            !beforeBlock ||
-            [";", "}", "else", "try", "finally", "do", "=>"].includes(
-              beforeBlock,
-            )
-          )
-            return true;
-          if (beforeBlock === ")") {
-            let parens = 0;
-            for (let open = tokenIndex - 1; open >= 0; open -= 1) {
-              if (tokens[open].value === ")") parens += 1;
-              else if (tokens[open].value === "(" && --parens === 0) {
-                if (
-                  new Set([
-                    "if",
-                    "while",
-                    "for",
-                    "with",
-                    "switch",
-                    "catch",
-                  ]).has(tokens[open - 1]?.value)
-                )
-                  return true;
-                // Named function declarations have a name between the keyword
-                // and parameter list, unlike function expressions' lexical use.
-                for (let prior = open - 1; prior >= 0; prior -= 1) {
-                  if ([";", "{", "}"].includes(tokens[prior].value)) break;
-                  if (tokens[prior].value === "function") {
-                    const beforeFunction =
-                      tokens[prior - 1]?.value === "async"
-                        ? tokens[prior - 2]?.value
-                        : tokens[prior - 1]?.value;
-                    return !isExpressionPrefix(beforeFunction);
-                  }
-                }
-                return false;
-              }
-            }
-          }
-          // A class declaration's opening brace follows its optional name and
-          // extends clause rather than a parenthesized control condition.
-          if (beforeBlock && tokens[tokenIndex - 2]?.value === "class")
-            return true;
-          if (beforeBlock) {
-            for (let prior = tokenIndex - 1; prior >= 0; prior -= 1) {
-              if ([";", "{", "}"].includes(tokens[prior].value)) break;
-              if (tokens[prior].value === "class")
-                return !isExpressionPrefix(tokens[prior - 1]?.value);
-            }
-          }
-          return false;
-        }
-      }
-    }
-    return false;
-  };
-  const scan = (from, inTemplateExpression = false) => {
-    let index = from;
-    let braceDepth = 0;
-    while (index < source.length) {
-      const char = source[index];
-      if (/\s/.test(char)) {
-        index += 1;
-        continue;
-      }
-      if (source.startsWith("//", index)) {
-        const start = index;
-        const end = source.indexOf("\n", index + 2);
-        index = end < 0 ? source.length : end + 1;
-        comments.push({ start, end: index });
-        continue;
-      }
-      if (source.startsWith("/*", index)) {
-        const start = index;
-        const end = source.indexOf("*/", index + 2);
-        index = end < 0 ? source.length : end + 2;
-        comments.push({ start, end: index });
-        continue;
-      }
-      if (char === "/" && canStartRegex(tokens.at(-1))) {
-        index += 1;
-        let inCharacterClass = false;
-        while (index < source.length && source[index] !== "\n") {
-          if (source[index] === "\\") {
-            index += 2;
-            continue;
-          }
-          if (source[index] === "[") inCharacterClass = true;
-          else if (source[index] === "]") inCharacterClass = false;
-          else if (source[index] === "/" && !inCharacterClass) {
-            index += 1;
-            while (/[A-Za-z]/.test(source[index] ?? "")) index += 1;
-            break;
-          }
-          index += 1;
-        }
-        continue;
-      }
-      if (inTemplateExpression && char === "}") {
-        if (braceDepth === 0) return index + 1;
-        braceDepth -= 1;
-        add("}", "punct", index, index + 1);
-        index += 1;
-        continue;
-      }
-      if (char === "{") {
-        if (inTemplateExpression) braceDepth += 1;
-        add(char, "punct", index, index + 1);
-        index += 1;
-        continue;
-      }
-      if (char === "'" || char === '"') {
-        const quote = char;
-        const start = index++;
-        let value = "";
-        while (
-          index < source.length &&
-          source[index] !== quote &&
-          source[index] !== "\n" &&
-          source[index] !== "\r"
-        ) {
-          if (source[index] === "\\" && index + 1 < source.length) {
-            value += source[index + 1];
-            index += 2;
-          } else {
-            value += source[index++];
-          }
-        }
-        if (source[index] === quote) index += 1;
-        add(value, "string", start, index);
-        continue;
-      }
-      if (char === "`") {
-        const start = index++;
-        let value = "";
-        let hasInterpolation = false;
-        while (index < source.length) {
-          if (source[index] === "\\") {
-            value += source[index + 1] ?? "";
-            index += 2;
-            continue;
-          }
-          if (source[index] === "`") {
-            index += 1;
-            break;
-          }
-          if (source.startsWith("${", index)) {
-            hasInterpolation = true;
-            index = scan(index + 2, true);
-            continue;
-          }
-          value += source[index];
-          index += 1;
-        }
-        if (!hasInterpolation) add(value, "string", start, index);
-        continue;
-      }
-      if (/[A-Za-z_$]/.test(char)) {
-        const start = index++;
-        while (index < source.length && /[\w$]/.test(source[index])) index += 1;
-        add(source.slice(start, index), "id", start, index);
-        continue;
-      }
-      const operator = ["...", "?."].find((candidate) =>
-        source.startsWith(candidate, index),
-      );
-      if (operator) {
-        add(operator, "punct", index, index + operator.length);
-        index += operator.length;
-        continue;
-      }
-      add(char, "punct", index, index + 1);
-      index += 1;
-    }
-    return index;
-  };
-  scan(0);
-  return { tokens, comments };
-}
+// ── structural helpers ──────────────────────────────────────────────────────────────
 
-function matchingOpenBrace(tokens, closeIndex) {
-  let depth = 0;
-  for (let index = closeIndex; index >= 0; index -= 1) {
-    if (tokens[index].value === "}") depth += 1;
-    else if (tokens[index].value === "{" && --depth === 0) return index;
+/** See through parens, TS casts, non-null assertions, and `await` — none of them change
+ * what an expression denotes, only how it is annotated or when it resolves. */
+function unwrap(input) {
+  let node = input;
+  for (;;) {
+    if (!node) return node;
+    switch (node.kind) {
+      case ts.SyntaxKind.ParenthesizedExpression:
+      case ts.SyntaxKind.AsExpression:
+      case ts.SyntaxKind.SatisfiesExpression:
+      case ts.SyntaxKind.TypeAssertionExpression:
+      case ts.SyntaxKind.NonNullExpression:
+      case ts.SyntaxKind.AwaitExpression:
+        node = node.expression;
+        continue;
+      default:
+        return node;
+    }
   }
-  return -1;
 }
 
-/** Accept only flat, statically named process.env destructuring properties. */
-function flatDestructuredEnvNames(tokens, closeIndex) {
-  const openIndex = matchingOpenBrace(tokens, closeIndex);
-  if (openIndex < 0) return null;
+/** The decoded string value of a literal — reading the parser's own `.text`, exactly like
+ * check-ui.mjs's `literalSpecifierText`, is what makes an escaped or Unicode-obfuscated
+ * literal (`'\x65nv'`, `process`) transparent: the parser already decoded it. */
+function literalText(node) {
+  if (!node) return undefined;
+  return node.kind === ts.SyntaxKind.StringLiteral ||
+    node.kind === ts.SyntaxKind.NoSubstitutionTemplateLiteral
+    ? node.text
+    : undefined;
+}
 
-  const names = [];
-  let segment = [];
-  const addSegment = () => {
-    if (segment.length === 1 && segment[0].type === "id") {
-      names.push(segment[0].value);
-    } else if (
-      segment.length === 3 &&
-      segment[0].type === "id" &&
-      segment[1].value === ":" &&
-      segment[2].type === "id"
-    ) {
-      names.push(segment[0].value);
-    } else {
-      return false;
-    }
-    segment = [];
-    return true;
-  };
+function isProcessModuleSpecifier(text) {
+  return text === "process" || text === "node:process";
+}
 
-  for (let index = openIndex + 1; index < closeIndex; index += 1) {
-    const token = tokens[index];
-    if (token.value === ",") {
-      if (segment.length > 0 && !addSegment()) return null;
-      continue;
-    }
-    segment.push(token);
+function isBareIdentifierNamed(node, name) {
+  return node?.kind === ts.SyntaxKind.Identifier && node.text === name;
+}
+
+function isPropertyAccessNamed(node, objectName, propertyName) {
+  return (
+    node?.kind === ts.SyntaxKind.PropertyAccessExpression &&
+    node.expression?.kind === ts.SyntaxKind.Identifier &&
+    node.expression.text === objectName &&
+    node.name?.text === propertyName
+  );
+}
+
+/**
+ * What a member access transitions an already-classified object *into*: `process.env`,
+ * `globalThis.process` (also `global.`), `import.meta.env`. Fails closed on a computed key
+ * that cannot be proven to be something else: only a literal string/no-substitution-template
+ * that is a DIFFERENT, plain name (or a numeric index) is treated as "definitely not this" —
+ * a variable, a concatenation, a substituted template all count as a match. This is the same
+ * design as the tokenizer it replaces (see its own header, "process[computed]"), now applied
+ * uniformly to `globalThis[...]` and `import.meta[...]` too (closing the #382 "L2" gap that
+ * only `process["env"]` got this treatment).
+ */
+const TRANSITIONS = {
+  process: { member: "env", result: "env" },
+  globalThis: { member: "process", result: "process" },
+  importMeta: { member: "env", result: "importMetaEnv" },
+};
+
+function memberMatch(node, objectKind) {
+  const transition = TRANSITIONS[objectKind];
+  if (!transition) return null;
+  if (node.kind === ts.SyntaxKind.PropertyAccessExpression) {
+    return node.name.text === transition.member ? transition.result : null;
   }
-  if (segment.length > 0 && !addSegment()) return null;
-  return names;
+  const keyNode = node.argumentExpression;
+  const literal = literalText(keyNode);
+  const isNumeric = keyNode?.kind === ts.SyntaxKind.NumericLiteral;
+  if (literal === transition.member) return transition.result;
+  if (literal !== undefined || isNumeric) return null; // a different, plain literal/index
+  return transition.result; // unresolved computed key — assume the worst, fail closed
 }
 
-function collectTokenAliases(tokens) {
-  const processAliases = new Set();
-  const envAliases = new Set();
-  const envAliasDeclarations = new Set();
-  for (let i = 0; i < tokens.length; i += 1) {
-    if (tokens[i].value === "import" && tokens[i + 1]?.value !== "(") {
-      let from = i + 1;
-      while (from < tokens.length && tokens[from].value !== "from") {
-        if (tokens[from].value === ";") break;
-        from += 1;
-      }
-      const moduleName = tokens[from + 1]?.value;
+/**
+ * What does `node` *denote*, given the aliases collected so far in this file? One of
+ * `"process"`, `"globalThis"`, `"importMeta"` (not yet narrowed to the environment bag), or
+ * `"env"` / `"importMetaEnv"` (the bag itself), or `null` (nothing of interest). Two
+ * intermediate results (`"propDescEnv"` / `"propDescImportMetaEnv"`) exist only to let
+ * `Object.getOwnPropertyDescriptor(process, "env").value` resolve across its own `.value`
+ * access; nothing else produces or consumes them.
+ */
+function classify(input, aliases) {
+  const node = unwrap(input);
+  if (!node) return null;
+  switch (node.kind) {
+    case ts.SyntaxKind.Identifier: {
+      const name = node.text;
+      if (name === "process" || aliases.process.has(name)) return "process";
+      if (name === "globalThis" || name === "global") return "globalThis";
+      if (aliases.env.has(name)) return "env";
+      if (aliases.importMeta.has(name)) return "importMeta";
+      if (aliases.importMetaEnv.has(name)) return "importMetaEnv";
+      return null;
+    }
+    case ts.SyntaxKind.MetaProperty:
+      return node.keywordToken === ts.SyntaxKind.ImportKeyword &&
+        node.name?.text === "meta"
+        ? "importMeta"
+        : null;
+    case ts.SyntaxKind.PropertyAccessExpression:
+    case ts.SyntaxKind.ElementAccessExpression: {
+      const objectKind = classify(node.expression, aliases);
+      if (!objectKind) return null;
+      const next = memberMatch(node, objectKind);
+      if (next) return next;
       if (
-        tokens[from]?.value === "from" &&
-        ["process", "node:process"].includes(moduleName)
+        node.kind === ts.SyntaxKind.PropertyAccessExpression &&
+        node.name.text === "value"
       ) {
-        const clause = tokens.slice(i + 1, from);
-        if (clause[0]?.type === "id") processAliases.add(clause[0].value);
-        const namespace = clause.findIndex((token) => token.value === "*");
-        if (namespace >= 0 && clause[namespace + 1]?.value === "as") {
-          processAliases.add(clause[namespace + 2]?.value);
-        }
-        const open = clause.findIndex((token) => token.value === "{");
-        let close = open < 0 ? -1 : open + 1;
-        while (
-          close >= 0 &&
-          close < clause.length &&
-          clause[close].value !== "}"
-        ) {
-          close += 1;
-        }
-        for (let j = open + 1; open >= 0 && j < close; j += 1) {
-          if (clause[j].value === "env") {
-            const alias = clause[j + 1]?.value === "as" ? clause[j + 2] : null;
-            envAliases.add(alias?.value ?? "env");
-            envAliasDeclarations.add(i + 1 + (alias ? j + 2 : j));
-          }
-        }
+        if (objectKind === "propDescEnv") return "env";
+        if (objectKind === "propDescImportMetaEnv") return "importMetaEnv";
       }
+      return null;
     }
-    const dynamicProcessImport =
-      tokens[i].value === "import" &&
-      tokens[i + 1]?.value === "(" &&
-      ["process", "node:process"].includes(tokens[i + 2]?.value) &&
-      tokens[i + 3]?.value === ")";
-    if (
-      dynamicProcessImport &&
-      tokens[i - 1]?.value === "await" &&
-      tokens[i - 2]?.value === "=" &&
-      tokens[i - 3]?.type === "id"
-    ) {
-      processAliases.add(tokens[i - 3].value);
-    }
-    if (
-      dynamicProcessImport &&
-      tokens[i - 2]?.value === "=" &&
-      tokens[i - 3]?.value === "}"
-    ) {
-      let open = i - 4;
-      while (open >= 0 && tokens[open].value !== "{") open -= 1;
-      for (let j = open + 1; open >= 0 && j < i - 3; j += 1) {
-        if (tokens[j].value === "env") {
-          const alias =
-            tokens[j + 1]?.value === ":" ? tokens[j + 2] : tokens[j];
-          envAliases.add(alias.value);
-          envAliasDeclarations.add(alias === tokens[j] ? j : j + 2);
-        }
+    case ts.SyntaxKind.CallExpression: {
+      const callee = unwrap(node.expression);
+      const firstArg = literalText(node.arguments[0]);
+      if (
+        isBareIdentifierNamed(callee, "require") &&
+        isProcessModuleSpecifier(firstArg)
+      )
+        return "process";
+      if (
+        callee?.kind === ts.SyntaxKind.ImportKeyword &&
+        isProcessModuleSpecifier(firstArg)
+      )
+        return "process";
+      if (isPropertyAccessNamed(callee, "Reflect", "get")) {
+        const target = classify(node.arguments[0], aliases);
+        const key = literalText(node.arguments[1]);
+        if (target === "process" && key === "env") return "env";
+        if (target === "importMeta" && key === "env") return "importMetaEnv";
+        return null;
       }
-    }
-    if (
-      tokens[i].type === "id" &&
-      tokens[i + 1]?.value === "=" &&
-      (tokens[i + 2]?.value === "process" ||
-        ((tokens[i + 2]?.value === "globalThis" ||
-          tokens[i + 2]?.value === "global") &&
-          tokens[i + 3]?.value === "." &&
-          tokens[i + 4]?.value === "process"))
-    ) {
-      processAliases.add(tokens[i].value);
-    }
-    const destructuredFromProcess =
-      (tokens[i].value === "process" &&
-        ((tokens[i - 1]?.value === "=" && tokens[i - 2]?.value === "}") ||
-          (tokens[i - 1]?.value === "." &&
-            ["global", "globalThis"].includes(tokens[i - 2]?.value) &&
-            tokens[i - 3]?.value === "=" &&
-            tokens[i - 4]?.value === "}"))) ||
-      (tokens[i].value === "require" &&
-        tokens[i + 1]?.value === "(" &&
-        ["process", "node:process"].includes(tokens[i + 2]?.value) &&
-        tokens[i + 3]?.value === ")" &&
-        tokens[i - 1]?.value === "=" &&
-        tokens[i - 2]?.value === "}");
-    if (destructuredFromProcess) {
-      let open = i - 1;
-      while (open >= 0 && tokens[open].value !== "{") open -= 1;
-      for (let j = open + 1; open >= 0 && j < i - 1; j += 1) {
-        if (tokens[j].value === "env") {
-          const alias =
-            tokens[j + 1]?.value === ":" ? tokens[j + 2] : tokens[j];
-          envAliases.add(alias.value);
-          envAliasDeclarations.add(alias === tokens[j] ? j : j + 2);
-        }
+      if (isPropertyAccessNamed(callee, "Object", "getOwnPropertyDescriptor")) {
+        const target = classify(node.arguments[0], aliases);
+        const key = literalText(node.arguments[1]);
+        if (target === "process" && key === "env") return "propDescEnv";
+        if (target === "importMeta" && key === "env")
+          return "propDescImportMetaEnv";
+        return null;
       }
+      return null;
     }
+    default:
+      return null;
   }
-  return { processAliases, envAliases, envAliasDeclarations };
 }
 
-function isRootIdentifier(tokens, index) {
-  // A property named `process` or `globalThis` is not the Node global. In
-  // particular, `options.process.env.X` must not be classified as an env read.
-  return tokens[index - 1]?.value !== "." && tokens[index - 1]?.value !== "?.";
+/** The value an exported arrow/function *actually* exposes, unwrapping a concise arrow body
+ * or a shallow `return` in the first block of statements (a return nested in an `if`/loop is
+ * an accepted limit — the exported-boundary check this feeds is a narrow, deliberate net for
+ * #382's M1 examples, not a general control-flow analysis). Returns `expr` itself, unchanged,
+ * when it is not a function at all. */
+function unwrapFunctionReturn(expr) {
+  const node = unwrap(expr);
+  if (!node) return expr;
+  if (node.kind === ts.SyntaxKind.ArrowFunction) {
+    if (node.body?.kind !== ts.SyntaxKind.Block) return unwrap(node.body);
+    return shallowReturn(node.body) ?? expr;
+  }
+  if (node.kind === ts.SyntaxKind.FunctionExpression) {
+    return shallowReturn(node.body) ?? expr;
+  }
+  return expr;
 }
 
-function parseEnvObject(tokens, index, processAliases, envAliases) {
-  const value = tokens[index]?.value;
-  const rootIdentifier = isRootIdentifier(tokens, index);
-  const processName =
-    rootIdentifier && (value === "process" || processAliases.has(value));
-  const dottedGlobalProcess =
-    (value === "global" || value === "globalThis") &&
-    tokens[index + 1]?.value === "." &&
-    tokens[index + 2]?.value === "process";
-  const computedGlobalProcess =
-    (value === "global" || value === "globalThis") &&
-    tokens[index + 1]?.value === "[" &&
-    tokens[index + 2]?.value === "process" &&
-    tokens[index + 3]?.value === "]";
-  const globalProcess =
-    rootIdentifier && (dottedGlobalProcess || computedGlobalProcess);
-  let processIndex = index;
-  if (dottedGlobalProcess) processIndex = index + 2;
-  if (computedGlobalProcess) processIndex = index + 2;
-  if (processName || globalProcess) {
-    let accessIndex = processIndex + 1;
-    if (computedGlobalProcess) accessIndex = index + 4;
-    if (tokens[accessIndex]?.value === "!") accessIndex += 1;
-    if (tokens[index - 1]?.value === "(" && tokens[index + 1]?.value === ")") {
-      accessIndex = index + 2;
-    }
-    const dot = tokens[accessIndex]?.value;
+function shallowReturn(block) {
+  if (!block) return null;
+  for (const statement of block.statements) {
     if (
-      (dot === "." || dot === "?.") &&
-      tokens[accessIndex + 1]?.value === "env"
-    )
-      return { object: "process.env", end: accessIndex + 1 };
-    if (
-      dot === "[" &&
-      tokens[accessIndex + 1]?.value === "env" &&
-      tokens[accessIndex + 2]?.value === "]"
-    )
-      return { object: "process.env", end: accessIndex + 2 };
-    if (dot === "[") {
-      const member = tokens[accessIndex + 1];
-      const close = tokens.findIndex(
-        (token, tokenIndex) =>
-          tokenIndex > accessIndex + 1 && token.value === "]",
-      );
-      const simpleNonEnvLiteral =
-        member?.type === "string" && close === accessIndex + 2;
-      const numericIndex = /^\d+$/.test(member?.value ?? "");
-      if (!simpleNonEnvLiteral && !numericIndex && close >= 0) {
-        return { object: "process.env", end: close };
-      }
-    }
-    return null;
-  }
-  if (
-    rootIdentifier &&
-    value === "import" &&
-    tokens[index + 1]?.value === "." &&
-    tokens[index + 2]?.value === "meta"
-  ) {
-    const dot = tokens[index + 3]?.value;
-    if ((dot === "." || dot === "?.") && tokens[index + 4]?.value === "env")
-      return { object: "import.meta.env", end: index + 4 };
-    if (
-      dot === "[" &&
-      tokens[index + 4]?.value === "env" &&
-      tokens[index + 5]?.value === "]"
-    )
-      return { object: "import.meta.env", end: index + 5 };
-  }
-  if (
-    rootIdentifier &&
-    value === "Reflect" &&
-    tokens[index + 1]?.value === "." &&
-    tokens[index + 2]?.value === "get" &&
-    tokens[index + 3]?.value === "("
-  ) {
-    const source = parseEnvObject(
-      tokens,
-      index + 3,
-      processAliases,
-      envAliases,
-    );
-    if (source) return { object: source.object, end: index + 2 };
-    if (
-      tokens[index + 3]?.value === "(" &&
-      (tokens[index + 4]?.value === "process" ||
-        processAliases.has(tokens[index + 4]?.value)) &&
-      tokens[index + 5]?.value === "," &&
-      tokens[index + 6]?.value === "env"
+      statement.kind === ts.SyntaxKind.ReturnStatement &&
+      statement.expression
     ) {
-      return { object: "process.env", end: index + 7 };
+      return unwrap(statement.expression);
     }
   }
-  if (
-    rootIdentifier &&
-    value === "require" &&
-    tokens[index + 1]?.value === "(" &&
-    ["process", "node:process"].includes(tokens[index + 2]?.value) &&
-    tokens[index + 3]?.value === ")" &&
-    tokens[index + 4]?.value === "." &&
-    tokens[index + 5]?.value === "env"
-  ) {
-    return { object: "process.env", end: index + 5 };
-  }
-  if (
-    rootIdentifier &&
-    value === "Object" &&
-    tokens[index + 1]?.value === "." &&
-    tokens[index + 2]?.value === "getOwnPropertyDescriptor" &&
-    tokens[index + 3]?.value === "(" &&
-    (tokens[index + 4]?.value === "process" ||
-      processAliases.has(tokens[index + 4]?.value)) &&
-    tokens[index + 5]?.value === "," &&
-    tokens[index + 6]?.value === "env" &&
-    tokens[index + 7]?.value === ")"
-  ) {
-    const valueProperty =
-      tokens[index + 8]?.value === "." && tokens[index + 9]?.value === "value";
-    return {
-      object: "process.env",
-      end: valueProperty ? index + 9 : index + 7,
-    };
-  }
-  if (rootIdentifier && envAliases.has(value))
-    return { object: "process.env", end: index };
   return null;
+}
+
+function hasExportModifier(node) {
+  return (node?.modifiers ?? []).some(
+    (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+  );
+}
+
+/** Only flat, statically-named binding elements: no rest, no default, no nested pattern, and
+ * a plain identifier property key (a quoted-string key is deliberately NOT flat here, matching
+ * this gate's existing, more conservative behavior for that one shape). Returns `null` — not a
+ * partial list — the moment any element breaks flatness, so a hostile mix of one real name and
+ * one rest/computed/nested element does not leak the real name out as "attributed". */
+function flatBindingNames(pattern) {
+  const names = [];
+  for (const element of pattern.elements) {
+    if (element.dotDotDotToken) return null;
+    if (element.initializer) return null;
+    if (
+      element.propertyName &&
+      element.propertyName.kind !== ts.SyntaxKind.Identifier
+    )
+      return null;
+    if (element.name.kind !== ts.SyntaxKind.Identifier) return null;
+    names.push({
+      name: (element.propertyName ?? element.name).text,
+      node: element,
+    });
+  }
+  return names;
 }
 
 /**
@@ -605,142 +300,295 @@ function parseEnvObject(tokens, index, processAliases, envAliases) {
  * @property {string} snippet the source line, trimmed
  */
 
+const OBJECT_OF = { env: "process.env", importMetaEnv: "import.meta.env" };
+
+/**
+ * Walk a real, parsed TypeScript source file and classify every environment read in it.
+ *
+ * @param {import("typescript/unstable/ast").SourceFile} sourceFile
+ * @returns {EnvRead[]}
+ */
+export function findEnvReadsInSourceFile(sourceFile) {
+  const aliases = {
+    process: new Set(),
+    globalThisSeen: null, // unused placeholder kept out of the classify() switch on purpose
+    env: new Set(),
+    importMeta: new Set(),
+    importMetaEnv: new Set(),
+  };
+  const text = sourceFile.text;
+  const lines = text.split("\n");
+  let reads = [];
+
+  const positionOf = (node) =>
+    sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+
+  const addRead = (node, object, kind, name = null) => {
+    const { line } = positionOf(node);
+    reads.push({
+      object,
+      kind,
+      name,
+      line: line + 1,
+      snippet: (lines[line] ?? "").trim(),
+    });
+  };
+  const chargeEscape = (node, kindOfBag) =>
+    addRead(node, OBJECT_OF[kindOfBag] ?? kindOfBag, "alias", null);
+
+  function chargeBareValueIfEscaping(expr) {
+    const kind = classify(expr, aliases);
+    if (kind === "process") chargeEscape(expr, "process.env");
+    else if (kind === "importMeta") chargeEscape(expr, "import.meta.env");
+    else if (kind === "env") chargeEscape(expr, "process.env");
+    else if (kind === "importMetaEnv") chargeEscape(expr, "import.meta.env");
+  }
+
+  function analyzeObjectPattern(pattern, sourceKind) {
+    if (!pattern || pattern.kind !== ts.SyntaxKind.ObjectBindingPattern) return;
+
+    if (sourceKind === "env" || sourceKind === "importMetaEnv") {
+      const object = OBJECT_OF[sourceKind];
+      const flat = flatBindingNames(pattern);
+      if (flat === null) {
+        chargeEscape(pattern, sourceKind);
+      } else {
+        for (const { name, node } of flat) addRead(node, object, "named", name);
+      }
+      return;
+    }
+
+    if (sourceKind === "process" || sourceKind === "importMeta") {
+      const bagKind = sourceKind === "process" ? "env" : "importMetaEnv";
+      for (const element of pattern.elements) {
+        if (element.dotDotDotToken) continue;
+        const keyNode = element.propertyName ?? element.name;
+        if (keyNode.kind !== ts.SyntaxKind.Identifier || keyNode.text !== "env")
+          continue;
+        chargeEscape(element, bagKind);
+        if (element.name.kind === ts.SyntaxKind.Identifier) {
+          (bagKind === "env" ? aliases.env : aliases.importMetaEnv).add(
+            element.name.text,
+          );
+        }
+      }
+      return;
+    }
+
+    if (sourceKind === "globalThis") {
+      for (const element of pattern.elements) {
+        if (element.dotDotDotToken) continue;
+        const keyNode = element.propertyName ?? element.name;
+        if (
+          keyNode.kind !== ts.SyntaxKind.Identifier ||
+          keyNode.text !== "process"
+        )
+          continue;
+        if (element.name.kind === ts.SyntaxKind.Identifier) {
+          aliases.process.add(element.name.text);
+        } else if (element.name.kind === ts.SyntaxKind.ObjectBindingPattern) {
+          analyzeObjectPattern(element.name, "process");
+        }
+      }
+    }
+  }
+
+  function handleBindingDeclaration(nameNode, initializer, exported) {
+    if (!initializer) return;
+
+    if (nameNode.kind === ts.SyntaxKind.ObjectBindingPattern) {
+      analyzeObjectPattern(nameNode, classify(initializer, aliases));
+      return;
+    }
+    if (nameNode.kind !== ts.SyntaxKind.Identifier) return; // array pattern — accepted limit
+
+    const plainKind = classify(initializer, aliases);
+    if (plainKind === "process") aliases.process.add(nameNode.text);
+    else if (plainKind === "importMeta") aliases.importMeta.add(nameNode.text);
+    else if (plainKind === "env") {
+      aliases.env.add(nameNode.text);
+      chargeEscape(initializer, "env");
+    } else if (plainKind === "importMetaEnv") {
+      aliases.importMetaEnv.add(nameNode.text);
+      chargeEscape(initializer, "importMetaEnv");
+    }
+
+    if (!exported) return;
+    const unwrapped = unwrapFunctionReturn(initializer);
+    if (unwrapped !== initializer) {
+      // A function body's return value crossing the module boundary (#382 M1's
+      // `export const get = () => process`) — `get` itself is a function, not an alias,
+      // so it is never added to `aliases`, only checked for this one escape charge.
+      chargeBareValueIfEscaping(unwrapped);
+    } else if (plainKind === "process" || plainKind === "importMeta") {
+      // env/importMetaEnv classifications were already charged above, unconditionally;
+      // only the bare-process/import.meta case is new here (#382 M1's `export const p =
+      // process` / `export default process`, handled at the ExportAssignment case).
+      chargeBareValueIfEscaping(initializer);
+    }
+  }
+
+  function visit(node) {
+    switch (node.kind) {
+      case ts.SyntaxKind.PropertyAccessExpression:
+      case ts.SyntaxKind.ElementAccessExpression: {
+        const objectKind = classify(node.expression, aliases);
+        if (objectKind === "env" || objectKind === "importMetaEnv") {
+          const object = OBJECT_OF[objectKind];
+          if (node.kind === ts.SyntaxKind.PropertyAccessExpression) {
+            addRead(node, object, "named", node.name.text);
+          } else {
+            const literal = literalText(node.argumentExpression);
+            const isNumeric =
+              node.argumentExpression?.kind === ts.SyntaxKind.NumericLiteral;
+            if (literal !== undefined) addRead(node, object, "named", literal);
+            else if (!isNumeric) addRead(node, object, "computed", null);
+          }
+        }
+        break;
+      }
+      case ts.SyntaxKind.SpreadAssignment:
+      case ts.SyntaxKind.SpreadElement: {
+        const kind = classify(node.expression, aliases);
+        if (kind === "env" || kind === "importMetaEnv")
+          chargeEscape(node, kind);
+        break;
+      }
+      case ts.SyntaxKind.VariableDeclaration: {
+        const exported = hasExportModifier(node.parent?.parent);
+        handleBindingDeclaration(node.name, node.initializer, exported);
+        break;
+      }
+      case ts.SyntaxKind.Parameter:
+        handleBindingDeclaration(node.name, node.initializer, false);
+        break;
+      case ts.SyntaxKind.BinaryExpression:
+        if (
+          node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+          node.left.kind === ts.SyntaxKind.Identifier
+        ) {
+          handleBindingDeclaration(node.left, node.right, false);
+        }
+        break;
+      case ts.SyntaxKind.ExportAssignment:
+        chargeBareValueIfEscaping(unwrapFunctionReturn(node.expression));
+        break;
+      case ts.SyntaxKind.FunctionDeclaration:
+        if (hasExportModifier(node)) {
+          const returned = shallowReturn(node.body);
+          if (returned) chargeBareValueIfEscaping(returned);
+        }
+        break;
+      case ts.SyntaxKind.ExportDeclaration: {
+        const specifier = literalText(node.moduleSpecifier);
+        if (
+          specifier &&
+          isProcessModuleSpecifier(specifier) &&
+          node.exportClause?.kind === ts.SyntaxKind.NamedExports
+        ) {
+          for (const element of node.exportClause.elements) {
+            const importedName = (element.propertyName ?? element.name).text;
+            if (importedName === "env") chargeEscape(element, "env");
+          }
+        }
+        break;
+      }
+      case ts.SyntaxKind.ImportDeclaration: {
+        const specifier = literalText(node.moduleSpecifier);
+        if (
+          specifier &&
+          isProcessModuleSpecifier(specifier) &&
+          node.importClause
+        ) {
+          const clause = node.importClause;
+          if (clause.name) aliases.process.add(clause.name.text);
+          if (clause.namedBindings?.kind === ts.SyntaxKind.NamespaceImport) {
+            aliases.process.add(clause.namedBindings.name.text);
+          } else if (
+            clause.namedBindings?.kind === ts.SyntaxKind.NamedImports
+          ) {
+            for (const element of clause.namedBindings.elements) {
+              const importedName = (element.propertyName ?? element.name).text;
+              if (importedName === "env") aliases.env.add(element.name.text);
+            }
+          }
+        }
+        break;
+      }
+      default:
+        break;
+    }
+    node.forEachChild(visit);
+  }
+
+  // Aliasing can run in either source order (`const p = process; const q = p;`) or reverse
+  // (`const q = p; const p = process;`) — a fixed point over the whole file resolves either,
+  // the same guarantee the tokenizer's separate collect-then-scan passes gave, generalized to
+  // arbitrarily long chains. Bounded to 10 rounds: real alias chains in reviewed code are a
+  // handful of hops at most, and each round can only ever grow four finite sets.
+  for (let round = 0; round < 10; round += 1) {
+    const before =
+      aliases.process.size +
+      aliases.env.size +
+      aliases.importMeta.size +
+      aliases.importMetaEnv.size;
+    reads = [];
+    visit(sourceFile);
+    const after =
+      aliases.process.size +
+      aliases.env.size +
+      aliases.importMeta.size +
+      aliases.importMetaEnv.size;
+    if (after === before) break;
+  }
+  return reads;
+}
+
+/**
+ * Parse a raw source string into a real TypeScript AST, for unit tests only — `check-env.mjs`
+ * never calls this; it batches every real repository file through one `API` instance instead
+ * (see its own header), the same split check-ui.mjs's `parseAdHoc`/`main` already established
+ * for this exact class of gate. Parsed as `.tsx` so JSX-fixture tests (the H1 class) parse as
+ * real JSX rather than a syntax error; the one accepted cost is that legacy `<Type>expr`
+ * angle-bracket assertions cannot be exercised from a string fixture (they are a real syntax
+ * conflict with JSX, not a detection gap — a real `.ts` file in the repository keeps its own
+ * extension and is scanned correctly by `check-env.mjs`; see this file's own header).
+ *
+ * @param {string} source
+ * @returns {import("typescript/unstable/ast").SourceFile}
+ */
+function parseAdHocSourceFile(source) {
+  const dir = mkdtempSync(path.join(tmpdir(), "env-reads-scratch-"));
+  try {
+    const file = path.join(dir, "fixture.tsx");
+    writeFileSync(file, source);
+    const api = new API({ cwd: dir });
+    try {
+      const snapshot = api.updateSnapshot({ openFiles: [file] });
+      try {
+        const project = snapshot.getDefaultProjectForFile(file);
+        const sourceFile = project?.program.getSourceFile(file);
+        if (!sourceFile) {
+          throw new Error(`could not parse fixture source (${file})`);
+        }
+        return sourceFile;
+      } finally {
+        snapshot.dispose();
+      }
+    } finally {
+      api.close();
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 /**
  * @param {string} source file contents
  * @returns {EnvRead[]}
  */
 export function findEnvReads(source) {
-  const { tokens } = tokenize(source);
-  const { processAliases, envAliases, envAliasDeclarations } =
-    collectTokenAliases(tokens);
-  const reads = [];
-  const tokenAccountedStarts = new Set();
-  const lines = source.split("\n");
-  const addRead = (token, object, kind, name = null) => {
-    tokenAccountedStarts.add(token.start);
-    const line = source.slice(0, token.start).split("\n").length;
-    reads.push({
-      object,
-      kind,
-      name,
-      line,
-      snippet: (lines[line - 1] ?? "").trim(),
-    });
-  };
-  const seen = new Set();
-  for (let i = 0; i < tokens.length; i += 1) {
-    if (envAliasDeclarations.has(i)) continue;
-    if (
-      tokens[i].value === "process" &&
-      ((tokens[i - 1]?.value === "=" && tokens[i - 2]?.value === "}") ||
-        (tokens[i - 1]?.value === "." &&
-          ["global", "globalThis"].includes(tokens[i - 2]?.value) &&
-          tokens[i - 3]?.value === "=" &&
-          tokens[i - 4]?.value === "}"))
-    ) {
-      let open = i - 3;
-      while (open >= 0 && tokens[open].value !== "{") open -= 1;
-      for (let key = open + 1; open >= 0 && key < i - 2; key += 1) {
-        const value = tokens[key].value;
-        if (value === "env" && tokens[key - 1]?.value !== ":") {
-          addRead(tokens[i], "process.env", "alias");
-          break;
-        }
-      }
-    }
-    const parsed = parseEnvObject(tokens, i, processAliases, envAliases);
-    if (!parsed) continue;
-    const token = tokens[i];
-    let kind = "alias";
-    let name = null;
-    const next = tokens[parsed.end + 1];
-    if (next?.value === "." || next?.value === "?.") {
-      kind = "named";
-      name = tokens[parsed.end + 2]?.value ?? null;
-    } else if (next?.value === "[") {
-      const member = tokens[parsed.end + 2];
-      const close = tokens[parsed.end + 3];
-      if (close?.value !== "]") kind = "computed";
-      else if (member?.type === "string") {
-        kind = "named";
-        name = member.value;
-      } else kind = "computed";
-    }
-
-    // Only flat identifier keys can be attributed independently. Nested, computed,
-    // defaulted, string-keyed, and rest patterns copy or select dynamically, so the
-    // entire read stays unattributable.
-    if (
-      kind === "alias" &&
-      tokens[parsed.end]?.value === "env" &&
-      tokens[parsed.end + 1]?.value === ";"
-    ) {
-      const equals = tokens[i - 1]?.value === "=" ? i - 1 : -1;
-      if (equals > 0 && tokens[equals - 1]?.value === "}") {
-        const names = flatDestructuredEnvNames(tokens, equals - 1);
-        if (!names || names.length === 0) {
-          const id = `${token.start}:${parsed.object}:alias`;
-          if (!seen.has(id)) {
-            seen.add(id);
-            addRead(token, parsed.object, "alias");
-          }
-          continue;
-        }
-        for (const name of names) {
-          const id = `${token.start}:${name}`;
-          if (!seen.has(id)) {
-            seen.add(id);
-            addRead(token, parsed.object, "named", name);
-          }
-        }
-        continue;
-      }
-    }
-    const id = `${token.start}:${parsed.object}:${kind}:${name ?? ""}`;
-    if (seen.has(id)) continue;
-    seen.add(id);
-    addRead(token, parsed.object, kind, name);
-  }
-
-  // The tokenizer is intentionally small, not a TypeScript/JSX parser. In a syntax
-  // position it cannot prove is a comment, a raw environment-object spelling that did
-  // not produce a token-level read must fail closed. This backstop also keeps strings,
-  // regex literals, and JSX text from hiding a read after a lexer misclassification.
-  // No raw match is exempted. This deliberately includes comment-like JSX text and
-  // any other syntax the lightweight tokenizer could misclassify.
-  const rawAccess =
-    /(?<![\w$.])(?:(?:globalThis|global)\s*\.\s*)?process\s*(?:\.\s*env|\?\.\s*env)|(?<![\w$.])import\s*\.\s*meta\s*(?:\.\s*env|\?\.\s*env)/g;
-  rawAccess.lastIndex = 0;
-  for (
-    let match = rawAccess.exec(source);
-    match !== null;
-    match = rawAccess.exec(source)
-  ) {
-    const start = match.index;
-    // `globalThis.process.env`'s token-level read begins at `globalThis`, while this
-    // spelling's backstop match begins at `process`; the preceding dot prevents a
-    // second raw match for that case. All other ordinary spellings begin at the same
-    // source offset as their parsed token.
-    const tokenStart = source.startsWith("globalThis", start)
-      ? start
-      : source.startsWith("global.", start)
-        ? start
-        : start;
-    if (tokenAccountedStarts.has(tokenStart)) continue;
-
-    const object = /\bimport\s*\./.test(match[0])
-      ? "import.meta.env"
-      : "process.env";
-    const line = source.slice(0, start).split("\n").length;
-    reads.push({
-      object,
-      kind: "alias",
-      name: null,
-      line,
-      snippet: (lines[line - 1] ?? "").trim(),
-    });
-  }
-  return reads;
+  return findEnvReadsInSourceFile(parseAdHocSourceFile(source));
 }
 
 /**
