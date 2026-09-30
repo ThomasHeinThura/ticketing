@@ -7,4 +7,5 @@ export default defineConfig({
   workers: 1,
   testIgnore: [],
   testMatch: "visual.spec.ts",
+  updateSnapshots: "none",
 });

@@ -6,6 +6,7 @@ export default defineConfig({
   testMatch: "storybook-visual.spec.ts",
   fullyParallel: false,
   forbidOnly: true,
+  updateSnapshots: "none",
   retries: 0,
   reporter: "list",
   snapshotDir: fileURLToPath(

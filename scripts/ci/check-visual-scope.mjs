@@ -32,6 +32,8 @@ const expectedRootVisualCommand =
   "pnpm check:visual-scope && pnpm --filter @taskdesk/web test:visual";
 const expectedWebVisualCommand =
   "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual";
+const expectedVisualStepName =
+  "Check inventory scope and run screen and Storybook baselines";
 
 if (rootPackage.scripts?.["test:visual"] !== expectedRootVisualCommand) {
   failures.push(
@@ -56,13 +58,50 @@ const visualJob =
   visualJobStart === -1
     ? ""
     : workflowLines.slice(visualJobStart, visualJobEnd).join("\n");
+const visualJobLines = visualJob.split("\n");
+const visualStepStarts = visualJobLines
+  .map((line, index) =>
+    line === `      - name: ${expectedVisualStepName}` ? index : -1,
+  )
+  .filter((index) => index >= 0);
+const visualStepStart = visualStepStarts[0] ?? -1;
+let visualStepEnd = visualJobLines.findIndex(
+  (line, index) => index > visualStepStart && /^ {6}- /u.test(line),
+);
+if (visualStepEnd === -1) visualStepEnd = visualJobLines.length;
+const visualStep =
+  visualStepStart === -1
+    ? []
+    : visualJobLines.slice(visualStepStart, visualStepEnd);
+
+function hasSchedulerEscapeKey(lines, indentation, forbiddenKeys) {
+  return lines.some((line) => {
+    const spaces = /^ */u.exec(line)?.[0].length ?? 0;
+    if (spaces !== indentation) return false;
+    const key = line.slice(indentation);
+    return (
+      /^['"]/u.test(key) ||
+      forbiddenKeys.some((name) => new RegExp(`^${name}\\s*:`).test(key))
+    );
+  });
+}
+
 if (
   visualJobStarts.length !== 1 ||
-  !visualJob.includes("name: visual regression (G8)") ||
-  !/^[ \t]{8}run: pnpm test:visual\s*$/mu.test(visualJob)
+  !/^ {4}name: visual regression \(G8\)\s*$/mu.test(visualJob) ||
+  visualStepStarts.length !== 1 ||
+  visualStep.filter((line) => line === "        run: pnpm test:visual")
+    .length !== 1 ||
+  hasSchedulerEscapeKey(visualJobLines, 4, [
+    "if",
+    "continue-on-error",
+    "needs",
+    "strategy",
+  ]) ||
+  hasSchedulerEscapeKey(visualStep, 8, ["if", "continue-on-error"])
 ) {
   failures.push(
-    `${ciWorkflowPath} must run pnpm test:visual in the visual regression (G8) job`,
+    `${ciWorkflowPath} must run pnpm test:visual exactly once in one unconditional, failure-propagating visual regression (G8) job and step`,
   );
 }
 
@@ -182,6 +221,34 @@ function hasSingleSpread(object, name) {
     ts.isIdentifier(spreads[0].expression) &&
     spreads[0].expression.text === name &&
     object.properties[0] === spreads[0]
+  );
+}
+
+function hasStorybookSnapshotDirectory(object) {
+  const [value] = propertyValues(object, "snapshotDir");
+  if (
+    propertyValues(object, "snapshotDir").length !== 1 ||
+    !value ||
+    !ts.isCallExpression(value) ||
+    !ts.isIdentifier(value.expression) ||
+    value.expression.text !== "fileURLToPath" ||
+    value.arguments.length !== 1 ||
+    !ts.isNewExpression(value.arguments[0])
+  ) {
+    return false;
+  }
+  const url = value.arguments[0];
+  return (
+    ts.isIdentifier(url.expression) &&
+    url.expression.text === "URL" &&
+    url.arguments?.length === 2 &&
+    ts.isStringLiteral(url.arguments[0]) &&
+    url.arguments[0].text === "../../packages/ui/src/components/" &&
+    ts.isPropertyAccessExpression(url.arguments[1]) &&
+    url.arguments[1].name.text === "url" &&
+    ts.isMetaProperty(url.arguments[1].expression) &&
+    url.arguments[1].expression.keywordToken === ts.SyntaxKind.ImportKeyword &&
+    url.arguments[1].expression.name.text === "meta"
   );
 }
 
@@ -2582,7 +2649,15 @@ try {
       ) ||
       !hasLiteralProperty(baseConfig, "testDir", "./e2e", ts.isStringLiteral) ||
       !baseTestIgnores?.includes("visual.spec.ts") ||
-      !baseTestIgnores.includes("storybook-visual.spec.ts")
+      !baseTestIgnores.includes("storybook-visual.spec.ts") ||
+      [
+        "grep",
+        "grepInvert",
+        "ignoreSnapshots",
+        "projects",
+        "snapshotDir",
+        "snapshotPathTemplate",
+      ].some((name) => propertyValues(baseConfig, name).length > 0)
     ) {
       failures.push(
         `${baseConfigPath} must define the e2e directory and exclude both separately guarded visual specs from the default suite`,
@@ -2609,6 +2684,20 @@ try {
         "visual.spec.ts",
         ts.isStringLiteral,
       ) ||
+      !hasLiteralProperty(
+        visualConfig,
+        "updateSnapshots",
+        "none",
+        ts.isStringLiteral,
+      ) ||
+      [
+        "grep",
+        "grepInvert",
+        "ignoreSnapshots",
+        "projects",
+        "snapshotDir",
+        "snapshotPathTemplate",
+      ].some((name) => propertyValues(visualConfig, name).length > 0) ||
       !visualTestIgnores ||
       visualTestIgnores.length !== 0 ||
       propertyValues(visualConfig, "testDir").length !== 0
@@ -2623,6 +2712,8 @@ try {
         "@playwright/test",
         "defineConfig",
       ) ||
+      !hasNamedImport(storybookConfigSourceFile, "node:url", "fileURLToPath") ||
+      !hasStorybookSnapshotDirectory(storybookConfig) ||
       !hasLiteralProperty(
         storybookConfig,
         "testDir",
@@ -2635,13 +2726,28 @@ try {
         "storybook-visual.spec.ts",
         ts.isStringLiteral,
       ) ||
+      !hasLiteralProperty(
+        storybookConfig,
+        "snapshotPathTemplate",
+        "{snapshotDir}/{arg}-{projectName}-{platform}{ext}",
+        ts.isStringLiteral,
+      ) ||
       !hasBooleanProperty(storybookConfig, "fullyParallel", false) ||
       !hasBooleanProperty(storybookConfig, "forbidOnly", true) ||
+      !hasLiteralProperty(
+        storybookConfig,
+        "updateSnapshots",
+        "none",
+        ts.isStringLiteral,
+      ) ||
+      ["grep", "grepInvert", "ignoreSnapshots", "projects", "testIgnore"].some(
+        (name) => propertyValues(storybookConfig, name).length > 0,
+      ) ||
       propertyValues(storybookConfig, "webServer").length !== 1 ||
       storybookConfig.properties.some(ts.isSpreadAssignment)
     ) {
       failures.push(
-        `${storybookConfigPath} must select the Storybook visual spec serially, forbid focused tests, and start Storybook`,
+        `${storybookConfigPath} must select the Storybook visual spec, compare checked-in story baselines serially, forbid focused tests, and start Storybook`,
       );
     }
     if (visualSourceFile && !hasTrustedPlaywrightTestApi(visualSourceFile)) {

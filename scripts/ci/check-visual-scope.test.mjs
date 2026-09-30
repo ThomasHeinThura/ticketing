@@ -476,6 +476,132 @@ test("G8 rejects visual configs that stop selecting the guarded route spec", asy
   );
 });
 
+test("G8 rejects a route visual config filter that skips declared route cases", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
+    "utf8",
+  );
+  const visualConfig = original.replace(
+    '  testMatch: "visual.spec.ts",',
+    '  testMatch: "visual.spec.ts",\n  grep: /sign-in screen/,',
+  );
+  const result = await runVisualScope({ visualConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.visual\.config\.ts must extend the app Playwright config/,
+  );
+});
+
+test("G8 rejects a Storybook visual config filter that skips story coverage", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.storybook.config.ts"),
+    "utf8",
+  );
+  const storybookConfig = original.replace(
+    '  testMatch: "storybook-visual.spec.ts",',
+    '  testMatch: "storybook-visual.spec.ts",\n  grepInvert: /exported stories/,',
+  );
+  const result = await runVisualScope({ storybookConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.storybook\.config\.ts must select the Storybook visual spec/,
+  );
+});
+
+test("G8 rejects route visual config that updates snapshots instead of comparing", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
+    "utf8",
+  );
+  const visualConfig = original.replace(
+    'updateSnapshots: "none"',
+    'updateSnapshots: "all"',
+  );
+  const result = await runVisualScope({ visualConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.visual\.config\.ts must extend the app Playwright config/,
+  );
+});
+
+test("G8 rejects route visual config that disables screenshot assertions", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
+    "utf8",
+  );
+  const visualConfig = original.replace(
+    'updateSnapshots: "none",',
+    'updateSnapshots: "none",\n  ignoreSnapshots: true,',
+  );
+  const result = await runVisualScope({ visualConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.visual\.config\.ts must extend the app Playwright config/,
+  );
+});
+
+test("G8 rejects Storybook config that updates snapshots instead of comparing", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.storybook.config.ts"),
+    "utf8",
+  );
+  const storybookConfig = original.replace(
+    'updateSnapshots: "none"',
+    'updateSnapshots: "changed"',
+  );
+  const result = await runVisualScope({ storybookConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.storybook\.config\.ts must select the Storybook visual spec/,
+  );
+});
+
+test("G8 rejects Storybook config that disables screenshot assertions", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.storybook.config.ts"),
+    "utf8",
+  );
+  const storybookConfig = original.replace(
+    'updateSnapshots: "none",',
+    'updateSnapshots: "none",\n  ignoreSnapshots: true,',
+  );
+  const result = await runVisualScope({ storybookConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.storybook\.config\.ts must select the Storybook visual spec/,
+  );
+});
+
+test("G8 rejects a Storybook snapshot directory outside the checked-in baselines", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.storybook.config.ts"),
+    "utf8",
+  );
+  const storybookConfig = original.replace(
+    "../../packages/ui/src/components/",
+    "../../packages/ui/src/stories/",
+  );
+  const result = await runVisualScope({ storybookConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.storybook\.config\.ts must select the Storybook visual spec/,
+  );
+});
+
 test("G8 rejects Storybook configs that stop selecting the guarded story spec", async () => {
   const original = await readFile(
     path.join(repoRoot, "apps/web/playwright.storybook.config.ts"),
@@ -490,7 +616,7 @@ test("G8 rejects Storybook configs that stop selecting the guarded story spec", 
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /playwright\.storybook\.config\.ts must select the Storybook visual spec serially/,
+    /playwright\.storybook\.config\.ts must select the Storybook visual spec/,
   );
 });
 
@@ -508,7 +634,79 @@ test("G8 rejects a CI workflow that no longer invokes the visual test entry poin
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /ci-full\.yml must run pnpm test:visual in the visual regression \(G8\) job/,
+    /ci-full\.yml must run pnpm test:visual exactly once in one unconditional/,
+  );
+});
+
+test("G8 rejects a conditionally skipped visual job", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = original.replace(
+    "    name: visual regression (G8)",
+    "    if: false\n    name: visual regression (G8)",
+  );
+  const result = await runVisualScope({ ciWorkflow });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /unconditional, failure-propagating visual regression/,
+  );
+});
+
+test("G8 rejects a conditionally skipped visual test step", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = original.replace(
+    "        run: pnpm test:visual",
+    "        if: false\n        run: pnpm test:visual",
+  );
+  const result = await runVisualScope({ ciWorkflow });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /unconditional, failure-propagating visual regression/,
+  );
+});
+
+test("G8 rejects a visual test step whose failure can be ignored", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = original.replace(
+    "        run: pnpm test:visual",
+    "        continue-on-error: true\n        run: pnpm test:visual",
+  );
+  const result = await runVisualScope({ ciWorkflow });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /unconditional, failure-propagating visual regression/,
+  );
+});
+
+test("G8 rejects a quoted job condition that the workflow reader cannot classify", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = original.replace(
+    "    name: visual regression (G8)",
+    '    "if": false\n    name: visual regression (G8)',
+  );
+  const result = await runVisualScope({ ciWorkflow });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /unconditional, failure-propagating visual regression/,
   );
 });
 
