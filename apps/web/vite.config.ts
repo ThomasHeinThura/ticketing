@@ -39,6 +39,7 @@ export default defineConfig({
     },
   },
   build: {
+    manifest: true,
     // "hidden" emits source maps but does not reference them from the bundle,
     // so they are built for local debugging and never served to end users.
     // kaneo needed them for Sentry symbolication; that consumer is gone, and

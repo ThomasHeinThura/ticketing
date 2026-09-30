@@ -201,10 +201,9 @@ const manifest = [
     why: "apps/web builds one bundle. G12 is 'no agent module in the portal bundle', and the agent/portal split is #9.",
   },
   {
-    gate: "check:bundle-size",
+    gate: "pnpm check:bundle-size",
     stage: "fast",
-    run: null,
-    why: "G11's budgets are not written down anywhere yet, and there is no portal bundle to measure.",
+    run: ["pnpm", "check:bundle-size"],
   },
   {
     gate: "helm lint + helm template",
@@ -257,8 +256,7 @@ const manifest = [
   {
     gate: "pnpm test:perf",
     stage: "full",
-    run: null,
-    why: "no Playwright suite and no performance budgets (G11).",
+    run: ["pnpm", "test:perf"],
   },
 ];
 
