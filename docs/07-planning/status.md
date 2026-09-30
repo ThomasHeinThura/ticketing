@@ -14,7 +14,7 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-09-30 orchestrator snapshot — remote `main` at
-`4f1eec81c904b91339c71f6fbd2123387e193acf` (refreshed 02:30 UTC).** PR #516 merged at
+`4f1eec81c904b91339c71f6fbd2123387e193acf` (refreshed 02:35 UTC).** PR #516 merged at
 `4f1eec81` after its exact-head required checks passed. A local, unmerged
 domain-migration candidate records `taskdesk.bimats.com` as the canonical product host and
 updates active links. Older `taskdesk.app` and `uat.taskdesk.app` mentions are historical; the
@@ -35,10 +35,12 @@ that the seeded API returned all 500 rows, then Chromium canceled route chunks w
 `ERR_NETWORK_CHANGED`, and the route-transition sample failed to mount. Treat these as failing
 performance/harness evidence, not a passing run.
 
-**P1:** #510 is at new remediation head `04fbe079435f87fffbe0396ec8338d2374e6974a`. It
-implements per-item event publication and assignee eligibility rechecks, and moves label locks
-to a distinct namespace. Postgres integration passed 15/15, API typecheck and Biome passed;
-three fresh Luna reviews and a fresh Sol review at this head are required before merge. #512
+**P1:** #510 is at remediation head `04fbe079435f87fffbe0396ec8338d2374e6974a`, currently
+held for findings: when the locked membership query returns no row, an unlocked fallback read
+can accept an inserted membership that is then removed before assignment commits. A review also
+found per-item duplicate project-wide relation-refresh broadcasts; preserve the previous
+once-per-project behavior. The candidate's Postgres suite passed 15/15, API typecheck and
+Biome passed, but the code must be fixed and independently reviewed again before merge. #512
 remains at `ae09fa16dd7365ec5e8ab1538dc35c4bc1e439c9`;
 its CA-15 image-upload claim is blocked by the work-item-only attachment contract and awaits a
 product decision. #516's slug-claim race fix is merged. #447 is behind `main` and needs a
