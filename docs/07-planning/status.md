@@ -14,46 +14,72 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
-`8cc4f76dc4a8af23c2cf4a9dc93f9093f7c77569` (verified 2026-09-30 19:38 UTC).**
-PR #519's dependency-audit fix and PR #507's G8 visual gate are merged. The active,
-strict `protect-main` ruleset now requires 17 status contexts, including
-`visual regression (G8)`. #507's final exact-head CI passed every required check:
-the Postgres 18 integration job reported 117 files / 1,493 tests, and the G8,
-accessibility, E2E, unit, contract, route-policy, build, audit and PR-template jobs
-passed. Its independent Luna and Sol review evidence is recorded on that PR.
+`d98baa9c7b6ade43a7baa7c21683ae482d35dadc` (verified 2026-09-30 20:40 UTC).**
+PR #519's dependency-audit fix, PR #507's G8 visual gate, PR #515's bounded
+pending-action persistence, PR #511's identity domain-binding helper, and PR #510's
+legacy task archive freeze are merged. #502 is closed by #510.
+The strict `protect-main` ruleset requires 17 status contexts, including
+`visual regression (G8)`. #515 and #511 each passed all required checks on their
+exact final candidate heads and followed their required independent review tiers.
+#515 adds schema, a scope-bound service and transactional outbox persistence, but no
+public pending-action route, approval execution, step-up, expiry worker, or DELETE
+retrofit. #511 adds a pure domain helper only; IP-9 operational enforcement still lacks
+production callers, persistence, uniqueness and complete owner lookup.
 
-**P0 remains open.** G11 performance budgets are still disabled on `main`; the
-isolated candidate is under implementation and its last complete production-preview
-benchmark was red on LCP, route transition, create responsiveness and board render.
-The author is correcting click-to-paint instrumentation and optimizing the runtime,
-without raising budgets. #8 still needs about seven days of representative, clean UAT
-shadow evidence before strict policy cutover. The current UAT ticket health endpoint
-returns 200. A read-only query of the live v2 UAT Postgres at 2026-09-30 19:37 UTC
-found 68 observations across 2026-09-28–30, 41 route keys and 14 router groups: 46 `agree`, 22
-`unevaluated` (18 delegated platform, four notification legacy-outcome-unknown), zero
-disagreement or evaluator-error rows, and no `shadow_saturated` or capped non-agreeing
-buckets. The deployed UAT image is still `v2-uat-shadow-0b95ed08`; three low-volume
-days with unevaluated traffic are not a clean seven-day soak. Full evidence is in
-[issue #8's 2026-09-30 audit](https://github.com/ThomasHeinThura/ticketing/issues/8#issuecomment-5918345271).
-Do not claim the P0 phase complete or run its phase-finalizer yet.
+**P0 remains open.** G11 performance budgets are still disabled on `main`. The
+isolated candidate passed the strict native-host production-preview medians on
+500-row list, Fast-4G/4×CPU LCP, CLS, list-to-detail paint, create click-to-paint,
+200-card board render and drag frame time before a keyboard-accessibility change.
+The integrated repeat exposed a real 505.2 ms board-render median over its strict
+500 ms budget; moving an idle per-card mutation hook into the conditional delete
+dialog brought the final-source median to 488.6 ms. The final-source native run
+passed all seven strict metrics, but LCP at 2484 ms and board render at 488.6 ms
+have narrow margins. Draft PR #525 is open at `2b9418f3`; the hosted-runner G11
+job failed exact-head medians for list render (720.7/500 ms), LCP (2584/2500 ms),
+route transition (443.4/300 ms), create click-to-paint (209.6/200 ms), and
+board render (1037.5/500 ms). CLS and drag frame time passed. Two independent
+Luna reviewers blocked the same separate acceptance gap: the harness measures
+click-to-paint for Create but not the other implemented G10 core journeys named
+by G11. The author is profiling the runner failures and expanding journey
+coverage without changing thresholds. The G11 ruleset context is not required
+yet; P0 cannot claim this gate green.
+#8 still needs about seven days of representative, clean UAT shadow evidence before
+strict policy cutover. The read-only live UAT sample at 2026-09-30 19:37 UTC found
+68 observations across 2026-09-28–30, 41 route keys and 14 router groups: 46 `agree`,
+22 `unevaluated` (18 delegated platform, four notification legacy-outcome-unknown),
+zero disagreement or evaluator-error rows, and no `shadow_saturated` or capped
+non-agreeing buckets. The deployed UAT image is `v2-uat-shadow-0b95ed08`; three
+low-volume days with unevaluated traffic do not satisfy the soak. Full evidence is
+in [issue #8's audit](https://github.com/ThomasHeinThura/ticketing/issues/8#issuecomment-5918345271).
+Do not claim P0 complete or run its phase finalizer yet.
 
-**Local development:** the image rebuilt from this `main` head, the container booted
-healthy, and both `ticketing.localhost` and `portal.localhost` returned 200 for `/`
-and `/api/public/health/ready` through Traefik with their respective local
-certificates. Chrome screen verification remains pending while Thomas handles the
-local certificate warning.
+**Local development:** the G8-era image built and booted; both
+`ticketing.localhost` and `portal.localhost` returned 200 for `/` and
+`/api/public/health/ready` through Traefik with local certificates. The readiness
+paths returned 200 again at 2026-09-30 20:29 UTC. Chrome screen verification is
+pending while Thomas handles the certificate warning; the app has not yet been
+redeployed with #515 and #511.
 
-**Parallel stages:** P1 #510's original source head cleared two independent Luna
-reviews and a Sol security review; its branch now includes G8 and needs current-head
-delta evidence, a committed Sol note, and green required checks. P3 #511's domain-only
-helper also includes G8 and needs a current-head security delta note; it does not
-operationally enforce IP-9. P2 #513 remains a draft calendar slice with UI/browser
-acceptance in progress. P4 #515 remains a draft persistence slice: the Sol review
-found a null API-key credential binding gap; the author fixed it at source head
-`36a2d6355a225949e5a50d3eb393edc8d8f93e17`, a fresh Luna delta review
-cleared, and fresh Sol security review plus exact-head CI are pending. P1 #512
-is still a separate incomplete detail-journey draft. Check live GitHub heads and
-reviews before acting on any of these candidates.
+**Parallel stages:** P1 #510 merged as `d98baa9c` after three earlier independent
+Luna reviews, fresh merged-main Luna and Sol delta reviews, all 17 required checks
+(Postgres integration: 122 files / 1,546 tests), and isolated Docker ready/live smoke.
+P1 #512 remains an incomplete detail-journey draft.
+P2 #513 remains draft: its Linux visual baselines pass, and the long functional E2E
+was split into three browser scenarios that passed 3/3 locally without skipped
+assertions or a timeout increase. At current head `4766e2d6`, calendar writes
+enqueue their existing event envelopes transactionally; focused Postgres tests
+passed 13/13. AU-14's metric and administrator-notification integrations remain
+unfinished. CAL-8's affected-item count depends on #437's project calendar
+linkage and the later SLA policy model; no count is claimed yet.
+P4 #428 now records the separate
+#515 archived-project scope omission, which must be fixed before pending-action DELETE
+wiring. Its bounded guard/test fix is draft PR #524 at note-only head `3d656da8`,
+with independent Luna and Sol exact-source/delta clearance, 20/20 focused Postgres
+tests, and an isolated image migration/healthy ready/live smoke; exact-head CI is
+still running. #523 is a draft deterministic repair for the probabilistic
+workspace-slug test at main-synchronized head `ef0a956e`; focused 7/7 tests
+passed and exact-head delta review/CI remain. Check live GitHub heads, reviews and checks
+before acting on any candidate.
 
 ---
 
