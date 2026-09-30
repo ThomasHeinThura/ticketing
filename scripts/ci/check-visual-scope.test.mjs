@@ -364,6 +364,7 @@ async function runVisualScope({
   baseConfig,
   visualConfig,
   storybookConfig,
+  storybookMain,
   ciWorkflow,
 } = {}) {
   const dir = scratchDir("visual-scope-");
@@ -374,6 +375,7 @@ async function runVisualScope({
   installFromRepo(dir, "apps/web/playwright.config.ts");
   installFromRepo(dir, "apps/web/playwright.visual.config.ts");
   installFromRepo(dir, "apps/web/playwright.storybook.config.ts");
+  installFromRepo(dir, "packages/ui/.storybook/main.ts");
   installFromRepo(dir, ".github/workflows/ci-full.yml");
   symlinkSync(
     path.join(repoRoot, "node_modules"),
@@ -418,6 +420,9 @@ async function runVisualScope({
   }
   if (storybookConfig !== undefined) {
     write(dir, "apps/web/playwright.storybook.config.ts", storybookConfig);
+  }
+  if (storybookMain !== undefined) {
+    write(dir, "packages/ui/.storybook/main.ts", storybookMain);
   }
   if (ciWorkflow !== undefined) {
     write(dir, ".github/workflows/ci-full.yml", ciWorkflow);
@@ -850,6 +855,42 @@ test("G8 rejects a fake Storybook server command", async () => {
   );
 });
 
+test("G8 rejects a narrowed Storybook source glob", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "packages/ui/.storybook/main.ts"),
+    "utf8",
+  );
+  const storybookMain = original.replace(
+    "../src/**/*.stories.@(ts|tsx)",
+    "../src/components/button.stories.tsx",
+  );
+  const result = await runVisualScope({ storybookMain });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /packages\/ui\/\.storybook\/main\.ts must retain the full TypeScript story glob/,
+  );
+});
+
+test("G8 rejects a Storybook Vite hook that can alter story discovery", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "packages/ui/.storybook/main.ts"),
+    "utf8",
+  );
+  const storybookMain = original.replace(
+    "plugins: [...(viteConfig.plugins ?? []), tailwindcss()]",
+    "plugins: []",
+  );
+  const result = await runVisualScope({ storybookMain });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /packages\/ui\/\.storybook\/main\.ts must retain the full TypeScript story glob/,
+  );
+});
+
 test("G8 rejects Storybook config that disables screenshot assertions", async () => {
   const original = await readFile(
     path.join(repoRoot, "apps/web/playwright.storybook.config.ts"),
@@ -1002,6 +1043,24 @@ test("G8 rejects a later run key that replaces the visual command", async () => 
   const ciWorkflow = original.replace(
     "        run: pnpm test:visual",
     "        run: pnpm test:visual\n        run: echo skipped",
+  );
+  const result = await runVisualScope({ ciWorkflow });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /unconditional, failure-propagating visual regression/,
+  );
+});
+
+test("G8 rejects an earlier step that can replace pnpm on the visual job PATH", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = original.replace(
+    "      - name: Check inventory scope and run screen and Storybook baselines",
+    '      - name: Install a no-op pnpm\n        run: echo "/tmp/fake-pnpm" >> "$GITHUB_PATH"\n      - name: Check inventory scope and run screen and Storybook baselines',
   );
   const result = await runVisualScope({ ciWorkflow });
 

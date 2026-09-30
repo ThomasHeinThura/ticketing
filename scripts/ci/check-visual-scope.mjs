@@ -13,6 +13,7 @@ const webPackagePath = "apps/web/package.json";
 const baseConfigPath = "apps/web/playwright.config.ts";
 const visualConfigPath = "apps/web/playwright.visual.config.ts";
 const storybookConfigPath = "apps/web/playwright.storybook.config.ts";
+const storybookMainPath = "packages/ui/.storybook/main.ts";
 const ciWorkflowPath = ".github/workflows/ci-full.yml";
 const manifest = JSON.parse(
   await readFile(path.join(repoRoot, manifestPath), "utf8"),
@@ -26,6 +27,10 @@ const webPackage = JSON.parse(
   await readFile(path.join(repoRoot, webPackagePath), "utf8"),
 );
 const ciWorkflow = await readFile(path.join(repoRoot, ciWorkflowPath), "utf8");
+const storybookMain = await readFile(
+  path.join(repoRoot, storybookMainPath),
+  "utf8",
+);
 const failures = [];
 
 const expectedRootVisualCommand =
@@ -34,6 +39,23 @@ const expectedWebVisualCommand =
   "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual";
 const expectedVisualStepName =
   "Check inventory scope and run screen and Storybook baselines";
+const expectedStorybookMain = [
+  'import type { StorybookConfig } from "@storybook/react-vite";',
+  'import tailwindcss from "@tailwindcss/vite";',
+  "",
+  "const config: StorybookConfig = {",
+  '  stories: ["../src/**/*.stories.@(ts|tsx)"],',
+  '  framework: "@storybook/react-vite",',
+  "  addons: [],",
+  "  viteFinal: async (viteConfig) => ({",
+  "    ...viteConfig,",
+  "    plugins: [...(viteConfig.plugins ?? []), tailwindcss()],",
+  "  }),",
+  "};",
+  "",
+  "export default config;",
+  "",
+].join("\n");
 
 if (rootPackage.scripts?.["test:visual"] !== expectedRootVisualCommand) {
   failures.push(
@@ -47,6 +69,11 @@ if (webPackage.scripts?.["test:visual"] !== expectedWebVisualCommand) {
 }
 if (webPackage.scripts?.dev !== "vite") {
   failures.push(`${webPackagePath} dev must launch Vite for route screenshots`);
+}
+if (storybookMain !== expectedStorybookMain) {
+  failures.push(
+    `${storybookMainPath} must retain the full TypeScript story glob and trusted Storybook configuration`,
+  );
 }
 const workflowLines = ciWorkflow.split(/\r?\n/u);
 const visualJobStarts = workflowLines
@@ -62,6 +89,37 @@ const visualJob =
     ? ""
     : workflowLines.slice(visualJobStart, visualJobEnd).join("\n");
 const visualJobLines = visualJob.split("\n");
+const expectedVisualJobLines = [
+  "  visual:",
+  "    name: visual regression (G8)",
+  "    runs-on: ubuntu-latest",
+  "    container:",
+  "      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27",
+  "      options: --ipc=host",
+  "    timeout-minutes: 20",
+  "    steps:",
+  "      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0",
+  "      - name: Trust the checked-out repository inside the Playwright container",
+  '        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"',
+  "      - uses: ./.github/actions/setup",
+  "      - name: Build the permissions package used by the web bundle",
+  "        run: pnpm --filter @taskdesk/permissions build",
+  "      - name: Install Chromium",
+  "        run: apps/web/node_modules/.bin/playwright install --with-deps chromium",
+  `      - name: ${expectedVisualStepName}`,
+  "        run: pnpm test:visual",
+  "      - name: Upload visual diffs",
+  "        if: always()",
+  "        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1",
+  "        with:",
+  "          name: playwright-visual",
+  "          path: apps/web/test-results/",
+  "          if-no-files-found: warn",
+  "          retention-days: 7",
+];
+const actualVisualJobLines = visualJobLines.filter(
+  (line) => line.trim() !== "" && !line.trimStart().startsWith("#"),
+);
 const visualStepStarts = visualJobLines
   .map((line, index) =>
     line === `      - name: ${expectedVisualStepName}` ? index : -1,
@@ -95,6 +153,7 @@ function hasOnlyMappingKeys(lines, indentation, expectedKeys) {
 
 if (
   visualJobStarts.length !== 1 ||
+  actualVisualJobLines.join("\n") !== expectedVisualJobLines.join("\n") ||
   !/^ {4}name: visual regression \(G8\)\s*$/mu.test(visualJob) ||
   visualStepStarts.length !== 1 ||
   visualStep.filter((line) => line === "        run: pnpm test:visual")
