@@ -1,12 +1,30 @@
-import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { expect, type Page, type TestInfo, test } from "@playwright/test";
 
 type StorybookIndex = {
   entries: Record<string, { id: string; type: string }>;
 };
 
+async function assertExactScreenshotBytes(
+  page: Page,
+  testInfo: TestInfo,
+  name: string,
+) {
+  const actual = await page.screenshot({
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+  });
+  const expected = await readFile(
+    testInfo.snapshotPath(name, { kind: "screenshot" }),
+  );
+  expect(actual.equals(expected)).toBe(true);
+}
+
 test("every exported Storybook story has a visual baseline @visual", async ({
   page,
-}) => {
+}, testInfo) => {
   test.setTimeout(12 * 60 * 1000);
   const response = await fetch("http://127.0.0.1:6006/index.json");
   expect(response.ok).toBeTruthy();
@@ -54,7 +72,10 @@ test("every exported Storybook story has a visual baseline @visual", async ({
         fullPage: true,
         scale: "css",
         maxDiffPixels: 0,
+        threshold: 0,
+        includeAA: true,
       });
+    await assertExactScreenshotBytes(page, testInfo, `${story.id}.png`);
   }
 
   console.log(`G8 Storybook screenshot coverage: ${stories.length} stories.`);

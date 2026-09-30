@@ -1,4 +1,22 @@
-import { expect, type Page, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { expect, type Page, type TestInfo, test } from "@playwright/test";
+
+async function assertExactScreenshotBytes(
+  page: Page,
+  testInfo: TestInfo,
+  name: string,
+) {
+  const actual = await page.screenshot({
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+  });
+  const expected = await readFile(
+    testInfo.snapshotPath(name, { kind: "screenshot" }),
+  );
+  expect(actual.equals(expected)).toBe(true);
+}
 
 const session = {
   session: {
@@ -131,7 +149,7 @@ async function installAuthenticatedFixture(page: Page) {
   });
 }
 
-test("sign-in screen @visual", async ({ page }) => {
+test("sign-in screen @visual", async ({ page }, testInfo) => {
   await page.route("**/api/**", (route) => {
     const path = new URL(route.request().url()).pathname;
     return route.fulfill({
@@ -164,10 +182,13 @@ test("sign-in screen @visual", async ({ page }) => {
     fullPage: true,
     scale: "css",
     maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
   });
+  await assertExactScreenshotBytes(page, testInfo, "sign-in.png");
 });
 
-test("work-item list screen @visual", async ({ page }) => {
+test("work-item list screen @visual", async ({ page }, testInfo) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/work?layout=list");
   await expect(
@@ -179,10 +200,13 @@ test("work-item list screen @visual", async ({ page }) => {
     fullPage: true,
     scale: "css",
     maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
   });
+  await assertExactScreenshotBytes(page, testInfo, "work-item-list.png");
 });
 
-test("work-item detail screen @visual", async ({ page }) => {
+test("work-item detail screen @visual", async ({ page }, testInfo) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/work-items/HELP-7");
   await expect(
@@ -194,5 +218,8 @@ test("work-item detail screen @visual", async ({ page }) => {
     fullPage: true,
     scale: "css",
     maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
   });
+  await assertExactScreenshotBytes(page, testInfo, "work-item-detail.png");
 });
