@@ -3,7 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable, taskTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { assertAssignableUser } from "../../utils/assert-assignable-user";
+import { assertAssignableUserAndLockMembership } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 
@@ -33,7 +33,11 @@ async function updateTaskAssignee({
         .from(projectTable)
         .where(eq(projectTable.id, existingTask.projectId));
       if (!project) throw new HTTPException(404, { message: "Task not found" });
-      await assertAssignableUser(nextAssigneeId, project.workspaceId, tx);
+      await assertAssignableUserAndLockMembership(
+        nextAssigneeId,
+        project.workspaceId,
+        tx,
+      );
     }
     const [updatedTask] = await tx
       .update(taskTable)

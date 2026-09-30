@@ -3,7 +3,10 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable, projectTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { filterAssignableUsers } from "../../utils/assert-assignable-user";
+import {
+  assertAssignableUserAndLockMembership,
+  filterAssignableUsers,
+} from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { lockProjectAndAssertLiveForTaskNumber } from "../assert-task-project-live";
 import {
@@ -113,6 +116,13 @@ async function importTasks(
           projectId,
           "Project not found",
         );
+        if (assigneeId) {
+          await assertAssignableUserAndLockMembership(
+            assigneeId,
+            project.workspaceId,
+            tx,
+          );
+        }
         const taskNumber = await claimTaskNumber(projectId, tx);
 
         const [task] = await tx
@@ -165,6 +175,18 @@ async function importTasks(
         results.push({
           success: false,
           error: "Project is no longer available",
+          task: taskData,
+        });
+        continue;
+      }
+      if (
+        error instanceof HTTPException &&
+        error.status === 403 &&
+        error.message === "Assignee is not a member of this workspace"
+      ) {
+        results.push({
+          success: false,
+          error: error.message,
           task: taskData,
         });
         continue;

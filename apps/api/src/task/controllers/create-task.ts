@@ -4,7 +4,7 @@ import db from "../../database";
 import { columnTable, taskTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
-  assertAssignableUser,
+  assertAssignableUserAndLockMembership,
   getProjectWorkspaceId,
 } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
@@ -62,7 +62,11 @@ async function createTask({
 
       let assignee: { name: string } | undefined;
       if (normalizedUserId) {
-        await assertAssignableUser(normalizedUserId, workspaceId, tx);
+        await assertAssignableUserAndLockMembership(
+          normalizedUserId,
+          workspaceId,
+          tx,
+        );
 
         [assignee] = await tx
           .select({ name: userTable.name })

@@ -5,7 +5,7 @@ import { columnTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
 import {
-  assertAssignableUser,
+  assertAssignableUserAndLockMembership,
   getProjectWorkspaceId,
 } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
@@ -71,7 +71,11 @@ async function updateTask(
       const projectWorkspaceId = await getProjectWorkspaceId(projectId, tx);
       await assertValidTaskStatus(status, projectId, tx);
       if (normalizedUserId) {
-        await assertAssignableUser(normalizedUserId, projectWorkspaceId, tx);
+        await assertAssignableUserAndLockMembership(
+          normalizedUserId,
+          projectWorkspaceId,
+          tx,
+        );
       }
       const column = await tx.query.columnTable.findFirst({
         where: and(
