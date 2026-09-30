@@ -4,6 +4,12 @@
   replacement for either.
 - **Owner:** Thomas. **Decided:** 2026-09-05, revised 2026-09-05. See [decision log](decision-log.md).
 
+> **Current schedule correction (2026-09-29):** October 3 is a UAT/P0 hardening and
+> evidence checkpoint, not a production go-live, production-test deadline, or release date.
+> Production timing is unscheduled and remains dependent on the stage gates. This current
+> direction supersedes older calendar labels below that call October 3 a go-live; it does not
+> change any acceptance criterion or authorize a gate waiver.
+
 > **The dates below are a target, not a deadline held under pressure.** Thomas's own
 > instruction, given the same day this plan was written: *"we can adjust the timeline...
 > dates are just a number — something you can finish in one go, and something that needs
@@ -78,13 +84,14 @@ rules above.
 
 ## Calendar
 
-Today is **2026-09-05** (Saturday).
+The original calendar below was drafted **2026-09-05**. Its October 3 milestone now means the
+UAT/P0 checkpoint described above; dates do not waive gates or force a production release.
 
 | Week | Dates | Milestone |
 | --- | --- | --- |
 | **1** | Sep 5 – Sep 12 | **Foundation Technical Preview.** v1-level core running: de-branded kaneo, sign-in, RBAC/policy registry, CI security gates live |
-| **2–4** | Sep 12 – Oct 3 | Parallel build-out of service desk, portal, governance and reduced insight/agile scope. **Go-live** at the end of week 4 |
-| **5** | Oct 3 – Oct 10 | **Production testing week** — soak test, load test, security pass, bug bash, no new features |
+| **2–4** | Sep 12 – Oct 3 | Parallel build-out and a UAT/P0 hardening checkpoint. **No production launch is scheduled.** |
+| **5** | Oct 3 – Oct 10 | UAT acceptance and hardening window; work continues according to dependencies. Production testing or release requires a separate gate-based decision. |
 | **6–17** | Oct 10 – Dec 31 | The 3-month window: import/cutover, full polish and hardening, requested features, ongoing bug-fixing, and **paying down everything deferred below**. (AWS Marketplace is deferred beyond this window — decided 2026-09-05) |
 
 ### Week 1 — Foundation Technical Preview (by Sep 12)
@@ -114,7 +121,7 @@ set** (SLA, approvals, portal, 20 reports) — that would not be honest to promi
   — the P0 security task named in [phases.md](phases.md#p0--foundation). A GPT-6 Sol security
   pass over that retrofit is part of the exit, not a follow-up.
 
-### Weeks 2–4 — parallel build-out to go-live (by Oct 3)
+### Weeks 2–4 — parallel build-out through the Oct 3 UAT checkpoint
 
 Six workstreams run concurrently from Monday of week 2, each on its own branch, per
 [agent-workflow.md](../04-engineering/agent-workflow.md). This is the load-bearing part of
@@ -132,41 +139,41 @@ split, not serial.
 
 **Specs not named in the rows above, placed so the register's promise ("nothing is silently
 thinner") holds:** P1 — attachments, relations and hierarchy, search and saved views, projects
-and engagements, pending actions (with the core-work stream; at go-live: full, as their P1
+and engagements, pending actions (with the core-work stream; in the reduced-scope plan: full, as their P1
 specs say); P4 — custom fields, teams, API keys, the MCP server, automations (the inherited
-engine, flag-gated), impersonation, settings hierarchy, audit trail (with governance; at
-go-live: reduced to what the P4 rows below name). Their stages are the ones in
+engine, flag-gated), impersonation, settings hierarchy, audit trail (with governance; in the
+reduced-scope plan: limited to what the P4 rows below name). Their stages are the ones in
 [03-features/README.md](../03-features/README.md).
 
 **Workstream A is the schedule risk.** Porting the SLA engine, the versioned workflow
 engine and approvals from v1's C# to TypeScript, with the exhaustive test coverage
 [risks.md](risks.md) (**R3**) already calls for, is genuinely the largest, least
 compressible piece of work in the whole plan — it is domain logic with real edge cases
-(DST, holidays, pauses, policy versioning), not screen-building. It starts on **day one of
-week 2**, gets the most agent-hours of any stream, and is the first thing to escalate if
-week 4 is at risk — see [What happens if week 4 looks tight](#what-happens-if-week-4-looks-tight).
+(DST, holidays, pauses, policy versioning), not screen-building. The original calendar placed
+it on day one of week 2 with the most agent-hours of any stream. Current execution follows the
+live dependency and acceptance status, not that superseded date.
 
-**Exit at end of week 4 ("go-live"):** a real customer or internal team can raise a
-request, have it triaged, worked through a workflow with SLA tracking, approved where
-required, and see it in the portal — administered entirely through God Mode, with no
-hardcoded configuration. This is P0–P5 at **reduced but real depth**, not P0–P5 at their
-eventual full Definition of Done — see deferrals below for exactly what's thinner.
+**Checkpoint at end of week 4:** record UAT availability, demonstrated user journeys, soak
+evidence, open blockers, and each applicable stage gate. This is an evidence checkpoint, not
+a claim that P0–P5 are accepted or that production is ready. No stage closes until its own
+Definition of Done and required GPT-6 Sol finalizer pass are complete.
 
-### Week 5 — production testing (Oct 3 – Oct 10)
+### Week 5 — UAT acceptance and hardening (Oct 3 – Oct 10)
 
-No new features. This week is exclusively:
+Prioritize UAT acceptance and hardening while continuing other dependency-safe work. The
+following checks remain required before any production release:
 
 - Load test against the [testing strategy](../04-engineering/testing-strategy.md) targets.
-- A full security pass: the negative E2E suite in full, tenant-isolation fuzzing, a
-  dependency and container scan, and a GPT-6 Sol-reviewed pass over the whole surface built so
-  far — the stage-gate security review from [SDLC](../04-engineering/sdlc.md), run once
-  now rather than only at a stage close, because "go-live" is being treated as a real
-  stage-gate event.
+- A full security pass at the applicable stage gates: the negative E2E suite, tenant-isolation
+  fuzzing, dependency and container scans, and the required GPT-6 Sol reviews described in
+  [SDLC](../04-engineering/sdlc.md).
 - A bug bash against the realistic and hostile seed datasets.
 - Backup and restore drill — **R12** in [risks.md](risks.md) exists precisely because this
   step gets skipped under deadline pressure; it does not get skipped here.
 
-**Exit:** production traffic is live, monitored, on a tested rollback path.
+**Exit:** UAT evidence and unresolved acceptance gaps are recorded. This window does not itself
+authorize production traffic; a production release needs completed stage gates and a separate
+release decision.
 
 ### Weeks 6–17 — the 3-month window (Oct 10 – Dec 31)
 
@@ -185,13 +192,13 @@ Everything deferred below, plus:
 - Requested features, ongoing maintenance, and bug-fixing against real production usage.
 - **Paying down every deferral below to its original Definition of Done.**
 
-## What ships at go-live vs. what is deliberately deferred to the 3-month window
+## Reduced release scope and deferrals (gate-driven, not date-driven)
 
 This is the explicit register the "keep both documents" decision requires. Nothing in the
 left column is silently thinner without appearing here.
 
-> **Correction from the 2026-09-05 review** — several rows below understate what exists at
-> go-live, because kaneo *already ships* them and they arrive with the fork in week 1:
+> **Correction from the 2026-09-05 review** — several rows below understate what exists in
+> the reduced-scope plan, because kaneo *already ships* them and they arrive with the fork in week 1:
 > calendar and gantt/timeline views, basic time entries, and an automation-rule engine
 > (`workflow-rule`). For those, "deferred" means *inherited but feature-flagged off until
 > the v2 spec is aligned and the UX gates pass*, not "not present". kaneo's
@@ -200,7 +207,7 @@ left column is silently thinner without appearing here.
 > [inherited-features register](../01-architecture/inherited-features.md) and the deferral
 > table in [roadmap.md](roadmap.md).
 
-| Area | At go-live (end of week 4) | Deferred to weeks 6–17 |
+| Area | Included only after its applicable stage gates pass | Deferred pending the listed scope and acceptance |
 | --- | --- | --- |
 | **Reporting** | Tier 1 (a working subset of the twenty, not all), tier 2 (selectable table reports) | The rest of the twenty fixed reports; tier 3 customisable report builder; dashboards beyond a sensible default |
 | **Agile** | Cycles | Modules, estimates, calendar/timeline views — inherited from kaneo, flag-gated off until spec-aligned |
@@ -211,22 +218,22 @@ left column is silently thinner without appearing here.
 | **Import** | Not present | The entire [P6](phases.md) — Azure DevOps, Plane, Jira, CSV |
 | **Accessibility** | Automated gates (axe, zero critical/serious) run in CI as always — **not deferred** | The *manual* full audit and remediation pass across every screen |
 | **i18n** | `en-US` only | The other 17 locales kaneo carries |
-| **Load testing** | The baseline scenarios in [testing-strategy.md](../04-engineering/testing-strategy.md), run in week 5 | Load testing at realistic multi-tenant production scale over time |
-| **Penetration test** | Not performed — but **booked in week 1** because of its 4–8-week lead time | External penetration test — **explicitly required before this is handed to a real external paying customer**, see [risks.md](risks.md) **R19** (and R4 for why); the internal red-team pass at the go-live gate is separate and is not deferred |
+| **Load testing** | Baseline scenarios from [testing-strategy.md](../04-engineering/testing-strategy.md) before a release, when the UAT environment is ready | Load testing at realistic multi-tenant production scale over time |
+| **Penetration test** | Not performed — it was planned for week 1 because of its 4–8-week lead time | External penetration test — **explicitly required before this is handed to a real external paying customer**, see [risks.md](risks.md) **R19** (and R4 for why); the internal red-team pass before release is separate and is not deferred |
 | **AWS Marketplace** | Not listed | Full packaging and seller registration |
 | **Mobile / portal polish** | Functional, gated by the same UX quality gates as everything else | The dedicated refinement pass |
 | **God Mode plugin surface** | Auth, storage, notify plugin kinds live | `ai` and `license` plugin kinds (AWS Marketplace — deferred; BYOL/contract preferred over metering, [ADR 0013](../01-architecture/adr/0013-marketplace-metering-plugin.md)) |
 | **Collaborative editing, SAML, LDAP, AI features** | Not present | Already "candidates, not commitments" in [roadmap.md](roadmap.md) — unaffected by this plan either way |
 
-**Nothing in the "at go-live" column skips a security gate, a route policy, or a
+**Nothing in the reduced-release column skips a security gate, a route policy, or a
 permission-matrix entry to get there.** Those are full-strength from week 1, per
 [What never moves, regardless of the calendar](#what-never-moves-regardless-of-the-calendar).
 
-## The week-2 scope confirmation — a named moment, not a vigil
+## Scope confirmation — a named moment, not a vigil
 
-**At the end of week 2 of any accelerated window, Thomas writes two lines in
-[status.md](status.md): what go-live contains, and what has moved.** That is the whole
-ritual. It is the scheduled form of the flexibility rule — a date that may move needs one
+**At a scope checkpoint, Thomas writes two lines in [status.md](status.md): what the next
+acceptance checkpoint covers, and what has moved.** That is the whole ritual. It is the
+scheduled form of the flexibility rule — a date that may move needs one
 moment where someone says out loud what it now means, or "flexible" quietly becomes
 "discovered in week five".
 
@@ -234,23 +241,19 @@ It does not replace the escalation below, which is event-driven and fires the mo
 workstream A looks behind. This one fires whether or not anything looks wrong, which is
 exactly why it catches the case where nothing looked wrong.
 
-## What happens if week 4 looks tight
+## How to handle schedule risk
 
-State it now rather than discover it on Oct 2, and state it as a genuine choice rather
-than a forced one — per Thomas's own instruction, **the date is the thing allowed to
-move**. If workstream A (service desk domain logic) is not ready, there are two honest
-options, not one: narrow the go-live scope to P0/P1/reduced-P4 (work management plus
-governance, without SLA/workflow/approvals) and keep the date, **or** hold the fuller
-scope and let the date move a week or two. Either is a legitimate outcome; what is not
-legitimate is declaring the original date *and* the original scope both met when they
-were not — that is the specific dishonesty
+Per Thomas's instruction, **the date may move**. If workstream A (service desk domain logic)
+is not ready, record the blocker and continue dependency-safe work while the product owner
+chooses whether to narrow future scope or move a target date. A checkpoint is not permission
+to claim the original scope complete when its stage gates are open — that is the dishonesty
 [product principle 7](../00-overview/product-principles.md) and this whole rebuild exist
-to prevent. Escalate to Thomas the moment workstream A looks behind, not at the week-4
-deadline, precisely so this choice can be made deliberately rather than discovered late.
+to prevent. Escalate to Thomas when a dependency or acceptance gate puts the next checkpoint
+at risk, so the choice can be made deliberately rather than discovered late.
 
 ## Risks specific to this plan
 
-**R15** (workstream A cannot finish inside the window), **R16** ("go-live" mistaken for the
+**R15** (workstream A cannot finish inside the window), **R16** (a release checkpoint mistaken for the
 final bar) and **R17** (parallel workstreams reproduce R7 faster) are defined once, in
 [risks.md](risks.md), together with the standing R1–R14 and R18–R21 — this document points
 there and does not restate them, so the register has one home.

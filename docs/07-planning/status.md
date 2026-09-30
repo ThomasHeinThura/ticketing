@@ -14,6 +14,48 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-09-29 orchestrator snapshot — remote `main` at
+`468b3c653d5b5cb361adf6ee27f50954e41b2011` (verified with `git ls-remote origin` and GitHub,
+17:11 UTC).** This refresh corrects the 12:29 snapshot below; that older snapshot is retained
+as history. Refresh GitHub before acting on any candidate.
+
+**Schedule:** October 3 is a UAT/P0 hardening and evidence checkpoint, not a production
+go-live, release date or production-test deadline. Production timing is unscheduled and remains
+gate-driven. No version is assigned to the checkpoint. The inherited package version and
+release-plan version mismatch remains unresolved before a stable release.
+
+**UAT and P0:** `https://ticket-v2-uat.bimats.com/` and
+`https://portal-v2-uat.bimats.com/` both returned HTTP 200; the agent API health endpoint
+returned `{"status":"ok"}` at 17:11 UTC. These are availability checks only. The last
+recorded authorization shadow sample still has 25 observations across 12 router groups (21
+agree, 4 unevaluated, no mismatches or evaluator errors); it is low-volume and does not satisfy
+the approximately seven-day representative soak. #8 remains open. G4 is merged and active.
+G8 is still open: #507's remote head remains `d97f4dd`; a local structural remediation at
+`aeb3bee` was independently blocked by a reproduced mutable-story-list bypass, now addressed
+locally with an immutable list and a red probe. Browser baseline verification and the new
+candidate review remain pending. The live `protect-main` ruleset still does not require G8.
+G11 remains skipped despite being required by #10; its performance budgets are already
+specified in `docs/02-design/ux-quality-gates.md`, so the stale workflow and `test-all` reasons
+must be corrected. #10 remains open.
+
+**P1:** #502 is tracked by open PR #510 at remote head `59eb3df`; GPT-6 Sol found four real
+archive/concurrency findings. Remediation is local and unreviewed. #447 remains open at
+`62cf800`, behind `main`; the service-calendar UI is a local stack on that lane and is not
+merged. #498 is already merged; its follow-ups #499 and #502 remain open.
+
+**P2–P4:** The #33 calendar UI is being checked as a bounded local slice; no stage is claimed
+complete. P4 #40 has a local UI capability-matrix primitive at
+`d4e37664fd5c6ea8c1be4604c14c3deb7e1e4ee9`, with implementation checks passing and independent
+review pending. The legacy role model has not been reconciled with the P4 authority model, so
+the primitive is presentation-only and is not wired to role persistence or authorization.
+
+**Open pull requests at refresh:** #510 (`59eb3df`), #509 (`178f560`), #508 (`b826430`),
+#507 (`d97f4dd`), #506 (`398c30a`), #503 (Dependabot, `a4d25b9`), and #447 (`62cf800`). These
+remote heads and states were refreshed from GitHub at 17:11 UTC. Several local candidate
+remediations are newer than their PR heads and do not yet have review evidence.
+
+---
+
+**2026-09-29 orchestrator snapshot — remote `main` at
 `d885be8abdb54bef6e73c7a39e22f1cefc191a34` (verified with `git ls-remote origin
 refs/heads/main` and `gh`, 12:29 UTC).** The latest merge is #505. This is a point-in-time
 snapshot; refresh GitHub before acting on any PR or issue state.

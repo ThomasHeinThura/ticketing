@@ -291,12 +291,13 @@ cherry-picked deliberately.
 
 The service-desk domain port (SLA, lifecycle engine, approvals) is the critical path of
 [accelerated-delivery-plan.md](accelerated-delivery-plan.md) and the least compressible
-work in it. **Mitigations:** named as such on day one; go-live scope narrows *or* the date
-moves — a deliberate choice, never a silent slip.
+work in it. **Mitigations:** if a future checkpoint is at risk, record the blocker and choose
+deliberately whether scope narrows or the target date moves; never silently claim incomplete
+work as accepted.
 
 ---
 
-## R16 · "Go-live" is treated as the final bar
+## R16 · A release checkpoint is treated as the final bar
 
 | | |
 | --- | --- |
@@ -304,8 +305,8 @@ moves — a deliberate choice, never a silent slip.
 | Impact | **High** |
 | Owner | Thomas |
 
-The accelerated plan's deferral register is read at the week-5 gate and again before any
-external customer is onboarded. `2.0.0` is self-hosted-only; external sales wait for the
+The accelerated plan's deferral register is read at each applicable release gate and again
+before any external customer is onboarded. `2.0.0` is self-hosted-only; external sales wait for the
 P7 penetration test — [release-plan.md](release-plan.md).
 
 ---
@@ -356,7 +357,7 @@ retest — realistically four to eight weeks from booking. **Mitigation:** book 
 for a scoped first pass (auth, tenancy, portal boundary) even if the product is not
 feature-complete, with a second pass before the marketplace listing. **Independent of the
 external test**, an internal red-team pass by a fresh GPT-6 Sol context over the authorization
-surface, the portal boundary and the inherited kaneo routes is part of the go-live gate
+surface, the portal boundary and the inherited kaneo routes is part of release readiness
 ([security-model.md](../01-architecture/security-model.md#testing-security)) — real customer
 data does not land on a stack proven only by its own suite.
 

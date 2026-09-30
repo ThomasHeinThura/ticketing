@@ -5,6 +5,26 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-29 · October 3 is a UAT/P0 hardening checkpoint, not a production deadline
+
+**Decision:** Treat October 3 as a checkpoint for UAT availability, P0 evidence and open
+acceptance blockers. It is not a production go-live, production-testing deadline, release
+date, or version assignment. Production timing remains unscheduled and depends on the
+applicable stage gates. No acceptance criterion is changed and no gate is waived.
+
+The live plan and release plan are updated to remove the superseded October 3 production
+commitment. The release version and exact `main` SHA will be selected only when a stage is
+ready for its gate-driven release. The unresolved inherited `package.json` version versus
+release-plan version mismatch remains a separate decision before a stable release; this entry
+does not choose a version.
+
+**Why:** UAT is reachable and its API health check is green, but availability is not a
+demonstrated user journey or a completed authorization shadow soak. The latest recorded soak
+sample remains low-volume and incomplete. A calendar date cannot stand in for that evidence or
+the P0 CI/security gates.
+
+**Decided by:** Thomas, 2026-09-29.
+
 ### 2026-09-29 · OpenAI model routing replaces Claude/`pal-mcp` routing
 
 **Decision:** TaskDesk's active AI workflow moves to an OpenAI-first two-tier model policy.

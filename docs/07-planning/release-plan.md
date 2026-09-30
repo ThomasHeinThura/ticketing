@@ -3,6 +3,11 @@
 - **Status:** Accepted 2026-09-05 — see [decision log](decision-log.md)
 - **Companion to:** [phases.md](phases.md) (what "done" means), [accelerated-delivery-plan.md](accelerated-delivery-plan.md) (target dates), [ci-cd.md](../04-engineering/ci-cd.md) (the mechanism)
 
+> **Current schedule correction (2026-09-29):** October 3 is a UAT/P0 hardening checkpoint,
+> not a production go-live or release date. Production timing is unscheduled and depends on
+> completed stage gates. A maintainer still selects a version and exact `main` SHA when the
+> release workflow is dispatched; no version is assigned to the October 3 checkpoint.
+
 ## Purpose
 
 [phases.md](phases.md) says what gets built and in what order. [ci-cd.md](../04-engineering/ci-cd.md)
@@ -77,10 +82,12 @@ Two honest consequences of this table:
   test ([risks.md](risks.md) **R4**) — a security gate, not a feature gate, and not one
   that compresses under the [accelerated plan](accelerated-delivery-plan.md).
 
-Under the accelerated calendar, the P0–P5 reduced-scope go-live maps to **`2.0.0-rc.1`**
-at the end of week 4 and **`2.0.0`** after the week-5 production-testing pass; `2.1`–`2.3`
-then land inside the 3-month window as their deferrals are paid down (the marketplace
-listing is not among them — it is deferred beyond the scope, [roadmap.md](roadmap.md)).
+The earlier calendar's proposed mapping of an October 3 go-live to `2.0.0-rc.1`, followed by
+`2.0.0` after a production-testing week, is superseded. Neither version has been assigned to
+that date. Stage releases remain gate-driven; the release version and selected `main` SHA
+must be chosen when the stage is actually ready. Later `2.1`–`2.3` scope remains a roadmap,
+not a dated production commitment (the marketplace listing is deferred beyond the current
+scope, [roadmap.md](roadmap.md)).
 
 ## Reduced scope and deferrals — stated here, not only by reference
 
@@ -91,7 +98,7 @@ holistic GPT-6 Sol security review and a written review. So the accelerated `2.0
 **by what it deliberately does not yet contain**, and that list lives in **three** places
 that must agree — [roadmap.md](roadmap.md#explicitly-deferred-beyond-the-current-three-to-four-month-scope-decided-2026-09-05)
 for what is outside the whole program, [accelerated-delivery-plan.md](accelerated-delivery-plan.md)'s
-deferral register for what go-live ships thinner, and here:
+deferral register for what the reduced release scope ships thinner, and here:
 
 - **Gate activities consolidated**: the manual accessibility pass, fresh-eyes test,
   four-browser check and k6 baseline are run **once, before `2.0.0`**, over the whole
@@ -107,8 +114,8 @@ deferral register for what go-live ships thinner, and here:
 - **Penetration test booked in week 1** ([risks.md](risks.md) **R19**), scoped to auth,
   tenancy and the portal boundary, with a second pass before external sale.
 
-The first slipped gate is a signal to move the date or narrow the scope
-([accelerated-delivery-plan.md](accelerated-delivery-plan.md#what-happens-if-week-4-looks-tight))
+An unready gate is a signal to move the target date or narrow future scope
+([accelerated-delivery-plan.md](accelerated-delivery-plan.md#how-to-handle-schedule-risk))
 — never to convert quietly into "quality later", the failure
 [definition-of-done.md](../04-engineering/definition-of-done.md) names by name.
 
