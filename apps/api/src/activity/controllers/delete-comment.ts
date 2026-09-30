@@ -1,9 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskActivityTable, taskTable } from "../../database/schema";
+import { taskActivityTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
+import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 
 async function deleteComment(userId: string, id: string) {
   const [existing] = await db
@@ -28,16 +29,20 @@ async function deleteComment(userId: string, id: string) {
     });
   }
 
-  const [deletedComment] = await db
-    .delete(taskActivityTable)
-    .where(
-      and(
-        eq(taskActivityTable.id, id),
-        eq(taskActivityTable.userId, userId),
-        eq(taskActivityTable.type, "comment"),
-      ),
-    )
-    .returning();
+  const { deletedComment, projectId } = await db.transaction(async (tx) => {
+    const task = await lockTaskAndAssertProjectLive(tx, existing.taskId);
+    const [deletedComment] = await tx
+      .delete(taskActivityTable)
+      .where(
+        and(
+          eq(taskActivityTable.id, id),
+          eq(taskActivityTable.userId, userId),
+          eq(taskActivityTable.type, "comment"),
+        ),
+      )
+      .returning();
+    return { deletedComment, projectId: task.projectId };
+  });
 
   if (!deletedComment) {
     throw new HTTPException(404, {
@@ -45,19 +50,11 @@ async function deleteComment(userId: string, id: string) {
     });
   }
 
-  const [task] = await db
-    .select({ projectId: taskTable.projectId })
-    .from(taskTable)
-    .where(eq(taskTable.id, deletedComment.taskId))
-    .limit(1);
-
-  if (task) {
-    await publishEvent("comment.deleted", {
-      ...deletedComment,
-      projectId: task.projectId,
-      userId,
-    });
-  }
+  await publishEvent("comment.deleted", {
+    ...deletedComment,
+    projectId,
+    userId,
+  });
 
   deleteOrphanedAssets(existing.content, null, {
     taskId: existing.taskId,

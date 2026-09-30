@@ -4,29 +4,31 @@ import db from "../../database";
 import { taskRelationTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteS3Keys, getTaskAssetKeys } from "../../storage/cleanup-assets";
-import getTask from "./get-task";
+import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 
 async function deleteTask(taskId: string, currentUserId: string) {
-  const task = await getTask(taskId);
-
-  const relations = await db
-    .select()
-    .from(taskRelationTable)
-    .where(
-      or(
-        eq(taskRelationTable.sourceTaskId, taskId),
-        eq(taskRelationTable.targetTaskId, taskId),
-      ),
-    )
-    .execute();
-
-  const assetKeys = await getTaskAssetKeys(taskId);
-
-  const [deletedTask] = await db
-    .delete(taskTable)
-    .where(eq(taskTable.id, taskId))
-    .returning()
-    .execute();
+  const { relations, assetKeys, deletedTask } = await db.transaction(
+    async (tx) => {
+      await lockTaskAndAssertProjectLive(tx, taskId);
+      const relations = await tx
+        .select()
+        .from(taskRelationTable)
+        .where(
+          or(
+            eq(taskRelationTable.sourceTaskId, taskId),
+            eq(taskRelationTable.targetTaskId, taskId),
+          ),
+        )
+        .execute();
+      const assetKeys = await getTaskAssetKeys(taskId, tx);
+      const [deletedTask] = await tx
+        .delete(taskTable)
+        .where(eq(taskTable.id, taskId))
+        .returning()
+        .execute();
+      return { relations, assetKeys, deletedTask };
+    },
+  );
 
   if (!deletedTask) {
     throw new HTTPException(404, {
@@ -34,16 +36,19 @@ async function deleteTask(taskId: string, currentUserId: string) {
     });
   }
 
+  // The returned deleted row is the authoritative locked snapshot for both
+  // response and event attribution; no unlocked preflight data is reused.
+
   await publishEvent("task.deleted", {
-    taskId: task.id,
-    projectId: task.projectId,
+    taskId: deletedTask.id,
+    projectId: deletedTask.projectId,
     userId: currentUserId,
-    title: task.title,
+    title: deletedTask.title,
   });
 
   for (const relation of relations) {
     await publishEvent("task-relation.deleted", {
-      projectId: task.projectId,
+      projectId: deletedTask.projectId,
       userId: currentUserId,
       taskId: taskId,
       sourceTaskId: relation.sourceTaskId,
@@ -56,7 +61,7 @@ async function deleteTask(taskId: string, currentUserId: string) {
     deleteS3Keys(assetKeys).catch(() => {});
   }
 
-  return task;
+  return deletedTask;
 }
 
 export default deleteTask;

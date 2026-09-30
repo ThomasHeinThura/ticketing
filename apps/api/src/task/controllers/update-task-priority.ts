@@ -3,7 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 
 async function updateTaskPriority({
   id,
@@ -14,26 +14,15 @@ async function updateTaskPriority({
   priority: string;
   currentUserId: string;
 }) {
-  const existingTask = await db.query.taskTable.findFirst({
-    where: eq(taskTable.id, id),
+  const { existingTask, updatedTask } = await db.transaction(async (tx) => {
+    const existingTask = await lockTaskAndAssertProjectLive(tx, id);
+    const [updatedTask] = await tx
+      .update(taskTable)
+      .set({ priority })
+      .where(eq(taskTable.id, id))
+      .returning();
+    return { existingTask, updatedTask };
   });
-
-  if (!existingTask) {
-    throw new HTTPException(404, {
-      message: "Task not found",
-    });
-  }
-
-  // #202: a task inside a soft-deleted project is frozen for its project's 30-day
-  // recovery window (#187, PR-16). `getProjectWorkspaceId` applies that exclusion
-  // and throws 404; the workspace id itself isn't needed here.
-  await getProjectWorkspaceId(existingTask.projectId);
-
-  const [updatedTask] = await db
-    .update(taskTable)
-    .set({ priority })
-    .where(eq(taskTable.id, id))
-    .returning();
 
   if (!updatedTask) {
     throw new HTTPException(500, {
