@@ -1,32 +1,27 @@
 # Security review — service calendar management (#513)
 
-**Reviewer:** GPT-6 Sol, fresh independent context. The reviewer did not author, direct, or remediate this change.
-**Reviewed head:** `2d4bf2d9c3698dbf646a6201331252530d8b6dc2`
-**Pull request:** #513, `feat(p2): add service calendar management`
-**Base:** `6a93fb3b75f7aa90bcff127ccf545eb5b3ad1670`
-**Date:** 2026-09-30
+**Current candidate:** `feat/p2-33-service-calendars` after merge of `origin/main` at `7d21bc8f`.
+**Current security verdict:** **PENDING — fresh GPT-6 Sol review required.**
+**Prior review:** GPT-6 Sol independently reviewed `2d4bf2d9c3698dbf646a6201331252530d8b6dc2` against base `6a93fb3b75f7aa90bcff127ccf545eb5b3ad1670` on 2026-09-30. That review remains valid only for that exact head; it does not attest to the current candidate.
 
-## Scope
+## Prior review scope and verdict
 
-Reviewed the service-calendar API schema and create/PATCH paths, workspace reach and role checks, API-key scope, data writes, timezone validation across API/domain/UI, and new fixed-offset regression cases. The reviewed delta adds canonicalized timezone validation and its tests.
+The prior reviewer examined the service-calendar API schema and create/PATCH paths, workspace reach and role checks, API-key scope, data writes, timezone validation across API/domain/UI, and fixed-offset regression cases. The verdict was clear for the reviewed head: no concrete security blocker or additional risk finding.
 
-## Review
+That review confirmed the shared domain and UI timezone validators reject canonical timezone identifiers beginning with `+` or `-`, while accepting `UTC` and named IANA zones. The API request schema uses the shared domain validator, and calendar creation and updates validate before database writes. The review also checked workspace reach, caller role authorization, API-key permission narrowing, and the surrounding persistence path.
 
-**Verdict: CLEAR.** No concrete security blocker or additional risk finding in the reviewed head.
+## Current candidate evidence
 
-Confirmed that domain `isIanaTimeZone()` and UI `isValidIanaTimezone()` inspect `Intl.DateTimeFormat(...).resolvedOptions().timeZone` and reject canonical timezone identifiers beginning with `+` or `-`. The API request schema uses the shared domain validator, and calendar creation and updates validate before database writes. The validation accepts `UTC` and named IANA zones while rejecting short, compact, and colon-form fixed offsets. Regression coverage includes `+05:00`, `-03:30`, `+05`, `+0500`, and `-0330` in the relevant domain, UI, and HTTP integration layers.
+- Current candidate includes the normal merge commit from `origin/main` at `7d21bc8f`.
+- Focused PostgreSQL 18 integration suite: `service-calendar.test.ts`, 13/13 passed with `CI=true` and Testcontainers.
+- API typecheck passed.
+- `pnpm check:events` passed: all 31 published event keys are registered.
+- Biome check passed for the changed API and calendar route surfaces.
+- `pnpm --filter @taskdesk/api db:generate` reported no schema changes; migration journal retains the single `0079_service_calendar` entry after `0078_outbox`.
+- Docker image built; its migration role applied the migrations to a fresh PostgreSQL 18 database, and the app container returned HTTP 200 from `/api/public/health/ready`.
 
-The review also checked workspace reach, caller role authorization, API-key permission narrowing, and the surrounding persistence path; the timezone change does not alter those controls. No new secret exposure or authority expansion was found.
-
-## Evidence
-
-- `git diff --check` — clean.
-- GPT-6 Sol `Intl` reproduction — signed canonical offset IDs are rejected; `UTC` and `America/New_York` remain accepted.
-- `pnpm --filter @taskdesk/domain test` — 12 files / 562 tests passed.
-- `pnpm --filter @taskdesk/web exec vitest run src/lib/service-calendar-form.test.ts` — 1 file / 6 tests passed.
-- Node 24, `CI=1`, isolated Testcontainers Postgres 18: focused `service-calendar.test.ts` — 12/12 passed.
-- API and web typechecks passed.
+These checks are implementation evidence, not a security review. No independent reviewer has reviewed the exact current candidate yet.
 
 ## Residuals
 
-This review clears the security-sensitive code at the reviewed head. It does not claim that PR #513 completes P2 acceptance. Calendar event outbox delivery and AU-14 alerting remain unavailable, direct deletion remains withheld pending the approved pending-action route, and browser verification remains blocked until a separate development host is available. CI dependency audit is also blocked by advisories being handled on PR #519; G8 is not enabled as a required check.
+CAL-8 affected-item count remains blocked on issue #437 linkage and the `sla_policy` table. AU-14's required alerting metric and instance-administrator notification infrastructure remain unavailable. Direct deletion remains withheld pending the approved pending-action route. The candidate still needs fresh independent Luna review(s), current-head GPT-6 Sol security review, and required CI/browser gates before merge.
