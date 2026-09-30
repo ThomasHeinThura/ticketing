@@ -164,6 +164,7 @@ outbox-drain (every 30 s, every replica)
   ├── claim a batch: SELECT … FOR UPDATE SKIP LOCKED
   ├── notification: acquire reservation for recipient + channel + dedupe_key
   │   ├── active reservation by another row → defer candidate; do not increment attempts
+  │   ├── acquire only when free/expired; same owner renews with current token, never rotates
   │   └── acquired → query a different delivered row from the previous 5 min
   │       └── match → mark candidate suppressed and release reservation
   ├── send otherwise while renewing reservation; success → atomically mark delivered,
@@ -189,6 +190,12 @@ cannot be rolled back; after lease expiry, retry may send again. Delivery is at-
 across that failure window, not exactly-once. An adapter may use the stable outbox row id as
 an idempotency key when its provider supports one, but correctness does not assume provider
 idempotency.
+
+Reservation acquisition and renewal rules, including the canonical tuple digest, are defined
+in [data-model.md](data-model.md#11-automations-notifications-integrations-audit) and
+[notifications.md](../03-features/notifications.md#delivery). A worker presenting the same
+outbox row id with a fresh token cannot reacquire a live reservation; only the current owner
+and token can renew it.
 
 Backoff: 30 s, 2 m, 10 m, 1 h, 6 h, 24 h. `SKIP LOCKED` lets `outbox-drain` claim different
 rows on every replica without a global job lease. Notification-key serialization is handled

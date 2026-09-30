@@ -143,18 +143,31 @@ unique key, digest values, and per-person quiet-hours fields are defined in
 - `NO-9` `outbox-drain` delivers with retry and exponential backoff. Dead letters after
   six attempts and are visible in God Mode.
 - `NO-10` Delivery failure never fails the originating request.
-- `NO-11` Duplicate suppression: for notifications, compute `outbox.dedupe_key` from
-  `event_kind + resource_type + resource_id + person_id + channel`; store the notification
+- `NO-11` Duplicate suppression: for notifications, compute `outbox.dedupe_key` as
+  `notification:v1:` plus lowercase hex SHA-256 over the domain tag
+  `taskdesk:notification-dedupe:v1`, a zero byte, then `event_kind`, `resource_type`,
+  `resource_id`, `person_id`, and `channel` in that order. Encode each value as its exact
+  UTF-8 bytes prefixed by its byte length as an unsigned 32-bit big-endian integer; do not
+  trim, case-fold, or Unicode-normalize values. Store the notification
   recipient in `outbox.recipient_person_id` and the external plugin id in `outbox.channel`.
   Before the recent-success lookup, atomically acquire the unique
   `outbox_dedupe_reservation` keyed by `(recipient_person_id, channel, dedupe_key)`. A
-  worker may insert a free key or atomically take over an expired reservation; it may renew
-  a live reservation only when the same candidate row and token still own it. Every
-  acquisition/takeover sets a fresh random token; renewal preserves it and extends
-  `lease_expires_at`. A different row's active reservation means leave this candidate
-  `pending`, set `next_attempt_at` to the lease expiry, and do not increment its delivery
-  attempts. Row-level `FOR UPDATE SKIP LOCKED` is not sufficient to serialize different
-  outbox rows with the same key.
+  worker may insert a free key or atomically take over an expired reservation; every such
+  acquisition sets a fresh random token. It may renew a live reservation only when the same
+  candidate row and current token still own it; renewal preserves that token. Even a second
+  worker presenting the same outbox row id cannot reacquire the live lease with a fresh
+  token. A different row's active reservation means leave this candidate `pending`, set
+  `next_attempt_at` to the lease expiry, and do not increment its delivery attempts.
+  Row-level `FOR UPDATE SKIP LOCKED` is not sufficient to serialize different outbox rows
+  with the same key.
+
+  The reservation key is the 32-byte SHA-256 digest of the exact tuple
+  `(recipient_person_id, channel, dedupe_key)`: hash the domain tag
+  `taskdesk:outbox-dedupe-reservation:v1`, a zero byte, then each tuple value encoded as
+  exact UTF-8 bytes prefixed by its byte length as an unsigned 32-bit big-endian integer.
+  Do not trim, case-fold, or Unicode-normalize. Store the tuple alongside the digest and
+  enforce tuple uniqueness; if a digest conflict contains different tuple values, fail
+  closed without sending.
 
   After acquiring the reservation, query for a **different** outbox row with the same three
   fields, `delivered_at >= now() - interval '5 minutes'`, and `id <> candidate.id`. The
@@ -334,7 +347,9 @@ only one worker acquires the reservation and calls the provider, then commits
 `delivered_at`; the other defers, acquires after release, observes that committed success,
 and marks its row suppressed without a second provider call. Also cover active-lease deferral,
 known-failure release/retry, and crashed-worker lease expiry with a stale-token commit
-rejected. A provider-accepted-but-uncommitted crash must assert at-least-once residual
+rejected. A second worker presenting the **same** outbox row id while its reservation is live
+must fail acquisition with a new token and leave the first worker's token valid for renewal
+and completion. A provider-accepted-but-uncommitted crash must assert at-least-once residual
 behavior rather than exactly-once delivery.
 
 Add `tests/api-integration/notification-preference-link-handoff.test.ts` for expired and
