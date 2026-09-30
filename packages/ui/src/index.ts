@@ -73,7 +73,7 @@
 // - `error-display.tsx`, `error-fallback.tsx`, `error-test.tsx` — new to this batch's
 //   judgment call, not previously assessed. `error-display.tsx` calls this app's own
 //   `../../lib/error-handler` (`parseApiError`, CORS/network troubleshooting copy) and
-//   hardcodes `https://taskdesk.app/docs` — app-specific error-reporting glue, not a
+//   hardcodes `https://taskdesk.bimats.com/docs` — app-specific error-reporting glue, not a
 //   design-system primitive. `error-fallback.tsx` and `error-test.tsx` both exist only to
 //   wrap `error-display.tsx`, so the same reasoning covers them; `error-test.tsx` is also a
 //   manual test harness (a hardcoded fake API host), not a shipped UI surface.
