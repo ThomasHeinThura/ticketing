@@ -1079,6 +1079,39 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     expect(after?.title).toBe(task.title);
   });
 
+  it("waits behind a project soft-delete that wins, then refuses the legacy write", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await createLegacyTask(project.id, columns.todo.id, 1);
+    mockAuthenticatedSession(member.user);
+
+    const race = await raceProjectSoftDelete(project.id, () =>
+      request(`/task/title/${task.id}`, "put", {
+        title: "must not persist after project deletion",
+      }),
+    );
+
+    expect(race.blockedOnRowLock).toBe(true);
+    expect(race.operation.status).toBe("fulfilled");
+    if (race.operation.status !== "fulfilled") {
+      throw new Error("legacy title update should return an HTTP response");
+    }
+    expect(race.operation.value.status).toBe(404);
+
+    const [afterTask] = await db
+      .select()
+      .from(schema.taskTable)
+      .where(eq(schema.taskTable.id, task.id));
+    const [afterProject] = await db
+      .select()
+      .from(schema.projectTable)
+      .where(eq(schema.projectTable.id, project.id));
+    expect(afterTask?.title).toBe(task.title);
+    expect(afterProject?.deletedAt).not.toBeNull();
+  });
+
   it("WI-25: reports bulk status failures per task and commits valid items", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const invalidFixture = await createProjectFixture({
