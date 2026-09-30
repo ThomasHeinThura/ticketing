@@ -20,7 +20,7 @@ describe("API integration: config", () => {
 
     // isDemoMode left the public config with the cloud-only surfaces in #6.
     // Asserting its ABSENCE matters: it was driven by DEMO_MODE and paired
-    // with a hardcoded `window.location.hostname === "demo.taskdesk.app"`
+    // with a hardcoded product hostname
     // branch in the web bundle, which is what AGENTS.md rule 2 forbids.
     expect(payload).not.toHaveProperty("isDemoMode");
     expect(payload).not.toHaveProperty("billingEnabled");

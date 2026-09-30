@@ -1,5 +1,5 @@
 # TaskDesk Helm Chart
-This Helm chart deploys [TaskDesk](https://taskdesk.app) - open source project management that works for you, not against you.
+This Helm chart deploys [TaskDesk](https://taskdesk.bimats.com) - open source project management that works for you, not against you.
 ## Introduction
 This chart bootstraps a TaskDesk deployment on a Kubernetes cluster using the Helm package manager. It deploys both the API backend and Web frontend components, along with a PostgreSQL database, with optional ingress or Gateway API resources.
 ## Prerequisites
