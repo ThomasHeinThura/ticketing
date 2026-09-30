@@ -79,10 +79,15 @@ A policy's `scope` names *which* object the capability is checked against; the p
 middleware **loads that object from the route's declared scope source, checks reach, checks
 authority, and hands the already-authorized row to the handler**. The scope source is the
 path parameter for most routes and, for workspace-scoped collection routes with no workspace
-in the path (`/api/custom-fields`, `/api/capabilities`, `/api/webhooks`, `/api/views`,
-`/api/notifications`), the required `X-Workspace-Id` header or `?workspace=` query parameter,
-validated the same way; `POST /api/work-items/search` takes it from the filter body. Handlers
-never re-load by id from user input. This closes the classic IDOR (a valid capability in
+in the path (`/api/custom-fields`, `/api/capabilities`, `/api/webhooks`, `/api/views`), the
+required `X-Workspace-Id` header or `?workspace=` query parameter, validated the same way;
+`POST /api/work-items/search` takes it from the filter body. `/api/notification` is instead
+session-self scoped: the recipient is the session person, and each notification is additionally
+filtered against current reach to its referenced resource. Collection filtering happens before
+pagination and counts; direct reads or mutations of an inaccessible or deleted resource's
+notification return not found. Notification preference routes are also session-self scoped;
+workspace/project preference mutations separately validate current reach to that workspace or
+project. Handlers never re-load by id from user input. This closes the classic IDOR (a valid capability in
 project A, an id from project B): `tests/permissions/idor-fuzz.test.ts` takes every scoped
 route and substitutes ids from the other seeded tenant **at every scope source — path segment,
 header and search body alike** — asserting 404.

@@ -144,11 +144,21 @@ unique key, digest values, and per-person quiet-hours fields are defined in
   six attempts and are visible in God Mode.
 - `NO-10` Delivery failure never fails the originating request.
 - `NO-11` Duplicate suppression: for notifications, compute `outbox.dedupe_key` from
-  `event_kind + resource_type + resource_id + person_id + channel`. At drain time, suppress
-  a new row when a matching notification delivery succeeded in the previous five minutes.
-  Retries of that same outbox row use its retry state and do not count as a duplicate. The
-  channel is part of the key, so the same event may still reach the person over two
-  different channels. The key and drain behavior are defined in
+  `event_kind + resource_type + resource_id + person_id + channel`; store the notification
+  recipient in `outbox.recipient_person_id` and the external plugin id in `outbox.channel`.
+  Immediately before sending a claimed notification row, query for another row with the same
+  `recipient_person_id`, `channel`, and `dedupe_key`, `delivered_at >= now() - interval '5
+  minutes'`, and `id <> candidate.id`. The partial index on
+  `(recipient_person_id, channel, dedupe_key, delivered_at desc)` where `delivered_at is not
+  null` supports these equality and time-range predicates. If a match exists, mark the
+  candidate `suppressed` without sending or setting its `delivered_at`; otherwise send it.
+  On channel-adapter success, set the candidate row's `state = 'delivered'` and
+  `delivered_at` to the success time. Failed attempts leave `delivered_at` null and use that
+  same row's retry state. A retry is therefore not a duplicate check against itself: it
+  retries the same row, while suppression requires a different row with a prior successful
+  delivery in the five-minute window. The channel is part of the key, so the same event may
+  still reach the person over two different channels. The fields, index, and drain behavior
+  are defined in
   [data-model.md](../01-architecture/data-model.md#11-automations-notifications-integrations-audit)
   and [background-jobs.md](../01-architecture/background-jobs.md).
 
@@ -183,6 +193,10 @@ correction.
 Notifications are always scoped to the recipient. There is no capability to read someone
 else's notifications, and no administrative override — an administrator investigating a
 delivery problem uses the audit log and the outbox, not another person's inbox.
+Inbox list, read, and mutation operations also apply current reach filtering to each
+notification's referenced resource. Unreachable or deleted resources are omitted before
+pagination/counts; direct access to their notification returns not found. Workspace and
+project preference routes validate the selected scope against the recipient's current reach.
 
 | Action | Policy |
 | --- | --- |
@@ -265,7 +279,8 @@ cannot add a customer as a recipient or broaden notification visibility.
 The canonical fields and constraints are in
 [data-model.md §11](../01-architecture/data-model.md#11-automations-notifications-integrations-audit):
 `notification`, scoped `notification_preference`, short-lived
-`notification_preference_handoff`, and `outbox` with `dedupe_key`. Event keys and
+`notification_preference_handoff`, and `outbox` with `dedupe_key`, recipient/channel, and
+successful-delivery timestamp. Event keys and
 notification fan-out flags are in [events.md](../01-architecture/events.md). Delivery,
 handoff cleanup and digest scheduling are in
 [background-jobs.md](../01-architecture/background-jobs.md).

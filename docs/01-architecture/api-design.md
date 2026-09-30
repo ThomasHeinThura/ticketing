@@ -73,11 +73,19 @@ these forms, and `PolicyMap<typeof routes>` makes a mismatch a type error.
 ## Workspace context
 
 Many routes are workspace-scoped but carry no workspace in the path (`/api/custom-fields`,
-`/api/capabilities`, `/api/webhooks`, `/api/views`, `/api/notification`). They read the
+`/api/capabilities`, `/api/webhooks`, `/api/views`). They read the
 workspace from the **`X-Workspace-Id` header** (or `?workspace=` for GET), which the
 policy middleware validates against the identity's memberships **before** the policy
 check. Absent ⇒ `400`; not a member ⇒ `404`. The typed client sets the header from the
 current workspace automatically; there is no other mechanism.
+
+Notification inbox routes under `/api/notification` are authenticated-self routes: they
+derive `person_id` from the session and do not require workspace context. Each returned or
+mutated notification must also pass reach filtering for its referenced resource under that
+resource's policy; inaccessible or deleted resources are omitted from collections and
+cannot be read or mutated by id. Notification preference routes are self routes too, but
+workspace- and project-scoped preference routes validate the selected scope against the
+person's current reach.
 
 ## URL shape
 

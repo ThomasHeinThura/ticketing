@@ -366,7 +366,7 @@ were logged. OpenProject's model; the alternative silently rewrites history.
 | `notification` | `person_id`, `kind` (event key), `title`, `body`, `resource_type`, `resource_id`, `read_at` |
 | `notification_preference` | `person_id`, `scope` (`global`\|`workspace`\|`project`), `scope_id` null only for `global`, `channel` (`in_app` ∪ `notify.*` plugin ids; `in_app` always on), `event_kind`, `enabled`, `digest` (`off`\|`hourly`\|`daily`). Check: `scope = 'global'` iff `scope_id is null`; workspace/project scopes require a non-null id. `UNIQUE NULLS NOT DISTINCT (person_id, scope, scope_id, channel, event_kind)` so global preferences are unique too |
 | `notification_preference_handoff` | `handle_hash` (unique SHA-256; raw handle never stored), `audience` (`agent`\|`customer`), `recipient_person_id`, `event_kind`, `channel`, `scope`, `scope_id` null, `created_at`, `expires_at` (10 minutes after creation). Stores only validated selector claims; raw signed email tokens are never persisted |
-| `outbox` | `event_id`, `kind`, `payload jsonb`, `dedupe_key`, `workspace_id` **not null**, `organisation_id` null — both written from the event envelope's `scope` ([events.md](events.md)); they are the join key `outbox-drain` matches against `webhook.workspace_id` and against `notification_preference` scopes, and the workspace must not have to be dug out of `payload` on every row; `state`, `attempts`, `next_attempt_at`, `last_error` |
+| `outbox` | `event_id`, `kind`, `payload jsonb`, `dedupe_key`, `workspace_id` **not null**, `organisation_id` null — both written from the event envelope's `scope` ([events.md](events.md)); they are the join key `outbox-drain` matches against `webhook.workspace_id` and against `notification_preference` scopes, and the workspace must not have to be dug out of `payload` on every row; `recipient_person_id` and `channel` (both null for non-notification rows; both populated on external notification rows, with the recipient person and `notify.*` plugin id); `delivered_at` null until the channel adapter confirms successful delivery, then set to the UTC success time; `state` (`pending`\|`delivered`\|`dead`\|`suppressed`), `attempts`, `next_attempt_at`, `last_error` |
 | `webhook` | `workspace_id`, `url`, `secret` (encrypted), `secret_previous`, `secret_rotated_at`, `events text[]`, `active`, `disabled_at`, `disabled_reason`, `created_by` |
 | `webhook_delivery` | `webhook_id`, `event_id`, `attempt`, `status_code`, `duration_ms`, `request_body jsonb`, `response_body` (truncated), `error`, `attempted_at` |
 | `external_link` | `entity_type`, `entity_id`, `system`, `external_id`, `url`, `title`, `project_id` null, `organisation_id` null (denormalised at insert, for the same reach-filtering reason as `custom_field_value`) — provenance for any entity, not only work items |
@@ -389,6 +389,15 @@ retry and exponential backoff. `import_record_link` makes imports **idempotent a
 re-runnable**. Imports use a **bulk write path** — no per-row outbox, no per-row
 broadcast, one summary event per chunk, audit at run level — see
 [import-strategy.md](../06-data-import/import-strategy.md).
+
+For notification deduplication, an external notification row stores `recipient_person_id`,
+`channel`, and `dedupe_key`; non-notification rows leave the first two null. A claimed
+notification candidate is suppressed only if a **different** outbox row matches all three
+values and has `delivered_at >= now() - interval '5 minutes'`. Successful sends set
+`delivered_at`; failed attempts and suppressed candidates leave it null. The partial index on
+`(recipient_person_id, channel, dedupe_key, delivered_at desc)` where `delivered_at is not
+null` serves that equality-plus-time-range lookup. Retrying the same row follows its retry
+state and excludes that row from the duplicate lookup.
 
 ### The audit hash chain
 
@@ -536,6 +545,7 @@ create index on custom_field_value (project_id) where project_id is not null;
 create index on outbox (state, next_attempt_at) where state = 'pending';
 create index on outbox (workspace_id, state);
 create index on outbox (dedupe_key) where dedupe_key is not null;
+create index on outbox (recipient_person_id, channel, dedupe_key, delivered_at desc) where delivered_at is not null;
 create index on audit_log (entity_type, entity_id, created_at desc);
 create index on audit_log (workspace_id, created_at desc);
 create index on attachment (state) where state = 'pending';

@@ -162,11 +162,20 @@ mutation transaction
                     ↓  commit hook: WebSocket broadcast, in-app notification
 outbox-drain (every 30 s, every replica)
   ├── claim a batch: SELECT … FOR UPDATE SKIP LOCKED
-  ├── deliver (dedupe on outbox.dedupe_key within 5 min for notifications — NO-11)
-  ├── success → mark delivered, record duration + attempt + bodies in webhook_delivery
+  ├── for notifications, query a different delivered row by recipient + channel + dedupe_key
+  │   └── match in previous 5 min → mark candidate suppressed; do not call channel
+  ├── send otherwise; success → mark delivered and set outbox.delivered_at
+  ├── webhook attempts → record duration + attempt + bodies in webhook_delivery
   └── failure → attempts++, next_attempt_at = now + backoff
                 after 6 attempts → dead, surfaced in God Mode → Deliveries
 ```
+
+Notification success lookup uses the partial outbox index on
+`(recipient_person_id, channel, dedupe_key, delivered_at desc)` where `delivered_at is not
+null`. It compares only a distinct row with a successful timestamp in the prior five minutes;
+failed retries keep the same pending row and do not count as duplicate deliveries. The
+notification field and query contract are specified in [data-model.md](data-model.md) and
+[notifications.md](../03-features/notifications.md#delivery).
 
 Backoff: 30 s, 2 m, 10 m, 1 h, 6 h, 24 h. `SKIP LOCKED` is why `outbox-drain` needs no
 lease and is safe to run everywhere — it is the one job that deliberately runs on every
