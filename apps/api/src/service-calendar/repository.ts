@@ -7,6 +7,7 @@ import {
 } from "../audit/audit-writer";
 import db from "../database";
 import {
+  apikeyTable,
   serviceCalendarTable,
   userTable,
   workspaceTable,
@@ -59,6 +60,35 @@ async function appendCalendarEvent(
     throw new Error("Could not resolve service-calendar event actor or scope");
   }
 
+  let eventActor = {
+    type: input.actor.actorType,
+    id: input.actor.actorId,
+    name: context.actorName,
+  };
+  if (input.actor.actorType === "api_key") {
+    if (!input.actor.apiKeyId) {
+      throw new Error("Could not resolve service-calendar API-key actor");
+    }
+    const [apiKey] = await tx
+      .select({ id: apikeyTable.id, name: apikeyTable.name })
+      .from(apikeyTable)
+      .where(
+        and(
+          eq(apikeyTable.id, input.actor.apiKeyId),
+          eq(apikeyTable.referenceId, input.actor.actorId),
+        ),
+      )
+      .limit(1);
+    if (!apiKey) {
+      throw new Error("Could not resolve service-calendar API-key actor");
+    }
+    eventActor = {
+      type: "api_key",
+      id: apiKey.id,
+      name: apiKey.name ?? apiKey.id,
+    };
+  }
+
   const payload = {
     key: input.calendar.id,
     url: `/agent/settings/calendars/${input.calendar.id}`,
@@ -74,11 +104,7 @@ async function appendCalendarEvent(
     id: `evt_${createId()}`,
     kind: input.kind,
     occurredAt: new Date().toISOString(),
-    actor: {
-      type: input.actor.actorType,
-      id: input.actor.actorId,
-      name: context.actorName,
-    },
+    actor: eventActor,
     scope: {
       workspaceId: input.calendar.workspaceId,
       ...(context.organisationId

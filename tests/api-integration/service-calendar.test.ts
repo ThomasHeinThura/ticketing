@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { subscribeToEvent } from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
+import { createCalendar } from "../../apps/api/src/service-calendar/repository";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember } from "./helpers/fixtures";
@@ -126,21 +127,26 @@ function hashApiKeyForTest(key: string): string {
 async function createApiKeyFor(
   userId: string,
   permissions: Record<string, string[]>,
-): Promise<string> {
+): Promise<{ rawKey: string; id: string; name: string }> {
   const rawKey = `taskdesk_test_${randomUUID()}`;
+  const name = "service calendar permission test key";
   const now = new Date();
-  await db.insert(schema.apikeyTable).values({
-    referenceId: userId,
-    userId,
-    key: hashApiKeyForTest(rawKey),
-    name: "service calendar permission test key",
-    start: rawKey.slice(0, 12),
-    prefix: "taskdesk",
-    permissions: JSON.stringify(permissions),
-    createdAt: now,
-    updatedAt: now,
-  });
-  return rawKey;
+  const [apiKey] = await db
+    .insert(schema.apikeyTable)
+    .values({
+      referenceId: userId,
+      userId,
+      key: hashApiKeyForTest(rawKey),
+      name,
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify(permissions),
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning({ id: schema.apikeyTable.id });
+  if (!apiKey) throw new Error("API-key test fixture insert returned no row");
+  return { rawKey, id: apiKey.id, name };
 }
 
 describe("API integration: service calendars (CAL-1–CAL-14)", () => {
@@ -282,6 +288,92 @@ describe("API integration: service calendars (CAL-1–CAL-14)", () => {
         .from(schema.serviceCalendarTable)
         .where(eq(schema.serviceCalendarTable.id, calendar.id)),
     ).toHaveLength(1);
+  });
+
+  it("records the API key as the outbox actor and its owner in the audit row", async () => {
+    const creator = await createWorkspaceMember({ role: "admin" });
+    const apiKey = await createApiKeyFor(creator.user.id, {
+      sla_policy: ["manage"],
+    });
+    const { app } = createApp();
+    const response = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey.rawKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        workspaceId: creator.workspace.id,
+        name: "API key calendar",
+        timezone: "UTC",
+        windows: weekdayWindows,
+        holidays: [],
+      }),
+    });
+    expect(response.status).toBe(200);
+    const calendar = (await response.json()) as { id: string };
+
+    const [event] = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "service_calendar.created"));
+    expect(event?.payload).toMatchObject({
+      actor: {
+        type: "api_key",
+        id: apiKey.id,
+        name: apiKey.name,
+      },
+      payload: { calendarId: calendar.id },
+    });
+
+    const [audit] = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityType, "service_calendar"),
+          eq(schema.auditLogTable.entityId, calendar.id),
+          eq(schema.auditLogTable.action, "service_calendar.created"),
+        ),
+      );
+    expect(audit).toMatchObject({
+      actorId: creator.user.id,
+      actorType: "api_key",
+      apiKeyId: apiKey.id,
+    });
+  });
+
+  it("fails closed when the API-key event actor is missing or belongs to another user", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const otherUser = await createWorkspaceMember({ role: "admin" });
+    const apiKey = await createApiKeyFor(owner.user.id, {
+      sla_policy: ["manage"],
+    });
+    const invalidActors = [
+      { actorId: owner.user.id, apiKeyId: "missing-api-key" },
+      { actorId: otherUser.user.id, apiKeyId: apiKey.id },
+    ];
+
+    for (const actor of invalidActors) {
+      await expect(
+        createCalendar({
+          workspaceId: owner.workspace.id,
+          name: "Rejected API key calendar",
+          timezone: "UTC",
+          windows: weekdayWindows,
+          holidays: [],
+          actor: { ...actor, actorType: "api_key" },
+        }),
+      ).rejects.toThrow("Could not resolve service-calendar API-key actor");
+    }
+
+    expect(await db.select().from(schema.serviceCalendarTable)).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "service_calendar.created")),
+    ).toHaveLength(0);
   });
 
   it.each(["+05:00", "-03:30", "+05", "+0500", "-0330"])(
@@ -641,10 +733,10 @@ describe("API integration: service calendars (CAL-1–CAL-14)", () => {
       sla_policy: ["read", "manage"],
     });
     const { app } = createApp();
-    const readHeaders = { Authorization: `Bearer ${readKey}` };
-    const manageHeaders = { Authorization: `Bearer ${manageKey}` };
+    const readHeaders = { Authorization: `Bearer ${readKey.rawKey}` };
+    const manageHeaders = { Authorization: `Bearer ${manageKey.rawKey}` };
     const viewerManageHeaders = {
-      Authorization: `Bearer ${viewerManageKey}`,
+      Authorization: `Bearer ${viewerManageKey.rawKey}`,
     };
     const body = {
       workspaceId: creator.workspace.id,
