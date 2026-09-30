@@ -13,7 +13,7 @@ const { reference } = await loadLocales();
 
 const schema = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
-  $id: "https://taskdesk.app/i18n/schema.json",
+  $id: "https://taskdesk.bimats.com/i18n/schema.json",
   title: "TaskDesk locale schema",
   type: "object",
   additionalProperties: false,

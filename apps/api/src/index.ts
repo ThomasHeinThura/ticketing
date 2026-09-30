@@ -757,7 +757,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
       servers: [
         {
           url: normalizeApiServerUrl(
-            process.env.KANEO_API_URL || "https://cloud.taskdesk.app",
+            process.env.KANEO_API_URL || "https://taskdesk.bimats.com",
           ),
           description: "TaskDesk API Server",
         },

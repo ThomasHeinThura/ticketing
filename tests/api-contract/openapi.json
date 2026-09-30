@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://cloud.taskdesk.app/api",
+      "url": "https://taskdesk.bimats.com/api",
       "description": "TaskDesk API Server"
     }
   ],
