@@ -13,6 +13,12 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 
 ---
 
+**2026-09-30 product-host correction — remote `main` at `6a93fb3b75f7aa90bcff127ccf545eb5b3ad1670`; live DNS/HTTP rechecked 03:58 UTC.** PR #517 merged this host migration at `6a93fb3b`. `https://taskdesk.bimats.com` is the canonical TaskDesk product host; `taskdesk.app` and `uat.taskdesk.app` are not active TaskDesk hosts. This supersedes earlier reachability assumptions but keeps those dated entries as historical evidence.
+
+`taskdesk.bimats.com` resolves to CloudFront (`65.8.76.34`), but `/` and `/api/public/health/live` returned HTTP 404 at the recheck. The configured UAT hosts `ticket-v2-uat.bimats.com` (`65.8.76.83`) and `portal-v2-uat.bimats.com` (`65.8.76.21`) returned HTTP 200 for both paths. The most recent recorded browser check still showed a Kaneo-branded sign-in page on ticket UAT; HTTP reachability is not TaskDesk acceptance. The product-host deployment, correct TaskDesk image, browser journey, and P0 #8 authorization soak remain unproven.
+
+Check GitHub and live endpoints for current PR, CI, review, deployment, and DNS state before acting; this is a dated snapshot.
+
 **2026-09-30 orchestrator snapshot — remote `main` at
 `4f1eec81c904b91339c71f6fbd2123387e193acf` (refreshed 02:35 UTC).** PR #516 merged at
 `4f1eec81` after its exact-head required checks passed. A local, unmerged
