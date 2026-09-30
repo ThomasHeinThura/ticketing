@@ -456,32 +456,42 @@ function screenshotOptionsHaveFullPage(node) {
   const options = unwrapTypeWrappers(node);
   if (
     !ts.isObjectLiteralExpression(options) ||
+    options.properties.length < 2 ||
+    options.properties.length > 5 ||
     !literalScreenshotOptionValue(options)
   ) {
     return false;
   }
-  const fullPageProperties = options.properties.filter(
-    (property) =>
-      ts.isPropertyAssignment(property) &&
-      ((ts.isIdentifier(property.name) && property.name.text === "fullPage") ||
-        (ts.isStringLiteral(property.name) &&
-          property.name.text === "fullPage")),
-  );
-  const maxDiffProperties = options.properties.filter(
-    (property) =>
-      ts.isPropertyAssignment(property) &&
-      ((ts.isIdentifier(property.name) &&
-        property.name.text === "maxDiffPixels") ||
-        (ts.isStringLiteral(property.name) &&
-          property.name.text === "maxDiffPixels")),
-  );
-  return (
-    fullPageProperties.length === 1 &&
-    fullPageProperties[0].initializer.kind === ts.SyntaxKind.TrueKeyword &&
-    maxDiffProperties.length === 1 &&
-    ts.isNumericLiteral(maxDiffProperties[0].initializer) &&
-    maxDiffProperties[0].initializer.text === "0"
-  );
+  const expectedValues = new Map([
+    ["fullPage", (value) => value.kind === ts.SyntaxKind.TrueKeyword],
+    [
+      "maxDiffPixels",
+      (value) => ts.isNumericLiteral(value) && value.text === "0",
+    ],
+    [
+      "animations",
+      (value) => ts.isStringLiteral(value) && value.text === "disabled",
+    ],
+    ["caret", (value) => ts.isStringLiteral(value) && value.text === "hide"],
+    ["scale", (value) => ts.isStringLiteral(value) && value.text === "css"],
+  ]);
+  const values = new Map();
+  for (const property of options.properties) {
+    if (!ts.isPropertyAssignment(property)) return false;
+    const name = ts.isIdentifier(property.name)
+      ? property.name.text
+      : ts.isStringLiteral(property.name)
+        ? property.name.text
+        : undefined;
+    const matchesExpectedValue = expectedValues.get(name);
+    if (!matchesExpectedValue || values.has(name)) {
+      return false;
+    }
+    const value = unwrapTypeWrappers(property.initializer);
+    if (!matchesExpectedValue(value)) return false;
+    values.set(name, value);
+  }
+  return values.has("fullPage") && values.has("maxDiffPixels");
 }
 
 function isExpectingPage(node) {

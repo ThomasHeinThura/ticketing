@@ -1417,6 +1417,46 @@ test("G8 requires zero pixel tolerance for inline Storybook baselines", async ()
   );
 });
 
+for (const [optionName, optionValue] of [
+  ["threshold", "1"],
+  ["comparator", '"ssim"'],
+  ["maxDiffPixelRatio", "1"],
+  ["animations", '"allow"'],
+  ["caret", '"initial"'],
+  ["scale", '"device"'],
+]) {
+  test(`G8 rejects Storybook screenshot option ${optionName}`, async () => {
+    const storySource = storybookSpec().replace(
+      "{ fullPage: true, maxDiffPixels: 0 }",
+      `{ fullPage: true, maxDiffPixels: 0, ${optionName}: ${optionValue} }`,
+    );
+    const result = await runVisualScope({
+      routes: ACTIVE_ROUTES,
+      storySource,
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.output,
+      /Storybook visual test must load the exported-story index/,
+    );
+  });
+
+  test(`G8 rejects route screenshot option ${optionName}`, async () => {
+    const source = visualSpec(SCREENS).replace(
+      "{ fullPage: true, maxDiffPixels: 0 }",
+      `{ fullPage: true, maxDiffPixels: 0, ${optionName}: ${optionValue} }`,
+    );
+    const result = await runVisualScope({ routes: ACTIVE_ROUTES, source });
+
+    assert.notEqual(result.status, 0);
+    assert.match(
+      result.output,
+      /does not capture its declared screenshot baseline/,
+    );
+  });
+}
+
 test("G8 rejects later mutation of a named route screenshot options object", async () => {
   const result = await runVisualScope({
     routes: ACTIVE_ROUTES,
