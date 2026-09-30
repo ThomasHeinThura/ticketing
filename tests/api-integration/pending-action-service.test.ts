@@ -25,7 +25,6 @@ function requestInput(requesterPersonId = "person-pending-action-test") {
     routeKey: "DELETE /api/work-items/{key}",
     targetType: "work_item",
     targetIds: ["SUP-1"],
-    summary: { key: "SUP-1", title: "Test request" },
     workspaceId,
     projectId,
     organisationId,
@@ -156,7 +155,12 @@ describe("pending-action service persistence", () => {
 
     expect(response).toMatchObject({
       action: "delete",
-      summary: input.summary,
+      summary: {
+        key: "SUP-1",
+        title: "Test request",
+        projectName: "Integration Project",
+        requesterName: "Pending Action Requester",
+      },
       confirmation: "click",
       approveUrl: `/agent/settings/profile/pending-actions/${response.pendingActionId}`,
     });
@@ -166,6 +170,7 @@ describe("pending-action service persistence", () => {
       requestedByPersonId: input.requesterPersonId,
       routeKey: input.routeKey,
       targetIds: ["SUP-1"],
+      payloadSummary: response.summary,
       workspaceId: input.workspaceId,
       projectId,
       organisationId,
@@ -202,6 +207,42 @@ describe("pending-action service persistence", () => {
         },
       },
     });
+  });
+
+  it("PA-3/PA-7: derives approval summary from the locked target, not caller input", async () => {
+    const response = await createPendingAction({
+      ...requestInput(),
+      summary: {
+        key: "SUP-999",
+        title: "Delete a different request",
+        projectName: "another project",
+      },
+    } as Parameters<typeof createPendingAction>[0]);
+
+    expect(response.summary).toEqual({
+      key: "SUP-1",
+      title: "Test request",
+      projectName: "Integration Project",
+      requesterName: "Pending Action Requester",
+    });
+    const [row] = await db
+      .select({ summary: schema.pendingActionTable.payloadSummary })
+      .from(schema.pendingActionTable)
+      .where(eq(schema.pendingActionTable.id, response.pendingActionId));
+    expect(row?.summary).toEqual(response.summary);
+  });
+
+  it("PA-6: refuses caller-supplied target versions until an encoding is specified", async () => {
+    const input = {
+      ...requestInput(),
+      targetVersions: { "SUP-1": "forged-current-version" },
+    } as Parameters<typeof createPendingAction>[0];
+
+    await expect(createPendingAction(input)).rejects.toThrow(
+      /Caller-supplied pending-action target versions are not supported/,
+    );
+    const rows = await db.select().from(schema.pendingActionTable);
+    expect(rows).toHaveLength(0);
   });
 
   it("rejects an unregistered route key before writing a pending action", async () => {

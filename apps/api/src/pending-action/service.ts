@@ -35,8 +35,8 @@ export type CreatePendingActionInput = {
   routeKey: keyof PolicyMap;
   targetType: string;
   targetIds: readonly string[];
+  /** Rejected until PA-6 defines a target-version encoding. */
   targetVersions?: Record<string, unknown> | null;
-  summary: Record<string, unknown>;
   /** Optional scope assertions. Persisted scope always comes from target rows. */
   workspaceId?: string | null;
   projectId?: string | null;
@@ -54,7 +54,15 @@ export async function createPendingAction(input: CreatePendingActionInput) {
   const id = createId();
   const traceId = createId();
   const conflictTargetIds = [...input.targetIds].sort();
-  let created: { confirmation: ConfirmationKind } | undefined;
+  let created:
+    | { confirmation: ConfirmationKind; summary: Record<string, unknown> }
+    | undefined;
+
+  if (input.targetVersions !== undefined && input.targetVersions !== null) {
+    throw new TypeError(
+      "Caller-supplied pending-action target versions are not supported",
+    );
+  }
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
@@ -87,11 +95,11 @@ export async function createPendingAction(input: CreatePendingActionInput) {
             action: input.action,
             targetType: input.targetType,
             targetIds: payload.target_ids,
-            targetVersions: input.targetVersions ?? null,
+            targetVersions: null,
             payload,
             routeKey: input.routeKey,
             payloadHash,
-            payloadSummary: input.summary,
+            payloadSummary: scope.summary,
             workspaceId: scope.workspaceId,
             projectId: scope.projectId,
             organisationId: scope.organisationId,
@@ -159,7 +167,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
         } catch (error) {
           console.error("AU-14: pending-action audit write failed", error);
         }
-        return { confirmation };
+        return { confirmation, summary: scope.summary };
       });
       break;
     } catch (error) {
@@ -191,7 +199,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
   return {
     pendingActionId: id,
     action: input.action,
-    summary: input.summary,
+    summary: created.summary,
     confirmation: created.confirmation,
     expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
     approveUrl: `/agent/settings/profile/pending-actions/${id}`,
@@ -365,6 +373,7 @@ type ResolvedRequestScope = {
   projectId: string;
   organisationId: string;
   actorName: string;
+  summary: Record<string, unknown>;
 };
 
 /**
@@ -396,6 +405,8 @@ async function resolveRequestScope(
   const targets = await tx
     .select({
       key: workItemTable.key,
+      title: workItemTable.title,
+      projectName: projectTable.name,
       workspaceId: workItemTable.workspaceId,
       projectId: workItemTable.projectId,
       organisationId: workspaceTable.organisationId,
@@ -495,6 +506,12 @@ async function resolveRequestScope(
     projectId: target.projectId,
     organisationId: target.organisationId,
     actorName: requester.actorName,
+    summary: {
+      key: target.key,
+      title: target.title,
+      projectName: target.projectName,
+      requesterName: requester.actorName,
+    },
   };
 }
 
