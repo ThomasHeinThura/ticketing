@@ -18,7 +18,7 @@ half of the DPA.
 | `audit_log` | Postgres | 12 months (configurable) | Never edited; organisation tombstoned; person anonymised |
 | Sessions, API keys, invitations | Postgres | On expiry | Purged with the organisation |
 | Notifications | Postgres | Read rows: configured `notification_retention_days` (90 d default); unread rows retained | `session-cleanup` purges only expired read rows; organisation hard delete purges all. Person anonymisation tombstones identity fields; recipient-linked rows remain subject to this retention rule |
-| Outbox and `outbox_dedupe_reservation` | Postgres | Outbox: 30 d; reservation: active delivery lease only (60 s from last renewal), expired leases removed by `session-cleanup` | Reservation stores `recipient_person_id`, channel and dedupe key; deleted on release, lease expiry cleanup, hard deletion of the person or owning outbox. Outbox is purged with the organisation; person export includes rows keyed to that recipient |
+| Outbox and `outbox_dedupe_reservation` | Postgres | Outbox: 30 d; reservation lease valid until 60 s from last renewal; expired row physically removed by daily `session-cleanup` | Reservation stores `recipient_person_id`, channel and dedupe key; deleted on release, daily expiry cleanup, hard deletion of the person or owning outbox. Lease expiry ends authority immediately; the row may remain until cleanup. Outbox is purged with the organisation; person export includes rows keyed to that recipient |
 | Idempotency responses | Postgres | 24 h | Purged with the organisation |
 | Logs | Pino → the operator's sink | Operator-defined | Allowlist serialisation; no request bodies |
 | Backups | Operator's storage | Stated in [backup-and-restore.md](backup-and-restore.md) | Deleted data persists in backups until they age out — stated, not hidden |
@@ -46,8 +46,10 @@ until read or organisation hard deletion. Person anonymisation tombstones identi
 but does not change this notification retention rule. The 90-day value is a default, not a
 fixed limit. `outbox_dedupe_reservation` is short-lived coordination data, not
 notification history: it carries the recipient person id, channel and dedupe key while a
-delivery lease is active, and is removed on release, after lease expiry, or when its person or
-owning outbox row is deleted. The configured read-purge behavior and unread retention are
+delivery lease is active. Lease authority ends exactly at its expiry, but the expired row may
+remain physically present until the daily `session-cleanup` removes it; workers can reclaim
+it as soon as it expires. Rows are also removed on release or when their person or owning
+outbox row is deleted. The configured read-purge behavior and unread retention are
 acceptance requirements in
 [notifications.md](../03-features/notifications.md#in-app-inbox).
 

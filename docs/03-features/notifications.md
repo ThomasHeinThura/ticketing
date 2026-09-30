@@ -58,7 +58,8 @@ follow [SLA-17](sla.md#behaviour), with the stop conditions specified by `NO-22`
 | `submission.declined` | The requester, with the reason verbatim |
 | `submission.withdrawn` | The triage queue owners |
 | `prerequisite.overdue` | The prerequisite's owner |
-| `budget.threshold_reached` | Holders of `budget:manage` on the project, plus its default assignee |
+| `budget.threshold_reached` | The project manager (`project.manager_id`) only, as required by [TC-18](time-and-cost.md#budgets); if no current manager can be resolved, do not substitute another recipient |
+| `work_item.unblocked` | The assignee of the formerly blocked work item, as required by [RH-18](relations-and-hierarchy.md#blocking-behaviour) |
 | `workspace.created` | The new workspace's owner |
 | `approval.withdrawn` | The approver |
 | `pending_action.executed` | The requester, on failure only |
@@ -266,12 +267,12 @@ reach sources are:
 
 | `resource_type` | Event class / event keys | Resource id and current reach source |
 | --- | --- | --- |
-| `work_item` | `work_item.assigned`, `work_item.unassigned`, `work_item.mentioned` without `commentId`, `work_item.transitioned`, `work_item.escalated`, `work_item.due_soon`, `work_item.overdue`, `sla.at_risk`, `sla.breached` | Work-item id/key; recheck current work-item and project reach under the [work-item read policy](work-items.md#permissions). |
+| `work_item` | `work_item.assigned`, `work_item.unassigned`, `work_item.mentioned` without `commentId`, `work_item.transitioned`, `work_item.escalated`, `work_item.due_soon`, `work_item.overdue`, `work_item.unblocked`, `sla.at_risk`, `sla.breached` | Work-item id/key from the event envelope; for `work_item.unblocked`, this is the formerly blocked item, while `formerBlockerId` identifies the blocker only. Recheck current work-item and project reach under the [work-item read policy](work-items.md#permissions). |
 | `comment` | `work_item.commented`; `work_item.mentioned` when payload has `commentId` | Comment id; require a live comment visible to the recipient, resolve its owning work item, then apply current work-item/project reach ([comments policy](comments-and-activity.md#permissions), `NO-19`). A description mention without `commentId` uses `work_item`. |
 | `approval` | `approval.requested`, `approval.decided`, `approval.expiring`, `approval.expired`, `approval.withdrawn` | Approval id; resolve its work item and apply current work-item reach plus approval visibility. Customers may see only approvals addressed to them or raised by them ([approvals permissions](approvals.md#permissions)). |
 | `submission` | `submission.received`, `submission.replied`, `submission.accepted`, `submission.declined`, `submission.withdrawn` | Submission id (resolve canonical `ref` where that is the event payload); apply current requester/organisation visibility and portal policy. Staff reach follows the triage queue; customer reach is limited to the requester's organisation and customer-visible submissions ([customer-portal permissions](customer-portal.md#permissions)). |
 | `prerequisite` | `prerequisite.overdue` | Prerequisite id; resolve its project and apply current project reach ([project permissions](projects-and-engagements.md#permissions)). |
-| `project` | `budget.threshold_reached` | Project id; apply current project reach and the event's `budget:manage` recipient rule. |
+| `project` | `budget.threshold_reached` | Resolve the event's `budgetId` to the current `budget` row, then take that row's `project_id` as the notification resource id. Require the budget and project to exist and the recipient to retain current `project:read` reach. The only recipient is that project's `manager_id` per TC-18; missing budget/project, manager, or reach fails closed with no fallback recipient. |
 | `workspace` | `workspace.created` | Workspace id; apply the recipient's current workspace reach. |
 | `webhook` | `webhook.auto_disabled` | Webhook id; require current `webhook:manage` reach or creator ownership, matching the event recipient rule. |
 | `api_key` | `api_key.auto_disabled` | API-key id; require current owner identity; only the key owner is a recipient. |
@@ -283,9 +284,9 @@ These mappings name supported event classes; they do not grant permission. The e
 recipient rule and current resource reach must both pass. Set the discriminator and id from
 the canonical event payload mapping. Missing or unknown `resource_type`, missing or deleted
 resources, and event kinds without a mapping fail closed: do not create or return the
-notification. Never fall back to recipient-only visibility. The canonical event catalogue
-currently marks `work_item.unblocked` as notification-capable but does not define its
-default recipient here; it remains fail-closed until that recipient rule is specified.
+notification. Never fall back to recipient-only visibility. The budget event carries only
+`budgetId`, so implementations must resolve its project through the budget row; they must not
+assume a `projectId` is present in the event payload.
 
 | Action | Policy |
 | --- | --- |
@@ -406,10 +407,15 @@ and marks its row suppressed without a second provider call. Also cover active-l
 known-failure release/retry, and crashed-worker lease expiry with a stale-token commit
 rejected. The reach suite includes, for every listed `resource_type`, a reachable recipient
 and an unreachable or deleted resource; specifically cover comments and approvals through
-their owning work item, submission requester/organisation reach, project, workspace, and
-administrator/owner reach. It proves unreachable rows are omitted before counts, direct
-access returns not found, and unknown, missing, or unmapped types are neither created nor
-returned. It also includes configured-30-day read-purge/unread-retained and 90-day-default
+their owning work item, submission requester/organisation reach, budgetId-to-project
+resolution with manager-only audience, work_item.unblocked delivery to the blocked item's
+assignee, project, workspace, and administrator/owner reach. For budget notifications,
+prove budget managers and default assignees who are not the project manager receive nothing,
+and missing budget/project/manager or lost project reach fails closed. For unblocked
+notifications, prove the event envelope's item is the formerly blocked work item and no
+recipient is invented when it has no assignee. Prove unreachable rows are omitted before
+counts, direct access returns not found, and unknown, missing, or unmapped types are neither
+created nor returned. It also includes configured-30-day read-purge/unread-retained and 90-day-default
 cases described in `NO-17`. Test a normal adapter success before the deadline, a hung adapter
 that ignores abort and is no longer awaited at 30 seconds, periodic lease renewal while
 active, no early release on timeout, reclaim only after expiry, a fresh takeover token, and
@@ -418,10 +424,11 @@ its reservation is live
 must fail acquisition when presenting a fresh token and leave the first worker's token valid
 for renewal and completion. A lock-delayed timing case must hold the reservation lock across
 the lease expiry and across the five-minute success cutoff: after the lock is released, the
-operation must use a fresh post-lock DB wall-clock sample, take over an expired lease, and
-not suppress a success that is now older than five minutes. Also assert expired reservation
-cleanup and person/organisation hard-delete cascades remove every matching reservation row
-and recipient-person identifier. A provider-accepted-but-uncommitted crash must assert
+operation must use a fresh post-lock DB wall-clock sample, take over a logically expired
+lease before daily cleanup physically deletes its row, and not suppress a success that is now
+older than five minutes. Separately assert that daily `session-cleanup` physically deletes
+expired rows and person/organisation hard-delete cascades remove every matching reservation
+row and recipient-person identifier. A provider-accepted-but-uncommitted crash must assert
 at-least-once residual behavior rather than exactly-once delivery.
 
 Add `tests/api-integration/notification-preference-link-handoff.test.ts` for expired and
@@ -442,7 +449,8 @@ that GET makes no change, then authenticating and explicitly saving the selected
 
 ## Open questions
 
-None.
+None. The prior draft's `work_item.unblocked` recipient gap is resolved by `RH-18`: it targets
+the assignee of the formerly blocked work item. Runtime delivery remains unimplemented.
 
 ## Related
 

@@ -100,7 +100,7 @@ finally { clearInterval(heartbeat); await lease.release(); }
 | `metrics-snapshot` | hourly | 15 min | Writes `metric_snapshot` (hourly grain; daily rollup at 00:15) and, daily, `cycle_snapshot` |
 | `search-reindex` | 10 min | 10 min | Catches up rows whose search vector is stale |
 | `audit-purge` | daily 03:00 | 30 min | Deletes `audit_log` rows past retention as `taskdesk_maint`; **skips rows whose `organisation_id` or actor is under an open `legal_hold`** (join `legal_hold` on `lifted_at is null`); writes an `audit_chain_anchor` row **before** deleting, and does not delete if the anchor cannot be written; writes its own audit row |
-| `session-cleanup` | daily 03:15 | 5 min | Expired sessions, invitations, idempotency keys, expired `notification_preference_handoff` rows, `outbox_dedupe_reservation` rows whose `lease_expires_at` has passed, read `notification` rows older than `instance_setting.notification_retention_days` (90 by default; unread rows are retained), and soft-deleted rows past their window — **the soft-delete purge skips any row whose organisation or person is under an open `legal_hold`**, and leaves it soft-deleted until the hold lifts |
+| `session-cleanup` | daily 03:15 | 5 min | Physically deletes expired sessions, invitations, idempotency keys, expired `notification_preference_handoff` rows, expired `outbox_dedupe_reservation` rows, read `notification` rows older than `instance_setting.notification_retention_days` (90 by default; unread rows are retained), and soft-deleted rows past their window — **the soft-delete purge skips any row whose organisation or person is under an open `legal_hold`**, and leaves it soft-deleted until the hold lifts. Reservation lease validity and takeover are enforced at `lease_expires_at`; they do not wait for this daily physical cleanup. |
 | `attachment-gc` | daily 03:30 | 30 min | Removes objects for `attachment.state = 'deleted'` rows and orphans; **skips attachments whose `organisation_id` is under an open `legal_hold`** — which is why `attachment.workspace_id` / `organisation_id` are stored on the row ([data-model.md](data-model.md)) |
 | `attachment-pending-cleanup` | hourly | 5 min | Deletes `attachment` rows still `pending` after an hour (presign never completed) |
 | `timer-sweeper` | 15 min | 5 min | Stops `running_timer` rows older than 12 h, writing a capped `time_entry` |
@@ -202,8 +202,10 @@ sample. At deadline, request cancellation and stop awaiting even if the plugin i
 signal; count the attempt and apply the six-attempt limit. If retries remain, leave the row
 pending and schedule it no earlier than the current lease expiry; after the sixth timed-out
 attempt mark it dead. Stop renewing without releasing because provider acceptance is
-ambiguous; the reservation remains until expiry. A crashed worker also
-stops renewing. After `lease_expires_at`, another worker may take over with a fresh token; the
+ambiguous; the expired reservation row remains physically present until `session-cleanup`,
+but it no longer holds a live lease. A crashed worker also stops renewing. As soon as
+`lease_expires_at` passes, another worker may take over with a fresh token; takeover does not
+wait for daily row deletion. The
 old token cannot commit database success after takeover. If the provider accepted a request
 before the worker crashed, hung, or lost its response, that external effect cannot be rolled
 back; after lease expiry, retry may send again. Delivery is at-least-once across that failure
