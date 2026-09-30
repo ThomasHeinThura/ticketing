@@ -76,6 +76,36 @@ if (storybookMain !== expectedStorybookMain) {
   );
 }
 const workflowLines = ciWorkflow.split(/\r?\n/u);
+const expectedWorkflowRootKeys = [
+  "name",
+  "on",
+  "permissions",
+  "concurrency",
+  "env",
+  "jobs",
+];
+const actualWorkflowRootKeys = workflowLines
+  .filter(
+    (line) => line !== "" && !line.startsWith(" ") && !line.startsWith("#"),
+  )
+  .map((line) => /^([A-Za-z][A-Za-z0-9_-]*)\s*:/u.exec(line)?.[1]);
+const rootEnvStart = workflowLines.indexOf("env:");
+let rootEnvEnd = workflowLines.findIndex(
+  (line, index) =>
+    index > rootEnvStart &&
+    line !== "" &&
+    !line.startsWith(" ") &&
+    !line.startsWith("#"),
+);
+if (rootEnvEnd === -1) rootEnvEnd = workflowLines.length;
+const actualRootEnvLines = workflowLines
+  .slice(rootEnvStart, rootEnvEnd)
+  .filter((line) => line.trim() !== "" && !line.trimStart().startsWith("#"));
+const expectedRootEnvLines = [
+  "env:",
+  '  TURBO_TELEMETRY_DISABLED: "1"',
+  '  DO_NOT_TRACK: "1"',
+];
 const visualJobStarts = workflowLines
   .map((line, index) => (line === "  visual:" ? index : -1))
   .filter((index) => index >= 0);
@@ -152,6 +182,8 @@ function hasOnlyMappingKeys(lines, indentation, expectedKeys) {
 }
 
 if (
+  actualWorkflowRootKeys.join("\n") !== expectedWorkflowRootKeys.join("\n") ||
+  actualRootEnvLines.join("\n") !== expectedRootEnvLines.join("\n") ||
   visualJobStarts.length !== 1 ||
   actualVisualJobLines.join("\n") !== expectedVisualJobLines.join("\n") ||
   !/^ {4}name: visual regression \(G8\)\s*$/mu.test(visualJob) ||
