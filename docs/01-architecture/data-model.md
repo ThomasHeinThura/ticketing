@@ -367,6 +367,7 @@ were logged. OpenProject's model; the alternative silently rewrites history.
 | `notification_preference` | `person_id`, `scope` (`global`\|`workspace`\|`project`), `scope_id` null only for `global`, `channel` (`in_app` ∪ `notify.*` plugin ids; `in_app` always on), `event_kind`, `enabled`, `digest` (`off`\|`hourly`\|`daily`). Check: `scope = 'global'` iff `scope_id is null`; workspace/project scopes require a non-null id. `UNIQUE NULLS NOT DISTINCT (person_id, scope, scope_id, channel, event_kind)` so global preferences are unique too |
 | `notification_preference_handoff` | `handle_hash` (unique SHA-256; raw handle never stored), `audience` (`agent`\|`customer`), `recipient_person_id`, `event_kind`, `channel`, `scope`, `scope_id` null, `created_at`, `expires_at` (10 minutes after creation). Stores only validated selector claims; raw signed email tokens are never persisted |
 | `outbox` | `event_id`, `kind`, `payload jsonb`, `dedupe_key`, `workspace_id` **not null**, `organisation_id` null — both written from the event envelope's `scope` ([events.md](events.md)); they are the join key `outbox-drain` matches against `webhook.workspace_id` and against `notification_preference` scopes, and the workspace must not have to be dug out of `payload` on every row; `recipient_person_id` and `channel` (both null for non-notification rows; both populated on external notification rows, with the recipient person and `notify.*` plugin id); `delivered_at` null until the channel adapter confirms successful delivery, then set to the UTC success time; `state` (`pending`\|`delivered`\|`dead`\|`suppressed`), `attempts`, `next_attempt_at`, `last_error` |
+| `outbox_dedupe_reservation` | One durable reservation row per `(recipient_person_id, channel, dedupe_key)` primary key; `owner_outbox_id`, `lease_token uuid`, and `lease_expires_at` are either all null (free) or all non-null (held). Atomically acquire only when free, expired, or already owned by this candidate; every acquisition/takeover gets a fresh random token, while renewal preserves the current token and requires it to match before expiry. The token fences stale workers; expiry permits recovery after a crashed worker. Keep an idle row or recreate it; never reuse a token. |
 | `webhook` | `workspace_id`, `url`, `secret` (encrypted), `secret_previous`, `secret_rotated_at`, `events text[]`, `active`, `disabled_at`, `disabled_reason`, `created_by` |
 | `webhook_delivery` | `webhook_id`, `event_id`, `attempt`, `status_code`, `duration_ms`, `request_body jsonb`, `response_body` (truncated), `error`, `attempted_at` |
 | `external_link` | `entity_type`, `entity_id`, `system`, `external_id`, `url`, `title`, `project_id` null, `organisation_id` null (denormalised at insert, for the same reach-filtering reason as `custom_field_value`) — provenance for any entity, not only work items |
@@ -391,13 +392,27 @@ broadcast, one summary event per chunk, audit at run level — see
 [import-strategy.md](../06-data-import/import-strategy.md).
 
 For notification deduplication, an external notification row stores `recipient_person_id`,
-`channel`, and `dedupe_key`; non-notification rows leave the first two null. A claimed
-notification candidate is suppressed only if a **different** outbox row matches all three
-values and has `delivered_at >= now() - interval '5 minutes'`. Successful sends set
-`delivered_at`; failed attempts and suppressed candidates leave it null. The partial index on
-`(recipient_person_id, channel, dedupe_key, delivered_at desc)` where `delivered_at is not
-null` serves that equality-plus-time-range lookup. Retrying the same row follows its retry
-state and excludes that row from the duplicate lookup.
+`channel`, and `dedupe_key`; non-notification rows leave the first two null. Before checking
+for recent success or calling a channel, the drain atomically acquires the matching
+`outbox_dedupe_reservation`. Its primary key serializes replicas for the same person/channel/
+key; the reservation owner may renew `lease_expires_at` while its bounded adapter request is
+active. Renewal, completion, and release require a matching `owner_outbox_id` and
+`lease_token`; renewal and completion also require an unexpired lease. A new owner always
+gets a fresh random token, so a stale worker cannot commit delivery state after lease expiry
+or takeover. If renewal fails, the worker must stop the provider request when possible and
+must not commit success with the expired token.
+
+After acquiring the reservation, a candidate is suppressed only if a **different** outbox
+row matches all three values and has `delivered_at >= now() - interval '5 minutes'`. The
+partial index on `(recipient_person_id, channel, dedupe_key, delivered_at desc)` where
+`delivered_at is not null` serves that equality-plus-time-range lookup. A successful adapter
+acceptance is committed by setting the candidate's `state = 'delivered'` and `delivered_at`
+and freeing the reservation in the same database transaction, conditional on the live
+reservation token. A suppressed candidate is marked `suppressed` and frees the reservation
+without setting `delivered_at`. A definite failed attempt increments retry state and frees
+the reservation; an ambiguous/in-flight attempt retains it until its bounded request ends
+or the lease expires. The same outbox row is retried as a retry, and is excluded from its
+own duplicate lookup.
 
 ### The audit hash chain
 

@@ -146,19 +146,38 @@ unique key, digest values, and per-person quiet-hours fields are defined in
 - `NO-11` Duplicate suppression: for notifications, compute `outbox.dedupe_key` from
   `event_kind + resource_type + resource_id + person_id + channel`; store the notification
   recipient in `outbox.recipient_person_id` and the external plugin id in `outbox.channel`.
-  Immediately before sending a claimed notification row, query for another row with the same
-  `recipient_person_id`, `channel`, and `dedupe_key`, `delivered_at >= now() - interval '5
-  minutes'`, and `id <> candidate.id`. The partial index on
-  `(recipient_person_id, channel, dedupe_key, delivered_at desc)` where `delivered_at is not
-  null` supports these equality and time-range predicates. If a match exists, mark the
-  candidate `suppressed` without sending or setting its `delivered_at`; otherwise send it.
-  On channel-adapter success, set the candidate row's `state = 'delivered'` and
-  `delivered_at` to the success time. Failed attempts leave `delivered_at` null and use that
-  same row's retry state. A retry is therefore not a duplicate check against itself: it
-  retries the same row, while suppression requires a different row with a prior successful
-  delivery in the five-minute window. The channel is part of the key, so the same event may
-  still reach the person over two different channels. The fields, index, and drain behavior
-  are defined in
+  Before the recent-success lookup, atomically acquire the unique
+  `outbox_dedupe_reservation` keyed by `(recipient_person_id, channel, dedupe_key)`. A
+  worker may insert a free key or atomically take over an expired reservation; it may renew
+  a live reservation only when the same candidate row and token still own it. Every
+  acquisition/takeover sets a fresh random token; renewal preserves it and extends
+  `lease_expires_at`. A different row's active reservation means leave this candidate
+  `pending`, set `next_attempt_at` to the lease expiry, and do not increment its delivery
+  attempts. Row-level `FOR UPDATE SKIP LOCKED` is not sufficient to serialize different
+  outbox rows with the same key.
+
+  After acquiring the reservation, query for a **different** outbox row with the same three
+  fields, `delivered_at >= now() - interval '5 minutes'`, and `id <> candidate.id`. The
+  partial index on `(recipient_person_id, channel, dedupe_key, delivered_at desc)` where
+  `delivered_at is not null` supports those equality and time-range predicates. If a match
+  exists, set the candidate `state = 'suppressed'` without sending or setting its
+  `delivered_at`, then release the reservation. Otherwise call the channel adapter while
+  renewing the lease. Adapter acceptance is considered success only when the worker commits
+  `state = 'delivered'`, `delivered_at`, and reservation release in one transaction that
+  still matches its current `owner_outbox_id` and unexpired random `lease_token`.
+
+  A definite failed attempt leaves `delivered_at` null, updates the same row's retry state,
+  and releases the reservation. An in-flight or ambiguous attempt keeps the reservation
+  until its bounded request finishes or the lease expires. On process crash, lease expiry
+  permits another worker to acquire the key with a fresh token; stale tokens cannot commit
+  success after takeover. If a provider accepted a request but the process crashed or lost
+  the response before the database commit, that external effect cannot be rolled back and a
+  later retry may send again. This is at-least-once delivery across that window, not an
+  exactly-once guarantee. Provider idempotency may use the stable outbox row id where
+  available, but is not assumed. A retry of the same outbox row is still a retry; only a
+  distinct row with a prior committed success is suppressed. The channel is part of the key,
+  so the same event may still reach the person over two different channels. Fields, index,
+  reservation, and drain behavior are defined in
   [data-model.md](../01-architecture/data-model.md#11-automations-notifications-integrations-audit)
   and [background-jobs.md](../01-architecture/background-jobs.md).
 
@@ -309,7 +328,14 @@ acceptance work. Add `tests/api-integration/notification-task-reach.test.ts` for
 list/read/read-all/create/delivery reach; `tests/api-integration/notification-preferences.test.ts`
 for scoped preference resolution, outbox transactionality/retries, deduplication and quiet
 hours; and `tests/api-integration/customer-notification-privacy.test.ts` for `NO-19` and
-`NO-20`.
+`NO-20`. The preferences integration suite must include a concurrent two-replica case: two
+different pending rows share one recipient/channel/key and are claimed with `SKIP LOCKED`;
+only one worker acquires the reservation and calls the provider, then commits
+`delivered_at`; the other defers, acquires after release, observes that committed success,
+and marks its row suppressed without a second provider call. Also cover active-lease deferral,
+known-failure release/retry, and crashed-worker lease expiry with a stale-token commit
+rejected. A provider-accepted-but-uncommitted crash must assert at-least-once residual
+behavior rather than exactly-once delivery.
 
 Add `tests/api-integration/notification-preference-link-handoff.test.ts` for expired and
 wrong-purpose tokens, token redaction, audience mismatch, same-origin handoff cookies, auth

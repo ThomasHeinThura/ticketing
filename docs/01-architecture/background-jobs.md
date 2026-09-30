@@ -162,11 +162,14 @@ mutation transaction
                     ↓  commit hook: WebSocket broadcast, in-app notification
 outbox-drain (every 30 s, every replica)
   ├── claim a batch: SELECT … FOR UPDATE SKIP LOCKED
-  ├── for notifications, query a different delivered row by recipient + channel + dedupe_key
-  │   └── match in previous 5 min → mark candidate suppressed; do not call channel
-  ├── send otherwise; success → mark delivered and set outbox.delivered_at
+  ├── notification: acquire reservation for recipient + channel + dedupe_key
+  │   ├── active reservation by another row → defer candidate; do not increment attempts
+  │   └── acquired → query a different delivered row from the previous 5 min
+  │       └── match → mark candidate suppressed and release reservation
+  ├── send otherwise while renewing reservation; success → atomically mark delivered,
+  │   set outbox.delivered_at, and release reservation with its current token
   ├── webhook attempts → record duration + attempt + bodies in webhook_delivery
-  └── failure → attempts++, next_attempt_at = now + backoff
+  └── definite failure → attempts++, next_attempt_at = now + backoff, release reservation
                 after 6 attempts → dead, surfaced in God Mode → Deliveries
 ```
 
@@ -177,9 +180,19 @@ failed retries keep the same pending row and do not count as duplicate deliverie
 notification field and query contract are specified in [data-model.md](data-model.md) and
 [notifications.md](../03-features/notifications.md#delivery).
 
-Backoff: 30 s, 2 m, 10 m, 1 h, 6 h, 24 h. `SKIP LOCKED` is why `outbox-drain` needs no
-lease and is safe to run everywhere — it is the one job that deliberately runs on every
-replica.
+The reservation is a durable per-key lease, independent of the row-level `SKIP LOCKED`
+claim. A healthy worker renews it while its bounded adapter request is active. A crashed
+worker stops renewing; after `lease_expires_at`, another worker may take over with a fresh
+token. The old token cannot commit a database success after takeover. If the provider
+accepted a request before the worker crashed or lost its response, that external effect
+cannot be rolled back; after lease expiry, retry may send again. Delivery is at-least-once
+across that failure window, not exactly-once. An adapter may use the stable outbox row id as
+an idempotency key when its provider supports one, but correctness does not assume provider
+idempotency.
+
+Backoff: 30 s, 2 m, 10 m, 1 h, 6 h, 24 h. `SKIP LOCKED` lets `outbox-drain` claim different
+rows on every replica without a global job lease. Notification-key serialization is handled
+separately by `outbox_dedupe_reservation`.
 
 ## Metrics snapshots
 
