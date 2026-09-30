@@ -1209,6 +1209,33 @@ test("G8 rejects an active inventory row missing its opening pipe", async () => 
   assert.match(result.output, /screen inventory line .* malformed table row/);
 });
 
+test("G8 rejects an inventory with no canonical screen table", async () => {
+  const result = await runVisualScope({
+    screens: [],
+    inventory: "No screen inventory table is present.\n",
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /must contain at least one canonical Screen inventory table/,
+  );
+});
+
+test("G8 rejects an inventory whose rows hide every route from the route parser", async () => {
+  const inventory = INVENTORY.replaceAll("| route |", "| section |");
+  const result = await runVisualScope({
+    screens: [],
+    inventory,
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /must contain at least one route-kind inventory row/,
+  );
+});
+
 for (const [label, mutation] of [
   ["missing threshold", (source) => source.replace("threshold: 0, ", "")],
   [

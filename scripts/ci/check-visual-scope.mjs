@@ -2724,6 +2724,7 @@ function isInventoryTableSeparator(cells) {
 
 const inventoryRows = [];
 let readingScreenTable = false;
+let screenTableCount = 0;
 const inventoryLines = inventory.split(/\r?\n/u);
 for (const [index, line] of inventoryLines.entries()) {
   const cells = splitInventoryTableRow(line);
@@ -2732,6 +2733,7 @@ for (const [index, line] of inventoryLines.entries()) {
     cells.map((cell) => cell.toLowerCase()).join("|") ===
       "screen|route|kind|stage|status"
   ) {
+    screenTableCount += 1;
     readingScreenTable = true;
     continue;
   }
@@ -2781,6 +2783,16 @@ for (const [index, line] of inventoryLines.entries()) {
   if (kind === "route") {
     inventoryRows.push({ name, route: routeMatch?.[1], status });
   }
+}
+if (screenTableCount === 0) {
+  failures.push(
+    `${inventoryPath} must contain at least one canonical Screen inventory table`,
+  );
+}
+if (inventoryRows.length === 0) {
+  failures.push(
+    `${inventoryPath} must contain at least one route-kind inventory row`,
+  );
 }
 const inventoryRoutes = new Set(inventoryRows.map(({ route }) => route));
 const activeInventoryRows = inventoryRows.filter(({ status }) =>
