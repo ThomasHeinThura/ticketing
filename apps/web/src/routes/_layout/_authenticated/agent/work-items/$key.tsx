@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useLayoutEffect } from "react";
 import PageTitle from "@/components/page-title";
 import WorkItemDetail from "@/components/work-item/work-item-detail";
 import WorkItemJourney from "@/components/work-item/work-item-journey";
@@ -51,6 +52,16 @@ function WorkItemDetailRouteComponent() {
     error,
     refetch,
   } = useGetWorkItem({ key });
+
+  useLayoutEffect(() => {
+    if (isLoading && !item) {
+      performance.clearMarks("taskdesk:work-item-detail:skeleton-mounted");
+      performance.clearMarks("taskdesk:work-item-detail:content-mounted");
+      performance.mark("taskdesk:work-item-detail:skeleton-mounted");
+    } else if (item) {
+      performance.mark("taskdesk:work-item-detail:content-mounted");
+    }
+  }, [isLoading, item]);
 
   // `require-work-item-reach.ts` makes "not yours" and "not there" indistinguishable on
   // purpose (a guessable `{slug}-{number}` key), so a 404 is shown as one not-found

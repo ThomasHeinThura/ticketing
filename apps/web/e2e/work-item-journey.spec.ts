@@ -86,6 +86,17 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
     },
   };
   const routeCalls: string[] = [];
+  await page.addInitScript(() => {
+    const shifts: Array<{ value: number; startTime: number }> = [];
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as Array<
+        PerformanceEntry & { value: number }
+      >) {
+        shifts.push({ value: entry.value, startTime: entry.startTime });
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+    Object.assign(window, { __taskdeskLayoutShifts: shifts });
+  });
   page.on("pageerror", (error) => console.error("Browser page error:", error));
   const session = {
     session: {
@@ -456,9 +467,41 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(page.getByLabel("Default comment visibility")).toBeEnabled();
   await page.goto("/agent/work-items/WLP-1");
   await expect(page.getByTestId("work-item-detail")).toBeVisible();
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const detailShift = await page.evaluate(() => {
+    const skeleton = performance.getEntriesByName(
+      "taskdesk:work-item-detail:skeleton-mounted",
+    )[0]?.startTime;
+    const content = performance
+      .getEntriesByName("taskdesk:work-item-detail:content-mounted")
+      .at(-1)?.startTime;
+    const shifts = (
+      window as Window & {
+        __taskdeskLayoutShifts?: Array<{
+          value: number;
+          startTime: number;
+        }>;
+      }
+    ).__taskdeskLayoutShifts;
+    if (skeleton === undefined || content === undefined || !shifts) return null;
+    return shifts
+      .filter(
+        (entry) => entry.startTime >= skeleton && entry.startTime <= content,
+      )
+      .reduce((total, entry) => total + entry.value, 0);
+  });
+  expect(detailShift).not.toBeNull();
+  expect(detailShift).toBeLessThanOrEqual(0.1);
+  await expect(page).toHaveScreenshot("work-item-detail.png", {
+    fullPage: true,
+    animations: "disabled",
+  });
+  const editButton = page.getByRole("button", { name: "Edit", exact: true });
+  await editButton.focus();
+  await page.keyboard.press("Enter");
   await page.getByLabel("Title", { exact: true }).fill("First report edited");
-  await page.getByRole("button", { name: "Save changes" }).click();
+  const saveButton = page.getByRole("button", { name: "Save changes" });
+  await saveButton.focus();
+  await page.keyboard.press("Enter");
   await expect(
     page.getByText("First report edited", { exact: true }),
   ).toBeVisible();
@@ -515,7 +558,9 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(
     page.locator('[contenteditable="true"][aria-label="Write a comment"]'),
   ).toHaveText("Customer-safe update");
-  await page.getByRole("button", { name: "Send comment" }).click();
+  const sendComment = page.getByRole("button", { name: "Send comment" });
+  await sendComment.focus();
+  await page.keyboard.press("Enter");
   await expect.poll(() => postedComment).toBe(true);
   await expect(
     page.getByText("Customer-safe update", { exact: true }),
