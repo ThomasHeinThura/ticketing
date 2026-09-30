@@ -14,7 +14,7 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
-`8cc4f76dc4a8af23c2cf4a9dc93f9093f7c77569` (verified 2026-09-30 19:32 UTC).**
+`8cc4f76dc4a8af23c2cf4a9dc93f9093f7c77569` (verified 2026-09-30 19:38 UTC).**
 PR #519's dependency-audit fix and PR #507's G8 visual gate are merged. The active,
 strict `protect-main` ruleset now requires 17 status contexts, including
 `visual regression (G8)`. #507's final exact-head CI passed every required check:
@@ -28,9 +28,14 @@ benchmark was red on LCP, route transition, create responsiveness and board rend
 The author is correcting click-to-paint instrumentation and optimizing the runtime,
 without raising budgets. #8 still needs about seven days of representative, clean UAT
 shadow evidence before strict policy cutover. The current UAT ticket health endpoint
-returns 200, but this session has not queried fresh shadow tables; the older 25-request,
-four-unevaluated sample below is not closure evidence. Do not claim the P0 phase
-complete or run its phase-finalizer yet.
+returns 200. A read-only query of the live v2 UAT Postgres at 2026-09-30 19:37 UTC
+found 68 observations across 2026-09-28–30, 41 route keys and 14 router groups: 46 `agree`, 22
+`unevaluated` (18 delegated platform, four notification legacy-outcome-unknown), zero
+disagreement or evaluator-error rows, and no `shadow_saturated` or capped non-agreeing
+buckets. The deployed UAT image is still `v2-uat-shadow-0b95ed08`; three low-volume
+days with unevaluated traffic are not a clean seven-day soak. Full evidence is in
+[issue #8's 2026-09-30 audit](https://github.com/ThomasHeinThura/ticketing/issues/8#issuecomment-5918345271).
+Do not claim the P0 phase complete or run its phase-finalizer yet.
 
 **Local development:** the image rebuilt from this `main` head, the container booted
 healthy, and both `ticketing.localhost` and `portal.localhost` returned 200 for `/`
@@ -44,7 +49,9 @@ delta evidence, a committed Sol note, and green required checks. P3 #511's domai
 helper also includes G8 and needs a current-head security delta note; it does not
 operationally enforce IP-9. P2 #513 remains a draft calendar slice with UI/browser
 acceptance in progress. P4 #515 remains a draft persistence slice: the Sol review
-found a null API-key credential binding gap, and remediation is in progress. P1 #512
+found a null API-key credential binding gap; the author fixed it at source head
+`36a2d6355a225949e5a50d3eb393edc8d8f93e17`, a fresh Luna delta review
+cleared, and fresh Sol security review plus exact-head CI are pending. P1 #512
 is still a separate incomplete detail-journey draft. Check live GitHub heads and
 reviews before acting on any of these candidates.
 
