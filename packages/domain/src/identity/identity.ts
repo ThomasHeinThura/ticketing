@@ -34,7 +34,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return proto === Object.prototype || proto === null;
 }
 
-function normaliseEmailDomain(value: string): string | undefined {
+function normaliseEmailDomain(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
   const domain = value.toLowerCase();
   if (domain.length > 253) return undefined;
   const labels = domain.split(".");
@@ -124,6 +125,9 @@ export function normaliseEntraClaims(
   let matchingBindingCount = 0;
   let domainOwner: string | undefined;
   for (const binding of domainOwners) {
+    if (!isRecord(binding)) {
+      return { ok: false, reason: "ambiguous_domain_binding" };
+    }
     const bindingDomain = normaliseEmailDomain(binding.domain);
     const bindingOwnerId: unknown = binding.identityConnectionId;
     // Invalid configured data must not silently turn off a domain restriction.

@@ -238,6 +238,23 @@ describe("P3 identity core", () => {
     ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
   });
 
+  it("IP-9: rejects configured bindings with missing or non-string domains", () => {
+    const malformedBindings = [
+      { identityConnectionId: "connection-2" },
+      { domain: null, identityConnectionId: "connection-2" },
+      { domain: 42, identityConnectionId: "connection-2" },
+      null,
+    ] as unknown as IdentityDomainOwner[];
+
+    for (const binding of malformedBindings) {
+      expect(
+        normalise(claims({ email: "person@example.com" }), connection(), [
+          binding,
+        ]),
+      ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
+    }
+  });
+
   it("IP-28: accepts group object ids and ignores overage claims without a Graph lookup", () => {
     expect(
       normalise(
