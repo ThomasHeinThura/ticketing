@@ -14,6 +14,43 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
+`7e3e4ff506cc9486a8737a73383cc398d03c835a` (verified 2026-09-30 21:22 UTC).**
+PR #523's deterministic workspace-slug test fix merged at this head after all 17 required
+checks passed; issue #522 is closed. PR #524's archived-project guard remains in main at
+`7d21bc8f`; issue #428 remains open for the broader pending-action DELETE retrofit.
+The local Traefik image was rebuilt from `7d21bc8f` after #524; #523 is test-only and does
+not change the shipped image.
+
+**P0 remains open.** PR #525 is still draft at `2b9418f3`. Its hosted G11 run fails five
+budgets: 500-row list render 720.7/500 ms, LCP 2584/2500 ms, route transition 443.4/300 ms,
+create click-to-paint 209.6/200 ms, and 200-card board render 1037.5/500 ms; CLS and drag
+p95 pass. Two independent Luna reviews also block missing click-to-paint coverage for the
+other applicable G10 journeys. The protected E2E and PR-template checks are red, and G11
+is not yet a required ruleset context. #8 still has only the 2026-09-30 19:37 UTC audit
+recorded below; its low-volume, three-day sample does not meet the approximately seven-day
+representative soak. P0 cannot be claimed complete or receive its phase finalizer.
+
+**Parallel candidates:** P1 #512 remains draft at `ae09fa16` on an old base. Its migration
+`0077_project_default_comment_visibility` conflicts with main's #515 migration numbering
+(`0077_pending_actions`, `0078_outbox`); its journal/snapshot need regeneration after main
+sync. CA-15 comment-image upload/linkage, the in-progress detail route's G8 baseline, a
+keyboard-only G10 journey, G11 interaction/performance coverage and G13 layout-shift
+measurement remain incomplete. Keep the owning attachment/comment contract open and do
+not claim this slice complete.
+
+P2 #513 is draft at review-sync head `ed22a2ee`, based on `7d21bc8f`; its last calendar
+implementation commit is `4766e2d6` and focused Postgres tests passed 13/13 there. Fresh
+review is pending after the sync. Current checks have the PR-template gate red, while gate
+checkers, integration, unit/component and G8 are pending. CAL-8 usage remains blocked on
+#437 and the SLA policy model; AU-14 alerting and administrator notifications remain open.
+Direct DELETE still awaits #428.
+
+P4's bounded archived-project guard is complete in #524; the issue #428 DELETE retrofit is
+still open. Check GitHub for exact heads, reviews and checks before acting on any candidate.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
 `7d21bc8f806eb1a5b1cab9896bddea13851dcab1` (verified 2026-09-30 21:11 UTC).**
 PR #524 merged at `7d21bc8f`; its archived-project liveness predicate and regression
 test close the bounded pending-action target-scope finding. The exact merge candidate
