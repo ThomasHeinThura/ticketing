@@ -756,9 +756,12 @@ export function createApp(options: { staticRoot?: string } = {}) {
       },
       servers: [
         {
-          url: normalizeApiServerUrl(
-            process.env.KANEO_API_URL || "https://taskdesk.bimats.com",
-          ),
+          // Runtime docs are consumed by self-hosted clients that may provide
+          // bearer tokens. A relative URL keeps their credentials on the same
+          // origin; the public contract exporter sets KANEO_API_URL explicitly.
+          url: process.env.KANEO_API_URL
+            ? normalizeApiServerUrl(process.env.KANEO_API_URL)
+            : "/api",
           description: "TaskDesk API Server",
         },
       ],
