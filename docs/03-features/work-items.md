@@ -73,6 +73,15 @@ whether it is an epic, and which custom fields apply.
   UI can offer a resolution. The one exception is rank: changes go through
   `POST /work-items/{key}/rank` (`WI-11`), are exempt from `If-Match`, and are
   last-write-wins — every other field write is version-checked.
+- `WI-7a` Until the legacy task screens and `/api/task` routes are retired, the full-task
+  `PUT /api/task/{id}` compatibility endpoint follows the same optimistic-concurrency
+  contract. Each task response carries an integer `version`; every persisted task-row update
+  advances it. The PUT requires `If-Match: "<version>"`, compares it after locking the task,
+  and returns 409 with asserted/current versions on mismatch without changing the row or
+  publishing update effects. All full-task callers send the version they read. Narrow
+  status/assignee and task-move routes remain field-scoped and do not require `If-Match`; their
+  writes advance the version so an older full-task PUT cannot overwrite them. Reordering stays
+  on the existing move/rank path and does not gain a last-write-wins exception for other fields.
 - `WI-8` Title, description, dates, labels and custom fields may be changed by anyone with
   `work_item:update` on the project. Priority is separate: changing it needs
   `work_item:set_priority`, not `work_item:update` (see the Permissions table below). A

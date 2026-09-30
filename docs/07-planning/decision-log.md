@@ -5,6 +5,30 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-01 · Legacy full-task PUT uses the work-item optimistic-concurrency contract (#526)
+
+**Decision:** while legacy task screens and `/api/task` remain active, full-task
+`PUT /api/task/{id}` uses the `api-design.md` `If-Match` version contract. Task responses expose
+an integer row version; every persisted task-row update advances it. The PUT checks the
+asserted version after locking the task and returns 409 with asserted/current versions on a
+mismatch, with no row or event side effects. Every full-task caller must send the version from
+the task it read. Existing field-specific status/assignee and move routes remain scoped to
+their requested fields and advance the same version. No last-write-wins exception is added
+for those fields or for other full-task PUT fields. The owning specification is
+`work-items.md` WI-7a.
+
+**Why:** the compatibility endpoint replaces multiple fields from one possibly stale task
+snapshot. A row lock alone serializes writes but still permits a late stale replacement to
+undo a status or assignee change. A row version checked under that lock preserves the latest
+committed change, including when requests finish in the reverse order.
+
+**Alternatives:** keep last-write-wins for legacy PUT (rejected because completion order can
+silently revert a concurrent edit); merge selected protected fields in the server (rejected
+because intent cannot be distinguished from a stale snapshot without a client revision).
+
+**Decided by:** the orchestrating session under the bounded #526 task-update concurrency
+assignment; recorded before implementation.
+
 ### 2026-10-01 · G8 requires implemented screens now and activates future routes with implementation
 
 **Decision:** G8 requires screenshot comparison for every exported UI Storybook story and
