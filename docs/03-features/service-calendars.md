@@ -109,10 +109,10 @@ repeats every year (`CAL-12`).
   `activity` journal does not apply: its authoritative schema requires a `work_item_id`
   composite foreign key, and a calendar has no work item.
 - A `service_calendar.*` event must be recorded in the durable outbox in the same
-  transaction as its calendar mutation (`EV-1`). The durable outbox is described in
-  `docs/01-architecture/data-model.md`, but its runtime table and writer are not
-  implemented. This slice emits no service-calendar events; it must not use the
-  post-commit in-memory `publishEvent` emitter as a substitute.
+  transaction as its calendar mutation (`EV-1`). Create and update now write their
+  catalogue event envelopes transactionally. They do not use the post-commit in-memory
+  `publishEvent` emitter as a substitute. Deletion remains unavailable, so no delete event
+  is written.
 - Calendar deletion is unavailable until the server-enforced pending-action mechanism is
   implemented. When available, `DELETE /api/service-calendars/{id}` must create a pending
   action and return `202` per `pending-actions.md` (`PA-1`–`PA-15`); it must not delete the
@@ -160,11 +160,13 @@ GET    /api/service-calendars/{id}/preview?year=2026 sla_policy:read
 GET    /api/service-calendars/{id}/usage             sla_policy:read
 ```
 
-### Backend slice status (2026-09-29)
+### Backend slice status (2026-10-01)
 
-The persisted CRUD/list/detail and annual preview routes are implemented. The preview uses
-the shared `packages/domain/src/calendar/` calculations. The remaining routes are not
-implemented in this slice:
+The persisted create/update/list/detail and annual preview routes are implemented. Create
+and update write audit records and durable event envelopes in their mutation transactions;
+an audit insert failure is isolated to its savepoint and logged while the mutation and
+outbox event commit. The preview uses the shared `packages/domain/src/calendar/`
+calculations. The remaining routes are not implemented in this slice:
 
 This slice also does not seed workspace calendars with named presets or implement calendar
 cloning. The calendar list/editor UI now covers manual calendar creation, editing, and

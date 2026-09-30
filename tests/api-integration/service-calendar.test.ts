@@ -34,6 +34,7 @@ function initEventSubscriber() {
 }
 
 const FAIL_FUNCTION = "td_calendar_audit_probe_fail";
+const FAIL_OUTBOX_FUNCTION = "td_calendar_outbox_probe_fail";
 
 async function armAuditInsertFailure() {
   await db.execute(
@@ -59,6 +60,39 @@ async function disarmAuditInsertFailure() {
     sql.raw(`DROP TRIGGER IF EXISTS ${FAIL_FUNCTION} ON "audit_log"`),
   );
   await db.execute(sql.raw(`DROP FUNCTION IF EXISTS ${FAIL_FUNCTION}()`));
+}
+
+async function armOutboxInsertFailure(
+  kind: "service_calendar.created" | "service_calendar.updated",
+) {
+  await db.execute(
+    sql.raw(`
+    CREATE OR REPLACE FUNCTION ${FAIL_OUTBOX_FUNCTION}() RETURNS trigger AS $$
+    BEGIN
+      IF NEW.kind = '${kind}' THEN
+        RAISE EXCEPTION 'service-calendar probe: injected outbox insert failure';
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+  `),
+  );
+  await db.execute(
+    sql.raw(`
+    CREATE TRIGGER ${FAIL_OUTBOX_FUNCTION}
+    BEFORE INSERT ON "outbox"
+    FOR EACH ROW EXECUTE FUNCTION ${FAIL_OUTBOX_FUNCTION}();
+  `),
+  );
+}
+
+async function disarmOutboxInsertFailure() {
+  await db.execute(
+    sql.raw(`DROP TRIGGER IF EXISTS ${FAIL_OUTBOX_FUNCTION} ON "outbox"`),
+  );
+  await db.execute(
+    sql.raw(`DROP FUNCTION IF EXISTS ${FAIL_OUTBOX_FUNCTION}()`),
+  );
 }
 
 async function waitForBlockedCalendarRequests(expected: number) {
@@ -117,6 +151,7 @@ describe("API integration: service calendars (CAL-1–CAL-14)", () => {
   });
   afterEach(async () => {
     await disarmAuditInsertFailure();
+    await disarmOutboxInsertFailure();
     vi.restoreAllMocks();
   });
 
@@ -153,6 +188,33 @@ describe("API integration: service calendars (CAL-1–CAL-14)", () => {
     expect(createAudit[0]?.after).toMatchObject({
       name: "Business hours",
       timezone: "Europe/London",
+    });
+    const [createdEvent] = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "service_calendar.created"));
+    expect(createdEvent?.state).toBe("pending");
+    expect(createdEvent?.payload).toMatchObject({
+      kind: "service_calendar.created",
+      actor: {
+        type: "person",
+        id: creator.user.id,
+        name: creator.user.name,
+      },
+      scope: {
+        workspaceId: creator.workspace.id,
+        organisationId: creator.workspace.organisationId,
+      },
+      payload: {
+        key: calendar.id,
+        url: `/agent/settings/calendars/${calendar.id}`,
+        calendarId: calendar.id,
+        workspaceId: creator.workspace.id,
+        name: "Business hours",
+      },
+      causationId: null,
+      depth: 0,
+      originAutomationId: null,
     });
 
     const listed = await app.request(
@@ -192,6 +254,20 @@ describe("API integration: service calendars (CAL-1–CAL-14)", () => {
     expect(updateAudit).toHaveLength(1);
     expect(updateAudit[0]?.before).toMatchObject({ name: "Business hours" });
     expect(updateAudit[0]?.after).toMatchObject({ name: "Updated hours" });
+    const [updatedEvent] = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.kind, "service_calendar.updated"));
+    expect(updatedEvent?.state).toBe("pending");
+    expect(updatedEvent?.payload).toMatchObject({
+      kind: "service_calendar.updated",
+      payload: {
+        key: calendar.id,
+        calendarId: calendar.id,
+        name: "Updated hours",
+        changedFields: ["name"],
+      },
+    });
     expect(recordedEvents).toEqual([]);
     const deletion = await app.request(
       `/api/service-calendars/${calendar.id}`,
@@ -302,6 +378,12 @@ describe("API integration: service calendars (CAL-1–CAL-14)", () => {
         .where(eq(schema.auditLogTable.entityType, "service_calendar")),
     ).toHaveLength(auditCountBefore.length);
     expect(recordedEvents).toEqual([]);
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.workspaceId, creator.workspace.id)),
+    ).toHaveLength(2);
 
     const deletion = await app.request(
       `/api/service-calendars/${calendar.id}`,
@@ -322,6 +404,76 @@ describe("API integration: service calendars (CAL-1–CAL-14)", () => {
         .from(schema.auditLogTable)
         .where(eq(schema.auditLogTable.entityType, "service_calendar")),
     ).toHaveLength(auditCountBefore.length);
+  });
+
+  it("EV-1: rolls calendar mutations and audits back when outbox writes fail", async () => {
+    const creator = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const body = {
+      workspaceId: creator.workspace.id,
+      name: "Atomic outbox hours",
+      timezone: "UTC",
+      windows: weekdayWindows,
+      holidays: [],
+    };
+
+    await armOutboxInsertFailure("service_calendar.created");
+    const failedCreate = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    expect(failedCreate.status).toBe(500);
+    expect(await db.select().from(schema.serviceCalendarTable)).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.entityType, "service_calendar")),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.workspaceId, creator.workspace.id)),
+    ).toHaveLength(0);
+    await disarmOutboxInsertFailure();
+
+    const successfulCreate = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    expect(successfulCreate.status).toBe(200);
+    const { id } = (await successfulCreate.json()) as { id: string };
+
+    await armOutboxInsertFailure("service_calendar.updated");
+    const failedUpdate = await app.request(`/api/service-calendars/${id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Outbox failure must roll back" }),
+    });
+    expect(failedUpdate.status).toBe(500);
+    await disarmOutboxInsertFailure();
+
+    const [calendar] = await db
+      .select()
+      .from(schema.serviceCalendarTable)
+      .where(eq(schema.serviceCalendarTable.id, id));
+    expect(calendar?.name).toBe("Atomic outbox hours");
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.entityType, "service_calendar")),
+    ).toHaveLength(1);
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.workspaceId, creator.workspace.id)),
+    ).toHaveLength(1);
   });
 
   it("CAL-14: serializes concurrent PATCH snapshots with a row lock", async () => {

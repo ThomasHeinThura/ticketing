@@ -1,3 +1,4 @@
+import { createId } from "@paralleldrive/cuid2";
 import type { JsonValue } from "@taskdesk/domain";
 import { and, eq } from "drizzle-orm";
 import {
@@ -5,7 +6,12 @@ import {
   appendAuditLog,
 } from "../audit/audit-writer";
 import db from "../database";
-import { serviceCalendarTable } from "../database/schema";
+import {
+  serviceCalendarTable,
+  userTable,
+  workspaceTable,
+} from "../database/schema";
+import { enqueueOutboxEvent } from "../events/outbox";
 
 type CalendarActor = {
   actorId: string;
@@ -29,6 +35,77 @@ async function appendCalendarAudit(
       error,
     });
   }
+}
+
+async function appendCalendarEvent(
+  tx: CalendarTransaction,
+  input: {
+    kind: "service_calendar.created" | "service_calendar.updated";
+    calendar: typeof serviceCalendarTable.$inferSelect;
+    actor: CalendarActor;
+    changedFields?: Array<"name" | "timezone" | "windows" | "holidays">;
+  },
+) {
+  const [context] = await tx
+    .select({
+      actorName: userTable.name,
+      organisationId: workspaceTable.organisationId,
+    })
+    .from(workspaceTable)
+    .innerJoin(userTable, eq(userTable.id, input.actor.actorId))
+    .where(eq(workspaceTable.id, input.calendar.workspaceId))
+    .limit(1);
+  if (!context) {
+    throw new Error("Could not resolve service-calendar event actor or scope");
+  }
+
+  const payload = {
+    key: input.calendar.id,
+    url: `/agent/settings/calendars/${input.calendar.id}`,
+    calendarId: input.calendar.id,
+    workspaceId: input.calendar.workspaceId,
+    name: input.calendar.name,
+    ...(input.kind === "service_calendar.updated"
+      ? { changedFields: input.changedFields ?? [] }
+      : {}),
+  };
+
+  await enqueueOutboxEvent(tx, {
+    id: `evt_${createId()}`,
+    kind: input.kind,
+    occurredAt: new Date().toISOString(),
+    actor: {
+      type: input.actor.actorType,
+      id: input.actor.actorId,
+      name: context.actorName,
+    },
+    scope: {
+      workspaceId: input.calendar.workspaceId,
+      ...(context.organisationId
+        ? { organisationId: context.organisationId }
+        : {}),
+    },
+    payload,
+    causationId: null,
+    depth: 0,
+    originAutomationId: null,
+  });
+}
+
+const CALENDAR_EVENT_FIELDS = [
+  "name",
+  "timezone",
+  "windows",
+  "holidays",
+] as const;
+
+function changedCalendarFields(
+  before: typeof serviceCalendarTable.$inferSelect,
+  after: typeof serviceCalendarTable.$inferSelect,
+) {
+  return CALENDAR_EVENT_FIELDS.filter(
+    (field) => JSON.stringify(before[field]) !== JSON.stringify(after[field]),
+  );
 }
 
 function auditSnapshot(calendar: {
@@ -89,6 +166,11 @@ export async function createCalendar(input: {
       entityId: row.id,
       after: auditSnapshot(row),
     });
+    await appendCalendarEvent(tx, {
+      kind: "service_calendar.created",
+      calendar: row,
+      actor: input.actor,
+    });
     return row;
   });
 }
@@ -135,6 +217,12 @@ export async function updateCalendar(
       entityId: row.id,
       before: auditSnapshot(before),
       after: auditSnapshot(row),
+    });
+    await appendCalendarEvent(tx, {
+      kind: "service_calendar.updated",
+      calendar: row,
+      actor,
+      changedFields: changedCalendarFields(before, row),
     });
     return { before, row };
   });
