@@ -110,9 +110,13 @@ this gate does not claim it.
 **Fails on:** an unapproved pixel change to any Storybook story or to any key screen
 snapshot.
 
-**Key screens** are every `route`-kind row of the [screen inventory](screen-inventory.md) —
-that document is the single source, so a screen added there gets its G8 baseline in the
-same pull request rather than a second, separately-maintained list drifting from it.
+**Key screens required today** are the `route`-kind rows marked in progress or complete in
+the [screen inventory](screen-inventory.md), plus every exported Storybook story. When a
+route moves into progress, its route registration, deterministic browser fixture, and G8
+baseline are required in that same change. Rows still marked not started remain planned
+work; they do not need a route or baseline before implementation begins. As implementation
+advances, every inventory route becomes a required key screen in the same change that moves
+it into progress.
 
 Approving a diff is an explicit action in the pull request, which puts intentional visual
 change in front of a reviewer and catches unintentional change immediately rather than
