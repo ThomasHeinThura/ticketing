@@ -1,23 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
-import getWorkspaces from "@/fetchers/workspace/get-workspaces";
+import { authClient } from "@/lib/auth-client";
 
-// S3 (issue #6, retrofit plan §3): replaces authClient.useListOrganizations()
-// with a plain TanStack query over the native GET /api/workspace route. The
-// ["workspaces"] key is deliberate: apps/web/src/routes/_layout/
-// _authenticated/dashboard/settings/workspace/general.tsx's delete-workspace
-// mutation already invalidates this exact key.
 function useGetWorkspaces() {
   const {
-    data: workspaces,
+    data: organizations,
     error,
     isPending,
-  } = useQuery({
-    queryKey: ["workspaces"],
-    queryFn: getWorkspaces,
-  });
+  } = authClient.useListOrganizations();
 
   return {
-    data: workspaces,
+    data: organizations,
     error,
     isLoading: isPending,
     isError: !!error,

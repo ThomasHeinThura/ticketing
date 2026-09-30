@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import inviteWorkspaceMember from "@/fetchers/workspace/invite-workspace-member";
+import { authClient } from "@/lib/auth-client";
 import queryClient from "@/query-client";
 
 type InviteWorkspaceUserRequest = {
@@ -9,9 +9,6 @@ type InviteWorkspaceUserRequest = {
   resend?: boolean;
 };
 
-// S6a (issue #6, retrofit plan §3): native replacement for
-// authClient.organization.inviteMember() -- see
-// apps/web/src/fetchers/workspace/invite-workspace-member.ts.
 function useInviteWorkspaceUser() {
   return useMutation({
     mutationFn: async ({
@@ -20,7 +17,18 @@ function useInviteWorkspaceUser() {
       role,
       resend,
     }: InviteWorkspaceUserRequest) => {
-      return inviteWorkspaceMember({ workspaceId, email, role, resend });
+      const { data, error } = await authClient.organization.inviteMember({
+        email,
+        role,
+        organizationId: workspaceId,
+        resend,
+      });
+
+      if (error) {
+        throw new Error(error.message || "Failed to invite workspace member");
+      }
+
+      return data;
     },
     onSuccess: (_, { workspaceId }) => {
       queryClient.invalidateQueries({

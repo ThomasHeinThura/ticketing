@@ -18,8 +18,6 @@ import {
 import { useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import activateWorkspace from "@/fetchers/workspace/activate-workspace";
-import useAcceptInvitation from "@/hooks/mutations/workspace-user/use-accept-invitation";
 import { useGetInvitationDetails } from "@/hooks/queries/invitation/use-get-invitation-details";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "@/lib/toast";
@@ -36,7 +34,6 @@ function AcceptInvitation() {
   });
   const navigate = useNavigate();
   const [isAccepting, setIsAccepting] = useState(false);
-  const acceptInvitationMutation = useAcceptInvitation();
 
   const { data: session, isPending: isSessionLoading } =
     authClient.useSession();
@@ -52,16 +49,18 @@ function AcceptInvitation() {
   const handleAcceptInvitation = async () => {
     setIsAccepting(true);
     try {
-      const data = await acceptInvitationMutation.mutateAsync({
+      const { data, error } = await authClient.organization.acceptInvitation({
         invitationId: inviteId,
       });
 
-      // S8a: native replacement for authClient.organization.setActive(). The
-      // invitation shape is S6a's native one (PR #112): `workspaceId`, and it is not
-      // optional, so the optionality guard this commit carried against the plugin's
-      // loose type is no longer meaningful. `mutateAsync` throws rather than returning
-      // an `error` field, so the pre-#112 `if (error)` branch is gone too.
-      await activateWorkspace(data.invitation.workspaceId);
+      if (error) {
+        toast.error(error.message || t("auth:invitation.toast.acceptFailed"));
+        return;
+      }
+
+      await authClient.organization.setActive({
+        organizationId: data?.invitation.organizationId,
+      });
 
       toast.success(t("auth:invitation.toast.acceptSuccess"));
 
@@ -72,7 +71,7 @@ function AcceptInvitation() {
 
       navigate({
         to: "/dashboard/workspace/$workspaceId",
-        params: { workspaceId: data.invitation.workspaceId },
+        params: { workspaceId: data?.invitation.organizationId || "" },
       });
     } catch (error) {
       toast.error(
