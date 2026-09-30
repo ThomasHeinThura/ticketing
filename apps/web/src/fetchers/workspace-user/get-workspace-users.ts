@@ -1,15 +1,27 @@
 import { authClient } from "@/lib/auth-client";
 
-export type GetActiveWorkspaceUsersRequest = {
+export type GetWorkspaceUsersRequest = {
   workspaceId: string;
+  limit?: number;
+  offset?: number;
+  sortBy?: string;
+  sortDirection?: "asc" | "desc";
 };
 
-async function getActiveWorkspaceUsers({
+async function getWorkspaceUsers({
   workspaceId,
-}: GetActiveWorkspaceUsersRequest) {
+  limit,
+  offset,
+  sortBy,
+  sortDirection,
+}: GetWorkspaceUsersRequest) {
   const { data, error } = await authClient.organization.listMembers({
     query: {
       organizationId: workspaceId,
+      limit,
+      offset,
+      sortBy,
+      sortDirection,
     },
   });
 
@@ -20,4 +32,4 @@ async function getActiveWorkspaceUsers({
   return data || [];
 }
 
-export default getActiveWorkspaceUsers;
+export default getWorkspaceUsers;

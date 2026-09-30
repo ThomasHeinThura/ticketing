@@ -38,51 +38,17 @@ Nine pull requests merged on 2026-09-09. What the plans would get wrong:
 | issue #7 is open | **Complete and closed** |
 | Throttle 1 conditions 4 and 5 unproven | **Both proven** — demonstrated by mutating the live router: an undeclared route fails CI |
 
-## Further reconciliation: the `state_template` split (2026-09-09, after `d4510a2`)
-
-Both plans still describe the lifecycle model as it stood before this correction, and are
-**not rewritten**, per the rule above — this note exists so a reader knows which of their
-sentences to re-verify instead.
-
-| A plan says | Actually, now |
-|---|---|
-| `state` is workspace-scoped, with `project_state` for per-project order/default/enablement, and "open"/"closed" keys off a bare `state.group` column | **Superseded.** `state_template` (workspace-scoped) is the shared catalogue a workflow's transitions reference; `state` (project-scoped) is a project's own concrete row, mapped to exactly one template via `state_template_id`. `project_state` is **retired** — its job now lives on `state` directly. `state` carries no `group` column: "open"/"closed" resolve through the join to `state_template.group`. See [data-model.md §3](../../01-architecture/data-model.md) and [ADR 0011](../../01-architecture/adr/0011-ticket-lifecycle-engine.md), which is final. |
-
-The sentences to re-verify, located rather than described — an earlier version of this note
-sent a reader to `p2-domain.md`'s "Acceptance criteria per issue" section, which is clean, and
-would therefore have missed the three that are not:
-
-| Plan | Lines carrying pre-split vocabulary |
-|---|---|
-| [`p1-core.md`](p1-core.md) | **80**, **99** and **124** — #23's target schema, described as workspace-scoped `state` plus a project-scoped `project_state` table; and **136** and **444** — the roll-up discussion (`WI-19` / `RH-9` / `RH-16`) keying off `state.group in ('completed','cancelled')` |
-| [`p2-domain.md`](p2-domain.md) | **72** (states workspace-scoped with `project_state` for ordering/default), **300** (the impure edge loading the project's `project_state`), **720** (`project_state` in the table list) |
-
-Re-read those against the current `workflows.md`, `work-items.md`,
-`relations-and-hierarchy.md` and `data-model.md` rather than trusting them as written. A
-pointer that names the wrong section is worse than no pointer, which is why these are line
-numbers and not a description — and a pointer that names *some* of the lines is the same failure
-one step smaller, which is why both lists are exhaustive. Verified by grep at the time of
-writing: `grep -n "state\.group\|project_state"` returns exactly these five lines for
-`p1-core.md` and exactly these three for `p2-domain.md`, with nothing left over.
-
 ## What has NOT moved — the reason every plan is still a plan
 
-**Throttle 1 is shut.** Condition 2 requires issue #6 complete *through retrofit S10*. The
-other four conditions are met.
-
-**How far the retrofit has run is NOT restated here.** Read
-[the retrofit stage ledger](../retrofits/organization-plugin-retrofit.md) — it is the
-authoritative count, and its four-bucket table separates stages landed, stages still required
-to reach S10, the two deferred out of P0, and S11's separately-owned work. An earlier version
-of this section carried its own figure ("four of fourteen"), which was a **third denominator**
-competing with the ledger's two and went stale the moment a stage landed. A number copied into
-a second document is a number that will disagree with the first.
+**Throttle 1 is shut.** Condition 2 requires issue #6 complete *through retrofit S10*, and
+[the retrofit stage ledger](../retrofits/organization-plugin-retrofit.md) records **four of
+fourteen stages landed** — S0, S1, S2, S4. S3 and S5–S11 have not started. The other four
+conditions are met.
 
 So the instruction common to all four plans — *plan now, write code when the throttle
-opens* — stands unchanged. Several retrofit stages have their preconditions satisfied and can
-start today; the ledger's "what is startable right now" section names which, and is kept
-current there rather than duplicated here. They are the shortest path to opening the throttle,
-and they are retrofit work rather than P1–P4 work.
+opens* — stands unchanged. Three retrofit stages (**S3, S5, S7**) have their preconditions
+satisfied and can start today; they are the shortest path to opening the throttle, and they
+are retrofit work rather than P1–P4 work.
 
 **One exception, already taken:** P2's plan is explicit that `packages/domain` holds *pure
 functions with exhaustive tests, before any HTTP endpoint exists*. Pure domain functions

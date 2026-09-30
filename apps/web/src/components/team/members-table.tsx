@@ -128,22 +128,10 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
     (inv) => inv.status !== "accepted" && inv.status !== "canceled",
   );
 
-  // S5 (issue #6, retrofit plan §3) shipped the userId-keyed native route --
-  // PATCH /api/workspace/{workspaceId}/members/{userId}/role
-  // (apps/api/src/workspace/controllers/update-workspace-member-role.ts) --
-  // so this keys by `member.id`, which IS the user's own id on the native
-  // member shape (see the WorkspaceUser type), not the plugin's
-  // `workspace_member.id` row. The server refuses a new role of `"owner"`
-  // and refuses to touch a target whose CURRENT role is `"owner"` (ownership
-  // moves only through the transfer-ownership flow in workspace settings).
-  // Neither case should reach this handler from the UI -- the Select never
-  // offers `"owner"`, and an owner row renders as a read-only badge above --
-  // but if either refusal reaches the client anyway, the server's message is
-  // surfaced through the toast below rather than swallowed.
   const handleChangeRole = async (member: WorkspaceUser, role: string) => {
     if (role === member.role) return;
     try {
-      await updateMemberRole({ workspaceId, userId: member.id, role });
+      await updateMemberRole({ workspaceId, memberId: member.id, role });
       toast.success(t("team:membersTable.roleUpdateSuccess"));
     } catch (error) {
       toast.error(
@@ -154,20 +142,12 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
     }
   };
 
-  // The native route is DELETE /api/workspace/{workspaceId}/members/{userId}
-  // and its path parameter is a USER ID. The plugin call this replaced --
-  // authClient.organization.removeMember() -- took `memberIdOrEmail`, so an
-  // email worked there; the repoint corrected `handleChangeRole` above (see its
-  // comment on `member.id` being the user's own id on the native member shape)
-  // and left this call still passing `email`, which the native route cannot
-  // resolve. `id` on WorkspaceUser is the user id, the same field the role
-  // change keys by. Regression-guarded in members-table.test.tsx.
   const handleDeleteMember = async () => {
     if (!memberToDelete) return;
     try {
       await deleteWorkspaceUser({
         workspaceId,
-        userId: memberToDelete.id,
+        userId: memberToDelete.user.email,
       });
       toast.success(t("team:membersTable.removeSuccess"));
     } catch (error) {
@@ -223,27 +203,27 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
         </TableHeader>
         <TableBody>
           {sortedUsers.map((member) => {
-            const isSelf = currentUser?.id === member.id;
+            const isSelf = currentUser?.id === member.userId;
             const showRoleSelect =
               canChangeRoles && !isSelf && member.role !== "owner";
-            const tone = toneFor(member.email);
+            const tone = toneFor(member.user.email);
             return (
-              <TableRow key={member.id}>
+              <TableRow key={member.user.email}>
                 <TableCell className="ps-6 py-3">
                   <div className="flex items-center gap-3">
                     <Avatar className={cn("size-8", tone)}>
                       <AvatarImage
-                        src={member.image ?? ""}
-                        alt={member.name ?? ""}
+                        src={member.user.image ?? ""}
+                        alt={member.user.name ?? ""}
                       />
                       <AvatarFallback className="bg-transparent text-[11px] font-medium">
-                        {getInitials(member.name)}
+                        {getInitials(member.user.name)}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium">
-                          {member.name}
+                          {member.user.name}
                         </span>
                         {isSelf ? (
                           <span className="text-xs text-muted-foreground">
@@ -252,7 +232,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                         ) : null}
                       </div>
                       <div className="truncate text-xs text-muted-foreground">
-                        {member.email}
+                        {member.user.email}
                       </div>
                     </div>
                   </div>
@@ -289,11 +269,10 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                         <SelectItem value="admin">
                           {t("team:roles.admin", { defaultValue: "Admin" })}
                         </SelectItem>
-                        {/* Owner is intentionally NOT offered here: ownership
-                            moves only through the dedicated transfer-ownership
-                            flow in workspace settings, never through this
-                            per-row role picker -- and the server enforces the
-                            same rule (see update-workspace-member-role.ts). */}
+                        {/* Owner is intentionally NOT offered here: the better-auth
+                            organization plugin requires an explicit ownership
+                            transfer flow (a workspace must have exactly one owner).
+                            That UI lives in workspace settings (TODO). */}
                         {customRoles.map((r) => (
                           <SelectItem key={r.id} value={r.role}>
                             {capitalize(r.role)}
@@ -310,14 +289,7 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
                   )}
                 </TableCell>
                 <TableCell className="py-3 text-sm text-muted-foreground tabular-nums">
-                  {/* S3 (issue #6, retrofit plan §3) gap: the native member
-                      read (apps/api/src/workspace/response.ts's
-                      workspaceMemberSchema) has no join/created timestamp --
-                      the plugin's `workspace_member.joinedAt` never made it
-                      into the S2 response shape. Reported in the S3 report
-                      as an API gap; not fixed here (apps/api is out of
-                      scope for this lane). */}
-                  –
+                  {member.createdAt ? formatDateMedium(member.createdAt) : "–"}
                 </TableCell>
                 <TableCell className="pe-6 py-3 text-right">
                   {!isSelf && canRemove ? (
@@ -382,8 +354,8 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
               </TableCell>
               <TableCell className="py-3">
                 <Badge variant="outline" className="capitalize">
-                  {t(`team:roles.${invitation.role ?? ""}`, {
-                    defaultValue: capitalize(invitation.role ?? ""),
+                  {t(`team:roles.${invitation.role}`, {
+                    defaultValue: capitalize(invitation.role),
                   })}
                 </Badge>
               </TableCell>
@@ -455,7 +427,8 @@ function MembersTable({ workspaceId, invitations, users }: Props) {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t("team:membersTable.removeDialogDescription", {
-                name: memberToDelete?.name || memberToDelete?.email || "",
+                name:
+                  memberToDelete?.user.name || memberToDelete?.user.email || "",
               })}
             </AlertDialogDescription>
           </AlertDialogHeader>

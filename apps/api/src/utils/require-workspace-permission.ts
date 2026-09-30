@@ -4,10 +4,6 @@ import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import { isInstanceAdmin } from "./is-instance-admin";
-import {
-  isUnambiguousMembership,
-  workspaceMemberRoles,
-} from "./workspace-member-roles";
 
 type PermissionMap = Record<string, string[]>;
 
@@ -109,24 +105,18 @@ export async function hasWorkspacePermission(
   const userId = c.get("userId");
   if (!userId) return false;
 
-  // ALL rows for the pair, and refuse to answer if there is more than one.
-  // This used to be `.limit(1)` with no `ORDER BY`, so the evaluator could
-  // select either row of a duplicated membership and therefore grant or deny
-  // NONDETERMINISTICALLY -- measured at owner-row-first 200 versus
-  // viewer-row-first 403, stable over twelve runs. Three independent reviewers
-  // of this pull request and of #77 converged on it. Fail-closed: a corrupt
-  // membership state is refused, never resolved by guessing. #88 tracks the
-  // `UNIQUE (workspace_id, user_id)` constraint that makes it unreachable.
-  const roles = await workspaceMemberRoles(db, workspaceId, userId);
-  if (!isUnambiguousMembership(roles)) return false;
-  // `roles[0]` is `string | undefined` under `noUncheckedIndexedAccess`, and
-  // `length === 1` does not narrow an index access. This check is therefore
-  // load-bearing for the compiler even though it is unreachable at runtime --
-  // which is why the previous `if (!member?.role)` was not the pure dead code a
-  // reviewer's nit took it for. Written as an explicit undefined test so the
-  // reason is on the page rather than hidden in an optional chain.
-  const role = roles[0];
-  if (role === undefined) return false;
+  const [member] = await db
+    .select({ role: schema.workspaceUserTable.role })
+    .from(schema.workspaceUserTable)
+    .where(
+      and(
+        eq(schema.workspaceUserTable.workspaceId, workspaceId),
+        eq(schema.workspaceUserTable.userId, userId),
+      ),
+    )
+    .limit(1);
+
+  if (!member?.role) return false;
 
   // Issue #66. `owner` is deliberately the ONE role never seeded a
   // `workspace_role` row (retrofit plan R5): its authority stays
@@ -153,9 +143,9 @@ export async function hasWorkspacePermission(
   // and reports the failure to the caller instead of returning success
   // for a workspace with no role rows behind it.
   const statements =
-    role === "owner"
+    member.role === "owner"
       ? builtInRoleStatements("owner")
-      : await customRoleStatements(workspaceId, role);
+      : await customRoleStatements(workspaceId, member.role);
 
   return Boolean(statements && satisfies(statements, permissions));
 }

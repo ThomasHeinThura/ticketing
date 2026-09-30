@@ -1,15 +1,13 @@
-import { client } from "@taskdesk/libs";
+import { authClient } from "@/lib/auth-client";
 
-// S3 (issue #6, retrofit plan §3): native replacement for
-// authClient.organization.list() -- GET /api/workspace.
 const getWorkspaces = async () => {
-  const response = await client.workspace.$get();
+  const { data, error } = await authClient.organization.list();
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch workspaces");
+  if (error) {
+    throw new Error(error.message || "Failed to fetch workspaces");
   }
 
-  return response.json();
+  return data || [];
 };
 
 export default getWorkspaces;

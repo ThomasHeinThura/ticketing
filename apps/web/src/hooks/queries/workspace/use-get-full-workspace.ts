@@ -1,34 +1,35 @@
 import { useQuery } from "@tanstack/react-query";
-import { client } from "@taskdesk/libs";
+import { authClient } from "@/lib/auth-client";
 
 type GetFullWorkspaceRequest = {
   workspaceId?: string;
+  workspaceSlug?: string;
+  membersLimit?: number;
 };
 
-// S3 (issue #6, retrofit plan §3): native replacement for
-// authClient.organization.getFullOrganization() -- GET
-// /api/workspace/{workspaceId}. The native route has no slug-based lookup
-// and no member-count limit, unlike the plugin's getFullOrganization(query:
-// {organizationId, organizationSlug, membersLimit}); neither
-// `workspaceSlug` nor `membersLimit` had a real caller (verified: both named
-// consumers of this hook -- apps/web/src/routes/_layout/_authenticated/
-// dashboard/workspace/$workspaceId/members.tsx and .../settings/workspace/
-// general.tsx -- only ever pass `workspaceId`), so the parameter is dropped
-// rather than silently ignored.
-function useGetFullWorkspace({ workspaceId }: GetFullWorkspaceRequest) {
+function useGetFullWorkspace({
+  workspaceId,
+  workspaceSlug,
+  membersLimit = 100,
+}: GetFullWorkspaceRequest) {
   return useQuery({
-    queryKey: ["workspace", "full", workspaceId],
-    enabled: !!workspaceId,
+    queryKey: ["workspace", "full", workspaceId || workspaceSlug],
+    enabled: !!(workspaceId || workspaceSlug),
     queryFn: async () => {
-      const response = await client.workspace[":workspaceId"].$get({
-        param: { workspaceId: workspaceId as string },
-      });
+      const { data, error } = await authClient.organization.getFullOrganization(
+        {
+          query: {
+            organizationId: workspaceId,
+            membersLimit,
+          },
+        },
+      );
 
-      if (!response.ok) {
-        throw new Error("Failed to get full workspace");
+      if (error) {
+        throw new Error(error.message || "Failed to get full workspace");
       }
 
-      return response.json();
+      return data;
     },
   });
 }
