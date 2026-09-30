@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import * as eventBus from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
+import { lockTaskAndAssertProjectLive } from "../../apps/api/src/task/assert-task-project-live";
+import { assertAssignableUserAndLockMembership } from "../../apps/api/src/utils/assert-assignable-user";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -12,6 +14,55 @@ import {
   createWorkspaceMember,
   requireRow,
 } from "./helpers/fixtures";
+
+type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+function pauseAfterFirstSelectResult(
+  executor: DbOrTx,
+  afterResult: () => Promise<void>,
+): DbOrTx {
+  let paused = false;
+
+  const wrapQuery = (query: unknown): unknown =>
+    new Proxy(query as object, {
+      get(target, property) {
+        const value = Reflect.get(target, property, target);
+        if (typeof value !== "function") return value;
+
+        if (property === "then" && !paused) {
+          return (onFulfilled: unknown, onRejected: unknown) => {
+            const result = new Promise<unknown>((resolve, reject) => {
+              Reflect.apply(value, target, [resolve, reject]);
+            });
+            return result
+              .then(async (rows) => {
+                paused = true;
+                await afterResult();
+                return rows;
+              })
+              .then(
+                onFulfilled as (rows: unknown) => unknown,
+                onRejected as (error: unknown) => unknown,
+              );
+          };
+        }
+
+        return (...args: unknown[]) =>
+          wrapQuery(Reflect.apply(value, target, args));
+      },
+    });
+
+  return new Proxy(executor as object, {
+    get(target, property) {
+      const value = Reflect.get(target, property, target);
+      if (property === "select" && typeof value === "function") {
+        return (...args: unknown[]) =>
+          wrapQuery(Reflect.apply(value, target, args));
+      }
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  }) as DbOrTx;
+}
 
 beforeEach(async () => {
   await resetTestDatabase();
@@ -441,6 +492,251 @@ describe("every assignee write path is workspace scoped", () => {
       where: eq(schema.taskTable.id, task.id),
     });
     expect(persistedTask?.userId).toBeNull();
+  });
+
+  it("keeps global admins assignable without workspace membership", async () => {
+    const member = await createWorkspaceMember({ role: "owner" });
+    const globalAdmin = await createWorkspaceMember({ role: "owner" });
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, globalAdmin.user.id));
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Global admin assignment task",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo.id,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const response = await app.request("/api/task/bulk", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        taskIds: [task.id],
+        operation: "updateAssignee",
+        value: globalAdmin.user.id,
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      success: true,
+      updatedCount: 1,
+      results: [{ taskId: task.id, success: true }],
+    });
+    const persistedTask = await db.query.taskTable.findFirst({
+      where: eq(schema.taskTable.id, task.id),
+    });
+    expect(persistedTask?.userId).toBe(globalAdmin.user.id);
+  });
+
+  it("fails closed when a member is inserted and removed after the membership check", async () => {
+    const member = await createWorkspaceMember({ role: "owner" });
+    const assignee = await createWorkspaceMember({ role: "owner" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Membership insertion race task",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo.id,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
+
+    let signalMembershipCheck!: () => void;
+    const membershipCheckReached = new Promise<void>((resolve) => {
+      signalMembershipCheck = resolve;
+    });
+    let resumeMembershipCheck!: () => void;
+    const membershipCheckGate = new Promise<void>((resolve) => {
+      resumeMembershipCheck = resolve;
+    });
+    let signalAuthorizationPassed!: () => void;
+    const authorizationPassed = new Promise<void>((resolve) => {
+      signalAuthorizationPassed = resolve;
+    });
+    let resumeTaskWrite!: () => void;
+    const taskWriteGate = new Promise<void>((resolve) => {
+      resumeTaskWrite = resolve;
+    });
+
+    const client = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    await client.connect();
+    const assignmentPromise = db.transaction(async (tx) => {
+      await lockTaskAndAssertProjectLive(tx, task.id);
+      const synchronizedExecutor = pauseAfterFirstSelectResult(tx, async () => {
+        signalMembershipCheck();
+        await membershipCheckGate;
+      });
+      await assertAssignableUserAndLockMembership(
+        assignee.user.id,
+        member.workspace.id,
+        synchronizedExecutor,
+      );
+      signalAuthorizationPassed();
+      await taskWriteGate;
+      await tx
+        .update(schema.taskTable)
+        .set({ userId: assignee.user.id })
+        .where(eq(schema.taskTable.id, task.id));
+    });
+    const assignmentOutcome = assignmentPromise.then(
+      () => ({ kind: "success" as const }),
+      (error: unknown) => ({ kind: "error" as const, error }),
+    );
+
+    try {
+      await membershipCheckReached;
+      await client.query(
+        `INSERT INTO workspace_member (id, workspace_id, user_id, role, joined_at)
+         VALUES ($1, $2, $3, 'member', now())`,
+        [randomUUID(), member.workspace.id, assignee.user.id],
+      );
+      resumeMembershipCheck();
+
+      const interleaving = await Promise.race([
+        authorizationPassed.then(() => ({ kind: "authorized" as const })),
+        assignmentOutcome.then((outcome) => ({
+          kind: "settled" as const,
+          outcome,
+        })),
+      ]);
+      let outcome: Awaited<typeof assignmentOutcome>;
+      if (interleaving.kind === "authorized") {
+        // This is the vulnerable old path: an unlocked second membership read
+        // sees the insert, then removal wins before the task write.
+        await client.query(
+          "DELETE FROM workspace_member WHERE workspace_id = $1 AND user_id = $2",
+          [member.workspace.id, assignee.user.id],
+        );
+        resumeTaskWrite();
+        outcome = await assignmentOutcome;
+      } else {
+        outcome = interleaving.outcome;
+        resumeTaskWrite();
+        await client.query(
+          "DELETE FROM workspace_member WHERE workspace_id = $1 AND user_id = $2",
+          [member.workspace.id, assignee.user.id],
+        );
+      }
+
+      expect(outcome).toMatchObject({ kind: "error", error: { status: 403 } });
+      const persistedTask = await db.query.taskTable.findFirst({
+        where: eq(schema.taskTable.id, task.id),
+      });
+      expect(persistedTask?.userId).toBeNull();
+    } finally {
+      resumeMembershipCheck();
+      resumeTaskWrite();
+      await assignmentOutcome;
+      await client.end();
+    }
+  });
+
+  it("publishes one bulk status relation refresh per affected project", async () => {
+    const member = await createWorkspaceMember({ role: "owner" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const tasks = await db
+      .insert(schema.taskTable)
+      .values([
+        {
+          projectId: project.id,
+          title: "First status task",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo.id,
+          number: 1,
+          position: 1,
+        },
+        {
+          projectId: project.id,
+          title: "Second status task",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo.id,
+          number: 2,
+          position: 2,
+        },
+      ])
+      .returning();
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const statusTaskIds: string[] = [];
+    const relationProjectIds: string[] = [];
+    const publishSpy = vi
+      .spyOn(eventBus, "publishEvent")
+      .mockImplementation(async (eventType, data) => {
+        if (typeof data !== "object" || data === null) return;
+        if (
+          eventType === "task.status_changed" &&
+          "taskId" in data &&
+          typeof data.taskId === "string"
+        ) {
+          statusTaskIds.push(data.taskId);
+        }
+        if (
+          eventType === "task-relation.refresh" &&
+          "projectId" in data &&
+          typeof data.projectId === "string"
+        ) {
+          relationProjectIds.push(data.projectId);
+        }
+      });
+
+    try {
+      const response = await app.request("/api/task/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskIds: tasks.map((task) => task.id),
+          operation: "updateStatus",
+          value: "done",
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        success: true,
+        updatedCount: 2,
+        results: tasks.map((task) => ({ taskId: task.id, success: true })),
+      });
+      expect(statusTaskIds).toEqual(tasks.map((task) => task.id));
+      expect(relationProjectIds).toEqual([project.id]);
+    } finally {
+      publishSpy.mockRestore();
+    }
   });
 
   it("rechecks assignee membership for each item after per-item commits", async () => {

@@ -121,6 +121,7 @@ async function bulkUpdateTasks({
   const results: ItemResult[] = [];
   let updatedCount = 0;
   let committedAssigneeWrites = 0;
+  const refreshedRelationProjects = new Set<string>();
 
   // Recheck each scoped row under its own task/project locks below. Opaque ids
   // filtered by workspace reach stay in the response only as anonymous failures,
@@ -131,6 +132,7 @@ async function bulkUpdateTasks({
       continue;
     }
     let taskInScope = false;
+    let itemProjectId: string | undefined;
     const itemEvents: DeferredEvent[] = [];
     let itemUpdatedCount = 0;
     try {
@@ -160,6 +162,7 @@ async function bulkUpdateTasks({
           throw new HTTPException(404, { message: "Task not found" });
         }
         taskInScope = true;
+        itemProjectId = task.projectId;
 
         if (
           operation !== "delete" &&
@@ -224,12 +227,6 @@ async function bulkUpdateTasks({
                 userId,
                 newStatus: status,
                 type: "status_changed",
-              }),
-            );
-            itemEvents.push(() =>
-              publishEvent("task-relation.refresh", {
-                projectId: task.projectId,
-                userId,
               }),
             );
             return updated ? 1 : 0;
@@ -438,6 +435,17 @@ async function bulkUpdateTasks({
     // Each transaction owns its event queue. Publish as soon as that item's
     // commit succeeds so a later item's database failure cannot suppress it.
     for (const publish of itemEvents) await publish();
+    if (
+      operation === "updateStatus" &&
+      itemProjectId &&
+      !refreshedRelationProjects.has(itemProjectId)
+    ) {
+      await publishEvent("task-relation.refresh", {
+        projectId: itemProjectId,
+        userId,
+      });
+      refreshedRelationProjects.add(itemProjectId);
+    }
     results.push({ taskId, success: true });
   }
 

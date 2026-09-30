@@ -90,7 +90,22 @@ export async function assertAssignableUserAndLockMembership(
 
   if (memberships.length > 0) return;
 
-  await assertAssignableUser(userId, workspaceId, executor);
+  // An absent row cannot be gap-locked by PostgreSQL. Do not call
+  // `assertAssignableUser` here: its membership read would be unlocked, so a
+  // membership inserted after the first query could be removed before the
+  // caller's task write. Global admins remain assignable through their user
+  // row, which is shared-locked through the transaction instead.
+  const [admin] = await executor
+    .select({ id: schema.userTable.id })
+    .from(schema.userTable)
+    .where(
+      and(eq(schema.userTable.id, userId), eq(schema.userTable.role, "admin")),
+    )
+    .for("share");
+
+  if (!admin) {
+    throw new HTTPException(403, { message: NOT_ASSIGNABLE });
+  }
 }
 
 export async function getProjectWorkspaceId(
