@@ -36,13 +36,6 @@ const SCREENS = [
     test: "work item detail @visual",
     screenshot: "work-item-detail.png",
   },
-  {
-    name: "future-inbox",
-    inventoryRoute: "/agent/inbox",
-    applicationRoute: "/agent/inbox",
-    test: "future inbox @visual",
-    screenshot: "future-inbox.png",
-  },
 ];
 
 const EXACT_SCREENSHOT_HELPER = `async function assertExactScreenshotBytes(page: Page, testInfo: TestInfo, name: string) {
@@ -415,16 +408,15 @@ async function runVisualScope({
 const INVENTORY_ROUTES = [
   "/agent/projects/$projectKey/work",
   "/agent/work-items/$key",
-  "/agent/inbox",
 ];
 
-test("G8 requires baselines for active and not-started inventory routes", async () => {
+test("G8 requires baselines for active routes and leaves not-started routes planned", async () => {
   const result = await runVisualScope({ routes: INVENTORY_ROUTES });
 
   assert.equal(result.status, 0, result.output);
   assert.match(
     result.output,
-    /3 screenshot cases, all 3 inventory route rows mapped \(2 in-progress or complete\)/,
+    /2 screenshot cases, 2 active inventory route rows mapped \(3 route rows total\)/,
   );
 });
 
@@ -835,17 +827,13 @@ test("G8 rejects a visual callback that shadows its Playwright page fixture", as
   );
 });
 
-test("G8 fails when a not-started inventory route has no manifest baseline", async () => {
+test("G8 does not require a not-started inventory route to have a route or baseline", async () => {
   const result = await runVisualScope({
     screens: SCREENS.slice(0, 2),
     routes: INVENTORY_ROUTES,
   });
 
-  assert.notEqual(result.status, 0);
-  assert.match(
-    result.output,
-    /inventory route Future inbox .* has no G8 test\/baseline manifest entry/,
-  );
+  assert.equal(result.status, 0, result.output);
 });
 
 test("G8 binds each declared screenshot to its own named test", async () => {
@@ -1634,7 +1622,7 @@ test("G8 requires zero pixel tolerance for inline route baselines", async () => 
   );
 });
 
-test("G8 accepts a not-started route only when its visual baseline is mapped", async () => {
+test("G8 accepts a not-started route with no G8 baseline while it remains unimplemented", async () => {
   const result = await runVisualScope({
     routes: INVENTORY_ROUTES,
   });
@@ -1642,11 +1630,34 @@ test("G8 accepts a not-started route only when its visual baseline is mapped", a
   assert.equal(result.status, 0, result.output);
 });
 
-test("G8 does not require a route row to leave not-started status before baseline", async () => {
+test("G8 rejects an implemented route whose inventory group remains not started", async () => {
   const result = await runVisualScope({
-    screens: SCREENS,
-    routes: INVENTORY_ROUTES,
+    routes: [...INVENTORY_ROUTES, "/agent/inbox"],
   });
 
-  assert.equal(result.status, 0, result.output);
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /registered inventory route \/agent\/inbox has no row marked in progress or complete/,
+  );
+});
+
+test("G8 rejects a baseline manifest entry for a not-started route", async () => {
+  const futureScreen = {
+    name: "future-inbox",
+    inventoryRoute: "/agent/inbox",
+    applicationRoute: "/agent/inbox",
+    test: "future inbox @visual",
+    screenshot: "future-inbox.png",
+  };
+  const result = await runVisualScope({
+    screens: [...SCREENS, futureScreen],
+    routes: [...INVENTORY_ROUTES, "/agent/inbox"],
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /future-inbox references an inventory route that is not marked in progress or complete/,
+  );
 });

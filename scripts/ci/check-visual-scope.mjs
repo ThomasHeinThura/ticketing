@@ -2795,6 +2795,13 @@ for (const screen of manifest) {
       failures.push(`duplicate inventory route row: ${screen.inventoryRoute}`);
     }
     seenInventoryRoutes.add(screen.inventoryRoute);
+    if (
+      !activeInventoryRows.some(({ route }) => route === screen.inventoryRoute)
+    ) {
+      failures.push(
+        `${screen.name} references an inventory route that is not marked in progress or complete`,
+      );
+    }
     if (!registeredInventoryRouteGroups.has(screen.applicationRoute)) {
       failures.push(
         `${screen.name} maps to no currently implemented inventory route`,
@@ -2858,16 +2865,24 @@ if (
   );
 }
 
-for (const { name, route } of inventoryRows) {
+for (const { name, route } of activeInventoryRows) {
   const applicationRoute = canonicalInventoryRoute(route);
   if (!appRoutes.has(applicationRoute)) {
     failures.push(
-      `inventory route ${name} (${route}) is missing from ${routeTreePath}`,
+      `in-progress or complete inventory route ${name} (${route}) is missing from ${routeTreePath}`,
     );
   }
   if (!seenInventoryRoutes.has(route)) {
     failures.push(
-      `inventory route ${name} (${route}) has no G8 test/baseline manifest entry`,
+      `in-progress or complete inventory route ${name} (${route}) has no G8 test/baseline manifest entry`,
+    );
+  }
+}
+
+for (const [applicationRoute, rows] of registeredInventoryRouteGroups) {
+  if (!rows.some(({ status }) => /[🟡✅]/u.test(status))) {
+    failures.push(
+      `registered inventory route ${applicationRoute} has no row marked in progress or complete`,
     );
   }
 }
@@ -2904,6 +2919,6 @@ if (failures.length) {
   process.exitCode = 1;
 } else {
   console.log(
-    `G8 scope check passed: ${manifest.length} screenshot cases, all ${inventoryRows.length} inventory route rows mapped (${activeInventoryRows.length} in-progress or complete). Storybook story coverage is checked at runtime.`,
+    `G8 scope check passed: ${manifest.length} screenshot cases, ${activeInventoryRows.length} active inventory route rows mapped (${inventoryRows.length} route rows total). Storybook story coverage is checked at runtime.`,
   );
 }
