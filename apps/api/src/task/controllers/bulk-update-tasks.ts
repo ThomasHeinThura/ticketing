@@ -121,6 +121,7 @@ async function bulkUpdateTasks({
   const events: DeferredEvent[] = [];
   const results: ItemResult[] = [];
   let updatedCount = 0;
+  let assigneeAuthorizationValidated = false;
 
   // Recheck each scoped row under its own task/project locks below. Opaque ids
   // filtered by workspace reach stay in the response only as anonymous failures,
@@ -255,8 +256,14 @@ async function bulkUpdateTasks({
 
           case "updateAssignee": {
             const assigneeId = value?.trim() || null;
-            if (assigneeId) {
+            // Every item in this request uses the same assignee and workspace.
+            // Establish that shared authorization decision on the first live
+            // item's transaction, then reuse it for the rest of the batch. A
+            // later membership revocation must not turn already committed item
+            // writes into a request-level 403 before their deferred events run.
+            if (assigneeId && !assigneeAuthorizationValidated) {
               await assertAssignableUser(assigneeId, workspaceId, tx);
+              assigneeAuthorizationValidated = true;
             }
             const newAssigneeName = assigneeId
               ? (
