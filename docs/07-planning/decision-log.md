@@ -5,6 +5,22 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-30 · TaskDesk public links use the Bimats host
+
+**Decision:** use `https://taskdesk.bimats.com` for current TaskDesk website links and the
+default OpenAPI server. The former `taskdesk.app` domain is not TaskDesk's domain. Preserve the
+separate UAT hostnames already defined by deployment configuration; never infer UAT from
+`uat.taskdesk.app`.
+
+Historical decisions, incidents, and review notes keep the hostnames that were accurate when
+written. This decision changes current links and defaults prospectively.
+
+**Why:** Thomas confirmed that `taskdesk.bimats.com` is the mapped product host and that the
+company domain is `bimats.com`. Current links to `taskdesk.app` and the prior `uat.taskdesk.app`
+reachability assumption were incorrect.
+
+**Decided by:** Thomas, 2026-09-30.
+
 ### 2026-09-29 · OpenAI model routing replaces Claude/`pal-mcp` routing
 
 **Decision:** TaskDesk's active AI workflow moves to an OpenAI-first two-tier model policy.

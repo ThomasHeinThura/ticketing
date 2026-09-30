@@ -13,6 +13,60 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 
 ---
 
+**2026-09-30 orchestrator snapshot — remote `main` at
+`4f1eec81c904b91339c71f6fbd2123387e193acf` (refreshed 02:35 UTC).** PR #516 merged at
+`4f1eec81` after its exact-head required checks passed. A local, unmerged
+domain-migration candidate records `taskdesk.bimats.com` as the canonical product host and
+updates active links. Older `taskdesk.app` and `uat.taskdesk.app` mentions are historical; the
+current UAT hosts are `ticket-v2-uat.bimats.com` and `portal-v2-uat.bimats.com`.
+
+**UAT and product host:** both current UAT hosts return HTTP 200 for `/` and
+`/api/public/health/live`. A Chromium open of the ticket host showed a Kaneo-branded sign-in
+screen; the image identity and TaskDesk build are unverified, so this is reachability evidence,
+not TaskDesk acceptance or #8 soak evidence. `taskdesk.bimats.com` resolves to CloudFront but
+returns 404 for `/` and `/api/public/health/live`. Do not claim the canonical product site is
+serving yet.
+
+**P0:** #8 has no UAT soak evidence. #507/G8 is waiting on the scope decision (active screens
+versus all planned route-kind rows); its inventory parser also needs to fail closed. Local G11
+candidate `c8c30ad` is not passing: 500-row list render measured 625 ms against 500 ms and the
+throttled LCP median was 6,120 ms against 2,500 ms; CLS was 0. The production trace confirms
+that the seeded API returned all 500 rows, then Chromium canceled route chunks with
+`ERR_NETWORK_CHANGED`, and the route-transition sample failed to mount. Treat these as failing
+performance/harness evidence, not a passing run.
+
+**P1:** #510 is at remediation head `04fbe079435f87fffbe0396ec8338d2374e6974a`, currently
+held for findings: when the locked membership query returns no row, an unlocked fallback read
+can accept an inserted membership that is then removed before assignment commits. A review also
+found per-item duplicate project-wide relation-refresh broadcasts; preserve the previous
+once-per-project behavior. The candidate's Postgres suite passed 15/15, API typecheck and
+Biome passed, but the code must be fixed and independently reviewed again before merge. #512
+remains at `ae09fa16dd7365ec5e8ab1538dc35c4bc1e439c9`;
+its CA-15 image-upload claim is blocked by the work-item-only attachment contract and awaits a
+product decision. #516's slug-claim race fix is merged. #447 is behind `main` and needs a
+current-base review cycle.
+
+**P2–P4:** #513 remains draft at `43be8c7355b16ce5877c622d647e27642f6adb88`. Three fresh
+exact-head Luna reviews found no code-level blocker. Update its stale G4 checklist before merge;
+the fresh Sol review and exact-head PR evidence remain. CI passed the calendar integration,
+route-policy, static, build, OpenAPI, unit/component, and accessibility checks; the template gate
+failed, and G8/G11 are skipped. P2 remains open for AU-14 alerting and EV-1 outbox work. #511
+identity bindings is at corrected head `7131195badb76f0d9e639f37b8003110c4d1fb4e`; three
+Luna reviews and one Sol review are clear. The Sol pass confirmed the domain-only scope does not
+enforce bindings operationally; no production caller, persistence, or uniqueness constraint
+exists yet. The template gate is red pending the committed exact-head Sol note and updated PR
+evidence. #515 pending actions remains draft at
+`cb4d5ccbdfc7e3941b9237e69e13d91e2780ca14` and awaits the project organization scope and
+target-version encoding decision; its AU-14 metric/admin-alert gap remains open.
+Notification-contract #508 is at `74cdd8d9a06960f27872b16a0db3d4c9b077d6dc`; the 60-second
+reservation TTL is specified, but notification recipient routing remains undefined pending
+Thomas's decision.
+
+This snapshot records open candidates and blockers; check GitHub for exact current heads, CI,
+reviews, and merge state before acting.
+
+---
+
 **2026-09-29 orchestrator snapshot — remote `main` at
 `d885be8abdb54bef6e73c7a39e22f1cefc191a34` (verified with `git ls-remote origin
 refs/heads/main` and `gh`, 12:29 UTC).** The latest merge is #505. This is a point-in-time

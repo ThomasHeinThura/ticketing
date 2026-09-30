@@ -78,7 +78,7 @@ WorkspaceInvitationEmail.PreviewProps = {
   workspaceName: "Acme Inc",
   inviterName: "John Doe",
   inviterEmail: "john@acme.com",
-  invitationLink: "https://taskdesk.app/invite/abc123",
+  invitationLink: "https://taskdesk.bimats.com/invite/abc123",
   to: "invitee@example.com",
   copy: {
     subject:
