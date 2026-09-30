@@ -709,6 +709,76 @@ describe("every assignee write path is workspace scoped", () => {
     expect(membership).toBeUndefined();
   });
 
+  it("AS-5/AS-8 serializes bulk assignment before membership removal", async () => {
+    const member = await createWorkspaceMember({ role: "owner" });
+    const assignee = await createWorkspaceMember({ role: "owner" });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: member.workspace.id,
+      userId: assignee.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Bulk assignee membership race",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo.id,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task",
+    );
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const [assignment, removal] = await raceAssignmentWithMemberRemoval({
+      taskWriteTrigger: "UPDATE OF assignee_id",
+      assignmentRequest: async () =>
+        app.request("/api/task/bulk", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            taskIds: [task.id],
+            operation: "updateAssignee",
+            value: assignee.user.id,
+          }),
+        }),
+      removalRequest: async () =>
+        app.request(
+          `/api/workspace/${member.workspace.id}/members/${assignee.user.id}`,
+          { method: "DELETE" },
+        ),
+    });
+
+    expect(assignment.status).toBe(200);
+    expect(await assignment.json()).toMatchObject({
+      success: true,
+      updatedCount: 1,
+      results: [{ taskId: task.id, success: true }],
+    });
+    expect(removal.status).toBe(200);
+    const persistedTask = await db.query.taskTable.findFirst({
+      where: eq(schema.taskTable.id, task.id),
+    });
+    expect(persistedTask?.userId).toBe(assignee.user.id);
+    const membership = await db.query.workspaceUserTable.findFirst({
+      where: and(
+        eq(schema.workspaceUserTable.workspaceId, member.workspace.id),
+        eq(schema.workspaceUserTable.userId, assignee.user.id),
+      ),
+    });
+    expect(membership).toBeUndefined();
+  });
+
   it("AS-5/AS-8 serializes full task updates before membership removal", async () => {
     const member = await createWorkspaceMember({ role: "owner" });
     const assignee = await createWorkspaceMember({ role: "owner" });
