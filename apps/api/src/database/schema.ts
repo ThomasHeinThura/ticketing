@@ -943,6 +943,41 @@ export const notificationTable = pgTable(
   (table) => [index("notification_userId_idx").on(table.userId)],
 );
 
+export const outboxTable = pgTable(
+  "outbox",
+  {
+    eventId: text("event_id").primaryKey(),
+    kind: text("kind").notNull(),
+    payload: jsonb("payload").notNull(),
+    dedupeKey: text("dedupe_key"),
+    workspaceId: text("workspace_id").notNull(),
+    organisationId: text("organisation_id"),
+    state: text("state").notNull().default("pending"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+    lastError: text("last_error"),
+  },
+  (table) => [
+    check(
+      "outbox_state_check",
+      sql`${table.state} in ('pending', 'delivered', 'dead')`,
+    ),
+    check("outbox_attempts_nonnegative", sql`${table.attempts} >= 0`),
+    index("outbox_state_next_attempt_idx")
+      .on(table.state, table.nextAttemptAt)
+      .where(sql`${table.state} = 'pending'`),
+    index("outbox_workspace_state_idx").on(table.workspaceId, table.state),
+    index("outbox_dedupe_key_idx")
+      .on(table.dedupeKey)
+      .where(sql`${table.dedupeKey} is not null`),
+  ],
+);
+
 export const userNotificationPreferenceTable = pgTable(
   "user_notification_preference",
   {
@@ -3171,6 +3206,99 @@ export const auditLogTable = pgTable(
     // only), so `appendAuditLog`'s "read the current head" step always finds a REAL row
     // hash to chain from, and can never legitimately read `ZERO_HASH` a second time.
     unique("audit_log_prev_hash_unique").on(table.prevHash),
+  ],
+);
+
+/**
+ * Durable approval record for user initiated deletions. The payload is retained so
+ * approval can re-canonicalise and hash the exact operation; summaries are display
+ * data only. State transitions are single use and serialized by the service layer.
+ */
+export const pendingActionTable = pgTable(
+  "pending_action",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    requestedByPersonId: text("requested_by_person_id").notNull(),
+    credentialType: text("credential_type").notNull(),
+    credentialId: text("credential_id"),
+    origin: text("origin").notNull(),
+    action: text("action").notNull(),
+    targetType: text("target_type").notNull(),
+    targetIds: text("target_ids").array().notNull(),
+    targetVersions: jsonb("target_versions"),
+    payload: jsonb("payload").notNull(),
+    routeKey: text("route_key").notNull(),
+    payloadHash: text("payload_hash").notNull(),
+    payloadSummary: jsonb("payload_summary").notNull(),
+    workspaceId: text("workspace_id"),
+    projectId: text("project_id"),
+    organisationId: text("organisation_id"),
+    confirmationRequired: text("confirmation_required").notNull(),
+    confirmationSupplied: jsonb("confirmation_supplied"),
+    state: text("state").notNull().default("pending"),
+    invalidationReason: text("invalidation_reason"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp("expires_at", {
+      mode: "date",
+      withTimezone: true,
+    }).notNull(),
+    decidedByPersonId: text("decided_by_person_id"),
+    decisionSessionId: text("decision_session_id"),
+    decidedAt: timestamp("decided_at", { mode: "date", withTimezone: true }),
+    stepUpTokenId: text("step_up_token_id"),
+    executedAt: timestamp("executed_at", { mode: "date", withTimezone: true }),
+    error: text("error"),
+    traceId: text("trace_id").notNull(),
+  },
+  (table) => [
+    check(
+      "pending_action_credential_type_check",
+      sql`${table.credentialType} in ('session', 'api_key')`,
+    ),
+    check(
+      "pending_action_origin_check",
+      sql`${table.origin} in ('web', 'api', 'mcp')`,
+    ),
+    check(
+      "pending_action_action_check",
+      sql`${table.action} in ('delete', 'bulk_delete', 'purge', 'mcp_destructive')`,
+    ),
+    check(
+      "pending_action_confirmation_check",
+      sql`${table.confirmationRequired} in ('click', 'typed_name', 'typed_count', 'typed_count_step_up', 'typed_name_step_up')`,
+    ),
+    check(
+      "pending_action_state_check",
+      sql`${table.state} in ('pending', 'approved', 'denied', 'cancelled', 'expired', 'invalidated', 'executed', 'failed')`,
+    ),
+    check(
+      "pending_action_invalidation_reason_check",
+      sql`${table.invalidationReason} is null or ${table.invalidationReason} in ('credential_revoked', 'requester_deactivated', 'reach_lost', 'capability_removed', 'version_changed', 'scope_changed')`,
+    ),
+    check(
+      "pending_action_payload_hash_check",
+      sql`${table.payloadHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      "pending_action_targets_nonempty",
+      sql`cardinality(${table.targetIds}) > 0`,
+    ),
+    index("pending_action_requester_state_expires_idx").on(
+      table.requestedByPersonId,
+      table.state,
+      table.expiresAt,
+    ),
+    index("pending_action_workspace_created_idx").on(
+      table.workspaceId,
+      table.createdAt.desc(),
+    ),
+    uniqueIndex("pending_action_one_pending_target_unique")
+      .on(table.requestedByPersonId, table.action, table.targetIds)
+      .where(sql`${table.state} = 'pending'`),
   ],
 );
 
