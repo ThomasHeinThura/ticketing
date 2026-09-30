@@ -38,6 +38,17 @@ import { WEEKDAYS } from "./types.js";
 
 const OFFSET_FORMATTER_CACHE = new Map<string, Intl.DateTimeFormat>();
 
+/** Rejects numeric offsets, which Intl accepts even though CAL-6 requires an IANA zone. */
+export function isIanaTimeZone(timeZone: string): boolean {
+  if (/^[+-]\d{2}:\d{2}$/.test(timeZone)) return false;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Creates a UTC timestamp without Date.UTC's special remapping of years 0–99. */
 function utcEpochMilliseconds(
   year: number,
@@ -358,6 +369,10 @@ export function validateCalendar(
   calendar: ServiceCalendar,
 ): CalendarValidationResult {
   const errors: string[] = [];
+
+  if (!isIanaTimeZone(calendar.timezone)) {
+    errors.push(`timezone ${calendar.timezone} is not an IANA timezone`);
+  }
 
   for (const weekday of WEEKDAYS) {
     const windows = calendar.windows[weekday] ?? [];

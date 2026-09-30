@@ -1,3 +1,4 @@
+import { isIanaTimeZone } from "@taskdesk/domain";
 import { z } from "../openapi";
 
 const windowSchema = z.object({
@@ -36,14 +37,7 @@ export const calendarDataSchema = z.object({
   timezone: z
     .string()
     .min(1)
-    .refine((timezone) => {
-      try {
-        new Intl.DateTimeFormat("en", { timeZone: timezone });
-        return true;
-      } catch {
-        return false;
-      }
-    }, "Expected an IANA timezone"),
+    .refine(isIanaTimeZone, "Expected an IANA timezone"),
   windows: z.object({
     sun: z.array(windowSchema).optional(),
     mon: z.array(windowSchema).optional(),

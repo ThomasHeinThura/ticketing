@@ -3,6 +3,7 @@ import {
   copyCalendarWindows,
   emptyCalendarWindows,
   formatClockTime,
+  isValidIanaTimezone,
   parseCalendarEditorSearch,
   parseClockTime,
   timezoneChangeNeedsConfirmation,
@@ -47,6 +48,14 @@ describe("service calendar editor helpers", () => {
   it("formats preview minutes as hours without rounding away fractional minutes", () => {
     expect(weeklyCoverHours(2400)).toBe("40");
     expect(weeklyCoverHours(2415)).toBe("40.25");
+  });
+
+  it("CAL-6: accepts IANA timezones and rejects fixed UTC offsets", () => {
+    expect(isValidIanaTimezone("UTC")).toBe(true);
+    expect(isValidIanaTimezone("Europe/London")).toBe(true);
+    expect(isValidIanaTimezone("+05:00")).toBe(false);
+    expect(isValidIanaTimezone("-03:30")).toBe(false);
+    expect(isValidIanaTimezone("Not/AZone")).toBe(false);
   });
 
   it("requires confirmation only when an existing calendar changes timezone", () => {

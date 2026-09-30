@@ -18,6 +18,7 @@ import {
   type CalendarWindowsForm,
   copyCalendarWindows,
   emptyCalendarWindows,
+  isValidIanaTimezone,
   timezoneChangeNeedsConfirmation,
   WEEKDAYS,
 } from "@/lib/service-calendar-form";
@@ -33,15 +34,6 @@ let nextFieldId = 0;
 function createFieldId(): string {
   nextFieldId += 1;
   return `calendar-field-${nextFieldId}`;
-}
-
-function isValidTimezone(timezone: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en", { timeZone: timezone });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export function useServiceCalendarEditor({
@@ -96,7 +88,7 @@ export function useServiceCalendarEditor({
           .string()
           .trim()
           .min(1, "Choose an IANA timezone")
-          .refine(isValidTimezone, "Enter a valid IANA timezone"),
+          .refine(isValidIanaTimezone, "Enter a valid IANA timezone"),
       }),
     [],
   );

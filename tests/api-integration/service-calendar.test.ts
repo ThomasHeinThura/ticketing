@@ -208,6 +208,31 @@ describe("API integration: service calendars (CAL-1–CAL-14)", () => {
     ).toHaveLength(1);
   });
 
+  it.each(["+05:00", "-03:30"])(
+    "CAL-6: rejects fixed UTC offset timezone %s",
+    async (timezone) => {
+      const creator = await createWorkspaceMember({ role: "admin" });
+      mockAuthenticatedSession(creator.user);
+      const { app } = createApp();
+      const response = await app.request("/api/service-calendars", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: creator.workspace.id,
+          name: "Fixed offset calendar",
+          timezone,
+          windows: weekdayWindows,
+          holidays: [],
+        }),
+      });
+
+      expect(response.status).toBe(400);
+      expect(await db.select().from(schema.serviceCalendarTable)).toHaveLength(
+        0,
+      );
+    },
+  );
+
   it("CAL-14: keeps calendar writes when audit inserts fail and withholds deletion", async () => {
     const creator = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(creator.user);

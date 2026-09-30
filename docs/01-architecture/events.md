@@ -74,9 +74,9 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 
 | Key | Emitted when | A | W | N | Payload |
 | --- | --- | :-: | :-: | :-: | --- |
-| `service_calendar.created` | A service calendar is created | — | ✅ | — | `calendarId`, `workspaceId`, `name`, `url` |
-| `service_calendar.updated` | A service calendar is updated | — | ✅ | — | `calendarId`, `workspaceId`, `name`, `changedFields: [name\|timezone\|windows\|holidays]`, `url` |
-| `service_calendar.deleted` | A service calendar is deleted | — | ✅ | — | `calendarId`, `workspaceId`, `name`, `url` |
+| `service_calendar.created` | Reserved; not emitted yet. EV-1 outbox support will emit after a service calendar is created | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
+| `service_calendar.updated` | Reserved; not emitted yet. EV-1 outbox support will emit after a service calendar is updated | — | — | — | `calendarId`, `workspaceId`, `name`, `changedFields: [name\|timezone\|windows\|holidays]`, `url` |
+| `service_calendar.deleted` | Reserved; not emitted yet. EV-1 outbox support will emit after a service calendar is deleted; no delete route exists yet | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
 
 ### Approvals
 

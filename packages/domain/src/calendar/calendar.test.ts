@@ -7,6 +7,7 @@ import {
   formatLocalDate,
   instantToLocalDateTime,
   isHoliday,
+  isIanaTimeZone,
   nextWindowOpening,
   validateCalendar,
   weekdayOf,
@@ -99,6 +100,16 @@ const ZERO_COVER_CALENDAR: ServiceCalendar = {
   windows: {},
   holidays: [],
 };
+
+describe("isIanaTimeZone", () => {
+  it("CAL-6: accepts IANA zones and rejects numeric UTC offsets", () => {
+    expect(isIanaTimeZone("UTC")).toBe(true);
+    expect(isIanaTimeZone("America/New_York")).toBe(true);
+    expect(isIanaTimeZone("+05:00")).toBe(false);
+    expect(isIanaTimeZone("-03:30")).toBe(false);
+    expect(isIanaTimeZone("Not/AZone")).toBe(false);
+  });
+});
 
 function utc(y: number, m: number, d: number, h = 0, min = 0): Date {
   const date = new Date(0);
