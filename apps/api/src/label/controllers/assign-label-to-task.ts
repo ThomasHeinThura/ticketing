@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -8,7 +8,12 @@ import {
   taskTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import {
+  lockLegacyTaskRow,
+  lockProjectsAndAssertLive,
+} from "../../task/assert-task-project-live";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import { lockWorkspaceLabelNames } from "../label-name-lock";
 
 type LabelRow = typeof labelTableType.$inferSelect;
 
@@ -66,86 +71,150 @@ async function assignLabelToTask(id: string, taskId: string, userId: string) {
     });
   }
 
-  if (label.taskId === taskId) {
-    return label;
-  }
-
   type InsertionResult = {
     taskLabel: LabelRow;
     inserted: boolean;
+    task: { id: string; projectId: string };
   };
-  const { taskLabel, inserted } = await db.transaction<InsertionResult>(
-    async (tx) => {
-      const currentLabel = await tx.query.labelTable.findFirst({
-        where: (label, { eq }) => eq(label.id, id),
+  const {
+    taskLabel,
+    inserted,
+    task: taskContext,
+  } = await db.transaction<InsertionResult>(async (tx) => {
+    await lockWorkspaceLabelNames(tx, label.workspaceId, [label.name]);
+    // Task-scoped labels follow task -> label lock order so task deletion's
+    // cascading child-row delete cannot deadlock against a label edit/move.
+    // Workspace labels remain label -> task: workspace-label cascades take the
+    // base label first, and task deletion never needs that base row.
+    const taskIds = [taskId, label.taskId]
+      .filter((value): value is string => Boolean(value))
+      .sort();
+    const lockedTasks = new Map<
+      string,
+      Awaited<ReturnType<typeof lockLegacyTaskRow>>
+    >();
+    let currentLabel: LabelRow | undefined;
+    if (!label.taskId) {
+      [currentLabel] = await tx
+        .select()
+        .from(labelTable)
+        .where(eq(labelTable.id, id))
+        .for("update");
+    }
+    if (!currentLabel && !label.taskId) {
+      throw new HTTPException(404, { message: "Label not found" });
+    }
+    for (const currentTaskId of taskIds) {
+      lockedTasks.set(
+        currentTaskId,
+        await lockLegacyTaskRow(tx, currentTaskId),
+      );
+    }
+    if (label.taskId) {
+      [currentLabel] = await tx
+        .select()
+        .from(labelTable)
+        .where(eq(labelTable.id, id))
+        .for("update");
+    }
+    if (!currentLabel) {
+      throw new HTTPException(404, { message: "Label not found" });
+    }
+    if (
+      currentLabel.workspaceId !== label.workspaceId ||
+      currentLabel.name !== label.name
+    ) {
+      throw new HTTPException(409, {
+        message: "Label changed; retry the request",
       });
-
-      if (!currentLabel) {
-        throw new HTTPException(404, {
-          message: "Label not found",
-        });
-      }
-
-      if (
-        currentLabel.workspaceId &&
-        currentLabel.workspaceId !== task.workspaceId
-      ) {
-        throw new HTTPException(400, {
-          message: "Label and task must belong to the same workspace",
-        });
-      }
-
-      if (currentLabel.taskId === taskId) {
-        return {
-          taskLabel: currentLabel,
-          inserted: false,
-        };
-      }
-
-      const previousTaskId = currentLabel.taskId;
-      if (previousTaskId) {
-        await tx.delete(labelTable).where(eq(labelTable.id, id));
-      }
-
-      const [insertedRow] = await tx
-        .insert(labelTable)
-        .values({
-          name: currentLabel.name,
-          color: currentLabel.color,
-          taskId,
-          workspaceId: task.workspaceId,
-        })
-        .onConflictDoNothing({
-          target: [labelTable.taskId, labelTable.name],
-        })
-        .returning();
-
-      if (insertedRow) {
-        return {
-          taskLabel: insertedRow,
-          inserted: true,
-        };
-      }
-
-      const existing = await tx.query.labelTable.findFirst({
-        where: and(
-          eq(labelTable.taskId, taskId),
-          eq(labelTable.name, currentLabel.name),
-        ),
+    }
+    if (currentLabel.taskId && !lockedTasks.has(currentLabel.taskId)) {
+      throw new HTTPException(409, {
+        message: "Label assignment changed; retry the request",
       });
+    }
 
-      if (!existing) {
-        throw new HTTPException(500, {
-          message: "Failed to attach label to task",
-        });
-      }
+    const lockedTargetTask = lockedTasks.get(taskId);
+    if (!lockedTargetTask) {
+      throw new HTTPException(404, { message: "Task not found" });
+    }
+    const projectIds = [...lockedTasks.values()].map((row) => row.projectId);
+    await lockProjectsAndAssertLive(tx, projectIds);
+    const projects = await tx
+      .select({ id: projectTable.id, workspaceId: projectTable.workspaceId })
+      .from(projectTable)
+      .where(inArray(projectTable.id, projectIds));
+    const lockedTargetProject = projects.find(
+      (project) => project.id === lockedTargetTask.projectId,
+    );
+    if (
+      !lockedTargetProject ||
+      lockedTargetProject.workspaceId !== currentLabel.workspaceId
+    ) {
+      throw new HTTPException(400, {
+        message: "Label and task must belong to the same workspace",
+      });
+    }
 
+    const task = {
+      id: lockedTargetTask.id,
+      projectId: lockedTargetTask.projectId,
+      workspaceId: lockedTargetProject.workspaceId,
+    };
+
+    if (currentLabel.taskId === taskId) {
       return {
-        taskLabel: existing,
+        taskLabel: currentLabel,
         inserted: false,
+        task,
       };
-    },
-  );
+    }
+
+    const previousTaskId = currentLabel.taskId;
+    if (previousTaskId) {
+      await tx.delete(labelTable).where(eq(labelTable.id, id));
+    }
+
+    const [insertedRow] = await tx
+      .insert(labelTable)
+      .values({
+        name: currentLabel.name,
+        color: currentLabel.color,
+        taskId,
+        workspaceId: task.workspaceId,
+      })
+      .onConflictDoNothing({
+        target: [labelTable.taskId, labelTable.name],
+      })
+      .returning();
+
+    if (insertedRow) {
+      return {
+        taskLabel: insertedRow,
+        inserted: true,
+        task,
+      };
+    }
+
+    const existing = await tx.query.labelTable.findFirst({
+      where: and(
+        eq(labelTable.taskId, taskId),
+        eq(labelTable.name, currentLabel.name),
+      ),
+    });
+
+    if (!existing) {
+      throw new HTTPException(500, {
+        message: "Failed to attach label to task",
+      });
+    }
+
+    return {
+      taskLabel: existing,
+      inserted: false,
+      task,
+    };
+  });
 
   if (!inserted) {
     return taskLabel;
@@ -154,8 +223,8 @@ async function assignLabelToTask(id: string, taskId: string, userId: string) {
   await publishEvent("task.label_assigned", {
     label: taskLabel,
     task,
-    projectId: task.projectId,
-    taskId: task.id,
+    projectId: taskContext.projectId,
+    taskId: taskContext.id,
     userId,
     type: "label_assigned",
   });

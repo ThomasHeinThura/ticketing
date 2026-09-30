@@ -1,23 +1,43 @@
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockSelect = vi.fn();
+const mockTxSelect = vi.fn();
 const mockUpdate = vi.fn();
+const mockTransaction = vi.fn(async (cb: (tx: unknown) => unknown) =>
+  cb(createMockTxContext()),
+);
+
+function createMockTxContext() {
+  return {
+    select: (...args: unknown[]) => mockTxSelect(...args),
+    update: (...args: unknown[]) => mockUpdate(...args),
+  };
+}
 
 vi.mock("../../../apps/api/src/database", () => ({
   default: {
     select: (...args: unknown[]) => mockSelect(...args),
     update: (...args: unknown[]) => mockUpdate(...args),
+    transaction: (cb: (tx: unknown) => unknown) => mockTransaction(cb),
   },
 }));
 
 import updateTimeEntry from "../../../apps/api/src/time-entry/controllers/update-time-entry";
 
 function makeSelectMock(rows: unknown[]) {
-  const chain: Record<string, Mock> = {
+  const result = Promise.resolve(rows);
+  const chain = Object.assign(result, {
     from: vi.fn(() => chain),
-    where: vi.fn(() => Promise.resolve(rows)),
-  };
+    where: vi.fn(() => chain),
+    for: vi.fn(() => result),
+  });
   return chain;
+}
+
+function queueTxSelectRows(...rows: unknown[][]) {
+  for (const result of rows) {
+    mockTxSelect.mockReturnValueOnce(makeSelectMock(result));
+  }
 }
 
 function makeUpdateMock(updatedRow: unknown) {
@@ -30,6 +50,10 @@ function makeUpdateMock(updatedRow: unknown) {
 describe("updateTimeEntry", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockTxSelect.mockImplementation(() => makeSelectMock([]));
+    mockTransaction.mockImplementation(async (cb: (tx: unknown) => unknown) =>
+      cb(createMockTxContext()),
+    );
   });
 
   it("preserves a stored endTime and duration when endTime is omitted", async () => {
@@ -54,6 +78,10 @@ describe("updateTimeEntry", () => {
           duration: 3600,
         },
       ]),
+    );
+    queueTxSelectRows(
+      [{ id: "task-1", projectId: "project-1" }],
+      [{ id: "project-1", deletedAt: null, archivedAt: null }],
     );
     mockUpdate.mockReturnValue(updateChain);
 
@@ -84,6 +112,10 @@ describe("updateTimeEntry", () => {
         },
       ]),
     );
+    queueTxSelectRows(
+      [{ id: "task-1", projectId: "project-1" }],
+      [{ id: "project-1", deletedAt: null, archivedAt: null }],
+    );
     mockUpdate.mockReturnValue(updateChain);
 
     await expect(
@@ -108,6 +140,10 @@ describe("updateTimeEntry", () => {
           duration: null,
         },
       ]),
+    );
+    queueTxSelectRows(
+      [{ id: "task-1", projectId: "project-1" }],
+      [{ id: "project-1", deletedAt: null, archivedAt: null }],
     );
     mockUpdate.mockReturnValue(updateChain);
 
@@ -135,6 +171,10 @@ describe("updateTimeEntry", () => {
           duration: null,
         },
       ]),
+    );
+    queueTxSelectRows(
+      [{ id: "task-1", projectId: "project-1" }],
+      [{ id: "project-1", deletedAt: null, archivedAt: null }],
     );
     mockUpdate.mockReturnValue(updateChain);
 

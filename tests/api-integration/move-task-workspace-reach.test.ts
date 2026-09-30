@@ -30,13 +30,9 @@ async function seedTask(projectId: string, columnId: string) {
   );
 }
 
-// Issue #307 S2 (Opus review of PR #307, delta round): `move-task.ts` looked up the
-// destination project by id with no workspace scope, so a `destinationProjectId`
-// belonging to another workspace resolved and then 400'd "can only be moved within
-// the same workspace" -- distinguishable from the 404 a nonexistent destination
-// project id already gave. The lookup is now scoped to the source project's own
-// (already reach-checked) workspace, so both answer this same 404.
-describe("issue #307 S2: PUT /api/task/move/{id} scopes the destination project lookup", () => {
+// PR #510 CI found the liveness lock returning its task error before the scoped
+// lookup could mask a missing destination id like a foreign workspace project.
+describe("PUT /api/task/move/{id} scopes destination project errors", () => {
   beforeEach(async () => {
     await resetTestDatabase();
   });
@@ -60,24 +56,29 @@ describe("issue #307 S2: PUT /api/task/move/{id} scopes the destination project 
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ destinationProjectId: foreignProject.id }),
     });
+    expect(withForeign.status).toBe(404);
+    const foreignBody = await withForeign.text();
+    expect(foreignBody).toBe("Project not found");
+
+    const afterForeignRequest = await db.query.taskTable.findFirst({
+      where: eq(schema.taskTable.id, task.id),
+    });
+    expect(afterForeignRequest?.projectId).toBe(project.id);
+
     const withNonexistent = await app.request(`/api/task/move/${task.id}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ destinationProjectId: randomUUID() }),
     });
-
-    const [foreignBody, nonexistentBody] = await Promise.all([
-      withForeign.text(),
-      withNonexistent.text(),
-    ]);
+    const nonexistentBody = await withNonexistent.text();
     expect(withForeign.status).toBe(withNonexistent.status);
     expect(withForeign.status).toBe(404);
     expect(foreignBody).toBe(nonexistentBody);
-    expect(foreignBody).toBe("Project not found");
+    expect(nonexistentBody).toBe("Project not found");
 
-    const stillInSourceProject = await db.query.taskTable.findFirst({
+    const afterNonexistentRequest = await db.query.taskTable.findFirst({
       where: eq(schema.taskTable.id, task.id),
     });
-    expect(stillInSourceProject?.projectId).toBe(project.id);
+    expect(afterNonexistentRequest?.projectId).toBe(project.id);
   });
 });
