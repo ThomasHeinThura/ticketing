@@ -17,8 +17,10 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * `workspaceAccess.fromSavedView()` resolves the workspace from the loaded row, the same
  * shape `label`/`column`/`workflowRule` already use.
  *
- * `orOwner` on `PATCH`/`DELETE`: `search-and-saved-views.md`'s own API table --
- * `workspace:manage_settings · orOwner(created_by, saved_view:create)`. The predicate is
+ * `orOwner` on `PATCH`/`DELETE`: `search-and-saved-views.md`'s API table --
+ * `workspace:manage_settings · orOwner(created_by, saved_view:create)`. The primary
+ * capability grants workspace managers the route; the owner branch separately requires
+ * `saved_view:create`. The predicate is
  * `row.created_by === identity.personId`, the only owner predicate `packages/permissions`
  * declares over a `created_by` column (`policy.ts`'s closed `OWNER_PREDICATES`) -- this is
  * why `saved_view.created_by` references `person.id`, not `user.id` (see that column's own
@@ -65,7 +67,7 @@ export const viewPolicies = {
   },
 
   "PATCH /api/views/{id}": {
-    capability: "saved_view:create",
+    capability: "workspace:manage_settings",
     scope: "workspace",
     scopeSource: "row",
     reach: "required",
@@ -76,7 +78,7 @@ export const viewPolicies = {
   },
 
   "DELETE /api/views/{id}": {
-    capability: "saved_view:create",
+    capability: "workspace:manage_settings",
     scope: "workspace",
     scopeSource: "row",
     reach: "required",

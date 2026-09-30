@@ -40,6 +40,16 @@ async function updateView(
         : view.sharedWithTeamId;
 
     if (nextVisibility === "team") {
+      if (
+        view.visibility !== "team" ||
+        nextSharedWithTeamId !== view.sharedWithTeamId
+      ) {
+        await assertCallerHasCapability(
+          view.workspaceId,
+          userId,
+          "saved_view:share",
+        );
+      }
       if (!nextSharedWithTeamId) {
         throw new HTTPException(400, {
           message: "sharedWithTeamId is required when visibility is 'team'",

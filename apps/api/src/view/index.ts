@@ -105,10 +105,7 @@ const updateViewRoute = createRoute({
   summary: "Update saved view",
   description:
     "The owner, or a caller with workspace:manage_settings, may edit a view.",
-  middleware: [
-    workspaceAccess.fromSavedView(),
-    requireWorkspaceCapability("saved_view:create"),
-  ] as const,
+  middleware: [workspaceAccess.fromSavedView()] as const,
   request: {
     params: savedViewIdParam,
     body: {
@@ -132,10 +129,7 @@ const deleteViewRoute = createRoute({
   path: "/{id}",
   tags: ["Views"],
   summary: "Delete saved view",
-  middleware: [
-    workspaceAccess.fromSavedView(),
-    requireWorkspaceCapability("saved_view:create"),
-  ] as const,
+  middleware: [workspaceAccess.fromSavedView()] as const,
   request: { params: savedViewIdParam },
   responses: {
     202: jsonResponse("The deleted saved view", savedViewSchema),

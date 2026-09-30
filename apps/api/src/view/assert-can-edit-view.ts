@@ -4,16 +4,12 @@ import { assertCallerHasCapability } from "../utils/require-workspace-capability
 /**
  * `PATCH /api/views/{id}` and `DELETE /api/views/{id}`'s declared policy
  * (search-and-saved-views.md § API): `workspace:manage_settings · orOwner(created_by,
- * saved_view:create)`. A conjunction the same shape `packages/permissions`'s `orOwner`
- * documents -- the owner branch still requires `saved_view:create` -- but every built-in
- * role holding `saved_view:create` is checked at route-declaration time (`viewer` does not
- * hold it), so a caller who owns the row already holds the capability by construction; no
- * extra capability call is needed for that branch here.
+ * saved_view:create)`. The runtime checks below mirror both branches of the registered route
+ * policy.
  *
- * SV-17's "editable by... team leads" is NOT enforced -- see `saved_view` table's own
- * schema.ts comment: `team_member.is_lead` does not exist in this schema yet. Only the
- * owner, or a caller with `workspace:manage_settings`, may edit a view they did not
- * create.
+ * SV-17's team-lead branch is not yet enforceable: `team_member.is_lead` is absent from the
+ * current schema (issue #445). Until that data-model work lands, the checked branches are
+ * the owner and `workspace:manage_settings`.
  */
 export async function assertCanEditView(
   view: { workspaceId: string; createdBy: string },
@@ -21,6 +17,11 @@ export async function assertCanEditView(
   userId: string,
 ): Promise<void> {
   if (view.createdBy === personId) {
+    await assertCallerHasCapability(
+      view.workspaceId,
+      userId,
+      "saved_view:create",
+    );
     return;
   }
   try {

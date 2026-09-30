@@ -51,7 +51,11 @@ describe("API integration: saved views", () => {
         scope: "workspace",
         scopeId: member.workspace.id,
         layout: "list",
-        query: { entity: "work_item", filter: { state: "started" } },
+        query: {
+          entity: "work_item",
+          filter: { state: "started" },
+          sort: [{ field: "priority", order: "desc" }],
+        },
       }),
     });
 
@@ -91,6 +95,79 @@ describe("API integration: saved views", () => {
       workspaceId: member.workspace.id,
       name: "My triage queue",
       visibility: "private",
+      query: {
+        sort: [{ field: "priority", order: "desc" }],
+      },
+    });
+  });
+
+  it("requires the share capability as well as team membership to share a view", async () => {
+    const member = await createWorkspaceMember({ role: "member" });
+    const person = await addPerson(member.user.id);
+    const teamId = `team-${randomUUID()}`;
+    await db.insert(schema.teamTable).values({
+      id: teamId,
+      name: "Share capability team",
+      workspaceId: member.workspace.id,
+      createdAt: new Date(),
+    });
+    await db.insert(schema.teamMemberTable).values({
+      id: `tm-${randomUUID()}`,
+      teamId,
+      userId: member.user.id,
+      createdAt: new Date(),
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+
+    const teamViewResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Team view denied",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        visibility: "team",
+        sharedWithTeamId: teamId,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(teamViewResponse.status).toBe(403);
+
+    const privateViewResponse = await app.request("/api/views", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: member.workspace.id,
+        name: "Private first",
+        scope: "workspace",
+        scopeId: member.workspace.id,
+        layout: "list",
+        query: { entity: "work_item" },
+      }),
+    });
+    expect(privateViewResponse.status).toBe(200);
+    const privateView = (await privateViewResponse.json()) as { id: string };
+
+    const updateResponse = await app.request(`/api/views/${privateView.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        visibility: "team",
+        sharedWithTeamId: teamId,
+      }),
+    });
+    expect(updateResponse.status).toBe(403);
+
+    const persisted = await db.query.savedViewTable.findFirst({
+      where: eq(schema.savedViewTable.id, privateView.id),
+    });
+    expect(persisted).toMatchObject({
+      createdBy: person.id,
+      visibility: "private",
+      sharedWithTeamId: null,
     });
   });
 
@@ -335,6 +412,63 @@ describe("API integration: saved views", () => {
     expect(audit[1]?.after).toMatchObject({ pinned: true });
     expect(audit[2]?.before).toMatchObject({ pinned: true });
     expect(audit[2]?.after).toMatchObject({ pinned: false });
+  });
+
+  it("serializes concurrent first-time pins so both views and audit rows persist", async () => {
+    const member = await createWorkspaceMember();
+    const person = await addPerson(member.user.id);
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const views = await db
+      .insert(schema.savedViewTable)
+      .values([
+        {
+          workspaceId: member.workspace.id,
+          createdBy: person.id,
+          name: "Concurrent pin one",
+          scope: "workspace",
+          scopeId: member.workspace.id,
+          visibility: "private",
+          sharedWithTeamId: null,
+          layout: "list",
+          query: { entity: "work_item" },
+        },
+        {
+          workspaceId: member.workspace.id,
+          createdBy: person.id,
+          name: "Concurrent pin two",
+          scope: "workspace",
+          scopeId: member.workspace.id,
+          visibility: "private",
+          sharedWithTeamId: null,
+          layout: "list",
+          query: { entity: "work_item" },
+        },
+      ])
+      .returning({ id: schema.savedViewTable.id });
+    const [first, second] = views;
+    if (!first || !second) throw new Error("Expected two saved view rows");
+
+    const responses = await Promise.all([
+      app.request(`/api/views/${first.id}/pin`, { method: "POST" }),
+      app.request(`/api/views/${second.id}/pin`, { method: "POST" }),
+    ]);
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+
+    const preference = await db.query.userPreferenceTable.findFirst({
+      where: eq(schema.userPreferenceTable.personId, person.id),
+    });
+    expect(preference?.value).toEqual(
+      expect.arrayContaining([first.id, second.id]),
+    );
+
+    const audit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.actorId, person.id));
+    expect(
+      audit.filter((row) => row.action === "saved_view.pinned"),
+    ).toHaveLength(2);
   });
 
   it("deletes a workspace that contains a team-shared view without violating the view check", async () => {

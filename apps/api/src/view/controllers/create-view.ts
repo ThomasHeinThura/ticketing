@@ -64,6 +64,9 @@ async function createView(
 
   // SV-15: this is a separate axis from `scope`/`scopeId` above.
   if (visibility === "team") {
+    // RBAC grants `saved_view:share` to callers who may share a view; team membership
+    // controls who can see it, not whether the caller may create that grant.
+    await assertCallerHasCapability(workspaceId, userId, "saved_view:share");
     if (!sharedWithTeamId) {
       throw new HTTPException(400, {
         message: "sharedWithTeamId is required when visibility is 'team'",

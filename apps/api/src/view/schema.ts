@@ -32,7 +32,7 @@ export const savedViewQueryEnvelope = z.object({
   entity: z.string().default("work_item"),
   filter: z.record(z.string(), z.unknown()).optional(),
   sort: z
-    .array(z.object({ field: z.string(), direction: z.enum(["asc", "desc"]) }))
+    .array(z.object({ field: z.string(), order: z.enum(["asc", "desc"]) }))
     .optional(),
   groupBy: z.string().optional(),
   columns: z.array(z.string()).optional(),
