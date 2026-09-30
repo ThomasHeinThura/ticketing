@@ -411,6 +411,17 @@ Completion and release also require the matching owner and token; renewal and co
 require an unexpired lease. If renewal fails, the worker must stop the provider request when
 possible and must not commit success with the expired token.
 
+The channel adapter call has a 30-second absolute deadline covering connection setup and
+response wait. The worker requests cancellation at that deadline and stops awaiting even if
+the adapter ignores cancellation. While the call is active, renew the reservation every 15
+seconds to 60 seconds from the renewal's PostgreSQL wall-clock sample. On deadline, count the
+attempt, leave the candidate pending with `next_attempt_at` no earlier than the lease expiry,
+and stop renewing without releasing: provider acceptance may be ambiguous. A worker may
+reclaim only after expiry and must use a fresh token. These values and normal/hung-call cases
+are acceptance requirements in
+[notifications.md](../03-features/notifications.md#delivery); runtime support is not claimed
+by this contract.
+
 Use one authoritative PostgreSQL wall-clock value per atomic reservation operation. After
 any reservation-row lock wait has finished, sample `clock_timestamp() AT TIME ZONE 'UTC'`
 exactly once in that operation (for example, in a materialized CTE) and reuse the value for
