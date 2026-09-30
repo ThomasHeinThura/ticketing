@@ -51,10 +51,12 @@ unpopulated. G8's detail baseline, a keyboard-only G10 journey, G11 interaction/
 coverage, and G13 skeleton-to-content layout-shift measurement also remain open. Keep #512
 draft while the owning attachment/comment contract is unresolved.
 
-P4's archived-project guard is merged, but the existing local Traefik app image has not
-been redeployed with the newer merged changes. Browser screen verification remains pending
-while Thomas handles the local certificate warning. Check GitHub for the latest heads,
-reviews and checks before acting on any candidate.
+P4's archived-project guard is merged and the local Traefik app was rebuilt from main
+`7d21bc8f` and redeployed at 2026-09-30 21:10 UTC. The container is healthy and both
+`ticketing.localhost` and `portal.localhost` return HTTP 200 for the app root and API
+readiness endpoint. Browser screen verification remains pending while Thomas handles the
+local certificate warning. Check GitHub for the latest heads, reviews and checks before
+acting on any candidate.
 
 ---
 
