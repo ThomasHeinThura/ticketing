@@ -12,6 +12,7 @@ const axeCoreSource = readFileSync(
 
 const workspaceId = "workspace-calendar-e2e";
 const calendarId = "calendar-e2e-1";
+const loadingCalendarId = "calendar-e2e-loading";
 
 type CalendarFixture = {
   id: string;
@@ -77,12 +78,43 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
   page,
 }, testInfo) => {
   let savedCalendar = { ...calendar };
+  let listIsEmpty = false;
+  let listRequestFailure = false;
+  let editorRequestFailure = false;
+  let previewRequestFailure = false;
+  let holdListResponse = false;
+  let holdEditorResponse = false;
+  let releaseListResponse: (() => void) | undefined;
+  let releaseEditorResponse: (() => void) | undefined;
+  let listResponseHeld: (() => void) | undefined;
+  let editorResponseHeld: (() => void) | undefined;
+  const listResponseHeldPromise = new Promise<void>((resolve) => {
+    listResponseHeld = resolve;
+  });
+  const editorResponseHeldPromise = new Promise<void>((resolve) => {
+    editorResponseHeld = resolve;
+  });
   let patchPayload: CalendarFixture | undefined;
   let createPayload: Omit<CalendarFixture, "id"> | undefined;
   let canManageServiceCalendars = true;
 
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+  await page.addInitScript(() => {
+    const shifts: Array<{ value: number; startTime: number }> = [];
+    Object.assign(window, { __calendarLayoutShifts: shifts });
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as Array<{
+        hadRecentInput: boolean;
+        value: number;
+        startTime: number;
+      }>) {
+        if (!entry.hadRecentInput) {
+          shifts.push({ value: entry.value, startTime: entry.startTime });
+        }
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+  });
 
   await page.route("**/api/auth/get-session**", (route) =>
     route.fulfill({
@@ -170,15 +202,32 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
     const path = url.pathname;
 
     if (request.method() === "GET" && path === "/api/service-calendars") {
+      if (holdListResponse) {
+        listResponseHeld?.();
+        await new Promise<void>((resolve) => {
+          releaseListResponse = resolve;
+        });
+      }
+      if (listRequestFailure) {
+        await route.fulfill({
+          status: 503,
+          body: "Calendar service unavailable",
+        });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify([savedCalendar]),
+        body: JSON.stringify(listIsEmpty ? [] : [savedCalendar]),
       });
       return;
     }
 
     if (request.method() === "GET" && path.endsWith("/preview")) {
+      if (previewRequestFailure) {
+        await route.fulfill({ status: 503, body: "Preview unavailable" });
+        return;
+      }
       const year = Number(url.searchParams.get("year"));
       await route.fulfill({
         status: 200,
@@ -196,8 +245,19 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
 
     if (
       request.method() === "GET" &&
-      path === `/api/service-calendars/${savedCalendar.id}`
+      (path === `/api/service-calendars/${savedCalendar.id}` ||
+        path === `/api/service-calendars/${loadingCalendarId}`)
     ) {
+      if (holdEditorResponse) {
+        editorResponseHeld?.();
+        await new Promise<void>((resolve) => {
+          releaseEditorResponse = resolve;
+        });
+      }
+      if (editorRequestFailure) {
+        await route.fulfill({ status: 503, body: "Calendar unavailable" });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -329,6 +389,14 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
   expect(createPayload?.workspaceId).toBe(workspaceId);
   expect(createPayload?.windows.mon).toEqual([{ from: 540, to: 1020 }]);
 
+  // G10: edit weekly cover with keyboard input and leave the control by Tab.
+  const keyboardStartTime = page.getByLabel("Monday window 1 start");
+  await keyboardStartTime.focus();
+  await page.keyboard.press("Control+A");
+  await page.keyboard.type("10:00");
+  await page.keyboard.press("Tab");
+  await expect(keyboardStartTime).toHaveValue("10:00");
+
   canManageServiceCalendars = false;
   await page.goto("/agent/settings/calendars");
   await expect(page.getByText("Read-only access")).toBeVisible();
@@ -344,4 +412,89 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
   await expect(
     page.getByRole("button", { name: "Create calendar" }),
   ).toBeDisabled();
+
+  // G6: loading, empty, error, and partial states are all reachable in-browser.
+  canManageServiceCalendars = true;
+  savedCalendar = { ...calendar };
+  holdListResponse = true;
+  const loadingNavigation = page.goto("/agent/settings/calendars");
+  await listResponseHeldPromise;
+  await expect(
+    page.getByRole("status", { name: "Loading service calendars" }),
+  ).toBeVisible();
+  await page.evaluate(() => performance.mark("calendar-skeleton-visible"));
+  releaseListResponse?.();
+  await loadingNavigation;
+  holdListResponse = false;
+  await expect(
+    page.getByRole("link", { name: "Support coverage" }),
+  ).toBeVisible();
+  await page.evaluate(() => performance.mark("calendar-content-mounted"));
+  const layoutShiftTotal = await page.evaluate(() => {
+    const start = performance.getEntriesByName("calendar-skeleton-visible")[0]
+      ?.startTime;
+    const end = performance.getEntriesByName("calendar-content-mounted")[0]
+      ?.startTime;
+    const shifts = (
+      window as typeof window & {
+        __calendarLayoutShifts: Array<{ value: number; startTime: number }>;
+      }
+    ).__calendarLayoutShifts;
+    if (start === undefined || end === undefined)
+      return Number.POSITIVE_INFINITY;
+    return shifts
+      .filter((entry) => entry.startTime >= start && entry.startTime <= end)
+      .reduce((total, entry) => total + entry.value, 0);
+  });
+  // G13: the list's skeleton-to-content layout shift must stay below 0.1.
+  expect(layoutShiftTotal).toBeLessThan(0.1);
+
+  holdEditorResponse = true;
+  const editorLoadingNavigation = page.goto(
+    `/agent/settings/calendars/${loadingCalendarId}`,
+  );
+  await editorResponseHeldPromise;
+  await expect(
+    page.getByRole("status", { name: "Loading service calendar" }),
+  ).toBeAttached();
+  releaseEditorResponse?.();
+  await editorLoadingNavigation;
+  holdEditorResponse = false;
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
+    "Support coverage",
+  );
+
+  await page.goto("/agent/settings/calendars");
+  listIsEmpty = true;
+  await page.reload();
+  await expect(page.getByText("No service calendars yet")).toBeVisible();
+
+  listIsEmpty = false;
+  listRequestFailure = true;
+  await page.reload();
+  await expect(page.getByText("Calendars could not be loaded")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+  listRequestFailure = false;
+  await page.getByRole("button", { name: "Retry" }).click();
+  await expect(page.getByText("40 h/week")).toBeVisible();
+
+  editorRequestFailure = true;
+  await page.goto(`/agent/settings/calendars/${calendarId}`);
+  await expect(page.getByText("Calendar could not be loaded")).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Back to calendars" }),
+  ).toBeVisible();
+
+  editorRequestFailure = false;
+  previewRequestFailure = true;
+  await page.goto(`/agent/settings/calendars/${calendarId}`);
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
+    "Support coverage",
+  );
+  await expect(
+    page.getByText("Coverage preview is unavailable."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Retry preview" }),
+  ).toBeVisible();
 });

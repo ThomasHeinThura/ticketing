@@ -48,8 +48,10 @@ export function ServiceCalendarEditorView({
     return (
       <main className="flex h-full flex-col gap-4 overflow-y-auto p-6">
         <PageTitle title="Service calendar" />
-        <Skeleton className="h-12 w-2/3" />
-        <Skeleton className="h-72 w-full" />
+        <div role="status" aria-label="Loading service calendar">
+          <Skeleton className="h-12 w-2/3" />
+          <Skeleton className="mt-4 h-72 w-full" />
+        </div>
       </main>
     );
   }
