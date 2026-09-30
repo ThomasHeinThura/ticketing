@@ -443,7 +443,7 @@ describe("every assignee write path is workspace scoped", () => {
     expect(persistedTask?.userId).toBeNull();
   });
 
-  it("keeps one authorized assignee decision stable across per-item commits", async () => {
+  it("rechecks assignee membership for each item after per-item commits", async () => {
     const member = await createWorkspaceMember({ role: "owner" });
     const assignee = await createWorkspaceMember({ role: "owner" });
     const { project, columns } = await createProjectFixture({
@@ -481,6 +481,8 @@ describe("every assignee write path is workspace scoped", () => {
         },
       ])
       .returning();
+    const firstTask = requireRow([tasks[0]], "first bulk task");
+    const secondTask = requireRow([tasks[1]], "second bulk task");
 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
@@ -538,8 +540,15 @@ describe("every assignee write path is workspace scoped", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toMatchObject({
         success: true,
-        updatedCount: 2,
-        results: tasks.map((task) => ({ taskId: task.id, success: true })),
+        updatedCount: 1,
+        results: [
+          { taskId: firstTask.id, success: true },
+          {
+            taskId: secondTask.id,
+            success: false,
+            error: "Assignee is not a member of this workspace",
+          },
+        ],
       });
 
       const persistedTasks = await db
@@ -547,10 +556,11 @@ describe("every assignee write path is workspace scoped", () => {
         .from(schema.taskTable)
         .where(eq(schema.taskTable.projectId, project.id))
         .orderBy(schema.taskTable.number);
-      expect(persistedTasks).toEqual(
-        tasks.map((task) => ({ id: task.id, userId: assignee.user.id })),
-      );
-      expect(publishedTaskIds).toEqual(tasks.map((task) => task.id));
+      expect(persistedTasks).toEqual([
+        { id: firstTask.id, userId: assignee.user.id },
+        { id: secondTask.id, userId: null },
+      ]);
+      expect(publishedTaskIds).toEqual([firstTask.id]);
       expect(
         await db.query.workspaceUserTable.findFirst({
           where: and(
@@ -559,6 +569,117 @@ describe("every assignee write path is workspace scoped", () => {
           ),
         }),
       ).toBeUndefined();
+    } finally {
+      await client.query(`DROP TRIGGER IF EXISTS ${triggerName} ON task`);
+      await client.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
+      await client.end();
+      publishSpy.mockRestore();
+    }
+  });
+
+  it("publishes item one before a deterministic database failure on item two", async () => {
+    const member = await createWorkspaceMember({ role: "owner" });
+    const assignee = await createWorkspaceMember({ role: "owner" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: member.workspace.id,
+      userId: assignee.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+
+    const tasks = await db
+      .insert(schema.taskTable)
+      .values([
+        {
+          projectId: project.id,
+          title: "First bulk task",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo.id,
+          number: 1,
+          position: 1,
+        },
+        {
+          projectId: project.id,
+          title: "Second bulk task",
+          description: "",
+          priority: "low",
+          status: "to-do",
+          columnId: columns.todo.id,
+          number: 2,
+          position: 2,
+        },
+      ])
+      .returning();
+    const firstTask = requireRow([tasks[0]], "first bulk task");
+    const secondTask = requireRow([tasks[1]], "second bulk task");
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const client = new Client({
+      connectionString: process.env.TASKDESK_DATABASE_URL,
+    });
+    const suffix = randomUUID().replaceAll("-", "");
+    const triggerName = `fail_second_bulk_task_${suffix}`;
+    const functionName = `${triggerName}_fn`;
+    const publishedTaskIds: string[] = [];
+    const publishSpy = vi
+      .spyOn(eventBus, "publishEvent")
+      .mockImplementation(async (eventType, data) => {
+        if (
+          eventType === "task.assignee_changed" &&
+          typeof data === "object" &&
+          data !== null &&
+          "taskId" in data &&
+          typeof data.taskId === "string"
+        ) {
+          publishedTaskIds.push(data.taskId);
+        }
+      });
+
+    await client.connect();
+    try {
+      await client.query(`
+        CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.id = '${secondTask.id}' THEN
+            RAISE EXCEPTION 'deterministic second-item failure';
+          END IF;
+          RETURN NEW;
+        END;
+        $$
+      `);
+      await client.query(`
+        CREATE TRIGGER ${triggerName}
+        BEFORE UPDATE OF assignee_id ON task
+        FOR EACH ROW EXECUTE FUNCTION ${functionName}()
+      `);
+
+      const response = await app.request("/api/task/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskIds: tasks.map((task) => task.id),
+          operation: "updateAssignee",
+          value: assignee.user.id,
+        }),
+      });
+
+      expect(response.status).toBe(500);
+      expect(publishedTaskIds).toEqual([firstTask.id]);
+      const persistedTasks = await db
+        .select({ id: schema.taskTable.id, userId: schema.taskTable.userId })
+        .from(schema.taskTable)
+        .where(eq(schema.taskTable.projectId, project.id))
+        .orderBy(schema.taskTable.number);
+      expect(persistedTasks).toEqual([
+        { id: firstTask.id, userId: assignee.user.id },
+        { id: secondTask.id, userId: null },
+      ]);
     } finally {
       await client.query(`DROP TRIGGER IF EXISTS ${triggerName} ON task`);
       await client.query(`DROP FUNCTION IF EXISTS ${functionName}()`);

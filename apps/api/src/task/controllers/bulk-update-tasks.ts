@@ -11,7 +11,7 @@ import {
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { lockWorkspaceLabelNames } from "../../label/label-name-lock";
-import { assertAssignableUser } from "../../utils/assert-assignable-user";
+import { assertAssignableUserAndLockMembership } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
 import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 import {
@@ -118,10 +118,9 @@ async function bulkUpdateTasks({
     throw new HTTPException(404, { message: "No tasks found" });
   }
 
-  const events: DeferredEvent[] = [];
   const results: ItemResult[] = [];
   let updatedCount = 0;
-  let assigneeAuthorizationValidated = false;
+  let committedAssigneeWrites = 0;
 
   // Recheck each scoped row under its own task/project locks below. Opaque ids
   // filtered by workspace reach stay in the response only as anonymous failures,
@@ -133,8 +132,9 @@ async function bulkUpdateTasks({
     }
     let taskInScope = false;
     const itemEvents: DeferredEvent[] = [];
+    let itemUpdatedCount = 0;
     try {
-      const itemUpdatedCount = await db.transaction(async (tx) => {
+      itemUpdatedCount = await db.transaction(async (tx) => {
         let label: typeof labelTable.$inferSelect | undefined;
         let labelError: HTTPException | undefined;
         if (
@@ -256,14 +256,15 @@ async function bulkUpdateTasks({
 
           case "updateAssignee": {
             const assigneeId = value?.trim() || null;
-            // Every item in this request uses the same assignee and workspace.
-            // Establish that shared authorization decision on the first live
-            // item's transaction, then reuse it for the rest of the batch. A
-            // later membership revocation must not turn already committed item
-            // writes into a request-level 403 before their deferred events run.
-            if (assigneeId && !assigneeAuthorizationValidated) {
-              await assertAssignableUser(assigneeId, workspaceId, tx);
-              assigneeAuthorizationValidated = true;
+            // Membership is checked and locked in every item transaction. A
+            // concurrent removal therefore serializes with this assignment,
+            // and a removal committed between items makes the later item fail.
+            if (assigneeId) {
+              await assertAssignableUserAndLockMembership(
+                assigneeId,
+                workspaceId,
+                tx,
+              );
             }
             const newAssigneeName = assigneeId
               ? (
@@ -405,16 +406,18 @@ async function bulkUpdateTasks({
             });
         }
       });
-
-      updatedCount += itemUpdatedCount;
-      events.push(...itemEvents);
-      results.push({ taskId, success: true });
     } catch (error) {
       if (!(error instanceof HTTPException)) throw error;
-      // Assignee reach is a request-level authorization boundary. Returning a
-      // per-item 403 inside an HTTP 200 bulk envelope breaks the legacy route
-      // contract and makes callers treat an unauthorized request as accepted.
-      if (error.status === 403) throw error;
+      // Keep the legacy top-level 403 when no assignment has committed. If a
+      // membership is revoked between item transactions, preserve the already
+      // committed items and report this later item through the WI-25 result.
+      if (error.status === 403) {
+        if (operation !== "updateAssignee" || committedAssigneeWrites === 0) {
+          throw error;
+        }
+        results.push({ taskId, success: false, error: error.message });
+        continue;
+      }
       results.push({
         ...(taskInScope ? { taskId } : {}),
         success: false,
@@ -425,10 +428,18 @@ async function bulkUpdateTasks({
             ? "Task not found"
             : error.message,
       });
+      continue;
     }
-  }
 
-  for (const publish of events) await publish();
+    updatedCount += itemUpdatedCount;
+    if (operation === "updateAssignee" && itemUpdatedCount > 0) {
+      committedAssigneeWrites += itemUpdatedCount;
+    }
+    // Each transaction owns its event queue. Publish as soon as that item's
+    // commit succeeds so a later item's database failure cannot suppress it.
+    for (const publish of itemEvents) await publish();
+    results.push({ taskId, success: true });
+  }
 
   return {
     success: true,

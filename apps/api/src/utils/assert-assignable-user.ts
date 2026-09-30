@@ -65,6 +65,34 @@ export async function assertAssignableUser(
   }
 }
 
+/**
+ * Validate an assignee and hold any workspace membership row through the
+ * caller's transaction. This serializes assignment against membership removal:
+ * whichever transaction gets the row lock first commits before the other can
+ * make its decision. Global admins remain assignable without a workspace row,
+ * matching `assertAssignableUser`'s existing behavior.
+ */
+export async function assertAssignableUserAndLockMembership(
+  userId: string,
+  workspaceId: string,
+  executor: DbOrTx,
+): Promise<void> {
+  const memberships = await executor
+    .select({ userId: schema.workspaceUserTable.userId })
+    .from(schema.workspaceUserTable)
+    .where(
+      and(
+        eq(schema.workspaceUserTable.userId, userId),
+        eq(schema.workspaceUserTable.workspaceId, workspaceId),
+      ),
+    )
+    .for("update");
+
+  if (memberships.length > 0) return;
+
+  await assertAssignableUser(userId, workspaceId, executor);
+}
+
 export async function getProjectWorkspaceId(
   projectId: string,
   executor: DbOrTx = db,

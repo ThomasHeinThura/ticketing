@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { subscribeToEvent } from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
+import { WORKSPACE_LABEL_NAME_LOCK_NAMESPACE } from "../../apps/api/src/label/label-name-lock";
+import { COLUMN_SEED_LOCK_NAMESPACE } from "../../apps/api/src/migrations/column-migration";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
@@ -41,6 +43,14 @@ async function waitForBlockedPid(
   }
   throw new Error(`No PostgreSQL session blocked by pid ${blockerPid}`);
 }
+
+describe("label advisory-lock namespace", () => {
+  it("uses a distinct namespace from column seeding", () => {
+    expect(WORKSPACE_LABEL_NAME_LOCK_NAMESPACE).not.toBe(
+      COLUMN_SEED_LOCK_NAMESPACE,
+    );
+  });
+});
 
 describe("API integration: bulk label name-family locking", () => {
   beforeEach(async () => {

@@ -12,9 +12,10 @@ type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
  *
  * PostgreSQL hash collisions only cause unrelated labels to wait; they cannot
  * weaken the family lock. The workspace id is UUID-shaped in this schema, so
- * the colon delimiter is unambiguous for the family key.
+ * the colon delimiter is unambiguous for the family key. Namespace `4_007` is
+ * distinct from the startup column-seed namespace `4_004`.
  */
-export const WORKSPACE_LABEL_NAME_LOCK_NAMESPACE = 4_004;
+export const WORKSPACE_LABEL_NAME_LOCK_NAMESPACE = 4_007;
 
 export async function lockWorkspaceLabelNames(
   tx: DbOrTx,
