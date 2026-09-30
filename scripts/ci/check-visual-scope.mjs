@@ -8,12 +8,63 @@ import { repoRoot } from "./lib/repo.mjs";
 const manifestPath = "apps/web/e2e/visual-screens.json";
 const inventoryPath = "docs/02-design/screen-inventory.md";
 const routeTreePath = "apps/web/src/routeTree.gen.ts";
+const rootPackagePath = "package.json";
+const webPackagePath = "apps/web/package.json";
+const baseConfigPath = "apps/web/playwright.config.ts";
+const visualConfigPath = "apps/web/playwright.visual.config.ts";
+const storybookConfigPath = "apps/web/playwright.storybook.config.ts";
+const ciWorkflowPath = ".github/workflows/ci-full.yml";
 const manifest = JSON.parse(
   await readFile(path.join(repoRoot, manifestPath), "utf8"),
 );
 const inventory = await readFile(path.join(repoRoot, inventoryPath), "utf8");
 const routeTree = await readFile(path.join(repoRoot, routeTreePath), "utf8");
+const rootPackage = JSON.parse(
+  await readFile(path.join(repoRoot, rootPackagePath), "utf8"),
+);
+const webPackage = JSON.parse(
+  await readFile(path.join(repoRoot, webPackagePath), "utf8"),
+);
+const ciWorkflow = await readFile(path.join(repoRoot, ciWorkflowPath), "utf8");
 const failures = [];
+
+const expectedRootVisualCommand =
+  "pnpm check:visual-scope && pnpm --filter @taskdesk/web test:visual";
+const expectedWebVisualCommand =
+  "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual";
+
+if (rootPackage.scripts?.["test:visual"] !== expectedRootVisualCommand) {
+  failures.push(
+    `${rootPackagePath} test:visual must run check:visual-scope and @taskdesk/web test:visual`,
+  );
+}
+if (webPackage.scripts?.["test:visual"] !== expectedWebVisualCommand) {
+  failures.push(
+    `${webPackagePath} test:visual must run route and Storybook Playwright configs with @visual`,
+  );
+}
+const workflowLines = ciWorkflow.split(/\r?\n/u);
+const visualJobStarts = workflowLines
+  .map((line, index) => (line === "  visual:" ? index : -1))
+  .filter((index) => index >= 0);
+const visualJobStart = visualJobStarts[0] ?? -1;
+let visualJobEnd = workflowLines.findIndex(
+  (line, index) => index > visualJobStart && /^ {2}[A-Za-z0-9_-]+:/u.test(line),
+);
+if (visualJobEnd === -1) visualJobEnd = workflowLines.length;
+const visualJob =
+  visualJobStart === -1
+    ? ""
+    : workflowLines.slice(visualJobStart, visualJobEnd).join("\n");
+if (
+  visualJobStarts.length !== 1 ||
+  !visualJob.includes("name: visual regression (G8)") ||
+  !/^[ \t]{8}run: pnpm test:visual\s*$/mu.test(visualJob)
+) {
+  failures.push(
+    `${ciWorkflowPath} must run pnpm test:visual in the visual regression (G8) job`,
+  );
+}
 
 function canonicalInventoryRoute(route) {
   const canonical = route.split("?")[0];
@@ -27,6 +78,111 @@ function canonicalInventoryRoute(route) {
 
 function isNamedProperty(node, name) {
   return ts.isPropertyAccessExpression(node) && node.name.text === name;
+}
+
+function configObject(sourceFile) {
+  if (!sourceFile) return undefined;
+  const assignment = sourceFile.statements.find(ts.isExportAssignment);
+  if (
+    !assignment ||
+    !ts.isCallExpression(assignment.expression) ||
+    !ts.isIdentifier(assignment.expression.expression) ||
+    assignment.expression.expression.text !== "defineConfig"
+  ) {
+    return undefined;
+  }
+  const [argument] = assignment.expression.arguments;
+  return argument && ts.isObjectLiteralExpression(argument)
+    ? argument
+    : undefined;
+}
+
+function propertyValues(object, name) {
+  if (!object) return [];
+  return object.properties
+    .filter(
+      (property) =>
+        ts.isPropertyAssignment(property) &&
+        ts.isIdentifier(property.name) &&
+        property.name.text === name,
+    )
+    .map((property) => property.initializer);
+}
+
+function hasLiteralProperty(object, name, expected, literalGuard) {
+  const values = propertyValues(object, name);
+  return (
+    values.length === 1 &&
+    literalGuard(values[0]) &&
+    values[0].text === expected
+  );
+}
+
+function hasBooleanProperty(object, name, expected) {
+  const [value] = propertyValues(object, name);
+  return (
+    propertyValues(object, name).length === 1 &&
+    value?.kind ===
+      (expected ? ts.SyntaxKind.TrueKeyword : ts.SyntaxKind.FalseKeyword)
+  );
+}
+
+function hasNumericProperty(object, name, expected) {
+  return hasLiteralProperty(
+    object,
+    name,
+    String(expected),
+    ts.isNumericLiteral,
+  );
+}
+
+function stringArrayProperty(object, name) {
+  const [value] = propertyValues(object, name);
+  if (
+    propertyValues(object, name).length !== 1 ||
+    !value ||
+    !ts.isArrayLiteralExpression(value) ||
+    !value.elements.every(ts.isStringLiteral)
+  ) {
+    return undefined;
+  }
+  return value.elements.map((element) => element.text);
+}
+
+function hasDefaultImport(sourceFile, moduleName, localName) {
+  return sourceFile?.statements.some(
+    (statement) =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === moduleName &&
+      statement.importClause?.name?.text === localName,
+  );
+}
+
+function hasNamedImport(sourceFile, moduleName, importName) {
+  return sourceFile?.statements.some(
+    (statement) =>
+      ts.isImportDeclaration(statement) &&
+      ts.isStringLiteral(statement.moduleSpecifier) &&
+      statement.moduleSpecifier.text === moduleName &&
+      statement.importClause &&
+      ts.isNamedImports(statement.importClause.namedBindings) &&
+      statement.importClause.namedBindings.elements.some(
+        (specifier) =>
+          specifier.name.text === importName &&
+          (specifier.propertyName?.text ?? specifier.name.text) === importName,
+      ),
+  );
+}
+
+function hasSingleSpread(object, name) {
+  const spreads = object?.properties.filter(ts.isSpreadAssignment) ?? [];
+  return (
+    spreads.length === 1 &&
+    ts.isIdentifier(spreads[0].expression) &&
+    spreads[0].expression.text === name &&
+    object.properties[0] === spreads[0]
+  );
 }
 
 function bindingContainsName(binding, name) {
@@ -2325,18 +2481,44 @@ const storySpecPath = path.join(
   repoRoot,
   "apps/web/e2e/storybook-visual.spec.ts",
 );
+const baseConfigFilePath = path.join(repoRoot, baseConfigPath);
+const visualConfigFilePath = path.join(repoRoot, visualConfigPath);
+const storybookConfigFilePath = path.join(repoRoot, storybookConfigPath);
 const parser = new API({ cwd: repoRoot });
 let visualSourceFile;
 let storySourceFile;
+let baseConfigSourceFile;
+let visualConfigSourceFile;
+let storybookConfigSourceFile;
 try {
   const snapshot = parser.updateSnapshot({
-    openFiles: [visualSpecPath, storySpecPath],
+    openFiles: [
+      visualSpecPath,
+      storySpecPath,
+      baseConfigFilePath,
+      visualConfigFilePath,
+      storybookConfigFilePath,
+    ],
   });
   try {
     const visualProject = snapshot.getDefaultProjectForFile(visualSpecPath);
     const storyProject = snapshot.getDefaultProjectForFile(storySpecPath);
+    const baseConfigProject =
+      snapshot.getDefaultProjectForFile(baseConfigFilePath);
+    const visualConfigProject =
+      snapshot.getDefaultProjectForFile(visualConfigFilePath);
+    const storybookConfigProject = snapshot.getDefaultProjectForFile(
+      storybookConfigFilePath,
+    );
     visualSourceFile = visualProject?.program.getSourceFile(visualSpecPath);
     storySourceFile = storyProject?.program.getSourceFile(storySpecPath);
+    baseConfigSourceFile =
+      baseConfigProject?.program.getSourceFile(baseConfigFilePath);
+    visualConfigSourceFile =
+      visualConfigProject?.program.getSourceFile(visualConfigFilePath);
+    storybookConfigSourceFile = storybookConfigProject?.program.getSourceFile(
+      storybookConfigFilePath,
+    );
     if (
       !visualSourceFile ||
       visualProject.program.getSyntacticDiagnostics(visualSpecPath).length > 0
@@ -2351,6 +2533,115 @@ try {
     ) {
       failures.push(
         `${storySpecPath} could not be parsed for Storybook coverage`,
+      );
+    }
+    const configFiles = [
+      [
+        baseConfigPath,
+        baseConfigFilePath,
+        baseConfigProject,
+        baseConfigSourceFile,
+      ],
+      [
+        visualConfigPath,
+        visualConfigFilePath,
+        visualConfigProject,
+        visualConfigSourceFile,
+      ],
+      [
+        storybookConfigPath,
+        storybookConfigFilePath,
+        storybookConfigProject,
+        storybookConfigSourceFile,
+      ],
+    ];
+    for (const [
+      relativePath,
+      absolutePath,
+      project,
+      sourceFile,
+    ] of configFiles) {
+      if (
+        !sourceFile ||
+        project.program.getSyntacticDiagnostics(absolutePath).length > 0
+      ) {
+        failures.push(
+          `${relativePath} could not be parsed for G8 launch evidence`,
+        );
+      }
+    }
+    const baseConfig = configObject(baseConfigSourceFile);
+    const visualConfig = configObject(visualConfigSourceFile);
+    const storybookConfig = configObject(storybookConfigSourceFile);
+    const baseTestIgnores = stringArrayProperty(baseConfig, "testIgnore");
+    if (
+      !hasNamedImport(
+        baseConfigSourceFile,
+        "@playwright/test",
+        "defineConfig",
+      ) ||
+      !hasLiteralProperty(baseConfig, "testDir", "./e2e", ts.isStringLiteral) ||
+      !baseTestIgnores?.includes("visual.spec.ts") ||
+      !baseTestIgnores.includes("storybook-visual.spec.ts")
+    ) {
+      failures.push(
+        `${baseConfigPath} must define the e2e directory and exclude both separately guarded visual specs from the default suite`,
+      );
+    }
+    const visualTestIgnores = stringArrayProperty(visualConfig, "testIgnore");
+    if (
+      !hasNamedImport(
+        visualConfigSourceFile,
+        "@playwright/test",
+        "defineConfig",
+      ) ||
+      !hasDefaultImport(
+        visualConfigSourceFile,
+        "./playwright.config",
+        "base",
+      ) ||
+      !hasSingleSpread(visualConfig, "base") ||
+      !hasBooleanProperty(visualConfig, "fullyParallel", false) ||
+      !hasNumericProperty(visualConfig, "workers", 1) ||
+      !hasLiteralProperty(
+        visualConfig,
+        "testMatch",
+        "visual.spec.ts",
+        ts.isStringLiteral,
+      ) ||
+      !visualTestIgnores ||
+      visualTestIgnores.length !== 0 ||
+      propertyValues(visualConfig, "testDir").length !== 0
+    ) {
+      failures.push(
+        `${visualConfigPath} must extend the app Playwright config and select the route visual spec serially`,
+      );
+    }
+    if (
+      !hasNamedImport(
+        storybookConfigSourceFile,
+        "@playwright/test",
+        "defineConfig",
+      ) ||
+      !hasLiteralProperty(
+        storybookConfig,
+        "testDir",
+        "./e2e",
+        ts.isStringLiteral,
+      ) ||
+      !hasLiteralProperty(
+        storybookConfig,
+        "testMatch",
+        "storybook-visual.spec.ts",
+        ts.isStringLiteral,
+      ) ||
+      !hasBooleanProperty(storybookConfig, "fullyParallel", false) ||
+      !hasBooleanProperty(storybookConfig, "forbidOnly", true) ||
+      propertyValues(storybookConfig, "webServer").length !== 1 ||
+      storybookConfig.properties.some(ts.isSpreadAssignment)
+    ) {
+      failures.push(
+        `${storybookConfigPath} must select the Storybook visual spec serially, forbid focused tests, and start Storybook`,
       );
     }
     if (visualSourceFile && !hasTrustedPlaywrightTestApi(visualSourceFile)) {

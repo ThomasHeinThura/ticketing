@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { symlinkSync } from "node:fs";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { after, test } from "node:test";
 import { repoRoot } from "./lib/repo.mjs";
@@ -357,10 +358,21 @@ async function runVisualScope({
   inventory = INVENTORY,
   source = visualSpec(screens),
   storySource = storybookSpec(),
+  rootVisualScript,
+  webVisualScript,
+  visualConfig,
+  storybookConfig,
+  ciWorkflow,
 } = {}) {
   const dir = scratchDir("visual-scope-");
   installFromRepo(dir, "scripts/ci/check-visual-scope.mjs");
   installFromRepo(dir, "scripts/ci/lib/repo.mjs");
+  installFromRepo(dir, "package.json");
+  installFromRepo(dir, "apps/web/package.json");
+  installFromRepo(dir, "apps/web/playwright.config.ts");
+  installFromRepo(dir, "apps/web/playwright.visual.config.ts");
+  installFromRepo(dir, "apps/web/playwright.storybook.config.ts");
+  installFromRepo(dir, ".github/workflows/ci-full.yml");
   symlinkSync(
     path.join(repoRoot, "node_modules"),
     path.join(dir, "node_modules"),
@@ -380,6 +392,25 @@ async function runVisualScope({
   );
   write(dir, "apps/web/e2e/visual.spec.ts", source);
   write(dir, "apps/web/e2e/storybook-visual.spec.ts", storySource);
+
+  for (const [packagePath, script] of [
+    ["package.json", rootVisualScript],
+    ["apps/web/package.json", webVisualScript],
+  ]) {
+    if (script === undefined) continue;
+    const pkg = JSON.parse(await readFile(path.join(dir, packagePath), "utf8"));
+    pkg.scripts["test:visual"] = script;
+    write(dir, packagePath, JSON.stringify(pkg, null, 2));
+  }
+  if (visualConfig !== undefined) {
+    write(dir, "apps/web/playwright.visual.config.ts", visualConfig);
+  }
+  if (storybookConfig !== undefined) {
+    write(dir, "apps/web/playwright.storybook.config.ts", storybookConfig);
+  }
+  if (ciWorkflow !== undefined) {
+    write(dir, ".github/workflows/ci-full.yml", ciWorkflow);
+  }
 
   for (const screen of screens) {
     write(
@@ -404,6 +435,80 @@ test("G8 requires baselines for active routes and leaves not-started routes plan
   assert.match(
     result.output,
     /2 screenshot cases, 2 active inventory route rows mapped \(3 route rows total\)/,
+  );
+});
+
+test("G8 rejects a root visual test script that skips the checker and web tests", async () => {
+  const result = await runVisualScope({ rootVisualScript: "echo skipped" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /package\.json test:visual must run check:visual-scope/,
+  );
+});
+
+test("G8 rejects a web visual test script that skips Playwright", async () => {
+  const result = await runVisualScope({ webVisualScript: "echo skipped" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /apps\/web\/package\.json test:visual must run route and Storybook Playwright configs/,
+  );
+});
+
+test("G8 rejects visual configs that stop selecting the guarded route spec", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
+    "utf8",
+  );
+  const visualConfig = original.replace(
+    'testMatch: "visual.spec.ts"',
+    'testMatch: "e2e.spec.ts"',
+  );
+  const result = await runVisualScope({ visualConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.visual\.config\.ts must extend the app Playwright config and select the route visual spec serially/,
+  );
+});
+
+test("G8 rejects Storybook configs that stop selecting the guarded story spec", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.storybook.config.ts"),
+    "utf8",
+  );
+  const storybookConfig = original.replace(
+    'testMatch: "storybook-visual.spec.ts"',
+    'testMatch: "e2e.spec.ts"',
+  );
+  const result = await runVisualScope({ storybookConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.storybook\.config\.ts must select the Storybook visual spec serially/,
+  );
+});
+
+test("G8 rejects a CI workflow that no longer invokes the visual test entry point", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = original.replace(
+    "run: pnpm test:visual",
+    "run: echo skipped",
+  );
+  const result = await runVisualScope({ ciWorkflow });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /ci-full\.yml must run pnpm test:visual in the visual regression \(G8\) job/,
   );
 });
 
