@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://cloud.taskdesk.app/api",
+      "url": "https://taskdesk.bimats.com/api",
       "description": "TaskDesk API Server"
     }
   ],
@@ -876,11 +876,32 @@
           },
           "updatedCount": {
             "type": "number"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "success": {
+                  "type": "boolean"
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success"
+              ]
+            }
           }
         },
         "required": [
           "success",
-          "updatedCount"
+          "updatedCount",
+          "results"
         ]
       },
       "Task": {

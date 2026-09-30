@@ -9,6 +9,8 @@ import {
 } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import { assertProjectStillLive } from "../../work-item/assert-work-item-live";
+import { lockLegacyTaskRow } from "../assert-task-project-live";
 import { claimTaskNumber } from "./claim-task-numbers";
 
 type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -21,11 +23,12 @@ function isSameProjectMove(
 }
 
 async function resolveDestinationStatus(
+  dbOrTx: DbOrTx,
   destinationProjectId: string,
   currentStatus: string,
   requestedStatus?: string,
 ) {
-  const destinationColumns = await db
+  const destinationColumns = await dbOrTx
     .select({
       id: columnTable.id,
       slug: columnTable.slug,
@@ -91,74 +94,133 @@ async function moveTask({
   destinationStatus?: string;
   currentUserId: string;
 }) {
-  const existingTask = await db.query.taskTable.findFirst({
-    where: eq(taskTable.id, taskId),
-  });
-
-  if (!existingTask) {
-    throw new HTTPException(404, {
-      message: "Task not found",
-    });
-  }
-
   // #290 S4 sweep: `destinationProjectId` is a body field, not covered by
   // `workspaceAccess.fromTask()` (which only guards `taskId`) -- a NUL byte here
   // reached a raw `eq(projectTable.id, destinationProjectId)`-shaped query below
   // unvalidated and 500'd, the same class #281 fixed for path/query ids.
-  rejectNulByte(destinationProjectId, "Destination project id");
+  const moveResult = await db.transaction(async (tx) => {
+    const lockedTask = await lockLegacyTaskRow(tx, taskId);
+    // Malformed destinations cannot be queried safely, but their validation still
+    // follows an authoritative source liveness lock. Valid destinations retain the
+    // existing source preflight and sorted-lock sequence below.
+    if (destinationProjectId.includes("\u0000")) {
+      await assertProjectStillLive(tx, lockedTask.projectId, "Task not found");
+      rejectNulByte(destinationProjectId, "Destination project id");
+    }
 
-  if (isSameProjectMove(existingTask.projectId, destinationProjectId)) {
-    throw new HTTPException(400, {
-      message: "Task is already in that project",
-    });
-  }
+    // Reject frozen sources before touching a request-selected destination id.
+    // These reads only establish reach; sorted row locks below recheck both rows.
+    const [sourcePreflight] = await tx
+      .select({
+        id: projectTable.id,
+        workspaceId: projectTable.workspaceId,
+        archivedAt: projectTable.archivedAt,
+        deletedAt: projectTable.deletedAt,
+      })
+      .from(projectTable)
+      .where(eq(projectTable.id, lockedTask.projectId))
+      .limit(1);
+    if (
+      !sourcePreflight ||
+      sourcePreflight.archivedAt !== null ||
+      sourcePreflight.deletedAt !== null
+    ) {
+      throw new HTTPException(404, { message: "Task not found" });
+    }
+    if (isSameProjectMove(lockedTask.projectId, destinationProjectId)) {
+      await assertProjectStillLive(tx, lockedTask.projectId, "Task not found");
+      throw new HTTPException(400, {
+        message: "Task is already in that project",
+      });
+    }
 
-  // #202: the source is checked. #187's `deleted_at` window (PR-16) means a
-  // soft-deleted project is gone for ordinary use, so it can neither be a move's
-  // source nor its destination -- otherwise this route would be a way to pull a
-  // task *out* of a deleted project (and back in) during the recovery window.
-  const sourceProject = await db.query.projectTable.findFirst({
-    where: and(
-      eq(projectTable.id, existingTask.projectId),
-      isNull(projectTable.deletedAt),
-    ),
-  });
+    const [destinationPreflight] = await tx
+      .select({ id: projectTable.id })
+      .from(projectTable)
+      .where(
+        and(
+          eq(projectTable.id, destinationProjectId),
+          eq(projectTable.workspaceId, sourcePreflight.workspaceId),
+          isNull(projectTable.deletedAt),
+          isNull(projectTable.archivedAt),
+        ),
+      )
+      .limit(1);
+    if (!destinationPreflight) {
+      // A plain source preflight may have gone stale while checking destination reach.
+      await assertProjectStillLive(tx, lockedTask.projectId, "Task not found");
+      throw new HTTPException(404, { message: "Project not found" });
+    }
 
-  if (!sourceProject) {
-    throw new HTTPException(404, {
-      message: "Project not found",
-    });
-  }
+    // Keep the shared project lock order, but select the source error only after
+    // both rows have been checked under locks.
+    const lockedProjectLiveness = new Map<string, boolean>();
+    for (const projectId of [
+      ...new Set([lockedTask.projectId, destinationProjectId]),
+    ].sort()) {
+      const isDestination = projectId === destinationProjectId;
+      const [liveProject] = await tx
+        .select({ id: projectTable.id })
+        .from(projectTable)
+        .where(
+          and(
+            eq(projectTable.id, projectId),
+            isNull(projectTable.deletedAt),
+            isNull(projectTable.archivedAt),
+            ...(isDestination
+              ? [eq(projectTable.workspaceId, sourcePreflight.workspaceId)]
+              : []),
+          ),
+        )
+        .for(isDestination ? "update" : "share");
+      lockedProjectLiveness.set(projectId, liveProject !== undefined);
+    }
+    if (!lockedProjectLiveness.get(lockedTask.projectId)) {
+      throw new HTTPException(404, { message: "Task not found" });
+    }
+    if (!lockedProjectLiveness.get(destinationProjectId)) {
+      throw new HTTPException(404, { message: "Project not found" });
+    }
 
-  // S2 (Opus review of PR #307, delta round): scoped to the source project's own
-  // (already reach-checked, via `workspaceAccess.fromTask()` on `taskId`)
-  // workspace in the query itself, so a `destinationProjectId` belonging to
-  // ANOTHER workspace is indistinguishable from a nonexistent one -- both now 404
-  // `Project not found` here, instead of a nonexistent id 404ing while a foreign
-  // id resolved and then 400'd "can only be moved within the same workspace",
-  // which is the #290/#285 existence-oracle class applied to project ids. The
-  // soft-delete freeze applies to the destination too, same as before.
-  const destinationProject = await db.query.projectTable.findFirst({
-    where: and(
-      eq(projectTable.id, destinationProjectId),
-      eq(projectTable.workspaceId, sourceProject.workspaceId),
-      isNull(projectTable.deletedAt),
-    ),
-  });
+    const [sourceProject] = await tx
+      .select({
+        id: projectTable.id,
+        name: projectTable.name,
+        workspaceId: projectTable.workspaceId,
+      })
+      .from(projectTable)
+      .where(eq(projectTable.id, lockedTask.projectId))
+      .limit(1);
+    if (!sourceProject) {
+      throw new HTTPException(404, { message: "Project not found" });
+    }
 
-  if (!destinationProject) {
-    throw new HTTPException(404, {
-      message: "Project not found",
-    });
-  }
+    // S2 (review of PR #307): scope the destination lookup to the source's
+    // current workspace so foreign and missing project ids remain indistinct.
+    const [destinationProject] = await tx
+      .select({
+        id: projectTable.id,
+        name: projectTable.name,
+      })
+      .from(projectTable)
+      .where(
+        and(
+          eq(projectTable.id, destinationProjectId),
+          eq(projectTable.workspaceId, sourceProject.workspaceId),
+          isNull(projectTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!destinationProject) {
+      throw new HTTPException(404, { message: "Project not found" });
+    }
 
-  const resolvedColumn = await resolveDestinationStatus(
-    destinationProjectId,
-    existingTask.status,
-    destinationStatus,
-  );
-
-  const movedTask = await db.transaction(async (tx) => {
+    const resolvedColumn = await resolveDestinationStatus(
+      tx,
+      destinationProjectId,
+      lockedTask.status,
+      destinationStatus,
+    );
     const [nextTaskNumber, nextPosition] = await Promise.all([
       claimTaskNumber(destinationProjectId, tx),
       getNextTaskPosition(
@@ -192,25 +254,31 @@ async function moveTask({
       .set({ projectId: destinationProjectId })
       .where(eq(assetTable.taskId, taskId));
 
-    return updatedTask;
+    return {
+      movedTask: updatedTask,
+      sourceProject,
+      destinationProject,
+      oldStatus: lockedTask.status,
+      newStatus: resolvedColumn.slug,
+    };
   });
 
   await publishEvent("task.moved", {
     taskId,
     type: "moved",
     userId: currentUserId,
-    fromProjectId: sourceProject.id,
-    fromProjectName: sourceProject.name,
-    toProjectId: destinationProject.id,
-    toProjectName: destinationProject.name,
-    oldStatus: existingTask.status,
-    newStatus: resolvedColumn.slug,
+    fromProjectId: moveResult.sourceProject.id,
+    fromProjectName: moveResult.sourceProject.name,
+    toProjectId: moveResult.destinationProject.id,
+    toProjectName: moveResult.destinationProject.name,
+    oldStatus: moveResult.oldStatus,
+    newStatus: moveResult.newStatus,
   });
 
   return {
-    task: movedTask,
-    sourceProjectId: sourceProject.id,
-    destinationProjectId: destinationProject.id,
+    task: moveResult.movedTask,
+    sourceProjectId: moveResult.sourceProject.id,
+    destinationProjectId: moveResult.destinationProject.id,
   };
 }
 

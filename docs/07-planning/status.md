@@ -13,6 +13,229 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 
 ---
 
+**2026-10-01 orchestrator snapshot — remote `main` at
+`7e3e4ff506cc9486a8737a73383cc398d03c835a` (verified 2026-09-30 21:22 UTC).**
+PR #523's deterministic workspace-slug test fix merged at this head after all 17 required
+checks passed; issue #522 is closed. PR #524's archived-project guard remains in main at
+`7d21bc8f`; issue #428 remains open for the broader pending-action DELETE retrofit.
+The local Traefik image was rebuilt from `7d21bc8f` after #524; #523 is test-only and does
+not change the shipped image.
+
+**P0 remains open.** PR #525 is still draft at `2b9418f3`. Its hosted G11 run fails five
+budgets: 500-row list render 720.7/500 ms, LCP 2584/2500 ms, route transition 443.4/300 ms,
+create click-to-paint 209.6/200 ms, and 200-card board render 1037.5/500 ms; CLS and drag
+p95 pass. Two independent Luna reviews also block missing click-to-paint coverage for the
+other applicable G10 journeys. The protected E2E and PR-template checks are red, and G11
+is not yet a required ruleset context. #8 still has only the 2026-09-30 19:37 UTC audit
+recorded below; its low-volume, three-day sample does not meet the approximately seven-day
+representative soak. P0 cannot be claimed complete or receive its phase finalizer.
+
+**Parallel candidates:** P1 #512 remains draft at `ae09fa16` on an old base. Its migration
+`0077_project_default_comment_visibility` conflicts with main's #515 migration numbering
+(`0077_pending_actions`, `0078_outbox`); its journal/snapshot need regeneration after main
+sync. CA-15 comment-image upload/linkage, the in-progress detail route's G8 baseline, a
+keyboard-only G10 journey, G11 interaction/performance coverage and G13 layout-shift
+measurement remain incomplete. Keep the owning attachment/comment contract open and do
+not claim this slice complete.
+
+P2 #513 is draft at review-sync head `ed22a2ee`, based on `7d21bc8f`; its last calendar
+implementation commit is `4766e2d6` and focused Postgres tests passed 13/13 there. Fresh
+review is pending after the sync. Current checks have the PR-template gate red, while gate
+checkers, integration, unit/component and G8 are pending. CAL-8 usage remains blocked on
+#437 and the SLA policy model; AU-14 alerting and administrator notifications remain open.
+Direct DELETE still awaits #428.
+
+P4's bounded archived-project guard is complete in #524; the issue #428 DELETE retrofit is
+still open. Check GitHub for exact heads, reviews and checks before acting on any candidate.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
+`7d21bc8f806eb1a5b1cab9896bddea13851dcab1` (verified 2026-09-30 21:11 UTC).**
+PR #524 merged at `7d21bc8f`; its archived-project liveness predicate and regression
+test close the bounded pending-action target-scope finding. The exact merge candidate
+passed all 17 required checks, including the PostgreSQL integration suite. Issue #428
+remains open for the broader DELETE retrofit; the guard must be retained when that route
+is wired. Main still requires 17 status contexts, including G8; G11 is not yet a required
+ruleset context.
+
+**P0 remains open.** PR #525 remains open at `2b9418f3` and is not merge-ready: the
+hosted G11 run misses the list render (720.7/500 ms), LCP (2584/2500 ms), route transition
+(443.4/300 ms), create click-to-paint (209.6/200 ms), and 200-card board render
+(1037.5/500 ms) budgets; CLS and drag p95 pass. Two independent Luna reviews also block
+the missing click-to-paint coverage for the other applicable G10 journeys. The required
+protected E2E and PR-template checks are red on this head. The author must close the
+interaction-coverage finding and resolve the hosted-runner regressions without changing
+thresholds. #8's last recorded read-only UAT audit remains the 2026-09-30 19:37 UTC
+sample: 68 observations over three low-volume days, 46 `agree`, 22 `unevaluated`, and no
+disagreements or evaluator errors. It does not satisfy the approximately seven-day
+representative soak; do not claim P0 complete or run its phase finalizer.
+
+**Parallel candidates:** PR #523 is ready for review at main-synchronized head
+`df8959ad`, based on `7d21bc8f`; its required checks are running, and its earlier exact-head
+review at `ef0a956e` predates this main sync. Obtain an exact-head delta review and green
+checks before merge. PR #513 remains draft at `4766e2d6`; its current required checks have
+the PR-template gate red. The calendar create/update outbox seam and 13/13 focused Postgres
+tests are recorded, but CAL-8 usage remains blocked on #437 and the later SLA policy model;
+AU-14 alerting and administrator notification remain unfinished. PR #512 remains a draft
+at `ae09fa16` on an older base; its `0077_project_default_comment_visibility` migration
+collides with main's #515 migrations `0077_pending_actions` and `0078_outbox`. Before
+further acceptance, sync current main and regenerate its migration journal/snapshot in the
+next available slot. CA-15 comment-image upload/linkage is still incomplete: the new
+journey has no upload task identity, the legacy task-image route stores task assets rather
+than `attachment.comment_id` links, and the comment-attachment surface is explicitly
+unpopulated. G8's detail baseline, a keyboard-only G10 journey, G11 interaction/performance
+coverage, and G13 skeleton-to-content layout-shift measurement also remain open. Keep #512
+draft while the owning attachment/comment contract is unresolved.
+
+P4's archived-project guard is merged and the local Traefik app was rebuilt from main
+`7d21bc8f` and redeployed at 2026-09-30 21:10 UTC. The container is healthy and both
+`ticketing.localhost` and `portal.localhost` return HTTP 200 for the app root and API
+readiness endpoint. Browser screen verification remains pending while Thomas handles the
+local certificate warning. Check GitHub for the latest heads, reviews and checks before
+acting on any candidate.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
+`d98baa9c7b6ade43a7baa7c21683ae482d35dadc` (verified 2026-09-30 20:40 UTC).**
+PR #519's dependency-audit fix, PR #507's G8 visual gate, PR #515's bounded
+pending-action persistence, PR #511's identity domain-binding helper, and PR #510's
+legacy task archive freeze are merged. #502 is closed by #510.
+The strict `protect-main` ruleset requires 17 status contexts, including
+`visual regression (G8)`. #515 and #511 each passed all required checks on their
+exact final candidate heads and followed their required independent review tiers.
+#515 adds schema, a scope-bound service and transactional outbox persistence, but no
+public pending-action route, approval execution, step-up, expiry worker, or DELETE
+retrofit. #511 adds a pure domain helper only; IP-9 operational enforcement still lacks
+production callers, persistence, uniqueness and complete owner lookup.
+
+**P0 remains open.** G11 performance budgets are still disabled on `main`. The
+isolated candidate passed the strict native-host production-preview medians on
+500-row list, Fast-4G/4×CPU LCP, CLS, list-to-detail paint, create click-to-paint,
+200-card board render and drag frame time before a keyboard-accessibility change.
+The integrated repeat exposed a real 505.2 ms board-render median over its strict
+500 ms budget; moving an idle per-card mutation hook into the conditional delete
+dialog brought the final-source median to 488.6 ms. The final-source native run
+passed all seven strict metrics, but LCP at 2484 ms and board render at 488.6 ms
+have narrow margins. Draft PR #525 is open at `2b9418f3`; the hosted-runner G11
+job failed exact-head medians for list render (720.7/500 ms), LCP (2584/2500 ms),
+route transition (443.4/300 ms), create click-to-paint (209.6/200 ms), and
+board render (1037.5/500 ms). CLS and drag frame time passed. Two independent
+Luna reviewers blocked the same separate acceptance gap: the harness measures
+click-to-paint for Create but not the other implemented G10 core journeys named
+by G11. The author is profiling the runner failures and expanding journey
+coverage without changing thresholds. The G11 ruleset context is not required
+yet; P0 cannot claim this gate green.
+#8 still needs about seven days of representative, clean UAT shadow evidence before
+strict policy cutover. The read-only live UAT sample at 2026-09-30 19:37 UTC found
+68 observations across 2026-09-28–30, 41 route keys and 14 router groups: 46 `agree`,
+22 `unevaluated` (18 delegated platform, four notification legacy-outcome-unknown),
+zero disagreement or evaluator-error rows, and no `shadow_saturated` or capped
+non-agreeing buckets. The deployed UAT image is `v2-uat-shadow-0b95ed08`; three
+low-volume days with unevaluated traffic do not satisfy the soak. Full evidence is
+in [issue #8's audit](https://github.com/ThomasHeinThura/ticketing/issues/8#issuecomment-5918345271).
+Do not claim P0 complete or run its phase finalizer yet.
+
+**Local development:** the G8-era image built and booted; both
+`ticketing.localhost` and `portal.localhost` returned 200 for `/` and
+`/api/public/health/ready` through Traefik with local certificates. The readiness
+paths returned 200 again at 2026-09-30 20:29 UTC. Chrome screen verification is
+pending while Thomas handles the certificate warning; the app has not yet been
+redeployed with #515 and #511.
+
+**Parallel stages:** P1 #510 merged as `d98baa9c` after three earlier independent
+Luna reviews, fresh merged-main Luna and Sol delta reviews, all 17 required checks
+(Postgres integration: 122 files / 1,546 tests), and isolated Docker ready/live smoke.
+P1 #512 remains an incomplete detail-journey draft.
+P2 #513 remains draft: its Linux visual baselines pass, and the long functional E2E
+was split into three browser scenarios that passed 3/3 locally without skipped
+assertions or a timeout increase. At current head `4766e2d6`, calendar writes
+enqueue their existing event envelopes transactionally; focused Postgres tests
+passed 13/13. AU-14's metric and administrator-notification integrations remain
+unfinished. CAL-8's affected-item count depends on #437's project calendar
+linkage and the later SLA policy model; no count is claimed yet.
+P4 #428 now records the separate
+#515 archived-project scope omission, which must be fixed before pending-action DELETE
+wiring. Its bounded guard/test fix is draft PR #524 at note-only head `3d656da8`,
+with independent Luna and Sol exact-source/delta clearance, 20/20 focused Postgres
+tests, and an isolated image migration/healthy ready/live smoke; exact-head CI is
+still running. #523 is a draft deterministic repair for the probabilistic
+workspace-slug test at main-synchronized head `ef0a956e`; focused 7/7 tests
+passed and exact-head delta review/CI remain. Check live GitHub heads, reviews and checks
+before acting on any candidate.
+
+---
+
+**2026-10-01 orchestrator update — remote `main` at `1727b69a` (PR #519 merged).** The
+G8 scope is now explicit: screenshot comparison is required for every exported UI Storybook
+story and every in-progress or complete route-kind inventory row. A future route activates
+with implementation; its route registration, deterministic fixture, and baseline land in
+the same change. The rule is recorded in `decision-log.md` and `ux-quality-gates.md`.
+
+The #507 candidate is refreshed from current `main`, and its G8 inventory parser now fails
+closed when the canonical inventory table or every route-kind row is missing. Its focused
+scope checker and adversarial test suite passed during this refresh; exact-head GitHub CI is
+running, and the dependency audit has passed after #519. Fresh exact-head review evidence is
+still required, and `protect-main` ruleset 22365005 does not yet require the `visual
+regression (G8)` context. Do not treat a passing but non-required context as merge-enforced.
+
+---
+
+**2026-09-30 orchestrator snapshot — remote `main` at
+`4f1eec81c904b91339c71f6fbd2123387e193acf` (refreshed 02:35 UTC).** PR #516 merged at
+`4f1eec81` after its exact-head required checks passed. A local, unmerged
+domain-migration candidate records `taskdesk.bimats.com` as the canonical product host and
+updates active links. Older `taskdesk.app` and `uat.taskdesk.app` mentions are historical; the
+current UAT hosts are `ticket-v2-uat.bimats.com` and `portal-v2-uat.bimats.com`.
+
+**UAT and product host:** both current UAT hosts return HTTP 200 for `/` and
+`/api/public/health/live`. A Chromium open of the ticket host showed a Kaneo-branded sign-in
+screen; the image identity and TaskDesk build are unverified, so this is reachability evidence,
+not TaskDesk acceptance or #8 soak evidence. `taskdesk.bimats.com` resolves to CloudFront but
+returns 404 for `/` and `/api/public/health/live`. Do not claim the canonical product site is
+serving yet.
+
+**P0:** #8 has no UAT soak evidence. #507/G8 is waiting on the scope decision (active screens
+versus all planned route-kind rows); its inventory parser also needs to fail closed. Local G11
+candidate `c8c30ad` is not passing: 500-row list render measured 625 ms against 500 ms and the
+throttled LCP median was 6,120 ms against 2,500 ms; CLS was 0. The production trace confirms
+that the seeded API returned all 500 rows, then Chromium canceled route chunks with
+`ERR_NETWORK_CHANGED`, and the route-transition sample failed to mount. Treat these as failing
+performance/harness evidence, not a passing run.
+
+**P1:** #510 is at remediation head `04fbe079435f87fffbe0396ec8338d2374e6974a`, currently
+held for findings: when the locked membership query returns no row, an unlocked fallback read
+can accept an inserted membership that is then removed before assignment commits. A review also
+found per-item duplicate project-wide relation-refresh broadcasts; preserve the previous
+once-per-project behavior. The candidate's Postgres suite passed 15/15, API typecheck and
+Biome passed, but the code must be fixed and independently reviewed again before merge. #512
+remains at `ae09fa16dd7365ec5e8ab1538dc35c4bc1e439c9`;
+its CA-15 image-upload claim is blocked by the work-item-only attachment contract and awaits a
+product decision. #516's slug-claim race fix is merged. #447 is behind `main` and needs a
+current-base review cycle.
+
+**P2–P4:** #513 remains draft at `43be8c7355b16ce5877c622d647e27642f6adb88`. Three fresh
+exact-head Luna reviews found no code-level blocker. Update its stale G4 checklist before merge;
+the fresh Sol review and exact-head PR evidence remain. CI passed the calendar integration,
+route-policy, static, build, OpenAPI, unit/component, and accessibility checks; the template gate
+failed, and G8/G11 are skipped. P2 remains open for AU-14 alerting and EV-1 outbox work. #511
+identity bindings is at corrected head `7131195badb76f0d9e639f37b8003110c4d1fb4e`; three
+Luna reviews and one Sol review are clear. The Sol pass confirmed the domain-only scope does not
+enforce bindings operationally; no production caller, persistence, or uniqueness constraint
+exists yet. The template gate is red pending the committed exact-head Sol note and updated PR
+evidence. #515 pending actions remains draft at
+`cb4d5ccbdfc7e3941b9237e69e13d91e2780ca14` and awaits the project organization scope and
+target-version encoding decision; its AU-14 metric/admin-alert gap remains open.
+Notification-contract #508 is at `74cdd8d9a06960f27872b16a0db3d4c9b077d6dc`; the 60-second
+reservation TTL is specified, but notification recipient routing remains undefined pending
+Thomas's decision.
+
+This snapshot records open candidates and blockers; check GitHub for exact current heads, CI,
+reviews, and merge state before acting.
+
+---
+
 **2026-09-29 orchestrator snapshot — remote `main` at
 `d885be8abdb54bef6e73c7a39e22f1cefc191a34` (verified with `git ls-remote origin
 refs/heads/main` and `gh`, 12:29 UTC).** The latest merge is #505. This is a point-in-time
@@ -1887,11 +2110,14 @@ are required before cutover. Do not treat further code review as a substitute fo
 
 ### P0 #10 — G8/G11 CI gates
 
-G8 is blocked on resolving the candidate's scope mismatch: the canonical visual-regression
-requirement includes all route-kind inventory rows, while the candidate omits the 120
-not-started routes. G11 remains skipped without a candidate. Both gates are required now under
-Thomas's 2026-09-28 scope decision. G4 is enabled on `main` by #501. The #10 checklist is also
-stale and needs reconciliation.
+G8 scope is resolved and written in the 2026-10-01 decision-log entry: every exported
+Storybook story and every in-progress or complete route-kind inventory row is covered; a
+future route's baseline activates with its implementation. The #507 candidate implements
+that rule and fails closed on missing inventory structure. It remains held for fresh exact-head
+reviews, and `protect-main` ruleset 22365005 must require `visual regression (G8)` before the
+passing job is merge-enforced. G11 remains skipped without a candidate. Both gates are
+required now under Thomas's 2026-09-28 scope decision. G4 is enabled on `main` by #501. The
+#10 checklist is also stale and needs reconciliation.
 
 ### P1 #447 — saved-view candidate needs a current base and gates
 

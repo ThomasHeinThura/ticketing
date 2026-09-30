@@ -4,7 +4,8 @@
  * Distinct from every other namespace already in use: `apps/api/src/project/controllers/
  * create-project.ts` / `reorder-projects.ts` use `1524`, `auth.ts`'s migration lock uses
  * `2026`, `workspace-membership-lock.ts` uses `4_002`, `workspace-role-lock.ts` uses
- * `4_003`, and `apps/api/src/migrations/column-migration.ts` uses `4_004`.
+ * `4_003`, `apps/api/src/migrations/column-migration.ts` uses `4_004`, and workspace
+ * label-family writes use `4_007`.
  *
  * `data-model.md`'s "The audit hash chain": "Every `audit_log` insert takes
  * `pg_advisory_xact_lock(<audit chain constant>)` first, in the same transaction as the

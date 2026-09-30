@@ -14,7 +14,8 @@ import { computeScramSha256Verifier } from "./scram-sha-256";
  * role to create, not one per project/workspace the way `1524`/`4002`/`4003`/`4004`
  * are. Distinct from every namespace already in use: `1524` (project create/
  * reorder), `2026` (auth.ts admin promotion), `4002` (workspace membership), `4003`
- * (workspace role), `4004` (column seed), `4010` (audit chain).
+ * (workspace role), `4004` (column seed), `4007` (workspace label family),
+ * `4010` (audit chain).
  */
 const ENSURE_APPLICATION_ROLE_LOCK_NAMESPACE = 4_011;
 

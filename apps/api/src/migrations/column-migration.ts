@@ -24,9 +24,10 @@ const DEFAULT_COLUMNS = [
  *
  * Distinct from the namespaces already in use: `create-project.ts` / `reorder-projects.ts`
  * use `1524`, `auth.ts`'s admin-promotion lock uses `2026`,
- * `workspace-membership-lock.ts` uses `4_002`, `workspace-role-lock.ts` uses `4_003`.
+ * `workspace-membership-lock.ts` uses `4_002`, `workspace-role-lock.ts` uses `4_003`,
+ * and workspace label-family writes use `4_007`.
  */
-const COLUMN_SEED_LOCK_NAMESPACE = 4_004;
+export const COLUMN_SEED_LOCK_NAMESPACE = 4_004;
 
 export async function migrateColumns() {
   console.log("🔄 Starting column migration...");
