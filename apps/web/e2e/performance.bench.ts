@@ -17,6 +17,8 @@ type BrowserMetrics = {
   paletteStart: number;
   paletteInsert: number;
   palettePaint: number;
+  paletteNavigationStart: number;
+  paletteNavigationPaint: number;
   stateStart: number;
   statePaint: number;
   assignmentStart: number;
@@ -446,6 +448,8 @@ async function installPerformanceApiFixture(
       paletteStart: 0,
       paletteInsert: 0,
       palettePaint: 0,
+      paletteNavigationStart: 0,
+      paletteNavigationPaint: 0,
       stateStart: 0,
       statePaint: 0,
       assignmentStart: 0,
@@ -645,6 +649,47 @@ async function installPerformanceApiFixture(
     document.addEventListener(
       "keydown",
       (event) => {
+        if (
+          event.key === "Enter" &&
+          document.querySelector('[role="dialog"]') &&
+          metrics.paletteNavigationStart === 0
+        ) {
+          metrics.paletteNavigationStart = performance.now();
+          const recordDestinationPaint = () => {
+            const destinationReady =
+              location.pathname.replace(/\/+$/, "") ===
+                "/dashboard/workspace/ws-g11" &&
+              Boolean(
+                document
+                  .querySelector(
+                    '[data-testid="workspace-projects-route-pending"]',
+                  )
+                  ?.getClientRects().length,
+              );
+            if (!destinationReady) {
+              requestAnimationFrame(recordDestinationPaint);
+              return;
+            }
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                const stillReady =
+                  location.pathname.replace(/\/+$/, "") ===
+                    "/dashboard/workspace/ws-g11" &&
+                  Boolean(
+                    document
+                      .querySelector(
+                        '[data-testid="workspace-projects-route-pending"]',
+                      )
+                      ?.getClientRects().length,
+                  );
+                if (stillReady)
+                  metrics.paletteNavigationPaint =
+                    performance.now() - metrics.paletteNavigationStart;
+              }),
+            );
+          };
+          requestAnimationFrame(recordDestinationPaint);
+        }
         if (
           !(event.ctrlKey || event.metaKey) ||
           event.key.toLowerCase() !== "k"
@@ -938,7 +983,10 @@ async function collectSignInInteraction(page: Page) {
   return clickToPaint;
 }
 
-async function collectCommandPaletteInteraction(page: Page) {
+async function collectCommandPaletteInteraction(
+  page: Page,
+  metric: "open" | "navigate" = "open",
+) {
   await openWorkList(page);
   await page.keyboard.press(
     process.platform === "darwin" ? "Meta+k" : "Control+k",
@@ -962,10 +1010,32 @@ async function collectCommandPaletteInteraction(page: Page) {
     JSON.stringify({ insertion, paint: clickToPaint }),
   );
   await captureScreen(page, "command-palette");
-  await page.getByRole("option", { name: "Projects" }).click();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowUp");
+  const projectsOption = page.getByRole("option", { name: "Projects" });
+  const projectsOptionId = await projectsOption.getAttribute("id");
+  await expect(dialog.getByPlaceholder(/search/i)).toHaveAttribute(
+    "aria-activedescendant",
+    projectsOptionId ?? "",
+  );
+  await page.keyboard.press("Enter");
   await expect(page).toHaveURL(
     new RegExp(`/dashboard/workspace/${WORKSPACE_ID}`),
   );
+  await expect(
+    page.getByRole("main").getByText("Performance fixture", { exact: true }),
+  ).toBeVisible();
+  await captureScreen(page, "projects-from-command-palette");
+  await page.waitForFunction(
+    () => (window as G11Window).__g11Metrics.paletteNavigationPaint > 0,
+    undefined,
+    { timeout: 15_000 },
+  );
+  const navigationPaint = await page.evaluate(
+    () => (window as G11Window).__g11Metrics.paletteNavigationPaint,
+  );
+  console.info("G11 palette navigation timing", navigationPaint);
+  if (metric === "navigate") return navigationPaint;
   return clickToPaint;
 }
 
@@ -1401,6 +1471,20 @@ test("G11: command-palette click-to-paint", async ({ browser }) => {
     sample: () =>
       withPerformancePage(browser, true, (page) =>
         collectCommandPaletteInteraction(page),
+      ),
+  });
+});
+
+test("G11: command-palette keyboard navigation click-to-paint", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "command-palette keyboard navigation click-to-paint (ms)",
+    budget: 200,
+    sample: () =>
+      withPerformancePage(browser, true, (page) =>
+        collectCommandPaletteInteraction(page, "navigate"),
       ),
   });
 });

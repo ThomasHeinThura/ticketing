@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import {
   Command,
   CommandCollection,
@@ -65,6 +65,7 @@ function CommandPalette() {
   const { t } = useTranslation();
   const { setTheme } = useUserPreferencesStore();
   const navigate = useNavigate();
+  const router = useRouter();
   const location = useLocation();
   const { data: workspace } = useActiveWorkspace();
   const { data: session } = authClient.useSession();
@@ -84,13 +85,27 @@ function CommandPalette() {
 
   useEffect(() => {
     let mounted = true;
-    void document.fonts.ready.then(() => {
+    void (document.fonts?.ready ?? Promise.resolve()).then(() => {
       if (mounted) setKeepPaletteMounted(true);
     });
     return () => {
       mounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!open || !workspace?.id) return;
+
+    // Opening the palette makes Projects a likely next destination. Warm only its
+    // authorized route module while the user chooses a command; route navigation
+    // still runs the normal auth guard, and project data remains demand-loaded.
+    void router
+      .preloadRoute({
+        to: "/dashboard/workspace/$workspaceId",
+        params: { workspaceId: workspace.id },
+      })
+      .catch(() => {});
+  }, [open, router, workspace?.id]);
 
   useRegisterShortcuts({
     shortcuts: {

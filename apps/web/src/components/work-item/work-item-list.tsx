@@ -58,13 +58,6 @@ const SORT_COLUMNS: Array<{ field: WorkItemSortField; labelKey: string }> = [
   { field: "dueDate", labelKey: "workItems:list.columnDueDate" },
 ];
 
-function priorityLabel(t: ReturnType<typeof useTranslation>["t"]) {
-  return (priority: string | null) => {
-    if (!priority) return t("workItems:list.noPriority");
-    return t(`workItems:list.priority.${priority}`, priority);
-  };
-}
-
 /**
  * The Assignee column's three cases (`work-item-list.tsx`'s own file comment has the
  * full rationale for why the middle case is "(inactive)", not the Partial mechanism's
@@ -76,10 +69,10 @@ function priorityLabel(t: ReturnType<typeof useTranslation>["t"]) {
  */
 function assigneeLabel(
   item: Pick<WorkItemRow, "assigneeId" | "assigneeName">,
-  t: ReturnType<typeof useTranslation>["t"],
+  labels: { unassigned: string; inactive: string },
 ): string {
-  if (!item.assigneeId) return t("workItems:list.unassigned");
-  if (!item.assigneeName) return t("workItems:list.assigneeInactive");
+  if (!item.assigneeId) return labels.unassigned;
+  if (!item.assigneeName) return labels.inactive;
   return item.assigneeName;
 }
 
@@ -156,7 +149,22 @@ function WorkItemList({
   const router = useRouter();
   const preloadedDetailKey = useRef<string | null>(null);
   const { t } = useTranslation();
-  const getPriorityLabel = priorityLabel(t);
+  const noPriorityLabel = t("workItems:list.noPriority");
+  const noDueDateLabel = t("workItems:list.noDueDate");
+  const assigneeLabels = {
+    unassigned: t("workItems:list.unassigned"),
+    inactive: t("workItems:list.assigneeInactive"),
+  };
+  const priorityLabels = new Map<string, string>();
+
+  function getPriorityLabel(priority: string | null) {
+    if (!priority) return noPriorityLabel;
+    const cached = priorityLabels.get(priority);
+    if (cached !== undefined) return cached;
+    const label = t(`workItems:list.priority.${priority}`, priority);
+    priorityLabels.set(priority, label);
+    return label;
+  }
 
   useEffect(() => {
     const firstReachableItem = workItems?.find(
@@ -339,13 +347,13 @@ function WorkItemList({
                 ) : item.dueDate ? (
                   formatDateShort(item.dueDate)
                 ) : (
-                  t("workItems:list.noDueDate")
+                  noDueDateLabel
                 )}
               </TableCell>
               <TableCell>
                 <Badge variant="outline">{item.stateName}</Badge>
               </TableCell>
-              <TableCell>{assigneeLabel(item, t)}</TableCell>
+              <TableCell>{assigneeLabel(item, assigneeLabels)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

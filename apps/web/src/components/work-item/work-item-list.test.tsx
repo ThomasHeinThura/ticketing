@@ -10,6 +10,7 @@ afterEach(() => {
 });
 
 vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({ preloadRoute: vi.fn().mockResolvedValue(undefined) }),
   Link: ({
     children,
     ...props
@@ -136,6 +137,33 @@ describe("WorkItemList", () => {
     expect(screen.getByText("Fix the thing")).toBeInTheDocument();
     expect(screen.getByText("Backlog")).toBeInTheDocument();
     expect(screen.getByText("workItems:list.unassigned")).toBeInTheDocument();
+  });
+
+  it("renders all 500 rows and repeated empty-field labels", () => {
+    const workItems = Array.from({ length: 500 }, (_, index) => ({
+      ...workItem,
+      id: `wi_${index + 1}`,
+      number: index + 1,
+      key: `PROJ-${index + 1}`,
+      priority: (index + 1) % 4 === 0 ? null : "medium",
+      dueDate: null,
+    }));
+
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        // biome-ignore lint/suspicious/noExplicitAny: generated list uses the valid fixture shape
+        workItems={workItems as any}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    expect(screen.getAllByRole("row")).toHaveLength(501);
+    expect(screen.getAllByText("workItems:list.noDueDate")).toHaveLength(500);
+    expect(screen.getAllByText("workItems:list.unassigned")).toHaveLength(500);
+    expect(screen.getAllByText("medium")).toHaveLength(375);
+    expect(screen.getAllByText("workItems:list.noPriority")).toHaveLength(125);
   });
 
   it("#310: renders the resolved assignee name when present", () => {
