@@ -13,6 +13,43 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 
 ---
 
+**2026-10-01 orchestrator snapshot — remote `main` at
+`8cc4f76dc4a8af23c2cf4a9dc93f9093f7c77569` (verified 2026-09-30 19:32 UTC).**
+PR #519's dependency-audit fix and PR #507's G8 visual gate are merged. The active,
+strict `protect-main` ruleset now requires 17 status contexts, including
+`visual regression (G8)`. #507's final exact-head CI passed every required check:
+the Postgres 18 integration job reported 117 files / 1,493 tests, and the G8,
+accessibility, E2E, unit, contract, route-policy, build, audit and PR-template jobs
+passed. Its independent Luna and Sol review evidence is recorded on that PR.
+
+**P0 remains open.** G11 performance budgets are still disabled on `main`; the
+isolated candidate is under implementation and its last complete production-preview
+benchmark was red on LCP, route transition, create responsiveness and board render.
+The author is correcting click-to-paint instrumentation and optimizing the runtime,
+without raising budgets. #8 still needs about seven days of representative, clean UAT
+shadow evidence before strict policy cutover. The current UAT ticket health endpoint
+returns 200, but this session has not queried fresh shadow tables; the older 25-request,
+four-unevaluated sample below is not closure evidence. Do not claim the P0 phase
+complete or run its phase-finalizer yet.
+
+**Local development:** the image rebuilt from this `main` head, the container booted
+healthy, and both `ticketing.localhost` and `portal.localhost` returned 200 for `/`
+and `/api/public/health/ready` through Traefik with their respective local
+certificates. Chrome screen verification remains pending while Thomas handles the
+local certificate warning.
+
+**Parallel stages:** P1 #510's original source head cleared two independent Luna
+reviews and a Sol security review; its branch now includes G8 and needs current-head
+delta evidence, a committed Sol note, and green required checks. P3 #511's domain-only
+helper also includes G8 and needs a current-head security delta note; it does not
+operationally enforce IP-9. P2 #513 remains a draft calendar slice with UI/browser
+acceptance in progress. P4 #515 remains a draft persistence slice: the Sol review
+found a null API-key credential binding gap, and remediation is in progress. P1 #512
+is still a separate incomplete detail-journey draft. Check live GitHub heads and
+reviews before acting on any of these candidates.
+
+---
+
 **2026-10-01 orchestrator update — remote `main` at `1727b69a` (PR #519 merged).** The
 G8 scope is now explicit: screenshot comparison is required for every exported UI Storybook
 story and every in-progress or complete route-kind inventory row. A future route activates
