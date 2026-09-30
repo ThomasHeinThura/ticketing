@@ -59,3 +59,32 @@ integration. Unicode/IDN address domains remain rejected, so the future caller m
 canonical domain representation. Real-Entra acceptance remains outstanding.
 
 Source: [exact-head Sol review comment](https://github.com/ThomasHeinThura/ticketing/pull/511#issuecomment-5917793528).
+
+## GPT-6 Sol G8 ancestry delta — 2026-10-01
+
+**Model:** GPT-6 Sol
+**Reviewer context:** `/root/p3_511_sol_exact` — the same independent reviewer context
+as the preceding delta pass, not a newly fresh context; it did not author, direct, or
+remediate the candidate
+**Reviewed head:** `6f16fd0610ec7687cd7f73948b537663adb3dffd`
+**Comparison base:** prior reviewed source head
+`108881f0f36f5dabed4838828af90a1dbea4f4ef`
+**Verdict:** CLEAR WITH NONBLOCKING RESIDUALS for this domain-only slice; no new blocker.
+
+The reviewer inspected the note-only `b0bb19cd` commit, the G8 merge from
+`main@8cc4f76dc4a8af23c2cf4a9dc93f9093f7c77569`, and merge head `6f16fd06`
+against both parents. The merge introduced no conflict-resolution content; it did not
+change the identity helper, its spec, API authentication, permissions, or the PR-template
+and security-path checkers compared with the prior reviewed source. G8's source head
+was separately Sol-reviewed, and this pass confirmed the exact #511 merge ancestry.
+
+At this exact head the reviewer ran the domain suite (12 files / 570 tests), domain
+typecheck, G8 probes (148 / 148), visual scope check (three screenshots covering two
+active route-kind rows), and `git diff --check`. GitHub's required G8 and other checks
+were green except the PR-template check, which correctly awaited this committed note.
+
+Operational IP-9 remains outside this helper slice: it still lacks a production caller,
+persisted bindings, a uniqueness constraint, and a complete owner set. Unicode/IDN
+normalization and real-Entra acceptance are also deferred to that integration.
+
+Source: [G8 ancestry Sol review comment](https://github.com/ThomasHeinThura/ticketing/pull/511#issuecomment-5918439160).
