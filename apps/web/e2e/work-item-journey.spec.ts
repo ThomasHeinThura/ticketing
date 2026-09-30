@@ -1,5 +1,20 @@
 import { expect, test } from "@playwright/test";
 
+async function tabTo(
+  page: import("@playwright/test").Page,
+  target: import("@playwright/test").Locator,
+) {
+  for (let tabCount = 0; tabCount < 100; tabCount += 1) {
+    if (
+      await target.evaluate((element) => element === document.activeElement)
+    ) {
+      return;
+    }
+    await page.keyboard.press("Tab");
+  }
+  throw new Error("Keyboard traversal did not reach the requested control");
+}
+
 test("staff can create, list, edit, assign, and read work-item activity", async ({
   page,
 }) => {
@@ -88,14 +103,18 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   const routeCalls: string[] = [];
   await page.addInitScript(() => {
     const shifts: Array<{ value: number; startTime: number }> = [];
-    new PerformanceObserver((list) => {
+    const observer = new PerformanceObserver((list) => {
       for (const entry of list.getEntries() as Array<
         PerformanceEntry & { value: number }
       >) {
         shifts.push({ value: entry.value, startTime: entry.startTime });
       }
-    }).observe({ type: "layout-shift", buffered: true });
-    Object.assign(window, { __taskdeskLayoutShifts: shifts });
+    });
+    observer.observe({ type: "layout-shift", buffered: true });
+    Object.assign(window, {
+      __taskdeskLayoutShifts: shifts,
+      __taskdeskLayoutShiftObserver: observer,
+    });
   });
   page.on("pageerror", (error) => console.error("Browser page error:", error));
   const session = {
@@ -467,6 +486,12 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(page.getByLabel("Default comment visibility")).toBeEnabled();
   await page.goto("/agent/work-items/WLP-1");
   await expect(page.getByTestId("work-item-detail")).toBeVisible();
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
   const detailShift = await page.evaluate(() => {
     const skeleton = performance.getEntriesByName(
       "taskdesk:work-item-detail:skeleton-mounted",
@@ -474,42 +499,69 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
     const content = performance
       .getEntriesByName("taskdesk:work-item-detail:content-mounted")
       .at(-1)?.startTime;
-    const shifts = (
-      window as Window & {
-        __taskdeskLayoutShifts?: Array<{
-          value: number;
-          startTime: number;
-        }>;
-      }
-    ).__taskdeskLayoutShifts;
-    if (skeleton === undefined || content === undefined || !shifts) return null;
+    const measurementWindow = window as Window & {
+      __taskdeskLayoutShifts?: Array<{ value: number; startTime: number }>;
+      __taskdeskLayoutShiftObserver?: PerformanceObserver;
+    };
+    const shifts = measurementWindow.__taskdeskLayoutShifts;
+    const observer = measurementWindow.__taskdeskLayoutShiftObserver;
+    if (!shifts || !observer || skeleton === undefined || content === undefined)
+      return null;
+    for (const entry of observer.takeRecords() as Array<
+      PerformanceEntry & { value: number }
+    >) {
+      shifts.push({ value: entry.value, startTime: entry.startTime });
+    }
     return shifts
       .filter(
         (entry) => entry.startTime >= skeleton && entry.startTime <= content,
       )
       .reduce((total, entry) => total + entry.value, 0);
   });
-  expect(detailShift).not.toBeNull();
+  if (detailShift === null) {
+    throw new Error(
+      "Detail skeleton/content marks or layout observer were missing",
+    );
+  }
   expect(detailShift).toBeLessThanOrEqual(0.1);
   await expect(page).toHaveScreenshot("work-item-detail.png", {
     fullPage: true,
     animations: "disabled",
   });
   const editButton = page.getByRole("button", { name: "Edit", exact: true });
-  await editButton.focus();
+  await tabTo(page, editButton);
   await page.keyboard.press("Enter");
-  await page.getByLabel("Title", { exact: true }).fill("First report edited");
+  const titleInput = page.getByLabel("Title", { exact: true });
+  await tabTo(page, titleInput);
+  await page.keyboard.press("ControlOrMeta+A");
+  await page.keyboard.type("First report edited");
+  await expect(titleInput).toHaveValue("First report edited");
   const saveButton = page.getByRole("button", { name: "Save changes" });
-  await saveButton.focus();
+  await tabTo(page, saveButton);
   await page.keyboard.press("Enter");
   await expect(
     page.getByText("First report edited", { exact: true }),
   ).toBeVisible();
-  await page.getByLabel("Assignee").click();
-  await page.getByRole("option", { name: /Casey Agent/ }).click();
-  await page.getByRole("button", { name: "Assign", exact: true }).click();
+  const assignee = page.getByLabel("Assignee");
+  await tabTo(page, assignee);
+  await page.keyboard.press("Space");
+  const caseyOption = page.getByRole("option", { name: /Casey Agent/ });
+  await expect(caseyOption).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  const assignButton = page.getByRole("button", {
+    name: "Assign",
+    exact: true,
+  });
+  await tabTo(page, assignButton);
+  await page.keyboard.press("Space");
   await expect(page.getByText("Confirm reassignment")).toBeVisible();
-  await page.getByRole("button", { name: "Confirm assignment" }).click();
+  const confirmAssignment = page.getByRole("button", {
+    name: "Confirm assignment",
+  });
+  await tabTo(page, confirmAssignment);
+  await page.keyboard.press("Enter");
   await expect.poll(() => assigned).toBe(true);
   await expect(page.getByText("Activity", { exact: true })).toBeVisible();
   await expect(
@@ -521,7 +573,9 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
     "tagName",
     "STRONG",
   );
-  await page.getByRole("button", { name: "Load older activity" }).click();
+  const loadOlder = page.getByRole("button", { name: "Load older activity" });
+  await tabTo(page, loadOlder);
+  await page.keyboard.press("Enter");
   await expect(page.getByText("Older note", { exact: true })).toBeVisible();
   const displayedActivity = page
     .getByTestId("work-item-journey")
@@ -533,7 +587,8 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   const commentEditor = page.locator(
     '[contenteditable="true"][aria-label="Write a comment"]',
   );
-  await commentEditor.fill("Customer-safe update");
+  await tabTo(page, commentEditor);
+  await page.keyboard.type("Customer-safe update");
   await expect
     .poll(() =>
       page.evaluate(() =>
@@ -559,14 +614,16 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
     page.locator('[contenteditable="true"][aria-label="Write a comment"]'),
   ).toHaveText("Customer-safe update");
   const sendComment = page.getByRole("button", { name: "Send comment" });
-  await sendComment.focus();
+  await tabTo(page, sendComment);
   await page.keyboard.press("Enter");
   await expect.poll(() => postedComment).toBe(true);
   await expect(
     page.getByText("Customer-safe update", { exact: true }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Comments only" }).click();
+  const commentsOnly = page.getByRole("button", { name: "Comments only" });
+  await tabTo(page, commentsOnly);
+  await page.keyboard.press("Space");
   await expect(page).toHaveURL(/activity=comments/);
   await expect(
     page.getByText("assignee: person-existing → person-e2e"),
@@ -574,7 +631,9 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(
     page.getByText("Customer-safe update", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Public only" }).click();
+  const publicOnly = page.getByRole("button", { name: "Public only" });
+  await tabTo(page, publicOnly);
+  await page.keyboard.press("Space");
   await expect(page).toHaveURL(/activity=public/);
   await expect(
     page.getByText("assignee: person-existing → person-e2e"),
@@ -582,7 +641,9 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(
     page.getByText("Customer-safe update", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Everything" }).click();
+  const everything = page.getByRole("button", { name: "Everything" });
+  await tabTo(page, everything);
+  await page.keyboard.press("Space");
   await expect(page).not.toHaveURL(/activity=/);
 
   permissioned = false;
@@ -603,7 +664,9 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   // The detail/activity were fetched successfully in this page session. Make the
   // authoritative detail refetch return the same 404 used for an out-of-reach key.
   accessDenied = true;
-  await page.getByRole("button", { name: "Unassign" }).click();
+  const unassign = page.getByRole("button", { name: "Unassign" });
+  await tabTo(page, unassign);
+  await page.keyboard.press("Enter");
   await expect(page.getByTestId("work-item-detail-not-found")).toBeVisible();
   await expect(page.getByTestId("work-item-journey")).toHaveCount(0);
   await expect(page.getByText("Tiptap note", { exact: true })).toHaveCount(0);

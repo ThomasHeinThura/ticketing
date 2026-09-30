@@ -53,16 +53,6 @@ function WorkItemDetailRouteComponent() {
     refetch,
   } = useGetWorkItem({ key });
 
-  useLayoutEffect(() => {
-    if (isLoading && !item) {
-      performance.clearMarks("taskdesk:work-item-detail:skeleton-mounted");
-      performance.clearMarks("taskdesk:work-item-detail:content-mounted");
-      performance.mark("taskdesk:work-item-detail:skeleton-mounted");
-    } else if (item) {
-      performance.mark("taskdesk:work-item-detail:content-mounted");
-    }
-  }, [isLoading, item]);
-
   // `require-work-item-reach.ts` makes "not yours" and "not there" indistinguishable on
   // purpose (a guessable `{slug}-{number}` key), so a 404 is shown as one not-found
   // state, not split into "missing" vs "no access".
@@ -71,6 +61,17 @@ function WorkItemDetailRouteComponent() {
   // A transient network or server error keeps still-authorized cached content visible
   // with a retry notice in WorkItemDetail.
   const visibleItem = isNotFound ? undefined : item;
+
+  useLayoutEffect(() => {
+    if (!visibleItem && !isError && !isNotFound) {
+      performance.clearMarks("taskdesk:work-item-detail:skeleton-mounted");
+      performance.clearMarks("taskdesk:work-item-detail:content-mounted");
+      performance.mark("taskdesk:work-item-detail:skeleton-mounted");
+    } else if (visibleItem) {
+      performance.mark("taskdesk:work-item-detail:content-mounted");
+    }
+  }, [isError, isNotFound, visibleItem]);
+
   const project = visibleItem
     ? projects?.find((candidate) => candidate.id === visibleItem.projectId)
     : undefined;
