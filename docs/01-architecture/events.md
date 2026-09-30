@@ -124,8 +124,8 @@ it needs no rename and no migration.
 | --- | --- | :-: | :-: | :-: | --- |
 | `webhook.auto_disabled` | A webhook fails continuously for 24 h (`WH-7`) | — | — | ✅ | `webhookId`, `lastError` |
 | `api_key.auto_disabled` | A key exceeds its burst threshold (MCP edge case) | — | — | ✅ | `apiKeyId`, `reason` |
-| `pending_action.requested` | A deletion or destructive MCP call was requested and is awaiting human approval (`PA-2`) | — | — | ✅ (the requester, when `origin` is `api` or `mcp`) | `pendingActionId`, `action`, `origin`, `targetType`, `targetCount`, `expiresAt` |
-| `pending_action.decided` | Approved, denied, cancelled, expired or invalidated (`PA-6`–`PA-9`) | — | ✅ | — | `pendingActionId`, `outcome: approved\|denied\|cancelled\|expired\|invalidated` |
+| `pending_action.requested` | A deletion or destructive MCP call was requested and is awaiting human approval (`PA-2`) | — | — | ✅ (the requester, when `origin` is `api` or `mcp`) | `key` (= `pendingActionId`), `url` (`/agent/settings/profile/pending-actions/{id}`), `pendingActionId`, `action`, `origin`, `targetType`, `targetCount`, `expiresAt` |
+| `pending_action.decided` | Approved, denied, cancelled, expired or invalidated (`PA-6`–`PA-9`) | — | ✅ | — | `key` (= `pendingActionId`), `url` (`/agent/settings/profile/pending-actions/{id}`), `pendingActionId`, `outcome: approved\|denied\|cancelled\|expired\|invalidated` |
 | `pending_action.executed` | The approved action ran, or failed (`PA-6` step 5) | ✅ | ✅ | ✅ (on failure, the requester) | `pendingActionId`, `action`, `targetIds`, `outcome: executed\|failed`, `error?` |
 | `identity.provisioned` | SCIM or JIT created or reactivated a person (`IP-10`, `IP-16`, `IP-19`) | — | ✅ | — | `identityConnectionId`, `personId`, `via: scim\|jit`, `organisationId?` |
 | `identity.deprovisioned` | SCIM `active=false` or `DELETE /Users/{id}` deactivated a person (`IP-15`) | — | ✅ | ✅ (instance administrators) | `identityConnectionId`, `personId`, `sessionsRevoked`, `keysRevoked`, `membershipsEnded` |

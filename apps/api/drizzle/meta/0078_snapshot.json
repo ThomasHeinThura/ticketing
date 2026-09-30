@@ -1,6 +1,6 @@
 {
-	"id": "5f983d3d-8b84-4fee-9089-147f803d74f8",
-	"prevId": "2c3bc847-dfcd-4f4f-84d1-b51a5a3207c7",
+	"id": "cf3a5d60-ddaf-46ae-82b5-092b9a3422a1",
+	"prevId": "5f983d3d-8b84-4fee-9089-147f803d74f8",
 	"version": "7",
 	"dialect": "postgresql",
 	"tables": {
@@ -3005,6 +3005,151 @@
 			},
 			"policies": {},
 			"checkConstraints": {},
+			"isRLSEnabled": false
+		},
+		"public.outbox": {
+			"name": "outbox",
+			"schema": "",
+			"columns": {
+				"event_id": {
+					"name": "event_id",
+					"type": "text",
+					"primaryKey": true,
+					"notNull": true
+				},
+				"kind": {
+					"name": "kind",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"payload": {
+					"name": "payload",
+					"type": "jsonb",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"dedupe_key": {
+					"name": "dedupe_key",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"workspace_id": {
+					"name": "workspace_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
+				},
+				"organisation_id": {
+					"name": "organisation_id",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				},
+				"state": {
+					"name": "state",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "'pending'"
+				},
+				"attempts": {
+					"name": "attempts",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 0
+				},
+				"next_attempt_at": {
+					"name": "next_attempt_at",
+					"type": "timestamp with time zone",
+					"primaryKey": false,
+					"notNull": true,
+					"default": "now()"
+				},
+				"last_error": {
+					"name": "last_error",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
+				}
+			},
+			"indexes": {
+				"outbox_state_next_attempt_idx": {
+					"name": "outbox_state_next_attempt_idx",
+					"columns": [
+						{
+							"expression": "state",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "next_attempt_at",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"where": "\"outbox\".\"state\" = 'pending'",
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"outbox_workspace_state_idx": {
+					"name": "outbox_workspace_state_idx",
+					"columns": [
+						{
+							"expression": "workspace_id",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						},
+						{
+							"expression": "state",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				},
+				"outbox_dedupe_key_idx": {
+					"name": "outbox_dedupe_key_idx",
+					"columns": [
+						{
+							"expression": "dedupe_key",
+							"isExpression": false,
+							"asc": true,
+							"nulls": "last"
+						}
+					],
+					"isUnique": false,
+					"where": "\"outbox\".\"dedupe_key\" is not null",
+					"concurrently": false,
+					"method": "btree",
+					"with": {}
+				}
+			},
+			"foreignKeys": {},
+			"compositePrimaryKeys": {},
+			"uniqueConstraints": {},
+			"policies": {},
+			"checkConstraints": {
+				"outbox_state_check": {
+					"name": "outbox_state_check",
+					"value": "\"outbox\".\"state\" in ('pending', 'delivered', 'dead')"
+				},
+				"outbox_attempts_nonnegative": {
+					"name": "outbox_attempts_nonnegative",
+					"value": "\"outbox\".\"attempts\" >= 0"
+				}
+			},
 			"isRLSEnabled": false
 		},
 		"public.pending_action": {
