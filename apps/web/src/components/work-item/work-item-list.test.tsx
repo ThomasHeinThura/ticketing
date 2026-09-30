@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemField } from "@/types/work-item";
@@ -31,6 +32,17 @@ const baseProps = {
   onRetry: vi.fn(),
 };
 
+function renderWithQueryClient(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  });
+}
+
 const workItem = {
   id: "wi_1",
   projectId: "proj_1",
@@ -62,7 +74,7 @@ const workItem = {
 
 describe("WorkItemList", () => {
   it("renders the loading skeleton state", () => {
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         workItems={undefined}
@@ -78,7 +90,7 @@ describe("WorkItemList", () => {
   });
 
   it("renders the error state, with a retry action", () => {
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         workItems={undefined}
@@ -94,7 +106,7 @@ describe("WorkItemList", () => {
   });
 
   it("renders the empty state when there are no work items", () => {
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         workItems={[]}
@@ -107,7 +119,7 @@ describe("WorkItemList", () => {
   });
 
   it("renders the populated state with a table row per work item", () => {
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
@@ -133,7 +145,7 @@ describe("WorkItemList", () => {
       assigneeName: "Jane Agent",
     };
 
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
@@ -159,7 +171,7 @@ describe("WorkItemList", () => {
       assigneeName: null,
     };
 
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
@@ -193,7 +205,7 @@ describe("WorkItemList", () => {
       unavailableFields: ["title", "priority", "dueDate"] as WorkItemField[],
     };
 
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
@@ -233,7 +245,7 @@ describe("WorkItemList", () => {
       unavailableFields: ["key"] as WorkItemField[],
     };
 
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
@@ -259,7 +271,7 @@ describe("WorkItemList", () => {
 
   it("calls onSortChange with the toggled direction when a header is clicked twice", () => {
     const onSortChange = vi.fn();
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         onSortChange={onSortChange}

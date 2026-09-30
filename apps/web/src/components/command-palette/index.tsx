@@ -18,18 +18,35 @@ import {
   KbdGroup,
 } from "@taskdesk/ui";
 import { ArrowDownIcon, ArrowUpIcon, CornerDownLeftIcon } from "lucide-react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
-import SearchCommandMenu from "@/components/search-command-menu";
-import CreateTaskModal from "@/components/shared/modals/create-task-modal";
-import CreateWorkspaceModal from "@/components/shared/modals/create-workspace-modal";
 import { shortcuts } from "@/constants/shortcuts";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { authClient } from "@/lib/auth-client";
 import { useUserPreferencesStore } from "@/store/user-preferences";
-import CreateProjectModal from "../shared/modals/create-project-modal";
+
+const SearchCommandMenu = lazy(
+  () => import("@/components/search-command-menu"),
+);
+const CreateTaskModal = lazy(
+  () => import("@/components/shared/modals/create-task-modal"),
+);
+const CreateWorkspaceModal = lazy(
+  () => import("@/components/shared/modals/create-workspace-modal"),
+);
+const CreateProjectModal = lazy(
+  () => import("../shared/modals/create-project-modal"),
+);
 
 type PaletteActionItem = {
   value: string;
@@ -65,6 +82,9 @@ function CommandPalette() {
   const isBacklogView = location.pathname.endsWith("/backlog");
 
   useRegisterShortcuts({
+    shortcuts: {
+      [shortcuts.search.prefix]: () => setIsSearchOpen(true),
+    },
     // No entry for `shortcuts.help.key` ("?") here: `KeyboardShortcutsHelp`
     // already listens for the real "?" keydown directly and opens its own
     // dialog (apps/web/src/components/keyboard-shortcuts-help.tsx). A
@@ -335,21 +355,31 @@ function CommandPalette() {
         </CommandDialogPopup>
       </CommandDialog>
 
-      <SearchCommandMenu open={isSearchOpen} setOpen={setIsSearchOpen} />
-      <CreateTaskModal
-        open={isCreateTaskOpen}
-        projectId={projectIdFromRoute}
-        status={isBacklogView ? "planned" : undefined}
-        onClose={() => setIsCreateTaskOpen(false)}
-      />
-      <CreateWorkspaceModal
-        open={isCreateWorkspaceOpen}
-        onClose={() => setIsCreateWorkspaceOpen(false)}
-      />
-      <CreateProjectModal
-        open={isCreateProjectOpen}
-        onClose={() => setIsCreateProjectOpen(false)}
-      />
+      <Suspense fallback={null}>
+        {isSearchOpen ? (
+          <SearchCommandMenu open setOpen={setIsSearchOpen} />
+        ) : null}
+        {isCreateTaskOpen ? (
+          <CreateTaskModal
+            open
+            projectId={projectIdFromRoute}
+            status={isBacklogView ? "planned" : undefined}
+            onClose={() => setIsCreateTaskOpen(false)}
+          />
+        ) : null}
+        {isCreateWorkspaceOpen ? (
+          <CreateWorkspaceModal
+            open
+            onClose={() => setIsCreateWorkspaceOpen(false)}
+          />
+        ) : null}
+        {isCreateProjectOpen ? (
+          <CreateProjectModal
+            open
+            onClose={() => setIsCreateProjectOpen(false)}
+          />
+        ) : null}
+      </Suspense>
     </>
   );
 }

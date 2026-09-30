@@ -159,20 +159,28 @@ Measured against a seeded dataset in CI.
 | Board drag, a scripted 2 s drag | p95 frame time < 20 ms, median of three runs |
 
 A budget regression fails the build. Raising a budget requires a decision log entry. Bundle
-sizes are measured by `size-limit` on the two entry bundles; field INP is observed in
-production ([observability.md](../01-architecture/observability.md)), not gated in CI — a
-shared runner cannot measure it.
+sizes use Node's built-in gzip measurement over each Vite manifest entry's static JavaScript
+imports and CSS. For the direct `Work — list` URL, the early-preloaded route component and its
+static imports are also counted as the initial route graph; its preload hint is conditional on
+`/agent/projects/{key}/work`, and uses the hashed assets resolved from the build bundle. Other
+dynamic imports remain excluded, except that this graph includes the largest supported locale
+chunk because the route hint preloads the browser-resolved locale. Until the agent/portal build
+split exists, the single app entry and the direct work-list graph are both measured against the
+agent's 350 KB budget. The
+portal entry is measured against its 200 KB budget as soon as the split emits it. Field INP
+is observed in production ([observability.md](../01-architecture/observability.md)), not
+gated in CI — a shared runner cannot measure it.
 
-**Measurement, per metric** (the harness this gate needs, not yet built):
+**Enabled measurement harness, per metric:**
 
 | Metric | Tool | Throttling | Target route | Sample / flake policy |
 | --- | --- | --- | --- | --- |
-| LCP, CLS, route transition | Playwright, `PerformanceObserver` marks read via CDP | Network: Lighthouse's "Fast 4G" profile (1.6 Mbps down / 750 Kbps up / 150 ms RTT) via `Network.emulateNetworkConditions`; CPU: 4× slowdown via `Emulation.setCPUThrottlingRate` | `Work — list` (seeded, P1's canonical list surface) → `Work item — full page` for the transition row | Median of three runs; one automatic re-run on a failing sample before the build fails, per metric |
-| Interaction latency (INP proxy) | Playwright, timestamped click-to-paint on the named core journeys (`G10`'s list) | Same profile as above | The journey's own screen | Median of three runs, same re-run policy |
-| Board render (200 items) | Playwright, time from navigation to last row painted | Unthrottled — measures the app's own render cost, not the network | `Work — board`, seeded | Median of three runs |
-| List render (500 rows) | Same method | Unthrottled | `Work — list`, seeded | Median of three runs |
+| LCP, CLS, route transition | Playwright, `PerformanceObserver` marks read via CDP | Network: Lighthouse's "Fast 4G" profile (1.6 Mbps down / 750 Kbps up / 150 ms RTT) via `Network.emulateNetworkConditions`; CPU: 4× slowdown via `Emulation.setCPUThrottlingRate` | `Work — list` (seeded, P1's canonical list surface) → first visible detail loading skeleton or detail content after the row click; the harness separately waits for actual detail data | Median of three runs; one automatic re-run on a failing sample before the build fails, per metric |
+| Interaction latency (INP proxy) | Playwright, timestamped click-to-paint on the named core journeys (`G10`'s list) | Same profile as above | The journey's own screen; create measures the visible submitting state after the submit click, then separately waits for the created row | Median of three runs, same re-run policy |
+| Board render (200 items) | Playwright, time from document start until the last seeded card is painted | Unthrottled — measures the app's own render cost, not the network | Current legacy project board (`/dashboard/workspace/{workspaceId}/project/{projectId}/board`) until P1's canonical board exists | Median of three runs |
+| List render (500 rows) | Playwright, time from document start until all 500 seeded rows are painted | Unthrottled | `Work — list` (`/agent/projects/{key}/work?layout=list`) | Median of three runs |
 | Board drag (p95 frame time) | Already specified above — a scripted 2 s drag, median of three runs | Unthrottled | `Work — board` | As stated in the table row |
-| Agent / portal bundle size | `size-limit` | n/a | n/a | Single measurement; a regression fails immediately, no re-run (deterministic) |
+| Agent / portal bundle size | `pnpm check:bundle-size`, Node gzip over the Vite manifest's static-import graph and CSS | n/a | n/a | Single measurement; a regression fails immediately, no re-run (deterministic) |
 
 CPU/network throttling applies only to the metrics a real user's device and connection
 would affect (LCP, INP, CLS, route transition); render-time and bundle-size rows measure

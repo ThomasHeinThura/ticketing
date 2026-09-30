@@ -9,8 +9,14 @@ const ROOT = path.resolve(
   "../..",
 );
 const MANIFEST_PATH = path.join(ROOT, "apps/web/dist/.vite/manifest.json");
-export const BUDGETS_KB = Object.freeze({ agent: 350, portal: 200 });
+export const BUDGETS_KB = Object.freeze({
+  agent: 350,
+  "agent-work-list": 350,
+  portal: 200,
+});
 export const KB_BYTES = 1000;
+export const WORK_LIST_COMPONENT_SUFFIX =
+  "/routes/_layout/_authenticated/agent/projects/$projectKey/work.tsx?tsr-split=component";
 
 export function isWithinBudget(role, bytes) {
   return bytes < BUDGETS_KB[role] * KB_BYTES;
@@ -80,8 +86,7 @@ export function collectInitialAssets(manifest, entryKey) {
   return [...assets];
 }
 
-export async function measureEntry(manifest, entryKey, outputDir) {
-  const assets = collectInitialAssets(manifest, entryKey);
+export async function measureAssets(assets, outputDir) {
   let bytes = 0;
   for (const asset of assets) {
     const assetPath = path.resolve(outputDir, asset);
@@ -92,6 +97,10 @@ export async function measureEntry(manifest, entryKey, outputDir) {
     bytes += gzipSync(contents, { level: 9, mtime: 0 }).byteLength;
   }
   return { bytes, assets };
+}
+
+export async function measureEntry(manifest, entryKey, outputDir) {
+  return measureAssets(collectInitialAssets(manifest, entryKey), outputDir);
 }
 
 export async function checkBundleSizes({
@@ -117,6 +126,48 @@ export async function checkBundleSizes({
       limit,
       assets: measurement.assets,
     });
+
+    if (role === "agent") {
+      const workRouteKey = Object.keys(manifest).find((candidate) =>
+        candidate.endsWith(WORK_LIST_COMPONENT_SUFFIX),
+      );
+      if (!workRouteKey)
+        throw new Error(
+          `G11 work-list route bundle is missing from the Vite manifest (expected a key ending in ${WORK_LIST_COMPONENT_SUFFIX}).`,
+        );
+      const workListAssets = new Set([
+        ...measurement.assets,
+        ...collectInitialAssets(manifest, workRouteKey),
+      ]);
+      const localeEntries = Object.keys(manifest).filter(
+        (candidate) =>
+          candidate.startsWith("../../i18n/") && candidate.endsWith(".json"),
+      );
+      const localeMeasurements = await Promise.all(
+        localeEntries.map(async (localeKey) => ({
+          assets: collectInitialAssets(manifest, localeKey),
+          measurement: await measureAssets(
+            collectInitialAssets(manifest, localeKey),
+            outputDir,
+          ),
+        })),
+      );
+      const largestLocale = localeMeasurements.sort(
+        (left, right) => right.measurement.bytes - left.measurement.bytes,
+      )[0];
+      for (const asset of largestLocale?.assets ?? [])
+        workListAssets.add(asset);
+      const workListMeasurement = await measureAssets(
+        [...workListAssets],
+        outputDir,
+      );
+      results.push({
+        role: "agent-work-list",
+        bytes: workListMeasurement.bytes,
+        limit: BUDGETS_KB["agent-work-list"] * KB_BYTES,
+        assets: workListMeasurement.assets,
+      });
+    }
   }
   return results;
 }
@@ -129,8 +180,12 @@ if (
     for (const result of await checkBundleSizes()) {
       const size = (result.bytes / KB_BYTES).toFixed(1);
       const budget = (result.limit / KB_BYTES).toFixed(0);
+      const label =
+        result.role === "agent-work-list"
+          ? "agent work-list initial route graph"
+          : `${result.role} initial bundle`;
       console.log(
-        `G11 ${result.role} initial bundle: ${size} KB gzip / ${budget} KB budget (${result.assets.length} assets)`,
+        `G11 ${label}: ${size} KB gzip / ${budget} KB budget (${result.assets.length} assets)`,
       );
       if (!isWithinBudget(result.role, result.bytes))
         throw new Error(

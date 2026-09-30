@@ -6,8 +6,8 @@
 # and the `gates-declared` job below fails if they drift apart.
 #
 # Gates that cannot exist yet — check:queries, check:inventory, test:mcp,
-# check:bundle-purity, check:bundle-size — have no job here on purpose. `pnpm test:all
-# --list` prints each one with the reason and the issue that unblocks it. A job that passed
+# check:bundle-purity — have no job here on purpose. The local test:all list prints each
+# one with the reason and the issue that unblocks it. A job that passed
 # because it found nothing to check would look like coverage and be worth less than
 # nothing. (`check:ui` is enabled, in the `registers` job below — #9's Radix-tracking
 # slice, only; its "no bespoke primitives" / "no Radix/Base UI import outside packages/ui"
@@ -268,6 +268,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: pnpm build
         run: pnpm build
+      - name: pnpm check:bundle-size
+        run: pnpm check:bundle-size
 
   # Deliberately two jobs, not one. As a single "supply chain" job the first failing step
   # stopped the second, so a red dependency audit hid whether the repository had a secret in

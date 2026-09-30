@@ -81,10 +81,15 @@ exact context appears in the ruleset.
 ├─ Build ──────────────────────────────────────────┤
 │ pnpm build               all apps and packages   │
 │ check:bundle-purity      G12 — portal is clean   │
-│ check:bundle-size        G11 — size budgets      │
+│ pnpm check:bundle-size   G11 — size budgets      │
 │ helm lint + helm template   charts/taskdesk      │
 └──────────────────────────────────────────────────┘
 ```
+
+The Build job runs `pnpm build` and then `pnpm check:bundle-size`. That checker reads the
+Vite manifest, measures the current app entry against the agent budget, measures the direct
+work-list route graph (including its early-preloaded component chunk) against the same budget,
+and also enforces the portal budget once a portal entry is emitted.
 
 `pnpm test:contract` regenerates and checks the committed OpenAPI document, runs Redocly's
 recommended lint rules, then runs `oasdiff breaking --fail-on WARN` against `origin/main`.
@@ -461,8 +466,13 @@ list made executable ([decision log](../07-planning/decision-log.md)).
 screens exercised by the current Playwright E2E suite. It uses the existing `axe-core`
 dependency declared by `packages/ui` and scans the logged-out protected-route redirect's
 sign-in screen in a real browser. The workflow job's required context is
-`a11y - accessibility (G4, axe)`. `pnpm test:perf` remains a separate Playwright project in
-the full stage; [testing-strategy.md](testing-strategy.md) describes both commands.
+`a11y - accessibility (G4, axe)`. `pnpm test:perf` runs the G11 work-list, work-item, and
+current legacy-board performance fixture as its own Playwright project in the full stage;
+the API responses are deterministic browser fixtures, so this measures app browser work
+without requiring a deployed API. Bundle-size budgets run after the web build in the fast
+Build job. The portal budget activates automatically when the Vite manifest contains a
+portal entry; until then, the current single entry is checked against the agent budget.
+[testing-strategy.md](testing-strategy.md) describes both commands.
 
 ## Main pipeline
 

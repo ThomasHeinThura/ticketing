@@ -18,6 +18,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { produce } from "immer";
 import { useEffect, useState } from "react";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
+import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
+import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
@@ -42,6 +44,10 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
     clearFocus,
   } = useBulkSelectionStore();
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  const { data: workspace } = useActiveWorkspace();
+  const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
+    workspace?.id ?? "",
+  );
   const { mutate: updateTask } = useUpdateTask();
   const navigate = useNavigate();
 
@@ -256,7 +262,12 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                 key={column.id}
                 className="h-full max-w-96 min-w-80 shrink-0 flex-1"
               >
-                <Column column={column} disableDragDrop={disableDragDrop} />
+                <Column
+                  column={column}
+                  disableDragDrop={disableDragDrop}
+                  workspaceId={workspace?.id}
+                  workspaceUsers={workspaceUsers}
+                />
               </div>
             ))}
           </div>
@@ -266,7 +277,11 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
         {activeTask ? (
           <div className="transform rotate-1 scale-[1.03] shadow-lg">
             <div className="ring-2 ring-ring/35 rounded-lg">
-              <TaskCard task={activeTask} />
+              <TaskCard
+                task={activeTask}
+                workspaceId={workspace?.id}
+                workspaceUsers={workspaceUsers}
+              />
             </div>
           </div>
         ) : null}

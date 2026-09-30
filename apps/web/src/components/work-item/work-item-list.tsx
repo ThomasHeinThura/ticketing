@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import {
   Alert,
@@ -27,7 +28,9 @@ import {
   ListTodo,
   TriangleAlert,
 } from "lucide-react";
+import { memo } from "react";
 import { useTranslation } from "react-i18next";
+import getWorkItem from "@/fetchers/work-item/get-work-item";
 import { formatDateShort } from "@/lib/format";
 import { getPriorityIcon } from "@/lib/priority";
 import {
@@ -149,6 +152,7 @@ function WorkItemList({
   onSortChange,
   onRetry,
 }: WorkItemListProps) {
+  const queryClient = useQueryClient();
   const { t } = useTranslation();
   const getPriorityLabel = priorityLabel(t);
 
@@ -158,6 +162,14 @@ function WorkItemList({
     } else {
       onSortChange(field, "asc");
     }
+  }
+
+  function prefetchDetail(key: string) {
+    void queryClient.prefetchQuery({
+      queryKey: ["work-items", "detail", key],
+      queryFn: () => getWorkItem(key),
+      staleTime: 5_000,
+    });
   }
 
   if (isError) {
@@ -259,6 +271,9 @@ function WorkItemList({
                   <Link
                     to={routes.workItemDetail.path}
                     params={{ key: item.key }}
+                    preload="intent"
+                    onMouseEnter={() => prefetchDetail(item.key)}
+                    onFocus={() => prefetchDetail(item.key)}
                     className="font-medium text-primary underline-offset-2 hover:underline"
                   >
                     {item.key}
@@ -277,6 +292,9 @@ function WorkItemList({
                   <Link
                     to={routes.workItemDetail.path}
                     params={{ key: item.key }}
+                    preload="intent"
+                    onMouseEnter={() => prefetchDetail(item.key)}
+                    onFocus={() => prefetchDetail(item.key)}
                     className="hover:underline"
                     title={item.title}
                   >
@@ -343,4 +361,4 @@ function SortIcon({
   );
 }
 
-export default WorkItemList;
+export default memo(WorkItemList);

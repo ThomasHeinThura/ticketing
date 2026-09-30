@@ -319,7 +319,12 @@ function CreateWorkItemDialog({
             >
               {t("workItems:create.cancel")}
             </Button>
-            <Button type="submit" disabled={!canSubmit}>
+            <Button
+              type="submit"
+              disabled={!canSubmit}
+              aria-busy={isPending || undefined}
+              data-testid="create-work-item-submit"
+            >
               {isPending
                 ? t("workItems:create.submitting")
                 : t("workItems:create.submit")}

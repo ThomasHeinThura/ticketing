@@ -1,14 +1,22 @@
 import { useState } from "react";
 import type { ProjectWithTasks } from "@/types/project";
+import type { TaskCardProps } from "../task-card";
 import { ColumnDropzone } from "./column-dropzone";
 import { ColumnHeader } from "./column-header";
 
 type ColumnProps = {
   column: ProjectWithTasks["columns"][number];
   disableDragDrop?: boolean;
+  workspaceId?: string;
+  workspaceUsers: TaskCardProps["workspaceUsers"];
 };
 
-function Column({ column, disableDragDrop = false }: ColumnProps) {
+function Column({
+  column,
+  disableDragDrop = false,
+  workspaceId,
+  workspaceUsers,
+}: ColumnProps) {
   const [isDropzoneOver, setIsDropzoneOver] = useState(false);
 
   return (
@@ -27,6 +35,8 @@ function Column({ column, disableDragDrop = false }: ColumnProps) {
           column={column}
           disableDragDrop={disableDragDrop}
           onIsOverChange={setIsDropzoneOver}
+          workspaceId={workspaceId}
+          workspaceUsers={workspaceUsers}
         />
       </div>
     </div>

@@ -6,18 +6,22 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect } from "react";
 import type { ProjectWithTasks } from "@/types/project";
-import TaskCard from "../task-card";
+import TaskCard, { type TaskCardProps } from "../task-card";
 
 type ColumnDropzoneProps = {
   column: ProjectWithTasks["columns"][number];
   disableDragDrop?: boolean;
   onIsOverChange?: (isOver: boolean) => void;
+  workspaceId?: string;
+  workspaceUsers: TaskCardProps["workspaceUsers"];
 };
 
 export function ColumnDropzone({
   column,
   disableDragDrop = false,
   onIsOverChange,
+  workspaceId,
+  workspaceUsers,
 }: ColumnDropzoneProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -55,7 +59,12 @@ export function ColumnDropzone({
                 }
                 transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
               >
-                <TaskCard task={task} disableDragDrop={disableDragDrop} />
+                <TaskCard
+                  task={task}
+                  disableDragDrop={disableDragDrop}
+                  workspaceId={workspaceId}
+                  workspaceUsers={workspaceUsers}
+                />
               </motion.div>
             ))}
           </AnimatePresence>

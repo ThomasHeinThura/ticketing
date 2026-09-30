@@ -12,7 +12,8 @@
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:e2e": "playwright test --config playwright.config.ts",
-    "test:visual": "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual"
+    "test:visual": "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual",
+    "test:perf": "playwright test --config playwright.perf.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

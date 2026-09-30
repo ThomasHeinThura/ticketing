@@ -9,6 +9,7 @@ import {
   collectInitialAssets,
   isWithinBudget,
   resolveEntries,
+  WORK_LIST_COMPONENT_SUFFIX,
 } from "./check-bundle-size.mjs";
 
 const manifest = {
@@ -27,11 +28,72 @@ test("G11: single legacy entry is measured as agent and portal budget is registe
   const entries = resolveEntries(manifest);
   assert.deepEqual([...entries.keys()], ["agent"]);
   assert.equal(BUDGETS_KB.agent, 350);
+  assert.equal(BUDGETS_KB["agent-work-list"], 350);
   assert.equal(BUDGETS_KB.portal, 200);
   assert.equal(isWithinBudget("agent", 349_999), true);
   assert.equal(isWithinBudget("agent", 350_000), false);
   assert.equal(isWithinBudget("portal", 199_999), true);
   assert.equal(isWithinBudget("portal", 200_000), false);
+});
+
+test("G11: direct work-list budget includes its early-preloaded static graph", async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), "g11-work-list-bundle-"));
+  try {
+    const manifestPath = path.join(dir, ".vite", "manifest.json");
+    await mkdir(path.dirname(manifestPath));
+    const workRouteKey = `src${WORK_LIST_COMPONENT_SUFFIX}`;
+    const routeManifest = {
+      "src/main.tsx": {
+        file: "assets/main.js",
+        isEntry: true,
+        imports: ["chunks/shared.js"],
+      },
+      "chunks/shared.js": { file: "assets/shared.js" },
+      [workRouteKey]: {
+        file: "assets/work.js",
+        imports: ["chunks/route-only.js"],
+        dynamicImports: ["chunks/later.js"],
+      },
+      "../../i18n/en-US.json": { file: "assets/en-US.js" },
+      "../../i18n/el-GR.json": { file: "assets/el-GR.js" },
+      "chunks/route-only.js": { file: "assets/route-only.js" },
+      "chunks/later.js": { file: "assets/later.js" },
+    };
+    await writeFile(manifestPath, JSON.stringify(routeManifest));
+    await mkdir(path.join(dir, "assets"));
+    await mkdir(path.join(dir, "chunks"));
+    await Promise.all(
+      [
+        "assets/main.js",
+        "assets/shared.js",
+        "assets/work.js",
+        "assets/route-only.js",
+        "assets/later.js",
+        "assets/en-US.js",
+        "assets/el-GR.js",
+      ].map((file) => writeFile(path.join(dir, file), file)),
+    );
+    await writeFile(
+      path.join(dir, "assets/en-US.js"),
+      Buffer.from(Array.from({ length: 256 }, (_, index) => index)),
+    );
+    await writeFile(path.join(dir, "assets/el-GR.js"), "x");
+
+    const results = await checkBundleSizes({ manifestPath, outputDir: dir });
+    const workList = results.find(
+      (result) => result.role === "agent-work-list",
+    );
+    assert.ok(workList);
+    assert.deepEqual(workList.assets, [
+      "assets/main.js",
+      "assets/shared.js",
+      "assets/work.js",
+      "assets/route-only.js",
+      "assets/en-US.js",
+    ]);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test("G11: initial graph includes static imports and CSS but excludes dynamic imports", () => {

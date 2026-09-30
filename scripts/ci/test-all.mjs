@@ -201,10 +201,9 @@ const manifest = [
     why: "apps/web builds one bundle. G12 is 'no agent module in the portal bundle', and the agent/portal split is #9.",
   },
   {
-    gate: "check:bundle-size",
+    gate: "pnpm check:bundle-size",
     stage: "fast",
-    run: null,
-    why: "G11's performance thresholds are defined, but the app still has one combined web bundle and no seeded work-list/detail journeys to measure.",
+    run: ["pnpm", "check:bundle-size"],
   },
   {
     gate: "helm lint + helm template",
@@ -257,8 +256,7 @@ const manifest = [
   {
     gate: "pnpm test:perf",
     stage: "full",
-    run: null,
-    why: "the G11 thresholds exist, but a deterministic performance journey and separate agent/portal bundles are still prerequisites.",
+    run: ["pnpm", "test:perf"],
   },
 ];
 
