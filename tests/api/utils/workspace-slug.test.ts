@@ -1,4 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { randomUUIDMock } = vi.hoisted(() => ({
+  randomUUIDMock:
+    vi.fn<() => `${string}-${string}-${string}-${string}-${string}`>(),
+}));
+
+vi.mock("node:crypto", () => ({ randomUUID: randomUUIDMock }));
+
 import {
   nextAvailableSlug,
   randomSlugSuffix,
@@ -52,16 +60,27 @@ describe("nextAvailableSlug", () => {
 });
 
 describe("randomSlugSuffix", () => {
-  it("is slug-safe", () => {
-    for (let i = 0; i < 50; i++) {
-      expect(randomSlugSuffix()).toMatch(/^[a-z0-9]{8}$/);
-    }
+  beforeEach(() => {
+    randomUUIDMock.mockReset();
   });
 
-  it("disperses — which is the whole point of using it on retry", () => {
-    // Counting upward made every loser of a concurrent create pick the same
-    // next slug and collide again. These must not repeat.
-    const seen = new Set(Array.from({ length: 500 }, () => randomSlugSuffix()));
-    expect(seen.size).toBe(500);
+  it("is slug-safe", () => {
+    randomUUIDMock.mockReturnValue("01234567-89ab-cdef-0123-456789abcdef");
+
+    expect(randomSlugSuffix()).toMatch(/^[a-z0-9]{8}$/);
+  });
+
+  it("uses fresh UUID bits for each retry", () => {
+    randomUUIDMock
+      .mockReturnValueOnce("00000001-0000-4000-8000-000000000000")
+      .mockReturnValueOnce("00000002-0000-4000-8000-000000000000");
+
+    const first = randomSlugSuffix();
+    const second = randomSlugSuffix();
+
+    expect(first).toBe("00000001");
+    expect(second).toBe("00000002");
+    expect(second).not.toBe(first);
+    expect(randomUUIDMock).toHaveBeenCalledTimes(2);
   });
 });
