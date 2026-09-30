@@ -68,10 +68,10 @@ async function updateTask(
       if (normalizedUserId) {
         rejectNulByte(normalizedUserId, "Assignee id");
       }
-      const projectWorkspaceId = await getProjectWorkspaceId(projectId);
-      await assertValidTaskStatus(status, projectId);
+      const projectWorkspaceId = await getProjectWorkspaceId(projectId, tx);
+      await assertValidTaskStatus(status, projectId, tx);
       if (normalizedUserId) {
-        await assertAssignableUser(normalizedUserId, projectWorkspaceId);
+        await assertAssignableUser(normalizedUserId, projectWorkspaceId, tx);
       }
       const column = await tx.query.columnTable.findFirst({
         where: and(

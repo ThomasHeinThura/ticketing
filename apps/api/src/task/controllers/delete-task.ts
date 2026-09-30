@@ -20,7 +20,7 @@ async function deleteTask(taskId: string, currentUserId: string) {
           ),
         )
         .execute();
-      const assetKeys = await getTaskAssetKeys(taskId);
+      const assetKeys = await getTaskAssetKeys(taskId, tx);
       const [deletedTask] = await tx
         .delete(taskTable)
         .where(eq(taskTable.id, taskId))

@@ -108,7 +108,11 @@ async function importTasks(
       });
 
       const createdTask = await db.transaction(async (tx) => {
-        await lockProjectAndAssertLiveForTaskNumber(tx, projectId);
+        await lockProjectAndAssertLiveForTaskNumber(
+          tx,
+          projectId,
+          "Project not found",
+        );
         const taskNumber = await claimTaskNumber(projectId, tx);
 
         const [task] = await tx
@@ -153,9 +157,19 @@ async function importTasks(
         });
       }
     } catch (error) {
-      if (error instanceof HTTPException) {
-        throw error;
+      if (
+        error instanceof HTTPException &&
+        error.status === 404 &&
+        error.message === "Project not found"
+      ) {
+        results.push({
+          success: false,
+          error: "Project is no longer available",
+          task: taskData,
+        });
+        continue;
       }
+      if (error instanceof HTTPException) throw error;
       results.push({
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",

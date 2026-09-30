@@ -5,6 +5,7 @@ import { Client, Pool } from "pg";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { recordTaskEventActivity } from "../../apps/api/src/activity/controllers/create-activity";
 import db, { schema } from "../../apps/api/src/database";
+import * as eventBus from "../../apps/api/src/events";
 import { createApp } from "../../apps/api/src/index";
 import { lockProjectAndAssertLiveForTaskNumber } from "../../apps/api/src/task/assert-task-project-live";
 import { claimTaskNumber } from "../../apps/api/src/task/controllers/claim-task-numbers";
@@ -593,6 +594,60 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     });
   });
 
+  it("PR-15: returns per-task import outcomes when archive commits between rows", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+
+    let archived = false;
+    const eventSpy = vi
+      .spyOn(eventBus, "publishEvent")
+      .mockImplementation(async (eventType) => {
+        if (eventType === "task.created" && !archived) {
+          archived = true;
+          await db
+            .update(schema.projectTable)
+            .set({ archivedAt: new Date() })
+            .where(eq(schema.projectTable.id, project.id));
+        }
+      });
+
+    try {
+      const response = await request(`/task/import/${project.id}`, "post", {
+        tasks: [
+          { title: "Imported before archive", status: "to-do" },
+          { title: "Rejected after archive", status: "to-do" },
+        ],
+      });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        results: {
+          total: 2,
+          successful: 1,
+          failed: 1,
+          tasks: [
+            { success: true, task: { title: "Imported before archive" } },
+            {
+              success: false,
+              error: "Project is no longer available",
+              task: { title: "Rejected after archive" },
+            },
+          ],
+        },
+      });
+      expect(
+        await db
+          .select({ title: schema.taskTable.title })
+          .from(schema.taskTable)
+          .where(eq(schema.taskTable.projectId, project.id)),
+      ).toMatchObject([{ title: "Imported before archive" }]);
+    } finally {
+      eventSpy.mockRestore();
+    }
+  });
+
   it("checks source freeze before reporting a missing relation target", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const sourceFixture = await createProjectFixture({
@@ -1024,7 +1079,67 @@ describe("API integration: legacy task writes respect PR-15 project archive free
     expect(after?.title).toBe(task.title);
   });
 
-  it("keeps the bulk missing-value validation for a live task", async () => {
+  it("WI-25: reports bulk status failures per task and commits valid items", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const invalidFixture = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const validFixture = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const invalidTask = await createLegacyTask(
+      invalidFixture.project.id,
+      invalidFixture.columns.todo.id,
+      1,
+    );
+    const validTask = await createLegacyTask(
+      validFixture.project.id,
+      validFixture.columns.todo.id,
+      1,
+    );
+    await db
+      .update(schema.columnTable)
+      .set({ slug: "backlog" })
+      .where(eq(schema.columnTable.id, invalidFixture.columns.todo.id));
+    await db
+      .update(schema.taskTable)
+      .set({ status: "planned", columnId: null })
+      .where(eq(schema.taskTable.id, validTask.id));
+    mockAuthenticatedSession(member.user);
+
+    const response = await request("/task/bulk", "patch", {
+      taskIds: [invalidTask.id, validTask.id],
+      operation: "updateStatus",
+      value: "to-do",
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      success: true,
+      updatedCount: 1,
+      results: [
+        {
+          taskId: invalidTask.id,
+          success: false,
+          error: expect.stringContaining('Invalid status "to-do"'),
+        },
+        { taskId: validTask.id, success: true },
+      ],
+    });
+    const [unchangedInvalidTask] = await db
+      .select()
+      .from(schema.taskTable)
+      .where(eq(schema.taskTable.id, invalidTask.id));
+    const [updatedValidTask] = await db
+      .select()
+      .from(schema.taskTable)
+      .where(eq(schema.taskTable.id, validTask.id));
+    expect(unchangedInvalidTask?.status).toBe("to-do");
+    expect(updatedValidTask?.status).toBe("to-do");
+    expect(updatedValidTask?.columnId).toBe(validFixture.columns.todo.id);
+  });
+
+  it("WI-25: reports a missing bulk value as an item failure for a live task", async () => {
     const member = await createWorkspaceMember({ role: "admin" });
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
@@ -1037,8 +1152,18 @@ describe("API integration: legacy task writes respect PR-15 project archive free
       operation: "updatePriority",
     });
 
-    expect(response.status).toBe(400);
-    expect(await response.text()).toBe("Value is required for this operation");
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      success: true,
+      updatedCount: 0,
+      results: [
+        {
+          taskId: task.id,
+          success: false,
+          error: "Value is required for this operation",
+        },
+      ],
+    });
   });
 
   it("checks task liveness before invalid time-entry interval validation", async () => {

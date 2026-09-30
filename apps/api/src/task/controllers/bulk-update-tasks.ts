@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -12,6 +12,8 @@ import {
 import { publishEvent } from "../../events";
 import { lockWorkspaceLabelNames } from "../../label/label-name-lock";
 import { assertAssignableUser } from "../../utils/assert-assignable-user";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
+import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 import {
   assertValidPriority,
   assertValidTaskStatus,
@@ -25,6 +27,43 @@ type BulkOperation =
   | "addLabel"
   | "removeLabel"
   | "updateDueDate";
+
+type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+type ItemResult =
+  | { taskId: string; success: true }
+  | { taskId?: string; success: false; error: string };
+type DeferredEvent = { type: string; data: unknown };
+
+async function resolveBulkLabel(
+  tx: DbOrTx,
+  value: string,
+  workspaceId: string,
+) {
+  const scope = and(
+    eq(labelTable.id, value),
+    or(eq(labelTable.workspaceId, workspaceId), isNull(labelTable.workspaceId)),
+  );
+  const label = await tx.query.labelTable.findFirst({ where: scope });
+  if (!label) throw new HTTPException(404, { message: "Label not found" });
+
+  // Join the label-name family before task/project row locks so rename and cascade
+  // operations cannot deadlock against this bulk writer.
+  await lockWorkspaceLabelNames(tx, workspaceId, [label.name]);
+  const currentLabel = await tx.query.labelTable.findFirst({ where: scope });
+  if (!currentLabel) {
+    throw new HTTPException(404, { message: "Label not found" });
+  }
+  if (
+    currentLabel.workspaceId !== label.workspaceId ||
+    currentLabel.taskId !== label.taskId ||
+    currentLabel.name !== label.name
+  ) {
+    throw new HTTPException(409, {
+      message: "Label changed; retry the request",
+    });
+  }
+  return currentLabel;
+}
 
 async function bulkUpdateTasks({
   taskIds,
@@ -61,338 +100,99 @@ async function bulkUpdateTasks({
     });
   }
 
-  const events: Array<() => Promise<void>> = [];
-  const result = await db.transaction(async (tx) => {
-    // Repeat the middleware's workspace scope in the transaction. Task rows can be
-    // moved between the first lookup and the lock, so the locked rows below are the
-    // authoritative scope for both the update and its project freeze checks.
-    const candidateIds = await tx
-      .select({ id: taskTable.id })
-      .from(taskTable)
-      .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-      .where(
-        and(
-          inArray(taskTable.id, taskIds),
-          eq(projectTable.workspaceId, workspaceId),
-        ),
-      );
-    const scopedIds = candidateIds.map((task) => task.id);
-    if (scopedIds.length === 0) {
-      throw new HTTPException(404, { message: "No tasks found" });
-    }
+  const uniqueTaskIds = [...new Set(taskIds)];
+  const scopedRows = await db
+    .select({ id: taskTable.id })
+    .from(taskTable)
+    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
+    .where(
+      and(
+        inArray(taskTable.id, uniqueTaskIds),
+        eq(projectTable.workspaceId, workspaceId),
+        isNull(projectTable.archivedAt),
+        isNull(projectTable.deletedAt),
+      ),
+    );
+  const scopedIds = new Set(scopedRows.map((task) => task.id));
+  if (scopedIds.size === 0) {
+    throw new HTTPException(404, { message: "No tasks found" });
+  }
 
-    let bulkLabel: typeof labelTable.$inferSelect | undefined;
-    let bulkLabelValidationError: HTTPException | undefined;
-    if (operation === "addLabel" || operation === "removeLabel") {
-      if (!value) {
-        bulkLabelValidationError = new HTTPException(400, {
-          message: "Label ID is required",
-        });
-      } else if (value.includes("\u0000")) {
-        bulkLabelValidationError = new HTTPException(400, {
-          message: "Label id must not contain a NUL (\\u0000) byte",
-        });
-      } else {
-        const label = await tx.query.labelTable.findFirst({
-          where: and(
-            eq(labelTable.id, value),
-            or(
-              eq(labelTable.workspaceId, workspaceId),
-              isNull(labelTable.workspaceId),
-            ),
-          ),
-        });
-        if (!label) {
-          bulkLabelValidationError = new HTTPException(404, {
-            message: "Label not found",
-          });
-        } else {
-          // Bulk label writes join the same name family before task/project locks.
-          await lockWorkspaceLabelNames(tx, workspaceId, [label.name]);
-          const currentLabel = await tx.query.labelTable.findFirst({
-            where: and(
-              eq(labelTable.id, value),
-              or(
-                eq(labelTable.workspaceId, workspaceId),
-                isNull(labelTable.workspaceId),
-              ),
-            ),
-          });
-          if (!currentLabel) {
-            bulkLabelValidationError = new HTTPException(404, {
-              message: "Label not found",
-            });
-          } else if (
-            currentLabel.workspaceId !== label.workspaceId ||
-            currentLabel.taskId !== label.taskId ||
-            currentLabel.name !== label.name
-          ) {
-            bulkLabelValidationError = new HTTPException(409, {
-              message: "Label changed; retry the request",
-            });
-          } else {
-            bulkLabel = currentLabel;
+  const events: DeferredEvent[] = [];
+  const results: ItemResult[] = [];
+  let updatedCount = 0;
+
+  // Recheck each scoped row under its own task/project locks below. Opaque ids
+  // filtered by workspace reach stay in the response only as anonymous failures,
+  // so a foreign task and a nonexistent id have byte-identical results.
+  for (const taskId of uniqueTaskIds) {
+    if (!scopedIds.has(taskId)) {
+      results.push({ success: false, error: "Task not found" });
+      continue;
+    }
+    let taskInScope = false;
+    const itemEvents: DeferredEvent[] = [];
+    try {
+      const itemUpdatedCount = await db.transaction(async (tx) => {
+        let label: typeof labelTable.$inferSelect | undefined;
+        let labelError: HTTPException | undefined;
+        if (
+          (operation === "addLabel" || operation === "removeLabel") &&
+          value &&
+          !value.includes("\u0000")
+        ) {
+          try {
+            label = await resolveBulkLabel(tx, value, workspaceId);
+          } catch (error) {
+            if (!(error instanceof HTTPException)) throw error;
+            labelError = error;
           }
         }
-      }
-    }
 
-    const lockedTasks = await tx
-      .select({
-        id: taskTable.id,
-        title: taskTable.title,
-        projectId: taskTable.projectId,
-        userId: taskTable.userId,
-        dueDate: taskTable.dueDate,
-      })
-      .from(taskTable)
-      .where(inArray(taskTable.id, scopedIds))
-      .orderBy(asc(taskTable.id))
-      .for("update");
-    const projectIds = [
-      ...new Set(lockedTasks.map((task) => task.projectId)),
-    ].sort();
-    const projects = projectIds.length
-      ? await tx
-          .select({
-            id: projectTable.id,
-            workspaceId: projectTable.workspaceId,
-            archivedAt: projectTable.archivedAt,
-            deletedAt: projectTable.deletedAt,
-          })
+        const task = await lockTaskAndAssertProjectLive(tx, taskId);
+        const [project] = await tx
+          .select({ workspaceId: projectTable.workspaceId })
           .from(projectTable)
-          .where(inArray(projectTable.id, projectIds))
-          .orderBy(asc(projectTable.id))
-          .for("share")
-      : [];
-    // Stable task -> project lock ordering makes bulk operations serialize with
-    // archive and delete. A project archived first is omitted after the lock wait;
-    // otherwise archive waits until this write commits.
-    const liveProjectIds = new Set(
-      projects
-        .filter(
-          (project) =>
-            project.workspaceId === workspaceId &&
-            project.archivedAt === null &&
-            project.deletedAt === null,
-        )
-        .map((project) => project.id),
-    );
-    const tasks = lockedTasks.filter((task) =>
-      liveProjectIds.has(task.projectId),
-    );
-    if (tasks.length === 0) {
-      throw new HTTPException(404, { message: "No tasks found" });
-    }
-    if (
-      operation !== "delete" &&
-      operation !== "updateDueDate" &&
-      value === undefined
-    ) {
-      throw new HTTPException(400, {
-        message: "Value is required for this operation",
-      });
-    }
-    if (bulkLabelValidationError) {
-      throw bulkLabelValidationError;
-    }
-    const foundIds = tasks.map((task) => task.id);
-    let updatedCount = 0;
+          .where(eq(projectTable.id, task.projectId))
+          .limit(1);
+        if (!project || project.workspaceId !== workspaceId) {
+          throw new HTTPException(404, { message: "Task not found" });
+        }
+        taskInScope = true;
 
-    switch (operation) {
-      case "updateStatus": {
-        if (!value) {
+        if (
+          operation !== "delete" &&
+          operation !== "updateDueDate" &&
+          value === undefined
+        ) {
+          throw new HTTPException(400, {
+            message: "Value is required for this operation",
+          });
+        }
+        if (operation === "updateStatus" && !value) {
           throw new HTTPException(400, { message: "Status value is required" });
         }
-        const groupedProjectIds = [
-          ...new Set(tasks.map((task) => task.projectId)),
-        ];
-        for (const projectId of groupedProjectIds) {
-          await assertValidTaskStatus(value, projectId);
-          const column = await tx.query.columnTable.findFirst({
-            where: and(
-              eq(columnTable.projectId, projectId),
-              eq(columnTable.slug, value),
-            ),
-          });
-          const taskIdsForProject = tasks
-            .filter((task) => task.projectId === projectId)
-            .map((task) => task.id);
-          const changed = await tx
-            .update(taskTable)
-            .set({ status: value, columnId: column?.id ?? null })
-            .where(inArray(taskTable.id, taskIdsForProject));
-          updatedCount += changed.rowCount ?? taskIdsForProject.length;
-          for (const taskId of taskIdsForProject) {
-            events.push(() =>
-              publishEvent("task.status_changed", {
-                taskId,
-                projectId,
-                userId,
-                newStatus: value,
-                type: "status_changed",
-              }),
-            );
-          }
-          events.push(() =>
-            publishEvent("task-relation.refresh", { projectId, userId }),
-          );
-        }
-        break;
-      }
-
-      case "updatePriority": {
-        if (!value) {
-          throw new HTTPException(400, {
-            message: "Priority value is required",
-          });
-        }
-        assertValidPriority(value);
-        const changed = await tx
-          .update(taskTable)
-          .set({ priority: value })
-          .where(inArray(taskTable.id, foundIds));
-        updatedCount = changed.rowCount ?? foundIds.length;
-        for (const task of tasks) {
-          events.push(() =>
-            publishEvent("task.priority_changed", {
-              taskId: task.id,
-              projectId: task.projectId,
-              userId,
-              newPriority: value,
-              type: "priority_changed",
-            }),
-          );
-        }
-        break;
-      }
-
-      case "updateAssignee": {
-        const assigneeId = value?.trim() || null;
-        if (assigneeId) await assertAssignableUser(assigneeId, workspaceId);
-        const newAssigneeName = assigneeId
-          ? (
-              await tx
-                .select({ name: userTable.name })
-                .from(userTable)
-                .where(eq(userTable.id, assigneeId))
-                .limit(1)
-            )[0]?.name
-          : undefined;
-        const changed = await tx
-          .update(taskTable)
-          .set({ userId: assigneeId })
-          .where(inArray(taskTable.id, foundIds));
-        updatedCount = changed.rowCount ?? foundIds.length;
-        for (const task of tasks) {
-          const eventType = assigneeId
-            ? "task.assignee_changed"
-            : "task.unassigned";
-          events.push(() =>
-            publishEvent(eventType, {
-              taskId: task.id,
-              projectId: task.projectId,
-              userId,
-              oldAssignee: task.userId,
-              newAssignee: newAssigneeName,
-              newAssigneeId: assigneeId,
-              title: task.title,
-              type: assigneeId ? "assignee_changed" : "unassigned",
-            }),
-          );
-        }
-        break;
-      }
-
-      case "delete": {
-        const deleted = await tx
-          .delete(taskTable)
-          .where(inArray(taskTable.id, foundIds));
-        updatedCount = deleted.rowCount ?? foundIds.length;
-        for (const task of tasks) {
-          events.push(() =>
-            publishEvent("task.deleted", {
-              taskId: task.id,
-              projectId: task.projectId,
-              userId,
-              title: task.title,
-            }),
-          );
-        }
-        break;
-      }
-
-      case "addLabel": {
-        const label = bulkLabel;
-        if (!label)
-          throw new HTTPException(404, { message: "Label not found" });
-        for (const task of tasks) {
-          const existing = await tx.query.labelTable.findFirst({
-            where: and(
-              eq(labelTable.name, label.name),
-              eq(labelTable.taskId, task.id),
-            ),
-          });
-          if (existing) continue;
-          await tx
-            .insert(labelTable)
-            .values({
-              name: label.name,
-              color: label.color,
-              workspaceId,
-              taskId: task.id,
-            })
-            .onConflictDoNothing({
-              target: [labelTable.taskId, labelTable.name],
+        if (operation === "updatePriority") {
+          if (!value) {
+            throw new HTTPException(400, {
+              message: "Priority value is required",
             });
-          updatedCount++;
-          events.push(() =>
-            publishEvent("task.label_assigned", {
-              projectId: task.projectId,
-              taskId: task.id,
-              userId,
-              type: "label_assigned",
-            }),
-          );
+          }
+          assertValidPriority(value);
         }
-        break;
-      }
-
-      case "removeLabel": {
-        const label = bulkLabel;
-        if (!label)
-          throw new HTTPException(404, { message: "Label not found" });
-        const deleted = await tx
-          .delete(labelTable)
-          .where(
-            and(
-              eq(labelTable.workspaceId, workspaceId),
-              eq(labelTable.name, label.name),
-              inArray(labelTable.taskId, foundIds),
-            ),
-          )
-          .returning();
-        updatedCount = deleted.length;
-        for (const removed of deleted) {
-          const task = tasks.find((entry) => entry.id === removed.taskId);
-          if (!task || !removed.taskId) continue;
-          events.push(() =>
-            publishEvent("task.label_unassigned", {
-              label: removed,
-              task,
-              projectId: task.projectId,
-              taskId: removed.taskId,
-              userId,
-              type: "label_unassigned",
-            }),
-          );
+        if (operation === "addLabel" || operation === "removeLabel") {
+          if (!value) {
+            throw new HTTPException(400, { message: "Label ID is required" });
+          }
+          rejectNulByte(value, "Label id");
+          if (labelError) throw labelError;
         }
-        break;
-      }
+        if (operation === "updateAssignee" && value) {
+          rejectNulByte(value, "Assignee id");
+        }
 
-      case "updateDueDate": {
         let parsedDate: Date | null = null;
-        if (value) {
+        if (operation === "updateDueDate" && value) {
           parsedDate = new Date(value);
           if (Number.isNaN(parsedDate.getTime())) {
             throw new HTTPException(400, {
@@ -400,32 +200,230 @@ async function bulkUpdateTasks({
             });
           }
         }
-        const changed = await tx
-          .update(taskTable)
-          .set({ dueDate: parsedDate })
-          .where(inArray(taskTable.id, foundIds));
-        updatedCount = changed.rowCount ?? foundIds.length;
-        for (const task of tasks) {
-          events.push(() =>
-            publishEvent("task.due_date_changed", {
-              taskId: task.id,
-              projectId: task.projectId,
-              userId,
-              oldDueDate: task.dueDate,
-              newDueDate: parsedDate,
-              title: task.title,
-              type: "due_date_changed",
-            }),
-          );
-        }
-        break;
-      }
-    }
-    return { success: true as const, updatedCount };
-  });
 
-  for (const publish of events) await publish();
-  return result;
+        switch (operation) {
+          case "updateStatus": {
+            const status = value as string;
+            await assertValidTaskStatus(status, task.projectId, tx);
+            const column = await tx.query.columnTable.findFirst({
+              where: and(
+                eq(columnTable.projectId, task.projectId),
+                eq(columnTable.slug, status),
+              ),
+            });
+            const [updated] = await tx
+              .update(taskTable)
+              .set({ status, columnId: column?.id ?? null })
+              .where(eq(taskTable.id, taskId))
+              .returning({ id: taskTable.id });
+            itemEvents.push({
+              type: "task.status_changed",
+              data: {
+                taskId,
+                projectId: task.projectId,
+                userId,
+                newStatus: status,
+                type: "status_changed",
+              },
+            });
+            itemEvents.push({
+              type: "task-relation.refresh",
+              data: { projectId: task.projectId, userId },
+            });
+            return updated ? 1 : 0;
+          }
+
+          case "updatePriority": {
+            const priority = value as string;
+            const [updated] = await tx
+              .update(taskTable)
+              .set({ priority })
+              .where(eq(taskTable.id, taskId))
+              .returning({ id: taskTable.id });
+            itemEvents.push({
+              type: "task.priority_changed",
+              data: {
+                taskId,
+                projectId: task.projectId,
+                userId,
+                newPriority: priority,
+                type: "priority_changed",
+              },
+            });
+            return updated ? 1 : 0;
+          }
+
+          case "updateAssignee": {
+            const assigneeId = value?.trim() || null;
+            if (assigneeId) {
+              await assertAssignableUser(assigneeId, workspaceId, tx);
+            }
+            const newAssigneeName = assigneeId
+              ? (
+                  await tx
+                    .select({ name: userTable.name })
+                    .from(userTable)
+                    .where(eq(userTable.id, assigneeId))
+                    .limit(1)
+                )[0]?.name
+              : undefined;
+            const [updated] = await tx
+              .update(taskTable)
+              .set({ userId: assigneeId })
+              .where(eq(taskTable.id, taskId))
+              .returning({ id: taskTable.id });
+            itemEvents.push({
+              type: assigneeId ? "task.assignee_changed" : "task.unassigned",
+              data: {
+                taskId,
+                projectId: task.projectId,
+                userId,
+                oldAssignee: task.userId,
+                newAssignee: newAssigneeName,
+                newAssigneeId: assigneeId,
+                title: task.title,
+                type: assigneeId ? "assignee_changed" : "unassigned",
+              },
+            });
+            return updated ? 1 : 0;
+          }
+
+          case "delete": {
+            const [deleted] = await tx
+              .delete(taskTable)
+              .where(eq(taskTable.id, taskId))
+              .returning({ id: taskTable.id });
+            if (deleted) {
+              itemEvents.push({
+                type: "task.deleted",
+                data: {
+                  taskId,
+                  projectId: task.projectId,
+                  userId,
+                  title: task.title,
+                },
+              });
+            }
+            return deleted ? 1 : 0;
+          }
+
+          case "addLabel": {
+            if (!label)
+              throw new HTTPException(404, { message: "Label not found" });
+            const existing = await tx.query.labelTable.findFirst({
+              where: and(
+                eq(labelTable.name, label.name),
+                eq(labelTable.taskId, taskId),
+              ),
+            });
+            if (existing) return 0;
+            const [inserted] = await tx
+              .insert(labelTable)
+              .values({
+                name: label.name,
+                color: label.color,
+                workspaceId,
+                taskId,
+              })
+              .onConflictDoNothing({
+                target: [labelTable.taskId, labelTable.name],
+              })
+              .returning({ id: labelTable.id });
+            if (inserted) {
+              itemEvents.push({
+                type: "task.label_assigned",
+                data: {
+                  projectId: task.projectId,
+                  taskId,
+                  userId,
+                  type: "label_assigned",
+                },
+              });
+            }
+            return inserted ? 1 : 0;
+          }
+
+          case "removeLabel": {
+            if (!label)
+              throw new HTTPException(404, { message: "Label not found" });
+            const [deleted] = await tx
+              .delete(labelTable)
+              .where(
+                and(
+                  eq(labelTable.workspaceId, workspaceId),
+                  eq(labelTable.name, label.name),
+                  eq(labelTable.taskId, taskId),
+                ),
+              )
+              .returning();
+            if (deleted) {
+              itemEvents.push({
+                type: "task.label_unassigned",
+                data: {
+                  label: deleted,
+                  task,
+                  projectId: task.projectId,
+                  taskId,
+                  userId,
+                  type: "label_unassigned",
+                },
+              });
+            }
+            return deleted ? 1 : 0;
+          }
+
+          case "updateDueDate": {
+            const [updated] = await tx
+              .update(taskTable)
+              .set({ dueDate: parsedDate })
+              .where(eq(taskTable.id, taskId))
+              .returning({ id: taskTable.id });
+            itemEvents.push({
+              type: "task.due_date_changed",
+              data: {
+                taskId,
+                projectId: task.projectId,
+                userId,
+                oldDueDate: task.dueDate,
+                newDueDate: parsedDate,
+                title: task.title,
+                type: "due_date_changed",
+              },
+            });
+            return updated ? 1 : 0;
+          }
+          default:
+            throw new HTTPException(400, {
+              message: `Unknown operation "${operation}"`,
+            });
+        }
+      });
+
+      updatedCount += itemUpdatedCount;
+      events.push(...itemEvents);
+      results.push({ taskId, success: true });
+    } catch (error) {
+      if (!(error instanceof HTTPException)) throw error;
+      results.push({
+        ...(taskInScope ? { taskId } : {}),
+        success: false,
+        error:
+          error.status === 404 &&
+          (error.message === "Task not found" ||
+            error.message === "No tasks found")
+            ? "Task not found"
+            : error.message,
+      });
+    }
+  }
+
+  for (const event of events) await publishEvent(event.type, event.data);
+
+  return {
+    success: true,
+    updatedCount,
+    results,
+  };
 }
 
 export default bulkUpdateTasks;

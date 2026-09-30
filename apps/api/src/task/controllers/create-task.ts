@@ -57,12 +57,12 @@ async function createTask({
       if (normalizedUserId) {
         rejectNulByte(normalizedUserId, "Assignee id");
       }
-      const workspaceId = await getProjectWorkspaceId(projectId);
-      await assertValidTaskStatus(resolvedStatus, projectId);
+      const workspaceId = await getProjectWorkspaceId(projectId, tx);
+      await assertValidTaskStatus(resolvedStatus, projectId, tx);
 
       let assignee: { name: string } | undefined;
       if (normalizedUserId) {
-        await assertAssignableUser(normalizedUserId, workspaceId);
+        await assertAssignableUser(normalizedUserId, workspaceId, tx);
 
         [assignee] = await tx
           .select({ name: userTable.name })

@@ -33,7 +33,7 @@ async function updateTaskAssignee({
         .from(projectTable)
         .where(eq(projectTable.id, existingTask.projectId));
       if (!project) throw new HTTPException(404, { message: "Task not found" });
-      await assertAssignableUser(nextAssigneeId, project.workspaceId);
+      await assertAssignableUser(nextAssigneeId, project.workspaceId, tx);
     }
     const [updatedTask] = await tx
       .update(taskTable)

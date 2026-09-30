@@ -17,7 +17,7 @@ async function updateTaskStatus({
 }) {
   const { existingTask, updatedTask } = await db.transaction(async (tx) => {
     const existingTask = await lockTaskAndAssertProjectLive(tx, id);
-    await assertValidTaskStatus(status, existingTask.projectId);
+    await assertValidTaskStatus(status, existingTask.projectId, tx);
     const column = await tx.query.columnTable.findFirst({
       where: and(
         eq(columnTable.projectId, existingTask.projectId),
