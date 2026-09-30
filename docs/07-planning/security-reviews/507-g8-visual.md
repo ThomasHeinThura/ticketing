@@ -44,3 +44,25 @@ The review followed the earlier blocked heads through the current exact source h
 **Evidence at the reviewed source head:** Node 24 focused G8 checker tests passed 146/146; the full CI-script suite passed 997/997; Biome on the changed checker and probes and `git diff --check` passed. `pnpm lint` and `pnpm typecheck` passed earlier in this source series, with no app or package source changes afterward. GitHub's `visual regression (G8)`, `gate checkers + red probes`, and `unit + component` jobs passed on the reviewed source head. The visual check covers three route screenshots and the exported Storybook stories through the pinned discovery configuration. The reviewer inspected the source and probes; the reviewer did not rerun the browser suite locally or individually approve baseline images.
 
 **External blocker:** Active `protect-main` ruleset `22365005` still omits `visual regression (G8)` from required contexts. The PR-template/security-review check was failing on the stale PR body and note, and dependency audit was failing on the default-branch dependency graph at the time of this review. No ruleset, deployment, DNS, or production setting was changed. Keep #507 draft and unmerged until those controls are resolved and all exact-head checks are green.
+
+## 2026-10-01 · Exact-head delta review
+
+**Reviewer:** GPT-6 Sol, fresh independent context; read-only review.
+**Reviewed head:** `751f5925677ad7a19b0c0e1c62f5b38f5e28ce87`
+**Base:** `1727b69a6c07b6a1276d2b414b43e23c5adbefdf` (`main`)
+**Source verdict:** CLEAR. No additional concrete source bypass was found at this head.
+**Merge-enforcement verdict:** BLOCKED pending the active `protect-main` ruleset update and exact-head required checks.
+
+The reviewer examined the full G8 gate path, including the CI visual job and root environment; package script chain; Playwright route, base, and Storybook configs and specs; inventory and manifest mapping; screenshot checks; Storybook source discovery; checker and adversarial probes; G8 spec and 2026-10-01 decision. The review included all changes since `5cf25ffc54b0f5a17d66146aebb5d82fd48f9608`, including the fail-closed inventory parser change, the #519 dependency/workflow merge, and the G8 scope documentation update. The #519 dependency changes are in the base, and the exact-head dependency audit passes. The reviewer found the active-route contract and checker aligned. Future not-started route rows activate with implementation.
+
+**Checks run by reviewer:** `node --test scripts/ci/check-visual-scope.test.mjs` — 148/148 passed, zero skipped; `pnpm check:visual-scope` — passed (3 route screenshot cases, 2 active route rows mapped, 122 route rows total); `git diff --check 1727b69a...HEAD` — passed. The exact-head GitHub visual job passed. The reviewer did not rerun the full browser suite locally or individually approve all baseline image pixels.
+
+**Blocking findings at review time:**
+
+1. Active strict `protect-main` ruleset `22365005` requires 16 contexts but omits the exact `visual regression (G8)` context. Add that context and verify it is required and green on the final candidate head.
+2. `pull request template + security review` was red because the committed note's newest usable review head was still `5cf25ffc...`; six later landed commits changed paths outside review notes. This note-only exact-head addendum addresses that evidence gap, but the check must pass on the resulting final head.
+3. Postgres integration was still running during review. Verify all required checks on the final exact SHA.
+
+**Nonblocking finding:** The documented sign-in route/inventory naming mismatch remains; the `/auth/sign-in` screenshot still runs, and the mismatch does not affect the two active inventory route mappings.
+
+The reviewer changed no code, ruleset, or production setting and did not merge. The active ruleset remains a separate merge blocker.
