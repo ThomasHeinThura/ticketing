@@ -360,6 +360,7 @@ async function runVisualScope({
   storySource = storybookSpec(),
   rootVisualScript,
   webVisualScript,
+  webDevScript,
   baseConfig,
   visualConfig,
   storybookConfig,
@@ -402,6 +403,12 @@ async function runVisualScope({
     const pkg = JSON.parse(await readFile(path.join(dir, packagePath), "utf8"));
     pkg.scripts["test:visual"] = script;
     write(dir, packagePath, JSON.stringify(pkg, null, 2));
+  }
+  if (webDevScript !== undefined) {
+    const packagePath = path.join(dir, "apps/web/package.json");
+    const pkg = JSON.parse(await readFile(packagePath, "utf8"));
+    pkg.scripts.dev = webDevScript;
+    write(dir, "apps/web/package.json", JSON.stringify(pkg, null, 2));
   }
   if (visualConfig !== undefined) {
     write(dir, "apps/web/playwright.visual.config.ts", visualConfig);
@@ -461,6 +468,43 @@ test("G8 rejects a web visual test script that skips Playwright", async () => {
     /apps\/web\/package\.json test:visual must run route and Storybook Playwright configs/,
   );
 });
+
+test("G8 rejects a web dev script that does not launch Vite", async () => {
+  const result = await runVisualScope({ webDevScript: "node fake-app.mjs" });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.output, /apps\/web\/package\.json dev must launch Vite/);
+});
+
+for (const [configPath, optionName, failure] of [
+  [
+    "apps/web/playwright.config.ts",
+    "baseConfig",
+    /playwright\.config\.ts must define the e2e directory/,
+  ],
+  [
+    "apps/web/playwright.visual.config.ts",
+    "visualConfig",
+    /playwright\.visual\.config\.ts must extend the app Playwright config/,
+  ],
+  [
+    "apps/web/playwright.storybook.config.ts",
+    "storybookConfig",
+    /playwright\.storybook\.config\.ts must select the Storybook visual spec/,
+  ],
+]) {
+  test(`G8 rejects top-level early exit in ${path.basename(configPath)}`, async () => {
+    const original = await readFile(path.join(repoRoot, configPath), "utf8");
+    const modified = original.replace(
+      "export default defineConfig({",
+      "process.exit(0);\nexport default defineConfig({",
+    );
+    const result = await runVisualScope({ [optionName]: modified });
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.output, failure);
+  });
+}
 
 test("G8 rejects visual configs that stop selecting the guarded route spec", async () => {
   const original = await readFile(
@@ -598,6 +642,119 @@ test("G8 rejects a computed base config key that filters inherited visual cases"
   );
 });
 
+test("G8 rejects an inherited Playwright shard that can select no route cases", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.config.ts"),
+    "utf8",
+  );
+  const baseConfig = original.replace(
+    '  testDir: "./e2e",',
+    '  testDir: "./e2e",\n  shard: { current: 100, total: 100 },',
+  );
+  const result = await runVisualScope({ baseConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.config\.ts must define the e2e directory/,
+  );
+});
+
+test("G8 rejects a route shard that can select no screenshots", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
+    "utf8",
+  );
+  const visualConfig = original.replace(
+    '  updateSnapshots: "none",',
+    '  updateSnapshots: "none",\n  shard: { current: 100, total: 100 },',
+  );
+  const result = await runVisualScope({ visualConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.visual\.config\.ts must extend the app Playwright config/,
+  );
+});
+
+test("G8 rejects a global setup hook that can exit before route screenshots", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
+    "utf8",
+  );
+  const visualConfig = original.replace(
+    '  updateSnapshots: "none",',
+    '  updateSnapshots: "none",\n  globalSetup: "./e2e/skip-g8.ts",',
+  );
+  const result = await runVisualScope({ visualConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.visual\.config\.ts must extend the app Playwright config/,
+  );
+});
+
+test("G8 rejects a route server override after the trusted base config", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
+    "utf8",
+  );
+  const visualConfig = original.replace(
+    '  updateSnapshots: "none",',
+    '  updateSnapshots: "none",\n  webServer: { command: "node fake-app.mjs", url: "http://127.0.0.1:4178/auth/sign-in" },',
+  );
+  const result = await runVisualScope({ visualConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.visual\.config\.ts must extend the app Playwright config/,
+  );
+});
+
+test("G8 rejects a fake base app server command", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.config.ts"),
+    "utf8",
+  );
+  const baseConfig = original.replace(
+    'command: "pnpm dev --host 127.0.0.1 --port 4178 --strictPort"',
+    'command: "node fake-app.mjs"',
+  );
+  const result = await runVisualScope({ baseConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.config\.ts must define the e2e directory/,
+  );
+});
+
+test("G8 rejects a computed base URL override inside Playwright use settings", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.config.ts"),
+    "utf8",
+  );
+  const baseConfig = original
+    .replace(
+      'import { defineConfig, devices } from "@playwright/test";',
+      'import { defineConfig, devices } from "@playwright/test";\nconst key = "baseURL";',
+    )
+    .replace(
+      '    baseURL: "http://127.0.0.1:4178",',
+      '    baseURL: "http://127.0.0.1:4178",\n    [key]: "http://127.0.0.1:9999",',
+    );
+  const result = await runVisualScope({ baseConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.config\.ts must define the e2e directory/,
+  );
+});
+
 test("G8 rejects route visual config that disables screenshot assertions", async () => {
   const original = await readFile(
     path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
@@ -648,6 +805,42 @@ test("G8 rejects a computed Storybook config key that overrides snapshot compari
       '  updateSnapshots: "none",',
       '  updateSnapshots: "none",\n  [key]: "all",',
     );
+  const result = await runVisualScope({ storybookConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.storybook\.config\.ts must select the Storybook visual spec/,
+  );
+});
+
+test("G8 rejects a Storybook shard that can select no exported stories", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.storybook.config.ts"),
+    "utf8",
+  );
+  const storybookConfig = original.replace(
+    '  updateSnapshots: "none",',
+    '  updateSnapshots: "none",\n  shard: { current: 100, total: 100 },',
+  );
+  const result = await runVisualScope({ storybookConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.storybook\.config\.ts must select the Storybook visual spec/,
+  );
+});
+
+test("G8 rejects a fake Storybook server command", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.storybook.config.ts"),
+    "utf8",
+  );
+  const storybookConfig = original.replace(
+    '"pnpm --filter @taskdesk/ui exec storybook dev --ci --port 6006 --host 127.0.0.1"',
+    '"node fake-storybook.mjs"',
+  );
   const result = await runVisualScope({ storybookConfig });
 
   assert.notEqual(result.status, 0);

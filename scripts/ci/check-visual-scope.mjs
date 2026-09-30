@@ -45,6 +45,9 @@ if (webPackage.scripts?.["test:visual"] !== expectedWebVisualCommand) {
     `${webPackagePath} test:visual must run route and Storybook Playwright configs with @visual`,
   );
 }
+if (webPackage.scripts?.dev !== "vite") {
+  failures.push(`${webPackagePath} dev must launch Vite for route screenshots`);
+}
 const workflowLines = ciWorkflow.split(/\r?\n/u);
 const visualJobStarts = workflowLines
   .map((line, index) => (line === "  visual:" ? index : -1))
@@ -145,27 +148,72 @@ function configObject(sourceFile) {
     : undefined;
 }
 
-function hasStaticUniqueConfigProperties(object, allowedSpread) {
+function hasExpectedConfigStatements(sourceFile, expectedModules) {
+  if (
+    !sourceFile?.statements ||
+    sourceFile.statements.length !== expectedModules.length + 1
+  ) {
+    return false;
+  }
+  const imports = sourceFile.statements.slice(0, -1);
+  return (
+    imports.every(ts.isImportDeclaration) &&
+    ts.isExportAssignment(sourceFile.statements.at(-1)) &&
+    imports
+      .map((statement) =>
+        ts.isStringLiteral(statement.moduleSpecifier)
+          ? statement.moduleSpecifier.text
+          : "",
+      )
+      .sort()
+      .join("\0") === [...expectedModules].sort().join("\0")
+  );
+}
+
+function hasExactObjectKeys(object, names, spread) {
   if (!object) return false;
   const seen = new Set();
+  let spreadSeen = false;
   for (const [index, property] of object.properties.entries()) {
     if (ts.isSpreadAssignment(property)) {
       if (
-        index !== 0 ||
-        allowedSpread === undefined ||
-        !ts.isIdentifier(property.expression) ||
-        property.expression.text !== allowedSpread
+        spreadSeen ||
+        !spread ||
+        index !== spread.index ||
+        !spread.matches(property.expression)
       )
         return false;
+      spreadSeen = true;
       continue;
     }
     if (!ts.isPropertyAssignment(property) || !ts.isIdentifier(property.name)) {
       return false;
     }
-    if (seen.has(property.name.text)) return false;
+    if (!names.includes(property.name.text) || seen.has(property.name.text)) {
+      return false;
+    }
     seen.add(property.name.text);
   }
-  return true;
+  return seen.size === names.length && spreadSeen === Boolean(spread);
+}
+
+function desktopChromeSpreadAt(index) {
+  return {
+    index,
+    matches: (expression) =>
+      ts.isElementAccessExpression(expression) &&
+      ts.isIdentifier(expression.expression) &&
+      expression.expression.text === "devices" &&
+      ts.isStringLiteral(expression.argumentExpression) &&
+      expression.argumentExpression.text === "Desktop Chrome",
+  };
+}
+
+function objectProperty(object, name) {
+  const values = propertyValues(object, name);
+  return values.length === 1 && ts.isObjectLiteralExpression(values[0])
+    ? values[0]
+    : undefined;
 }
 
 function propertyValues(object, name) {
@@ -199,11 +247,11 @@ function hasBooleanProperty(object, name, expected) {
 }
 
 function hasNumericProperty(object, name, expected) {
-  return hasLiteralProperty(
-    object,
-    name,
-    String(expected),
-    ts.isNumericLiteral,
+  const values = propertyValues(object, name);
+  return (
+    values.length === 1 &&
+    ts.isNumericLiteral(values[0]) &&
+    Number(values[0].text.replaceAll("_", "")) === expected
   );
 }
 
@@ -218,6 +266,101 @@ function stringArrayProperty(object, name) {
     return undefined;
   }
   return value.elements.map((element) => element.text);
+}
+
+function hasExpectedUse(config, storybook) {
+  const use = objectProperty(config, "use");
+  const keys = [
+    "locale",
+    "timezoneId",
+    "colorScheme",
+    "reducedMotion",
+    "trace",
+  ];
+  if (!storybook) keys.unshift("baseURL");
+  if (
+    !hasExactObjectKeys(
+      use,
+      keys,
+      desktopChromeSpreadAt(storybook ? 0 : keys.length),
+    ) ||
+    (storybook
+      ? propertyValues(use, "baseURL").length !== 0
+      : !hasLiteralProperty(
+          use,
+          "baseURL",
+          "http://127.0.0.1:4178",
+          ts.isStringLiteral,
+        ))
+  ) {
+    return false;
+  }
+  return [
+    ["locale", "en-GB"],
+    ["timezoneId", "UTC"],
+    ["colorScheme", "light"],
+    ["reducedMotion", "reduce"],
+    ["trace", "retain-on-failure"],
+  ].every(([name, value]) =>
+    hasLiteralProperty(use, name, value, ts.isStringLiteral),
+  );
+}
+
+function hasExpectedWebServer(config, storybook) {
+  const webServer = objectProperty(config, "webServer");
+  if (storybook) {
+    return (
+      hasExactObjectKeys(webServer, [
+        "command",
+        "url",
+        "reuseExistingServer",
+        "timeout",
+      ]) &&
+      hasLiteralProperty(
+        webServer,
+        "command",
+        "pnpm --filter @taskdesk/ui exec storybook dev --ci --port 6006 --host 127.0.0.1",
+        ts.isStringLiteral,
+      ) &&
+      hasLiteralProperty(
+        webServer,
+        "url",
+        "http://127.0.0.1:6006/index.json",
+        ts.isStringLiteral,
+      ) &&
+      hasBooleanProperty(webServer, "reuseExistingServer", false) &&
+      hasNumericProperty(webServer, "timeout", 120_000)
+    );
+  }
+  const env = objectProperty(webServer, "env");
+  return (
+    hasExactObjectKeys(webServer, [
+      "command",
+      "url",
+      "reuseExistingServer",
+      "env",
+    ]) &&
+    hasLiteralProperty(
+      webServer,
+      "command",
+      "pnpm dev --host 127.0.0.1 --port 4178 --strictPort",
+      ts.isStringLiteral,
+    ) &&
+    hasLiteralProperty(
+      webServer,
+      "url",
+      "http://127.0.0.1:4178/auth/sign-in",
+      ts.isStringLiteral,
+    ) &&
+    hasBooleanProperty(webServer, "reuseExistingServer", false) &&
+    hasExactObjectKeys(env, ["VITE_API_URL"]) &&
+    hasLiteralProperty(
+      env,
+      "VITE_API_URL",
+      "http://127.0.0.1:4178",
+      ts.isStringLiteral,
+    )
+  );
 }
 
 function hasDefaultImport(sourceFile, moduleName, localName) {
@@ -243,16 +386,6 @@ function hasNamedImport(sourceFile, moduleName, importName) {
           specifier.name.text === importName &&
           (specifier.propertyName?.text ?? specifier.name.text) === importName,
       ),
-  );
-}
-
-function hasSingleSpread(object, name) {
-  const spreads = object?.properties.filter(ts.isSpreadAssignment) ?? [];
-  return (
-    spreads.length === 1 &&
-    ts.isIdentifier(spreads[0].expression) &&
-    spreads[0].expression.text === name &&
-    object.properties[0] === spreads[0]
   );
 }
 
@@ -2674,23 +2807,35 @@ try {
     const storybookConfig = configObject(storybookConfigSourceFile);
     const baseTestIgnores = stringArrayProperty(baseConfig, "testIgnore");
     if (
-      !hasStaticUniqueConfigProperties(baseConfig) ||
+      !hasExpectedConfigStatements(baseConfigSourceFile, [
+        "@playwright/test",
+      ]) ||
+      !hasExactObjectKeys(baseConfig, [
+        "testDir",
+        "fullyParallel",
+        "testIgnore",
+        "forbidOnly",
+        "retries",
+        "reporter",
+        "use",
+        "webServer",
+      ]) ||
       !hasNamedImport(
         baseConfigSourceFile,
         "@playwright/test",
         "defineConfig",
       ) ||
+      !hasNamedImport(baseConfigSourceFile, "@playwright/test", "devices") ||
       !hasLiteralProperty(baseConfig, "testDir", "./e2e", ts.isStringLiteral) ||
+      !hasBooleanProperty(baseConfig, "fullyParallel", true) ||
+      !hasBooleanProperty(baseConfig, "forbidOnly", true) ||
+      !hasNumericProperty(baseConfig, "retries", 0) ||
+      !hasLiteralProperty(baseConfig, "reporter", "list", ts.isStringLiteral) ||
+      !hasExpectedUse(baseConfig, false) ||
+      !hasExpectedWebServer(baseConfig, false) ||
       !baseTestIgnores?.includes("visual.spec.ts") ||
       !baseTestIgnores.includes("storybook-visual.spec.ts") ||
-      [
-        "grep",
-        "grepInvert",
-        "ignoreSnapshots",
-        "projects",
-        "snapshotDir",
-        "snapshotPathTemplate",
-      ].some((name) => propertyValues(baseConfig, name).length > 0)
+      baseTestIgnores.length !== 2
     ) {
       failures.push(
         `${baseConfigPath} must define the e2e directory and exclude both separately guarded visual specs from the default suite`,
@@ -2698,7 +2843,25 @@ try {
     }
     const visualTestIgnores = stringArrayProperty(visualConfig, "testIgnore");
     if (
-      !hasStaticUniqueConfigProperties(visualConfig, "base") ||
+      !hasExpectedConfigStatements(visualConfigSourceFile, [
+        "@playwright/test",
+        "./playwright.config",
+      ]) ||
+      !hasExactObjectKeys(
+        visualConfig,
+        [
+          "fullyParallel",
+          "workers",
+          "testIgnore",
+          "testMatch",
+          "updateSnapshots",
+        ],
+        {
+          index: 0,
+          matches: (expression) =>
+            ts.isIdentifier(expression) && expression.text === "base",
+        },
+      ) ||
       !hasNamedImport(
         visualConfigSourceFile,
         "@playwright/test",
@@ -2709,7 +2872,6 @@ try {
         "./playwright.config",
         "base",
       ) ||
-      !hasSingleSpread(visualConfig, "base") ||
       !hasBooleanProperty(visualConfig, "fullyParallel", false) ||
       !hasNumericProperty(visualConfig, "workers", 1) ||
       !hasLiteralProperty(
@@ -2724,14 +2886,6 @@ try {
         "none",
         ts.isStringLiteral,
       ) ||
-      [
-        "grep",
-        "grepInvert",
-        "ignoreSnapshots",
-        "projects",
-        "snapshotDir",
-        "snapshotPathTemplate",
-      ].some((name) => propertyValues(visualConfig, name).length > 0) ||
       !visualTestIgnores ||
       visualTestIgnores.length !== 0 ||
       propertyValues(visualConfig, "testDir").length !== 0
@@ -2741,11 +2895,32 @@ try {
       );
     }
     if (
-      !hasStaticUniqueConfigProperties(storybookConfig) ||
+      !hasExpectedConfigStatements(storybookConfigSourceFile, [
+        "node:url",
+        "@playwright/test",
+      ]) ||
+      !hasExactObjectKeys(storybookConfig, [
+        "testDir",
+        "testMatch",
+        "fullyParallel",
+        "forbidOnly",
+        "updateSnapshots",
+        "retries",
+        "reporter",
+        "snapshotDir",
+        "snapshotPathTemplate",
+        "use",
+        "webServer",
+      ]) ||
       !hasNamedImport(
         storybookConfigSourceFile,
         "@playwright/test",
         "defineConfig",
+      ) ||
+      !hasNamedImport(
+        storybookConfigSourceFile,
+        "@playwright/test",
+        "devices",
       ) ||
       !hasNamedImport(storybookConfigSourceFile, "node:url", "fileURLToPath") ||
       !hasStorybookSnapshotDirectory(storybookConfig) ||
@@ -2769,17 +2944,22 @@ try {
       ) ||
       !hasBooleanProperty(storybookConfig, "fullyParallel", false) ||
       !hasBooleanProperty(storybookConfig, "forbidOnly", true) ||
+      !hasNumericProperty(storybookConfig, "retries", 0) ||
+      !hasLiteralProperty(
+        storybookConfig,
+        "reporter",
+        "list",
+        ts.isStringLiteral,
+      ) ||
+      !hasExpectedUse(storybookConfig, true) ||
+      !hasExpectedWebServer(storybookConfig, true) ||
       !hasLiteralProperty(
         storybookConfig,
         "updateSnapshots",
         "none",
         ts.isStringLiteral,
       ) ||
-      ["grep", "grepInvert", "ignoreSnapshots", "projects", "testIgnore"].some(
-        (name) => propertyValues(storybookConfig, name).length > 0,
-      ) ||
-      propertyValues(storybookConfig, "webServer").length !== 1 ||
-      storybookConfig.properties.some(ts.isSpreadAssignment)
+      propertyValues(storybookConfig, "testIgnore").length !== 0
     ) {
       failures.push(
         `${storybookConfigPath} must select the Storybook visual spec, compare checked-in story baselines serially, forbid focused tests, and start Storybook`,
