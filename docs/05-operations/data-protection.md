@@ -17,7 +17,9 @@ half of the DPA.
 | `activity` (the journal) | Postgres | Forever | Per-person anonymisation tombstones the actor; content stays |
 | `audit_log` | Postgres | 12 months (configurable) | Never edited; organisation tombstoned; person anonymised |
 | Sessions, API keys, invitations | Postgres | On expiry | Purged with the organisation |
-| Notifications, outbox, idempotency responses | Postgres | 90 d / 30 d / 24 h | Purged with the organisation |
+| Notifications | Postgres | Read rows: configured `notification_retention_days` (90 d default); unread rows retained | `session-cleanup` purges only expired read rows; organisation hard delete purges all. Person anonymisation tombstones identity fields; recipient-linked rows remain subject to this retention rule |
+| Outbox and `outbox_dedupe_reservation` | Postgres | Outbox: 30 d; reservation: active delivery lease only (60 s from last renewal), expired leases removed by `session-cleanup` | Reservation stores `recipient_person_id`, channel and dedupe key; deleted on release, lease expiry cleanup, hard deletion of the person or owning outbox. Outbox is purged with the organisation; person export includes rows keyed to that recipient |
+| Idempotency responses | Postgres | 24 h | Purged with the organisation |
 | Logs | Pino → the operator's sink | Operator-defined | Allowlist serialisation; no request bodies |
 | Backups | Operator's storage | Stated in [backup-and-restore.md](backup-and-restore.md) | Deleted data persists in backups until they age out — stated, not hidden |
 
@@ -37,6 +39,17 @@ person is deactivated, sessions and personal keys are revoked and memberships en
 name, email and authored content remain ([identity-provisioning.md](../03-features/identity-provisioning.md)
 `IP-15`). Erasure is the separate elevated *Anonymise* action above, and it checks legal
 hold first.
+
+Notification retention is configurable in God Mode. Only read notifications older than
+`instance_setting.notification_retention_days` are time-purged; unread notifications remain
+until read or organisation hard deletion. Person anonymisation tombstones identity fields
+but does not change this notification retention rule. The 90-day value is a default, not a
+fixed limit. `outbox_dedupe_reservation` is short-lived coordination data, not
+notification history: it carries the recipient person id, channel and dedupe key while a
+delivery lease is active, and is removed on release, after lease expiry, or when its person or
+owning outbox row is deleted. The configured read-purge behavior and unread retention are
+acceptance requirements in
+[notifications.md](../03-features/notifications.md#in-app-inbox).
 
 ## Legal hold
 

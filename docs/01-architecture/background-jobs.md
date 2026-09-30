@@ -196,14 +196,21 @@ notification field and query contract are specified in [data-model.md](data-mode
 [notifications.md](../03-features/notifications.md#delivery).
 
 The reservation is a durable per-key lease, independent of the row-level `SKIP LOCKED`
-claim. A healthy worker renews it while its bounded adapter request is active. A crashed
-worker stops renewing; after `lease_expires_at`, another worker may take over with a fresh
-token. The old token cannot commit a database success after takeover. If the provider
-accepted a request before the worker crashed or lost its response, that external effect
-cannot be rolled back; after lease expiry, retry may send again. Delivery is at-least-once
-across that failure window, not exactly-once. An adapter may use the stable outbox row id as
-an idempotency key when its provider supports one, but correctness does not assume provider
-idempotency.
+claim. The adapter invocation has a 30-second absolute deadline. While it runs, a healthy
+worker renews its lease every 15 seconds to 60 seconds from the renewal's database wall-clock
+sample. At deadline, request cancellation and stop awaiting even if the plugin ignores the
+signal; count the attempt and apply the six-attempt limit. If retries remain, leave the row
+pending and schedule it no earlier than the current lease expiry; after the sixth timed-out
+attempt mark it dead. Stop renewing without releasing because provider acceptance is
+ambiguous; the reservation remains until expiry. A crashed worker also
+stops renewing. After `lease_expires_at`, another worker may take over with a fresh token; the
+old token cannot commit database success after takeover. If the provider accepted a request
+before the worker crashed, hung, or lost its response, that external effect cannot be rolled
+back; after lease expiry, retry may send again. Delivery is at-least-once across that failure
+window, not exactly-once. An adapter may use the stable outbox row id as an idempotency key
+when its provider supports one, but correctness does not assume provider idempotency. This is
+the target contract; the current runtime does not yet implement notification reservation or
+adapter timeout/renewal behavior.
 
 Reservation acquisition and renewal rules, including the canonical tuple digest, are defined
 in [data-model.md](data-model.md#11-automations-notifications-integrations-audit) and

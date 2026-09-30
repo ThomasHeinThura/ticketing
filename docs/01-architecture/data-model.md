@@ -363,7 +363,7 @@ were logged. OpenProject's model; the alternative silently rewrites history.
 | --- | --- |
 | `automation` | `workspace_id`, `project_id` null (null = workspace rule), `project_filter jsonb` null, `name`, `enabled`, `trigger` (an event key from [events.md](events.md) or `schedule`), `schedule_cron` null, `conditions jsonb`, `actions jsonb`, `effective_role_id`, `position`, `stop_processing`, `created_by`. **v** |
 | `automation_run` | `automation_id`, `work_item_id`, `event_id`, `triggered_at`, `matched`, `results jsonb`, `error` |
-| `notification` | `person_id`, `kind` (event key), `title`, `body`, `resource_type`, `resource_id`, `read_at` |
+| `notification` | `person_id`, `kind` (event key), `title`, `body`, `resource_type` (closed discriminator; allowed values and event mapping are listed in [notifications.md](../03-features/notifications.md#permissions)), `resource_id`, `read_at` |
 | `notification_preference` | `person_id`, `scope` (`global`\|`workspace`\|`project`), `scope_id` null only for `global`, `channel` (`in_app` ∪ `notify.*` plugin ids; `in_app` always on), `event_kind`, `enabled`, `digest` (`off`\|`hourly`\|`daily`). Check: `scope = 'global'` iff `scope_id is null`; workspace/project scopes require a non-null id. `UNIQUE NULLS NOT DISTINCT (person_id, scope, scope_id, channel, event_kind)` so global preferences are unique too |
 | `notification_preference_handoff` | `handle_hash` (unique SHA-256; raw handle never stored), `audience` (`agent`\|`customer`), `recipient_person_id`, `event_kind`, `channel`, `scope`, `scope_id` null, `created_at`, `expires_at` (10 minutes after creation). Stores only validated selector claims; raw signed email tokens are never persisted |
 | `outbox` | `event_id`, `kind`, `payload jsonb`, `dedupe_key`, `workspace_id` **not null**, `organisation_id` null — both written from the event envelope's `scope` ([events.md](events.md)); they are the join key `outbox-drain` matches against `webhook.workspace_id` and against `notification_preference` scopes, and the workspace must not have to be dug out of `payload` on every row; `recipient_person_id` and `channel` (both null for non-notification rows; both populated on external notification rows, with the recipient person and `notify.*` plugin id); `delivered_at timestamp without time zone` null until the channel adapter confirms successful delivery, then set to the UTC wall-clock sample used by the success commit; `state` (`pending`\|`delivered`\|`dead`\|`suppressed`), `attempts`, `next_attempt_at`, `last_error` |
@@ -410,6 +410,18 @@ worker presents the same outbox row id: a new token cannot rotate or steal that 
 Completion and release also require the matching owner and token; renewal and completion
 require an unexpired lease. If renewal fails, the worker must stop the provider request when
 possible and must not commit success with the expired token.
+
+The channel adapter call has a 30-second absolute deadline covering connection setup and
+response wait. The worker requests cancellation at that deadline and stops awaiting even if
+the adapter ignores cancellation. While the call is active, renew the reservation every 15
+seconds to 60 seconds from the renewal's PostgreSQL wall-clock sample. On deadline, count the
+attempt and apply the six-attempt limit; if retries remain, leave the candidate pending with
+`next_attempt_at` no earlier than the lease expiry, otherwise mark it dead. Stop renewing
+without releasing: provider acceptance may be ambiguous. A worker may
+reclaim only after expiry and must use a fresh token. These values and normal/hung-call cases
+are acceptance requirements in
+[notifications.md](../03-features/notifications.md#delivery); runtime support is not claimed
+by this contract.
 
 Use one authoritative PostgreSQL wall-clock value per atomic reservation operation. After
 any reservation-row lock wait has finished, sample `clock_timestamp() AT TIME ZONE 'UTC'`

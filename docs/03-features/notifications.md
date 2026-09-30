@@ -59,6 +59,12 @@ follow [SLA-17](sla.md#behaviour), with the stop conditions specified by `NO-22`
 | `submission.withdrawn` | The triage queue owners |
 | `prerequisite.overdue` | The prerequisite's owner |
 | `budget.threshold_reached` | Holders of `budget:manage` on the project, plus its default assignee |
+| `workspace.created` | The new workspace's owner |
+| `approval.withdrawn` | The approver |
+| `pending_action.executed` | The requester, on failure only |
+| `identity.deprovisioned` | Instance administrators |
+| `identity.request_denied` | Instance administrators |
+| `identity_connection.changed` | Instance administrators |
 | `webhook.auto_disabled` | The webhook's creator, plus holders of `webhook:manage` |
 | `api_key.auto_disabled` | The key's owner |
 | `automation.run_failed` | The rule's creator |
@@ -184,22 +190,32 @@ unique key, digest values, and per-person quiet-hours fields are defined in
   partial index on `(recipient_person_id, channel, dedupe_key, delivered_at desc)` where
   `delivered_at is not null` supports those equality and time-range predicates. If a match
   exists, set the candidate `state = 'suppressed'` without sending or setting its
-  `delivered_at`, then release the reservation. Otherwise call the channel adapter while
-  renewing the lease. Adapter acceptance is considered success only when the worker commits
-  `state = 'delivered'`, `delivered_at`, and reservation release in one transaction that
-  still matches its current `owner_outbox_id` and unexpired random `lease_token`.
+  `delivered_at`, then release the reservation. Otherwise call the channel adapter with a
+  **30-second absolute send deadline** covering connection setup and response wait; retries
+  do not reset it. Pass an abort signal at the deadline and stop awaiting the adapter even if
+  it ignores cancellation. While the call is active, renew the reservation every **15
+  seconds** to an expiry **60 seconds from the renewal's PostgreSQL wall-clock sample**. A
+  renewal requires the same owner row and current token and preserves that token. Adapter
+  acceptance is considered success only when the worker commits `state = 'delivered'`,
+  `delivered_at`, and reservation release in one transaction that still matches its current
+  `owner_outbox_id` and unexpired random `lease_token`.
 
   A definite failed attempt leaves `delivered_at` null, updates the same row's retry state,
-  and releases the reservation. An in-flight or ambiguous attempt keeps the reservation
-  until its bounded request finishes or the lease expires. On process crash, lease expiry
-  permits another worker to acquire the key with a fresh token; stale tokens cannot commit
-  success after takeover. If a provider accepted a request but the process crashed or lost
-  the response before the database commit, that external effect cannot be rolled back and a
-  later retry may send again. This is at-least-once delivery across that window, not an
-  exactly-once guarantee. Provider idempotency may use the stable outbox row id where
-  available, but is not assumed. A retry of the same outbox row is still a retry; only a
-  distinct row with a prior committed success is suppressed. The channel is part of the key,
-  so the same event may still reach the person over two different channels. Fields, index,
+  and releases the reservation. A call that reaches its 30-second deadline is **ambiguous**,
+  even if cancellation is requested: count the attempt and apply the six-attempt limit. If
+  retries remain, leave the row pending with its next attempt no earlier than the current
+  lease expiry; on the sixth attempt, mark it dead. Stop renewing in either case and do not
+  release the reservation early, because a plugin may have accepted the request before
+  hanging or ignoring cancellation. A healthy call completes
+  or times out before the 60-second lease expires; a worker crash or hung call stops renewal,
+  and another worker may reclaim only after expiry, with a fresh token. The old worker cannot commit success after reclaim. If a
+  provider accepted a request but the process crashed, hung, or lost the response before the
+  database commit, that external effect cannot be rolled back and a later retry may send
+  again. This is at-least-once delivery across that window, not an exactly-once guarantee.
+  Provider idempotency may use the stable outbox row id where available, but is not assumed.
+  A retry of the same outbox row is still a retry; only a distinct row with a prior committed
+  success is suppressed. The channel is part of the key, so the same event may still reach
+  the person over two different channels. Fields, index,
   reservation, and drain behavior are defined in
   [data-model.md](../01-architecture/data-model.md#11-automations-notifications-integrations-audit)
   and [background-jobs.md](../01-architecture/background-jobs.md).
@@ -221,6 +237,11 @@ correction.
   `session-cleanup` job deletes only rows whose `read_at` is set and older than
   `instance_setting.notification_retention_days`; unread notifications are retained.
 
+  **Acceptance:** with retention configured to 30 days, cleanup purges a notification read
+  more than 30 days ago and retains an unread notification older than 30 days. A separate
+  default-setting case verifies 90 days. Changing the configured value changes the cutoff on
+  the next cleanup run; it never makes unread rows eligible.
+
 ## Customer notifications
 
 - `NO-18` Customers are notified about their own requests only.
@@ -239,6 +260,32 @@ Inbox list, read, and mutation operations also apply current reach filtering to 
 notification's referenced resource. Unreachable or deleted resources are omitted before
 pagination/counts; direct access to their notification returns not found. Workspace and
 project preference routes validate the selected scope against the recipient's current reach.
+
+`notification.resource_type` is a closed discriminator. Its supported event classes and
+reach sources are:
+
+| `resource_type` | Event class / event keys | Resource id and current reach source |
+| --- | --- | --- |
+| `work_item` | `work_item.assigned`, `work_item.unassigned`, `work_item.mentioned` without `commentId`, `work_item.transitioned`, `work_item.escalated`, `work_item.due_soon`, `work_item.overdue`, `sla.at_risk`, `sla.breached` | Work-item id/key; recheck current work-item and project reach under the [work-item read policy](work-items.md#permissions). |
+| `comment` | `work_item.commented`; `work_item.mentioned` when payload has `commentId` | Comment id; require a live comment visible to the recipient, resolve its owning work item, then apply current work-item/project reach ([comments policy](comments-and-activity.md#permissions), `NO-19`). A description mention without `commentId` uses `work_item`. |
+| `approval` | `approval.requested`, `approval.decided`, `approval.expiring`, `approval.expired`, `approval.withdrawn` | Approval id; resolve its work item and apply current work-item reach plus approval visibility. Customers may see only approvals addressed to them or raised by them ([approvals permissions](approvals.md#permissions)). |
+| `submission` | `submission.received`, `submission.replied`, `submission.accepted`, `submission.declined`, `submission.withdrawn` | Submission id (resolve canonical `ref` where that is the event payload); apply current requester/organisation visibility and portal policy. Staff reach follows the triage queue; customer reach is limited to the requester's organisation and customer-visible submissions ([customer-portal permissions](customer-portal.md#permissions)). |
+| `prerequisite` | `prerequisite.overdue` | Prerequisite id; resolve its project and apply current project reach ([project permissions](projects-and-engagements.md#permissions)). |
+| `project` | `budget.threshold_reached` | Project id; apply current project reach and the event's `budget:manage` recipient rule. |
+| `workspace` | `workspace.created` | Workspace id; apply the recipient's current workspace reach. |
+| `webhook` | `webhook.auto_disabled` | Webhook id; require current `webhook:manage` reach or creator ownership, matching the event recipient rule. |
+| `api_key` | `api_key.auto_disabled` | API-key id; require current owner identity; only the key owner is a recipient. |
+| `automation` | `automation.run_failed` | Automation id; require current automation/project reach and creator ownership, matching the event recipient rule. |
+| `pending_action` | `pending_action.requested`, `pending_action.executed` | Pending-action id; require requester ownership. Failure notifications are only for the requester. |
+| `identity_connection` | `identity.deprovisioned`, `identity.request_denied`, `identity_connection.changed` | Identity-connection id from the event payload; require current `instance:admin`. Do not expose identity-provider payloads or person data in the notification. |
+
+These mappings name supported event classes; they do not grant permission. The event's
+recipient rule and current resource reach must both pass. Set the discriminator and id from
+the canonical event payload mapping. Missing or unknown `resource_type`, missing or deleted
+resources, and event kinds without a mapping fail closed: do not create or return the
+notification. Never fall back to recipient-only visibility. The canonical event catalogue
+currently marks `work_item.unblocked` as notification-capable but does not define its
+default recipient here; it remains fail-closed until that recipient rule is specified.
 
 | Action | Policy |
 | --- | --- |
@@ -357,7 +404,17 @@ only one worker acquires the reservation and calls the provider, then commits
 `delivered_at`; the other defers, acquires after release, observes that committed success,
 and marks its row suppressed without a second provider call. Also cover active-lease deferral,
 known-failure release/retry, and crashed-worker lease expiry with a stale-token commit
-rejected. A second worker presenting the **same** outbox row id while its reservation is live
+rejected. The reach suite includes, for every listed `resource_type`, a reachable recipient
+and an unreachable or deleted resource; specifically cover comments and approvals through
+their owning work item, submission requester/organisation reach, project, workspace, and
+administrator/owner reach. It proves unreachable rows are omitted before counts, direct
+access returns not found, and unknown, missing, or unmapped types are neither created nor
+returned. It also includes configured-30-day read-purge/unread-retained and 90-day-default
+cases described in `NO-17`. Test a normal adapter success before the deadline, a hung adapter
+that ignores abort and is no longer awaited at 30 seconds, periodic lease renewal while
+active, no early release on timeout, reclaim only after expiry, a fresh takeover token, and
+stale-token success rejection. A second worker presenting the **same** outbox row id while
+its reservation is live
 must fail acquisition when presenting a fresh token and leave the first worker's token valid
 for renewal and completion. A lock-delayed timing case must hold the reservation lock across
 the lease expiry and across the five-minute success cutoff: after the lock is released, the
