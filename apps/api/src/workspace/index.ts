@@ -108,6 +108,12 @@ const listWorkspacesRoute = createRoute({
   middleware: [requireSessionOnly()] as const,
   responses: {
     200: jsonResponse("The caller's workspaces", workspaceSummaryListSchema),
+    // #206: `requireSessionOnly()` refuses a non-browser credential with 403
+    // (require-session-only.ts:54), and every sibling on this router that uses
+    // that middleware already declares it. This route declared only 200.
+    403: errorResponse(
+      "An API key or impersonation session (session_required) -- this route accepts a browser session only",
+    ),
   },
 });
 

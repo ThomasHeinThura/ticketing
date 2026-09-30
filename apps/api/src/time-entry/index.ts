@@ -106,6 +106,10 @@ const updateTimeEntryRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update permission",
     ),
+    // #206: `workspaceAccess.fromTimeEntry` falls back to `?workspaceId=`, so an
+    // unknown entry id reaches update-time-entry.ts:23 rather than being stopped
+    // by the middleware.
+    404: errorResponse("Time entry not found"),
   },
 });
 

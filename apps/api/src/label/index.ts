@@ -100,6 +100,10 @@ const getLabelRoute = createRoute({
       "Unknown label, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the label's workspace"),
+    // #206: `workspaceAccess.fromLabel` falls back to `?workspaceId=`, so an
+    // unknown label id reaches get-label.ts:10 rather than being stopped by
+    // the middleware -- the same shape as the column and task `{id}` routes.
+    404: errorResponse("Label not found"),
   },
 });
 
@@ -179,6 +183,9 @@ const updateLabelRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing label:update permission",
     ),
+    // #206: as on getLabelRoute above -- reachable for an unknown label id via
+    // the `?workspaceId=` fallback (update-label.ts:13).
+    404: errorResponse("Label not found"),
   },
 });
 

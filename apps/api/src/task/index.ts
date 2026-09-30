@@ -93,6 +93,10 @@ const listTasksRoute = createRoute({
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the project's workspace"),
+    // #206: a *soft-deleted* project is 404 here (get-tasks.ts:80). A
+    // nonexistent one is still 400 -- `workspaceAccess.fromProject` has no
+    // fallback source, so it fails before this handler runs.
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -152,6 +156,9 @@ const createTaskRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:create permission",
     ),
+    // #206: a *soft-deleted* project is 404 here (create-task.ts:43, via
+    // `getProjectWorkspaceId`). A nonexistent one is still 400.
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -170,6 +177,10 @@ const getTaskRoute = createRoute({
       "Unknown task, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the task's workspace"),
+    // #206: `workspaceAccess.fromTask` falls back to `?workspaceId=`, so an
+    // unknown task id reaches get-task.ts:33; a task in a soft-deleted project
+    // is refused by `getProjectWorkspaceId` (get-task.ts:43) too.
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -231,6 +242,10 @@ const updateTaskRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update or task:assign permission",
     ),
+    // #206: `workspaceAccess.fromTask` falls back to `?workspaceId=`, so an
+    // unknown task id reaches update-task.ts:38; a task in a soft-deleted
+    // project is refused by `getProjectWorkspaceId` (update-task.ts:55) too.
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -250,6 +265,9 @@ const exportTasksRoute = createRoute({
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the project's workspace"),
+    // #206: a *soft-deleted* project is 404 here (export-tasks.ts:19); a
+    // nonexistent one answers 400 before the handler runs.
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -278,6 +296,9 @@ const importTasksRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:create permission",
     ),
+    // #206: a *soft-deleted* project is 404 here (import-tasks.ts:37); a
+    // nonexistent one answers 400 before the handler runs.
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -302,6 +323,9 @@ const deleteTaskRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:delete permission",
     ),
+    // #206: `workspaceAccess.fromTask` falls back to `?workspaceId=`, so an
+    // unknown task id reaches delete-task.ts:32.
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -329,6 +353,10 @@ const updateTaskStatusRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update permission",
     ),
+    // #206: `workspaceAccess.fromTask` falls back to `?workspaceId=`, so an
+    // unknown task id reaches update-task-status.ts:23; a task in a
+    // soft-deleted project is refused at update-task-status.ts:31 too.
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -356,6 +384,10 @@ const updateTaskPriorityRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update permission",
     ),
+    // #206: `workspaceAccess.fromTask` falls back to `?workspaceId=`, so an
+    // unknown task id reaches update-task-priority.ts:22; a task in a
+    // soft-deleted project is refused at update-task-priority.ts:30 too.
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -412,6 +444,10 @@ const updateTaskDueDateRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update permission",
     ),
+    // #206: `workspaceAccess.fromTask` falls back to `?workspaceId=`, so an
+    // unknown task id reaches update-task-due-date.ts:22; a task in a
+    // soft-deleted project is refused at update-task-due-date.ts:30 too.
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -439,6 +475,10 @@ const updateTaskTitleRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update permission",
     ),
+    // #206: `workspaceAccess.fromTask` falls back to `?workspaceId=`, so an
+    // unknown task id reaches update-task-title.ts:22; a task in a soft-deleted
+    // project is refused at update-task-title.ts:30 too.
+    404: errorResponse("Task not found"),
   },
 });
 
@@ -527,6 +567,10 @@ const updateTaskDescriptionRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing task:update permission",
     ),
+    // #206: `workspaceAccess.fromTask` falls back to `?workspaceId=`, so an
+    // unknown task id reaches update-task-description.ts:25; a task in a
+    // soft-deleted project is refused at update-task-description.ts:33 too.
+    404: errorResponse("Task not found"),
   },
 });
 

@@ -68,6 +68,10 @@ const createColumnRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    // #206: a *soft-deleted* project is 404 here (create-column.ts:35, via
+    // `getProjectWorkspaceId`). A nonexistent one is still 400 --
+    // `workspaceAccess.fromProject` has no fallback source, so it fails first.
+    404: errorResponse("Project not found"),
     409: errorResponse("The slug is reserved, or already used in this project"),
   },
 });
@@ -127,6 +131,11 @@ const updateColumnRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    // #206: reachable two ways -- `workspaceAccess.fromColumn`'s `?workspaceId=`
+    // fallback lets an unknown column id through to update-column.ts:21, and a
+    // soft-deleted project's column is refused by `getProjectWorkspaceId`
+    // (update-column.ts:27).
+    404: errorResponse("Column not found"),
   },
 });
 
@@ -151,6 +160,10 @@ const deleteColumnRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    // #206: same two paths as updateColumnRoute above -- an unknown column id
+    // reaches delete-column.ts:13 via the `?workspaceId=` fallback, and a
+    // soft-deleted project's column is refused at delete-column.ts:19.
+    404: errorResponse("Column not found"),
     409: errorResponse("The column still contains tasks"),
   },
 });

@@ -85,6 +85,11 @@ const getProjectRoute = createRoute({
       "Unknown project, or its workspace could not be determined",
     ),
     403: errorResponse("No access to the project's workspace"),
+    // #187/#202: a soft-deleted project is 404 here (get-project.ts). A
+    // *nonexistent* project is still 400 -- `workspaceAccess.fromProject`
+    // resolves the project itself and has no fallback source, so it fails
+    // before this handler runs.
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -143,6 +148,8 @@ const updateProjectRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    // #187/#202: a soft-deleted project is 404 here (update-project.ts).
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -170,6 +177,8 @@ const deleteProjectRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:delete permission",
     ),
+    // #187/#202: a soft-deleted project is 404 here (delete-project.ts).
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -194,6 +203,8 @@ const archiveProjectRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    // #187/#202: a soft-deleted project is 404 here (archive-project.ts).
+    404: errorResponse("Project not found"),
   },
 });
 
@@ -217,6 +228,8 @@ const unarchiveProjectRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    // #187/#202: a soft-deleted project is 404 here (unarchive-project.ts).
+    404: errorResponse("Project not found"),
   },
 });
 

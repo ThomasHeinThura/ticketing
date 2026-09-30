@@ -91,6 +91,11 @@ const deleteWorkflowRuleRoute = createRoute({
     403: errorResponse(
       "No workspace access, or missing project:update permission",
     ),
+    // #206: reachable two ways -- `workspaceAccess.fromWorkflowRule`'s
+    // `?workspaceId=` fallback lets an unknown rule id through to
+    // delete-workflow-rule.ts:13, and a soft-deleted project's rule is refused
+    // by `getProjectWorkspaceId` (delete-workflow-rule.ts:19).
+    404: errorResponse("Workflow rule not found"),
   },
 });
 
