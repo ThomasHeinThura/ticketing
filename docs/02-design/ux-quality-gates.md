@@ -171,6 +171,15 @@ portal entry is measured against its 200 KB budget as soon as the split emits it
 is observed in production ([observability.md](../01-architecture/observability.md)), not
 gated in CI — a shared runner cannot measure it.
 
+The synthetic interaction proxy is required for every `G10` core journey whose owning
+screen is implemented (screen-inventory status `in progress` or `complete`). The journey
+list is the authority; a test may not silently omit an implemented journey. Per the
+2026-09-28 decision-log entry on capability activation, a journey whose screen is not yet
+implemented is not mocked or counted as passed; its test becomes required in the PR or
+workstream that introduces that screen. G11 is not claimed complete while a named G10
+journey lacks either an implemented measurement or an explicit not-yet-implemented
+dependency.
+
 **Enabled measurement harness, per metric:**
 
 | Metric | Tool | Throttling | Target route | Sample / flake policy |

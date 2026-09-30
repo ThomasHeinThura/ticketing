@@ -82,9 +82,15 @@ function TaskCard({
   } = useUserPreferencesStore();
   const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
-  const { toggleSelection, isSelected, isFocused } = useBulkSelectionStore();
-  const isTaskSelected = isSelected(task.id);
-  const isTaskFocused = isFocused(task.id);
+  const toggleSelection = useBulkSelectionStore(
+    (state) => state.toggleSelection,
+  );
+  const isTaskSelected = useBulkSelectionStore((state) =>
+    state.selectedTaskIds.has(task.id),
+  );
+  const isTaskFocused = useBulkSelectionStore(
+    (state) => state.focusedTaskId === task.id,
+  );
   const taskItemStats = useMemo(
     () => getTaskItemStats(task.description),
     [task.description],
@@ -171,7 +177,7 @@ function TaskCard({
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...listeners}>
+    <div data-task-id={task.id} ref={setNodeRef} style={style} {...listeners}>
       <ContextMenu open={isContextMenuOpen} onOpenChange={setIsContextMenuOpen}>
         <ContextMenuTrigger asChild>
           {/** biome-ignore lint/a11y/noStaticElementInteractions: false positive for onClick and onKeyDown */}

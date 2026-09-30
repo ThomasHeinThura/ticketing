@@ -52,13 +52,19 @@ export default function TaskAssigneePopover({
 
   const handleAssigneeChange = useCallback(
     async (newUserId: string) => {
+      setOpen(false);
       try {
+        const selectedUser = workspaceUsers?.members?.find(
+          (member) => member.userId === newUserId,
+        );
         await updateTaskAssignee({
           ...task,
           userId: newUserId,
+          assigneeId: newUserId || null,
+          assigneeName: selectedUser?.user?.name ?? null,
         });
-        setOpen(false);
       } catch (error) {
+        setOpen(true);
         toast.error(
           error instanceof Error
             ? error.message
@@ -66,7 +72,7 @@ export default function TaskAssigneePopover({
         );
       }
     },
-    [t, task, updateTaskAssignee],
+    [t, task, updateTaskAssignee, workspaceUsers],
   );
 
   const shortcutOptions = useMemo(() => {

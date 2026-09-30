@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { expectNoA11yViolations } from "../test/a11y";
 import {
   Command,
+  CommandDialog,
+  CommandDialogPopup,
   CommandEmpty,
   CommandInput,
   CommandItem,
@@ -67,5 +69,41 @@ describe("Command", () => {
     );
 
     await expectNoA11yViolations(baseElement);
+  });
+
+  it("keeps a command dialog mounted while closed without exposing it to assistive technology", () => {
+    const { rerender } = render(
+      <CommandDialog open={false}>
+        <CommandDialogPopup keepMounted>
+          <Command>
+            <CommandInput aria-label="Search commands" autoFocus={false} />
+            <CommandList>
+              <CommandItem value="projects">Projects</CommandItem>
+            </CommandList>
+          </Command>
+        </CommandDialogPopup>
+      </CommandDialog>,
+    );
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByText("Projects")).toBeInTheDocument();
+    expect(document.activeElement).not.toBe(
+      screen.getByLabelText("Search commands"),
+    );
+
+    rerender(
+      <CommandDialog open>
+        <CommandDialogPopup keepMounted>
+          <Command>
+            <CommandInput aria-label="Search commands" autoFocus={false} />
+            <CommandList>
+              <CommandItem value="projects">Projects</CommandItem>
+            </CommandList>
+          </Command>
+        </CommandDialogPopup>
+      </CommandDialog>,
+    );
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

@@ -10,6 +10,19 @@ type BrowserMetrics = {
   routeStart: number;
   routePaint: number;
   documentStart: number;
+  listPaint: number;
+  boardPaint: number;
+  signInStart: number;
+  signInPaint: number;
+  paletteStart: number;
+  paletteInsert: number;
+  palettePaint: number;
+  stateStart: number;
+  statePaint: number;
+  assignmentStart: number;
+  assignmentPaint: number;
+  commentStart: number;
+  commentPaint: number;
   lcpElement: string;
   lcpText: string;
   lcpUrl: string;
@@ -42,7 +55,7 @@ const SESSION = {
     id: "session-g11",
     userId: "user-g11",
     token: "g11",
-    expiresAt: "2026-10-01T00:00:00.000Z",
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     createdAt: "2026-09-30T00:00:00.000Z",
     updatedAt: "2026-09-30T00:00:00.000Z",
     activeOrganizationId: WORKSPACE_ID,
@@ -118,7 +131,7 @@ function makeDetailItem() {
   };
 }
 
-function makeBoardProject() {
+function makeBoardProject(deletedTaskIds: Set<string> = new Set()) {
   const columns = [
     { id: "backlog", name: "Backlog", slug: "backlog", isFinal: false },
     {
@@ -156,7 +169,7 @@ function makeBoardProject() {
         labels: [],
         externalLinks: [],
       };
-    }),
+    }).filter((task) => !deletedTaskIds.has(task.id)),
   }));
 
   return {
@@ -176,8 +189,28 @@ const SEEDED_ITEMS = Array.from({ length: 500 }, (_, index) =>
   makeWorkItem(index + 1),
 );
 
-async function installPerformanceApiFixture(page: Page) {
+async function installPerformanceApiFixture(
+  page: Page,
+  { authenticated = true }: { authenticated?: boolean } = {},
+) {
+  let isAuthenticated = authenticated;
   let createdItem: ReturnType<typeof makeWorkItem> | undefined;
+  const deletedLegacyTaskIds = new Set<string>();
+  let legacyTaskStatus = "backlog";
+  let legacyTaskAssignee: string | null = null;
+  const legacyComments: Array<Record<string, unknown>> = [];
+
+  const legacyTask = () => ({
+    ...makeBoardProject().columns[0].tasks[0],
+    status: legacyTaskStatus,
+    columnId:
+      makeBoardProject().columns.find(
+        (column) => column.slug === legacyTaskStatus,
+      )?.id ?? "backlog",
+    userId: legacyTaskAssignee,
+    assigneeId: legacyTaskAssignee,
+    assigneeName: legacyTaskAssignee ? SESSION.user.name : null,
+  });
 
   await page.routeWebSocket(/\/api\/ws\/project-g11(?:\?|$)/, (socket) => {
     socket.onMessage((message) => {
@@ -218,7 +251,13 @@ async function installPerformanceApiFixture(page: Page) {
         },
       });
 
-    if (path.endsWith("/auth/get-session")) return json(SESSION);
+    if (path.endsWith("/auth/get-session"))
+      return json(isAuthenticated ? SESSION : null);
+    if (path.endsWith("/auth/sign-in/email") && request.method() === "POST") {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      isAuthenticated = true;
+      return json({ token: "g11", user: SESSION.user });
+    }
     if (path === "/api/config")
       return json({
         disableRegistration: false,
@@ -293,7 +332,7 @@ async function installPerformanceApiFixture(page: Page) {
       return json([]);
     if (path === `/api/task/tasks/${PROJECT_ID}` && request.method() === "GET")
       return json({
-        data: makeBoardProject(),
+        data: makeBoardProject(deletedLegacyTaskIds),
         pagination: {
           total: 200,
           page: 1,
@@ -301,6 +340,63 @@ async function installPerformanceApiFixture(page: Page) {
           totalPages: 1,
         },
       });
+    if (path === `/api/task/${"legacy-task-1"}` && request.method() === "GET")
+      return json(legacyTask());
+    if (path === `/api/column/${PROJECT_ID}` && request.method() === "GET")
+      return json(
+        makeBoardProject().columns.map(
+          ({ id, name, slug, isFinal, icon, color, position }) => ({
+            id,
+            name,
+            slug,
+            isFinal,
+            icon,
+            color,
+            position,
+          }),
+        ),
+      );
+    if (
+      path === `/api/activity/${"legacy-task-1"}` &&
+      request.method() === "GET"
+    )
+      return json(legacyComments);
+    if (path === "/api/activity/comment" && request.method() === "POST") {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const body = request.postDataJSON() as {
+        comment: string;
+        taskId: string;
+      };
+      const comment = {
+        id: `g11-comment-${legacyComments.length + 1}`,
+        type: "comment",
+        content: body.comment,
+        createdAt: new Date().toISOString(),
+        userId: SESSION.user.id,
+        taskId: body.taskId,
+      };
+      legacyComments.push(comment);
+      return json(comment);
+    }
+    if (
+      path === "/api/task/status/legacy-task-1" &&
+      request.method() === "PUT"
+    ) {
+      legacyTaskStatus = String(request.postDataJSON().status);
+      return json(legacyTask());
+    }
+    if (
+      path === "/api/task/assignee/legacy-task-1" &&
+      request.method() === "PUT"
+    ) {
+      legacyTaskAssignee = String(request.postDataJSON().userId || "") || null;
+      return json(legacyTask());
+    }
+    if (path.startsWith("/api/task/") && request.method() === "DELETE") {
+      const id = path.split("/").at(-1) ?? "";
+      deletedLegacyTaskIds.add(id);
+      return json({ id, projectId: PROJECT_ID });
+    }
     if (path.startsWith("/api/task/") && request.method() === "PUT")
       return json({ id: path.split("/").at(-1), ...request.postDataJSON() });
     if (
@@ -343,6 +439,19 @@ async function installPerformanceApiFixture(page: Page) {
       routeStart: 0,
       routePaint: 0,
       documentStart: performance.now(),
+      listPaint: 0,
+      boardPaint: 0,
+      signInStart: 0,
+      signInPaint: 0,
+      paletteStart: 0,
+      paletteInsert: 0,
+      palettePaint: 0,
+      stateStart: 0,
+      statePaint: 0,
+      assignmentStart: 0,
+      assignmentPaint: 0,
+      commentStart: 0,
+      commentPaint: 0,
       lcpElement: "",
       lcpText: "",
       lcpUrl: "",
@@ -439,6 +548,88 @@ async function installPerformanceApiFixture(page: Page) {
           metrics.interactionStart = performance.now();
           watchForPaint("interaction");
         }
+        if (label === "Sign In") {
+          metrics.signInStart = performance.now();
+          const submitButton = button as HTMLButtonElement | null;
+          if (!submitButton) return;
+          const record = () => {
+            if (!submitButton.disabled) {
+              requestAnimationFrame(record);
+              return;
+            }
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                metrics.signInPaint = performance.now() - metrics.signInStart;
+              }),
+            );
+          };
+          requestAnimationFrame(record);
+        }
+        if (label?.startsWith("In progress")) {
+          metrics.stateStart = performance.now();
+          const record = () => {
+            const matchingButtons = Array.from(
+              document.querySelectorAll("button"),
+            ).filter(
+              (element) =>
+                element.textContent?.trim() === "In progress" &&
+                !element.closest('[data-slot="popover-popup"]') &&
+                element.getClientRects().length > 0,
+            );
+            if (matchingButtons.length !== 1) {
+              requestAnimationFrame(record);
+              return;
+            }
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                metrics.statePaint = performance.now() - metrics.stateStart;
+              }),
+            );
+          };
+          requestAnimationFrame(record);
+        }
+        if (label?.includes("G11 Agent")) {
+          metrics.assignmentStart = performance.now();
+          const record = () => {
+            const matchingButtons = Array.from(
+              document.querySelectorAll("button"),
+            ).filter(
+              (element) =>
+                element.textContent?.includes("G11 Agent") &&
+                !element.closest('[data-slot="popover-popup"]') &&
+                element.getClientRects().length > 0,
+            );
+            if (matchingButtons.length !== 1) {
+              requestAnimationFrame(record);
+              return;
+            }
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                metrics.assignmentPaint =
+                  performance.now() - metrics.assignmentStart;
+              }),
+            );
+          };
+          requestAnimationFrame(record);
+        }
+        if (button?.dataset.testid === "comment-submit") {
+          metrics.commentStart = performance.now();
+          const record = () => {
+            const submit = document.querySelector(
+              '[data-testid="comment-submit"][aria-busy="true"]',
+            );
+            if (!submit) {
+              requestAnimationFrame(record);
+              return;
+            }
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                metrics.commentPaint = performance.now() - metrics.commentStart;
+              }),
+            );
+          };
+          requestAnimationFrame(record);
+        }
         if (
           target
             ?.closest("a[href]")
@@ -448,6 +639,31 @@ async function installPerformanceApiFixture(page: Page) {
           metrics.routeStart = performance.now();
           watchForPaint("route");
         }
+      },
+      { capture: true },
+    );
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (
+          !(event.ctrlKey || event.metaKey) ||
+          event.key.toLowerCase() !== "k"
+        )
+          return;
+        metrics.paletteStart = performance.now();
+        const record = () => {
+          if (!document.querySelector('[role="dialog"]')) {
+            requestAnimationFrame(record);
+            return;
+          }
+          metrics.paletteInsert = performance.now() - metrics.paletteStart;
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              metrics.palettePaint = performance.now() - metrics.paletteStart;
+            }),
+          );
+        };
+        requestAnimationFrame(record);
       },
       { capture: true },
     );
@@ -480,13 +696,14 @@ async function withPerformancePage(
   browser: Browser,
   throttled: boolean,
   sample: (page: Page, resetFixture: () => void) => Promise<number>,
+  fixtureOptions?: { authenticated?: boolean },
 ) {
   const context = await browser.newContext({
     baseURL: PERFORMANCE_BASE_URL,
     viewport: { width: 1280, height: 720 },
   });
   const page = await context.newPage();
-  const resetFixture = await installPerformanceApiFixture(page);
+  const resetFixture = await installPerformanceApiFixture(page, fixtureOptions);
   let session:
     | Awaited<ReturnType<typeof installFast4gAndCpuThrottle>>
     | undefined;
@@ -506,6 +723,69 @@ async function waitForTwoFrames(page: Page) {
       new Promise<void>((resolve) =>
         requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
       ),
+  );
+}
+
+async function installLastItemPaintRecorder(
+  page: Page,
+  selector: string,
+  count: number,
+  metric: "listPaint" | "boardPaint",
+) {
+  await page.addInitScript(
+    ({ itemSelector, itemCount, metricName }) => {
+      const debug = {
+        hasDocumentElement: Boolean(document.documentElement),
+        hasMetricsAtInstall: Boolean((window as G11Window).__g11Metrics),
+        callbackCount: 0,
+        lastItemCount: 0,
+        targetFound: false,
+      };
+      (window as Window & { __g11PaintDebug?: typeof debug }).__g11PaintDebug =
+        debug;
+      const installObserver = () => {
+        if (!document.documentElement) {
+          document.addEventListener("DOMContentLoaded", installObserver, {
+            once: true,
+          });
+          return;
+        }
+        debug.hasDocumentElement = true;
+        const observe = () => {
+          debug.callbackCount += 1;
+          const items = document.querySelectorAll(itemSelector);
+          debug.lastItemCount = items.length;
+          if (items.length < itemCount) return;
+
+          const target = items.item(itemCount - 1);
+          if (!target) return;
+          debug.targetFound = true;
+          observer.disconnect();
+          target.scrollIntoView({ block: "nearest" });
+          const writeMark = () => {
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                const metrics = (window as G11Window).__g11Metrics;
+                if (!metrics) {
+                  writeMark();
+                  return;
+                }
+                metrics[metricName] = performance.now();
+              }),
+            );
+          };
+          writeMark();
+        };
+        const observer = new MutationObserver(observe);
+        observer.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+        });
+        observe();
+      };
+      installObserver();
+    },
+    { itemSelector: selector, itemCount: count, metricName: metric },
   );
 }
 
@@ -636,6 +916,143 @@ async function collectCreateInteraction(page: Page, resetFixture: () => void) {
   return clickToPaint;
 }
 
+async function collectSignInInteraction(page: Page) {
+  await page.goto("/auth/sign-in");
+  const email = page.getByLabel("Email", { exact: true });
+  const password = page.locator('input[type="password"]');
+  await email.fill("g11@example.test");
+  await password.fill("correct-horse-battery-staple");
+  const submit = page.locator('form button[type="submit"]');
+  await captureScreen(page, "sign-in");
+  await submit.click();
+  await expect(submit).toBeDisabled();
+  await page.waitForFunction(
+    () => (window as G11Window).__g11Metrics.signInPaint > 0,
+    undefined,
+    { timeout: 15_000 },
+  );
+  const clickToPaint = await page.evaluate(
+    () => (window as G11Window).__g11Metrics.signInPaint,
+  );
+  await expect(page).toHaveURL(/\/dashboard(?:\/|$)/, { timeout: 15_000 });
+  return clickToPaint;
+}
+
+async function collectCommandPaletteInteraction(page: Page) {
+  await openWorkList(page);
+  await page.keyboard.press(
+    process.platform === "darwin" ? "Meta+k" : "Control+k",
+  );
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByPlaceholder(/search/i)).toBeFocused();
+  await page.waitForFunction(
+    () => (window as G11Window).__g11Metrics.palettePaint > 0,
+    undefined,
+    { timeout: 15_000 },
+  );
+  const clickToPaint = await page.evaluate(
+    () => (window as G11Window).__g11Metrics.palettePaint,
+  );
+  const insertion = await page.evaluate(
+    () => (window as G11Window).__g11Metrics.paletteInsert,
+  );
+  console.info(
+    "G11 palette timing",
+    JSON.stringify({ insertion, paint: clickToPaint }),
+  );
+  await captureScreen(page, "command-palette");
+  await page.getByRole("option", { name: "Projects" }).click();
+  await expect(page).toHaveURL(
+    new RegExp(`/dashboard/workspace/${WORKSPACE_ID}`),
+  );
+  return clickToPaint;
+}
+
+async function openLegacyTaskDetails(page: Page) {
+  await page.goto(
+    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/task/legacy-task-1`,
+  );
+  await expect(
+    page.getByRole("button", { name: "Backlog", exact: true }),
+  ).toBeVisible({ timeout: 30_000 });
+}
+
+async function collectTaskStateChange(page: Page) {
+  await openLegacyTaskDetails(page);
+  await captureScreen(page, "legacy-task-state");
+  await page.getByRole("button", { name: "Backlog", exact: true }).click();
+  await page
+    .getByRole("button", { name: /^In progress/ })
+    .last()
+    .click();
+  await page.waitForFunction(
+    () => (window as G11Window).__g11Metrics.statePaint > 0,
+    undefined,
+    { timeout: 15_000 },
+  );
+  const elapsed = await page.evaluate(
+    () => (window as G11Window).__g11Metrics.statePaint,
+  );
+  await expect(
+    page.locator('[data-slot="popover-trigger"]:visible').filter({
+      hasText: "In progress",
+    }),
+  ).toBeVisible();
+  return elapsed;
+}
+
+async function collectTaskAssignment(page: Page) {
+  await openLegacyTaskDetails(page);
+  await captureScreen(page, "legacy-task-assignment");
+  await page
+    .getByRole("button", { name: /Unassigned/ })
+    .last()
+    .click();
+  await page
+    .getByRole("button", { name: /G11 Agent/ })
+    .last()
+    .click();
+  await page.waitForFunction(
+    () => (window as G11Window).__g11Metrics.assignmentPaint > 0,
+    undefined,
+    { timeout: 15_000 },
+  );
+  const elapsed = await page.evaluate(
+    () => (window as G11Window).__g11Metrics.assignmentPaint,
+  );
+  await expect(
+    page.locator('[data-slot="popover-trigger"]:visible').filter({
+      hasText: "G11 Agent",
+    }),
+  ).toBeVisible();
+  return elapsed;
+}
+
+async function collectTaskComment(page: Page) {
+  await openLegacyTaskDetails(page);
+  await captureScreen(page, "legacy-task-comment");
+  const editor = page
+    .locator(".taskdesk-comment-editor-content [contenteditable=true]")
+    .first();
+  await editor.fill("G11 comment fixture");
+  const submit = page.getByTestId("comment-submit");
+  await submit.click();
+  await expect(submit).toHaveAttribute("aria-busy", "true");
+  await page.waitForFunction(
+    () => (window as G11Window).__g11Metrics.commentPaint > 0,
+    undefined,
+    { timeout: 15_000 },
+  );
+  const elapsed = await page.evaluate(
+    () => (window as G11Window).__g11Metrics.commentPaint,
+  );
+  await expect(page.getByText("G11 comment fixture")).toBeVisible({
+    timeout: 15_000,
+  });
+  return elapsed;
+}
+
 async function collectRouteTransition(page: Page) {
   await openWorkList(page);
   await page.getByRole("link", { name: WORK_ITEM_KEY, exact: true }).click();
@@ -677,15 +1094,39 @@ async function collectRouteTransition(page: Page) {
 }
 
 async function collectListRender(page: Page) {
-  await openWorkList(page);
-  const lastRow = page
-    .locator("[data-testid=work-item-list-populated] tbody tr")
-    .last();
-  await lastRow.scrollIntoViewIfNeeded();
-  await waitForTwoFrames(page);
+  const rowSelector = "[data-testid=work-item-list-populated] tbody tr";
+  await installLastItemPaintRecorder(page, rowSelector, 500, "listPaint");
+  await page.goto(WORK_LIST_PATH);
+  await expect(page.locator(rowSelector)).toHaveCount(500, {
+    timeout: 30_000,
+  });
+  try {
+    await page.waitForFunction(
+      () => (window as G11Window).__g11Metrics.listPaint > 0,
+      undefined,
+      { timeout: 10_000 },
+    );
+  } catch (error) {
+    console.error(
+      "G11 list paint recorder diagnostics",
+      JSON.stringify(
+        await page.evaluate(() => ({
+          metrics: (window as G11Window).__g11Metrics,
+          recorder: (window as Window & { __g11PaintDebug?: unknown })
+            .__g11PaintDebug,
+          rows: document.querySelectorAll(
+            "[data-testid=work-item-list-populated] tbody tr",
+          ).length,
+        })),
+      ),
+    );
+    throw error;
+  }
   await captureScreen(page, "work-list");
   return page.evaluate(
-    () => performance.now() - (window as G11Window).__g11Metrics.documentStart,
+    () =>
+      (window as G11Window).__g11Metrics.listPaint -
+      (window as G11Window).__g11Metrics.documentStart,
   );
 }
 
@@ -703,14 +1144,32 @@ async function openLegacyBoard(page: Page) {
 }
 
 async function collectBoardRender(page: Page) {
-  await openLegacyBoard(page);
-  await page
-    .getByText("Seeded legacy task 200", { exact: true })
-    .scrollIntoViewIfNeeded();
-  await waitForTwoFrames(page);
+  await installLastItemPaintRecorder(
+    page,
+    '[data-task-id="legacy-task-200"]',
+    1,
+    "boardPaint",
+  );
+  await page.goto(
+    "/dashboard/workspace/" +
+      WORKSPACE_ID +
+      "/project/" +
+      PROJECT_ID +
+      "/board",
+  );
+  await expect(
+    page.getByText("Seeded legacy task 200", { exact: true }),
+  ).toHaveCount(1, { timeout: 30_000 });
+  await page.waitForFunction(
+    () => (window as G11Window).__g11Metrics.boardPaint > 0,
+    undefined,
+    { timeout: 10_000 },
+  );
   await captureScreen(page, "board");
   return page.evaluate(
-    () => performance.now() - (window as G11Window).__g11Metrics.documentStart,
+    () =>
+      (window as G11Window).__g11Metrics.boardPaint -
+      (window as G11Window).__g11Metrics.documentStart,
   );
 }
 
@@ -758,6 +1217,16 @@ async function collectBoardDragFrameP95(page: Page) {
   await page.mouse.up();
   await page.waitForTimeout(250);
 
+  const movedCardColumn = await page
+    .locator('[data-task-id="legacy-task-1"]')
+    .locator("xpath=ancestor::*[@data-column-id]")
+    .getAttribute("data-column-id");
+  const destinationCardColumn = await page
+    .locator('[data-task-id="legacy-task-51"]')
+    .locator("xpath=ancestor::*[@data-column-id]")
+    .getAttribute("data-column-id");
+  expect(movedCardColumn).toBe(destinationCardColumn);
+
   const frameTimes = await page.evaluate(
     () => (window as G11Window).__g11Metrics.dragFrameTimes ?? [],
   );
@@ -804,6 +1273,28 @@ async function verifyBoardCardMenu(page: Page) {
   await captureScreen(page, "board-delete-confirmation");
   await confirmation.getByRole("button", { name: "Cancel" }).click();
   await expect(confirmation).toHaveCount(0);
+
+  await trigger.focus();
+  await page.keyboard.press("Shift+F10");
+  const deleteItem = page.getByRole("menuitem", { name: "Delete..." });
+  await expect(deleteItem).toBeVisible();
+  await deleteItem.focus();
+  await page.keyboard.press("Enter");
+  const deleteConfirmation = page.getByRole("alertdialog");
+  await expect(deleteConfirmation).toBeVisible();
+  await captureScreen(page, "board-delete-keyboard");
+  const deleteButton = deleteConfirmation.getByRole("button", {
+    name: "Delete Task",
+    exact: true,
+  });
+  const deletionRequest = page.waitForRequest(
+    (request) =>
+      request.method() === "DELETE" &&
+      request.url().endsWith("/api/task/legacy-task-1"),
+  );
+  await deleteButton.click();
+  await deletionRequest;
+  await expect(page.locator('[data-task-id="legacy-task-1"]')).toHaveCount(0);
 }
 
 async function threeSamplesWithOneRetry(metric: BudgetMetric) {
@@ -822,92 +1313,150 @@ async function threeSamplesWithOneRetry(metric: BudgetMetric) {
       metric.budget +
       (retried ? "; one retry set used" : ""),
   );
+  expect(
+    result,
+    `${metric.name} must be strictly below ${metric.budget} (got ${result.toFixed(1)})`,
+  ).toBeLessThan(metric.budget);
   return { ...metric, result, values };
 }
 
-test("G11: seeded work-list journeys meet browser performance budgets", async ({
-  browser,
-}) => {
-  test.setTimeout(360_000);
-  const results = [];
+test("G11: work-list render, 500 rows", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "work-list render, 500 rows (ms; unthrottled)",
+    budget: 500,
+    sample: () =>
+      withPerformancePage(browser, false, (page) => collectListRender(page)),
+  });
+});
 
-  results.push(
-    await threeSamplesWithOneRetry({
-      name: "work-list render, 500 rows (ms; unthrottled)",
-      budget: 500,
-      sample: () =>
-        withPerformancePage(browser, false, (page) => collectListRender(page)),
-    }),
-  );
+test("G11: work-list LCP", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "work-list LCP (ms)",
+    budget: 2500,
+    sample: () =>
+      withPerformancePage(browser, true, (page) =>
+        collectNavigationMetric(page, "lcp"),
+      ),
+  });
+});
 
-  results.push(
-    await threeSamplesWithOneRetry({
-      name: "work-list LCP (ms)",
-      budget: 2500,
-      sample: () =>
-        withPerformancePage(browser, true, (page) =>
-          collectNavigationMetric(page, "lcp"),
-        ),
-    }),
-  );
-  results.push(
-    await threeSamplesWithOneRetry({
-      name: "work-list CLS",
-      budget: 0.1,
-      sample: () =>
-        withPerformancePage(browser, true, (page) =>
-          collectNavigationMetric(page, "cls"),
-        ),
-    }),
-  );
-  results.push(
-    await threeSamplesWithOneRetry({
-      name: "work-list to work-item route transition (ms)",
-      budget: 300,
-      sample: () =>
-        withPerformancePage(browser, true, (page) =>
-          collectRouteTransition(page),
-        ),
-    }),
-  );
-  results.push(
-    await threeSamplesWithOneRetry({
-      name: "create-work-item interaction click-to-paint (ms)",
-      budget: 200,
-      sample: () =>
-        withPerformancePage(browser, true, (page, resetFixture) =>
-          collectCreateInteraction(page, resetFixture),
-        ),
-    }),
-  );
+test("G11: work-list CLS", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "work-list CLS",
+    budget: 0.1,
+    sample: () =>
+      withPerformancePage(browser, true, (page) =>
+        collectNavigationMetric(page, "cls"),
+      ),
+  });
+});
 
-  results.push(
-    await threeSamplesWithOneRetry({
-      name: "board render, 200 tasks (ms; unthrottled)",
-      budget: 500,
-      sample: () =>
-        withPerformancePage(browser, false, (page) => collectBoardRender(page)),
-    }),
-  );
-  results.push(
-    await threeSamplesWithOneRetry({
-      name: "board drag p95 frame time (ms; unthrottled)",
-      budget: 20,
-      sample: () =>
-        withPerformancePage(browser, false, (page) =>
-          collectBoardDragFrameP95(page),
-        ),
-    }),
-  );
+test("G11: work-list to detail route first paint", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "work-list to work-item route transition (ms)",
+    budget: 300,
+    sample: () =>
+      withPerformancePage(browser, true, (page) =>
+        collectRouteTransition(page),
+      ),
+  });
+});
 
-  const failures = results.filter((result) => result.result >= result.budget);
-  expect(
-    failures.map(
-      ({ name, result, budget }) =>
-        `${name}: ${result.toFixed(1)} (budget < ${budget})`,
-    ),
-    "G11 browser performance budget failures",
-  ).toEqual([]);
+test("G11: create-work-item click-to-paint", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "create-work-item interaction click-to-paint (ms)",
+    budget: 200,
+    sample: () =>
+      withPerformancePage(browser, true, (page, resetFixture) =>
+        collectCreateInteraction(page, resetFixture),
+      ),
+  });
+});
+
+test("G11: sign-in click-to-paint", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "sign-in interaction click-to-paint (ms)",
+    budget: 200,
+    sample: () =>
+      withPerformancePage(
+        browser,
+        true,
+        (page) => collectSignInInteraction(page),
+        { authenticated: false },
+      ),
+  });
+});
+
+test("G11: command-palette click-to-paint", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "command-palette interaction click-to-paint (ms)",
+    budget: 200,
+    sample: () =>
+      withPerformancePage(browser, true, (page) =>
+        collectCommandPaletteInteraction(page),
+      ),
+  });
+});
+
+test("G11: change task state click-to-paint", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "task-state interaction click-to-paint (ms)",
+    budget: 200,
+    sample: () =>
+      withPerformancePage(browser, true, (page) =>
+        collectTaskStateChange(page),
+      ),
+  });
+});
+
+test("G11: assign task click-to-paint", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "task-assignment interaction click-to-paint (ms)",
+    budget: 200,
+    sample: () =>
+      withPerformancePage(browser, true, (page) => collectTaskAssignment(page)),
+  });
+});
+
+test("G11: comment click-to-paint", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "task-comment interaction click-to-paint (ms)",
+    budget: 200,
+    sample: () =>
+      withPerformancePage(browser, true, (page) => collectTaskComment(page)),
+  });
+});
+
+test("G11: board render, 200 tasks", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "board render, 200 tasks (ms; unthrottled)",
+    budget: 500,
+    sample: () =>
+      withPerformancePage(browser, false, (page) => collectBoardRender(page)),
+  });
+});
+
+test("G11: board drag p95 frame time", async ({ browser }) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithOneRetry({
+    name: "board drag p95 frame time (ms; unthrottled)",
+    budget: 20,
+    sample: () =>
+      withPerformancePage(browser, false, (page) =>
+        collectBoardDragFrameP95(page),
+      ),
+  });
 });
 
 test("G11: board context menu supports keyboard and delete cancel", async ({
@@ -916,4 +1465,32 @@ test("G11: board context menu supports keyboard and delete cancel", async ({
   await withPerformancePage(browser, false, (page) =>
     verifyBoardCardMenu(page),
   );
+});
+
+test("G11: 500-row list remains reachable at 200% zoom", async ({
+  browser,
+}) => {
+  await withPerformancePage(browser, false, async (page) => {
+    await page.addInitScript(() => {
+      document.documentElement.style.zoom = "2";
+    });
+    await openWorkList(page);
+    const rows = page.locator(
+      "[data-testid=work-item-list-populated] tbody tr",
+    );
+    await expect(rows).toHaveCount(500);
+
+    const lastRow = rows.last();
+    await lastRow.scrollIntoViewIfNeeded();
+    await waitForTwoFrames(page);
+    const firstBox = await lastRow.boundingBox();
+    await waitForTwoFrames(page);
+    const stableBox = await lastRow.boundingBox();
+    if (!firstBox || !stableBox)
+      throw new Error("The last 200%-zoom work-item row has no layout box.");
+    expect(stableBox.y).toBeGreaterThanOrEqual(0);
+    expect(stableBox.y + stableBox.height).toBeLessThanOrEqual(720);
+    expect(Math.abs(stableBox.y - firstBox.y)).toBeLessThan(1);
+    await captureScreen(page, "work-list-200-percent-zoom-last-row");
+  });
 });

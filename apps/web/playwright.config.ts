@@ -3,7 +3,11 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
-  testIgnore: ["visual.spec.ts", "storybook-visual.spec.ts"],
+  testIgnore: [
+    "visual.spec.ts",
+    "storybook-visual.spec.ts",
+    "performance.spec.ts",
+  ],
   forbidOnly: true,
   retries: 0,
   reporter: "list",

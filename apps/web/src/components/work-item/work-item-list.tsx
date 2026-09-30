@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -28,7 +28,7 @@ import {
   ListTodo,
   TriangleAlert,
 } from "lucide-react";
-import { memo } from "react";
+import { memo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import getWorkItem from "@/fetchers/work-item/get-work-item";
 import { formatDateShort } from "@/lib/format";
@@ -153,8 +153,29 @@ function WorkItemList({
   onRetry,
 }: WorkItemListProps) {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const preloadedDetailKey = useRef<string | null>(null);
   const { t } = useTranslation();
   const getPriorityLabel = priorityLabel(t);
+
+  useEffect(() => {
+    const firstReachableItem = workItems?.find(
+      (item) => !item.unavailableFields.includes("key"),
+    );
+    if (
+      !firstReachableItem ||
+      preloadedDetailKey.current === firstReachableItem.key
+    )
+      return;
+
+    preloadedDetailKey.current = firstReachableItem.key;
+    void router
+      .preloadRoute({
+        to: routes.workItemDetail.path,
+        params: { key: firstReachableItem.key },
+      })
+      .catch(() => {});
+  }, [router, workItems]);
 
   function handleHeaderClick(field: WorkItemSortField) {
     if (field === sort) {

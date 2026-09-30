@@ -73,6 +73,7 @@ function CommandPalette() {
   const canCreateWorkspace =
     isAdmin || (config !== undefined && !config.disableWorkspaceCreation);
   const [open, setOpen] = useState(false);
+  const [keepPaletteMounted, setKeepPaletteMounted] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
@@ -80,6 +81,16 @@ function CommandPalette() {
   const projectIdFromRoute =
     location.pathname.match(/\/project\/([^/]+)/)?.[1] ?? undefined;
   const isBacklogView = location.pathname.endsWith("/backlog");
+
+  useEffect(() => {
+    let mounted = true;
+    void document.fonts.ready.then(() => {
+      if (mounted) setKeepPaletteMounted(true);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useRegisterShortcuts({
     shortcuts: {
@@ -285,9 +296,10 @@ function CommandPalette() {
   return (
     <>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandDialogPopup instant>
+        <CommandDialogPopup instant keepMounted={keepPaletteMounted}>
           <Command items={groupedItems}>
             <CommandInput
+              autoFocus={false}
               placeholder={t("navigation:commandPalette.inputPlaceholder")}
             />
             <CommandPanel>

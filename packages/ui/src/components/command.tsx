@@ -67,10 +67,14 @@ function CommandDialogPopup({
   className,
   children,
   instant = false,
+  keepMounted = false,
   ...props
-}: CommandDialogPrimitive.Popup.Props & { instant?: boolean }) {
+}: CommandDialogPrimitive.Popup.Props & {
+  instant?: boolean;
+  keepMounted?: boolean;
+}) {
   return (
-    <CommandDialogPortal>
+    <CommandDialogPortal keepMounted={keepMounted}>
       <CommandDialogBackdrop
         className={cn(
           instant &&

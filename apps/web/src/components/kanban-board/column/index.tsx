@@ -21,6 +21,7 @@ function Column({
 
   return (
     <div
+      data-column-id={column.id}
       className={`group relative flex h-full min-h-0 w-full flex-col rounded-xl border transition-colors duration-150 ${
         isDropzoneOver
           ? "border-ring/40 bg-accent/60 shadow-md ring-2 ring-ring/30"
