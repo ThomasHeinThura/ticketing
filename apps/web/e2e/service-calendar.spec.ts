@@ -74,9 +74,32 @@ async function expectNoSeriousAxeViolations(page: Page) {
   expect(seriousOrCriticalViolations).toEqual([]);
 }
 
-test("calendar list and editor preserve URL state and save manual changes", async ({
-  page,
-}, testInfo) => {
+type CalendarPageFixture = {
+  get savedCalendar(): CalendarFixture;
+  set savedCalendar(value: CalendarFixture);
+  get listIsEmpty(): boolean;
+  set listIsEmpty(value: boolean);
+  get listRequestFailure(): boolean;
+  set listRequestFailure(value: boolean);
+  get editorRequestFailure(): boolean;
+  set editorRequestFailure(value: boolean);
+  get previewRequestFailure(): boolean;
+  set previewRequestFailure(value: boolean);
+  get holdListResponse(): boolean;
+  set holdListResponse(value: boolean);
+  get holdEditorResponse(): boolean;
+  set holdEditorResponse(value: boolean);
+  listResponseHeldPromise: Promise<void>;
+  editorResponseHeldPromise: Promise<void>;
+  releaseListResponse(): void;
+  releaseEditorResponse(): void;
+  get patchPayload(): CalendarFixture | undefined;
+  get createPayload(): Omit<CalendarFixture, "id"> | undefined;
+  get canManageServiceCalendars(): boolean;
+  set canManageServiceCalendars(value: boolean);
+};
+
+async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
   let savedCalendar = { ...calendar };
   let listIsEmpty = false;
   let listRequestFailure = false;
@@ -294,6 +317,72 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
     await route.fulfill({ status: 404, body: "Not found in browser fixture" });
   });
 
+  return {
+    get savedCalendar() {
+      return savedCalendar;
+    },
+    set savedCalendar(value) {
+      savedCalendar = value;
+    },
+    get listIsEmpty() {
+      return listIsEmpty;
+    },
+    set listIsEmpty(value) {
+      listIsEmpty = value;
+    },
+    get listRequestFailure() {
+      return listRequestFailure;
+    },
+    set listRequestFailure(value) {
+      listRequestFailure = value;
+    },
+    get editorRequestFailure() {
+      return editorRequestFailure;
+    },
+    set editorRequestFailure(value) {
+      editorRequestFailure = value;
+    },
+    get previewRequestFailure() {
+      return previewRequestFailure;
+    },
+    set previewRequestFailure(value) {
+      previewRequestFailure = value;
+    },
+    get holdListResponse() {
+      return holdListResponse;
+    },
+    set holdListResponse(value) {
+      holdListResponse = value;
+    },
+    get holdEditorResponse() {
+      return holdEditorResponse;
+    },
+    set holdEditorResponse(value) {
+      holdEditorResponse = value;
+    },
+    listResponseHeldPromise,
+    editorResponseHeldPromise,
+    releaseListResponse: () => releaseListResponse?.(),
+    releaseEditorResponse: () => releaseEditorResponse?.(),
+    get patchPayload() {
+      return patchPayload;
+    },
+    get createPayload() {
+      return createPayload;
+    },
+    get canManageServiceCalendars() {
+      return canManageServiceCalendars;
+    },
+    set canManageServiceCalendars(value) {
+      canManageServiceCalendars = value;
+    },
+  };
+}
+
+test("calendar list and editor preserve URL state and confirm manual changes", async ({
+  page,
+}, testInfo) => {
+  const fixture = await setupCalendarPage(page);
   await page.goto("/agent/settings/calendars");
   await expect(
     page.getByRole("heading", { name: "Service calendars" }),
@@ -355,24 +444,29 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
   await expect(
     timezoneDialog.getByText(/affected open-item count is not available yet/i),
   ).toBeVisible();
-  expect(patchPayload).toBeUndefined();
+  expect(fixture.patchPayload).toBeUndefined();
   await expectNoSeriousAxeViolations(page);
   await timezoneDialog
     .getByRole("button", { name: "Confirm and save" })
     .click();
 
   await expect(page.getByText("Service calendar saved")).toBeVisible();
-  expect(patchPayload?.name).toBe("London support");
-  expect(patchPayload?.timezone).toBe("America/New_York");
-  expect(patchPayload?.windows.mon[0]?.from).toBe(600);
-  expect(patchPayload?.holidays).toHaveLength(2);
+  expect(fixture.patchPayload?.name).toBe("London support");
+  expect(fixture.patchPayload?.timezone).toBe("America/New_York");
+  expect(fixture.patchPayload?.windows.mon[0]?.from).toBe(600);
+  expect(fixture.patchPayload?.holidays).toHaveLength(2);
   await page.screenshot({
     path: testInfo.outputPath("calendar-editor-mobile.png"),
   });
 
   await expectNoSeriousAxeViolations(page);
+});
 
-  await page.getByRole("link", { name: "All calendars" }).click();
+test("calendar creation supports keyboard input and read-only access", async ({
+  page,
+}) => {
+  const fixture = await setupCalendarPage(page);
+  await page.goto("/agent/settings/calendars");
   await page.getByRole("link", { name: "New calendar" }).click();
   await page.getByLabel("Name", { exact: true }).fill("New regional cover");
   await page
@@ -386,8 +480,8 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
   await expect(
     page.getByRole("heading", { name: "New regional cover" }),
   ).toBeVisible();
-  expect(createPayload?.workspaceId).toBe(workspaceId);
-  expect(createPayload?.windows.mon).toEqual([{ from: 540, to: 1020 }]);
+  expect(fixture.createPayload?.workspaceId).toBe(workspaceId);
+  expect(fixture.createPayload?.windows.mon).toEqual([{ from: 540, to: 1020 }]);
 
   // G10: edit weekly cover with keyboard input and leave the control by Tab.
   const keyboardStartTime = page.getByLabel("Monday window 1 start");
@@ -397,7 +491,7 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
   await page.keyboard.press("Tab");
   await expect(keyboardStartTime).toHaveValue("10:00");
 
-  canManageServiceCalendars = false;
+  fixture.canManageServiceCalendars = false;
   await page.goto("/agent/settings/calendars");
   await expect(page.getByText("Read-only access")).toBeVisible();
   await expect(page.getByRole("button", { name: "New calendar" })).toHaveCount(
@@ -412,20 +506,25 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
   await expect(
     page.getByRole("button", { name: "Create calendar" }),
   ).toBeDisabled();
+});
 
+test("calendar list and editor expose loading, empty, error, and partial states", async ({
+  page,
+}) => {
+  const fixture = await setupCalendarPage(page);
   // G6: loading, empty, error, and partial states are all reachable in-browser.
-  canManageServiceCalendars = true;
-  savedCalendar = { ...calendar };
-  holdListResponse = true;
+  fixture.canManageServiceCalendars = true;
+  fixture.savedCalendar = { ...calendar };
+  fixture.holdListResponse = true;
   const loadingNavigation = page.goto("/agent/settings/calendars");
-  await listResponseHeldPromise;
+  await fixture.listResponseHeldPromise;
   await expect(
     page.getByRole("status", { name: "Loading service calendars" }),
   ).toBeVisible();
   await page.evaluate(() => performance.mark("calendar-skeleton-visible"));
-  releaseListResponse?.();
+  fixture.releaseListResponse();
   await loadingNavigation;
-  holdListResponse = false;
+  fixture.holdListResponse = false;
   await expect(
     page.getByRole("link", { name: "Support coverage" }),
   ).toBeVisible();
@@ -449,44 +548,44 @@ test("calendar list and editor preserve URL state and save manual changes", asyn
   // G13: the list's skeleton-to-content layout shift must stay below 0.1.
   expect(layoutShiftTotal).toBeLessThan(0.1);
 
-  holdEditorResponse = true;
+  fixture.holdEditorResponse = true;
   const editorLoadingNavigation = page.goto(
     `/agent/settings/calendars/${loadingCalendarId}`,
   );
-  await editorResponseHeldPromise;
+  await fixture.editorResponseHeldPromise;
   await expect(
     page.getByRole("status", { name: "Loading service calendar" }),
   ).toBeAttached();
-  releaseEditorResponse?.();
+  fixture.releaseEditorResponse();
   await editorLoadingNavigation;
-  holdEditorResponse = false;
+  fixture.holdEditorResponse = false;
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
     "Support coverage",
   );
 
   await page.goto("/agent/settings/calendars");
-  listIsEmpty = true;
+  fixture.listIsEmpty = true;
   await page.reload();
   await expect(page.getByText("No service calendars yet")).toBeVisible();
 
-  listIsEmpty = false;
-  listRequestFailure = true;
+  fixture.listIsEmpty = false;
+  fixture.listRequestFailure = true;
   await page.reload();
   await expect(page.getByText("Calendars could not be loaded")).toBeVisible();
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
-  listRequestFailure = false;
+  fixture.listRequestFailure = false;
   await page.getByRole("button", { name: "Retry" }).click();
   await expect(page.getByText("40 h/week")).toBeVisible();
 
-  editorRequestFailure = true;
+  fixture.editorRequestFailure = true;
   await page.goto(`/agent/settings/calendars/${calendarId}`);
   await expect(page.getByText("Calendar could not be loaded")).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Back to calendars" }),
   ).toBeVisible();
 
-  editorRequestFailure = false;
-  previewRequestFailure = true;
+  fixture.editorRequestFailure = false;
+  fixture.previewRequestFailure = true;
   await page.goto(`/agent/settings/calendars/${calendarId}`);
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
     "Support coverage",
