@@ -479,13 +479,16 @@ async function resolveRequestScope(
 
   const route = policyRegistry.get(input.routeKey);
   if (
+    input.routeKey !== "DELETE /api/work-items/{key}" ||
     route?.kind !== "capability" ||
     !("capability" in route.policy) ||
     route.policy.scope !== "work_item" ||
     !isCapability(route.policy.capability) ||
     route.policy.capability !== "work_item:delete"
   ) {
-    throw new TypeError("Pending-action route must authorize work_item:delete");
+    throw new TypeError(
+      "Pending-action route must be DELETE /api/work-items/{key}",
+    );
   }
 
   await validateWorkspaceAccess(

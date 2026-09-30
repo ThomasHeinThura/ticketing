@@ -259,6 +259,19 @@ describe("pending-action service persistence", () => {
     expect(rows).toHaveLength(0);
   });
 
+  it("PA-6/PA-7: refuses legacy ID-addressed delete route for key-addressed targets", async () => {
+    const input = {
+      ...requestInput(),
+      routeKey: "DELETE /api/task/{id}",
+    } as Parameters<typeof createPendingAction>[0];
+
+    await expect(createPendingAction(input)).rejects.toThrow(
+      /Pending-action route must be DELETE \/api\/work-items\/\{key\}/,
+    );
+    const rows = await db.select().from(schema.pendingActionTable);
+    expect(rows).toHaveLength(0);
+  });
+
   it("derives request scope from the target and denies mismatched caller scope", async () => {
     const input = requestInput();
     const response = await createPendingAction({
