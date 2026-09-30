@@ -425,6 +425,7 @@ async function resolveRequestScope(
         inArray(workItemTable.key, targetIds),
         isNull(workItemTable.deletedAt),
         isNull(workItemTable.archivedAt),
+        isNull(projectTable.archivedAt),
         isNull(projectTable.deletedAt),
       ),
     )
