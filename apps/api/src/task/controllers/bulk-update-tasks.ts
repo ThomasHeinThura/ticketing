@@ -32,7 +32,7 @@ type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 type ItemResult =
   | { taskId: string; success: true }
   | { taskId?: string; success: false; error: string };
-type DeferredEvent = { type: string; data: unknown };
+type DeferredEvent = () => Promise<void>;
 
 async function resolveBulkLabel(
   tx: DbOrTx,
@@ -216,20 +216,21 @@ async function bulkUpdateTasks({
               .set({ status, columnId: column?.id ?? null })
               .where(eq(taskTable.id, taskId))
               .returning({ id: taskTable.id });
-            itemEvents.push({
-              type: "task.status_changed",
-              data: {
+            itemEvents.push(() =>
+              publishEvent("task.status_changed", {
                 taskId,
                 projectId: task.projectId,
                 userId,
                 newStatus: status,
                 type: "status_changed",
-              },
-            });
-            itemEvents.push({
-              type: "task-relation.refresh",
-              data: { projectId: task.projectId, userId },
-            });
+              }),
+            );
+            itemEvents.push(() =>
+              publishEvent("task-relation.refresh", {
+                projectId: task.projectId,
+                userId,
+              }),
+            );
             return updated ? 1 : 0;
           }
 
@@ -240,16 +241,15 @@ async function bulkUpdateTasks({
               .set({ priority })
               .where(eq(taskTable.id, taskId))
               .returning({ id: taskTable.id });
-            itemEvents.push({
-              type: "task.priority_changed",
-              data: {
+            itemEvents.push(() =>
+              publishEvent("task.priority_changed", {
                 taskId,
                 projectId: task.projectId,
                 userId,
                 newPriority: priority,
                 type: "priority_changed",
-              },
-            });
+              }),
+            );
             return updated ? 1 : 0;
           }
 
@@ -272,19 +272,23 @@ async function bulkUpdateTasks({
               .set({ userId: assigneeId })
               .where(eq(taskTable.id, taskId))
               .returning({ id: taskTable.id });
-            itemEvents.push({
-              type: assigneeId ? "task.assignee_changed" : "task.unassigned",
-              data: {
-                taskId,
-                projectId: task.projectId,
-                userId,
-                oldAssignee: task.userId,
-                newAssignee: newAssigneeName,
-                newAssigneeId: assigneeId,
-                title: task.title,
-                type: assigneeId ? "assignee_changed" : "unassigned",
-              },
-            });
+            const eventData = {
+              taskId,
+              projectId: task.projectId,
+              userId,
+              oldAssignee: task.userId,
+              newAssignee: newAssigneeName,
+              newAssigneeId: assigneeId,
+              title: task.title,
+              type: assigneeId ? "assignee_changed" : "unassigned",
+            };
+            if (assigneeId) {
+              itemEvents.push(() =>
+                publishEvent("task.assignee_changed", eventData),
+              );
+            } else {
+              itemEvents.push(() => publishEvent("task.unassigned", eventData));
+            }
             return updated ? 1 : 0;
           }
 
@@ -294,15 +298,14 @@ async function bulkUpdateTasks({
               .where(eq(taskTable.id, taskId))
               .returning({ id: taskTable.id });
             if (deleted) {
-              itemEvents.push({
-                type: "task.deleted",
-                data: {
+              itemEvents.push(() =>
+                publishEvent("task.deleted", {
                   taskId,
                   projectId: task.projectId,
                   userId,
                   title: task.title,
-                },
-              });
+                }),
+              );
             }
             return deleted ? 1 : 0;
           }
@@ -330,15 +333,14 @@ async function bulkUpdateTasks({
               })
               .returning({ id: labelTable.id });
             if (inserted) {
-              itemEvents.push({
-                type: "task.label_assigned",
-                data: {
+              itemEvents.push(() =>
+                publishEvent("task.label_assigned", {
                   projectId: task.projectId,
                   taskId,
                   userId,
                   type: "label_assigned",
-                },
-              });
+                }),
+              );
             }
             return inserted ? 1 : 0;
           }
@@ -357,17 +359,16 @@ async function bulkUpdateTasks({
               )
               .returning();
             if (deleted) {
-              itemEvents.push({
-                type: "task.label_unassigned",
-                data: {
+              itemEvents.push(() =>
+                publishEvent("task.label_unassigned", {
                   label: deleted,
                   task,
                   projectId: task.projectId,
                   taskId,
                   userId,
                   type: "label_unassigned",
-                },
-              });
+                }),
+              );
             }
             return deleted ? 1 : 0;
           }
@@ -378,9 +379,8 @@ async function bulkUpdateTasks({
               .set({ dueDate: parsedDate })
               .where(eq(taskTable.id, taskId))
               .returning({ id: taskTable.id });
-            itemEvents.push({
-              type: "task.due_date_changed",
-              data: {
+            itemEvents.push(() =>
+              publishEvent("task.due_date_changed", {
                 taskId,
                 projectId: task.projectId,
                 userId,
@@ -388,8 +388,8 @@ async function bulkUpdateTasks({
                 newDueDate: parsedDate,
                 title: task.title,
                 type: "due_date_changed",
-              },
-            });
+              }),
+            );
             return updated ? 1 : 0;
           }
           default:
@@ -417,7 +417,7 @@ async function bulkUpdateTasks({
     }
   }
 
-  for (const event of events) await publishEvent(event.type, event.data);
+  for (const publish of events) await publish();
 
   return {
     success: true,
