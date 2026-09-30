@@ -23,6 +23,18 @@ export type VerifiedEntraClaims = {
   _claim_sources?: unknown;
 };
 
+export type IdentityDomainOwner = {
+  domain: string;
+  identityConnectionId: string;
+};
+
+export type IdentityConnectionContext = Pick<
+  IdentityConnectionDraft,
+  "tenantId" | "issuer"
+> & {
+  identityConnectionId: string;
+};
+
 export type NormalisedEntraIdentity = {
   subject: { oid: string; tid: string };
   address: string;
@@ -36,7 +48,9 @@ export type IdentityRejectionReason =
   | "invalid_subject"
   | "invalid_groups"
   | "no_usable_address"
-  | "unverified_address";
+  | "unverified_address"
+  | "domain_bound_elsewhere"
+  | "ambiguous_domain_binding";
 
 export type IdentityClaimResult =
   | { ok: true; identity: NormalisedEntraIdentity }

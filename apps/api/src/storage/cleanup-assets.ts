@@ -8,6 +8,7 @@ import {
 } from "../database/schema";
 import { deleteStorageObject } from "./index";
 
+type DbOrTx = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
 const ASSET_URL_PATTERN = /\/api\/asset\/([a-z0-9]+)/gi;
 
 export function extractAssetIds(
@@ -137,8 +138,11 @@ export async function deleteOrphanedAssets(
   await db.delete(assetTable).where(inArray(assetTable.id, deletedAssetIds));
 }
 
-export async function getTaskAssetKeys(taskId: string): Promise<string[]> {
-  const assets = await db
+export async function getTaskAssetKeys(
+  taskId: string,
+  executor: DbOrTx = db,
+): Promise<string[]> {
+  const assets = await executor
     .select({ objectKey: assetTable.objectKey })
     .from(assetTable)
     .where(eq(assetTable.taskId, taskId));

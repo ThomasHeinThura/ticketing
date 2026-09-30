@@ -5,17 +5,23 @@ import { columnTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
 import {
-  assertAssignableUser,
+  assertAssignableUserAndLockMembership,
   getProjectWorkspaceId,
 } from "../../utils/assert-assignable-user";
+import { rejectNulByte } from "../../utils/reject-nul-byte";
+import {
+  validateAndParseDate,
+  validateDateRange,
+} from "../../utils/validate-dates";
+import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 async function updateTask(
   id: string,
   title: string,
   status: string,
-  startDate: Date | undefined,
-  dueDate: Date | undefined,
+  startDate: string | undefined,
+  dueDate: string | undefined,
   projectId: string,
   description: string,
   priority: string,
@@ -28,7 +34,6 @@ async function updateTask(
       id: taskTable.id,
       description: taskTable.description,
       status: taskTable.status,
-      projectId: taskTable.projectId,
     })
     .from(taskTable)
     .where(eq(taskTable.id, id))
@@ -40,51 +45,63 @@ async function updateTask(
     });
   }
 
-  if (projectId !== existingTask.projectId) {
-    throw new HTTPException(400, {
-      message: "Use the task move endpoint to move tasks between projects",
-    });
-  }
-
-  // #202: unconditional, and hoisted above the assignment branch below. It used to
-  // run only when an assignee was being set (`getProjectWorkspaceId` was called
-  // inside `if (normalizedUserId)`), so a title/status/date edit with no assignee
-  // skipped the check entirely and could still write to a task in a soft-deleted
-  // project (#187, PR-16). The returned workspace id is reused by
-  // `assertAssignableUser` rather than looked up a second time.
-  const projectWorkspaceId = await getProjectWorkspaceId(projectId);
-
-  await assertValidTaskStatus(status, projectId);
-
   const normalizedUserId = userId?.trim() || undefined;
 
-  if (normalizedUserId) {
-    await assertAssignableUser(normalizedUserId, projectWorkspaceId);
-  }
-
-  const column = await db.query.columnTable.findFirst({
-    where: and(
-      eq(columnTable.projectId, projectId),
-      eq(columnTable.slug, status),
-    ),
-  });
-
-  const [updatedTask] = await db
-    .update(taskTable)
-    .set({
-      title,
-      status,
-      columnId: column?.id ?? null,
-      startDate: startDate || null,
-      dueDate: dueDate || null,
-      projectId,
-      description,
-      priority,
-      position,
-      userId: normalizedUserId ?? null,
-    })
-    .where(eq(taskTable.id, id))
-    .returning();
+  const { existingTask: lockedTask, updatedTask } = await db.transaction(
+    async (tx) => {
+      const lockedTask = await lockTaskAndAssertProjectLive(tx, id);
+      if (projectId !== lockedTask.projectId) {
+        throw new HTTPException(400, {
+          message: "Use the task move endpoint to move tasks between projects",
+        });
+      }
+      // Keep field validation behind the locked source liveness check.
+      const parsedStartDate =
+        startDate !== undefined
+          ? validateAndParseDate(startDate, "startDate")
+          : undefined;
+      const parsedDueDate =
+        dueDate !== undefined
+          ? validateAndParseDate(dueDate, "dueDate")
+          : undefined;
+      validateDateRange(parsedStartDate, parsedDueDate);
+      if (normalizedUserId) {
+        rejectNulByte(normalizedUserId, "Assignee id");
+      }
+      const projectWorkspaceId = await getProjectWorkspaceId(projectId, tx);
+      await assertValidTaskStatus(status, projectId, tx);
+      if (normalizedUserId) {
+        await assertAssignableUserAndLockMembership(
+          normalizedUserId,
+          projectWorkspaceId,
+          tx,
+        );
+      }
+      const column = await tx.query.columnTable.findFirst({
+        where: and(
+          eq(columnTable.projectId, projectId),
+          eq(columnTable.slug, status),
+        ),
+      });
+      const [updatedTask] = await tx
+        .update(taskTable)
+        .set({
+          title,
+          status,
+          columnId: column?.id ?? null,
+          startDate: parsedStartDate || null,
+          dueDate: parsedDueDate || null,
+          projectId,
+          description,
+          priority,
+          position,
+          userId: normalizedUserId ?? null,
+        })
+        .where(eq(taskTable.id, id))
+        .returning();
+      return { existingTask: lockedTask, updatedTask };
+    },
+  );
 
   if (!updatedTask) {
     throw new HTTPException(500, {
@@ -92,12 +109,15 @@ async function updateTask(
     });
   }
 
-  if (existingTask.status !== status) {
+  const previousStatus = lockedTask.status;
+  const previousDescription = lockedTask.description;
+
+  if (previousStatus !== status) {
     await publishEvent("task.status_changed", {
       taskId: updatedTask.id,
       projectId: updatedTask.projectId,
       userId: currentUserId,
-      oldStatus: existingTask.status,
+      oldStatus: previousStatus,
       newStatus: status,
       title: updatedTask.title,
       assigneeId: updatedTask.userId,
@@ -118,8 +138,8 @@ async function updateTask(
     userId: currentUserId,
   });
 
-  if (existingTask.description !== description) {
-    deleteOrphanedAssets(existingTask.description, description, {
+  if (previousDescription !== description) {
+    deleteOrphanedAssets(previousDescription, description, {
       taskId: id,
     }).catch(() => {});
   }
