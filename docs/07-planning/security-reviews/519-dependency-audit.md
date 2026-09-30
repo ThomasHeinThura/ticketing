@@ -16,3 +16,7 @@ Residuals: four moderate `ip-address@10.3.1` advisories in the API dependency gr
 (patched in `>=10.7.1`) and one moderate `fast-uri@3.1.7` advisory in the development
 graph (patched in `>=3.1.8`). No live SMTP relay test was performed. All required
 protected checks must pass before merge.
+
+The only commit after the reviewed code head is `f242cc78249fdbbcdc580c27c7ca5d9b2fc447e6`,
+which adds this review artifact. No dependency manifest, lockfile, or source file changed
+after the reviewed head.
