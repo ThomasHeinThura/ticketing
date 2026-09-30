@@ -99,6 +99,20 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | `prerequisite.overdue` | The reminders job finds a blocking prerequisite past due | — | ✅ | ✅ | `prerequisiteId`, `dueDate` |
 | `budget.threshold_reached` | Actual + committed crosses 75 % or 90 % of planned | — | ✅ | ✅ | `budgetId`, `threshold`, `currency` |
 
+### Views
+
+| Key | Emitted when | A | W | N | Payload |
+| --- | --- | :-: | :-: | :-: | --- |
+| `saved_view.created` | A saved view is created (search-and-saved-views.md SV-14) | — | — | — | `savedViewId`, `workspaceId`, `visibility` |
+| `saved_view.updated` | A saved view's name, visibility, sharing, layout or query changes | — | — | — | `savedViewId`, `workspaceId` |
+| `saved_view.deleted` | A saved view is deleted | — | — | — | `savedViewId`, `workspaceId` |
+| `saved_view.pinned` | A person pins or unpins a view to their sidebar (SV-20) | — | — | — | `savedViewId`, `workspaceId`, `pinned` |
+
+Not yet an automation trigger, webhook event or notification source — nothing in
+[automations.md](../03-features/automations.md) or
+[webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) names a saved-view
+trigger today, so all three columns are `—` until one does.
+
 ### Workspace
 
 **Current canon, not inherited.** Unlike every `task.*` / `comment.*` key in the

@@ -69,6 +69,7 @@ const RESOURCE_NOT_FOUND_MESSAGE: Record<
   | "comment"
   | "column"
   | "workflowRule"
+  | "savedView"
   | "workflow"
   | "workflowVersion",
   string
@@ -80,6 +81,7 @@ const RESOURCE_NOT_FOUND_MESSAGE: Record<
   comment: "Comment not found",
   column: "Column not found",
   workflowRule: "Workflow rule not found",
+  savedView: "Saved view not found",
   // #31 -- workflow persistence (see `workflow/policy.ts` for the routes these back).
   workflow: "Workflow not found",
   workflowVersion: "Workflow version not found",
@@ -100,6 +102,7 @@ type WorkspaceIdSource =
         | "comment"
         | "column"
         | "workflowRule"
+        | "savedView"
         | "workflow"
         | "workflowVersion";
       idKey: string;
@@ -401,6 +404,7 @@ async function lookupWorkspaceId(
     | "comment"
     | "column"
     | "workflowRule"
+    | "savedView"
     | "workflow"
     | "workflowVersion",
   id: string,
@@ -648,6 +652,30 @@ async function lookupWorkspaceId(
           : null;
       }
 
+      // #24/#29: `saved_view.workspace_id` is a plain, denormalised column (the same
+      // shape as `label`'s case above), not reached through a project join -- a saved
+      // view's own `scope`/`scope_id` is the QUERY's target context, unrelated to which
+      // workspace the view row itself belongs to (search-and-saved-views.md SV-15).
+      case "savedView": {
+        const [savedView] = await db
+          .select({ workspaceId: schema.savedViewTable.workspaceId })
+          .from(schema.savedViewTable)
+          .where(
+            and(
+              eq(schema.savedViewTable.id, id),
+              reachableWorkspacePredicate(
+                schema.savedViewTable.workspaceId,
+                userId,
+                apiKeyId,
+              ),
+            ),
+          )
+          .limit(1);
+        return savedView?.workspaceId
+          ? { workspaceId: savedView.workspaceId }
+          : null;
+      }
+
       // #31 -- `workflow` carries its own `workspaceId` directly, same shape as `label`.
       case "workflow": {
         const [workflow] = await db
@@ -775,6 +803,11 @@ export const workspaceAccess = {
   fromWorkflowRule: (idKey = "id") =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "workflowRule", idKey }],
+    }),
+
+  fromSavedView: (idKey = "id") =>
+    workspaceAccessMiddleware({
+      sources: [{ type: "lookup", resource: "savedView", idKey }],
     }),
 
   // #31 -- workflow persistence.

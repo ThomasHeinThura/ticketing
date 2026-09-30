@@ -87,6 +87,7 @@ import { rejectNulByte } from "./utils/reject-nul-byte";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
+import view from "./view";
 import workItem from "./work-item";
 import workflow from "./workflow";
 import workflowRule from "./workflow-rule";
@@ -1040,6 +1041,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
   const workItemApi = api.route("/", workItem);
   const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
+  const viewApi = api.route("/views", view);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
@@ -1209,6 +1211,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     taskRelationApi,
     timeEntryApi,
     userApi,
+    viewApi,
     workflowApi,
     workflowRuleApi,
     workItemApi,
@@ -1431,6 +1434,7 @@ const {
   taskRelationApi,
   timeEntryApi,
   userApi,
+  viewApi,
   workflowApi,
   workflowRuleApi,
   workItemApi,
@@ -1495,6 +1499,7 @@ export type AppType =
   | typeof invitationApi
   | typeof workspaceApi
   | typeof userApi
+  | typeof viewApi
   | typeof invitationPublicApi
   | typeof oauthApi
   | typeof capabilitiesApi;
