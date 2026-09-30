@@ -3,6 +3,12 @@ import { expect, test } from "@playwright/test";
 test("staff can create, list, edit, assign, and read work-item activity", async ({
   page,
 }) => {
+  // This journey performs several full navigations/reloads to verify persisted
+  // preferences, comment drafts, capability changes, and stale-content removal.
+  // Keep its timeout large enough for the real browser flow instead of letting
+  // the final capability-gated assignment control be cut off mid-load.
+  test.setTimeout(60_000);
+
   const workspaceId = "ws-e2e";
   const projectId = "project-e2e";
   const typeId = "type-e2e";
