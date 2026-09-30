@@ -1122,6 +1122,39 @@ test("G8 rejects workflow defaults that redirect the visual step", async () => {
   );
 });
 
+test("G8 rejects workflow-wide Bash startup code that can replace pnpm", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = original.replace(
+    '  DO_NOT_TRACK: "1"',
+    '  DO_NOT_TRACK: "1"\n  BASH_ENV: scripts/ci/bash-env.sh',
+  );
+  const result = await runVisualScope({ ciWorkflow });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /unconditional, failure-propagating visual regression/,
+  );
+});
+
+test("G8 rejects a second root jobs mapping that can replace the visual job", async () => {
+  const original = await readFile(
+    path.join(repoRoot, ".github/workflows/ci-full.yml"),
+    "utf8",
+  );
+  const ciWorkflow = `${original}\njobs:\n  skipped:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo skipped\n`;
+  const result = await runVisualScope({ ciWorkflow });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /unconditional, failure-propagating visual regression/,
+  );
+});
+
 test("G8 rejects a quoted job condition that the workflow reader cannot classify", async () => {
   const original = await readFile(
     path.join(repoRoot, ".github/workflows/ci-full.yml"),
