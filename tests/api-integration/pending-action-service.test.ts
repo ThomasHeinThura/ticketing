@@ -339,6 +339,35 @@ describe("pending-action service persistence", () => {
     expect(rows).toHaveLength(0);
   });
 
+  it.each([
+    ["live", null, null, true],
+    ["archived", new Date(), null, false],
+    ["soft-deleted", null, new Date(), false],
+  ] as const)(
+    "PA-1: accepts a work-item deletion request only when its project is %s",
+    async (_state, archivedAt, deletedAt, isLive) => {
+      await db
+        .update(schema.projectTable)
+        .set({ archivedAt, deletedAt })
+        .where(eq(schema.projectTable.id, projectId));
+
+      if (isLive) {
+        const response = await createPendingAction(requestInput());
+        expect(response.pendingActionId).toBeTruthy();
+        expect(await db.select().from(schema.pendingActionTable)).toHaveLength(
+          1,
+        );
+      } else {
+        await expect(createPendingAction(requestInput())).rejects.toMatchObject(
+          { status: 404 },
+        );
+        expect(await db.select().from(schema.pendingActionTable)).toHaveLength(
+          0,
+        );
+      }
+    },
+  );
+
   it("PA-4/PA-9: rejects an API-key credential without an ID before writing anything", async () => {
     const input = {
       ...requestInput(),
