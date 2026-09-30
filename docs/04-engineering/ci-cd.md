@@ -39,7 +39,9 @@ As of 2026-09-23, `domain coverage (90%)` is required alongside the contexts lis
 repository's active ruleset. The full-stage `integration - Postgres 18`,
 `e2e - protected-route redirect`, and `a11y - accessibility (G4, axe)` contexts are also
 required; do not infer that a workflow configured to run before merge is enforced unless its
-exact context appears in the ruleset.
+exact context appears in the ruleset. The newly enabled G11 job reports
+`performance - budgets (G11)`; add that exact context to the live ruleset before treating it as
+merge-blocking.
 
 ```
 ┌─ Setup ──────────────────────────────────────────┐
@@ -81,7 +83,7 @@ exact context appears in the ruleset.
 ├─ Build ──────────────────────────────────────────┤
 │ pnpm build               all apps and packages   │
 │ check:bundle-purity      G12 — portal is clean   │
-│ check:bundle-size        G11 — size budgets      │
+│ pnpm check:bundle-size   G11 — size budgets      │
 │ helm lint + helm template   charts/taskdesk      │
 └──────────────────────────────────────────────────┘
 ```
@@ -163,12 +165,16 @@ sharded four ways:**
 ```
 
 The current Playwright suite is a real-browser smoke for the already-specified logged-out
-protected-route redirect and its preserved destination. The `security`, `reduced-motion`,
-and `mobile-320` project commands above document future suites; none are enabled yet. The
-current smoke does not yet satisfy authenticated agent/portal journeys; these still need
-deterministic application fixtures and acceptance flows. The `e2e - protected-route
-redirect` smoke and G4's `a11y - accessibility (G4, axe)` scan are required branch-protection
-status checks.
+protected-route redirect and its preserved destination. G11 runs against the production web
+build: Playwright/CDP applies the specified Fast 4G and 4× CPU throttle to sign-in LCP, CLS,
+click-to-paint interaction and sign-in-to-sign-up transition measurements. Each metric uses
+a median of three samples, with one repeated set if that median fails. Board/list render and
+board-drag measurements still need deterministic authenticated data fixtures; the performance
+job does not report those rows as passing. The `security`, `reduced-motion`, and `mobile-320`
+project commands above document future suites; none are enabled yet. The current smoke does
+not yet satisfy authenticated agent/portal journeys; these still need deterministic
+application fixtures and acceptance flows. The `e2e - protected-route redirect` smoke and
+G4's `a11y - accessibility (G4, axe)` scan are required branch-protection status checks.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.

@@ -14,6 +14,15 @@ export default defineConfig({
   plugins: [
     tanstackRouter({
       autoCodeSplitting: true,
+      codeSplittingOptions: {
+        defaultBehavior: [
+          ["loader"],
+          ["component"],
+          ["pendingComponent"],
+          ["errorComponent"],
+          ["notFoundComponent"],
+        ],
+      },
       // Keep co-located route tests out of the generated route tree.
       routeFileIgnorePattern: "\\.test\\.tsx?$",
     }),
@@ -39,12 +48,14 @@ export default defineConfig({
     },
   },
   build: {
+    // G11's deterministic bundle budget reads Rollup's own entry/import graph.
+    manifest: true,
     // "hidden" emits source maps but does not reference them from the bundle,
     // so they are built for local debugging and never served to end users.
     // kaneo needed them for Sentry symbolication; that consumer is gone, and
     // hidden remains the right default because it leaks nothing.
     sourcemap: "hidden",
-    rollupOptions: {},
+    rolldownOptions: {},
     commonjsOptions: {
       include: [/better-auth/, /node_modules/],
       transformMixedEsModules: true,

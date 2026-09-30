@@ -6,9 +6,10 @@
 #
 # The E2E job currently runs a browser-level logged-out redirect smoke. The full
 # agent/portal journey suite still needs deterministic browser fixtures and acceptance flows.
-# The a11y job scans every UI Storybook story and tagged browser screen. Performance still
-# needs scope/budgets; visual baselines need a deterministic screen fixture. Do not treat the
-# remaining `if: false` jobs as passing gates or make their skipped statuses required.
+# The a11y job scans every UI Storybook story and tagged browser screen. G11 runs its current
+# supported sign-in journey on the production build; authenticated list/board measurements
+# join the same suite when their deterministic fixtures land. Visual baselines still need a
+# deterministic screen fixture. Do not treat the remaining `if: false` job as passing.
 
 name: CI - full
 
@@ -71,7 +72,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - name: Build the web app and workspace dependencies
-        run: pnpm build
+        run: VITE_API_URL="" pnpm build
       - name: Install Chromium
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Run browser smoke
@@ -92,7 +93,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - name: Build the web app and workspace dependencies
-        run: pnpm build
+        run: VITE_API_URL="" pnpm build
       - name: Install Chromium
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Scan Storybook stories and browser screens
@@ -115,9 +116,23 @@ jobs:
       - run: exit 1
 
   performance:
-    name: NOT ENABLED - performance budgets (G11)
-    if: false
-    # Blocked by: browser performance metrics and budgets are not specified.
+    name: performance - budgets (G11)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - run: exit 1
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: Build the production web app
+        run: VITE_API_URL="" pnpm build
+      - name: Install Chromium
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Run G11 browser performance budgets
+        run: pnpm test:perf
+      - name: Upload performance browser evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-performance
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7

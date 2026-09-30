@@ -155,20 +155,26 @@ Measured against a seeded dataset in CI.
 | Board drag, a scripted 2 s drag | p95 frame time < 20 ms, median of three runs |
 
 A budget regression fails the build. Raising a budget requires a decision log entry. Bundle
-sizes are measured by `size-limit` on the two entry bundles; field INP is observed in
+sizes are measured with Node's deterministic `gzipSync` over every initial JavaScript and CSS
+asset in Vite's static entry-import closure (1 KB = 1,000 bytes); field INP is observed in
 production ([observability.md](../01-architecture/observability.md)), not gated in CI — a
-shared runner cannot measure it.
+shared runner cannot measure it. The CI gate currently exercises the shipped sign-in journey
+and agent bundle. The current route-transition sample is sign-in to sign-up; the specified
+Work list to full-page work-item transition and list/board render and drag rows require the
+deterministic authenticated fixtures named in the target-route column. They are not
+represented as passing until those fixtures exist. A portal entry is measured automatically
+at the 200 KB budget when introduced.
 
-**Measurement, per metric** (the harness this gate needs, not yet built):
+**Measurement, per metric** (the current harness and remaining fixture-dependent rows):
 
 | Metric | Tool | Throttling | Target route | Sample / flake policy |
 | --- | --- | --- | --- | --- |
-| LCP, CLS, route transition | Playwright, `PerformanceObserver` marks read via CDP | Network: Lighthouse's "Fast 4G" profile (1.6 Mbps down / 750 Kbps up / 150 ms RTT) via `Network.emulateNetworkConditions`; CPU: 4× slowdown via `Emulation.setCPUThrottlingRate` | `Work — list` (seeded, P1's canonical list surface) → `Work item — full page` for the transition row | Median of three runs; one automatic re-run on a failing sample before the build fails, per metric |
+| LCP, CLS, route transition | Playwright `PerformanceObserver` marks; CDP applies throttling | Network: Lighthouse's "Fast 4G" profile (1.6 Mbps down / 750 Kbps up / 150 ms RTT) via `Network.emulateNetworkConditions`; CPU: 4× slowdown via `Emulation.setCPUThrottlingRate` | `Work — list` (seeded, P1's canonical list surface) → `Work item — full page` for the transition row | Median of three runs; one automatic re-run on a failing sample before the build fails, per metric |
 | Interaction latency (INP proxy) | Playwright, timestamped click-to-paint on the named core journeys (`G10`'s list) | Same profile as above | The journey's own screen | Median of three runs, same re-run policy |
 | Board render (200 items) | Playwright, time from navigation to last row painted | Unthrottled — measures the app's own render cost, not the network | `Work — board`, seeded | Median of three runs |
 | List render (500 rows) | Same method | Unthrottled | `Work — list`, seeded | Median of three runs |
 | Board drag (p95 frame time) | Already specified above — a scripted 2 s drag, median of three runs | Unthrottled | `Work — board` | As stated in the table row |
-| Agent / portal bundle size | `size-limit` | n/a | n/a | Single measurement; a regression fails immediately, no re-run (deterministic) |
+| Agent / portal bundle size | Node `gzipSync` over the static entry-import closure in Vite's manifest, including CSS | n/a | n/a | Single measurement; a regression fails immediately, no re-run (deterministic) |
 
 CPU/network throttling applies only to the metrics a real user's device and connection
 would affect (LCP, INP, CLS, route transition); render-time and bundle-size rows measure

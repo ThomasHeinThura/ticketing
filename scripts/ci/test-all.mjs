@@ -201,10 +201,10 @@ const manifest = [
     why: "apps/web builds one bundle. G12 is 'no agent module in the portal bundle', and the agent/portal split is #9.",
   },
   {
-    gate: "check:bundle-size",
+    gate: "pnpm check:bundle-size",
     stage: "fast",
-    run: null,
-    why: "G11's budgets are not written down anywhere yet, and there is no portal bundle to measure.",
+    run: ["pnpm", "check:bundle-size"],
+    note: "G11 deterministically measures the initial static-import closure of the built agent entry against 350 KB gzip; Vite manifest discovery automatically activates the 200 KB gzip portal budget when that entry is introduced.",
   },
   {
     gate: "helm lint + helm template",
@@ -257,8 +257,8 @@ const manifest = [
   {
     gate: "pnpm test:perf",
     stage: "full",
-    run: null,
-    why: "no Playwright suite and no performance budgets (G11).",
+    run: ["pnpm", "test:perf"],
+    note: "G11 uses Playwright/CDP Fast 4G and 4× CPU throttling for the shipped sign-in journey, with median-of-three sampling and one retry per failing metric. The seeded work list/board render and drag rows await deterministic authenticated fixtures.",
   },
 ];
 

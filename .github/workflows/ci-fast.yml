@@ -6,7 +6,9 @@
 # and the `gates-declared` job below fails if they drift apart.
 #
 # Gates that cannot exist yet — check:queries, check:inventory, test:mcp,
-# check:bundle-purity, check:bundle-size — have no job here on purpose. `pnpm test:all
+# check:bundle-purity — have no job here on purpose. `check:bundle-size` runs after build,
+# enforces the shipped agent entry's 350 KB gzip budget, and automatically applies the
+# specified 200 KB gzip budget when a portal entry is added. `pnpm test:all
 # --list` prints each one with the reason and the issue that unblocks it. A job that passed
 # because it found nothing to check would look like coverage and be worth less than
 # nothing. (`check:ui` is enabled, in the `registers` job below — #9's Radix-tracking
@@ -267,7 +269,13 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: ./.github/actions/setup
       - name: pnpm build
-        run: pnpm build
+        # Match Dockerfile's same-origin production build; VITE_API_URL is inlined at build time.
+        run: VITE_API_URL="" pnpm build
+      - name: pnpm check:bundle-size
+        # G11 measures the initial static-import closure of the agent entry. The checker
+        # discovers a future portal entry from Vite's manifest and then enforces its 200 KB
+        # budget; adding portal output cannot silently skip measurement.
+        run: pnpm check:bundle-size
 
   # Deliberately two jobs, not one. As a single "supply chain" job the first failing step
   # stopped the second, so a red dependency audit hid whether the repository had a secret in
