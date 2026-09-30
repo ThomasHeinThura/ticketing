@@ -11,18 +11,22 @@ import {
 } from "./identity.js";
 import { canReachCustomerPortalResource } from "./portal.js";
 import type {
+  IdentityConnectionContext,
   IdentityConnectionDraft,
+  IdentityDomainOwner,
   IdentityRoleMapping,
   VerifiedEntraClaims,
 } from "./types.js";
 
 const TENANT_ID = "12345678-1234-1234-1234-123456789012";
 const ISSUER = `https://login.microsoftonline.com/${TENANT_ID}/v2.0`;
+const CONNECTION_ID = "connection-1";
 
 function connection(
   overrides: Partial<IdentityConnectionDraft> = {},
-): IdentityConnectionDraft {
+): IdentityConnectionContext & IdentityConnectionDraft {
   return {
+    identityConnectionId: CONNECTION_ID,
     portalScope: "agent",
     organisationId: null,
     tenantId: TENANT_ID,
@@ -32,6 +36,14 @@ function connection(
     defaultRoleIsCustomer: false,
     ...overrides,
   };
+}
+
+function normalise(
+  identityClaims: VerifiedEntraClaims,
+  identityConnection = connection(),
+  domainOwners: readonly IdentityDomainOwner[] = [],
+) {
+  return normaliseEntraClaims(identityClaims, identityConnection, domainOwners);
 }
 
 function claims(
@@ -57,10 +69,7 @@ function scimUser(overrides: Record<string, unknown> = {}) {
 describe("P3 identity core", () => {
   it("IP-26/IP-27: binds the Entra subject to tenant and issuer, then applies address precedence", () => {
     expect(
-      normaliseEntraClaims(
-        claims({ email: "first@example.com" }),
-        connection(),
-      ),
+      normalise(claims({ email: "first@example.com" }), connection()),
     ).toEqual({
       ok: true,
       identity: {
@@ -70,11 +79,12 @@ describe("P3 identity core", () => {
         groupObjectIds: [],
       },
     });
+    expect(normalise(claims({ tid: "another-tenant" }), connection())).toEqual({
+      ok: false,
+      reason: "tenant_mismatch",
+    });
     expect(
-      normaliseEntraClaims(claims({ tid: "another-tenant" }), connection()),
-    ).toEqual({ ok: false, reason: "tenant_mismatch" });
-    expect(
-      normaliseEntraClaims(
+      normalise(
         claims({ iss: "https://login.microsoftonline.com/common/v2.0" }),
         connection(),
       ),
@@ -83,7 +93,7 @@ describe("P3 identity core", () => {
 
   it("IP-9/IP-27: falls back through usable addresses and fails closed without one", () => {
     expect(
-      normaliseEntraClaims(
+      normalise(
         claims({
           email: "invalid",
           preferred_username: "also invalid",
@@ -96,19 +106,19 @@ describe("P3 identity core", () => {
       identity: { address: "last@example.com", addressUsed: "upn" },
     });
     expect(
-      normaliseEntraClaims(
+      normalise(
         claims({ preferred_username: "not-an-email", upn: "also invalid" }),
         connection(),
       ),
     ).toEqual({ ok: false, reason: "no_usable_address" });
     expect(
-      normaliseEntraClaims(
+      normalise(
         claims({ email: "person@example.com", email_verified: false }),
         connection(),
       ),
     ).toEqual({ ok: false, reason: "unverified_address" });
     expect(
-      normaliseEntraClaims(
+      normalise(
         claims({
           email: `${"a".repeat(200_000)}!@example.com`,
           preferred_username: "invalid",
@@ -119,9 +129,135 @@ describe("P3 identity core", () => {
     ).toMatchObject({ ok: false, reason: "no_usable_address" });
   });
 
+  it("IP-9/IP-27: refuses only domains owned by another or ambiguous connection", () => {
+    const currentConnection = connection();
+    expect(
+      normalise(
+        claims({
+          email: "first@EXAMPLE.com",
+          preferred_username: "other@else.com",
+        }),
+        currentConnection,
+        [{ domain: "example.COM", identityConnectionId: CONNECTION_ID }],
+      ),
+    ).toMatchObject({ ok: true, identity: { address: "first@example.com" } });
+
+    expect(
+      normalise(claims({ email: "person@example.com" }), currentConnection, [
+        { domain: "example.com", identityConnectionId: "connection-2" },
+      ]),
+    ).toEqual({ ok: false, reason: "domain_bound_elsewhere" });
+
+    expect(
+      normalise(
+        claims({ email: "person@unbound.example" }),
+        currentConnection,
+        [{ domain: "elsewhere.example", identityConnectionId: "connection-2" }],
+      ),
+    ).toMatchObject({
+      ok: true,
+      identity: { address: "person@unbound.example" },
+    });
+
+    expect(
+      normalise(claims({ email: "person@example.com" }), currentConnection, [
+        { domain: "EXAMPLE.COM", identityConnectionId: CONNECTION_ID },
+      ]),
+    ).toMatchObject({ ok: true, identity: { address: "person@example.com" } });
+
+    expect(
+      normalise(claims({ email: "person@example.com" }), currentConnection, [
+        { domain: "example.com", identityConnectionId: CONNECTION_ID },
+        { domain: "EXAMPLE.COM", identityConnectionId: "connection-2" },
+      ]),
+    ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
+  });
+
+  it("IP-9/IP-27: rejects trailing-dot addresses and malformed configured bindings", () => {
+    expect(
+      normalise(
+        claims({
+          email: "person@example.com.",
+          preferred_username: "invalid",
+          upn: "also invalid",
+        }),
+        connection(),
+        [{ domain: "example.com", identityConnectionId: "connection-2" }],
+      ),
+    ).toEqual({ ok: false, reason: "no_usable_address" });
+
+    expect(
+      normalise(claims({ email: "person@example.com" }), connection(), [
+        { domain: "example.com.", identityConnectionId: "connection-2" },
+      ]),
+    ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
+  });
+
+  it.each([
+    "example.com ",
+    "example..com",
+    ".example.com",
+    "example.com.",
+    "-example.com",
+    "example-.com",
+    "example.c_m",
+    `${"a".repeat(64)}.com`,
+  ])("IP-9: fails closed for malformed configured domain %s", (domain) => {
+    expect(
+      normalise(claims({ email: "person@example.com" }), connection(), [
+        { domain, identityConnectionId: "connection-2" },
+      ]),
+    ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
+  });
+
+  it.each([undefined, "", "   "])(
+    "IP-9: rejects matching bindings with an empty owner id %s",
+    (identityConnectionId) => {
+      const malformedOwner = {
+        domain: "example.com",
+        identityConnectionId,
+      } as unknown as IdentityDomainOwner;
+
+      expect(
+        normalise(claims({ email: "person@example.com" }), connection(), [
+          malformedOwner,
+        ]),
+      ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
+    },
+  );
+
+  it("IP-9: rejects duplicate matching bindings when an owner id is missing", () => {
+    const missingOwner = {
+      domain: "example.com",
+    } as unknown as IdentityDomainOwner;
+    expect(
+      normalise(claims({ email: "person@example.com" }), connection(), [
+        { domain: "EXAMPLE.COM", identityConnectionId: CONNECTION_ID },
+        missingOwner,
+      ]),
+    ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
+  });
+
+  it("IP-9: rejects configured bindings with missing or non-string domains", () => {
+    const malformedBindings = [
+      { identityConnectionId: "connection-2" },
+      { domain: null, identityConnectionId: "connection-2" },
+      { domain: 42, identityConnectionId: "connection-2" },
+      null,
+    ] as unknown as IdentityDomainOwner[];
+
+    for (const binding of malformedBindings) {
+      expect(
+        normalise(claims({ email: "person@example.com" }), connection(), [
+          binding,
+        ]),
+      ).toEqual({ ok: false, reason: "ambiguous_domain_binding" });
+    }
+  });
+
   it("IP-28: accepts group object ids and ignores overage claims without a Graph lookup", () => {
     expect(
-      normaliseEntraClaims(
+      normalise(
         claims({ groups: ["group-a", "group-a", "group-b"] }),
         connection(),
       ),
@@ -130,7 +266,7 @@ describe("P3 identity core", () => {
       identity: { groupObjectIds: ["group-a", "group-b"] },
     });
     expect(
-      normaliseEntraClaims(
+      normalise(
         claims({ groups: ["ignored"], _claim_names: { groups: "src1" } }),
         connection(),
       ),
@@ -138,14 +274,11 @@ describe("P3 identity core", () => {
       ok: true,
       identity: { groupObjectIds: "overage" },
     });
+    expect(normalise(claims({ groups: "display-name" }), connection())).toEqual(
+      { ok: false, reason: "invalid_groups" },
+    );
     expect(
-      normaliseEntraClaims(claims({ groups: "display-name" }), connection()),
-    ).toEqual({ ok: false, reason: "invalid_groups" });
-    expect(
-      normaliseEntraClaims(
-        claims({ _claim_names: { groups: null } }),
-        connection(),
-      ),
+      normalise(claims({ _claim_names: { groups: null } }), connection()),
     ).toEqual({ ok: false, reason: "invalid_groups" });
   });
 

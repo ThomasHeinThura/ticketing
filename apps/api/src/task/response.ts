@@ -120,7 +120,17 @@ export const boardSchema = z
   .openapi("BoardResponse");
 
 export const bulkResultSchema = z
-  .object({ success: z.boolean(), updatedCount: z.number() })
+  .object({
+    success: z.boolean(),
+    updatedCount: z.number(),
+    results: z.array(
+      z.object({
+        taskId: z.string().optional(),
+        success: z.boolean(),
+        error: z.string().optional(),
+      }),
+    ),
+  })
   .openapi("BulkTaskResult");
 
 export const moveTaskResultSchema = z

@@ -146,7 +146,10 @@ constrained hard:
 - **The durable identity key is `(connection, issuer, subject)` plus the SCIM `externalId`**
   — never the email address, which is a changeable attribute. Organisation and portal are
   properties of the connection, resolved server-side.
-- A domain mapping is honoured only when the token carries `email_verified = true`.
+- Where a provider emits `email_verified`, it must be `true` for a domain mapping to be
+  honoured. Microsoft Entra emits no such claim; its mapped address is accepted only after
+  the connection's tenant-specific issuer and `tid` checks in IP-26 succeed. Domain
+  bindings still reject an address owned by another connection.
 - **Each email domain is bound to exactly one provider.** A token asserting `@contoso.com`
   from any other enabled provider is refused, so no second provider can be used to walk into
   Contoso's tenant.

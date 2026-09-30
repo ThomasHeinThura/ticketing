@@ -4,10 +4,15 @@ import db from "../../database";
 import { columnTable, taskTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import {
-  assertAssignableUser,
+  assertAssignableUserAndLockMembership,
   getProjectWorkspaceId,
 } from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import {
+  validateAndParseDate,
+  validateDateRange,
+} from "../../utils/validate-dates";
+import { lockProjectAndAssertLiveForTaskNumber } from "../assert-task-project-live";
 import { assertValidTaskStatus } from "../validate-task-fields";
 import { claimTaskNumber } from "./claim-task-numbers";
 
@@ -27,8 +32,8 @@ async function createTask({
   userId?: string;
   title: string;
   status: string;
-  startDate?: Date;
-  dueDate?: Date;
+  startDate?: string;
+  dueDate?: string;
   description?: string;
   priority?: string;
 }) {
@@ -36,75 +41,80 @@ async function createTask({
   const resolvedPriority = priority || "no-priority";
 
   const normalizedUserId = userId?.trim() || undefined;
-  // S5 (Opus review of PR #307, delta round): reaches `assertAssignableUser`'s and
-  // the raw `eq(userTable.id, ...)` query below unvalidated -- a NUL byte would
-  // otherwise 500 instead of a clean 400.
-  if (normalizedUserId) {
-    rejectNulByte(normalizedUserId, "Assignee id");
-  }
+  const { task: createdTask, assigneeName } = await db.transaction(
+    async (tx) => {
+      await lockProjectAndAssertLiveForTaskNumber(tx, projectId);
+      // Check request fields after the project freeze lock so a frozen board stays read-only.
+      const parsedStartDate =
+        startDate !== undefined
+          ? validateAndParseDate(startDate, "startDate")
+          : undefined;
+      const parsedDueDate =
+        dueDate !== undefined
+          ? validateAndParseDate(dueDate, "dueDate")
+          : undefined;
+      validateDateRange(parsedStartDate, parsedDueDate);
+      if (normalizedUserId) {
+        rejectNulByte(normalizedUserId, "Assignee id");
+      }
+      const workspaceId = await getProjectWorkspaceId(projectId, tx);
+      await assertValidTaskStatus(resolvedStatus, projectId, tx);
 
-  // #187: rejects a soft-deleted (or nonexistent) project before anything is created
-  // under it. `getProjectWorkspaceId` excludes soft-deleted projects the same way
-  // `get-project.ts` does, so this doubles as the project-existence check this route
-  // was otherwise missing on the no-assignee path.
-  const workspaceId = await getProjectWorkspaceId(projectId);
+      let assignee: { name: string } | undefined;
+      if (normalizedUserId) {
+        await assertAssignableUserAndLockMembership(
+          normalizedUserId,
+          workspaceId,
+          tx,
+        );
 
-  await assertValidTaskStatus(resolvedStatus, projectId);
+        [assignee] = await tx
+          .select({ name: userTable.name })
+          .from(userTable)
+          .where(eq(userTable.id, normalizedUserId));
+      }
 
-  let assignee: { name: string } | undefined;
+      const column = await tx.query.columnTable.findFirst({
+        where: and(
+          eq(columnTable.projectId, projectId),
+          eq(columnTable.slug, resolvedStatus),
+        ),
+      });
+      const [maxPositionResult] = await tx
+        .select({ maxPosition: max(taskTable.position) })
+        .from(taskTable)
+        .where(
+          and(
+            eq(taskTable.projectId, projectId),
+            column?.id
+              ? eq(taskTable.columnId, column.id)
+              : eq(taskTable.status, resolvedStatus),
+          ),
+        );
+      const nextPosition = (maxPositionResult?.maxPosition ?? 0) + 1;
 
-  if (normalizedUserId) {
-    await assertAssignableUser(normalizedUserId, workspaceId);
+      const taskNumber = await claimTaskNumber(projectId, tx);
 
-    [assignee] = await db
-      .select({ name: userTable.name })
-      .from(userTable)
-      .where(eq(userTable.id, normalizedUserId));
-  }
+      const [task] = await tx
+        .insert(taskTable)
+        .values({
+          projectId,
+          userId: normalizedUserId ?? null,
+          title: title || "",
+          status: resolvedStatus,
+          columnId: column?.id ?? null,
+          startDate: parsedStartDate || null,
+          dueDate: parsedDueDate || null,
+          description: description || "",
+          priority: resolvedPriority,
+          number: taskNumber,
+          position: nextPosition,
+        })
+        .returning();
 
-  const column = await db.query.columnTable.findFirst({
-    where: and(
-      eq(columnTable.projectId, projectId),
-      eq(columnTable.slug, resolvedStatus),
-    ),
-  });
-
-  const [maxPositionResult] = await db
-    .select({ maxPosition: max(taskTable.position) })
-    .from(taskTable)
-    .where(
-      and(
-        eq(taskTable.projectId, projectId),
-        column?.id
-          ? eq(taskTable.columnId, column.id)
-          : eq(taskTable.status, resolvedStatus),
-      ),
-    );
-
-  const nextPosition = (maxPositionResult?.maxPosition ?? 0) + 1;
-
-  const createdTask = await db.transaction(async (tx) => {
-    const taskNumber = await claimTaskNumber(projectId, tx);
-
-    const [task] = await tx
-      .insert(taskTable)
-      .values({
-        projectId,
-        userId: normalizedUserId ?? null,
-        title: title || "",
-        status: resolvedStatus,
-        columnId: column?.id ?? null,
-        startDate: startDate || null,
-        dueDate: dueDate || null,
-        description: description || "",
-        priority: resolvedPriority,
-        number: taskNumber,
-        position: nextPosition,
-      })
-      .returning();
-
-    return task;
-  });
+      return { task, assigneeName: assignee?.name };
+    },
+  );
 
   if (!createdTask) {
     throw new HTTPException(500, {
@@ -123,7 +133,7 @@ async function createTask({
 
   return {
     ...createdTask,
-    assigneeName: assignee?.name,
+    assigneeName,
   };
 }
 

@@ -5,7 +5,8 @@
  * `apps/api/src/project/controllers/create-project.ts` / `reorder-projects.ts` use
  * `1524`, `auth.ts`'s migration lock uses `2026`,
  * `workspace-membership-lock.ts`/`workspace-role-lock.ts`/`column-migration.ts`/
- * `audit/lock.ts`/`ensure-application-role.ts` use `4_002`/`4_003`/`4_004`/`4_010`/`4_011`.
+ * `label-name-lock.ts`/`audit/lock.ts`/`ensure-application-role.ts` use
+ * `4_002`/`4_003`/`4_004`/`4_007`/`4_010`/`4_011`.
  *
  * THE RACE THIS CLOSES (Opus security review of PR #432, finding F1, reproduced live).
  * `set-work-item-parent.ts` reads a proposed parent's ancestor chain and the item's own

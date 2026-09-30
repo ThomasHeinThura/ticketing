@@ -639,18 +639,18 @@ describe("API integration: workspace RBAC enforcement", () => {
         }),
       });
 
-      // Before the #307 delta round, a foreign label id resolved and then 400'd
-      // "must belong to the same workspace" -- distinguishable from the 404 a
-      // nonexistent label id already gave. `bulk-update-tasks.ts` now scopes the
-      // label lookup itself to the caller's workspace, so both are the same 404.
+      // Foreign and nonexistent labels produce the same anonymous per-item
+      // failure; the response does not reveal whether the supplied id resolved.
       const [foreignBody, nonexistentBody] = await Promise.all([
         withForeign.text(),
         withNonexistent.text(),
       ]);
       expect(withForeign.status).toBe(withNonexistent.status);
-      expect(withForeign.status).toBe(404);
+      expect(withForeign.status).toBe(200);
       expect(foreignBody).toBe(nonexistentBody);
-      expect(foreignBody).toBe("Label not found");
+      expect(JSON.parse(foreignBody)).toMatchObject({
+        results: [{ success: false, error: "Label not found" }],
+      });
 
       const copiedLabel = await db.query.labelTable.findFirst({
         where: and(
@@ -702,18 +702,18 @@ describe("API integration: workspace RBAC enforcement", () => {
         }),
       });
 
-      // Before the #307 delta round, a foreign label id resolved, then the DELETE's
-      // own workspace-scoped WHERE silently matched nothing -- a 200 with
-      // `updatedCount: 0`, distinguishable from the 404 a nonexistent label id
-      // already gave. Scoping the initial lookup makes both this same 404.
+      // Foreign and nonexistent labels produce the same anonymous per-item
+      // failure; neither lookup result is exposed by the response.
       const [foreignBody, nonexistentBody] = await Promise.all([
         withForeign.text(),
         withNonexistent.text(),
       ]);
       expect(withForeign.status).toBe(withNonexistent.status);
-      expect(withForeign.status).toBe(404);
+      expect(withForeign.status).toBe(200);
       expect(foreignBody).toBe(nonexistentBody);
-      expect(foreignBody).toBe("Label not found");
+      expect(JSON.parse(foreignBody)).toMatchObject({
+        results: [{ success: false, error: "Label not found" }],
+      });
     });
 
     it("issue #307 S1 (BLOCKING): an instance admin who is not a member of the workspace cannot bulk-delete its tasks", async () => {
