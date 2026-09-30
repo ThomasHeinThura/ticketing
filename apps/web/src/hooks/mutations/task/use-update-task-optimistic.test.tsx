@@ -122,4 +122,35 @@ describe("optimistic legacy task updates", () => {
     expect(current?.assigneeId).toBeNull();
     expect(current?.assigneeName).toBeNull();
   });
+
+  it("does not roll back a newer status after an older status request fails", async () => {
+    let rejectFirstStatus!: (error: Error) => void;
+    vi.mocked(updateTaskStatus)
+      .mockImplementationOnce(
+        () => new Promise((_resolve, reject) => (rejectFirstStatus = reject)),
+      )
+      .mockResolvedValueOnce({} as never);
+    const { result, queryClient } = setup();
+
+    let firstRequest!: Promise<unknown>;
+    act(() => {
+      firstRequest = result.current.status.mutateAsync({
+        ...task,
+        status: "in-progress",
+      });
+    });
+    await waitFor(() => {
+      expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
+        "in-progress",
+      );
+    });
+
+    await result.current.status.mutateAsync({ ...task, status: "done" });
+    rejectFirstStatus(new Error("older status update failed"));
+    await expect(firstRequest).rejects.toThrow("older status update failed");
+
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
+      "done",
+    );
+  });
 });
