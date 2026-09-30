@@ -161,8 +161,10 @@ unique key, digest values, and per-person quiet-hours fields are defined in
   Before the recent-success lookup, atomically acquire the unique
   `outbox_dedupe_reservation` keyed by `(recipient_person_id, channel, dedupe_key)`. A
   worker may insert a free key or atomically take over an expired reservation; every such
-  acquisition sets a fresh random token. It may renew a live reservation only when the same
-  candidate row and current token still own it; renewal preserves that token. Even a second
+  acquisition sets a fresh random token and `lease_expires_at` to 60 seconds after that
+  acquire/takeover operation's post-lock PostgreSQL wall-clock sample. A live reservation
+  may be renewed only when the same candidate row and current token still own it; renewal
+  preserves that token. Even a second
   worker presenting the same outbox row id cannot reacquire the live lease with a fresh
   token. A different row's active reservation means leave this candidate `pending`, set
   `next_attempt_at` to the lease expiry, and do not increment its delivery attempts.
@@ -422,10 +424,12 @@ be resolved; never substitute an administrator or event actor. It also includes 
 30-day read-purge/unread-retained, 90-day-default, and legal-hold cases: person hold retains
 that person's old read notifications, organisation hold retains notifications referencing
 that organisation even for a staff recipient, and unheld rows remain eligible. Cases described
-in `NO-17` also verify that unread notifications remain. Test a normal adapter success before the deadline, a hung adapter
-that ignores abort and is no longer awaited at 30 seconds, periodic lease renewal while
-active, no early release on timeout, reclaim only after expiry, a fresh takeover token, and
-stale-token success rejection. A second worker presenting the **same** outbox row id while
+in `NO-17` also verify that unread notifications remain. Test a normal adapter success before
+the deadline, a hung adapter that ignores abort and is no longer awaited at 30 seconds,
+periodic lease renewal while active, no early release on timeout, initial acquire and expired
+takeover both set expiry to 60 seconds after their operation's post-lock PostgreSQL
+wall-clock sample, reclaim only after expiry, a fresh takeover token, and stale-token success
+rejection. A second worker presenting the **same** outbox row id while
 its reservation is live
 must fail acquisition when presenting a fresh token and leave the first worker's token valid
 for renewal and completion. A lock-delayed timing case must hold the reservation lock across
