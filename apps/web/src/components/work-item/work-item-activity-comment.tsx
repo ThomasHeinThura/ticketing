@@ -11,6 +11,7 @@ import { TaskItemWithCheckbox } from "@/components/task/extensions/task-item-wit
 import { TaskDeskIssueLink } from "@/components/task/extensions/taskdesk-issue-link";
 import { TaskDeskMention } from "@/components/task/extensions/taskdesk-mention";
 import { isSafeLinkUrl } from "@/components/task/extensions/url-safety";
+import { getApiUrl } from "@/fetchers/get-api-url";
 
 /** Read-only Tiptap renderer for the JSON document stored on a comment. */
 export default function WorkItemActivityComment({ body }: { body: unknown }) {
@@ -63,6 +64,13 @@ function isTiptapDocument(value: unknown): value is JSONContent {
   );
 }
 
+function resolveAppAttachmentUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const match = /^\/api\/asset\/([A-Za-z0-9_-]+)$/.exec(value);
+  if (!match) return null;
+  return getApiUrl(`asset/${encodeURIComponent(match[1])}`);
+}
+
 /** Stored JSON can bypass Tiptap's paste/HTML URI checks. Drop unsafe link marks while
  * preserving their text, and make unsafe issue-link/image nodes inert on render. */
 function sanitizeCommentDocument(value: unknown): unknown {
@@ -98,13 +106,10 @@ function sanitizeCommentDocument(value: unknown): unknown {
   ) {
     sanitized.attrs = { ...sanitizedAttrs, url: "" };
   }
-  if (
-    record.type === "image" &&
-    typeof sanitizedAttrs?.src === "string" &&
-    sanitizedAttrs.src !== "" &&
-    !isSafeLinkUrl(sanitizedAttrs.src)
-  ) {
-    return null;
+  if (record.type === "image") {
+    const resolvedSrc = resolveAppAttachmentUrl(attrs?.src);
+    if (!resolvedSrc || !sanitizedAttrs) return null;
+    sanitized.attrs = { ...sanitizedAttrs, src: resolvedSrc };
   }
   return sanitized;
 }

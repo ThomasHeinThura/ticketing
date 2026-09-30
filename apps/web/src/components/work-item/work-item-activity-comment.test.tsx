@@ -9,6 +9,7 @@ vi.mock("react-i18next", () => ({
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllEnvs();
 });
 
 describe("WorkItemActivityComment", () => {
@@ -93,5 +94,50 @@ describe("WorkItemActivityComment", () => {
 
     expect(await screen.findByText("script link")).toBeInTheDocument();
     expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("renders comment images only from the configured TaskDesk asset route", async () => {
+    vi.stubEnv("VITE_API_URL", "https://api.taskdesk.test");
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    const { container } = render(
+      <QueryClientProvider client={queryClient}>
+        <WorkItemActivityComment
+          body={{
+            type: "doc",
+            content: [
+              {
+                type: "paragraph",
+                content: [
+                  {
+                    type: "image",
+                    attrs: { src: "/api/asset/asset123", alt: "valid" },
+                  },
+                  {
+                    type: "image",
+                    attrs: {
+                      src: "https://tracker.example/pixel.png",
+                      alt: "external",
+                    },
+                  },
+                ],
+              },
+            ],
+          }}
+        />
+      </QueryClientProvider>,
+    );
+
+    await screen.findByRole("img", { name: "valid" });
+    expect(
+      container.querySelector('img[src="https://tracker.example/pixel.png"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector(
+        'img[src="https://api.taskdesk.test/api/asset/asset123"]',
+      ),
+    ).toHaveAttribute("src", "https://api.taskdesk.test/api/asset/asset123");
   });
 });

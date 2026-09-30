@@ -295,7 +295,7 @@ describe("WorkItemJourney", () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
-    render(
+    const view = render(
       <QueryClientProvider client={client}>
         <WorkItemJourney item={makeItem()} onSaved={vi.fn()} />
       </QueryClientProvider>,
@@ -327,6 +327,26 @@ describe("WorkItemJourney", () => {
       description: "Notes",
       startDate: null,
       dueDate: null,
+    });
+
+    const refreshedItem = { ...makeItem(), title: "Server update", version: 8 };
+    view.rerender(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney item={refreshedItem} onSaved={vi.fn()} />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByLabelText("workItems:journey.title")).toHaveValue(
+      "My draft",
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "workItems:journey.save" }),
+    );
+
+    await waitFor(() => expect(updateWorkItem).toHaveBeenCalledTimes(2));
+    expect(updateWorkItem.mock.calls[1]?.[0]).toMatchObject({
+      key: "WLP-1",
+      version: 7,
+      title: "My draft",
     });
   });
 

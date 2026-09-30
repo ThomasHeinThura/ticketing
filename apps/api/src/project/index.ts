@@ -671,10 +671,7 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
       const apiKey = c.get("apiKey") as
         | { permissions?: Record<string, string[]> | null }
         | undefined;
-      if (
-        apiKey?.permissions &&
-        !apiKey.permissions.project?.includes("manage_settings")
-      ) {
+      if (apiKey && !apiKey.permissions?.project?.includes("manage_settings")) {
         throw new HTTPException(403, { message: "Insufficient permissions" });
       }
 

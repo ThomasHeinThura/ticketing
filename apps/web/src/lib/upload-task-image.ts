@@ -76,7 +76,13 @@ export async function uploadTaskImage({
   });
 
   return {
-    url: asset.url,
+    // Comments persist an application-relative asset reference, never the absolute
+    // API hostname returned by the upload endpoint. The read-only renderer resolves
+    // this canonical path through the configured API base URL.
+    url:
+      surface === "comment"
+        ? `/api/asset/${encodeURIComponent(asset.id)}`
+        : asset.url,
     alt: getImageAltText(file.name || "image"),
     filename: file.name || "file",
     kind: isSupportedImageFile(file) ? "image" : "attachment",

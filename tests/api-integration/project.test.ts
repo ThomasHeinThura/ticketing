@@ -23,7 +23,7 @@ function hashApiKeyForTest(key: string): string {
 
 async function createApiKeyFor(
   userId: string,
-  permissions: Record<string, string[]>,
+  permissions: Record<string, string[]> | null,
 ): Promise<string> {
   const rawKey = `taskdesk_test_${randomUUID()}`;
   const now = new Date();
@@ -34,7 +34,7 @@ async function createApiKeyFor(
     name: "project settings scope test",
     start: rawKey.slice(0, 12),
     prefix: "taskdesk",
-    permissions: JSON.stringify(permissions),
+    permissions: permissions === null ? null : JSON.stringify(permissions),
     createdAt: now,
     updatedAt: now,
   });
@@ -252,6 +252,36 @@ describe("API integration: project creation", () => {
     await expect(scopedResponse.json()).resolves.toMatchObject({
       defaultCommentVisibility: "public",
     });
+  });
+
+  it("fails closed when an API key has no stored permission map", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const rawKey = await createApiKeyFor(member.user.id, null);
+    const { app } = createApp();
+
+    const response = await app.request(`/api/project/${project.id}`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": rawKey,
+      },
+      body: JSON.stringify({
+        name: project.name,
+        icon: project.icon ?? "Layout",
+        slug: project.slug,
+        description: project.description ?? "",
+        defaultCommentVisibility: "public",
+      }),
+    });
+
+    expect(response.status).toBe(403);
+    const persistedProject = await db.query.projectTable.findFirst({
+      where: eq(schema.projectTable.id, project.id),
+    });
+    expect(persistedProject?.defaultCommentVisibility).toBe("internal");
   });
 
   it("rejects project creation for users outside the workspace", async () => {

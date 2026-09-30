@@ -84,6 +84,14 @@ function isSafeCommentLinkUrl(value: unknown): value is string {
   }
 }
 
+/** `CA-15`: comment images must reference TaskDesk's authenticated asset route.
+ * Arbitrary HTTP(S) image hosts would let a comment load third-party tracking pixels. */
+function isAppAttachmentUrl(value: unknown): value is string {
+  return (
+    typeof value === "string" && /^\/api\/asset\/[A-Za-z0-9_-]+$/.test(value)
+  );
+}
+
 /** Inspect both content nodes and marks without recursive calls. The document is size
  * bounded above, and this iterative walk also avoids stack growth on hostile nested JSON. */
 function containsUnsafeCommentLink(value: unknown): boolean {
@@ -113,8 +121,8 @@ function containsUnsafeCommentLink(value: unknown): boolean {
     ) {
       return true;
     }
-    if (record.type === "image" && attrs?.src !== undefined) {
-      if (!isSafeCommentLinkUrl(attrs.src)) return true;
+    if (record.type === "image") {
+      if (!isAppAttachmentUrl(attrs?.src)) return true;
     }
 
     pending.push(...Object.values(record));

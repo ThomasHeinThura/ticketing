@@ -151,6 +151,7 @@ function WorkItemJourneyForItem({
   const selfAssignmentOnly =
     !isCheckingPermissions && canUpdateTasks() && !canAssignTasks();
   const [editing, setEditing] = useState(false);
+  const [editVersion, setEditVersion] = useState(item.version);
   const [title, setTitle] = useState(item.title);
   const [description, setDescription] = useState(() => {
     const value = extractDescription(item.description);
@@ -258,7 +259,7 @@ function WorkItemJourneyForItem({
     mutationFn: () =>
       updateWorkItem({
         key: item.key,
-        version: item.version,
+        version: editVersion,
         title,
         description: descriptionChanged
           ? description || null
@@ -360,6 +361,7 @@ function WorkItemJourneyForItem({
     },
   });
   const startEditing = () => {
+    setEditVersion(item.version);
     setTitle(item.title);
     const value = extractDescription(item.description);
     setDescription(value.kind === "text" ? value.text : "");
