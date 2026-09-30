@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import db, { schema } from "../../database";
+import { normalizeWorkItemPermissionKey } from "../../utils/permission-key-compat";
 
 /**
  * One `workspace_role` row, `permission` parsed back into an object — matches better-auth's
@@ -34,7 +35,7 @@ function parsePermission(raw: string): Record<string, string[]> {
           );
         }
       }
-      return result;
+      return normalizeWorkItemPermissionKey(result);
     }
   } catch {
     // fall through to the empty object below

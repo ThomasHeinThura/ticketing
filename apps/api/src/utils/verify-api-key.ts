@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, eq, gt, isNull, or } from "drizzle-orm";
 import db, { schema } from "../database";
+import { normalizeWorkItemPermissionKey } from "./permission-key-compat";
 
 async function hashApiKey(key: string): Promise<string> {
   const hash = createHash("sha256").update(key).digest();
@@ -33,7 +34,7 @@ function parsePermissions(raw: string | null): Record<string, string[]> | null {
     if (actions.some((action) => typeof action !== "string")) return {};
     permissions[resource] = actions as string[];
   }
-  return permissions;
+  return normalizeWorkItemPermissionKey(permissions);
 }
 
 export async function verifyApiKey(key: string) {

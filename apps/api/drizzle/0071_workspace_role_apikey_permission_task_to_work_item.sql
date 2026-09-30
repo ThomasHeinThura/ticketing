@@ -6,6 +6,10 @@
 -- contract migration may remove `task` only after old binaries are no longer serving and
 -- the rollback window has ended.
 --
+-- New application writers mirror `work_item` grants into `task`; current readers accept a
+-- task-only value written by an old replica and prefer `work_item` if both are present.
+-- Together these cover writes both before and after this one-time backfill runs.
+--
 -- The pre-upgrade `task` value is authoritative if both keys already exist: it is what the
 -- previous code enforced. Copy it to `work_item` but retain `task` for old replicas. Replays
 -- produce the same JSON value and are safe.

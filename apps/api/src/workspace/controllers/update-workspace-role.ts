@@ -1,6 +1,10 @@
 import { statement } from "@taskdesk/permissions";
 import { and, eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
+import {
+  mirrorWorkItemPermissionForLegacyReplicas,
+  normalizeWorkItemPermissionKey,
+} from "../../utils/permission-key-compat";
 import type { WorkspaceRoleRow } from "./list-workspace-roles";
 import { WorkspaceRoleNotFoundError } from "./workspace-membership-errors";
 import {
@@ -55,12 +59,13 @@ function missingGrants(
 async function updateWorkspaceRole(
   input: UpdateWorkspaceRoleInput,
 ): Promise<WorkspaceRoleRow> {
-  const badResources = invalidResources(input.permission);
+  const permission = normalizeWorkItemPermissionKey(input.permission);
+  const badResources = invalidResources(permission);
   if (badResources.length > 0) {
     throw new InvalidPermissionResourceError(badResources);
   }
 
-  const missing = missingGrants(input.permission, input.callerStatements);
+  const missing = missingGrants(permission, input.callerStatements);
   if (missing.length > 0) {
     throw new InsufficientPermissionToGrantError(missing);
   }
@@ -93,14 +98,19 @@ async function updateWorkspaceRole(
     const now = new Date();
     const [updated] = await tx
       .update(schema.workspaceRoleTable)
-      .set({ permission: JSON.stringify(input.permission), updatedAt: now })
+      .set({
+        permission: JSON.stringify(
+          mirrorWorkItemPermissionForLegacyReplicas(permission),
+        ),
+        updatedAt: now,
+      })
       .where(eq(schema.workspaceRoleTable.id, input.roleId))
       .returning();
     if (!updated) {
       throw new Error("workspace_role update returned no row");
     }
 
-    return { ...updated, permission: input.permission };
+    return { ...updated, permission };
   });
 }
 

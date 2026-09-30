@@ -45,9 +45,8 @@ async function replayMigration0071() {
 }
 
 /** Inserts a `workspace_role` row with a RAW permission JSON string, bypassing the
- * application layer entirely (the validated `create-workspace-role`/`update-workspace-role`
- * controllers reject an unknown resource key like `task` today) — simulating exactly what a
- * pre-rename binary would have persisted. Delete-then-insert because `createWorkspaceMember`
+ * application layer entirely — simulating exactly what a pre-rename binary would have
+ * persisted. Delete-then-insert because `createWorkspaceMember`
  * auto-seeds a `workspace_role` row for default role names (issue #66) and there is no unique
  * constraint on `(workspace_id, role)` to lean on instead. */
 async function seedRawWorkspaceRolePermission(
@@ -120,14 +119,11 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
 
-    // PROVES THE TEST HAS TEETH: before the backfill runs, the renamed runtime check
-    // (`requireWorkspacePermission({ work_item: ["create"] })`) reads this still-`task`-keyed
-    // row and finds no `work_item` key at all — issue #66 means that is a DENY, not a
-    // fall-back — so the exact same probe that must pass after the backfill must fail before
-    // it. This is the automated equivalent of "confirm it fails against the OLD unfixed data
-    // shape if the backfill is skipped."
+    // A new replica can read the legacy task-only shape during rollout before the backfill
+    // runs. The one-time migration remains necessary for old replicas to see grants created
+    // by the new code, and for the stored data to carry both names during the rollback window.
     const beforeBackfill = await postCreateTask(app, project.id);
-    expect(beforeBackfill.status).toBe(403);
+    expect(beforeBackfill.status).toBe(200);
 
     // Step 2: run the backfill.
     await replayMigration0071();
@@ -155,6 +151,24 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
     // route and the real `requireWorkspacePermission` middleware.
     const afterBackfill = await postCreateTask(app, project.id);
     expect(afterBackfill.status).toBe(200);
+
+    // Step 5: an old replica can still write a task-only role map after the one-time
+    // migration. The new runtime must accept that legacy key for the rest of the rollout and
+    // rollback window; 0071 will not automatically replay after this later write.
+    await db
+      .update(schema.workspaceRoleTable)
+      .set({ permission: JSON.stringify({ task: ["create", "read"] }) })
+      .where(
+        and(
+          eq(schema.workspaceRoleTable.workspaceId, member.workspace.id),
+          eq(schema.workspaceRoleTable.role, "member"),
+        ),
+      );
+    const secondProject = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const afterOldReplicaWrite = await postCreateTask(app, secondProject.project.id);
+    expect(afterOldReplicaWrite.status).toBe(200);
   });
 
   it("copies a pre-existing apikey.permissions task key to work_item while retaining old-replica permissions", async () => {
@@ -185,14 +199,12 @@ describe("migration 0071_workspace_role_apikey_permission_task_to_work_item.sql 
 
     const { app } = createApp();
 
-    // PROVES THE TEST HAS TEETH: before the backfill runs, `hasWorkspacePermission`'s
-    // API-key narrowing check (`apps/api/src/utils/require-workspace-permission.ts`) reads
-    // this still-`task`-keyed row, finds no `work_item` key, and denies — even though the
-    // underlying `admin` role would otherwise grant `work_item:create` freely.
+    // The new runtime must accept a task-only API-key scope left by an old replica. The
+    // admin role is deliberately broad so only the key's narrowing scope decides this call.
     const beforeBackfill = await postCreateTask(app, project.id, {
       Authorization: `Bearer ${rawKey}`,
     });
-    expect(beforeBackfill.status).toBe(403);
+    expect(beforeBackfill.status).toBe(200);
 
     // Step 2: run the backfill.
     await replayMigration0071();
