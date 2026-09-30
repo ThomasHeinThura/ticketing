@@ -1,27 +1,40 @@
 # Security review — service calendar management (#513)
 
-**Current candidate:** `feat/p2-33-service-calendars` after merge of `origin/main` at `7d21bc8f`.
-**Current security verdict:** **PENDING — fresh GPT-6 Sol review required.**
-**Prior review:** GPT-6 Sol independently reviewed `2d4bf2d9c3698dbf646a6201331252530d8b6dc2` against base `6a93fb3b75f7aa90bcff127ccf545eb5b3ad1670` on 2026-09-30. That review remains valid only for that exact head; it does not attest to the current candidate.
+**Reviewed head:** `41c0c8605d3c7d4c1da019f3779ebd4eeba6f205`
 
-## Prior review scope and verdict
+**Reviewer:** Independent GPT-6 Sol context `/root/p2_513_sol_security`.
+**Verdict:** CLEAR for security at the reviewed code head; no blocking finding.
+**Full review:** https://github.com/ThomasHeinThura/ticketing/pull/513#issuecomment-5920072137 at `7b408df6f51fb281cd092650720e7ec02f1230ab`.
+**Exact-head delta confirmation:** https://github.com/ThomasHeinThura/ticketing/pull/513#issuecomment-5920238554 at `41c0c8605d3c7d4c1da019f3779ebd4eeba6f205`.
 
-The prior reviewer examined the service-calendar API schema and create/PATCH paths, workspace reach and role checks, API-key scope, data writes, timezone validation across API/domain/UI, and fixed-offset regression cases. The verdict was clear for the reviewed head: no concrete security blocker or additional risk finding.
+## Scope and evidence
 
-That review confirmed the shared domain and UI timezone validators reject canonical timezone identifiers beginning with `+` or `-`, while accepting `UTC` and named IANA zones. The API request schema uses the shared domain validator, and calendar creation and updates validate before database writes. The review also checked workspace reach, caller role authorization, API-key permission narrowing, and the surrounding persistence path.
+The full Sol pass inspected calendar routes, workspace and role reach, API-key
+scope and actor attribution, event and audit writes, timezone validation,
+schema and migration `0079_service_calendar`. It ran PostgreSQL calendar
+integration tests (15/15), calendar domain tests (66/66), route-policy tests
+(83/83), `check:events`, a Drizzle schema-drift check, and `git diff --check`.
+The reviewer found no blocking security issue. API-key PATCH actor attribution
+has no focused regression test; that is recorded as nonblocking.
 
-## Current candidate evidence
+The later ordinary Luna review at
+https://github.com/ThomasHeinThura/ticketing/pull/513#issuecomment-5920228733
+and the Sol delta confirmation checked the merge from `main` at
+`9e3e8860b1b2060bbb11d78629d3ae879fcbb4f1`. It added only
+`docs/07-planning/status.md` and the deterministic workspace-slug test;
+calendar source, schema, migration and contract are unchanged from the full
+Sol-reviewed head. The Sol reviewer rechecked the exact candidate SHA and
+`git diff --check` passed.
 
-- Current candidate includes the normal merge commit from `origin/main` at `7d21bc8f`.
-- Focused PostgreSQL 18 integration suite: `service-calendar.test.ts`, 13/13 passed with `CI=true` and Testcontainers.
-- API typecheck passed.
-- `pnpm check:events` passed: all 31 published event keys are registered.
-- Biome check passed for the changed API and calendar route surfaces.
-- `pnpm --filter @taskdesk/api db:generate` reported no schema changes; migration journal retains the single `0079_service_calendar` entry after `0078_outbox`.
-- Docker image built; its migration role applied the migrations to a fresh PostgreSQL 18 database, and the app container returned HTTP 200 from `/api/public/health/ready`.
+## Residuals and merge gate
 
-These checks are implementation evidence, not a security review. No independent reviewer has reviewed the exact current candidate yet.
+CAL-8 affected-item count remains blocked on issue #437 and the missing SLA
+policy. AU-14 alerting and instance-administrator notification infrastructure
+are incomplete. Direct DELETE remains withheld pending the approved
+pending-action route. Runtime outbox delivery and calendar usage/counts are
+outside this bounded candidate.
 
-## Residuals
-
-CAL-8 affected-item count remains blocked on issue #437 linkage and the `sla_policy` table. AU-14's required alerting metric and instance-administrator notification infrastructure remain unavailable. Direct deletion remains withheld pending the approved pending-action route. The candidate still needs fresh independent Luna review(s), current-head GPT-6 Sol security review, and required CI/browser gates before merge.
+This note records the security verdict, not phase completion or merge
+clearance. At the exact-head delta review, the PR-template/security-review
+check was red and PostgreSQL integration was in progress. Required CI,
+browser evidence, and the final candidate checks remain merge gates.
