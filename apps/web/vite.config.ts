@@ -27,6 +27,9 @@ export default defineConfig({
     port: 5173,
   },
   optimizeDeps: {
+    // Pre-scan lazy route modules so route-to-route browser tests do not restart Vite
+    // mid-run when a later screen first imports one of their dependencies.
+    entries: ["index.html", "src/routes/**/*.tsx"],
     exclude: ["better-auth"],
   },
   ssr: {

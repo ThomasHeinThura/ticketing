@@ -13,6 +13,21 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 
 ---
 
+**2026-10-01 orchestrator update — remote `main` at `1727b69a` (PR #519 merged).** The
+G8 scope is now explicit: screenshot comparison is required for every exported UI Storybook
+story and every in-progress or complete route-kind inventory row. A future route activates
+with implementation; its route registration, deterministic fixture, and baseline land in
+the same change. The rule is recorded in `decision-log.md` and `ux-quality-gates.md`.
+
+The #507 candidate is refreshed from current `main`, and its G8 inventory parser now fails
+closed when the canonical inventory table or every route-kind row is missing. Its focused
+scope checker and adversarial test suite passed during this refresh; exact-head GitHub CI is
+running, and the dependency audit has passed after #519. Fresh exact-head review evidence is
+still required, and `protect-main` ruleset 22365005 does not yet require the `visual
+regression (G8)` context. Do not treat a passing but non-required context as merge-enforced.
+
+---
+
 **2026-09-30 orchestrator snapshot — remote `main` at
 `4f1eec81c904b91339c71f6fbd2123387e193acf` (refreshed 02:35 UTC).** PR #516 merged at
 `4f1eec81` after its exact-head required checks passed. A local, unmerged
@@ -1941,11 +1956,14 @@ are required before cutover. Do not treat further code review as a substitute fo
 
 ### P0 #10 — G8/G11 CI gates
 
-G8 is blocked on resolving the candidate's scope mismatch: the canonical visual-regression
-requirement includes all route-kind inventory rows, while the candidate omits the 120
-not-started routes. G11 remains skipped without a candidate. Both gates are required now under
-Thomas's 2026-09-28 scope decision. G4 is enabled on `main` by #501. The #10 checklist is also
-stale and needs reconciliation.
+G8 scope is resolved and written in the 2026-10-01 decision-log entry: every exported
+Storybook story and every in-progress or complete route-kind inventory row is covered; a
+future route's baseline activates with its implementation. The #507 candidate implements
+that rule and fails closed on missing inventory structure. It remains held for fresh exact-head
+reviews, and `protect-main` ruleset 22365005 must require `visual regression (G8)` before the
+passing job is merge-enforced. G11 remains skipped without a candidate. Both gates are
+required now under Thomas's 2026-09-28 scope decision. G4 is enabled on `main` by #501. The
+#10 checklist is also stale and needs reconciliation.
 
 ### P1 #447 — saved-view candidate needs a current base and gates
 
