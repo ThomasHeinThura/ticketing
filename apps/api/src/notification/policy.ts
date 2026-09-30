@@ -80,7 +80,7 @@ export const notificationPolicies = {
     personParam: {
       exempt: "no_person_parameter",
       reason:
-        "marks every one of the caller's own notifications read; the route names no person parameter because the caller is the person",
+        "marks the caller's reachable notifications read; unreachable or deleted task notifications are skipped; the route names no person parameter because the caller is the person",
     },
   },
 

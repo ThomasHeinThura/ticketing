@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { sendNotificationEmail } from "@taskdesk/email";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import db from "../database";
 import {
   notificationTable,
@@ -11,7 +11,9 @@ import {
   userTable,
   workspaceTable,
 } from "../database/schema";
+import { userCanReachTask } from "../notification/task-reach";
 import { assertPublicWebhookDestination } from "../utils/assert-public-destination";
+import { reachableWorkspacePredicate } from "../utils/workspace-access-middleware";
 import { decryptSecret } from "./secrets";
 
 const DEFAULT_OUTBOUND_FETCH_TIMEOUT_MS = 15_000;
@@ -219,6 +221,7 @@ function buildDeliveryContent(notification: {
 }
 
 async function resolveNotificationContext(notification: {
+  userId: string;
   resourceType: string | null;
   resourceId: string | null;
 }): Promise<ResolvedNotificationContext | null> {
@@ -242,7 +245,16 @@ async function resolveNotificationContext(notification: {
         workspaceTable,
         eq(projectTable.workspaceId, workspaceTable.id),
       )
-      .where(eq(taskTable.id, notification.resourceId))
+      .where(
+        and(
+          eq(taskTable.id, notification.resourceId),
+          isNull(projectTable.deletedAt),
+          reachableWorkspacePredicate(
+            projectTable.workspaceId,
+            notification.userId,
+          ),
+        ),
+      )
       .limit(1);
 
     if (!task) {
@@ -267,7 +279,12 @@ async function resolveNotificationContext(notification: {
         workspaceName: workspaceTable.name,
       })
       .from(workspaceTable)
-      .where(eq(workspaceTable.id, notification.resourceId))
+      .where(
+        and(
+          eq(workspaceTable.id, notification.resourceId),
+          reachableWorkspacePredicate(workspaceTable.id, notification.userId),
+        ),
+      )
       .limit(1);
 
     if (!workspace) {
@@ -468,6 +485,14 @@ export async function deliverNotification(
       !rule.selectedProjects.some(
         (project) => project.projectId === context.projectId,
       ))
+  ) {
+    return;
+  }
+
+  if (
+    notification.resourceType === "task" &&
+    (!notification.resourceId ||
+      !(await userCanReachTask(notification.userId, notification.resourceId)))
   ) {
     return;
   }

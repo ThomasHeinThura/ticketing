@@ -29,6 +29,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { deliverNotification } from "../../../apps/api/src/notification-preferences/delivery";
 
 const notification = {
   id: "notif-1",
@@ -62,34 +63,40 @@ const rule = {
   webhookEnabled: true,
 };
 
-vi.mock("../../../apps/api/src/database", () => ({
-  default: {
-    query: {
-      notificationTable: { findFirst: async () => notification },
-      userNotificationPreferenceTable: { findFirst: async () => preference },
-      userNotificationWorkspaceRuleTable: { findFirst: async () => rule },
-      taskTable: { findFirst: async () => null },
+vi.mock("../../../apps/api/src/database", async () => {
+  // The delivery path now uses the shared workspace-reach SQL predicate; provide
+  // real Drizzle table metadata so the test reaches each sender instead of failing
+  // while constructing the query it is meant to exercise.
+  const schema = await import("../../../apps/api/src/database/schema");
+  return {
+    default: {
+      query: {
+        notificationTable: { findFirst: async () => notification },
+        userNotificationPreferenceTable: { findFirst: async () => preference },
+        userNotificationWorkspaceRuleTable: { findFirst: async () => rule },
+        taskTable: { findFirst: async () => null },
+      },
+      // Two select() chains run per delivery, in order: the workspace context, then
+      // the user row. Answering by call order keeps the fixture honest about which
+      // query is which instead of returning one shape to both.
+      select: () => {
+        selectCall += 1;
+        const rows =
+          selectCall === 1
+            ? [{ workspaceId: "ws-1", workspaceName: "Acme" }]
+            : [{ email: "u@example.com", name: "U", locale: "en" }];
+        const chain = {
+          from: () => chain,
+          innerJoin: () => chain,
+          where: () => chain,
+          limit: async () => rows,
+        };
+        return chain;
+      },
     },
-    // Two select() chains run per delivery, in order: the workspace context, then
-    // the user row. Answering by call order keeps the fixture honest about which
-    // query is which instead of returning one shape to both.
-    select: () => {
-      selectCall += 1;
-      const rows =
-        selectCall === 1
-          ? [{ workspaceId: "ws-1", workspaceName: "Acme" }]
-          : [{ email: "u@example.com", name: "U", locale: "en" }];
-      const chain = {
-        from: () => chain,
-        innerJoin: () => chain,
-        where: () => chain,
-        limit: async () => rows,
-      };
-      return chain;
-    },
-  },
-  schema: {},
-}));
+    schema,
+  };
+});
 
 // The secrets module reaches for TASKDESK_ENCRYPTION_KEY; these tests care about
 // destinations, not envelopes, so decryption is the identity function here.
@@ -122,12 +129,7 @@ describe("SSRF regression guard — notification delivery (H10/H12, 0e046a6)", (
 
   afterEach(() => {
     fetchSpy.mockRestore();
-    vi.resetModules();
   });
-
-  const load = async () =>
-    (await import("../../../apps/api/src/notification-preferences/delivery"))
-      .deliverNotification;
 
   describe.each([
     {
@@ -144,7 +146,9 @@ describe("SSRF regression guard — notification delivery (H10/H12, 0e046a6)", (
       sender: "gotify",
       pref: {
         gotifyEnabled: true,
-        gotifyServerUrl: "http://localhost:8080",
+        // Use an IP literal so this guard regression never depends on DNS or
+        // resolver configuration in the test runner.
+        gotifyServerUrl: "http://127.0.0.1:8080",
         gotifyToken: "tok",
       },
     },
@@ -158,14 +162,25 @@ describe("SSRF regression guard — notification delivery (H10/H12, 0e046a6)", (
     },
   ])("$sender", ({ pref }) => {
     it("refuses a private destination before any outbound request is made", async () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       preference = { emailEnabled: false, ...pref };
-      const deliverNotification = await load();
 
-      await deliverNotification("notif-1").catch(() => undefined);
+      await deliverNotification("notif-1");
 
       // The assertion that matters: not "it threw", but that nothing left the process.
       // A sender that stopped calling the guard would reach fetch with this address.
+      const errors = errorSpy.mock.calls;
+      errorSpy.mockRestore();
       expect(fetchSpy).not.toHaveBeenCalled();
+      expect(errors).toContainEqual([
+        "Notification delivery failed",
+        expect.objectContaining({
+          notificationId: "notif-1",
+          error: expect.objectContaining({
+            message: expect.stringContaining("non-routable address"),
+          }),
+        }),
+      ]);
     });
   });
 
@@ -187,9 +202,8 @@ describe("SSRF regression guard — notification delivery (H10/H12, 0e046a6)", (
       webhookUrl: outboundDestination,
       webhookSecret: null,
     };
-    const deliverNotification = await load();
 
-    await deliverNotification("notif-1").catch(() => undefined);
+    await deliverNotification("notif-1");
 
     expect(fetchSpy).toHaveBeenCalled();
     for (const call of fetchSpy.mock.calls) {

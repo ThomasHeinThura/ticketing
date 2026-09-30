@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, ne, or } from "drizzle-orm";
 import db from "../../database";
 import {
   notificationTable,
@@ -6,11 +6,13 @@ import {
   taskTable,
   workspaceTable,
 } from "../../database/schema";
+import { reachableWorkspacePredicate } from "../../utils/workspace-access-middleware";
 
 async function getNotifications(userId: string) {
   const rows = await db
     .select({
       notification: notificationTable,
+      taskId: taskTable.id,
       projectId: projectTable.id,
       workspaceId: workspaceTable.id,
     })
@@ -22,17 +24,29 @@ async function getNotifications(userId: string) {
         eq(notificationTable.resourceType, "task"),
       ),
     )
-    .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
+    .leftJoin(
+      projectTable,
+      and(
+        eq(taskTable.projectId, projectTable.id),
+        isNull(projectTable.deletedAt),
+        reachableWorkspacePredicate(projectTable.workspaceId, userId),
+      ),
+    )
     .leftJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
-    .where(eq(notificationTable.userId, userId))
+    .where(
+      and(
+        eq(notificationTable.userId, userId),
+        or(
+          isNull(notificationTable.resourceType),
+          ne(notificationTable.resourceType, "task"),
+          and(isNotNull(taskTable.id), isNotNull(projectTable.id)),
+        ),
+      ),
+    )
     .orderBy(desc(notificationTable.createdAt))
     .limit(50);
 
-  return rows.map(({ notification, projectId, workspaceId }) => {
-    if (!projectId && !workspaceId) {
-      return notification;
-    }
-
+  return rows.flatMap(({ notification, taskId, projectId, workspaceId }) => {
     const existing =
       notification.eventData &&
       typeof notification.eventData === "object" &&
@@ -40,14 +54,28 @@ async function getNotifications(userId: string) {
         ? (notification.eventData as Record<string, unknown>)
         : {};
 
-    return {
-      ...notification,
-      eventData: {
-        ...existing,
-        projectId: projectId ?? existing.projectId ?? null,
-        workspaceId: workspaceId ?? existing.workspaceId ?? null,
+    // Notifications intentionally do not reference tasks with a foreign key, so a
+    // task can be deleted while its notification remains. A missing task or a task
+    // outside the caller's reachable workspaces has no verified boundary for its
+    // stored payload. Omit the row so even its notification type is not disclosed.
+    if (notification.resourceType === "task" && (!taskId || !projectId)) {
+      return [];
+    }
+
+    if (!projectId && !workspaceId) {
+      return [notification];
+    }
+
+    return [
+      {
+        ...notification,
+        eventData: {
+          ...existing,
+          projectId: projectId ?? existing.projectId ?? null,
+          workspaceId: workspaceId ?? existing.workspaceId ?? null,
+        },
       },
-    };
+    ];
   });
 }
 
