@@ -39,3 +39,31 @@ updates, asserts both status events, and asserts exactly one project-wide relati
 No merge recommendation is made. The broad implementation change still requires its third
 independent GPT-6 Luna review, and all enabled required checks must pass on the final
 note-only candidate head.
+
+## Exact-head merged-main security addendum — 2026-10-01
+
+**Model:** GPT-6 Sol
+**Reviewed head:** `183c25ee8e7b4bb1c80fbdfdbb12f0beba43eaa8`
+**Comparison:** prior reviewed source `8b5307794d5fd1308f49b4985d33ce8e34a45014`;
+merged main `991d3cf55251ff5383e30589c28051adf282e2ac`.
+**Verdict:** CLEAR for #510's security integration delta and legacy archive-freeze scope.
+
+Fresh independent reviewer context; the reviewer did not author, direct, or remediate the
+candidate. The legacy write, archive, assignment and project-liveness source paths are
+unchanged from the prior reviewed source. The reviewer inspected pending-action and outbox
+schema, migrations and service interactions plus identity-helper call sites; no production
+caller connects these additions to legacy writes or authority. No new finding arose in
+#510's scope.
+
+The existing #515 pending-action resolver omission of `project.archived_at` was
+independently confirmed. It has no production caller and is unchanged by #510; correction
+and regression coverage remain required before #428 wiring.
+
+`git diff --check 8b530779..183c25ee` passed. No local API or integration tests ran because
+the reviewer's dependency tree was absent. Live exact-head GitHub checks showed build,
+unit/component, static, OpenAPI, domain coverage, route policy and permission matrix, G4,
+G8 and CodeQL passing; Postgres integration remained pending and template/security review
+failed while this note was stale. G11 was not enabled. This is no gate waiver or merge
+recommendation.
+
+Review: https://github.com/ThomasHeinThura/ticketing/pull/510#issuecomment-5919084285
