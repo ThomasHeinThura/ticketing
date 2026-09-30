@@ -1,10 +1,11 @@
 import { createId } from "@paralleldrive/cuid2";
 import { isCapability, type PolicyMap } from "@taskdesk/permissions";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
 import {
+  apikeyTable,
   pendingActionTable,
   personTable,
   projectTable,
@@ -62,6 +63,11 @@ export async function createPendingAction(input: CreatePendingActionInput) {
     throw new TypeError(
       "Caller-supplied pending-action target versions are not supported",
     );
+  }
+  if (input.credentialType === "api_key" && !input.credentialId?.trim()) {
+    throw new HTTPException(403, {
+      message: "API-key pending actions require an authenticated key ID",
+    });
   }
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -475,6 +481,36 @@ async function resolveRequestScope(
     throw new HTTPException(403, {
       message: "Pending-action requester is unavailable",
     });
+  }
+
+  if (input.credentialType === "api_key") {
+    if (input.actorType !== "api_key" || input.actorId !== requester.userId) {
+      throw new HTTPException(403, {
+        message:
+          "API-key credential does not match the pending-action requester",
+      });
+    }
+    const [apiKey] = await tx
+      .select({ id: apikeyTable.id })
+      .from(apikeyTable)
+      .where(
+        and(
+          eq(apikeyTable.id, input.credentialId ?? ""),
+          or(
+            eq(apikeyTable.referenceId, requester.userId),
+            eq(apikeyTable.userId, requester.userId),
+          ),
+          eq(apikeyTable.enabled, true),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!apiKey) {
+      throw new HTTPException(403, {
+        message:
+          "API-key credential does not belong to the pending-action requester",
+      });
+    }
   }
 
   const route = policyRegistry.get(input.routeKey);

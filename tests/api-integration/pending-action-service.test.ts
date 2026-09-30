@@ -339,6 +339,75 @@ describe("pending-action service persistence", () => {
     expect(rows).toHaveLength(0);
   });
 
+  it("PA-4/PA-9: rejects an API-key credential without an ID before writing anything", async () => {
+    const input = {
+      ...requestInput(),
+      credentialType: "api_key" as const,
+      credentialId: null,
+      origin: "api" as const,
+      actorId: "user-pending-action-test",
+      actorType: "api_key" as const,
+    };
+
+    await expect(createPendingAction(input)).rejects.toMatchObject({
+      status: 403,
+    });
+    expect(await db.select().from(schema.pendingActionTable)).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "pending_action.requested")),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "pending_action.requested")),
+    ).toHaveLength(0);
+  });
+
+  it("PA-4/PA-9: binds an API-key credential to the requesting person's user", async () => {
+    const now = new Date();
+    await db.insert(schema.userTable).values({
+      id: "user-pending-action-other-key-owner",
+      name: "Other key owner",
+      email: "other-key-owner@example.test",
+    });
+    await db.insert(schema.apikeyTable).values({
+      id: "pending-action-other-owner-key",
+      referenceId: "user-pending-action-other-key-owner",
+      key: "test-key-secret",
+      createdAt: now,
+      updatedAt: now,
+      enabled: true,
+    });
+
+    await expect(
+      createPendingAction({
+        ...requestInput(),
+        credentialType: "api_key",
+        credentialId: "pending-action-other-owner-key",
+        origin: "api",
+        actorId: "user-pending-action-test",
+        actorType: "api_key",
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(await db.select().from(schema.pendingActionTable)).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.kind, "pending_action.requested")),
+    ).toHaveLength(0);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "pending_action.requested")),
+    ).toHaveLength(0);
+  });
+
   it("AU-14: commits the request and outbox when its audit insert fails", async () => {
     const input = requestInput();
     const auditFailure = vi
