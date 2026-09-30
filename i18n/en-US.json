@@ -243,6 +243,48 @@
 				"resendSuccess": "New verification code sent!"
 			}
 		},
+		"mfa": {
+			"challenge": {
+				"pageTitle": "Verify your identity",
+				"title": "Two-factor authentication",
+				"subtitle": "Enter a code from your authenticator app to continue.",
+				"totpLabel": "Authenticator code",
+				"backupLabel": "Backup code",
+				"invalidCode": "That code could not be verified. Try again or use another backup code.",
+				"verifying": "Verifying...",
+				"continue": "Continue",
+				"useBackupCode": "Use a backup code",
+				"useAuthenticator": "Use an authenticator code",
+				"backToSignIn": "Return to sign in"
+			},
+			"enrol": {
+				"loadingTitle": "Loading security settings",
+				"loadingDescription": "Checking your account...",
+				"pageTitle": "Set up two-factor authentication",
+				"title": "Protect your account",
+				"subtitle": "Set up an authenticator app and save your backup codes.",
+				"alreadyEnabled": "Two-factor authentication is already enabled for this account.",
+				"continue": "Continue to TaskDesk",
+				"checkingAccount": "Checking your sign-in methods...",
+				"accountCheckFailed": "We could not confirm your sign-in methods. Reload this page and try again.",
+				"retry": "Retry",
+				"instructions": "Use an authenticator app such as 1Password, Google Authenticator, or Microsoft Authenticator. We will show you a setup key, then ask you to verify a code.",
+				"passwordLabel": "Confirm your password",
+				"setupFailed": "We could not start enrollment. Check your password and try again.",
+				"starting": "Preparing setup...",
+				"startEnrollment": "Set up authenticator",
+				"scanInstructions": "Add a TaskDesk entry in your authenticator app using this setup key, then enter the current six-digit code.",
+				"setupKeyLabel": "Authenticator setup key",
+				"secretWarning": "Keep this key private. Anyone who has it can generate codes for your account.",
+				"codeLabel": "Six-digit code",
+				"invalidCode": "That code could not be verified. Check the code in your authenticator app and try again.",
+				"verifying": "Verifying...",
+				"verifyAndEnable": "Verify and enable",
+				"backupCodesWarning": "Save these backup codes somewhere private. Each code can be used once, and they will not be shown again.",
+				"backupCodesLabel": "Backup codes",
+				"savedCodes": "I saved my backup codes"
+			}
+		},
 		"otpSignIn": {
 			"sendFailed": "Failed to send verification code",
 			"codeSent": "Verification code sent! Check your email.",

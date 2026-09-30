@@ -17,10 +17,10 @@ are written in full so a script can check them against `lib/routes.ts`.
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
-| Sign in | `/agent/sign-in` | route | P0 | ⬜ |
-| Sign-in — provider chooser | `/agent/sign-in` | section | P0 | ⬜ |
-| MFA challenge | `/agent/sign-in/mfa` | route | P0 | ⬜ |
-| MFA enrolment | `/agent/sign-in/mfa/enrol` | route | P0 | ⬜ |
+| Sign in | `/auth/sign-in` | route | P0 | ⬜ |
+| Sign-in — provider chooser | `/auth/sign-in` | section | P0 | ⬜ |
+| MFA challenge | `/auth/mfa` | route | P0 | ⬜ |
+| MFA enrolment | `/auth/mfa/enrol` | route | P0 | ⬜ |
 | Accept invitation | `/agent/invite` | route | P3 | ⬜ |
 | Workspace home (default dashboard) | `/agent` | route | P1 | ⬜ |
 | Inbox | `/agent/inbox` | route | P1 | ⬜ |

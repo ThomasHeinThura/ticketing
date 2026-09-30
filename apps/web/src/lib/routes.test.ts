@@ -110,3 +110,31 @@ describe("routes.workItemDetail", () => {
     );
   });
 });
+
+describe("routes.authMfa", () => {
+  it("builds the MFA challenge URL and preserves only safe local context", () => {
+    expect(
+      routes.authMfa.build({
+        redirect: "/agent/work-items/ABC-1?tab=activity",
+        invitationId: "invite_123",
+      }),
+    ).toBe(
+      "/auth/mfa?redirect=%2Fagent%2Fwork-items%2FABC-1%3Ftab%3Dactivity&invitationId=invite_123",
+    );
+    expect(
+      routes.authMfa.build({
+        redirect: "//evil.example/path",
+        invitationId: "bad/id",
+      }),
+    ).toBe("/auth/mfa");
+  });
+
+  it("builds the enrollment URL with an encoded safe return path", () => {
+    expect(
+      routes.authMfaEnrollment.build({ redirect: "/dashboard?tab=security" }),
+    ).toBe("/auth/mfa/enrol?redirect=%2Fdashboard%3Ftab%3Dsecurity");
+    expect(
+      routes.authMfaEnrollment.build({ redirect: "https://evil.test" }),
+    ).toBe("/auth/mfa/enrol");
+  });
+});

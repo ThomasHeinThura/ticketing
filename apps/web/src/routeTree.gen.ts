@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as TestErrorRouteImport } from './routes/test-error'
 import { Route as LayoutAuthenticatedRouteImport } from './routes/_layout/_authenticated'
 import { Route as AuthCheckEmailRouteImport } from './routes/auth/check-email'
+import { Route as AuthMfaRouteImport } from './routes/auth/mfa'
 import { Route as AuthSignInRouteImport } from './routes/auth/sign-in'
 import { Route as AuthSignUpRouteImport } from './routes/auth/sign-up'
 import { Route as AuthVerifyOtpRouteImport } from './routes/auth/verify-otp'
@@ -22,6 +23,8 @@ import { Route as LayoutAuthenticatedDashboardRouteImport } from './routes/_layo
 import { Route as LayoutAuthenticatedInvitationsRouteImport } from './routes/_layout/_authenticated/invitations'
 import { Route as LayoutAuthenticatedOnboardingRouteImport } from './routes/_layout/_authenticated/onboarding'
 import { Route as LayoutAuthenticatedProfileSetupRouteImport } from './routes/_layout/_authenticated/profile-setup'
+import { Route as AuthMfaIndexRouteImport } from './routes/auth/mfa.index'
+import { Route as AuthMfaEnrolRouteImport } from './routes/auth/mfa.enrol'
 import { Route as InvitationAcceptInviteIdRouteImport } from './routes/invitation/accept.$inviteId'
 import { Route as LayoutAuthenticatedDashboardIndexRouteImport } from './routes/_layout/_authenticated/dashboard/index'
 import { Route as LayoutAuthenticatedDashboardInvitationsRouteImport } from './routes/_layout/_authenticated/dashboard/invitations'
@@ -80,6 +83,11 @@ const AuthCheckEmailRoute = AuthCheckEmailRouteImport.update({
   path: '/check-email',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthMfaRoute = AuthMfaRouteImport.update({
+  id: '/mfa',
+  path: '/mfa',
+  getParentRoute: () => AuthRoute,
+} as any)
 const AuthSignInRoute = AuthSignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
@@ -119,6 +127,16 @@ const LayoutAuthenticatedProfileSetupRoute =
     path: '/profile-setup',
     getParentRoute: () => LayoutAuthenticatedRoute,
   } as any)
+const AuthMfaIndexRoute = AuthMfaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthMfaRoute,
+} as any)
+const AuthMfaEnrolRoute = AuthMfaEnrolRouteImport.update({
+  id: '/enrol',
+  path: '/enrol',
+  getParentRoute: () => AuthMfaRoute,
+} as any)
 const InvitationAcceptInviteIdRoute =
   InvitationAcceptInviteIdRouteImport.update({
     id: '/invitation/accept/$inviteId',
@@ -321,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/test-error': typeof TestErrorRoute
   '/auth/check-email': typeof AuthCheckEmailRoute
+  '/auth/mfa': typeof AuthMfaRouteWithChildren
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/auth/verify-otp': typeof AuthVerifyOtpRoute
@@ -328,7 +347,9 @@ export interface FileRoutesByFullPath {
   '/invitations': typeof LayoutAuthenticatedInvitationsRoute
   '/onboarding': typeof LayoutAuthenticatedOnboardingRoute
   '/profile-setup': typeof LayoutAuthenticatedProfileSetupRoute
+  '/auth/mfa/enrol': typeof AuthMfaEnrolRoute
   '/invitation/accept/$inviteId': typeof InvitationAcceptInviteIdRoute
+  '/auth/mfa/': typeof AuthMfaIndexRoute
   '/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
@@ -369,7 +390,9 @@ export interface FileRoutesByTo {
   '/invitations': typeof LayoutAuthenticatedInvitationsRoute
   '/onboarding': typeof LayoutAuthenticatedOnboardingRoute
   '/profile-setup': typeof LayoutAuthenticatedProfileSetupRoute
+  '/auth/mfa/enrol': typeof AuthMfaEnrolRoute
   '/invitation/accept/$inviteId': typeof InvitationAcceptInviteIdRoute
+  '/auth/mfa': typeof AuthMfaIndexRoute
   '/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/dashboard': typeof LayoutAuthenticatedDashboardIndexRoute
@@ -406,6 +429,7 @@ export interface FileRoutesById {
   '/test-error': typeof TestErrorRoute
   '/_layout/_authenticated': typeof LayoutAuthenticatedRouteWithChildren
   '/auth/check-email': typeof AuthCheckEmailRoute
+  '/auth/mfa': typeof AuthMfaRouteWithChildren
   '/auth/sign-in': typeof AuthSignInRoute
   '/auth/sign-up': typeof AuthSignUpRoute
   '/auth/verify-otp': typeof AuthVerifyOtpRoute
@@ -413,7 +437,9 @@ export interface FileRoutesById {
   '/_layout/_authenticated/invitations': typeof LayoutAuthenticatedInvitationsRoute
   '/_layout/_authenticated/onboarding': typeof LayoutAuthenticatedOnboardingRoute
   '/_layout/_authenticated/profile-setup': typeof LayoutAuthenticatedProfileSetupRoute
+  '/auth/mfa/enrol': typeof AuthMfaEnrolRoute
   '/invitation/accept/$inviteId': typeof InvitationAcceptInviteIdRoute
+  '/auth/mfa/': typeof AuthMfaIndexRoute
   '/_layout/_authenticated/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/_layout/_authenticated/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
   '/_layout/_authenticated/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
@@ -450,6 +476,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/test-error'
     | '/auth/check-email'
+    | '/auth/mfa'
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/auth/verify-otp'
@@ -457,7 +484,9 @@ export interface FileRouteTypes {
     | '/invitations'
     | '/onboarding'
     | '/profile-setup'
+    | '/auth/mfa/enrol'
     | '/invitation/accept/$inviteId'
+    | '/auth/mfa/'
     | '/dashboard/invitations'
     | '/dashboard/settings'
     | '/dashboard/'
@@ -498,7 +527,9 @@ export interface FileRouteTypes {
     | '/invitations'
     | '/onboarding'
     | '/profile-setup'
+    | '/auth/mfa/enrol'
     | '/invitation/accept/$inviteId'
+    | '/auth/mfa'
     | '/dashboard/invitations'
     | '/dashboard/settings'
     | '/dashboard'
@@ -534,6 +565,7 @@ export interface FileRouteTypes {
     | '/test-error'
     | '/_layout/_authenticated'
     | '/auth/check-email'
+    | '/auth/mfa'
     | '/auth/sign-in'
     | '/auth/sign-up'
     | '/auth/verify-otp'
@@ -541,7 +573,9 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/invitations'
     | '/_layout/_authenticated/onboarding'
     | '/_layout/_authenticated/profile-setup'
+    | '/auth/mfa/enrol'
     | '/invitation/accept/$inviteId'
+    | '/auth/mfa/'
     | '/_layout/_authenticated/dashboard/invitations'
     | '/_layout/_authenticated/dashboard/settings'
     | '/_layout/_authenticated/dashboard/'
@@ -624,6 +658,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCheckEmailRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/auth/mfa': {
+      id: '/auth/mfa'
+      path: '/mfa'
+      fullPath: '/auth/mfa'
+      preLoaderRoute: typeof AuthMfaRouteImport
+      parentRoute: typeof AuthRoute
+    }
     '/auth/sign-in': {
       id: '/auth/sign-in'
       path: '/sign-in'
@@ -672,6 +713,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/profile-setup'
       preLoaderRoute: typeof LayoutAuthenticatedProfileSetupRouteImport
       parentRoute: typeof LayoutAuthenticatedRoute
+    }
+    '/auth/mfa/': {
+      id: '/auth/mfa/'
+      path: '/'
+      fullPath: '/auth/mfa/'
+      preLoaderRoute: typeof AuthMfaIndexRouteImport
+      parentRoute: typeof AuthMfaRoute
+    }
+    '/auth/mfa/enrol': {
+      id: '/auth/mfa/enrol'
+      path: '/enrol'
+      fullPath: '/auth/mfa/enrol'
+      preLoaderRoute: typeof AuthMfaEnrolRouteImport
+      parentRoute: typeof AuthMfaRoute
     }
     '/invitation/accept/$inviteId': {
       id: '/invitation/accept/$inviteId'
@@ -1064,8 +1119,22 @@ const LayoutRouteChildren: LayoutRouteChildren = {
 const LayoutRouteWithChildren =
   LayoutRoute._addFileChildren(LayoutRouteChildren)
 
+interface AuthMfaRouteChildren {
+  AuthMfaEnrolRoute: typeof AuthMfaEnrolRoute
+  AuthMfaIndexRoute: typeof AuthMfaIndexRoute
+}
+
+const AuthMfaRouteChildren: AuthMfaRouteChildren = {
+  AuthMfaEnrolRoute: AuthMfaEnrolRoute,
+  AuthMfaIndexRoute: AuthMfaIndexRoute,
+}
+
+const AuthMfaRouteWithChildren =
+  AuthMfaRoute._addFileChildren(AuthMfaRouteChildren)
+
 interface AuthRouteChildren {
   AuthCheckEmailRoute: typeof AuthCheckEmailRoute
+  AuthMfaRoute: typeof AuthMfaRouteWithChildren
   AuthSignInRoute: typeof AuthSignInRoute
   AuthSignUpRoute: typeof AuthSignUpRoute
   AuthVerifyOtpRoute: typeof AuthVerifyOtpRoute
@@ -1073,6 +1142,7 @@ interface AuthRouteChildren {
 
 const AuthRouteChildren: AuthRouteChildren = {
   AuthCheckEmailRoute: AuthCheckEmailRoute,
+  AuthMfaRoute: AuthMfaRouteWithChildren,
   AuthSignInRoute: AuthSignInRoute,
   AuthSignUpRoute: AuthSignUpRoute,
   AuthVerifyOtpRoute: AuthVerifyOtpRoute,

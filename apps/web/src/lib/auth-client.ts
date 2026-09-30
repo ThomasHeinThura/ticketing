@@ -7,8 +7,10 @@ import {
   inferAdditionalFields,
   lastLoginMethodClient,
   magicLinkClient,
+  twoFactorClient,
 } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
+import { routes } from "./routes";
 
 const getBaseURL = () => {
   // `??`, not `||`: see get-api-url.ts — an explicitly empty VITE_API_URL
@@ -35,6 +37,18 @@ export const authClient = createAuthClient({
     deviceAuthorizationClient(),
     apiKeyClient(),
     adminClient(),
+    twoFactorClient({
+      onTwoFactorRedirect: () => {
+        if (typeof window === "undefined") return;
+        const current = new URL(window.location.href);
+        const redirect = current.searchParams.get("redirect") ?? undefined;
+        const invitationId =
+          current.searchParams.get("invitationId") ?? undefined;
+        window.location.replace(
+          routes.authMfa.build({ redirect, invitationId }),
+        );
+      },
+    }),
     inferAdditionalFields({
       user: {
         locale: {

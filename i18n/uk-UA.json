@@ -331,6 +331,48 @@
 				"nameRequired": "Ім'я є обов'язковим",
 				"nameShort": "Ім'я має містити щонайменше 2 символи"
 			}
+		},
+		"mfa": {
+			"challenge": {
+				"backToSignIn": "Return to sign in",
+				"backupLabel": "Backup code",
+				"continue": "Continue",
+				"invalidCode": "That code could not be verified. Try again or use another backup code.",
+				"pageTitle": "Verify your identity",
+				"subtitle": "Enter a code from your authenticator app to continue.",
+				"title": "Two-factor authentication",
+				"totpLabel": "Authenticator code",
+				"useAuthenticator": "Use an authenticator code",
+				"useBackupCode": "Use a backup code",
+				"verifying": "Verifying..."
+			},
+			"enrol": {
+				"accountCheckFailed": "We could not confirm your sign-in methods. Reload this page and try again.",
+				"alreadyEnabled": "Two-factor authentication is already enabled for this account.",
+				"backupCodesLabel": "Backup codes",
+				"backupCodesWarning": "Save these backup codes somewhere private. Each code can be used once, and they will not be shown again.",
+				"checkingAccount": "Checking your sign-in methods...",
+				"codeLabel": "Six-digit code",
+				"continue": "Continue to TaskDesk",
+				"instructions": "Use an authenticator app such as 1Password, Google Authenticator, or Microsoft Authenticator. We will show you a setup key, then ask you to verify a code.",
+				"invalidCode": "That code could not be verified. Check the code in your authenticator app and try again.",
+				"loadingDescription": "Checking your account...",
+				"loadingTitle": "Loading security settings",
+				"pageTitle": "Set up two-factor authentication",
+				"passwordLabel": "Confirm your password",
+				"retry": "Retry",
+				"savedCodes": "I saved my backup codes",
+				"scanInstructions": "Add a TaskDesk entry in your authenticator app using this setup key, then enter the current six-digit code.",
+				"secretWarning": "Keep this key private. Anyone who has it can generate codes for your account.",
+				"setupFailed": "We could not start enrollment. Check your password and try again.",
+				"setupKeyLabel": "Authenticator setup key",
+				"startEnrollment": "Set up authenticator",
+				"starting": "Preparing setup...",
+				"subtitle": "Set up an authenticator app and save your backup codes.",
+				"title": "Protect your account",
+				"verifyAndEnable": "Verify and enable",
+				"verifying": "Verifying..."
+			}
 		}
 	},
 	"settings": {

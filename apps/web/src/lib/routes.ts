@@ -40,6 +40,17 @@ export type WorkItemListSearch = {
   dir: WorkItemSortDirection;
 };
 
+function safeInternalPath(value?: string): string | undefined {
+  if (!value?.startsWith("/") || value.startsWith("//")) return undefined;
+  try {
+    const parsed = new URL(value, "http://taskdesk.invalid");
+    if (parsed.origin !== "http://taskdesk.invalid") return undefined;
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
 export const DEFAULT_WORK_ITEM_LIST_SEARCH: WorkItemListSearch = {
   layout: "list",
   sort: "key",
@@ -97,6 +108,49 @@ export function toggleWorkItemSortDirection(
 }
 
 export const routes = {
+  authSignIn: {
+    path: "/auth/sign-in" as const,
+    build: (search: { redirect?: string; invitationId?: string } = {}) => {
+      const params = new URLSearchParams();
+      const redirect = safeInternalPath(search.redirect);
+      if (redirect) params.set("redirect", redirect);
+      if (
+        search.invitationId &&
+        /^[a-z0-9_-]{1,128}$/i.test(search.invitationId)
+      ) {
+        params.set("invitationId", search.invitationId);
+      }
+      const query = params.toString();
+      return `/auth/sign-in${query ? `?${query}` : ""}`;
+    },
+  },
+  /** MFA challenge reached after a successful primary sign-in. */
+  authMfa: {
+    path: "/auth/mfa" as const,
+    build: (search: { redirect?: string; invitationId?: string } = {}) => {
+      const params = new URLSearchParams();
+      const redirect = safeInternalPath(search.redirect);
+      if (redirect) params.set("redirect", redirect);
+      if (
+        search.invitationId &&
+        /^[a-z0-9_-]{1,128}$/i.test(search.invitationId)
+      ) {
+        params.set("invitationId", search.invitationId);
+      }
+      const query = params.toString();
+      return `/auth/mfa${query ? `?${query}` : ""}`;
+    },
+  },
+  /** First-time TOTP enrollment, usable only by an authenticated account. */
+  authMfaEnrollment: {
+    path: "/auth/mfa/enrol" as const,
+    build: (search: { redirect?: string } = {}) => {
+      const redirect = safeInternalPath(search.redirect);
+      return redirect
+        ? `/auth/mfa/enrol?${new URLSearchParams({ redirect }).toString()}`
+        : "/auth/mfa/enrol";
+    },
+  },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {
     path: "/agent/projects/$projectKey/work" as const,
