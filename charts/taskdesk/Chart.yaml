@@ -10,14 +10,13 @@ keywords:
   - task-management
   - productivity
   - collaboration
-home: https://taskdesk.app
+home: https://taskdesk.bimats.com
 sources:
   - https://github.com/ThomasHeinThura/ticketing
-icon: https://assets.taskdesk.app/logo-text.png
+icon: https://taskdesk.bimats.com/logo-light.svg
 maintainers:
   - name: TaskDesk Team
     url: https://github.com/usetaskdesk
-    email: info@taskdesk.app
 annotations:
   artifacthub.io/license: AGPL-3.0-only
   artifacthub.io/containsSecurityUpdates: "false"
