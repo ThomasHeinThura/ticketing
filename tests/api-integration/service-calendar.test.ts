@@ -208,7 +208,7 @@ describe("API integration: service calendars (CAL-1–CAL-14)", () => {
     ).toHaveLength(1);
   });
 
-  it.each(["+05:00", "-03:30"])(
+  it.each(["+05:00", "-03:30", "+05", "+0500", "-0330"])(
     "CAL-6: rejects fixed UTC offset timezone %s",
     async (timezone) => {
       const creator = await createWorkspaceMember({ role: "admin" });

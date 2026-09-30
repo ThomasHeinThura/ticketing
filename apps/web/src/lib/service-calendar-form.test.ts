@@ -55,6 +55,9 @@ describe("service calendar editor helpers", () => {
     expect(isValidIanaTimezone("Europe/London")).toBe(true);
     expect(isValidIanaTimezone("+05:00")).toBe(false);
     expect(isValidIanaTimezone("-03:30")).toBe(false);
+    expect(isValidIanaTimezone("+05")).toBe(false);
+    expect(isValidIanaTimezone("+0500")).toBe(false);
+    expect(isValidIanaTimezone("-0330")).toBe(false);
     expect(isValidIanaTimezone("Not/AZone")).toBe(false);
   });
 

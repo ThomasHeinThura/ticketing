@@ -72,10 +72,11 @@ export function weeklyCoverHours(minutes: number): string {
 }
 
 export function isValidIanaTimezone(timezone: string): boolean {
-  if (/^[+-]\d{2}:\d{2}$/.test(timezone)) return false;
   try {
-    new Intl.DateTimeFormat("en-US", { timeZone: timezone });
-    return true;
+    const canonicalTimeZone = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+    }).resolvedOptions().timeZone;
+    return !/^[+-]/.test(canonicalTimeZone);
   } catch {
     return false;
   }

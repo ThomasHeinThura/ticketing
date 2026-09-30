@@ -40,10 +40,11 @@ const OFFSET_FORMATTER_CACHE = new Map<string, Intl.DateTimeFormat>();
 
 /** Rejects numeric offsets, which Intl accepts even though CAL-6 requires an IANA zone. */
 export function isIanaTimeZone(timeZone: string): boolean {
-  if (/^[+-]\d{2}:\d{2}$/.test(timeZone)) return false;
   try {
-    new Intl.DateTimeFormat("en-US", { timeZone });
-    return true;
+    const canonicalTimeZone = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+    }).resolvedOptions().timeZone;
+    return !/^[+-]/.test(canonicalTimeZone);
   } catch {
     return false;
   }

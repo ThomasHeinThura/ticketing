@@ -107,6 +107,9 @@ describe("isIanaTimeZone", () => {
     expect(isIanaTimeZone("America/New_York")).toBe(true);
     expect(isIanaTimeZone("+05:00")).toBe(false);
     expect(isIanaTimeZone("-03:30")).toBe(false);
+    expect(isIanaTimeZone("+05")).toBe(false);
+    expect(isIanaTimeZone("+0500")).toBe(false);
+    expect(isIanaTimeZone("-0330")).toBe(false);
     expect(isIanaTimeZone("Not/AZone")).toBe(false);
   });
 });
