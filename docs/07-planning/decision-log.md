@@ -5,6 +5,25 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-01 · G8 requires implemented screens now and activates future routes with implementation
+
+**Decision:** G8 requires screenshot comparison for every exported UI Storybook story and
+every `route`-kind inventory row marked in progress or complete. A route first marked in
+progress must gain its route registration, deterministic fixture, and committed baseline in
+that same change. Routes still marked not started remain planned work and do not need a
+baseline before implementation. Every inventory route is part of G8's eventual scope.
+
+**Why:** requiring baselines for future routes before they exist would force feature work
+solely to satisfy a gate. Deferring an implemented screen would leave a coverage gap. This
+states the active acceptance rule and the activation point explicitly in the UX-gate spec.
+
+**Alternatives:** require every planned route immediately (rejected because not-started
+routes do not exist yet); cover only today's active rows without an activation rule
+(rejected because future routes could remain uncovered).
+
+**Decided by:** Thomas, under the 2026-10-01 standing instruction to use recommended
+decisions; recorded by the orchestrator.
+
 ### 2026-09-30 · TaskDesk public links use the Bimats host
 
 **Decision:** use `https://taskdesk.bimats.com` for current TaskDesk website links and the

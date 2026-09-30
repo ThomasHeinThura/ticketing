@@ -110,12 +110,13 @@ this gate does not claim it.
 **Fails on:** an unapproved pixel change to any Storybook story or to any key screen
 snapshot.
 
-**Key screens** are the `route`-kind rows marked in progress or complete in the
-[screen inventory](screen-inventory.md). When a route moves into progress, its route
-registration, deterministic browser fixture, and G8 baseline are required in that same
-change. Rows still marked not started remain planned work; this gate does not claim they
-already have visual coverage. As implementation advances, every inventory route becomes a
-required key screen.
+**Key screens required today** are the `route`-kind rows marked in progress or complete in
+the [screen inventory](screen-inventory.md), plus every exported Storybook story. When a
+route moves into progress, its route registration, deterministic browser fixture, and G8
+baseline are required in that same change. Rows still marked not started remain planned
+work; they do not need a route or baseline before implementation begins. As implementation
+advances, every inventory route becomes a required key screen in the same change that moves
+it into progress.
 
 Approving a diff is an explicit action in the pull request, which puts intentional visual
 change in front of a reviewer and catches unintentional change immediately rather than
