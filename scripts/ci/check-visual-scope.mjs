@@ -74,16 +74,20 @@ const visualStep =
     ? []
     : visualJobLines.slice(visualStepStart, visualStepEnd);
 
-function hasSchedulerEscapeKey(lines, indentation, forbiddenKeys) {
-  return lines.some((line) => {
+function hasOnlyMappingKeys(lines, indentation, expectedKeys) {
+  const seen = new Set();
+  for (const line of lines) {
     const spaces = /^ */u.exec(line)?.[0].length ?? 0;
-    if (spaces !== indentation) return false;
+    if (spaces !== indentation) continue;
     const key = line.slice(indentation);
-    return (
-      /^['"]/u.test(key) ||
-      forbiddenKeys.some((name) => new RegExp(`^${name}\\s*:`).test(key))
-    );
-  });
+    if (key === "" || key.startsWith("#")) continue;
+    const match = /^([A-Za-z][A-Za-z0-9_-]*)\s*:/u.exec(key);
+    if (!match || !expectedKeys.includes(match[1]) || seen.has(match[1])) {
+      return false;
+    }
+    seen.add(match[1]);
+  }
+  return seen.size === expectedKeys.length;
 }
 
 if (
@@ -92,13 +96,17 @@ if (
   visualStepStarts.length !== 1 ||
   visualStep.filter((line) => line === "        run: pnpm test:visual")
     .length !== 1 ||
-  hasSchedulerEscapeKey(visualJobLines, 4, [
-    "if",
-    "continue-on-error",
-    "needs",
-    "strategy",
+  !hasOnlyMappingKeys(visualJobLines, 4, [
+    "name",
+    "runs-on",
+    "container",
+    "timeout-minutes",
+    "steps",
   ]) ||
-  hasSchedulerEscapeKey(visualStep, 8, ["if", "continue-on-error"])
+  workflowLines.some((line) =>
+    /^(?:defaults|"defaults"|'defaults')\s*:/u.test(line),
+  ) ||
+  !hasOnlyMappingKeys(visualStep, 8, ["run"])
 ) {
   failures.push(
     `${ciWorkflowPath} must run pnpm test:visual exactly once in one unconditional, failure-propagating visual regression (G8) job and step`,
@@ -130,10 +138,34 @@ function configObject(sourceFile) {
   ) {
     return undefined;
   }
+  if (assignment.expression.arguments.length !== 1) return undefined;
   const [argument] = assignment.expression.arguments;
   return argument && ts.isObjectLiteralExpression(argument)
     ? argument
     : undefined;
+}
+
+function hasStaticUniqueConfigProperties(object, allowedSpread) {
+  if (!object) return false;
+  const seen = new Set();
+  for (const [index, property] of object.properties.entries()) {
+    if (ts.isSpreadAssignment(property)) {
+      if (
+        index !== 0 ||
+        allowedSpread === undefined ||
+        !ts.isIdentifier(property.expression) ||
+        property.expression.text !== allowedSpread
+      )
+        return false;
+      continue;
+    }
+    if (!ts.isPropertyAssignment(property) || !ts.isIdentifier(property.name)) {
+      return false;
+    }
+    if (seen.has(property.name.text)) return false;
+    seen.add(property.name.text);
+  }
+  return true;
 }
 
 function propertyValues(object, name) {
@@ -2642,6 +2674,7 @@ try {
     const storybookConfig = configObject(storybookConfigSourceFile);
     const baseTestIgnores = stringArrayProperty(baseConfig, "testIgnore");
     if (
+      !hasStaticUniqueConfigProperties(baseConfig) ||
       !hasNamedImport(
         baseConfigSourceFile,
         "@playwright/test",
@@ -2665,6 +2698,7 @@ try {
     }
     const visualTestIgnores = stringArrayProperty(visualConfig, "testIgnore");
     if (
+      !hasStaticUniqueConfigProperties(visualConfig, "base") ||
       !hasNamedImport(
         visualConfigSourceFile,
         "@playwright/test",
@@ -2707,6 +2741,7 @@ try {
       );
     }
     if (
+      !hasStaticUniqueConfigProperties(storybookConfig) ||
       !hasNamedImport(
         storybookConfigSourceFile,
         "@playwright/test",
