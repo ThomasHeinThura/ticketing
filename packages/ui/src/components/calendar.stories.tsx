@@ -7,6 +7,7 @@ const meta = {
   args: {
     mode: "single",
     defaultMonth: new Date(2026, 8, 1),
+    today: new Date(2026, 8, 29),
   },
 } satisfies Meta<typeof Calendar>;
 
