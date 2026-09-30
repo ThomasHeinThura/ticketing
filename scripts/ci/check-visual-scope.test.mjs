@@ -38,12 +38,6 @@ const SCREENS = [
   },
 ];
 
-const EXACT_SCREENSHOT_HELPER = `async function assertExactScreenshotBytes(page: Page, testInfo: TestInfo, name: string) {
-  const actual = await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true, scale: "css" });
-  const expected = await readFile(testInfo.snapshotPath(name, { kind: "screenshot" }));
-  expect(actual.equals(expected)).toBe(true);
-}`;
-
 function visualSpec(
   screens,
   {
@@ -106,10 +100,6 @@ function visualSpec(
                   : testName === excessiveInlineThresholdFor
                     ? `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 100000000, threshold: 0, includeAA: true });`
                     : `await expect(page).toHaveScreenshot(${JSON.stringify(screenshot)}, { fullPage: true, maxDiffPixels: 0, threshold: 0, includeAA: true });`;
-      const exactScreenshotEvidence =
-        testName === omitScreenshotFor
-          ? ""
-          : `await assertExactScreenshotBytes(page, testInfo, ${JSON.stringify(screenshot)});`;
       const additionalNavigation =
         testName === additionalNavigationFor ? "await page.goto(target);" : "";
       const additionalVisualOperation =
@@ -167,13 +157,11 @@ function visualSpec(
           : "";
       const beforeNavigation =
         testName === screenshotBeforeNavigationFor
-          ? `${screenshotEvidence} ${exactScreenshotEvidence} `
+          ? `${screenshotEvidence} `
           : "";
       const afterNavigation =
-        testName === screenshotBeforeNavigationFor
-          ? ""
-          : `${screenshotEvidence} ${exactScreenshotEvidence}`;
-      return `test(${JSON.stringify(testName)}, async ({ page, page: aliasedPage }, testInfo) => { ${
+        testName === screenshotBeforeNavigationFor ? "" : screenshotEvidence;
+      return `test(${JSON.stringify(testName)}, async ({ page, page: aliasedPage }) => { ${
         testName === disabledFor
           ? 'if (process.env.CI) test.fixme(true, "known issue");'
           : ""
@@ -181,14 +169,14 @@ function visualSpec(
     })
     .join("\n");
   const testImport = fakeTestBinding
-    ? 'import { expect, test as playwrightTest, type Page, type TestInfo } from "@playwright/test";\nconst test = (_title, _callback) => {};'
-    : 'import { expect, test, type Page, type TestInfo } from "@playwright/test";';
+    ? 'import { expect, test as playwrightTest, type Page } from "@playwright/test";\nconst test = (_title, _callback) => {};'
+    : 'import { expect, test, type Page } from "@playwright/test";';
   const screenshotOptions = screens.some(
     ({ test: testName }) => testName === mutateScreenshotOptionsFor,
   )
     ? "const SCREENSHOT_OPTIONS = { fullPage: true, maxDiffPixels: 0, threshold: 0, includeAA: true };\nSCREENSHOT_OPTIONS.maxDiffPixels = 100000000;"
     : "";
-  return `import { readFile } from "node:fs/promises";\n${testImport}\n${runtimeCode}\n${EXACT_SCREENSHOT_HELPER}\n${screenshotOptions}\n${helper}\n${tests}`;
+  return `${testImport}\n${runtimeCode}\n${screenshotOptions}\n${helper}\n${tests}`;
 }
 
 function storybookSpec({
@@ -336,15 +324,14 @@ function storybookSpec({
           excessiveInlineThreshold
             ? "  await expect(page).toHaveScreenshot(`\u0024{story.id}.png`, { fullPage: true, maxDiffPixels: 100000000, threshold: 0, includeAA: true });"
             : "  await expect(page).toHaveScreenshot(`\u0024{story.id}.png`, { fullPage: true, maxDiffPixels: 0, threshold: 0, includeAA: true });",
-          "  await assertExactScreenshotBytes(page, testInfo, `\u0024{story.id}.png`);",
           "}",
         ]),
   ].join("\n");
-  const testCase = `test("every exported Storybook story has a visual baseline @visual", async ({ page }, testInfo) => {\n${body}\n});`;
+  const testCase = `test("every exported Storybook story has a visual baseline @visual", async ({ page }) => {\n${body}\n});`;
   const testImport = fakeTestBinding
-    ? 'import { expect, test as playwrightTest, type Page, type TestInfo } from "@playwright/test";\nconst test = (_title, _callback) => {};'
-    : 'import { expect, test, type Page, type TestInfo } from "@playwright/test";';
-  const prelude = `import { readFile } from "node:fs/promises";\n${testImport}\n${EXACT_SCREENSHOT_HELPER}`;
+    ? 'import { expect, test as playwrightTest } from "@playwright/test";\nconst test = (_title, _callback) => {};'
+    : 'import { expect, test } from "@playwright/test";';
+  const prelude = `${testImport}`;
   const outerAlias = mutateObjectValuesByOuterAlias
     ? "\nconst objectNamespace = Object;"
     : "";
@@ -518,36 +505,21 @@ test("G8 permits the canonical navigation, Storybook fetch, and read-only callba
   assert.match(result.output, /G8 scope check passed/);
 });
 
-test("G8 exact screenshot byte equality rejects an antialias-only pixel change", () => {
-  const baseline = Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGM4ceLEfwAIDANYH/+28wAAAABJRU5ErkJggg==",
-    "base64",
-  );
-  const antialiasChanged = Buffer.from(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGM4eeLEfwAIEANZxhx+aQAAAABJRU5ErkJggg==",
-    "base64",
-  );
+test("G8 uses strict pixel matchers without comparing PNG encoding bytes", async () => {
+  const result = await runVisualScope({ routes: INVENTORY_ROUTES });
 
-  assert.equal(antialiasChanged.equals(baseline), false);
+  assert.equal(result.status, 0, result.output);
+  assert.match(
+    visualSpec(SCREENS),
+    /maxDiffPixels: 0, threshold: 0, includeAA: true/,
+  );
+  assert.match(
+    storybookSpec(),
+    /maxDiffPixels: 0, threshold: 0, includeAA: true/,
+  );
+  assert.doesNotMatch(visualSpec(SCREENS), /Buffer|\.equals\(/);
+  assert.doesNotMatch(storybookSpec(), /Buffer|\.equals\(/);
 });
-
-for (const surface of ["route", "Storybook"]) {
-  test(`G8 ${surface} screenshot comparator rejects partial-byte equality`, async () => {
-    const weakenComparator = (source) =>
-      source.replace(
-        "actual.equals(expected)",
-        "actual.subarray(0, 1).equals(expected.subarray(0, 1))",
-      );
-    const result = await runVisualScope({
-      routes: INVENTORY_ROUTES,
-      ...(surface === "route"
-        ? { source: weakenComparator(visualSpec(SCREENS)) }
-        : { storySource: weakenComparator(storybookSpec()) }),
-    });
-
-    assert.notEqual(result.status, 0);
-  });
-}
 
 test("G8 rejects opaque browser execution and string-based code executors", async () => {
   const probes = [
