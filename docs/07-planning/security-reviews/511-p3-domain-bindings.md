@@ -88,3 +88,31 @@ persisted bindings, a uniqueness constraint, and a complete owner set. Unicode/I
 normalization and real-Entra acceptance are also deferred to that integration.
 
 Source: [G8 ancestry Sol review comment](https://github.com/ThomasHeinThura/ticketing/pull/511#issuecomment-5918439160).
+
+## GPT-6 Sol pending-action ancestry delta — 2026-10-01
+
+**Model:** GPT-6 Sol
+**Reviewer context:** `/root/p3_511_sol_exact` — the same independent reviewer context as
+the earlier delta passes; it did not author, direct, or remediate either candidate
+**Reviewed head:** `a8911a5354c2f0dcc27d94c5baa081f840f796d8`
+**Comparison:** prior note head `d8f259fd288768ad1901e714fe4cff8a169286b8`
+merged with `main@81f2506d542b618261feed5a37452294ec78d186` (#515)
+**Verdict:** CLEAR WITH NONBLOCKING RESIDUALS for the domain-only slice; no new blocker.
+
+The reviewer inspected the merge against both parents and the combined identity and
+pending-action schema, payload, service, and outbox semantics. #515 accepts only a
+canonical single work-item DELETE; `identity_connection` remains a dormant confirmation
+helper whose resolver rejects it. The merge added no identity caller, binding table,
+authority grant, or security-review checker change. The P3 helper source remains unchanged.
+
+On the reviewed head the reviewer ran a frozen install, domain tests (12 files / 570 tests),
+pending-action payload tests (1 file / 4 tests), pending-action Postgres integration
+(2 files / 19 tests), domain and API typecheck after building workspace dependencies,
+and `git diff --check`. GitHub's exact-head checks were still running; the PR-template
+check correctly awaited this note-only addendum.
+
+Operational IP-9 still requires a production caller, persisted complete owner bindings,
+a uniqueness constraint, and real-Entra acceptance. Unicode/IDN domain handling remains
+deferred to that integration.
+
+Source: [pending-action ancestry Sol review comment](https://github.com/ThomasHeinThura/ticketing/pull/511#issuecomment-5918763646).
