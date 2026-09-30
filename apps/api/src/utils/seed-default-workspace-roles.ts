@@ -1,6 +1,7 @@
 import { DEFAULT_ROLE_NAMES, defaultRolePayloads } from "@taskdesk/permissions";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import db, { schema } from "../database";
+import { mirrorWorkItemPermissionForLegacyReplicas } from "./permission-key-compat";
 
 /**
  * Backfill the editable default roles (viewer/member/admin) for every
@@ -115,7 +116,11 @@ export async function seedDefaultWorkspaceRoles() {
         rows.push({
           workspaceId,
           role: name,
-          permission: JSON.stringify(defaultRolePayloads[name]),
+          permission: JSON.stringify(
+            mirrorWorkItemPermissionForLegacyReplicas(
+              defaultRolePayloads[name],
+            ),
+          ),
           // Issue #318 (security): this backfill is one of the two places that seed a
           // GENUINE built-in role row (the other is `create-workspace.ts`'s creation-time
           // seed) -- marked so `require-workspace-capability.ts` and `resolve-identity.ts`

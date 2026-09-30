@@ -1,6 +1,10 @@
 import { BUILT_IN_ROLE_KEYS, statement } from "@taskdesk/permissions";
 import { and, count, eq, sql } from "drizzle-orm";
 import db, { schema } from "../../database";
+import {
+  mirrorWorkItemPermissionForLegacyReplicas,
+  normalizeWorkItemPermissionKey,
+} from "../../utils/permission-key-compat";
 import { MAX_WORKSPACE_ROLES_PER_WORKSPACE } from "../../utils/workspace-role-limits";
 import type { WorkspaceRoleRow } from "./list-workspace-roles";
 import {
@@ -81,6 +85,7 @@ function missingGrants(
 async function createWorkspaceRole(
   input: CreateWorkspaceRoleInput,
 ): Promise<WorkspaceRoleRow> {
+  const permission = normalizeWorkItemPermissionKey(input.permission);
   // better-auth lower-cases a new role's name on create (`crud-access-control.mjs`) —
   // preserved so a role named "Owner" is refused the same way "owner" is.
   const normalizedRole = input.role.trim().toLowerCase();
@@ -88,12 +93,12 @@ async function createWorkspaceRole(
     throw new RoleNameReservedError(normalizedRole);
   }
 
-  const badResources = invalidResources(input.permission);
+  const badResources = invalidResources(permission);
   if (badResources.length > 0) {
     throw new InvalidPermissionResourceError(badResources);
   }
 
-  const missing = missingGrants(input.permission, input.callerStatements);
+  const missing = missingGrants(permission, input.callerStatements);
   if (missing.length > 0) {
     throw new InsufficientPermissionToGrantError(missing);
   }
@@ -131,7 +136,9 @@ async function createWorkspaceRole(
       .values({
         workspaceId: input.workspaceId,
         role: normalizedRole,
-        permission: JSON.stringify(input.permission),
+        permission: JSON.stringify(
+          mirrorWorkItemPermissionForLegacyReplicas(permission),
+        ),
         createdAt: now,
         updatedAt: now,
       })
@@ -140,7 +147,7 @@ async function createWorkspaceRole(
       throw new Error("workspace_role insert returned no row");
     }
 
-    return { ...created, permission: input.permission };
+    return { ...created, permission };
   });
 }
 

@@ -7,9 +7,9 @@ Newest first.
 
 ### 2026-09-27 · #392 permission-key migration uses expand/contract for rolling Helm updates
 
-**Decision:** migration `0071` copies the legacy `task` permission key into `work_item` and retains `task` during the rolling deployment. A later contract migration may remove `task` only after old binaries are gone and the rollback window has closed.
+**Decision:** migration `0071` copies the legacy `task` permission key into `work_item` and retains `task` during the rolling deployment. Current readers accept legacy-only `task` rows, prefer `work_item` when both exist, and all new workspace-role writes mirror the canonical `work_item` list into `task`. A later contract migration may remove `task` only after old binaries are gone and the rollback window has closed.
 
-**Why:** Helm runs the migration in each new pod's init container while old replicas can still serve traffic. Removing `task` before old replicas drain makes those replicas deny permissions they still enforce. Keeping both keys preserves access for old and new application versions.
+**Why:** Helm runs the migration in each new pod's init container while old replicas can still serve traffic. Removing `task` before old replicas drain makes those replicas deny permissions they still enforce. A one-time copy alone is not sufficient because either version can still write during the overlap; the read alias handles old writes and mirrored writes keep grant changes in sync for old readers.
 
 **Alternatives:** delete `task` in `0071` (rejected because it breaks active old replicas); remove it in a later release immediately (rejected until the old-binary and rollback window has demonstrably ended).
 

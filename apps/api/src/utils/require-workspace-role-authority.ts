@@ -7,6 +7,7 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import { isInstanceAdmin } from "./is-instance-admin";
+import { normalizeWorkItemPermissionKey } from "./permission-key-compat";
 import {
   resolveMembershipRole,
   workspaceRolePermission,
@@ -148,7 +149,7 @@ async function ownRoleStatements(
       result[resource] = filtered;
     }
   }
-  return result;
+  return normalizeWorkItemPermissionKey(result);
 }
 
 function satisfies(

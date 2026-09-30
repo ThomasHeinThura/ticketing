@@ -1,6 +1,7 @@
 import { statement } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import db, { schema } from "../../database";
+import { normalizeWorkItemPermissionKey } from "../../utils/permission-key-compat";
 
 /**
  * One `workspace_role` row, `permission` parsed back into an object — matches better-auth's
@@ -32,18 +33,26 @@ function parsePermission(raw: string): Record<string, string[]> {
   try {
     const value: unknown = JSON.parse(raw);
     if (value && typeof value === "object" && !Array.isArray(value)) {
-      const result: Record<string, string[]> = {};
+      const result = Object.create(null) as Record<string, string[]>;
       for (const [resource, actions] of Object.entries(
         value as Record<string, unknown>,
       )) {
-        if (!Object.hasOwn(statement, resource)) continue;
+        const normalizedResource =
+          resource === "task" ? "work_item" : resource;
+        if (!Object.hasOwn(statement, normalizedResource)) continue;
         if (Array.isArray(actions)) {
-          result[resource] = actions.filter(
+          if (
+            resource === "task" &&
+            Object.hasOwn(result, "work_item")
+          ) {
+            continue;
+          }
+          result[normalizedResource] = actions.filter(
             (action): action is string => typeof action === "string",
           );
         }
       }
-      return result;
+      return normalizeWorkItemPermissionKey(result);
     }
   } catch {
     // fall through to the empty object below

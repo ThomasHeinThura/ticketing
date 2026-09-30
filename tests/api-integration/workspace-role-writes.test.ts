@@ -200,6 +200,7 @@ describe("S7 create role (POST /api/workspace/{id}/roles)", () => {
     expect(rows).toHaveLength(1);
     expect(JSON.parse(rows[0]?.permission ?? "{}")).toEqual({
       work_item: ["read"],
+      task: ["read"],
     });
   });
 
@@ -546,6 +547,48 @@ describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
     expect(addAttempt.status).toBe(403);
   });
 
+  it("mirrors work-item grants and revocations for old replicas during rollout", async () => {
+    const { app } = createApp();
+    const owner = await signUpUser(app);
+    const workspaceId = await createWorkspace(app, owner.cookie, "RolloutCompat");
+    const created = await createWorkspaceRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      {
+        role: "editor",
+        permission: { work_item: ["read", "create"] },
+      },
+    );
+    expect(created.status).toBe(200);
+    const { id: roleId } = (await created.json()) as { id: string };
+
+    const [createdRow] = await roleRows(workspaceId, "editor");
+    expect(JSON.parse(createdRow?.permission ?? "{}")).toEqual({
+      work_item: ["read", "create"],
+      task: ["read", "create"],
+    });
+
+    const updated = await updateWorkspaceRoleNative(
+      app,
+      owner.cookie,
+      workspaceId,
+      roleId,
+      { permission: { work_item: ["read"] } },
+    );
+    expect(updated.status).toBe(200);
+    expect(
+      (await updated.json() as { permission: Record<string, string[]> })
+        .permission,
+    ).toEqual({ work_item: ["read"] });
+
+    const [updatedRow] = await roleRows(workspaceId, "editor");
+    expect(JSON.parse(updatedRow?.permission ?? "{}")).toEqual({
+      work_item: ["read"],
+      task: ["read"],
+    });
+  });
+
   it("rejects an unknown permission resource", async () => {
     const { app } = createApp();
     const owner = await signUpUser(app);
@@ -602,6 +645,7 @@ describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
     const [row] = await roleRows(workspaceId, "editor");
     expect(JSON.parse(row?.permission ?? "{}")).toEqual({
       work_item: ["read"],
+      task: ["read"],
     });
   });
 

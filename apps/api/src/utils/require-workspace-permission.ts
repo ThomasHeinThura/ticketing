@@ -7,6 +7,7 @@ import {
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
 import { isInstanceAdmin } from "./is-instance-admin";
+import { normalizeWorkItemPermissionKey } from "./permission-key-compat";
 import {
   type MembershipRoleResolution,
   resolveMembershipRole,
@@ -55,7 +56,7 @@ function parsePermissionStatements(
       result[resource] = filtered;
     }
   }
-  return result;
+  return normalizeWorkItemPermissionKey(result);
 }
 
 async function customRoleStatements(
@@ -260,7 +261,13 @@ export function requireWorkspacePermission(permissions: PermissionMap) {
     const apiKey = c.get("apiKey") as
       | { permissions?: Record<string, string[]> | null }
       | undefined;
-    if (apiKey?.permissions && !satisfies(apiKey.permissions, permissions)) {
+    if (
+      apiKey?.permissions &&
+      !satisfies(
+        normalizeWorkItemPermissionKey(apiKey.permissions),
+        permissions,
+      )
+    ) {
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "Insufficient API key scope" });
     }

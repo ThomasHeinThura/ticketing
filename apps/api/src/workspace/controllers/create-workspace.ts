@@ -4,6 +4,7 @@ import { eq, like, or } from "drizzle-orm";
 import db, { schema } from "../../database";
 import { publishEvent } from "../../events";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
+import { mirrorWorkItemPermissionForLegacyReplicas } from "../../utils/permission-key-compat";
 import { ensureInternalOrganisation } from "../../utils/seed-internal-organisation";
 import { seedWorkspaceDefaults } from "../../utils/seed-workspace-defaults";
 import {
@@ -150,7 +151,11 @@ async function createWorkspace(input: CreateWorkspaceInput) {
             DEFAULT_ROLE_NAMES.map((role) => ({
               workspaceId: workspace.id,
               role,
-              permission: JSON.stringify(defaultRolePayloads[role]),
+              permission: JSON.stringify(
+                mirrorWorkItemPermissionForLegacyReplicas(
+                  defaultRolePayloads[role],
+                ),
+              ),
               // Issue #318 (security): a genuine built-in seed, not a custom row -- see
               // `workspace_role.is_system`'s column comment in `schema.ts`.
               isSystem: true,
