@@ -84,19 +84,34 @@ async function updateProject(
         .returning();
 
       // Claim the new slug PERMANENTLY, same transaction as the rename. Deliberately NOT
-      // conditioned on `existingClaim` being absent -- `existingClaim` can only be absent
-      // here or already held by THIS project (the check above throws for every other
-      // case), so this is a no-op re-claim in the "renaming back to an old slug of its
-      // own" case and a genuine first claim otherwise. `ON CONFLICT DO NOTHING` on the
-      // claim's own PRIMARY KEY makes both cases safe without a branch.
+      // conditioned on `existingClaim` being absent -- it may already be held by THIS
+      // project when renaming back to its own old slug. A concurrent transaction can also
+      // claim this slug after the pre-check, then rename/delete its live project before
+      // this UPDATE runs. `project_slug_unique` allows this transaction to take the now-free
+      // live slug, while the permanent claim remains with the other project. Treat a
+      // conflicting insert as success only when the stored claim still belongs to this
+      // project; otherwise abort the whole rename with the same 409 as the pre-check.
       //
       // The OLD slug is deliberately left claimed -- see `projectSlugClaimTable`'s
       // schema.ts comment: a claim, once made, is never released, by design.
       if (updatedProject) {
-        await tx
+        const [claimed] = await tx
           .insert(projectSlugClaimTable)
           .values({ slug, projectId: id })
-          .onConflictDoNothing({ target: projectSlugClaimTable.slug });
+          .onConflictDoNothing({ target: projectSlugClaimTable.slug })
+          .returning({ projectId: projectSlugClaimTable.projectId });
+
+        if (!claimed) {
+          const [claimAfterConflict] = await tx
+            .select({ projectId: projectSlugClaimTable.projectId })
+            .from(projectSlugClaimTable)
+            .where(eq(projectSlugClaimTable.slug, slug))
+            .limit(1);
+
+          if (claimAfterConflict?.projectId !== id) {
+            throw new ProjectSlugTakenError(slug);
+          }
+        }
       }
 
       return updatedProject;
