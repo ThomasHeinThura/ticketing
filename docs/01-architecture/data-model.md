@@ -366,8 +366,8 @@ were logged. OpenProject's model; the alternative silently rewrites history.
 | `notification` | `person_id`, `kind` (event key), `title`, `body`, `resource_type`, `resource_id`, `read_at` |
 | `notification_preference` | `person_id`, `scope` (`global`\|`workspace`\|`project`), `scope_id` null only for `global`, `channel` (`in_app` ∪ `notify.*` plugin ids; `in_app` always on), `event_kind`, `enabled`, `digest` (`off`\|`hourly`\|`daily`). Check: `scope = 'global'` iff `scope_id is null`; workspace/project scopes require a non-null id. `UNIQUE NULLS NOT DISTINCT (person_id, scope, scope_id, channel, event_kind)` so global preferences are unique too |
 | `notification_preference_handoff` | `handle_hash` (unique SHA-256; raw handle never stored), `audience` (`agent`\|`customer`), `recipient_person_id`, `event_kind`, `channel`, `scope`, `scope_id` null, `created_at`, `expires_at` (10 minutes after creation). Stores only validated selector claims; raw signed email tokens are never persisted |
-| `outbox` | `event_id`, `kind`, `payload jsonb`, `dedupe_key`, `workspace_id` **not null**, `organisation_id` null — both written from the event envelope's `scope` ([events.md](events.md)); they are the join key `outbox-drain` matches against `webhook.workspace_id` and against `notification_preference` scopes, and the workspace must not have to be dug out of `payload` on every row; `recipient_person_id` and `channel` (both null for non-notification rows; both populated on external notification rows, with the recipient person and `notify.*` plugin id); `delivered_at` null until the channel adapter confirms successful delivery, then set to the UTC success time; `state` (`pending`\|`delivered`\|`dead`\|`suppressed`), `attempts`, `next_attempt_at`, `last_error` |
-| `outbox_dedupe_reservation` | `reservation_key bytea` primary key (32-byte SHA-256 of the canonical recipient/channel/dedupe-key tuple below); `recipient_person_id`, `channel`, `dedupe_key` with a unique constraint on the exact tuple; `owner_outbox_id`, `lease_token uuid`, and `lease_expires_at` are either all null (free) or all non-null (held). A hash conflict whose stored tuple differs fails closed. Atomically acquire only when free or expired; a live lease may only be renewed by the same `owner_outbox_id` presenting its current token, and renewal preserves that token. Even the same outbox row cannot reacquire its live lease with a new token. Expiry permits recovery after a crashed worker. |
+| `outbox` | `event_id`, `kind`, `payload jsonb`, `dedupe_key`, `workspace_id` **not null**, `organisation_id` null — both written from the event envelope's `scope` ([events.md](events.md)); they are the join key `outbox-drain` matches against `webhook.workspace_id` and against `notification_preference` scopes, and the workspace must not have to be dug out of `payload` on every row; `recipient_person_id` and `channel` (both null for non-notification rows; both populated on external notification rows, with the recipient person and `notify.*` plugin id); `delivered_at timestamp without time zone` null until the channel adapter confirms successful delivery, then set to the UTC wall-clock sample used by the success commit; `state` (`pending`\|`delivered`\|`dead`\|`suppressed`), `attempts`, `next_attempt_at`, `last_error` |
+| `outbox_dedupe_reservation` | One row per active reservation: `reservation_key bytea` primary key (32-byte SHA-256 of the canonical recipient/channel/dedupe-key tuple below); `recipient_person_id` references `person` with `ON DELETE CASCADE`; `channel`, `dedupe_key` with a unique constraint on the exact tuple; `owner_outbox_id` references `outbox` with `ON DELETE CASCADE`; `lease_token uuid`, `lease_expires_at timestamp without time zone` (UTC). A hash conflict whose stored tuple differs fails closed. Atomically acquire only when absent or expired; a live lease may only be renewed by the same `owner_outbox_id` presenting its current token, and renewal preserves that token. Even the same outbox row cannot reacquire its live lease with a new token. Expiry permits recovery after a crashed worker; `session-cleanup` deletes expired reservation rows. |
 | `webhook` | `workspace_id`, `url`, `secret` (encrypted), `secret_previous`, `secret_rotated_at`, `events text[]`, `active`, `disabled_at`, `disabled_reason`, `created_by` |
 | `webhook_delivery` | `webhook_id`, `event_id`, `attempt`, `status_code`, `duration_ms`, `request_body jsonb`, `response_body` (truncated), `error`, `attempted_at` |
 | `external_link` | `entity_type`, `entity_id`, `system`, `external_id`, `url`, `title`, `project_id` null, `organisation_id` null (denormalised at insert, for the same reach-filtering reason as `custom_field_value`) — provenance for any entity, not only work items |
@@ -403,7 +403,7 @@ Unicode-normalize values. Store the 32-byte digest. Keep the three original fiel
 unique constraint on their exact tuple; if a digest conflict finds a different tuple, fail
 closed and do not send.
 
-Acquisition succeeds only for a free or expired reservation and always assigns a fresh
+Acquisition succeeds only for an absent or expired reservation and always assigns a fresh
 random `lease_token`. A live reservation can only be renewed when both `owner_outbox_id` and
 the supplied token match; renewal preserves the token. This rule applies even when a second
 worker presents the same outbox row id: a new token cannot rotate or steal that live lease.
@@ -411,8 +411,26 @@ Completion and release also require the matching owner and token; renewal and co
 require an unexpired lease. If renewal fails, the worker must stop the provider request when
 possible and must not commit success with the expired token.
 
+Use one authoritative PostgreSQL wall-clock value per atomic reservation operation. After
+any reservation-row lock wait has finished, sample `clock_timestamp() AT TIME ZONE 'UTC'`
+exactly once in that operation (for example, in a materialized CTE) and reuse the value for
+the acquire/takeover/renew/complete predicates and timestamp writes. Expiry checks compare
+`lease_expires_at` with that sample; successful delivery writes `delivered_at` from the same
+sample used by completion. The recent-success query is a separate statement after reservation
+acquisition and takes its own single wall-clock sample after any lock wait; its cutoff is
+`delivered_at >= sample - interval '5 minutes'`. Do not use transaction-start `now()` or a
+`statement_timestamp()` captured before a lock wait. This follows the UTC `dbNowUtc()`
+convention in [background-jobs.md](background-jobs.md#leasing), but the current helper wraps
+transaction-start `now()`; changing that implementation to the required wall-clock source is
+future implementation work, not part of this docs-only PR.
+
+Released reservations are deleted, and expired rows are removed by `session-cleanup` so a
+worker crash cannot retain a recipient id indefinitely. The person and outbox foreign keys
+also cascade reservation deletion on person deletion and outbox purge, including organisation
+hard-delete.
+
 After acquiring the reservation, a candidate is suppressed only if a **different** outbox
-row matches all three values and has `delivered_at >= now() - interval '5 minutes'`. The
+row matches all three values and has `delivered_at >= sample - interval '5 minutes'`. The
 partial index on `(recipient_person_id, channel, dedupe_key, delivered_at desc)` where
 `delivered_at is not null` serves that equality-plus-time-range lookup. A successful adapter
 acceptance is committed by setting the candidate's `state = 'delivered'` and `delivered_at`
@@ -570,6 +588,7 @@ create index on outbox (state, next_attempt_at) where state = 'pending';
 create index on outbox (workspace_id, state);
 create index on outbox (dedupe_key) where dedupe_key is not null;
 create index on outbox (recipient_person_id, channel, dedupe_key, delivered_at desc) where delivered_at is not null;
+create unique index on outbox_dedupe_reservation (recipient_person_id, channel, dedupe_key);
 create index on audit_log (entity_type, entity_id, created_at desc);
 create index on audit_log (workspace_id, created_at desc);
 create index on attachment (state) where state = 'pending';

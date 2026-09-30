@@ -39,6 +39,14 @@ hours late depending on the session `TimeZone`. Issue #212 is that class; the co
 the reason the helper exists, and converting these columns to `timestamptz` is tracked
 separately rather than assumed done.
 
+The notification reservation protocol needs a wall-clock sample **after** any reservation-row
+lock wait; transaction-start `now()` and a statement timestamp captured before such a wait
+can be stale. Its design uses one `clock_timestamp() AT TIME ZONE 'UTC'` sample per atomic
+operation, after the lock is held, and reuses that value in all predicates and writes. This
+uses the same database-owned UTC convention as `dbNowUtc()`, but the current helper's
+transaction-start source is insufficient for this lock-delayed path. Updating that helper
+or using an equivalent statement-local expression is future implementation work.
+
 ```sql
 -- acquire (INHERITED from kaneo's leader-lock.ts; the clock is ours, #212): succeeds only
 -- if no lease exists or the existing one has expired
@@ -92,7 +100,7 @@ finally { clearInterval(heartbeat); await lease.release(); }
 | `metrics-snapshot` | hourly | 15 min | Writes `metric_snapshot` (hourly grain; daily rollup at 00:15) and, daily, `cycle_snapshot` |
 | `search-reindex` | 10 min | 10 min | Catches up rows whose search vector is stale |
 | `audit-purge` | daily 03:00 | 30 min | Deletes `audit_log` rows past retention as `taskdesk_maint`; **skips rows whose `organisation_id` or actor is under an open `legal_hold`** (join `legal_hold` on `lifted_at is null`); writes an `audit_chain_anchor` row **before** deleting, and does not delete if the anchor cannot be written; writes its own audit row |
-| `session-cleanup` | daily 03:15 | 5 min | Expired sessions, invitations, idempotency keys, expired `notification_preference_handoff` rows, read `notification` rows older than `instance_setting.notification_retention_days` (90 by default; unread rows are retained), and soft-deleted rows past their window — **the soft-delete purge skips any row whose organisation or person is under an open `legal_hold`**, and leaves it soft-deleted until the hold lifts |
+| `session-cleanup` | daily 03:15 | 5 min | Expired sessions, invitations, idempotency keys, expired `notification_preference_handoff` rows, `outbox_dedupe_reservation` rows whose `lease_expires_at` has passed, read `notification` rows older than `instance_setting.notification_retention_days` (90 by default; unread rows are retained), and soft-deleted rows past their window — **the soft-delete purge skips any row whose organisation or person is under an open `legal_hold`**, and leaves it soft-deleted until the hold lifts |
 | `attachment-gc` | daily 03:30 | 30 min | Removes objects for `attachment.state = 'deleted'` rows and orphans; **skips attachments whose `organisation_id` is under an open `legal_hold`** — which is why `attachment.workspace_id` / `organisation_id` are stored on the row ([data-model.md](data-model.md)) |
 | `attachment-pending-cleanup` | hourly | 5 min | Deletes `attachment` rows still `pending` after an hour (presign never completed) |
 | `timer-sweeper` | 15 min | 5 min | Stops `running_timer` rows older than 12 h, writing a capped `time_entry` |
@@ -176,7 +184,13 @@ outbox-drain (every 30 s, every replica)
 
 Notification success lookup uses the partial outbox index on
 `(recipient_person_id, channel, dedupe_key, delivered_at desc)` where `delivered_at is not
-null`. It compares only a distinct row with a successful timestamp in the prior five minutes;
+null`. After any reservation lock wait, each acquire/takeover, renewal, success lookup,
+completion, and expiry-cleanup operation samples the PostgreSQL wall clock once as
+`clock_timestamp() AT TIME ZONE 'UTC'` and reuses it for every lease predicate and timestamp
+write in that operation. This follows the `dbNowUtc()` UTC convention but must not use its
+current transaction-start `now()` source on this lock-delayed path. The lookup compares only
+a distinct row with a successful timestamp in the prior five minutes using its own fresh
+post-lock sample;
 failed retries keep the same pending row and do not count as duplicate deliveries. The
 notification field and query contract are specified in [data-model.md](data-model.md) and
 [notifications.md](../03-features/notifications.md#delivery).

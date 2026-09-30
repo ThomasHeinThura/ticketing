@@ -169,8 +169,18 @@ unique key, digest values, and per-person quiet-hours fields are defined in
   enforce tuple uniqueness; if a digest conflict contains different tuple values, fail
   closed without sending.
 
+  All lease and five-minute-window comparisons use one authoritative PostgreSQL wall-clock
+  sample per atomic operation. After any reservation-row lock wait, sample
+  `clock_timestamp() AT TIME ZONE 'UTC'` exactly once and reuse it for acquire/takeover,
+  renewal, completion predicates and their timestamp writes. The recent-success lookup is a
+  separate post-acquisition statement with its own one-time sample and cutoff
+  `delivered_at >= sample - interval '5 minutes'`. Do not use transaction-start `now()` or
+  a statement timestamp sampled before a lock wait. This follows the `dbNowUtc()` convention;
+  its current transaction-start implementation must be updated or replaced with the
+  statement-local wall-clock expression during implementation.
+
   After acquiring the reservation, query for a **different** outbox row with the same three
-  fields, `delivered_at >= now() - interval '5 minutes'`, and `id <> candidate.id`. The
+  fields, `delivered_at >= sample - interval '5 minutes'`, and `id <> candidate.id`. The
   partial index on `(recipient_person_id, channel, dedupe_key, delivered_at desc)` where
   `delivered_at is not null` supports those equality and time-range predicates. If a match
   exists, set the candidate `state = 'suppressed'` without sending or setting its
@@ -348,9 +358,14 @@ only one worker acquires the reservation and calls the provider, then commits
 and marks its row suppressed without a second provider call. Also cover active-lease deferral,
 known-failure release/retry, and crashed-worker lease expiry with a stale-token commit
 rejected. A second worker presenting the **same** outbox row id while its reservation is live
-must fail acquisition with a new token and leave the first worker's token valid for renewal
-and completion. A provider-accepted-but-uncommitted crash must assert at-least-once residual
-behavior rather than exactly-once delivery.
+must fail acquisition when presenting a fresh token and leave the first worker's token valid
+for renewal and completion. A lock-delayed timing case must hold the reservation lock across
+the lease expiry and across the five-minute success cutoff: after the lock is released, the
+operation must use a fresh post-lock DB wall-clock sample, take over an expired lease, and
+not suppress a success that is now older than five minutes. Also assert expired reservation
+cleanup and person/organisation hard-delete cascades remove every matching reservation row
+and recipient-person identifier. A provider-accepted-but-uncommitted crash must assert
+at-least-once residual behavior rather than exactly-once delivery.
 
 Add `tests/api-integration/notification-preference-link-handoff.test.ts` for expired and
 wrong-purpose tokens, token redaction, audience mismatch, same-origin handoff cookies, auth

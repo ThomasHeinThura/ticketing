@@ -431,9 +431,12 @@ is in [data-protection.md](../05-operations/data-protection.md).
 
 Organisation hard delete purges: work items, comments, attachments and objects, time and
 cost entries, notifications, sessions, API keys, webhooks, invitations, outbox rows,
+`outbox_dedupe_reservation` rows (by recipient person and cascading outbox ownership),
 idempotency responses, `metric_snapshot` rows carrying its `organisation_id`, search
-vectors, and cached identity entries. Audit rows keep an organisation tombstone. Deleted
-data persists in backups for the retention period stated in
+vectors, and cached identity entries. Person deletion also removes reservations keyed by
+that person. Expired reservation rows are removed by `session-cleanup`; no recipient id is
+retained in a reservation after deletion or expiry cleanup. Audit rows keep an organisation
+tombstone. Deleted data persists in backups for the retention period stated in
 [backup-and-restore.md](../05-operations/backup-and-restore.md) — the answer a DPA asks for.
 Quotas ship with **real defaults** (storage 20 GB, portal users 500, webhooks 10, API
 600/min per organisation), not "unlimited", and the installer applies them.
