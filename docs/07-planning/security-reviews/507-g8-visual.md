@@ -30,3 +30,17 @@ The workflow implementation and scope checker do not currently show a matcher/ch
 ## Required follow-up
 
 Keep the PR blocked until the active repository ruleset requires `visual regression (G8)`, then rerun and verify protected checks. This note does not claim the live ruleset was changed or that the candidate is merge-ready.
+
+## 2026-09-30 · Current source review after G8 bypass remediation
+
+**Reviewer:** GPT-6 Sol, fresh independent context; read-only review.
+**Reviewed head:** `5cf25ffc54b0f5a17d66146aebb5d82fd48f9608`
+**Base:** `6a93fb3b75f7aa90bcff127ccf545eb5b3ad1670`
+**Source verdict:** CLEAR. The reviewer found no remaining concrete source bypass at this head.
+**Merge verdict:** BLOCKED by the live ruleset omission below and failing required checks.
+
+The review followed the earlier blocked heads through the current exact source head. The checker now binds the complete G8 visual job and its workflow root environment, the app and Storybook launch configurations, and Storybook's full source glob and rendering configuration. Red probes reject computed config overrides, empty shards, early exits, fake servers, narrowed Storybook discovery, inserted job steps, changed working directories, and workflow-wide `BASH_ENV`. Two independent GPT-6 Luna reviewers also cleared the final delta at this head. The Sol reviewer did not author or remediate it.
+
+**Evidence at the reviewed source head:** Node 24 focused G8 checker tests passed 146/146; the full CI-script suite passed 997/997; Biome on the changed checker and probes and `git diff --check` passed. `pnpm lint` and `pnpm typecheck` passed earlier in this source series, with no app or package source changes afterward. GitHub's `visual regression (G8)`, `gate checkers + red probes`, and `unit + component` jobs passed on the reviewed source head. The visual check covers three route screenshots and the exported Storybook stories through the pinned discovery configuration. The reviewer inspected the source and probes; the reviewer did not rerun the browser suite locally or individually approve baseline images.
+
+**External blocker:** Active `protect-main` ruleset `22365005` still omits `visual regression (G8)` from required contexts. The PR-template/security-review check was failing on the stale PR body and note, and dependency audit was failing on the default-branch dependency graph at the time of this review. No ruleset, deployment, DNS, or production setting was changed. Keep #507 draft and unmerged until those controls are resolved and all exact-head checks are green.
