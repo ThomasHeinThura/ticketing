@@ -1,9 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { randomUUIDMock } = vi.hoisted(() => ({
-  randomUUIDMock: vi.fn<
-    () => `${string}-${string}-${string}-${string}-${string}`
-  >(),
+  randomUUIDMock:
+    vi.fn<() => `${string}-${string}-${string}-${string}-${string}`>(),
 }));
 
 vi.mock("node:crypto", () => ({ randomUUID: randomUUIDMock }));
