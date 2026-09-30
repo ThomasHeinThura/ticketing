@@ -431,5 +431,13 @@ describe("every assignee write path is workspace scoped", () => {
     });
 
     expect(response.status).toBe(403);
+    await expect(response.text()).resolves.toBe(
+      "Assignee is not a member of this workspace",
+    );
+
+    const persistedTask = await db.query.taskTable.findFirst({
+      where: eq(schema.taskTable.id, task.id),
+    });
+    expect(persistedTask?.userId).toBeNull();
   });
 });

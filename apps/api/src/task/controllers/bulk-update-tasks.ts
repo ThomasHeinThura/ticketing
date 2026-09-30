@@ -404,6 +404,10 @@ async function bulkUpdateTasks({
       results.push({ taskId, success: true });
     } catch (error) {
       if (!(error instanceof HTTPException)) throw error;
+      // Assignee reach is a request-level authorization boundary. Returning a
+      // per-item 403 inside an HTTP 200 bulk envelope breaks the legacy route
+      // contract and makes callers treat an unauthorized request as accepted.
+      if (error.status === 403) throw error;
       results.push({
         ...(taskInScope ? { taskId } : {}),
         success: false,
