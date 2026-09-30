@@ -860,11 +860,32 @@
           },
           "updatedCount": {
             "type": "number"
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "taskId": {
+                  "type": "string"
+                },
+                "success": {
+                  "type": "boolean"
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "success"
+              ]
+            }
           }
         },
         "required": [
           "success",
-          "updatedCount"
+          "updatedCount",
+          "results"
         ]
       },
       "Task": {

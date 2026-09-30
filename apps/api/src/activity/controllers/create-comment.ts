@@ -1,14 +1,10 @@
 import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import {
-  projectTable,
-  taskActivityTable,
-  taskTable,
-  userTable,
-} from "../../database/schema";
+import { taskActivityTable, userTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import createNotification from "../../notification/controllers/create-notification";
+import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import { parseMentionIds } from "../../utils/parse-mentions";
 
 async function createComment(
@@ -17,21 +13,38 @@ async function createComment(
   content: string,
   external?: { userName: string; source: string },
 ) {
-  const [activity] = await db
-    .insert(taskActivityTable)
-    .values({
-      taskId,
-      type: "comment",
-      userId,
-      content,
-      ...(external
-        ? {
-            externalUserName: external.userName,
-            externalSource: external.source,
-          }
-        : {}),
-    })
-    .returning();
+  const { activity, taskContext } = await db.transaction(async (tx) => {
+    const lockedTask = await lockTaskAndAssertProjectLive(tx, taskId);
+    const [activity] = await tx
+      .insert(taskActivityTable)
+      .values({
+        taskId,
+        type: "comment",
+        userId,
+        content,
+        ...(external
+          ? {
+              externalUserName: external.userName,
+              externalSource: external.source,
+            }
+          : {}),
+      })
+      .returning();
+    const project = await tx.query.projectTable.findFirst({
+      columns: { workspaceId: true },
+      where: (project, { eq }) => eq(project.id, lockedTask.projectId),
+    });
+    if (!project) throw new HTTPException(404, { message: "Task not found" });
+    return {
+      activity,
+      taskContext: {
+        assigneeId: lockedTask.userId,
+        projectId: lockedTask.projectId,
+        title: lockedTask.title,
+        workspaceId: project.workspaceId,
+      },
+    };
+  });
 
   if (!activity) {
     throw new HTTPException(500, {
@@ -44,16 +57,7 @@ async function createComment(
     .from(userTable)
     .where(eq(userTable.id, userId));
 
-  const [task] = await db
-    .select({
-      assigneeId: taskTable.userId,
-      projectId: taskTable.projectId,
-      title: taskTable.title,
-      workspaceId: projectTable.workspaceId,
-    })
-    .from(taskTable)
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(eq(taskTable.id, taskId));
+  const task = taskContext;
 
   if (task) {
     await publishEvent("comment.created", {

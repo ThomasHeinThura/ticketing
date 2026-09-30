@@ -3,7 +3,9 @@ import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { labelTable, projectTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import { lockWorkspaceLabelNames } from "../label-name-lock";
 
 async function createLabel(
   name: string,
@@ -41,19 +43,31 @@ async function createLabel(
       });
     }
 
-    const [inserted] = await db
-      .insert(labelTable)
-      .values({ name, color, taskId, workspaceId: task.workspaceId })
-      .onConflictDoNothing({
-        target: [labelTable.taskId, labelTable.name],
-      })
-      .returning();
-
-    const label =
-      inserted ??
-      (await db.query.labelTable.findFirst({
-        where: and(eq(labelTable.taskId, taskId), eq(labelTable.name, name)),
-      }));
+    const { label, inserted, projectId } = await db.transaction(async (tx) => {
+      // A workspace-label cascade and every task-level create/edit/delete for
+      // this name serialize before taking task/project locks. The cascade can
+      // then re-read and lock every copy created before it acquired this key.
+      await lockWorkspaceLabelNames(tx, workspaceId, [name]);
+      const lockedTask = await lockTaskAndAssertProjectLive(tx, taskId);
+      const [project] = await tx
+        .select({ workspaceId: projectTable.workspaceId })
+        .from(projectTable)
+        .where(eq(projectTable.id, lockedTask.projectId));
+      if (!project || project.workspaceId !== workspaceId) {
+        throw new HTTPException(404, { message: "Task not found" });
+      }
+      const [inserted] = await tx
+        .insert(labelTable)
+        .values({ name, color, taskId, workspaceId: project.workspaceId })
+        .onConflictDoNothing({ target: [labelTable.taskId, labelTable.name] })
+        .returning();
+      const label =
+        inserted ??
+        (await tx.query.labelTable.findFirst({
+          where: and(eq(labelTable.taskId, taskId), eq(labelTable.name, name)),
+        }));
+      return { label, inserted, projectId: lockedTask.projectId };
+    });
 
     if (!label) {
       throw new Error("Failed to create or resolve label");
@@ -61,7 +75,7 @@ async function createLabel(
 
     if (inserted) {
       await publishEvent("task.label_created", {
-        projectId: task.projectId,
+        projectId,
         taskId: task.id,
         userId: userId,
         type: "label_created",
@@ -70,24 +84,28 @@ async function createLabel(
     return label;
   }
 
-  const [inserted] = await db
-    .insert(labelTable)
-    .values({ name, color, taskId: null, workspaceId })
-    .onConflictDoNothing({
-      target: [labelTable.workspaceId, labelTable.name],
-      where: sql`${labelTable.taskId} is null`,
-    })
-    .returning();
+  const label = await db.transaction(async (tx) => {
+    await lockWorkspaceLabelNames(tx, workspaceId, [name]);
+    const [inserted] = await tx
+      .insert(labelTable)
+      .values({ name, color, taskId: null, workspaceId })
+      .onConflictDoNothing({
+        target: [labelTable.workspaceId, labelTable.name],
+        where: sql`${labelTable.taskId} is null`,
+      })
+      .returning();
 
-  const label =
-    inserted ??
-    (await db.query.labelTable.findFirst({
-      where: and(
-        eq(labelTable.workspaceId, workspaceId),
-        eq(labelTable.name, name),
-        isNull(labelTable.taskId),
-      ),
-    }));
+    return (
+      inserted ??
+      (await tx.query.labelTable.findFirst({
+        where: and(
+          eq(labelTable.workspaceId, workspaceId),
+          eq(labelTable.name, name),
+          isNull(labelTable.taskId),
+        ),
+      }))
+    );
+  });
 
   if (!label) {
     throw new Error("Failed to create or resolve label");

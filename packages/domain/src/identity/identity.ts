@@ -2,7 +2,9 @@ import type {
   AllowedRole,
   ConnectionValidationResult,
   IdentityClaimResult,
+  IdentityConnectionContext,
   IdentityConnectionDraft,
+  IdentityDomainOwner,
   IdentityPortalScope,
   IdentityRoleMapping,
   ProvisioningDecision,
@@ -32,6 +34,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return proto === Object.prototype || proto === null;
 }
 
+function normaliseEmailDomain(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const domain = value.toLowerCase();
+  if (domain.length > 253) return undefined;
+  const labels = domain.split(".");
+  if (
+    labels.length < 2 ||
+    labels.some(
+      (label) =>
+        label.length > 63 ||
+        !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/u.test(label),
+    )
+  ) {
+    return undefined;
+  }
+  return domain;
+}
+
 function normaliseEmail(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const address = value.trim().toLowerCase();
@@ -49,8 +69,7 @@ function normaliseEmail(value: unknown): string | undefined {
   }
   if (at <= 0 || at === address.length - 1) return undefined;
   const domain = address.slice(at + 1);
-  const dot = domain.indexOf(".");
-  return dot > 0 && dot < domain.length - 1 ? address : undefined;
+  return normaliseEmailDomain(domain) === undefined ? undefined : address;
 }
 
 function isGroupOverage(claims: VerifiedEntraClaims): boolean {
@@ -70,7 +89,8 @@ function hasInvalidGroupOverageMarker(claims: VerifiedEntraClaims): boolean {
 
 export function normaliseEntraClaims(
   claims: VerifiedEntraClaims,
-  connection: Pick<IdentityConnectionDraft, "tenantId" | "issuer">,
+  connection: IdentityConnectionContext,
+  domainOwners: readonly IdentityDomainOwner[],
 ): IdentityClaimResult {
   if (claims.tid !== connection.tenantId)
     return { ok: false, reason: "tenant_mismatch" };
@@ -99,6 +119,37 @@ export function normaliseEntraClaims(
   }
   if (claims.email_verified !== undefined && claims.email_verified !== true) {
     return { ok: false, reason: "unverified_address" };
+  }
+
+  const addressDomain = address.slice(address.lastIndexOf("@") + 1);
+  let matchingBindingCount = 0;
+  let domainOwner: string | undefined;
+  for (const binding of domainOwners) {
+    if (!isRecord(binding)) {
+      return { ok: false, reason: "ambiguous_domain_binding" };
+    }
+    const bindingDomain = normaliseEmailDomain(binding.domain);
+    const bindingOwnerId: unknown = binding.identityConnectionId;
+    // Invalid configured data must not silently turn off a domain restriction.
+    if (
+      bindingDomain === undefined ||
+      typeof bindingOwnerId !== "string" ||
+      bindingOwnerId.trim().length === 0
+    ) {
+      return { ok: false, reason: "ambiguous_domain_binding" };
+    }
+    if (bindingDomain !== addressDomain) continue;
+    matchingBindingCount += 1;
+    if (matchingBindingCount > 1) {
+      return { ok: false, reason: "ambiguous_domain_binding" };
+    }
+    domainOwner = bindingOwnerId;
+  }
+  if (
+    matchingBindingCount > 0 &&
+    domainOwner !== connection.identityConnectionId
+  ) {
+    return { ok: false, reason: "domain_bound_elsewhere" };
   }
 
   let groupObjectIds: readonly string[] | "overage" = [];
