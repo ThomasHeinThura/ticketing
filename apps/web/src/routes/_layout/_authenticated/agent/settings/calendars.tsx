@@ -67,7 +67,7 @@ function ServiceCalendarsRoute() {
               render={
                 <Link
                   to={routes.serviceCalendarEditor.path}
-                  params={{ calendarId: "new" }}
+                  params={{ id: "new" }}
                 />
               }
               disabled={!workspace}
@@ -140,7 +140,7 @@ function ServiceCalendarsRoute() {
                     render={
                       <Link
                         to={routes.serviceCalendarEditor.path}
-                        params={{ calendarId: "new" }}
+                        params={{ id: "new" }}
                       />
                     }
                   >

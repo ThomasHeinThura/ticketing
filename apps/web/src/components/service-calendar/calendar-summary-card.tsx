@@ -33,7 +33,7 @@ export function CalendarSummaryCard({
             <Link
               className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               to={routes.serviceCalendarEditor.path}
-              params={{ calendarId: calendar.id }}
+              params={{ id: calendar.id }}
             >
               {calendar.name}
             </Link>

@@ -20,5 +20,19 @@
 		"applicationRoute": "/agent/work-items/$key",
 		"test": "work-item detail screen @visual",
 		"screenshot": "work-item-detail.png"
+	},
+	{
+		"name": "service-calendar-list",
+		"inventoryRoute": "/agent/settings/calendars",
+		"applicationRoute": "/agent/settings/calendars",
+		"test": "service calendar list screen @visual",
+		"screenshot": "service-calendar-list.png"
+	},
+	{
+		"name": "service-calendar-editor",
+		"inventoryRoute": "/agent/settings/calendars/{id}",
+		"applicationRoute": "/agent/settings/calendars/$id",
+		"test": "service calendar editor screen @visual",
+		"screenshot": "service-calendar-editor.png"
 	}
 ]

@@ -104,9 +104,9 @@ export const routes = {
   },
   /** `docs/02-design/screen-inventory.md` "Service calendar editor". */
   serviceCalendarEditor: {
-    path: "/agent/settings/calendars/$calendarId" as const,
-    build: (params: { calendarId: string }, year?: number) => {
-      const path = `/agent/settings/calendars/${encodeURIComponent(params.calendarId)}`;
+    path: "/agent/settings/calendars/$id" as const,
+    build: (params: { id: string }, year?: number) => {
+      const path = `/agent/settings/calendars/${encodeURIComponent(params.id)}`;
       return year === undefined ? path : `${path}?year=${year}`;
     },
   },

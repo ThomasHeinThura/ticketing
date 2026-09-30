@@ -5,14 +5,14 @@ import { routes } from "@/lib/routes";
 import { parseCalendarEditorSearch } from "@/lib/service-calendar-form";
 
 export const Route = createFileRoute(
-  "/_layout/_authenticated/agent/settings/calendars/$calendarId",
+  "/_layout/_authenticated/agent/settings/calendars/$id",
 )({
   validateSearch: parseCalendarEditorSearch,
   component: ServiceCalendarEditorRoute,
 });
 
 function ServiceCalendarEditorRoute() {
-  const { calendarId } = Route.useParams();
+  const { id: calendarId } = Route.useParams();
   const { year } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const isNew = calendarId === "new";
@@ -23,7 +23,7 @@ function ServiceCalendarEditorRoute() {
     onCreated: async (id, selectedYear) => {
       await navigate({
         to: routes.serviceCalendarEditor.path,
-        params: { calendarId: id },
+        params: { id },
         search: { year: selectedYear },
         replace: true,
       });

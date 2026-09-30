@@ -118,10 +118,7 @@ describe("routes.serviceCalendars", () => {
   });
 
   it("preserves the editor id and preview year in its URL", () => {
-    const url = routes.serviceCalendarEditor.build(
-      { calendarId: "cal/one" },
-      2026,
-    );
+    const url = routes.serviceCalendarEditor.build({ id: "cal/one" }, 2026);
     expect(url).toBe("/agent/settings/calendars/cal%2Fone?year=2026");
     expect(
       parseCalendarEditorSearch({
@@ -131,7 +128,7 @@ describe("routes.serviceCalendars", () => {
   });
 
   it("does not add search state when the year is not supplied", () => {
-    expect(routes.serviceCalendarEditor.build({ calendarId: "new" })).toBe(
+    expect(routes.serviceCalendarEditor.build({ id: "new" })).toBe(
       "/agent/settings/calendars/new",
     );
   });

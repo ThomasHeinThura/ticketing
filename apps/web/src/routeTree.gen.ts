@@ -34,7 +34,7 @@ import { Route as LayoutAuthenticatedDashboardSettingsWorkspaceRouteImport } fro
 import { Route as LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRouteImport } from './routes/_layout/_authenticated/dashboard/workspace/$workspaceId'
 import { Route as LayoutAuthenticatedDashboardWorkspaceCreateRouteImport } from './routes/_layout/_authenticated/dashboard/workspace/create'
 import { Route as LayoutAuthenticatedAgentProjectsProjectKeyWorkRouteImport } from './routes/_layout/_authenticated/agent/projects/$projectKey/work'
-import { Route as LayoutAuthenticatedAgentSettingsCalendarsCalendarIdRouteImport } from './routes/_layout/_authenticated/agent/settings/calendars/$calendarId'
+import { Route as LayoutAuthenticatedAgentSettingsCalendarsIdRouteImport } from './routes/_layout/_authenticated/agent/settings/calendars/$id'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountDeveloperRouteImport } from './routes/_layout/_authenticated/dashboard/settings/account/developer'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountInformationRouteImport } from './routes/_layout/_authenticated/dashboard/settings/account/information'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountNotificationsRouteImport } from './routes/_layout/_authenticated/dashboard/settings/account/notifications'
@@ -193,10 +193,10 @@ const LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute =
     path: '/agent/projects/$projectKey/work',
     getParentRoute: () => LayoutAuthenticatedRoute,
   } as any)
-const LayoutAuthenticatedAgentSettingsCalendarsCalendarIdRoute =
-  LayoutAuthenticatedAgentSettingsCalendarsCalendarIdRouteImport.update({
-    id: '/$calendarId',
-    path: '/$calendarId',
+const LayoutAuthenticatedAgentSettingsCalendarsIdRoute =
+  LayoutAuthenticatedAgentSettingsCalendarsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
     getParentRoute: () => LayoutAuthenticatedAgentSettingsCalendarsRoute,
   } as any)
 const LayoutAuthenticatedDashboardSettingsAccountDeveloperRoute =
@@ -354,7 +354,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/workspace/$workspaceId': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRouteWithChildren
   '/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
   '/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
-  '/agent/settings/calendars/$calendarId': typeof LayoutAuthenticatedAgentSettingsCalendarsCalendarIdRoute
+  '/agent/settings/calendars/$id': typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
   '/dashboard/settings/account/developer': typeof LayoutAuthenticatedDashboardSettingsAccountDeveloperRoute
   '/dashboard/settings/account/information': typeof LayoutAuthenticatedDashboardSettingsAccountInformationRoute
   '/dashboard/settings/account/notifications': typeof LayoutAuthenticatedDashboardSettingsAccountNotificationsRoute
@@ -396,7 +396,7 @@ export interface FileRoutesByTo {
   '/dashboard/settings/workspace': typeof LayoutAuthenticatedDashboardSettingsWorkspaceRouteWithChildren
   '/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
   '/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
-  '/agent/settings/calendars/$calendarId': typeof LayoutAuthenticatedAgentSettingsCalendarsCalendarIdRoute
+  '/agent/settings/calendars/$id': typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
   '/dashboard/settings/account/developer': typeof LayoutAuthenticatedDashboardSettingsAccountDeveloperRoute
   '/dashboard/settings/account/information': typeof LayoutAuthenticatedDashboardSettingsAccountInformationRoute
   '/dashboard/settings/account/notifications': typeof LayoutAuthenticatedDashboardSettingsAccountNotificationsRoute
@@ -443,7 +443,7 @@ export interface FileRoutesById {
   '/_layout/_authenticated/dashboard/workspace/$workspaceId': typeof LayoutAuthenticatedDashboardWorkspaceWorkspaceIdRouteWithChildren
   '/_layout/_authenticated/dashboard/workspace/create': typeof LayoutAuthenticatedDashboardWorkspaceCreateRoute
   '/_layout/_authenticated/agent/projects/$projectKey/work': typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
-  '/_layout/_authenticated/agent/settings/calendars/$calendarId': typeof LayoutAuthenticatedAgentSettingsCalendarsCalendarIdRoute
+  '/_layout/_authenticated/agent/settings/calendars/$id': typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
   '/_layout/_authenticated/dashboard/settings/account/developer': typeof LayoutAuthenticatedDashboardSettingsAccountDeveloperRoute
   '/_layout/_authenticated/dashboard/settings/account/information': typeof LayoutAuthenticatedDashboardSettingsAccountInformationRoute
   '/_layout/_authenticated/dashboard/settings/account/notifications': typeof LayoutAuthenticatedDashboardSettingsAccountNotificationsRoute
@@ -489,7 +489,7 @@ export interface FileRouteTypes {
     | '/dashboard/workspace/$workspaceId'
     | '/dashboard/workspace/create'
     | '/agent/projects/$projectKey/work'
-    | '/agent/settings/calendars/$calendarId'
+    | '/agent/settings/calendars/$id'
     | '/dashboard/settings/account/developer'
     | '/dashboard/settings/account/information'
     | '/dashboard/settings/account/notifications'
@@ -531,7 +531,7 @@ export interface FileRouteTypes {
     | '/dashboard/settings/workspace'
     | '/dashboard/workspace/create'
     | '/agent/projects/$projectKey/work'
-    | '/agent/settings/calendars/$calendarId'
+    | '/agent/settings/calendars/$id'
     | '/dashboard/settings/account/developer'
     | '/dashboard/settings/account/information'
     | '/dashboard/settings/account/notifications'
@@ -577,7 +577,7 @@ export interface FileRouteTypes {
     | '/_layout/_authenticated/dashboard/workspace/$workspaceId'
     | '/_layout/_authenticated/dashboard/workspace/create'
     | '/_layout/_authenticated/agent/projects/$projectKey/work'
-    | '/_layout/_authenticated/agent/settings/calendars/$calendarId'
+    | '/_layout/_authenticated/agent/settings/calendars/$id'
     | '/_layout/_authenticated/dashboard/settings/account/developer'
     | '/_layout/_authenticated/dashboard/settings/account/information'
     | '/_layout/_authenticated/dashboard/settings/account/notifications'
@@ -783,11 +783,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRouteImport
       parentRoute: typeof LayoutAuthenticatedRoute
     }
-    '/_layout/_authenticated/agent/settings/calendars/$calendarId': {
-      id: '/_layout/_authenticated/agent/settings/calendars/$calendarId'
-      path: '/$calendarId'
-      fullPath: '/agent/settings/calendars/$calendarId'
-      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsCalendarIdRouteImport
+    '/_layout/_authenticated/agent/settings/calendars/$id': {
+      id: '/_layout/_authenticated/agent/settings/calendars/$id'
+      path: '/$id'
+      fullPath: '/agent/settings/calendars/$id'
+      preLoaderRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsIdRouteImport
       parentRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsRoute
     }
     '/_layout/_authenticated/dashboard/settings/account/developer': {
@@ -1070,13 +1070,13 @@ const LayoutAuthenticatedDashboardRouteWithChildren =
   )
 
 interface LayoutAuthenticatedAgentSettingsCalendarsRouteChildren {
-  LayoutAuthenticatedAgentSettingsCalendarsCalendarIdRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsCalendarIdRoute
+  LayoutAuthenticatedAgentSettingsCalendarsIdRoute: typeof LayoutAuthenticatedAgentSettingsCalendarsIdRoute
 }
 
 const LayoutAuthenticatedAgentSettingsCalendarsRouteChildren: LayoutAuthenticatedAgentSettingsCalendarsRouteChildren =
   {
-    LayoutAuthenticatedAgentSettingsCalendarsCalendarIdRoute:
-      LayoutAuthenticatedAgentSettingsCalendarsCalendarIdRoute,
+    LayoutAuthenticatedAgentSettingsCalendarsIdRoute:
+      LayoutAuthenticatedAgentSettingsCalendarsIdRoute,
   }
 
 const LayoutAuthenticatedAgentSettingsCalendarsRouteWithChildren =
