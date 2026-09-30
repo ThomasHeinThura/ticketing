@@ -5,6 +5,23 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-09-30 · `read-all` skips hidden task notifications
+
+**Decision:** when a recipient marks all notifications as read, skip task-backed
+notifications whose work item is currently hidden or unreachable. Leave those rows unread;
+if reach is restored while the work item still exists, the notifications become visible and
+remain unread. Marking one such notification as read individually continues to return 404
+while it is unreachable.
+
+**Why:** read state must not mutate a notification the recipient cannot currently reach. The
+inbox omits it, and the bulk action should have the same reach boundary as the individual
+read action. This preserves the hidden notification for the recipient if access is restored.
+
+**Scope:** this resolves the read-all hidden-notification behavior only. It does not close
+the other open findings in the notification governance review.
+
+**Decided by:** Thomas, 2026-09-30.
+
 ### 2026-09-29 · OpenAI model routing replaces Claude/`pal-mcp` routing
 
 **Decision:** TaskDesk's active AI workflow moves to an OpenAI-first two-tier model policy.
