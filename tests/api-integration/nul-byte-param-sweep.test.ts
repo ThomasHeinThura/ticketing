@@ -338,7 +338,7 @@ describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
     expect(response.status).toBe(400);
   });
 
-  it("PATCH /api/task/bulk: a NUL byte in addLabel's value is a clean 400, not a 500 (bulk-update-tasks.ts)", async () => {
+  it("PATCH /api/task/bulk: a NUL byte in addLabel's value is a per-item 400, not a 500 (bulk-update-tasks.ts)", async () => {
     const member = await createWorkspaceMember();
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
@@ -357,10 +357,19 @@ describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
       }),
     });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      results: [
+        {
+          taskId: task.id,
+          success: false,
+          error: expect.stringContaining("NUL"),
+        },
+      ],
+    });
   });
 
-  it("PATCH /api/task/bulk: a NUL byte in removeLabel's value is a clean 400, not a 500 (bulk-update-tasks.ts)", async () => {
+  it("PATCH /api/task/bulk: a NUL byte in removeLabel's value is a per-item 400, not a 500 (bulk-update-tasks.ts)", async () => {
     const member = await createWorkspaceMember();
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
@@ -379,6 +388,15 @@ describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
       }),
     });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      results: [
+        {
+          taskId: task.id,
+          success: false,
+          error: expect.stringContaining("NUL"),
+        },
+      ],
+    });
   });
 });

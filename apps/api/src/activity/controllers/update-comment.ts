@@ -1,9 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { taskActivityTable, taskTable } from "../../database/schema";
+import { taskActivityTable } from "../../database/schema";
 import { publishEvent } from "../../events";
 import { deleteOrphanedAssets } from "../../storage/cleanup-assets";
+import { lockTaskAndAssertProjectLive } from "../../task/assert-task-project-live";
 
 async function updateComment(userId: string, id: string, content: string) {
   const [existing] = await db
@@ -28,17 +29,21 @@ async function updateComment(userId: string, id: string, content: string) {
     });
   }
 
-  const [updated] = await db
-    .update(taskActivityTable)
-    .set({ content })
-    .where(
-      and(
-        eq(taskActivityTable.id, id),
-        eq(taskActivityTable.userId, userId),
-        eq(taskActivityTable.type, "comment"),
-      ),
-    )
-    .returning();
+  const { updated, projectId } = await db.transaction(async (tx) => {
+    const task = await lockTaskAndAssertProjectLive(tx, existing.taskId);
+    const [updated] = await tx
+      .update(taskActivityTable)
+      .set({ content })
+      .where(
+        and(
+          eq(taskActivityTable.id, id),
+          eq(taskActivityTable.userId, userId),
+          eq(taskActivityTable.type, "comment"),
+        ),
+      )
+      .returning();
+    return { updated, projectId: task.projectId };
+  });
 
   if (!updated) {
     throw new HTTPException(404, {
@@ -46,19 +51,11 @@ async function updateComment(userId: string, id: string, content: string) {
     });
   }
 
-  const [task] = await db
-    .select({ projectId: taskTable.projectId })
-    .from(taskTable)
-    .where(eq(taskTable.id, updated.taskId))
-    .limit(1);
-
-  if (task) {
-    await publishEvent("comment.updated", {
-      ...updated,
-      projectId: task.projectId,
-      userId,
-    });
-  }
+  await publishEvent("comment.updated", {
+    ...updated,
+    projectId,
+    userId,
+  });
 
   deleteOrphanedAssets(existing.content, content, {
     taskId: existing.taskId,
