@@ -45,6 +45,7 @@ import notification from "./notification";
 import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
+import pendingAction from "./pending-action";
 // Issue #8: `assertRouteIsClassified` refuses a request whose route has no policy entry at
 // all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
 // comparison, off by default. See the call sites below and each file's own header comment.
@@ -1026,6 +1027,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     "/notification-preferences",
     notificationPreferences,
   );
+  const pendingActionApi = api.route("/me", pendingAction);
   const searchApi = api.route("/search", search);
   const taskRelationApi = api.route("/task-relation", taskRelation);
   const externalLinkApi = api.route("/external-link", externalLink);
@@ -1203,6 +1205,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     labelApi,
     notificationApi,
     notificationPreferencesApi,
+    pendingActionApi,
     projectApi,
     searchApi,
     taskApi,
@@ -1425,6 +1428,7 @@ const {
   labelApi,
   notificationApi,
   notificationPreferencesApi,
+  pendingActionApi,
   projectApi,
   searchApi,
   taskApi,
@@ -1486,6 +1490,7 @@ export type AppType =
   | typeof labelApi
   | typeof notificationApi
   | typeof notificationPreferencesApi
+  | typeof pendingActionApi
   | typeof searchApi
   | typeof taskRelationApi
   | typeof externalLinkApi

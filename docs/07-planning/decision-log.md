@@ -5,6 +5,24 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-01 · Pending-action self-read API contract
+
+**Decision:** `GET /api/me/pending-actions` returns only the caller's pending actions,
+ordered by `created_at DESC, id DESC`, with the standard opaque cursor and limit (default
+50, maximum 200) and `{ data, page, meta }` envelope. `GET
+/api/me/pending-actions/{id}` returns the caller's action in any state for polling; another
+requester's id returns the same 404 as a missing id. Both use one explicit allowlisted DTO:
+id, action, origin, target type and ids, summary, required confirmation, state, timestamps,
+invalidation reason, and the own API key's name when available. Payload/hash, route key,
+credential id, step-up token id, trace id, and internal error stay private. A read that
+renders a summary writes `pending_action.viewed`; an audit failure fails the read.
+
+**Why:** clients need a stable way to discover approval requests and poll their outcomes.
+The persistence row contains internal authorization and execution data, so returning it
+directly would expose fields that the UI and polling contract do not need.
+
+**Decided by:** task orchestrator, 2026-10-01.
+
 ### 2026-10-01 · G8 requires implemented screens now and activates future routes with implementation
 
 **Decision:** G8 requires screenshot comparison for every exported UI Storybook story and

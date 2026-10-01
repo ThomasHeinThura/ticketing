@@ -243,6 +243,26 @@ GET     /api/workspaces/{id}/pending-actions              workspace:manage_setti
 POST    /api/instance/purge                               instance:admin  E  (PA-13)
 ```
 
+The self list returns only the caller's `pending` actions, ordered by
+`created_at DESC, id DESC`. It uses the standard opaque cursor and `limit` contract
+from [api-design.md](api-design.md#collections): default 50, maximum 200, and returns
+`{ data, page: { nextCursor, hasMore }, meta: { total } }`, where `meta.total` is the
+count of all pending actions owned by the caller. `GET /api/me/pending-actions/{id}`
+returns that caller's action in any state so API and MCP clients can poll its outcome;
+another requester's id is indistinguishable from a missing id and returns 404.
+
+Both routes return the same explicit allowlisted DTO, in camel case:
+`id`, `action`, `origin`, `targetType`, `targetIds`, `summary`, `confirmation`, `state`,
+`createdAt`, `expiresAt`, `invalidationReason`, `decidedAt`, `executedAt`, and
+`requestingKeyName`. `summary` is the stored `payload_summary` and must be a JSON object.
+`confirmation` is `confirmation_required`. `requestingKeyName` is the name of the
+requesting person's API key when the credential is an API key and that key still exists;
+it is otherwise null. Reads never return the stored payload, payload hash, route key,
+credential id, step-up token id, trace id, or internal error.
+
+Rendering a list row or detail summary is a `pending_action.viewed` audit action (PA-11).
+The read fails if the audit write fails; it must not return an unaudited summary.
+
 The first line covers ordinary records. A `DELETE` on an **elevated** target (workspace,
 organisation, project, API key, webhook, identity connection, `auth.*` plugin) carries
 `sessionOnly: true` and returns `403 session_required` on any non-session credential rather
