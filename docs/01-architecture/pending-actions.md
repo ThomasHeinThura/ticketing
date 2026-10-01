@@ -233,6 +233,17 @@ thing that is hashed or executed.
   binding, five-minute token lifetime, re-mintability while pending, and `pending` state on
   denial.
 
+  For SSO step-up, the callback must validate the exact configured issuer and audience,
+  single-use `state` and `nonce` bound to challenge/session/subject/connection, and the
+  requested `prompt=login`. It must include signed `auth_time` satisfying
+  `challenge.created_at - 60s <= auth_time <= callback_received_at + 60s` and
+  `callback_received_at - auth_time <= 5min`; the callback must arrive before challenge
+  expiry. Missing or untrustworthy `auth_time`, changed subject/connection/session, or
+  unavailable auth context fails closed (`403 step_up_unavailable` or authentication
+  failure). Where policy requires MFA, fresh `amr`/`acr` evidence must satisfy the configured
+  connection mapping or a real local factor; a static upstream-MFA flag alone is not proof.
+  No password/email-OTP fallback is allowed for an SSO-only account.
+
   Re-authentication must be actually verified. The initial supported account class is a
   current local-password session with no enrolled or required second factor, where the
   server rechecks the current credential/identity and verifies the password. The current

@@ -503,10 +503,11 @@ document contradicted itself in each place:
   counterpart of kind 2's `(self)`, needed because kind 2 is defined for `/api/me/*` on the
   agent origin only).
 - **Kind 4** requires a `reason`, so "public" is a deliberate, reviewable act.
-- **Kind 5** exists because the route-coverage test enumerates **Hono's router**
-  (`app.routes`), not the OpenAPI document — the OpenAPI document does not know about
-  `/auth/*`, `/ws` or `/metrics`, and those are precisely the surfaces v1 leaked through.
-  The `delegated` union is **closed**: adding a member is a decision-log entry, not an edit.
+- **Kind 5** exists because the route-coverage test must enumerate actual runtime surfaces,
+  not only the OpenAPI document. For Hono, it enumerates `app.routes`; `/metrics` is a
+  separate Node listener and is absent from that list. The OpenAPI document also cannot
+  describe all delegated `/auth/*` and websocket behavior. The `delegated` union is
+  **closed**: adding a member is a decision-log entry, not an edit.
 
   A delegated mount is **explicitly allowlisted, with the surface behind it unenumerated** —
   not "covered". `/auth/*` is one mounted handler whose endpoint set is defined by the
@@ -517,6 +518,16 @@ document contradicted itself in each place:
   approved list** — no `anonymous`, no `deviceAuthorization`, no `bearer`
   ([decision log](../07-planning/decision-log.md), fork-time removal list) — and the same
   assertion re-runs on every runtime rebuild, logging and alerting on a diff.
+
+  For every non-Hono HTTP listener, route coverage also enumerates a manifest exported by
+  the runtime constructor that starts that listener and compares the manifest with the
+  constructed listener. `/metrics` is the first planned example: exact method, path, port,
+  and delegated policy key `GET /metrics` are registered together. Coverage must fail for a
+  listener route absent from its manifest, a changed/extra method or path, a missing policy,
+  or an orphaned delegated policy. OpenAPI alone proves none of this. The current Hono
+  `/metrics` route entry and synthetic test fixture are placeholders, not evidence that the
+  separate Node listener or its manifest exists. See
+  [api-design.md](api-design.md#metrics-listener-and-permission-coverage).
 
   kaneo's inherited `mcp` and `oauth` routers are **deleted at fork**, not retrofitted: v2's
   MCP is a separate `apps/mcp/` process with no HTTP API of its own, and better-auth is the
@@ -589,8 +600,13 @@ takes its number from there.
 
 Three CI tests make this load-bearing:
 
-1. **Route coverage test** — enumerates every route in Hono's router and fails if any
-   lacks an entry in a policy map, or has an entry of an unknown shape.
+1. **Route coverage test** — enumerates every Hono route in `app.routes` and every
+   non-Hono HTTP listener manifest exported by its runtime constructor. For `/metrics`,
+   the manifest is compared with the constructed Node listener and its delegated policy.
+   The test fails for an unclassified listener route, an orphaned policy, or a changed/extra
+   method/path; OpenAPI alone proves none of these. Until the metrics listener is built,
+   its manifest and policy are planned, not current coverage. Any route without a policy
+   entry or with an unknown policy shape fails.
 2. **Permission matrix test** — for every built-in role × every route, asserts the
    expected allow/deny, twice: once for **capability** and once for **reach** (does the
    same call 404 when the resource is outside the identity's memberships). The fixture is

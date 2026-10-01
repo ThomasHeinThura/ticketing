@@ -72,7 +72,7 @@ registered in [inherited-features.md](inherited-features.md).
 | `deviceAuthorization` | **removed at fork** | a device-code grant no v2 spec asks for |
 | `bearer` | **removed at fork** | a second token-bearing authentication surface |
 | `organization` | **removed at fork — P0 step 1b** | see below |
-| `twoFactor` | **added — P0** | TOTP and backup codes |
+| `twoFactor` | **planned P0 addition; not enabled in current API source** | TOTP and backup codes require implementation and verification before they can satisfy step-up |
 | `passkey` | **added — later stage** | |
 
 **The organization plugin is kaneo's workspace model, not a dormant feature.** In kaneo it
@@ -401,13 +401,16 @@ no account.
 
 ## Multi-factor authentication
 
-- TOTP and backup codes via better-auth's two-factor plugin. Passkeys as a second option.
+- Planned: TOTP and backup codes via better-auth's two-factor plugin. Passkeys are a later
+  option. Neither the plugin nor a step-up factor verifier is enabled in the current API
+  source, so these methods are not currently usable for step-up.
 - Configurable in God Mode: **optional**, **required for staff**, **required for a
   specific role**, or **required for everyone**.
-- When an external IdP already enforces MFA, TaskDesk prefers the token's `amr` / `acr`
-  claim **per login** and challenges locally when it is absent. A static "MFA satisfied
-  upstream" flag exists only for providers that emit neither claim; setting it is an
-  elevated, audited change and is shown in the God Mode Health security-posture panel.
+- When an external IdP already enforces MFA, the planned contract prefers verified `amr` /
+  `acr` claims per login and challenges locally when absent. A static "MFA satisfied
+  upstream" flag may describe provider policy for login, but it cannot establish fresh
+  step-up proof. The current source has no SSO step-up adapter; until one validates signed,
+  fresh `auth_time` and any required `amr` / `acr` evidence, SSO step-up fails closed.
 - **Resetting someone's second factor** (`POST /api/instance/users/{id}/reset-mfa`) is the
   most socially-engineered path into an MFA-protected account. The screen requires the
   administrator to record *how the requester's identity was verified* (a free-text reason

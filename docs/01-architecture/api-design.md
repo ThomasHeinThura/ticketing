@@ -80,11 +80,15 @@ audits changed keys only, and never accepts a token. A stale version returns `40
 version_conflict` with the current safe version. Rotation accepts only `{version}`, returns
 exactly `{version, token, metricsTokenRotatedAt}` once with `Cache-Control: no-store`, and
 requires a single-use `X-TaskDesk-Step-Up-Token` bound to this exact operation, version and
-canonical request body. For the operation binding, the body bytes are compact
-UTF-8 JSON with the sole property in fixed order, for example `{"version":7}`; the value is
-a positive decimal integer with no whitespace or alternate representation. Request
-validation rejects unknown keys; the server reconstructs these canonical bytes and hashes
-them rather than trusting a client hash. Challenge and step-up mint responses are also
+canonical request body. For the operation binding, the parsed body is exactly one property,
+`version`, whose value is a positive safe integer; request validation rejects unknown
+properties. Syntactically valid JSON may contain insignificant whitespace or equivalent
+JSON numeric spelling. The server serializes the validated value as UTF-8
+`{"version":<base-10 integer>}` with no whitespace and hashes those canonical bytes for both
+challenge and execution. It never hashes raw wire bytes or trusts a client hash. Equivalent
+wire JSON therefore binds to the same semantic operation; a different parsed version or
+extra property fails. Duplicate-key rejection is not implied by ordinary JSON/Zod parsing;
+the parsed semantic value is the binding contract. Challenge and step-up mint responses are also
 `Cache-Control: no-store`; the challenge nonce and step-up token each appear once.
 
 Each successful configuration mutation appends the audit-only key

@@ -63,15 +63,18 @@ GPT-6 Sol security review before P0 closes ([phases.md](../07-planning/phases.md
 
 Five policy kinds, defined once in [RBAC](rbac.md): capability (optionally `orOwner`),
 `authenticated + self`, `portal + predicate`, `public + reason`, `delegated + reason`.
-`tests/permissions/route-coverage.test.ts` enumerates **Hono's router** — not the OpenAPI
-document — and fails on any route without a policy of a known shape. `/auth/*`, `/ws` and
-`/metrics` are **explicitly allowlisted, with the surface behind them unenumerated**, not
-"covered": `/auth/*` is one mounted handler whose endpoint set is defined by the better-auth
-**plugin list**, which is rebuilt at runtime from database configuration. The control there is
-a different assertion — the constructed plugin list must equal the approved list (no
-`anonymous`, no `deviceAuthorization`, no `bearer`) — re-run on every runtime rebuild, logging
-and alerting on a diff. Policies also carry `elevated` and `sessionOnly`, so elevation is a
-build failure to omit rather than a prose table someone forgot ([RBAC](rbac.md)).
+`tests/permissions/route-coverage.test.ts` enumerates Hono `app.routes` and every non-Hono
+listener manifest exported by its runtime constructor, not the OpenAPI document. `/auth/*`
+and `/ws` are Hono/delegated surfaces; the internal `GET /metrics` listener is a separate
+Node server on port 9464 and is absent from `app.routes`. Its constructor must export its
+exact method/path/port/delegated-policy key, and coverage compares the constructed listener
+with that manifest. Before implementation, the listener manifest and policy are planned,
+not current coverage. `/auth/*` is one mounted handler whose endpoint set is defined by the
+better-auth **plugin list**, which is rebuilt at runtime from database configuration. The
+control there is a different assertion — the constructed plugin list must equal the approved
+list (no `anonymous`, no `deviceAuthorization`, no `bearer`) — re-run on every runtime
+rebuild, logging and alerting on a diff. Policies also carry `elevated` and `sessionOnly`,
+so elevation is a build failure to omit rather than a prose table someone forgot ([RBAC](rbac.md)).
 
 ### 2. The scope object is resolved by the framework, not the handler
 
@@ -230,7 +233,7 @@ The server is.
 | CSRF | **No state-changing GET, ever** (a lint rule). The CSRF controls apply **only to cookie-authenticated requests**, because the cookie is the only ambient-authority credential: an unsafe method presented with a session cookie requires `Origin` (or `Referer`) to equal the request host's own origin **and** a matching double-submit token; either failing is a 403. `SameSite` alone is not the control — the agent and portal are sibling subdomains. Requests authenticated by a **bearer token, a personal or service API key, or a SCIM token** are exempt from both checks: they are not sent automatically by a browser, so there is nothing for a cross-site page to forge, and non-browser clients (curl, CI, Microsoft Entra's SCIM client, the MCP server) send no `Origin` at all. This is the single statement of the rule; [api-design.md](api-design.md) cites it |
 | Session rotation | The session id is regenerated on authentication, on impersonation start/end, and on MFA enrolment (fixation) |
 | Defaults | Idle 12 h, absolute 30 days, concurrent 5 — configurable in God Mode within maxima of 7 days idle / 90 days absolute |
-| Step-up for elevated actions | Re-authentication means the **second factor** when the account has one — never "password *or* MFA". The initial supported account class is a current local-password session with no enrolled or required second factor, after rechecking the current identity and verifying that password. SSO-only accounts require a fresh IdP `prompt=login` callback bound to the same challenge/session/subject. `POST /api/me/step-up/challenges` and `POST /api/me/step-up` mint a single-use confirmation only after actual proof verification. It binds either to one existing pending-action id/payload hash or to the first explicitly registered operation (`metrics_token_rotate`) with its exact route, version and server-computed body hash; no session-wide window exists. The token is valid five minutes after issuance, hash-only at rest, and consumed atomically with its protected action. Existing pending-action tokens remain re-mintable while the action is pending. Missing required verification support fails closed with `403 step_up_unavailable`. Current source enables neither better-auth `twoFactor` nor a verified fresh-SSO step-up callback, so affected methods cannot be claimed usable until their adapters are implemented and tested. Details: [pending-actions.md](pending-actions.md) `PA-15` |
+| Step-up for elevated actions | Re-authentication means the **second factor** when the account has one — never "password *or* MFA". The initial supported account class is a current local-password session with no enrolled or required second factor, after rechecking the current identity and verifying that password. SSO-only accounts require a validated IdP response with exact configured issuer/audience and single-use `state`/`nonce` bound to challenge/session/subject/connection, a `prompt=login` request, and signed `auth_time` satisfying `challenge.created_at - 60s <= auth_time <= callback_received_at + 60s` and `callback_received_at - auth_time <= 5min`; callback must precede challenge expiry. If policy requires MFA, fresh `amr`/`acr` evidence must satisfy the configured provider mapping or a real local factor; a static upstream-MFA flag is insufficient. Missing/untrustworthy evidence, changed subject/connection/session, or unavailable required verifier fails closed (`403 step_up_unavailable` or authentication failure), with no password/email-OTP fallback. `POST /api/me/step-up/challenges` and `POST /api/me/step-up` mint a single-use confirmation only after actual proof verification. It binds either to one existing pending-action id/payload hash or to the first explicitly registered operation (`metrics_token_rotate`) with its exact route, version and server-computed body hash; no session-wide window exists. The token is valid five minutes after issuance, hash-only at rest, and consumed atomically with its protected action. Existing pending-action tokens remain re-mintable while the action is pending. Missing required verification support fails closed with `403 step_up_unavailable`. Current source enables neither better-auth `twoFactor` nor a verified fresh-SSO step-up callback, so affected methods cannot be claimed usable until their adapters are implemented and tested. Details: [pending-actions.md](pending-actions.md) `PA-15` |
 | Elevated list | The single list in [RBAC](rbac.md) |
 
 ## Impersonation

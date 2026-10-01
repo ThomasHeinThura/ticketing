@@ -131,10 +131,10 @@ fail-closed pending-action self-read contract. A positive five-minute increase i
 page-worthy alert for the affected instance. Until it is implemented, AU-14 reporting and
 administrator notification remain unfinished.
 
-**Business** — the ones that actually get looked at
+**Business** — instance-wide aggregate targets, never per-tenant or per-resource series
 ```
-taskdesk_work_items_open{project,priority}
-taskdesk_sla_state{project,state}                      ok|at_risk|breached
+taskdesk_work_items_open{priority}                     priority: low|medium|high|urgent
+taskdesk_sla_state{state}                              state: ok|at_risk|breached
 taskdesk_intake_pending
 taskdesk_approvals_pending
 taskdesk_portal_sessions_active
@@ -142,23 +142,47 @@ taskdesk_auth_reload_total{outcome}                    ok|failed — auth config
 taskdesk_auth_config_version                            the auth config_version each replica serves
 ```
 
-**Jobs**
+`work_items_open` and `sla_state` are instance-wide aggregates. They contain no project or
+organisation series. `priority` is the closed enum in [data-model.md](data-model.md); the
+SLA state values are the finite values shown above. All names in this broader catalogue are
+targets, not evidence of live producers.
+
+**Withheld job metrics**
+
+Do not implement the current target shapes `taskdesk_job_runs_total{job,outcome}`,
+`taskdesk_job_duration_seconds{job}`, or
+`taskdesk_job_last_success_timestamp{job}` until
+[background-jobs.md](background-jobs.md) registers a finite,
+configuration-independent job enum. `outcome` is limited to `ok|failed` where used. An
+`other` bucket is permitted only if that owner document explicitly defines it. Scalar
+outbox gauges have no job label:
+
 ```
-taskdesk_job_runs_total{job,outcome}
-taskdesk_job_duration_seconds{job}                     histogram
-taskdesk_job_last_success_timestamp{job}
 taskdesk_outbox_pending
 taskdesk_outbox_dead
 ```
 
-**Infrastructure**
+**Infrastructure** — bounded scalar targets
 ```
 taskdesk_db_pool_{active,idle,waiting}
-taskdesk_db_query_duration_seconds{operation}          histogram
 taskdesk_ws_connections
-taskdesk_plugin_health{plugin_id}                      1 healthy, 0 failing
 taskdesk_nodejs_eventloop_lag_seconds
 ```
+
+Do not implement the target shape `taskdesk_db_query_duration_seconds{operation}` until
+the query owner enumerates a finite, configuration-independent operation set; an `other`
+bucket is allowed only if that owner specifies it. Do not implement
+`taskdesk_plugin_health{plugin_id}`: `plugin_id` can identify a customer-configured plugin
+instance. A separate owner-reviewed metric contract must replace that shape with finite,
+privacy-safe aggregation before instrumentation.
+
+Every Prometheus label in the P0 core and later catalogue must come from a documented finite
+enum or the finite registered HTTP route-template set. A label may never contain a tenant,
+organisation, project, person, work-item, resource, credential, plugin-instance id/name/key,
+user-controlled text, raw path/query, trace id, or exception. A producer whose useful
+dimensions cannot meet this rule remains withheld until its owner specifies a safe finite
+aggregation and a retention/cardinality test. The internal bearer is still required because
+aggregate cross-tenant operating data is sensitive.
 
 ## Tracing
 
@@ -234,10 +258,10 @@ The following are target Grafana dashboard panels. No dashboard JSON is currentl
 the panels depend on instrumentation that is also planned.
 
 1. **Service health** — request rate, error rate, latency percentiles, saturation.
-2. **Business** — open work items, SLA states, intake depth, pending approvals.
-3. **Jobs** — last success per job, durations, outbox depth.
-4. **Database** — pool, slow queries, table sizes, index hit ratio.
-5. **Frontend** — Web Vitals by route.
+2. **Business** — instance-wide aggregate open work items by priority, SLA states, intake depth, pending approvals.
+3. **Jobs** — only scalar outbox depth is currently dimension-safe; last-success and duration panels are blocked until the job owner registers a finite job enum.
+4. **Database** — pool, slow queries, table sizes, index hit ratio; per-operation duration is blocked until the query owner registers finite operation labels.
+5. **Frontend** — deferred Web Vitals by route; no P0 RUM ingestion exists.
 
 ## Alerts
 
@@ -249,14 +273,14 @@ muted.
 | Alert | Condition | Severity |
 | --- | --- | --- |
 | Audit write failures | `increase(taskdesk_audit_write_failures_total[5m]) > 0` | Urgent / Page |
-| API down | `/health/ready` failing 2 min | Page |
+| API down | `/api/public/health/ready` failing 2 min | Page |
 | Error rate | 5xx > 1% over 5 min | Page |
 | Latency | p95 > 2 s over 10 min | Warn |
-| Job stalled | `job_last_success` > 3× cadence | Page |
+| Job stalled | Blocked until a finite, configuration-independent job label contract exists; then evaluate last-success against 3× cadence | Deferred |
 | Outbox backing up | `outbox_pending` rising 15 min | Warn |
 | Outbox dead letters | `outbox_dead` > 0 | Warn |
 | DB pool exhausted | `db_pool_waiting` > 0 for 5 min | Page |
-| Plugin unhealthy | `plugin_health == 0` for 10 min | Warn |
+| Plugin unhealthy | Blocked until a finite, privacy-safe plugin-health aggregation contract exists | Deferred |
 | Disk | > 85% | Warn |
 | Certificate expiry | < 14 days | Warn |
 
