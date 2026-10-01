@@ -5,6 +5,59 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · P0 production advisory floors for ip-address and fast-uri (#557)
+
+**Decision:** raise only the existing pnpm override floors for `ip-address` to `^10.7.1`
+and `fast-uri` to `^3.1.8`, and regenerate the lockfile. Registry metadata was reverified
+on 2026-10-02: `ip-address@10.7.1` is MIT and requires Node >=12; `fast-uri@3.1.8` is
+BSD-3-Clause. The final compatible lock graph resolves `ip-address@10.7.2` and
+`fast-uri@3.1.8`. The accepted `main@917c93ad` production audit contained four moderate
+`ip-address` advisories and one moderate `fast-uri` advisory; it was not five advisories
+from `ip-address` alone. `pnpm audit --prod` reports zero advisories after these floors.
+
+No audit threshold, ignore list, or unrelated override was changed. This is limited to
+the two existing transitive packages and does not assert an application-level exploit.
+The Hono/WebSocket migration's separate Origin/session-portal limitation remains open
+under [#560](https://github.com/ThomasHeinThura/ticketing/issues/560); these dependency
+floors do not fix or waive that finding.
+
+**Authorization and status:** Thomas's standing recommended-decision authorization covers
+these bounded patched-version floors. Registry metadata, lock consumers, and the direct
+production audit were checked; this entry is not independent review or acceptance evidence.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
+### 2026-10-02 · P0 API upgrades use the patched Node adapter WebSocket helper (#557)
+
+**Decision:** `apps/api` owns direct exact runtime dependencies `hono@4.13.12` (MIT),
+`@hono/node-server@2.1.3` (MIT), and `ws@8.22.0` (MIT), plus development-only
+`@types/ws@8.18.2` (MIT). Remove `@hono/node-ws@1.3.1`: its peer range requires
+`@hono/node-server@^1.19.11` and excludes adapter 2.x. Raise the single pnpm override floors
+to Hono `^4.13.12` and Node adapter `^2.1.3`. Use `upgradeWebSocket` from
+`@hono/node-server`, with one `ws` `WebSocketServer({ noServer: true })` passed to the
+existing HTTP `serve()` listener.
+
+The migration preserves authentication before upgrade, user-route precedence, project
+reach checks and indistinguishable foreign/missing rejection, `windowId`, JSON events,
+ping handling, fan-out, close cleanup and bounded server shutdown. Public static files stay
+under the existing public build root, attachments stay private, and the adapter's default
+`allowPercentInPath: false` remains in force. The integration coverage exercises the real
+Node listener, including auth/reach handshakes and HTTP JSON/CORS/static/health behavior.
+
+**Security limitation:** `session.portal` is absent from the current session schema; runtime
+identity currently infers portal from identity side. This change does not add an Origin or
+session-portal binding and does not claim that the existing realtime contract is satisfied.
+The concrete owner follow-up is tracked in [#560](https://github.com/ThomasHeinThura/ticketing/issues/560),
+linked to #38 and #8; the existing High realtime finding remains open.
+
+**Authorization and status:** Thomas's standing recommended-decision authorization covers
+these direct dependencies and adapter choice. Registry metadata and licences were
+reverified on 2026-10-02. This decision records the implementation direction; it does not
+establish runtime acceptance, close the Origin/session-portal gap, waive review gates, or
+claim P0 completion.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
 ### 2026-10-02 · Identity grant validity is commit-time; SCIM administration PATCH is route-wide elevated
 
 **Decision:** use `IP-22` as the single proposed source-validity and effective-projection
