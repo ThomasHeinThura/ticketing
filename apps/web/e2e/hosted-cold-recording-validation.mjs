@@ -851,6 +851,7 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     throw new Error("Resource table is missing or oversized.");
   if (
     !Array.isArray(report.mutuallyExclusiveMainThreadPhases) ||
+    report.mutuallyExclusiveMainThreadPhases.length === 0 ||
     report.mutuallyExclusiveMainThreadPhases.length > COLD_MAX_PHASE_SEGMENTS
   )
     throw new Error("Phase table is missing or oversized.");

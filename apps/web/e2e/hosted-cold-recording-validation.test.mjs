@@ -496,6 +496,12 @@ test("main-thread phases require a valid task interval overlapping the observed 
       /No valid main-thread task overlaps/,
     );
   }
+  const report = buildSanitizedColdReport(reportInput());
+  report.mutuallyExclusiveMainThreadPhases = [];
+  assert.throws(
+    () => assertColdReportPrivacy(report, assetBasenames),
+    /Phase table is missing or oversized/,
+  );
 });
 
 test("cold report rejects incomplete journey evidence, source drift, and capture loss", () => {
