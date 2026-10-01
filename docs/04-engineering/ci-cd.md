@@ -490,7 +490,22 @@ On merge:
 8. Package and publish the Helm chart (`helm package`, pushed as an OCI artefact next to the
    image).
 9. Publish `@taskdesk/mcp` to npm if it changed.
-10. Deploy the documentation site.
+
+### Planned docs-site build and publication (not implemented)
+
+When the separate static docs site is implemented, run its build and static-site smoke tests
+on pull requests. Place those checks inside an existing required context with visible failure,
+or add a new exact context and verify it is registered in the protected-main ruleset before
+relying on it. A standalone green job that branch protection does not require is not a gate.
+
+On protected-main updates, the release workflow may build the separate docs image, scan it,
+generate an SBOM, sign it and publish `edge`/source-SHA digests. It does not deploy. Normal
+UAT delivery pulls the published digest through the existing environment process; production
+promotion is manual by immutable digest after UAT verification. Do not give PR or main-build
+workflows production credentials or automatic production deployment authority. Runtime health
+and HTTPS route smoke checks are required before any deployment claim. This is a target
+contract, not evidence that the site build, job, image, router or deployment exists. The
+implementation contract is in [docs-site plan](../08-docs-site/plan.md).
 
 **No version-bump commit on merge or release.** The Release workflow runs after each `main`
 update to publish the signed `edge`/SHA images. A maintainer may also dispatch it from

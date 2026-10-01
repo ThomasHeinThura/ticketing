@@ -108,7 +108,7 @@ happens; building on top of them is easy.
   agreement with the application ([multi-tenancy.md](../01-architecture/multi-tenancy.md#isolation)),
   and closes one way or the other before P0 does
 - Observability: Pino, Prometheus, health endpoints
-- `apps/site` docs skeleton (Fumadocs)
+- Specify the bounded `apps/site` P0 docs skeleton: headless Fumadocs + Next static export, independent docs origin and separate image contract ([docs-site plan](../08-docs-site/plan.md)); this spec does not claim implementation or deployment.
 - ADRs 0001–0013 committed
 - Sign-in, MFA, not-found, error boundary
 - **Identity and deletion models fixed in the documents, not yet built** (decided

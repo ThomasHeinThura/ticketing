@@ -34,6 +34,9 @@ One application container instead of v1's four (core-api, bff, worker, frontend)
    portal.<domain> ─┤ Traefik  ├─► taskdesk : portal bundle
     files.<domain> ─┤          ├─► seaweedfs        (only with --profile s3)
                     └──────────┘
+
+   docs.<domain> is a planned, separately implemented static service; it is not part of
+   the current four-service fresh install or this current routing diagram.
 ```
 
 Traefik routes by `Host()`. The application selects which bundle to serve from the
@@ -46,6 +49,14 @@ or Azure bucket the files origin is the provider's, and this Traefik never sees 
 separate origin does exist, a successfully uploaded hostile file executes against an origin
 with no application on it, which is the whole point of it
 ([storage and attachments](../01-architecture/storage-and-attachments.md)).
+
+## Planned documentation service (not implemented)
+
+The public docs site has its own `docs.<domain>` origin and static image, separate from the
+`taskdesk` application image and from the conditional files origin. The target image is
+`nginxinc/nginx-unprivileged:1.30.5-alpine3.24@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e`, subject to digest/platform verification at implementation. It serves only exported static `out/` files on port 8080 as non-root, returns a real 404 for unknown paths, and probes a static `/healthz`. It joins the proxy network only; production publishes no host port.
+
+The future router and docs service are added to local and production overlays separately. Add a UAT route only after confirming its CloudFront-to-Traefik path and web entrypoint. Build, scan, generate an SBOM, sign and publish the separate image from protected-main release automation; CI does not deploy it. UAT receives the immutable published digest through the existing pull process, and production promotion remains manual by digest after UAT verification. This target description is not evidence of a current image, service, router, hostname or deployment. See the [docs-site contract](../08-docs-site/plan.md).
 
 ## First run
 

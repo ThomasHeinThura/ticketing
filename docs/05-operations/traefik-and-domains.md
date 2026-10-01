@@ -3,21 +3,25 @@
 Traefik v3 terminates TLS, routes by hostname and applies security headers. Carried from
 v1, which had this right.
 
-## Two hostnames, and sometimes a third
+## Two app hostnames, a conditional files origin, and a planned docs origin
 
-| Hostname | Serves | Why separate |
-| --- | --- | --- |
-| `ticket.<domain>` | Agent bundle + API + WebSocket | Staff |
-| `portal.<domain>` | Portal bundle + portal API | Separate cookie scope, separate identity providers, no agent code |
-| `files.<domain>` | Attachment downloads — **only when an operator-owned S3 endpoint is served behind this Traefik** (the `--profile s3` SeaweedFS service, or a Garage instance on the same host) | A hostile uploaded file executes against an origin with no application on it |
+| Hostname | Serves | Why separate | Status |
+| --- | --- | --- | --- |
+| `ticket.<domain>` | Agent bundle + API + WebSocket | Staff | App origin |
+| `portal.<domain>` | Portal bundle + portal API | Separate cookie scope, separate identity providers, no agent code | App origin |
+| `files.<domain>` | Attachment downloads — **only when an operator-owned S3 endpoint is served behind this Traefik** (the `--profile s3` SeaweedFS service, or a Garage instance on the same host) | A hostile uploaded file executes against an origin with no application on it | Conditional on storage topology |
+| `docs.<domain>` | Public static documentation | Independent public origin, separate static service and cache/content policy; no app session or API proxy | Planned by [docs-site plan](../08-docs-site/plan.md); no router/service is implemented by this specification |
 
-The first two are the subject of
-[ADR 0004](../01-architecture/adr/0004-two-portals-two-origins.md). The third is a
-straightforward containment measure — and a conditional one. A fresh install runs
-`storage.filesystem` and has **two** hostnames; a deployment on real S3 or Azure Blob gets
-its files origin from the provider. Only the middle case, where the operator runs the object
-store themselves behind this proxy, produces a third record and the router below
-([deployment.md](deployment.md)).
+The two app origins are the subject of
+[ADR 0004](../01-architecture/adr/0004-two-portals-two-origins.md). The files origin is a
+straightforward containment measure — and a conditional one. A fresh install using
+`storage.filesystem` has the two app hostnames and no files router; real S3 or Azure Blob
+supplies its own files origin. Only a self-hosted object store behind this proxy adds the
+conditional files record and router below ([deployment.md](deployment.md)).
+
+The docs origin is separate from that storage decision. If implemented, it adds its own
+`docs.<domain>` router and static service regardless of whether files use local storage or an
+external provider. The site is not currently deployed by this specification.
 
 ## Environment-prefixed names
 

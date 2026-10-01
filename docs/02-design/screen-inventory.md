@@ -193,36 +193,56 @@ are written in full so a script can check them against `lib/routes.ts`.
 
 ---
 
+## Docs Site (planned; implementation not present)
+
+These public-origin screens use the future site-local `apps/site/lib/routes.ts`, not the
+`apps/web` route registry. They remain ⬜ until the site is built and verified.
+
+| Screen | Route | Kind | Stage | Status |
+| --- | --- | --- | --- | :-: |
+| Documentation home | `/` | route | P0 | ⬜ |
+| Documentation index and concept page | `/docs` | route | P0 | ⬜ |
+| Documentation search | `/search` | route | P0 | ⬜ |
+| Not found (docs origin) | `*` | route | P0 | ⬜ |
+
+---
+
 ## Counts
 
-Recomputed by `scripts/check-inventory.mjs` in CI from the rows above; the table fails the
-build if it drifts.
+These counts are manually maintained inventory targets. `check:inventory` is still staged:
+its implementation depends on route registries that do not yet exist, and it is not a CI
+gate today. When implemented, it must compare app-origin routes with `apps/web` and Docs
+Site routes with `apps/site` independently, including canonical query-route handling.
 
 | Stage | Screens |
 | --- | --- |
-| P0 Foundation | 6 |
+| P0 Foundation | 10 |
 | P1 Core work | 34 |
 | P2 Service desk | 18 |
 | P3 Portal & identity | 21 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **138** |
+| **Total** | **142** |
 
-For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
+The P0 and total counts include the four planned docs-origin routes above; these are inventory targets, not implemented screens. For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see
 [Product principles](../00-overview/product-principles.md), principle 7.
 
 ## Rules
 
-- Every row of kind `route` is in `lib/routes.ts`; `G5` checks exactly those rows.
+- Every route belongs in the typed registry for its surface: app-origin screens use
+  `apps/web` `lib/routes.ts`; Docs Site rows use the planned `apps/site/lib/routes.ts`.
+  Route registries and `check:inventory` are not implemented yet. When built, each surface
+  needs a round-trip check against its own registry.
 - Rows whose route differs only by a query string (`?layout=`, `?tab=`, `?lens=`) share one
-  **canonical route**; `check:inventory` compares canonical routes (query stripped) against
-  the generated `lib/routes.ts`, so the 136 rows map to fewer route entries by design — that
-  is not a defect. The two `*` rows are distinct routes because they live on different origins.
+  **canonical route**. The future inventory check compares canonicalized app routes against
+  the generated app registry and docs routes against the separate site registry; many screen
+  rows may share one route entry. Wildcard rows are distinct when they belong to different
+  origins.
 - Assignment has no screen of its own — its rules live in project settings and the work-item
-  side pane ([assignment.md](../03-features/assignment.md)); `check:inventory` exempts it
-  explicitly.
+  side pane ([assignment.md](../03-features/assignment.md)); the future inventory check
+  must exempt it explicitly.
 - A screen is not ✅ until it passes every automated gate (`G1`–`G13`) and the human gates
   at review (`H1`–`H6`); the stage-level checks (`P1`–`P6`) apply at stage close.
 - Adding a screen means adding a row here in the same pull request — and every screen a
