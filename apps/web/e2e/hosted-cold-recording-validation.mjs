@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 export const COLD_REPORT_MAX_BYTES = 256 * 1024;
 export const COLD_MAX_RESOURCES = 2_048;
 export const COLD_MAX_PHASE_SEGMENTS = 100_000;
+const ROUTE_PAINT_CRITERION =
+  "A route-paint mark requires a positive axis-aligned target region after viewport and ancestor overflow/paint-containment clipping. Unsupported transforms, out-of-flow boxes, fragmented targets, and nonrectangular clips fail closed. This is not pixel-level or occlusion proof.";
 
 const METHODS = new Set([
   "CONNECT",
@@ -597,6 +599,7 @@ export function buildSanitizedColdReport(input) {
     },
     interpretation: {
       causalEdges: "unresolved-by-design",
+      routePaintCriterion: ROUTE_PAINT_CRITERION,
       rule: "A proposed edge is unresolved when its clock uncertainty intervals overlap; temporal proximity alone is not causal evidence.",
     },
   };
@@ -1030,9 +1033,14 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     "Main-thread phases are exclusive; resource intervals are a correlated overlay and are not added to phase totals."
   )
     throw new Error("Window accounting note is invalid.");
-  exactKeys(report.interpretation, ["causalEdges", "rule"], "interpretation");
+  exactKeys(
+    report.interpretation,
+    ["causalEdges", "routePaintCriterion", "rule"],
+    "interpretation",
+  );
   if (
     report.interpretation.causalEdges !== "unresolved-by-design" ||
+    report.interpretation.routePaintCriterion !== ROUTE_PAINT_CRITERION ||
     report.interpretation.rule !==
       "A proposed edge is unresolved when its clock uncertainty intervals overlap; temporal proximity alone is not causal evidence."
   )

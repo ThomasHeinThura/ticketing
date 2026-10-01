@@ -135,6 +135,14 @@ test("cold report binds the exact source and emits only bounded diagnostic evide
   assert.equal(report.environment.rows, 500);
   assert.equal(report.journey.clickTarget, "WLP-1");
   assert.equal(report.journey.routePaintTarget, "detail");
+  assert.match(
+    report.interpretation.routePaintCriterion,
+    /positive axis-aligned target region after viewport and ancestor overflow\/paint-containment clipping/,
+  );
+  assert.match(
+    report.interpretation.routePaintCriterion,
+    /not pixel-level or occlusion proof/,
+  );
   assert.deepEqual(report.journey.visibilityProbeOverhead, {
     measurement: "performance.now-bracketed probe duration",
     resolutionMs: 0.1,
@@ -404,6 +412,12 @@ test("privacy assertion closes nested string-bearing schemas and fixed journey r
         report.windowAccounting.interpretation = "private";
       },
       expected: /window accounting schema/,
+    },
+    {
+      change(report) {
+        report.interpretation.routePaintCriterion = "pixel-perfect paint proof";
+      },
+      expected: /Interpretation overstates causal evidence/,
     },
   ];
 
