@@ -59,3 +59,24 @@ export const pendingActionListResponseSchema = z
     meta: z.object({ total: z.number().int().nonnegative() }),
   })
   .openapi("PendingActionListResponse");
+
+export const pendingActionDecisionSchema = z
+  .object({
+    id: z.string(),
+    action: z.enum(["delete", "bulk_delete", "purge", "mcp_destructive"]),
+    origin: z.enum(["web", "api", "mcp"]),
+    targetType: z.string(),
+    targetIds: z.array(z.string()),
+    summary: pendingActionSummarySchema,
+    confirmation: z.enum([
+      "click",
+      "typed_name",
+      "typed_count",
+      "typed_name_step_up",
+      "typed_count_step_up",
+    ]),
+    state: z.enum(["denied", "cancelled", "expired"]),
+    createdAt: z.string().datetime(),
+    expiresAt: z.string().datetime(),
+  })
+  .openapi("PendingActionDecision");

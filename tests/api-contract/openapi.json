@@ -2060,6 +2060,82 @@
           "hasMore"
         ]
       },
+      "PendingActionDecision": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "delete",
+              "bulk_delete",
+              "purge",
+              "mcp_destructive"
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "web",
+              "api",
+              "mcp"
+            ]
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "confirmation": {
+            "type": "string",
+            "enum": [
+              "click",
+              "typed_name",
+              "typed_count",
+              "typed_name_step_up",
+              "typed_count_step_up"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "denied",
+              "cancelled",
+              "expired"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "origin",
+          "targetType",
+          "targetIds",
+          "summary",
+          "confirmation",
+          "state",
+          "createdAt",
+          "expiresAt"
+        ]
+      },
       "SearchResponse": {
         "type": "object",
         "properties": {
@@ -11804,6 +11880,144 @@
           },
           "404": {
             "description": "Pending action not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/pending-actions/{id}/deny": {
+      "post": {
+        "operationId": "denyOwnPendingAction",
+        "tags": [
+          "Pending actions"
+        ],
+        "summary": "Deny a pending action",
+        "description": "Records the requester's denial. Requires the requester's browser session.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The terminal pending-action state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActionDecision"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The caller has no current valid identity",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A browser session is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pending action not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Pending action is already terminal",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/pending-actions/{id}/cancel": {
+      "post": {
+        "operationId": "cancelOwnPendingAction",
+        "tags": [
+          "Pending actions"
+        ],
+        "summary": "Cancel a pending action",
+        "description": "Cancels the requester's pending action from any authenticated credential.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The terminal pending-action state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActionDecision"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The caller has no current valid identity",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pending action not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Pending action is already terminal",
             "content": {
               "text/plain": {
                 "schema": {
