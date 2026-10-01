@@ -5,7 +5,11 @@ import { HttpError } from "@/lib/http-error";
 export type ServiceCalendar = InferResponseType<
   (typeof client)["service-calendars"]["$get"],
   200
->[number];
+>["data"][number];
+export type ServiceCalendarPage = InferResponseType<
+  (typeof client)["service-calendars"]["$get"],
+  200
+>;
 export type ServiceCalendarPreview = InferResponseType<
   (typeof client)["service-calendars"][":id"]["preview"]["$get"],
   200
@@ -41,9 +45,10 @@ export type Weekday = keyof ServiceCalendar["windows"];
 
 export async function getServiceCalendars(
   workspaceId: string,
-): Promise<ServiceCalendar[]> {
+  cursor?: string,
+): Promise<ServiceCalendarPage> {
   const response = await client["service-calendars"].$get({
-    query: { workspaceId },
+    query: { workspaceId, cursor, limit: "50" },
   });
 
   if (!response.ok) {

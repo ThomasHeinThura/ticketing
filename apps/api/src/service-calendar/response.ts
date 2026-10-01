@@ -16,7 +16,11 @@ export const calendarVersionConflictSchema = z
     currentVersion: z.number().int(),
   })
   .openapi("ServiceCalendarVersionConflict");
-export const calendarListSchema = z.array(calendarSchema);
+export const calendarListSchema = z.object({
+  data: z.array(calendarSchema),
+  page: z.object({ nextCursor: z.string().nullable(), hasMore: z.boolean() }),
+  meta: z.object({ total: z.number().int().min(0) }),
+});
 export const calendarPreviewSchema = z.object({
   calendarId: z.string(),
   year: z.number().int(),

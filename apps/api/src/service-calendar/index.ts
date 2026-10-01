@@ -103,6 +103,7 @@ const listRoute = createRoute({
   request: { query: workspaceIdQuery },
   responses: {
     200: jsonResponse("Calendars in the workspace", calendarListSchema),
+    400: errorResponse("Invalid calendar list query or cursor"),
     403: errorResponse("Missing sla_policy:read permission"),
   },
 });
@@ -202,7 +203,10 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(listRoute, async (c) =>
     c.json(
       calendarListSchema.parse(
-        await listCalendars(c.req.valid("query").workspaceId),
+        await listCalendars(
+          c.req.valid("query").workspaceId,
+          c.req.valid("query"),
+        ),
       ),
       200,
     ),

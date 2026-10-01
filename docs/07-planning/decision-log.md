@@ -5,6 +5,25 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · Service-calendar list uses the shared cursor collection contract (#513)
+
+**Decision:** introduce `GET /api/service-calendars` with the shared `{data, page, meta}`
+cursor envelope. Pages default to 50 and
+accept limits 1–200; ordering is `(name ASC, id ASC)` and the workspace-bound cursor
+continues after that tuple. The calendar list keeps cursor navigation and visited-page
+history in its URL.
+
+**Why:** the endpoint otherwise reads an unbounded workspace collection. The existing API
+design already standardizes cursor pagination, and stable ordering by both name and id
+prevents duplicate names from being skipped between pages. Accepted main has no calendar
+GET operation, so this introduces the route with its paginated response and does not break
+an accepted-main contract. This is not H1 approval or a quality-gate waiver.
+
+**Authorization:** Thomas's standing recommended-routine-decision authorization covers
+this application of the established cursor contract.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
 ### 2026-10-02 · P0 production advisory floors for ip-address and fast-uri (#557)
 
 **Decision:** raise only the existing pnpm override floors for `ip-address` to `^10.7.1`

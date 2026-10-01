@@ -81,6 +81,8 @@ type CalendarPageFixture = {
   set listIsEmpty(value: boolean);
   get listRequestFailure(): boolean;
   set listRequestFailure(value: boolean);
+  get paginationEnabled(): boolean;
+  set paginationEnabled(value: boolean);
   get editorRequestFailure(): boolean;
   set editorRequestFailure(value: boolean);
   get previewRequestFailure(): boolean;
@@ -103,6 +105,7 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
   let savedCalendar = { ...calendar };
   let listIsEmpty = false;
   let listRequestFailure = false;
+  let paginationEnabled = false;
   let editorRequestFailure = false;
   let previewRequestFailure = false;
   let holdListResponse = false;
@@ -241,7 +244,27 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(listIsEmpty ? [] : [savedCalendar]),
+        body: JSON.stringify({
+          data: listIsEmpty
+            ? []
+            : paginationEnabled && url.searchParams.has("cursor")
+              ? [
+                  {
+                    ...savedCalendar,
+                    id: "calendar-e2e-2",
+                    name: "Second page calendar",
+                  },
+                ]
+              : [savedCalendar],
+          page: {
+            nextCursor:
+              paginationEnabled && !url.searchParams.has("cursor")
+                ? "next-page-cursor"
+                : null,
+            hasMore: paginationEnabled && !url.searchParams.has("cursor"),
+          },
+          meta: { total: paginationEnabled ? 2 : listIsEmpty ? 0 : 1 },
+        }),
       });
       return;
     }
@@ -336,6 +359,12 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
     set listRequestFailure(value) {
       listRequestFailure = value;
     },
+    get paginationEnabled() {
+      return paginationEnabled;
+    },
+    set paginationEnabled(value) {
+      paginationEnabled = value;
+    },
     get editorRequestFailure() {
       return editorRequestFailure;
     },
@@ -378,6 +407,30 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
     },
   };
 }
+
+test("calendar list cursor navigation preserves URL history and browser Back", async ({
+  page,
+}) => {
+  const fixture = await setupCalendarPage(page);
+  fixture.paginationEnabled = true;
+  await page.goto("/agent/settings/calendars");
+  await expect(
+    page.getByRole("link", { name: "Support coverage" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page).toHaveURL(/cursor=next-page-cursor/);
+  await expect(
+    page.getByRole("link", { name: "Second page calendar" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Previous" }).click();
+  await expect(page).not.toHaveURL(/cursor=/);
+  await expect(
+    page.getByRole("link", { name: "Support coverage" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.goBack();
+  await expect(page).not.toHaveURL(/cursor=/);
+});
 
 test("calendar list and editor preserve URL state and confirm manual changes", async ({
   page,

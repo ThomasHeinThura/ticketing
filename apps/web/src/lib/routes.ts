@@ -40,6 +40,51 @@ export type WorkItemListSearch = {
   dir: WorkItemSortDirection;
 };
 
+export type ServiceCalendarListSearch = { cursor?: string; history?: string };
+
+export function parseServiceCalendarListSearch(
+  raw: unknown,
+): ServiceCalendarListSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  const cursor =
+    typeof candidate.cursor === "string" &&
+    candidate.cursor.length > 0 &&
+    candidate.cursor.length <= 2048
+      ? candidate.cursor
+      : undefined;
+  let history: string | undefined;
+  if (
+    typeof candidate.history === "string" &&
+    candidate.history.length <= 8192
+  ) {
+    try {
+      const parsed: unknown = JSON.parse(atob(candidate.history));
+      if (
+        Array.isArray(parsed) &&
+        parsed.length <= 50 &&
+        parsed.every(
+          (value) => typeof value === "string" && value.length <= 2048,
+        )
+      ) {
+        history = candidate.history;
+      }
+    } catch {
+      history = undefined;
+    }
+  }
+  return { cursor, history };
+}
+
+export function parseServiceCalendarListSearchFromQueryString(
+  queryString: string,
+) {
+  const params = new URLSearchParams(queryString);
+  return parseServiceCalendarListSearch({
+    cursor: params.get("cursor"),
+    history: params.get("history"),
+  });
+}
+
 export const DEFAULT_WORK_ITEM_LIST_SEARCH: WorkItemListSearch = {
   layout: "list",
   sort: "key",
@@ -100,7 +145,16 @@ export const routes = {
   /** `docs/02-design/screen-inventory.md` "Workspace — service calendars". */
   serviceCalendars: {
     path: "/agent/settings/calendars" as const,
-    build: () => "/agent/settings/calendars",
+    build: (search: ServiceCalendarListSearch = {}) => {
+      const resolved = parseServiceCalendarListSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
+      if (resolved.history) query.set("history", resolved.history);
+      const suffix = query.toString();
+      return suffix
+        ? `/agent/settings/calendars?${suffix}`
+        : "/agent/settings/calendars";
+    },
   },
   /** `docs/02-design/screen-inventory.md` "Service calendar editor". */
   serviceCalendarEditor: {

@@ -3,6 +3,7 @@ import {
   Link,
   Outlet,
   useLocation,
+  useNavigate,
 } from "@tanstack/react-router";
 import {
   Alert,
@@ -17,24 +18,33 @@ import {
   EmptyTitle,
   Skeleton,
 } from "@taskdesk/ui";
-import { CalendarDays, Plus, RefreshCw } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { CalendarSummaryCard } from "@/components/service-calendar/calendar-summary-card";
 import { useServiceCalendars } from "@/hooks/queries/service-calendar/use-service-calendars";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
-import { routes } from "@/lib/routes";
+import { parseServiceCalendarListSearch, routes } from "@/lib/routes";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/settings/calendars",
 )({
+  validateSearch: parseServiceCalendarListSearch,
   component: ServiceCalendarsRoute,
 });
 
 function ServiceCalendarsRoute() {
   const { t } = useTranslation("serviceCalendars");
   const location = useLocation();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const { cursor, history } = Route.useSearch();
   const { data: workspace, isLoading: isWorkspaceLoading } =
     useActiveWorkspace();
   const {
@@ -42,7 +52,7 @@ function ServiceCalendarsRoute() {
     isLoading,
     isError,
     refetch,
-  } = useServiceCalendars(workspace?.id ?? "");
+  } = useServiceCalendars(workspace?.id ?? "", cursor);
   const { canManageServiceCalendars, isCheckingPermissions } =
     useWorkspacePermission();
   const canManageCalendars = canManageServiceCalendars();
@@ -116,9 +126,9 @@ function ServiceCalendarsRoute() {
               </Button>
             </AlertDescription>
           </Alert>
-        ) : calendars?.length ? (
+        ) : calendars?.data.length ? (
           <section className="grid gap-3" aria-label={t("list.label")}>
-            {calendars.map((calendar) => (
+            {calendars.data.map((calendar) => (
               <CalendarSummaryCard key={calendar.id} calendar={calendar} />
             ))}
           </section>
@@ -149,6 +159,55 @@ function ServiceCalendarsRoute() {
             </CardContent>
           </Card>
         )}
+        {!loading && !isError && calendars ? (
+          <nav
+            aria-label={t("common:pagination.label")}
+            className="flex items-center justify-between"
+          >
+            <Button
+              variant="outline"
+              disabled={!history}
+              onClick={() => {
+                const stack = history
+                  ? (JSON.parse(atob(history)) as string[])
+                  : [];
+                const previousCursor = stack.pop();
+                void navigate({
+                  to: routes.serviceCalendars.path,
+                  search: {
+                    cursor: previousCursor || undefined,
+                    history: stack.length
+                      ? btoa(JSON.stringify(stack))
+                      : undefined,
+                  },
+                });
+              }}
+            >
+              <ChevronLeft aria-hidden="true" />
+              {t("common:pagination.previous")}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={!calendars.page.hasMore || !calendars.page.nextCursor}
+              onClick={() => {
+                const stack = history
+                  ? (JSON.parse(atob(history)) as string[])
+                  : [];
+                stack.push(cursor ?? "");
+                void navigate({
+                  to: routes.serviceCalendars.path,
+                  search: {
+                    cursor: calendars.page.nextCursor ?? undefined,
+                    history: btoa(JSON.stringify(stack)),
+                  },
+                });
+              }}
+            >
+              <ChevronRight aria-hidden="true" />
+              {t("common:pagination.next")}
+            </Button>
+          </nav>
+        ) : null}
       </main>
     </>
   );

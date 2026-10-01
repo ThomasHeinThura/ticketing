@@ -161,6 +161,108 @@ describe("API integration: service calendars (CAL-1–CAL-15)", () => {
     vi.restoreAllMocks();
   });
 
+  it("CAL-16: traverses bounded workspace pages without gaps or duplicate-name skips", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const input = Array.from({ length: 55 }, (_, index) => ({
+      workspaceId: owner.workspace.id,
+      name: `Calendar ${String(Math.floor(index / 2)).padStart(2, "0")}`,
+      timezone: "UTC",
+      windows: weekdayWindows,
+      holidays: [],
+    }));
+    await db.insert(schema.serviceCalendarTable).values(input);
+    const otherWorkspace = await createWorkspaceMember({ role: "admin" });
+    await db.insert(schema.serviceCalendarTable).values({
+      workspaceId: otherWorkspace.workspace.id,
+      name: "Not in the requested workspace",
+      timezone: "UTC",
+      windows: weekdayWindows,
+      holidays: [],
+    });
+    const all = await db
+      .select({ id: schema.serviceCalendarTable.id })
+      .from(schema.serviceCalendarTable)
+      .where(eq(schema.serviceCalendarTable.workspaceId, owner.workspace.id))
+      .orderBy(
+        asc(schema.serviceCalendarTable.name),
+        asc(schema.serviceCalendarTable.id),
+      );
+
+    const pages: Array<{
+      data: Array<{ id: string }>;
+      page: { nextCursor: string | null; hasMore: boolean };
+      meta: { total: number };
+    }> = [];
+    let cursor: string | null = null;
+    do {
+      const query = new URLSearchParams({
+        workspaceId: owner.workspace.id,
+        limit: "50",
+      });
+      if (cursor) query.set("cursor", cursor);
+      const response = await app.request(`/api/service-calendars?${query}`);
+      expect(response.status).toBe(200);
+      const page = (await response.json()) as (typeof pages)[number];
+      pages.push(page);
+      cursor = page.page.nextCursor;
+    } while (cursor);
+
+    expect(pages.map(({ data }) => data.length)).toEqual([50, 5]);
+    expect(pages[0]?.page.hasMore).toBe(true);
+    expect(pages[1]?.page.hasMore).toBe(false);
+    expect(pages.every(({ meta }) => meta.total === 55)).toBe(true);
+    expect(pages.flatMap(({ data }) => data.map(({ id }) => id))).toEqual(
+      all.map(({ id }) => id),
+    );
+
+    const one = await app.request(
+      `/api/service-calendars?workspaceId=${owner.workspace.id}&limit=1`,
+    );
+    const oneResult = await one.json();
+    expect(oneResult.data).toHaveLength(1);
+    expect(oneResult.page.hasMore).toBe(true);
+    expect(oneResult.meta.total).toBe(55);
+    const defaultLimit = await app.request(
+      `/api/service-calendars?workspaceId=${owner.workspace.id}`,
+    );
+    expect((await defaultLimit.json()).data).toHaveLength(50);
+    const maximum = await app.request(
+      `/api/service-calendars?workspaceId=${owner.workspace.id}&limit=200`,
+    );
+    expect((await maximum.json()).data).toHaveLength(55);
+    expect(
+      (
+        await app.request(
+          `/api/service-calendars?workspaceId=${owner.workspace.id}&limit=201`,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await app.request(
+          `/api/service-calendars?workspaceId=${owner.workspace.id}&cursor=not-a-cursor`,
+        )
+      ).status,
+    ).toBe(400);
+    const foreignCursor = Buffer.from(
+      JSON.stringify({
+        v: 1,
+        workspaceId: "other-workspace",
+        name: "x",
+        id: "x",
+      }),
+    ).toString("base64url");
+    expect(
+      (
+        await app.request(
+          `/api/service-calendars?workspaceId=${owner.workspace.id}&cursor=${foreignCursor}`,
+        )
+      ).status,
+    ).toBe(400);
+  });
+
   it("CAL-1–CAL-7: persists calendar data and previews weekly and annual cover", async () => {
     const creator = await createWorkspaceMember({ role: "admin" });
     mockAuthenticatedSession(creator.user);
@@ -227,7 +329,7 @@ describe("API integration: service calendars (CAL-1–CAL-15)", () => {
       `/api/service-calendars?workspaceId=${creator.workspace.id}`,
     );
     expect(listed.status).toBe(200);
-    expect(await listed.json()).toHaveLength(1);
+    expect((await listed.json()).data).toHaveLength(1);
     const preview = await app.request(
       `/api/service-calendars/${calendar.id}/preview?year=2026`,
     );
