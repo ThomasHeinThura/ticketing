@@ -598,6 +598,18 @@ describe("pending-action service persistence", () => {
     async (outcome, state) => {
       const input = requestInput();
       const created = await createPendingAction(input);
+      const targetBefore = requireRow(
+        await db
+          .select({
+            id: schema.workItemTable.id,
+            deletedAt: schema.workItemTable.deletedAt,
+            archivedAt: schema.workItemTable.archivedAt,
+          })
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.key, "SUP-1"))
+          .limit(1),
+        "pending-action target before decision",
+      );
       const decided = await decideOwnPendingAction({
         id: created.pendingActionId,
         requesterPersonId: input.requesterPersonId,
@@ -606,6 +618,19 @@ describe("pending-action service persistence", () => {
       });
 
       expect(decided.state).toBe(state);
+      const targetAfter = requireRow(
+        await db
+          .select({
+            id: schema.workItemTable.id,
+            deletedAt: schema.workItemTable.deletedAt,
+            archivedAt: schema.workItemTable.archivedAt,
+          })
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.key, "SUP-1"))
+          .limit(1),
+        "pending-action target after decision",
+      );
+      expect(targetAfter).toEqual(targetBefore);
       const decisionEvents = await db
         .select()
         .from(schema.outboxTable)
