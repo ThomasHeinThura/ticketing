@@ -281,7 +281,7 @@ in your head — which is the point of not reusing the agent handlers.
 
 | Case | Behaviour |
 | --- | --- |
-| Customer's organisation is suspended, or `organisation.portal_access` is set false | Every session of that organisation's customer-side people is invalidated — in effect on their next request, per [auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions) — and sign-in shows a message with the support email |
+| Customer's organisation is suspended, or `organisation.portal_access` is set false | Every session of that organisation's customer-side people is invalidated — in effect on their next request, per [auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions) — and sign-in shows a message with the support email. Under [IP-22](identity-provisioning.md), this lifecycle also retires affected external identity grants with the existing `mapping_changed` reason and reprojects them atomically; direct grant provenance is retained, but portal denial still blocks access. Reopening alone does not restore external grants. |
 | Customer session hits the agent origin | Rejected at the callback and on every request; audited |
 | Work item moved to a project the customer cannot see | It disappears from their list. The bookmarked URL returns 404 |
 | Portal disabled by feature flag | The origin returns a maintenance page, not a broken app |

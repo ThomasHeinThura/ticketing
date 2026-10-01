@@ -359,11 +359,14 @@ protocol code; only the credential check reuses the platform.
   unprojected grant union.
 
   For external grants, the locked writer's single `valid_now(grant, locked_rows)` predicate
-  requires an active person and source; an enabled, scope-eligible connection; a current
-  matching JIT default or enabled same-source mapping; and an existing role on the correct
-  side/scope that is still the configured/mapped role, has no externally forbidden
-  capability, and (for staff) is within the connection's current `max_role_rank`. External
-  authority always has
+  requires an active person whose owning organisation is active and not deleted; an
+  enabled, scope-eligible connection; a current matching JIT default or enabled same-source
+  mapping; an existing role on the correct side/scope that is still the configured/mapped
+  role, has no externally forbidden capability, and (for staff) is within the connection's
+  current `max_role_rank`; and a live target. A customer target is its active, non-deleted
+  organisation with `portal_access=true`. An agent target is a non-deleted workspace owned
+  by the unique active, non-deleted internal organisation. These are commit-time parent
+  facts, not a cached admission result. External authority always has
   `sees_all = false` and never includes `instance:admin`. Direct grants follow their own
   role rules and are independent of external connection, JIT and mapping state. IP-15's
   global SCIM deactivation remains the explicit person-wide lifecycle exception: under
@@ -373,17 +376,63 @@ protocol code; only the credential check reuses the platform.
   IP-27 observes upstream Entra app-role removal at the next validated login. Missing or
   invalid stored role/config/source state fails closed and is not projected.
 
-  Every writer uses one total lock protocol: discover candidate ids without acting on them;
-  lock role rows by id, identity-connection rows by id, mapping/SCIM-connection rows by id,
-  external identities by id, then `(person_id, scope, scope_id)` projection keys in stable
-  order. Include old and proposed role ids and all connections referencing an edited role.
-  Under those locks, re-read the role→connection→mapping/grant closure and current versions;
-  if an affected id/version was absent from the lock set, roll back and retry the whole
-  transaction with the expanded set rather than acquiring a lower-order row out of order.
-  Revalidate caller authority/rank and the final source/role predicate under lock. This
-  applies to role edits, connection configuration/lifecycle, OIDC login, SCIM sync, mapping
-  edits and eligible-scope lifecycle. The unique effective key remains the final race
-  backstop; failed CAS/transactions produce no partial grant, projection or session issue.
+  Every participating writer uses this one total lock order, sorting ids within each class:
+  (1) all affected owning `organisation` rows (including the old and proposed owner if an
+  allowed ownership change exists); (2) all affected target `workspace` rows for agent
+  external scopes; (3) all affected `person` rows; (4) existing `role` rows; (5)
+  `identity_connection` rows; (6) OIDC/SCIM mapping rows and `scim_connection` rows in a
+  fixed table-then-id order; (7) `external_identity` rows; (8) stable
+  `(person_id, scope, scope_id)` projection keys; then any grant/history rows the transaction
+  mutates in deterministic order. A project row is not part of this P3 external-target
+  contract. Uncreated JIT people are serialized by their already-existing locked parent
+  connection/scope anchors and uniqueness; insert only after revalidating those anchors.
+  Existing caller/current-role/config-version and PA-15 proof locks/checks remain at their
+  documented points in this order. The audit-chain lock stays at its existing append point
+  after authority locks; no later authority lock may be acquired after audit append.
+
+  Pre-discovery is non-authoritative. Acquire the whole candidate set in order before
+  changing a parent, person, configuration, role or source row, or inserting a source row
+  with foreign keys. Then re-read eligibility, references, versions and the complete
+  person→parent→target→role→connection→mapping→identity→grant/history closure under those
+  locks. If a new or changed reference/dependency was not covered, roll back and retry from
+  the beginning with the expanded sorted set; never fetch a newly found earlier-class lock
+  after a later-class lock. A missing/deleted parent fails closed. All person, organisation,
+  workspace, role, connection/configuration, mapping, identity, grant, direct-grant and
+  projection writers that can affect this closure contend on the same applicable anchors
+  before introducing or changing references. This includes lifecycle writers: a grant
+  writer cannot commit against a person or target state that a concurrent lifecycle writer
+  changed outside the lock set. Revalidate caller authority/rank, CAS/config versions and
+  source eligibility under locks. Unique/FK/CAS constraints are conflict detectors, not the
+  serialization proof; retry serialization, deadlock (`40P01`) or relevant uniqueness/FK
+  conflicts from a fresh closure, with no partial projection. Under READ COMMITTED, fresh
+  post-lock reads are required; read-then-lock alone does not close the race. Check
+  incidental FK locks during implementation for order reversals. Never hold these locks over
+  network IdP calls or post-commit cache publication.
+
+  At commit, every affected active external grant is valid against the committed person,
+  owning organisation, target workspace, role, connection, mapping, external identity and
+  source state, or is retired append-preservingly in that transaction. Recompute each
+  affected effective membership from all remaining valid active grants in that same
+  transaction. A stale grant or one-role projection cannot commit because its writer was a
+  parent/person writer rather than an identity writer. Direct grants remain independent of
+  connection/mapping evidence and keep their precedence, but inactive people and invalid
+  parent/target state make them unusable; IP-15 `keep_memberships` direct rows remain
+  dormant while the person is inactive. An absent, deleted, ineligible or mismatched parent
+  fails closed. This applies to person, organisation and workspace lifecycle, role and
+  configuration writes, direct grants, OIDC login, SCIM sync, mapping edits, and projection
+  repair. Failed transactions produce no partial grant, projection, event or session issue.
+
+  Parent lifecycle transitions sweep every grant whose current eligibility depends on the
+  changed parent and atomically reproject affected keys. Parent invalidation uses the
+  existing `mapping_changed` reason for external target-eligibility retirement; global
+  person deactivation uses the existing `scim_deactivated` reason where that lifecycle
+  applies. Reactivation, workspace restore or organisation restore creates no external
+  grant: fresh evidence from that same source is required. In particular, closing customer
+  `portal_access` makes customer external grants ineligible and retires them with
+  `mapping_changed` in the same transaction as the sweep/reprojection. Retain independent
+  direct-grant provenance, but portal access remains denied and customer sessions are
+  revoked under the customer-portal lifecycle rule. Reopening portal access alone never
+  revives retired external grants.
 
   In that transaction, retire invalid grants with existing reasons, repair/revoke linked
   `scim_group_member` history and pointers, and recompute every affected projection from
@@ -566,7 +615,7 @@ filtered to `organisation_id`; there is one implementation.
 | OIDC groups absent, malformed, or overage on a valid token | Retire only that identity's previous OIDC group grants; retain only permitted JIT default and independent valid grants; warn on overage; no Graph query |
 | Entra admission fails for an existing JIT-disabled identity | A valid protocol token missing the exact configured app role or signed `acct=0` denies a new session and retires only that identity's OIDC/JIT grants; invalid/unverified tokens or invalid server configuration mutate no grants; direct/SCIM/other-connection grants remain |
 | Enabled agent connection lowers `max_role_rank` below active grants | Retire only that connection's JIT/OIDC/SCIM grants above the new ceiling and recompute effective authority in the config-version transaction; direct/other-connection grants survive; sessions remain valid, with the 30-second cache fallback |
-| Concurrent OIDC login and SCIM group removal affect one person/scope | Use the total role→connection→mapping/SCIM-connection→identity→membership-key order, rediscover/re-read closure under lock and retry the full transaction if it expands; commit source-specific grant deltas and one recomputed effective row atomically (`IP-22`) |
+| Concurrent OIDC login and SCIM group removal affect one person/scope | Use IP-22’s total organisation→workspace→person→role→connection→mapping/SCIM-connection→identity→projection→mutated-grant/history order; rediscover/re-read closure under lock and retry the full transaction if it expands; commit source-specific grant deltas and one recomputed effective row atomically |
 
 ## Out of scope (first release)
 One more rule belongs with these, because it is the reason several of them can be simple:
@@ -727,9 +776,14 @@ grant change, and stale CAS rolls proof consumption back. No operation key or DT
 by this proposal.
 
 The shared IP-22 invariant adds planned subcases to the same named tests: 12 covers JIT
-disable/default-role change and re-enable evidence, stale/expanded lock-set retry, simultaneous
-mapping/provider/config edits, role rank above one of two connection ceilings, rank swap/tie
-and no-retirement reprojection, and SCIM pointer/history repair; 13 covers direct precedence
+disable/default-role change and re-enable evidence, stale/expanded lock-set retry (including a
+new parent or reference discovered after locking), simultaneous mapping/provider/config edits,
+role rank above one of two connection ceilings, rank swap/tie and no-retirement reprojection,
+and SCIM pointer/history repair; 12/13/25 cover person deactivation racing OIDC/SCIM grant
+writes in both commit orders, inactive-person refusal, customer organisation deactivation and
+portal closure, agent owning-organisation/workspace deletion and restore in both orders, direct
+grant dormancy/precedence, parent FK/new-reference conflicts and full-closure retry, and no
+external-grant resurrection on restore/reopen; 13 covers direct precedence
 and role-capability edits; 17 covers transactional existing event/audit/outbox behavior; and
 23/25 cover source-only retirement, recomputation, cache timing and the still-live session.
 The roles spec RL-9 carries matching planned role-PATCH coverage. These are requirements only;

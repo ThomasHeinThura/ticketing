@@ -84,7 +84,8 @@ See [RBAC](../01-architecture/rbac.md) for the capability list and the built-in 
 - `RL-9` Changing a role takes effect **immediately** for every holder, because authority
   is resolved from the current role row on every request. Role PATCH must use the shared
   [IP-22 source-validity/projection invariant](identity-provisioning.md): lock and revalidate
-  the caller, role, every referencing connection, affected grants and holders; reject
+  the owning organisation/workspace and affected people first, then the caller, role, every
+  referencing connection, affected grants and holders; rediscover/retry the full closure; reject
   forbidden resulting capabilities; retire external grants that no longer satisfy their
   source/ceiling; and recompute every affected effective membership, including rank-priority
   changes that retire no grant. Direct grants remain independent and retain precedence.

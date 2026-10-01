@@ -216,7 +216,12 @@ proposed in [ADR 0015](adr/0015-membership-grant-provenance.md), pending Thomas'
 and is not implemented.
 
 Projection reads only active grants whose person, role, scope, owning organisation, source
-connection, mapping, portal/side and current rank ceiling still validate. An active direct
+connection, mapping, portal/side and current rank ceiling still validate. Person, organisation
+and (for agent targets) workspace are protected validity parents; every writer that changes
+their eligibility joins IP-22's parent-first lock order, closure reread and atomic
+retire/reproject transaction. Closing customer `portal_access` retires affected external
+grants with existing `mapping_changed`, retains direct provenance independently, denies portal
+access and revokes sessions; reopening alone does not restore external grants. An active direct
 grant alone selects the role when one exists. Otherwise the valid external grant with the
 highest role rank selects the effective role. Equal-rank source precedence is
 `scim_group > oidc_group > jit_default` only if the tied grants name the **same** `role_id`.

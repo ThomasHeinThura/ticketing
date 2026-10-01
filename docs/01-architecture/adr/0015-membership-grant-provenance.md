@@ -54,9 +54,9 @@ evidence.
 - External grants have no direct-grant fields and force `sees_all=false`. A source CHECK
   enforces this exact discriminator shape. `system_backfill` is available only to the
   forward migration, never to an API request.
-- The writer validates current connection, mapping, person side, role scope, actual
-  resource-owning organisation, forbidden capabilities, and `max_role_rank` using the
-  shared [IP-22 source-validity invariant and total lock/retry protocol](../../03-features/identity-provisioning.md).
+- The writer validates current person and parent lifecycle, connection, mapping, person side,
+  role scope, actual resource-owning organisation, forbidden capabilities, and `max_role_rank`
+  using the shared [IP-22 source-validity invariant and parent-first total lock/retry protocol](../../03-features/identity-provisioning.md).
   Cross-row rules are not represented as if a SQL `CHECK` could enforce them.
 - Every source addition or retirement preserves a grant row. A role or mapping change
   retires the old grant and inserts a new one; no in-place role escalation changes its
@@ -160,7 +160,12 @@ after commit. If invalidation is lost, the documented 30-second authority-cache 
 remains. Ordinary role/policy edits change effective authority after invalidation but do not
 revoke a live session. Session-table revocation is checked on the next request for lifecycle
 transitions that explicitly revoke sessions. A failed transaction issues no new OIDC session
-and publishes no partial grant state.
+and publishes no partial grant state. Parent lifecycle changes use the same transaction: invalid
+external target eligibility retires with existing `mapping_changed`; customer portal closure
+also revokes customer sessions under the portal lifecycle rule. Direct grants remain independently
+recorded, and restoring a parent or reopening the portal does not revive retired external grants
+without fresh same-source evidence. This is the proposed storage rationale, not ADR approval or
+runtime acceptance.
 
 Use existing provisioning event keys `group.member_added`, `group.member_removed`,
 `group.mapping_changed`, `connection.changed`, `request.denied`, and `auth.failed`.
