@@ -129,8 +129,13 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
 - Each connection: provider type, display name, **which portal it serves — agent or
   customer, never both**, issuer/tenant, client id and encrypted secret, redirect URI,
   claim mapping, domain bindings, just-in-time provisioning policy, MFA-upstream mode.
-  Customer connections are edited from the organisation's Identity tab (below) — same
-  routes, filtered.
+  For Entra JIT, configure the exact nonempty `required_entra_app_role` admission value
+  separately from the TaskDesk default role; JIT cannot be enabled without it. Setup help
+  directs administrators to define and assign that app role and request the optional `acct`
+  claim in the Entra app registration. This role claim admits a member subject only; it does
+  not grant TaskDesk roles, capabilities or reach. Domain bindings support discovery and
+  deny-only collision checks. Customer connections are edited from the organisation's
+  Identity tab (below) — same routes, filtered.
 - **SCIM panel** per connection: endpoint URL, bearer token create / rotate / revoke
   (shown once; rotation invalidates the old token at once), allowed resources, attribute
   mapping, allowlisted group → role mappings (never `instance:admin`, never `sees_all`),

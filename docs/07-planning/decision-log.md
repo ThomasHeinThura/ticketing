@@ -5,27 +5,38 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
-### 2026-10-01 · First-release customer JIT trust is Entra-only and connection-bound
+### 2026-10-01 · First-release Entra JIT requires connection-bound subject admission
 
-**Decision:** for first-release customer JIT, permit domain-bound provisioning only through
-a Microsoft Entra connection after its tenant-specific `iss` and `tid` checks pass. Entra's
-absence of `email_verified` is the sole approved first-release exception. Other provider
-types cannot use JIT or domain binding until a provider-specific trust rule is approved.
-Before creating a customer person, require the validated callback address to be valid and
-its domain to be bound to that same connection; refuse unbound or other-connection domains.
-The connection remains the source of organisation and portal scope. This decision creates
-no guest-login path, new identity/linking rule, field, table, role or capability.
+**Decision:** before creating a new person or membership through first-release Entra JIT,
+validate the selected connection's exact `iss`, `tid` and `aud`, resolve immutable `oid`
+under that connection, require the exact nonempty `required_entra_app_role` configured in
+that connection's existing `identity_connection.jit_policy`, and require signed `acct=0`.
+Missing, malformed or nonmatching role, missing/malformed `acct`, and guest `acct=1` fail
+closed before creation. The Entra app registration must assign the app role and request the
+optional `acct` claim. This app role is only an IdP admission signal; it grants no TaskDesk
+role, capability, organisation, portal scope, or reach. Other provider JIT remains disabled
+until its own subject-admission rule is approved.
 
-Add the negative cases to existing acceptance test 05 and protocol negatives to existing
-test 15, with the CSRF subcases in the existing security E2E suite. Keep the 25 named P3
-acceptance tests and the real-Entra gate unchanged. This resolves only the canonical design
-wording; historical owning-review rows 81–82 remain active until an independent owner
-reviewer re-checks and closes them. No gate is waived.
+`email`, `preferred_username`, `upn` and their domains are contact/display or home-realm
+discovery metadata only. They never prove address ownership, grant JIT, select an organisation
+or portal, or link identities. A domain collision may deny sign-in, but a matching or
+unbound domain is not a JIT admission rule. The selected connection bound in OIDC `state`
+remains the source of portal and organisation. Existing SCIM scope/lifecycle and the
+no-email-account-linking rules are unchanged. Upstream Entra app-role deassignment alone
+does not promise immediate revocation of an already issued TaskDesk session.
 
-**Why:** tenant-specific `iss`/`tid` gives Entra an explicit trust basis despite its missing
-verification claim. Requiring the callback domain to bind to the selected connection makes
-the customer JIT boundary fail closed without allowing email to choose tenant or portal.
-The first release has no approved equivalent trust rule for another provider.
+Add planned trust negatives as subcases of acceptance test 05 and protocol negatives under
+existing test 15. The planned `tests/e2e/security/` suite must cover the CSRF cases before
+its applicable security gate is claimed; it is not implemented at this candidate. Preserve
+all 25 named P3 acceptance tests and the real-Entra completion gate. Historical owning-review
+rows 81–82 remain active until an independent owner reviewer re-checks and closes them. No
+gate is waived and no tests are claimed to have run by this design decision.
+
+**Why:** exact token binding plus a connection-specific assigned app role and explicit
+member account type establishes a subject-admission predicate without treating mutable
+address claims as proof. `jit_policy` already stores per-connection JIT configuration, so the
+additional key is documented in the authoritative data model without a new table or TaskDesk
+authority. Domain bindings remain useful for discovery and conservative collision refusal.
 
 **Decided by:** Thomas, under the standing instruction to use recommended decisions; recorded
 by the orchestrator, 2026-10-01.

@@ -146,16 +146,19 @@ constrained hard:
 - **The durable identity key is `(connection, issuer, subject)` plus the SCIM `externalId`**
   — never the email address, which is a changeable attribute. Organisation and portal are
   properties of the connection, resolved server-side.
-- **First-release domain trust is Entra-only.** Where an approved provider emits
-  `email_verified`, it must be `true`; absence is not proof. Microsoft Entra emits no such
-  claim, so the only approved exception is a connection whose tenant-specific issuer and
-  `tid` checks in IP-26 succeed. Other providers' JIT and domain binding stay disabled until
-  a provider-specific trust rule is approved.
-- **A customer JIT address must bind to its own connection.** Its validated callback address
-  must be valid and its domain must be bound to that same connection. Unbound domains and
-  domains bound to another connection fail closed before person creation. A domain never
-  selects the organisation; the connection does. This rule does not define a guest-login or
-  alternate linking path.
+- **First-release new-person JIT uses Entra subject admission.** After exact selected-
+  connection `iss`, `tid` and `aud` validation, the signed ID token must contain the
+  connection's configured, exact `required_entra_app_role` and `acct=0` before a new person
+  or membership is created (`IP-27`). Missing/malformed account type or role, and guests,
+  fail closed. Other provider JIT remains disabled until its own admission rule is approved.
+- **Email-like claims and domains are not authority.** `email`, `preferred_username` and
+  `upn` are contact/display metadata, never proof of address ownership, JIT admission,
+  organisation selection or account linking. `domain_bindings` support home-realm discovery
+  and deny-only collision checks: a collision may refuse sign-in, while a matching domain
+  never admits a subject. The selected connection, bound in OIDC `state`, supplies portal and
+  organisation scope. Upstream app-role deassignment alone does not promise immediate
+  revocation of an already issued TaskDesk session; existing TaskDesk lifecycle controls
+  apply.
 - Provisioning `side = staff`, or a group→role rule that grants above `member`, is an
   elevated configuration change.
 - Group→role mapping is applied **at provisioning only**. It is never re-evaluated at login

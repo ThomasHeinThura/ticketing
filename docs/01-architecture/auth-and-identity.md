@@ -142,8 +142,9 @@ God Mode → Organisations → Contoso → Identity → [ Add connection ]   (cu
     Scopes                openid profile email
     Claim mapping         identifier: oid + tid (fixed) · email: email → preferred_username
                           → upn · name → name · groups → groups          (IP-27)
-    Auto-provision (JIT)  [x] create a person on first login
-      → role              Viewer ▾   (≤ this connection's max role rank; customer
+    Auto-provision (JIT)  [x] create a person on first login (Entra admission role required)
+      → admission role     [configured Entra app-role value; not a TaskDesk role]
+      → default role       Viewer ▾   (≤ this connection's max role rank; customer
                                       connections have exactly one choice: Customer)
     Max role rank         50 (Lead) ▾                     ← agent connections only
     Group → role mapping  1f9a…-c3d2 "TaskDesk-Leads" → Lead   [+ add rule]
@@ -235,12 +236,16 @@ email address and resolves the connection server-side from `domain_bindings`
 ([customer-portal.md](../03-features/customer-portal.md) `CP-18`,
 [identity-provisioning.md](../03-features/identity-provisioning.md) `IP-29`).
 
-For first-release customer JIT, the validated callback address domain must be bound to that
-same Microsoft Entra connection; unbound and other-connection domains are refused before
-person creation (`IP-9`). The domain never selects the organisation —
-`identity_connection.organisation_id` does. Other provider types cannot use JIT or domain
-binding until their provider-specific trust rule is approved. This does not define a guest
-login or alternate account-linking path.
+For first-release Entra new-person JIT, the validated token must match the selected
+connection's exact issuer, tenant and audience, contain its configured required app role,
+and carry `acct=0` before person or membership creation (`IP-27`). Missing or malformed
+`acct` and guest accounts fail closed. The optional `acct` claim must be requested in the
+Entra app registration. `email`, `preferred_username`, `upn` and their domains are contact or
+discovery metadata only; domain bindings can deny a cross-connection collision but cannot
+admit a subject or select an organisation. The selected connection supplies portal and
+organisation. Other provider JIT stays disabled until its own admission rule is approved.
+Upstream app-role deassignment alone does not promise immediate revocation of an existing
+TaskDesk session. This does not define a guest-login or alternate account-linking path.
 
 ## Identity architecture — the authoritative model
 

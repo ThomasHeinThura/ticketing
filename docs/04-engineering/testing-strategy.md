@@ -197,11 +197,13 @@ a customer connection cannot create staff or authority; SCIM create/filter/updat
 reactivate behave per Entra; groups map only to permitted roles in scope; nothing grants
 `instance:admin` automatically; token rotation invalidates the old token and never leaks;
 OIDC protocol failures block sign-in; a second IdP does not auto-link on email; every
-identity event is audited. Test 05 also covers unbound and other-connection customer JIT
-domains and the absence of an approved non-Entra trust rule; test 15 covers PKCE mismatch,
-state replay, wrong-portal or expired state, and nonce mismatch. These are subcases of the
-existing named tests. The existing security E2E suite covers the CSRF negatives stated in
-the security model; none adds an acceptance test or completion gate. `/scim/v2/*` is also
+identity event is audited. Test 05 also covers exact per-connection Entra app-role
+admission, missing/malformed `acct` and guest rejection, unapproved provider JIT, and
+collision-deny-only domain handling; test 15 covers PKCE mismatch, state replay, wrong-portal
+or expired state, and nonce mismatch. These are subcases of the existing named tests. The
+planned `tests/e2e/security/` suite must cover the CSRF negatives stated in the security
+model before the applicable security gate is claimed; the suite is not implemented at this
+candidate. None of these requirements adds a named P3 acceptance test. `/scim/v2/*` is also
 inside the IDOR fuzz and tenant-isolation suites like any other scoped surface.
 
 ## Pending-action tests — universal deletion approval

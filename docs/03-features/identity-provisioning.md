@@ -115,21 +115,18 @@ de-provisioning writes.
 - `IP-8` A customer connection's callback is accepted **only on the portal origin**, an
   agent connection's only on the agent origin; the resulting session carries the matching
   `session.portal` and is unusable on the other host.
-- `IP-9` One email domain is bound to one approved connection, in that connection's
-  `domain_bindings`, and the binding **refuses** a token whose address domain belongs to
-  another connection. It never *selects* the organisation — that is
-  `identity_connection.organisation_id`, resolved from the connection
+- `IP-9` `domain_bindings` support home-realm discovery and deny-only collision checks.
+  They never prove that a subject owns an address or may join an organisation, and a domain
+  match never grants JIT. A collision with a domain bound to another connection may refuse
+  sign-in, but an unbound address domain alone does not establish or select a connection,
+  organisation or identity. The selected connection, bound in OIDC `state`, is the source of
+  portal and organisation scope
   ([multi-tenancy.md](../01-architecture/multi-tenancy.md),
   [security-model.md](../01-architecture/security-model.md#identity-provisioning-and-account-linking)).
-  The check runs against whichever address `IP-27`'s precedence produced. For customer JIT,
-  that address must be valid and its domain must be bound to **that same connection**;
-  unbound domains and domains bound to another connection fail closed before a person is
-  created. The first release permits JIT with domain bindings only for Microsoft Entra, and
-  only after the connection's tenant-specific `iss` and `tid` checks (`IP-26`) succeed. Entra
-  emits no `email_verified` claim; this tenant-specific check is the explicitly approved
-  first-release exception. For any other provider, JIT and domain binding remain disabled
-  until a provider-specific trust rule is approved. A claim's absence is not evidence of
-  verification. This rule does not add a guest-login or alternate account-linking path.
+  New-person JIT in the first release is available only on Microsoft Entra connections and
+  requires the connection-specific subject-admission predicate in `IP-27`. Other provider
+  JIT stays disabled until its own admission rule is approved. No email-like claim or domain
+  is an authority, tenant-selection or account-linking signal.
 - `IP-10` JIT provisioning (create on first login) is a per-connection policy, off by
   default for customer connections when SCIM is enabled — the directory, not the login,
   creates people. When both are on, the first login **links** to the SCIM-created record by
@@ -142,14 +139,28 @@ de-provisioning writes.
   token must match both the stored `iss` **and** `identity_connection.tenant_id` through its
   `tid` claim; either mismatch fails sign-in, audited. This is the rule
   `05-no-user-controlled-tenant-selection.test.ts` asserts.
-- `IP-27` **The subject is `oid` + `tid`; the address is derived by precedence.** Entra
-  v2.0 ID tokens do not guarantee an `email` claim — it is optional, present only when
-  configured or when the user has a `mail` attribute — and they emit **no `email_verified`
-  claim at all**. So the durable subject is always `oid` (with `tid`), and the address is
-  taken by precedence `email` → `preferred_username` → `upn`, with `IP-9`'s domain check
-  applied to whichever of the three was used. If none of them is a valid address, **JIT
-  provisioning fails closed**: sign-in is refused, a `provisioning_event` is written, and no
-  address is invented. The resulting email snapshot is an attribute, never a key (`IP-18`).
+- `IP-27` **Entra new-person JIT requires an assigned app role and a member account.**
+  After the protocol floor (`IP-7`) and exact selected-connection `iss`, `tid` and `aud`
+  validation (`IP-26`), resolve the immutable `oid` under that connection. Before creating
+  any person or membership, require the signed ID token's `roles` claim to contain the exact,
+  nonempty `required_entra_app_role` configured in this connection's `jit_policy`, and its
+  `acct` claim to equal `0`. The value is an IdP admission signal only; TaskDesk roles,
+  capabilities and reach still come solely from TaskDesk configuration. Missing, malformed
+  or nonmatching role; missing or malformed `acct`; and `acct=1` (guest) fail closed before
+  creation and record the existing denied provisioning event/audit as applicable. The Entra
+  app registration must assign the role and request the optional `acct` claim. Removal of
+  that upstream app-role assignment does not promise immediate revocation of an already
+  issued TaskDesk session; existing TaskDesk session and membership lifecycle controls
+  remain authoritative.
+
+  The durable subject is `oid` with `tid`. `email` → `preferred_username` → `upn` supplies
+  contact/display metadata only: it never proves address ownership, grants JIT, chooses an
+  organisation or portal, or links an account (`IP-18`). If no valid address is available,
+  JIT may fail the existing person-profile data requirement; that is not an authorization
+  check. A domain collision may deny under `IP-9`, but a matching domain is never sufficient
+  for admission. Generic and other provider JIT remains disabled until its own admission
+  rule is approved. The first-release Entra JIT rule rejects guests, including a missing or
+  malformed `acct`; it does not create a guest-login or alternate account-linking path.
 - `IP-29` **The portal login page performs home-realm discovery; it never enumerates.**
   Customer connections are per-organisation, so a list of them would name every customer
   organisation to every anonymous visitor. The portal login page therefore renders **no list
@@ -368,9 +379,12 @@ listed in [testing-strategy.md](../04-engineering/testing-strategy.md).
 02-customer-oidc-bound-to-one-organisation.test.ts
 03-portal-isolation-both-directions.test.ts
 04-scim-token-cannot-touch-other-organisation.test.ts
-05-no-user-controlled-tenant-selection.test.ts — also rejects customer JIT for an unbound
-   callback-address domain, a domain bound to another connection, and a non-Entra provider
-   without an approved trust rule; these are subcases, not additional acceptance tests
+05-no-user-controlled-tenant-selection.test.ts — also rejects JIT for wrong `iss`/`tid`/`aud`,
+   missing/malformed `oid`, without this connection's exact required app role, with
+   missing/malformed `acct` or `acct=1`, and for an unapproved provider; a role from another
+   connection cannot satisfy the selected connection; changing email-like claims never
+   changes subject, organisation or portal; a domain collision may deny but a domain match
+   never admits; these are subcases, not additional acceptance tests
 06-customer-connection-cannot-create-staff-or-authority.test.ts
 07-scim-create-scoped-person.test.ts — same- and cross-connection conflicts return the same generic 409
 08-scim-filter-username-externalid-listresponse.test.ts
@@ -406,10 +420,10 @@ to prove `accountLinking.enabled` is `false` rather than inferring it from behav
 proves a revoked session fails on the next request — the SLA stated in
 [auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions).
 
-The existing `tests/e2e/security/` negative E2E suite also covers state-changing GET,
+The planned `tests/e2e/security/` negative E2E suite must cover state-changing GET,
 cookie-authenticated unsafe requests with a missing or mismatched `Origin`/`Referer`, and
-missing or mismatched double-submit tokens. These remain subcases of the existing security
-E2E suite, not a new P3 acceptance test or completion gate.
+missing or mismatched double-submit tokens before the applicable security gate is claimed.
+These remain required security coverage, not a new P3 acceptance test.
 
 Plus the IDOR fuzz and tenant-isolation suites, which cover `/scim/v2/*` like any other
 scoped surface.
