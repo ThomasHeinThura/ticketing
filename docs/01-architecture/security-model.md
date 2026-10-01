@@ -32,7 +32,7 @@ audit trail; session and API-key material; the image and release artefacts.
 | **Account-recovery social engineering** ("please reset my MFA") | Get an administrator to remove a second factor | `reset-mfa` is elevated, requires a recorded verification note, emails every address on file, revokes all sessions and keys ([auth-and-identity.md](auth-and-identity.md#multi-factor-authentication)) |
 | **Compromised SCIM token, or a hostile customer's own IdP** | Create staff, reach another organisation, grant authority, enumerate users | Organisation and portal are fixed by the connection the token belongs to, never by the request (`IP-4`); a customer connection can create only customer-side people in its own organisation with the customer role (`IP-2`); no connection can grant `instance:admin` or `sees_all`; token hashed, rotatable with immediate invalidation, rate-limited; every denial is a provisioning event — [SCIM](#scim--an-inbound-privileged-management-api) |
 | **A deletion nobody meant** (mis-click, scripted key, injected agent) | Destroy data faster than anyone can stop it | Every user-initiated deletion is a `pending_action` approved by the requesting human in a browser session; bound to exact targets and payload; single-use; 15-minute expiry; re-authorised at execution; no model, key or automation can approve — [Deletion approval](#deletion-approval) |
-| **Anonymous internet** | Enumerate users/providers; bomb mail; DoS; distinguish "not found" from "not yours" | Anonymous rate-limit class; constant-time auth responses; **constant-shape 404** (same body, same lookup path, same bucket); minimal `/api/public/*`; `health/deep` authenticated; quotas with real defaults; event-loop lag alerting |
+| **Anonymous internet** | Enumerate TaskDesk user accounts or provider inventory; bomb mail; DoS; distinguish "not found" from "not yours" | Anonymous rate-limit class; constant-time auth responses; **constant-shape 404** (same body, same lookup path, same bucket); minimal `/api/public/*`; `health/deep` authenticated; quotas with real defaults; event-loop lag alerting. A visitor may infer whether a submitted domain has customer SSO and see its public IdP redirect destination through home-realm routing; this limited disclosure is accepted and defined in `IP-29`, not a TaskDesk account-existence or inventory disclosure. |
 | **Legal hold / e-discovery** (not an adversary — an obligation) | Delete what must be retained; fail to produce what must be produced | A per-organisation or per-person **legal hold** flag suspends `audit-purge`, the soft-delete purge in `session-cleanup`, `attachment-gc` and hard delete for that scope ([background-jobs.md](background-jobs.md)); the per-tenant export already required for subject rights ([data-protection.md](../05-operations/data-protection.md)) is the discovery export |
 
 Residual risks accepted, and where they are recorded: no malware scanning by default
@@ -393,7 +393,10 @@ is in [data-protection.md](../05-operations/data-protection.md).
 ## Public and operational endpoints
 
 - `/api/public/auth-providers` returns **only** what the login page needs — a button label
-  and provider id — never discovery URLs, tenant ids or domain restrictions.
+  and provider id — never discovery URLs, tenant ids or domain restrictions in that API
+  response. The later redirect to a selected IdP may reveal its public destination, including
+  host or tenant path, under the limited domain-specific disclosure in `IP-29`; that redirect
+  is not a secrecy boundary.
 - `/api/public/health/live` and `/ready` are anonymous. A dependency-enumerating deep check
   is planned at `GET /api/instance/health/deep`, policy kind 1 with `instance:admin`; the
   current API does not serve it. If implemented, it must not live behind a per-route

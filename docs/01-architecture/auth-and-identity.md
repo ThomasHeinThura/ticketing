@@ -242,8 +242,10 @@ plugins may be `both` ([ADR 0003](adr/0003-better-auth-primary.md),
 they belong to the instance, and naming them discloses nothing. **The portal login screen
 renders no connection list at all.** Customer connections are per-organisation; the portal
 may use the typed email domain to route login initiation to a configured connection, with an
-unbound domain falling through to non-SSO methods. The authoritative routing/admission and
-state-scope boundary is `IP-9`/`IP-29` and `CP-18`.
+unbound domain falling through to non-SSO methods. The limited, domain-specific disclosure
+in the complete unauthenticated flow is defined in `IP-29`; no organisation/connection list
+is published. The authoritative routing/admission and state-scope boundary is `IP-9`/`IP-29`
+and `CP-18`.
 
 New-person JIT admission follows the single authoritative rule in `IP-9` and `IP-27`
 after OIDC validation; no provider-specific exception is inferred here. For customer sign-in,

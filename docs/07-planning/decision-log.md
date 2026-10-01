@@ -27,10 +27,24 @@ non-SSO methods without guessing or creating an organisation. Existing SCIM scop
 and no-email-account-linking rules are unchanged. Upstream Entra app-role deassignment alone
 does not promise immediate revocation of an already issued TaskDesk session.
 
-Add planned trust negatives as subcases of acceptance test 05 and protocol negatives under
-existing test 15. The planned `tests/e2e/security/` suite must cover the CSRF cases before
-its applicable security gate is claimed; it is not implemented at this candidate. Preserve
-all 25 named P3 acceptance tests and the real-Entra completion gate. Historical owning-review
+The portal does not publish a customer provider or organisation list, but its complete
+unauthenticated bound and unbound flows are intentionally distinguishable. A person
+submitting a domain may infer that it has a customer SSO binding and see the selected IdP's
+public redirect destination, including its host or tenant path. TaskDesk's discovery
+surface does not return an organisation or connection inventory, names, ids, domain
+inventory, discovery configuration, claim mappings or secrets, or disclose whether a
+TaskDesk user account exists; anonymous rate limits reduce bulk probing but do not hide this
+domain-specific disclosure. The former assertion that equal initial body, status, or timing
+made the full flow non-enumerating is withdrawn. A private preflight that verifies control
+of an address before domain routing would change the sign-in
+journey and needs a separate design decision; it is not implied here.
+
+Add planned trust negatives as subcases of acceptance test 05, including browser coverage of
+complete bound/unbound flows and the permitted and prohibited disclosures, and protocol
+negatives under existing test 15. The planned `tests/e2e/security/` suite must cover the CSRF
+cases before its applicable security gate is claimed; it is not implemented at this
+candidate. Preserve all 25 named P3 acceptance tests and the real-Entra completion gate.
+Historical owning-review
 rows 81–82 remain active until an independent owner reviewer re-checks and closes them. No
 gate is waived and no tests are claimed to have run by this design decision.
 
@@ -38,7 +52,11 @@ gate is waived and no tests are claimed to have run by this design decision.
 member account type establishes a subject-admission predicate without treating mutable
 address claims as proof. `jit_policy` already stores per-connection JIT configuration, so the
 additional key is documented in the authoritative data model without a new table or TaskDesk
-authority. Domain bindings remain useful for discovery and conservative collision refusal.
+authority. Domain bindings remain useful for login routing and conservative collision
+refusal; accepting the limited domain-to-SSO/IdP-destination disclosure preserves the
+specified home-realm flow without claiming equal initial response properties hide the
+follow-up redirect. This is an explicit threat-model decision, not a waiver of review or
+testing gates.
 
 **Decision-maker:** the orchestrator, adopting its recommended reconciliation under Thomas's
 standing authorization, 2026-10-01.

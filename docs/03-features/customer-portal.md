@@ -32,7 +32,7 @@ It must also be genuinely good on a phone. That is where customers will use it.
 | --- | --- |
 | Origin | `portal.<domain>` — separate from the agent origin |
 | Session | Separate cookie, scoped to that host |
-| Identity | Whichever providers are scoped to `customer` in God Mode — **never listed on the login page**; the visitor gives an email address and the connection is resolved server-side (`CP-18`) |
+| Identity | Whichever providers are scoped to `customer` in God Mode — **never listed on the login page**; typed-domain routing and its limited disclosure follow `CP-18`/`IP-29` |
 | Bundle | Contains no agent or God Mode code — asserted at build |
 | API | `/api/portal/*` — a narrow, separately reviewed router |
 
@@ -134,15 +134,14 @@ misconfigured away through the role editor.
   deactivates them when they leave. Instance administrators configure it (God Mode →
   Organisations → *org* → Identity); customers cannot configure their own IdP in the first
   release (`IP-5`). Invitation (`CP-11`) remains the path for organisations without SSO.
-- `CP-18` **The login page routes without enumerating organisations or connections.** It
-  asks for an email address and may use its typed domain to route login initiation to a
-  configured customer OIDC flow; an unbound domain falls through to existing non-SSO methods.
-  Bound and unbound domains keep the same response body, status and timing class. Routing is
-  only for login initiation; state scope and post-validation collision behavior follow the
-  single rule in `IP-9`. The agent login page may list its instance-level providers
-  ([auth-and-identity.md](../01-architecture/auth-and-identity.md#per-portal-binding)); the
-  full customer-login contract is [identity-provisioning.md](identity-provisioning.md)
-  `IP-9`/`IP-29`.
+- `CP-18` **The login page does not publish a provider list.** It asks for an email address
+  and may use its typed domain to route login initiation to a configured customer OIDC flow.
+  The complete bound and unbound flows are intentionally distinguishable and may disclose
+  that a supplied domain has an SSO binding and the IdP's public redirect destination. The
+  limited disclosure and prohibited inventory/account disclosures are defined once in
+  [identity-provisioning.md](identity-provisioning.md) `IP-29`; state scope and callback
+  collision behavior follow `IP-9`. The agent login page may list its instance-level
+  providers ([auth-and-identity.md](../01-architecture/auth-and-identity.md#per-portal-binding)).
 - `CP-15` A customer may **withdraw their own submission** at any point before it is
   triaged — raised in error, no longer needed, or superseded by another request. Withdrawal
   is a submission status (`withdrawn`), not a deletion: it remains visible in "My requests"

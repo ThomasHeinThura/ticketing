@@ -200,7 +200,12 @@ OIDC protocol failures block sign-in; a second IdP does not auto-link on email; 
 identity event is audited. Test 05 also covers exact per-connection Entra app-role
 admission, missing/malformed `acct` and guest rejection, unapproved provider JIT, and
 collision-deny-only domain handling; test 15 covers PKCE mismatch, state replay, wrong-portal
-or expired state, and nonce mismatch. These are subcases of the existing named tests. The
+or expired state, and nonce mismatch. Test 05's planned browser assertions capture the
+complete bound- and unbound-domain flow: initial response, `Location` and cookie headers,
+navigation, and next screen. They verify the accepted domain-to-SSO-binding/public-IdP-
+destination disclosure and prohibit organisation/connection inventory, names, ids, discovery
+configuration, claim mappings, secrets, or a TaskDesk user-account-existence signal.
+These are subcases of the existing named tests, not current test evidence. The
 planned `tests/e2e/security/` suite must cover the CSRF negatives stated in the security
 model before the applicable security gate is claimed; the suite is not implemented at this
 candidate. None of these requirements adds a named P3 acceptance test. `/scim/v2/*` is also

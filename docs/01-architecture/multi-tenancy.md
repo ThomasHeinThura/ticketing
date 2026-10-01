@@ -143,7 +143,9 @@ itself on every authorization check.
   configured connection. The connection's persisted `organisation_id`, not the domain,
   supplies organisation scope; state-binding and post-validation collision rules follow
   [identity-provisioning.md](../03-features/identity-provisioning.md) `IP-9`. A match never
-  admits a subject, and an unbound domain falls through to non-SSO methods.
+  admits a subject. The limited domain-to-SSO/IdP-destination disclosure across the
+  unauthenticated flow is defined by `IP-29`; it is not organisation scope or a published
+  customer inventory. An unbound domain falls through to non-SSO methods.
 
 ## Provisioning a new customer organisation
 

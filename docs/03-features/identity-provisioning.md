@@ -134,8 +134,9 @@ de-provisioning writes.
   validated email-like claim has a domain bound to another connection may be refused **after
   token validation**; this collision check is deny-only. Neither a matching nor an unbound
   callback domain admits a subject. An unbound typed domain may fall through to existing
-  non-SSO methods under `IP-29`; it never guesses or creates an organisation. The selected
-  connection's persisted `organisation_id` alone supplies customer organisation scope
+  non-SSO methods under `IP-29`; the complete unauthenticated flow has the limited
+  domain-specific disclosure defined there. It never guesses or creates an organisation.
+  The selected connection's persisted `organisation_id` alone supplies customer scope
   ([multi-tenancy.md](../01-architecture/multi-tenancy.md),
   [security-model.md](../01-architecture/security-model.md#identity-provisioning-and-account-linking)).
   New-person JIT in the first release is available only on Microsoft Entra connections and
@@ -176,13 +177,21 @@ de-provisioning writes.
   for admission. Generic and other provider JIT remains disabled until its own admission
   rule is approved. The first-release Entra JIT rule rejects guests, including a missing or
   malformed `acct`; it does not create a guest-login or alternate account-linking path.
-- `IP-29` **The portal login page performs non-enumerating home-realm routing.** It renders
-  no organisation or connection list. A typed email domain may route an unauthenticated
-  visitor to a configured customer OIDC flow; an unbound domain falls through to existing
-  non-SSO methods. Bound and unbound inputs keep the same body, status and timing class.
-  This routing does not establish identity or scope; `IP-9` owns the state-binding and
-  post-validation collision behavior. The agent login page may list its instance-level
-  providers ([customer-portal.md](customer-portal.md) `CP-18`,
+- `IP-29` **The portal login page has a limited domain-specific SSO disclosure.** It does
+  not list customer organisations or connections. A visitor supplies an email address;
+  its domain may select one configured customer SSO connection for login initiation. A
+  bound domain may lead to that connection's IdP; an unbound domain follows available
+  non-SSO methods. These complete unauthenticated flows are intentionally distinguishable:
+  an observer who submits a domain may infer that it has an SSO binding and see the IdP's
+  public redirect destination, including its public host or tenant path. TaskDesk does not
+  publish an organisation or connection inventory, organisation names, connection ids,
+  discovery configuration, claim mappings, secrets, or whether a TaskDesk user account
+  exists. Anonymous rate limits apply; they reduce bulk probing but do not hide
+  this domain-specific disclosure. Identical initial response body, status, or timing is
+  not a non-enumeration guarantee for the full flow. `IP-9` governs connection/state
+  binding and `IP-27` governs JIT admission; typed or callback email domains do not grant access or
+  change scope. The agent login page may list its instance-level providers
+  ([customer-portal.md](customer-portal.md) `CP-18`,
   [auth-and-identity.md](../01-architecture/auth-and-identity.md#per-portal-binding)).
 
 ### SCIM endpoint
@@ -398,7 +407,13 @@ listed in [testing-strategy.md](../04-engineering/testing-strategy.md).
    selected connection, portal and persisted organisation into state, and callback
    email-like claims cannot change them or link by email; same-connection subject matching
    follows IP-19; a post-validation domain collision may deny but a domain match never
-   admits; these are subcases, not additional acceptance tests
+   admits. Browser assertions capture the complete unauthenticated flow for a bound and an
+   unbound domain: initial response, headers (including `Location` and cookies), navigation,
+   and next screen. They assert the permitted domain-to-SSO-binding/public-IdP-destination
+   disclosure and prohibit organisation/connection inventory, names, ids, discovery
+   configuration, claim mappings, secrets, and a TaskDesk user-account-existence signal.
+   These are planned subcases, not additional acceptance tests; no current test or run is
+   claimed.
 06-customer-connection-cannot-create-staff-or-authority.test.ts
 07-scim-create-scoped-person.test.ts — same- and cross-connection conflicts return the same generic 409
 08-scim-filter-username-externalid-listresponse.test.ts
