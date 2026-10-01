@@ -187,8 +187,8 @@ covered elsewhere:
 
 ## Identity provisioning tests — SCIM and Microsoft Entra
 
-**Where** — `tests/api-integration/identity/`. Seventeen named acceptance tests, numbered
-`01`–`17` in [identity-provisioning.md](../03-features/identity-provisioning.md#testing),
+**Where** — `tests/api-integration/identity/`. Twenty-five named acceptance tests, numbered
+`01`–`25` in [identity-provisioning.md](../03-features/identity-provisioning.md#testing),
 run on every PR against a mock IdP and, **before the P3 identity gate closes, against a real
 Microsoft Entra test tenant**. In one line each: agent OIDC is agent-portal-only; customer
 OIDC is bound to one organisation; portal sessions are isolated both ways; a SCIM token
@@ -197,8 +197,12 @@ a customer connection cannot create staff or authority; SCIM create/filter/updat
 reactivate behave per Entra; groups map only to permitted roles in scope; nothing grants
 `instance:admin` automatically; token rotation invalidates the old token and never leaks;
 OIDC protocol failures block sign-in; a second IdP does not auto-link on email; every
-identity event is audited. `/scim/v2/*` is also inside the IDOR fuzz and tenant-isolation
-suites like any other scoped surface.
+identity event is audited. Test 05 also covers unbound and other-connection customer JIT
+domains and the absence of an approved non-Entra trust rule; test 15 covers PKCE mismatch,
+state replay, wrong-portal or expired state, and nonce mismatch. These are subcases of the
+existing named tests. The existing security E2E suite covers the CSRF negatives stated in
+the security model; none adds an acceptance test or completion gate. `/scim/v2/*` is also
+inside the IDOR fuzz and tenant-isolation suites like any other scoped surface.
 
 ## Pending-action tests — universal deletion approval
 

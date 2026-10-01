@@ -146,13 +146,16 @@ constrained hard:
 - **The durable identity key is `(connection, issuer, subject)` plus the SCIM `externalId`**
   — never the email address, which is a changeable attribute. Organisation and portal are
   properties of the connection, resolved server-side.
-- Where a provider emits `email_verified`, it must be `true` for a domain mapping to be
-  honoured. Microsoft Entra emits no such claim; its mapped address is accepted only after
-  the connection's tenant-specific issuer and `tid` checks in IP-26 succeed. Domain
-  bindings still reject an address owned by another connection.
-- **Each email domain is bound to exactly one provider.** A token asserting `@contoso.com`
-  from any other enabled provider is refused, so no second provider can be used to walk into
-  Contoso's tenant.
+- **First-release domain trust is Entra-only.** Where an approved provider emits
+  `email_verified`, it must be `true`; absence is not proof. Microsoft Entra emits no such
+  claim, so the only approved exception is a connection whose tenant-specific issuer and
+  `tid` checks in IP-26 succeed. Other providers' JIT and domain binding stay disabled until
+  a provider-specific trust rule is approved.
+- **A customer JIT address must bind to its own connection.** Its validated callback address
+  must be valid and its domain must be bound to that same connection. Unbound domains and
+  domains bound to another connection fail closed before person creation. A domain never
+  selects the organisation; the connection does. This rule does not define a guest-login or
+  alternate linking path.
 - Provisioning `side = staff`, or a group→role rule that grants above `member`, is an
   elevated configuration change.
 - Group→role mapping is applied **at provisioning only**. It is never re-evaluated at login
@@ -455,7 +458,7 @@ Quotas ship with **real defaults** (storage 20 GB, portal users 500, webhooks 10
 | Permission matrix — capability and reach; custom-role property tests | `tests/permissions/` | Every PR |
 | IDOR fuzz — other-tenant ids on every scoped route | `tests/permissions/` | Every PR |
 | Tenant isolation | `tests/api-integration/` | Every PR |
-| Negative E2E (incl. CSRF, forged `X-Forwarded-For`, cross-origin WS, re-auth on revoke) | `tests/e2e/security/` | Every PR |
+| Negative E2E (incl. state-changing GET refusal; cookie-authenticated unsafe requests with missing/mismatched `Origin` or `Referer`, or missing/mismatched double-submit token; forged `X-Forwarded-For`; cross-origin WS; re-auth on revoke) | `tests/e2e/security/` | Every PR |
 | Auth reconfiguration suite | `tests/api-integration/auth/` | Every PR |
 | Dependency audit | CI | Every PR |
 | Container scan, SBOM, signing | CI | Every release |

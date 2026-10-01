@@ -121,11 +121,15 @@ de-provisioning writes.
   `identity_connection.organisation_id`, resolved from the connection
   ([multi-tenancy.md](../01-architecture/multi-tenancy.md),
   [security-model.md](../01-architecture/security-model.md#identity-provisioning-and-account-linking)).
-  The check runs against whichever address `IP-27`'s precedence produced.
-  `email_verified = true` is required **only of providers that emit that claim**: Microsoft
-  Entra emits none at all, so requiring it there would make the rule unsatisfiable and the
-  implementer would quietly drop it. For Entra the address is trusted because the token came
-  from the connection's own tenant (`IP-26`), not because a claim asserts it.
+  The check runs against whichever address `IP-27`'s precedence produced. For customer JIT,
+  that address must be valid and its domain must be bound to **that same connection**;
+  unbound domains and domains bound to another connection fail closed before a person is
+  created. The first release permits JIT with domain bindings only for Microsoft Entra, and
+  only after the connection's tenant-specific `iss` and `tid` checks (`IP-26`) succeed. Entra
+  emits no `email_verified` claim; this tenant-specific check is the explicitly approved
+  first-release exception. For any other provider, JIT and domain binding remain disabled
+  until a provider-specific trust rule is approved. A claim's absence is not evidence of
+  verification. This rule does not add a guest-login or alternate account-linking path.
 - `IP-10` JIT provisioning (create on first login) is a per-connection policy, off by
   default for customer connections when SCIM is enabled — the directory, not the login,
   creates people. When both are on, the first login **links** to the SCIM-created record by
@@ -364,7 +368,9 @@ listed in [testing-strategy.md](../04-engineering/testing-strategy.md).
 02-customer-oidc-bound-to-one-organisation.test.ts
 03-portal-isolation-both-directions.test.ts
 04-scim-token-cannot-touch-other-organisation.test.ts
-05-no-user-controlled-tenant-selection.test.ts
+05-no-user-controlled-tenant-selection.test.ts — also rejects customer JIT for an unbound
+   callback-address domain, a domain bound to another connection, and a non-Entra provider
+   without an approved trust rule; these are subcases, not additional acceptance tests
 06-customer-connection-cannot-create-staff-or-authority.test.ts
 07-scim-create-scoped-person.test.ts — same- and cross-connection conflicts return the same generic 409
 08-scim-filter-username-externalid-listresponse.test.ts
@@ -374,7 +380,9 @@ listed in [testing-strategy.md](../04-engineering/testing-strategy.md).
 12-group-maps-only-to-permitted-role-and-scope.test.ts
 13-nothing-grants-instance-admin-automatically.test.ts
 14-token-rotation-invalidates-old-and-never-leaks.test.ts
-15-oidc-protocol-failures-block-sign-in.test.ts
+15-oidc-protocol-failures-block-sign-in.test.ts — negative subcases include PKCE mismatch,
+   replayed, wrong-portal and expired state, and nonce mismatch; these are subcases, not
+   additional acceptance tests
 16-same-email-second-idp-does-not-autolink.test.ts
 17-every-identity-event-is-audited.test.ts
 18-placeholder-claim-requires-local-verification.test.ts
@@ -397,6 +405,11 @@ refusing, 23 the edge-case row above, 24 reads the **constructed** better-auth c
 to prove `accountLinking.enabled` is `false` rather than inferring it from behaviour, and 25
 proves a revoked session fails on the next request — the SLA stated in
 [auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions).
+
+The existing `tests/e2e/security/` negative E2E suite also covers state-changing GET,
+cookie-authenticated unsafe requests with a missing or mismatched `Origin`/`Referer`, and
+missing or mismatched double-submit tokens. These remain subcases of the existing security
+E2E suite, not a new P3 acceptance test or completion gate.
 
 Plus the IDOR fuzz and tenant-isolation suites, which cover `/scim/v2/*` like any other
 scoped surface.

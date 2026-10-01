@@ -5,6 +5,31 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-01 · First-release customer JIT trust is Entra-only and connection-bound
+
+**Decision:** for first-release customer JIT, permit domain-bound provisioning only through
+a Microsoft Entra connection after its tenant-specific `iss` and `tid` checks pass. Entra's
+absence of `email_verified` is the sole approved first-release exception. Other provider
+types cannot use JIT or domain binding until a provider-specific trust rule is approved.
+Before creating a customer person, require the validated callback address to be valid and
+its domain to be bound to that same connection; refuse unbound or other-connection domains.
+The connection remains the source of organisation and portal scope. This decision creates
+no guest-login path, new identity/linking rule, field, table, role or capability.
+
+Add the negative cases to existing acceptance test 05 and protocol negatives to existing
+test 15, with the CSRF subcases in the existing security E2E suite. Keep the 25 named P3
+acceptance tests and the real-Entra gate unchanged. This resolves only the canonical design
+wording; historical owning-review rows 81–82 remain active until an independent owner
+reviewer re-checks and closes them. No gate is waived.
+
+**Why:** tenant-specific `iss`/`tid` gives Entra an explicit trust basis despite its missing
+verification claim. Requiring the callback domain to bind to the selected connection makes
+the customer JIT boundary fail closed without allowing email to choose tenant or portal.
+The first release has no approved equivalent trust rule for another provider.
+
+**Decided by:** Thomas, under the standing instruction to use recommended decisions; recorded
+by the orchestrator, 2026-10-01.
+
 ### 2026-10-01 · Pending-action reads require current owner identity
 
 **Decision:** resolve the current database identity before either pending-action self read,

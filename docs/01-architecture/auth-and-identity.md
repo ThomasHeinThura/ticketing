@@ -235,6 +235,13 @@ email address and resolves the connection server-side from `domain_bindings`
 ([customer-portal.md](../03-features/customer-portal.md) `CP-18`,
 [identity-provisioning.md](../03-features/identity-provisioning.md) `IP-29`).
 
+For first-release customer JIT, the validated callback address domain must be bound to that
+same Microsoft Entra connection; unbound and other-connection domains are refused before
+person creation (`IP-9`). The domain never selects the organisation —
+`identity_connection.organisation_id` does. Other provider types cannot use JIT or domain
+binding until their provider-specific trust rule is approved. This does not define a guest
+login or alternate account-linking path.
+
 ## Identity architecture — the authoritative model
 
 This document owns the identity model; [identity-provisioning.md](../03-features/identity-provisioning.md)
