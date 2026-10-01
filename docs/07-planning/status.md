@@ -14,6 +14,66 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
+`494b7e9ac8db200e1c5c599b1b73911684314bbf` (verified 2026-10-01 09:59 UTC).**
+Protected PR #546 merged at 09:07:12 UTC. Its final candidate
+`a88f69eee9451c43a771875044a5c97987ba36ab` passed all 17 required checks, including
+hosted PostgreSQL integration at 126 files/1,579 tests and unit/component at 12/12 tasks
+(API 67 files/536 tests; web 80 files/351 tests). Independent full Luna and full Sol
+reviews bind implementation source `aa1c1f7fef120b6ba48f5cc86896254f6a4e6c55`; the final
+candidate commit only records that evidence. See the [security review note](security-reviews/546-seed-ci-coverage.md)
+and [protected merge evidence](https://github.com/ThomasHeinThura/ticketing/pull/546#issuecomment-5928320706).
+
+The ordinary local deployment completed through the full `DOCKER_CONTEXT=orbstack`
+`scripts/deploy.sh local` path. Accepted runtime image source is `b311c8cc`, digest
+`sha256:963e431dd8f3623cea55d2e9280372b8864759401d4e0abdd0633f9476bc1c74`; app,
+Traefik, PostgreSQL, Valkey, Mailpit and the IPv6 loopback helper were healthy. Seven
+certificate-validated HTTPS probes returned 200 across both hosts' root/live/ready paths
+and Mailpit root. A fresh administrator login and creation of a workspace, project and
+DEV-1 task were verified through the API. Evidence is in
+`/private/tmp/taskdesk-orbstack-traefik-health.json` and private files under
+`/Users/heinthura/.codex/local-credentials/taskdesk-orbstack/`. Chrome screen verification
+for DEV-1 is still blocked by the pending browser-extension interface; no new screen claim
+is made. Old Docker Desktop volumes remain retained and its daemon is off. Default IPv6
+localhost ports 80/443 use the private Compose/startup forwarding helper; Traefik remains
+the only TLS termination point and existing WSO2 IPv4 ports are unchanged. Mailpit's
+official matching OCI manifest/layers were recovered and verified after daemon pull
+timeouts; this does not establish SMTP configuration in God Mode.
+
+**P0 remains open.** #525's current source is
+`22b3a259f3e53355a239ee0a98f81bd5e066461e`. Its structural recorder's canonical run on
+source `8dda28990c14ee0f3a6a42c4d091fd58213303c5` recorded 21 of 22 cases passing; one
+drag-column assertion failed and produced no frame-p95 result. The current source passes
+11/11 functional Chromium regressions. Hosted evidence for the current source is queued or
+running. Restored-dist provenance remains under investigation; profile 2a alone does not
+prove the older b28 source. No aggregate acceptance result or causal savings claim exists.
+Raw B508 profiles are documented in `/private/tmp/p0-g11-b508-source-profile.md`: CPU span
+is not CPU activity, and recorder overhead measured 52 ms with a scroll hotspot. No
+application optimization is justified. Avoid local heavy build/test work while this
+benchmark work continues. Representative authorization soak, remaining P0 exit criteria and
+the additional fresh Sol phase finalizer remain incomplete.
+
+**Parallel acceptance:** #547 is open at
+`29850e0a1285164f4d319d969317e163d87d8455`. Its implementation was reviewed at
+`2751ab71` by one independent strong full Luna review (including composition) and a further
+fresh full Sol pass; the current final note records those reviews, and no source changed
+after review. All 17 latest required checks are green on this exact head; G11 is skipped
+because it is disabled and is not required. The orchestrator is verifying the final suite
+counts before using the protected merge flow. It remains unmerged as of 09:59 UTC; record
+acceptance only after the orchestrator confirms the merge and updated `main` SHA.
+
+Calendar #513 remains partial: fixture support is off pending Chrome/manual light, dark,
+zoom and 409-recovery verification. Shared AU-14/CAL-8 gaps remain open; migration 0080
+follows schema 0079, and #512's migration is regenerated later. P3 identity trust #544 now
+has ADR-0014's explicit limited-domain SSO/public-IdP-disclosure clarification at
+`eaf567c5195a54df1d63f10f1af77c681c0eba7c`; its ordinary panel and Sol review remain
+pending, owning findings 81/82 remain open, and no DDL or real-Entra completion is claimed.
+P4 notification #508 has a candidate at `0955eaaae4825b52d6546b7807ce83e6c178e46c`
+that proposes the structural parent/child digest contract. Its mechanical register and gate
+probes currently fail and are being diagnosed; ordinary and Sol reviews remain pending, so
+the proposal is not accepted and shared contracts stay held. P1/P2/P3/P4 are not complete.
+No stage completion or gate waiver is claimed.
+
+**2026-10-01 orchestrator snapshot — remote `main` at
 `2d67c47f6877671e6e00b662aa9734a9ff244d94` (verified 2026-10-01 07:54 UTC).**
 PR #545's deterministic, additive P0 seed profiles merged through the protected flow at
 07:49:05 UTC. Final candidate `559482887305604bf1294545576620b09061e378` passed all
@@ -2465,11 +2525,13 @@ are required before cutover. Do not treat further code review as a substitute fo
 
 G8 is merged through #507 and required by `protect-main` ruleset 22365005; its scope is
 every exported Storybook story and every in-progress or complete route-kind inventory row.
-Future routes activate with implementation. G11 remains disabled on main; draft #525's
-hosted budgets remain red; its latest G13 measurements and deliberate red probe pass.
-Obtain current-head reviews and green CI, then require the G11 status context before
-merging #525. G4 is enabled by #501. The #10 checklist
-still needs reconciliation with the implemented gates.
+Future routes activate with implementation. G11 remains disabled on main. #525's current
+head is `22b3a259f3e53355a239ee0a98f81bd5e066461e`; its 11 functional Chromium regressions
+pass. The canonical local timing run on earlier source `8dda28990c14ee0f3a6a42c4d091fd58213303c5`
+recorded 21/22 passes and one failed drag-column assertion without a frame-p95 result;
+current-head hosted evidence is pending. No aggregate budget or savings claim is accepted.
+G4 is enabled by #501. The #10 checklist still needs reconciliation with the implemented
+gates.
 
 ### P1 #447 — saved-view candidate needs a current base and gates
 
@@ -2489,17 +2551,16 @@ before dispatch.
 
 ### P2 #33 / P3 #39 shared-schema ordering and identity review
 
-The #33 calendar candidate is draft PR #513 and remains partial. CAL-8 usage, AU-14 alerting
-and the pending-action DELETE retrofit remain open. Protected PR #529 has established
-task-version migration 0079 on main. Calendar PR #513 uses migration 0080 and awaits
-independent review and protected acceptance; P1 #512 must regenerate its later migration
-from that accepted schema. Acceptance and shared-schema writes remain serialized.
-P3 #39's six-table persistence work shares Drizzle
-schema, relation and migration-journal files, so that work starts after those lanes release
-them. The owning security review still lists JIT/domain trust and the OIDC protocol floor;
-identity implementation waits for those findings to be independently reconciled and cleared.
-The read-only six-table plan also identifies canonical persistence details that must be
-resolved before DDL. #39's eventual completion still requires its 25-test real-Entra gate. P3 #38 remains dependent on request/catalogue/intake/approval foundations.
+The #33 calendar candidate is draft PR #513 and remains partial. Fixture support is off
+pending Chrome/manual light, dark, zoom and 409-recovery verification. CAL-8 usage, AU-14
+alerting and the pending-action DELETE retrofit remain open. Calendar PR #513 uses migration
+0080 after task-version 0079; P1 #512 regenerates its later migration after calendar
+acceptance. Acceptance and shared-schema writes remain serialized. P3 #39's six-table
+persistence work shares Drizzle schema, relation and migration-journal files. ADR-0014 now
+records the limited-domain SSO/public-IdP-disclosure clarification at #544's current head,
+but ordinary and Sol reviews remain pending and owning findings 81/82 stay open. No DDL or
+real-Entra completion is claimed; its eventual acceptance still requires the 25-test
+real-Entra gate. P3 #38 remains dependent on request/catalogue/intake/approval foundations.
 
 ### Design-review ownership — P2 #36
 
