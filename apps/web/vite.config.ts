@@ -23,10 +23,18 @@ function preloadWorkRouteForDirectVisits(): Plugin {
                 "/routes/_layout/_authenticated/agent/projects/$projectKey/work.tsx?tsr-split=component",
               ) === true,
         );
+        const layoutChunk = Object.values(bundle).find(
+          (item) =>
+            item.type === "chunk" &&
+            item.isDynamicEntry &&
+            item.facadeModuleId
+              ?.replaceAll("\\", "/")
+              .endsWith("/routes/_layout.tsx?tsr-split=component") === true,
+        );
         const html = bundle["index.html"];
-        if (!routeChunk || !html || html.type !== "asset")
+        if (!routeChunk || !layoutChunk || !html || html.type !== "asset")
           throw new Error(
-            "G11 work-route preload could not resolve its route chunk or index.html.",
+            "G11 work-route preload could not resolve its route and layout chunks or index.html.",
           );
 
         const files = new Set<string>();
@@ -38,6 +46,7 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             for (const imported of chunk.imports) addChunkAndImports(imported);
         };
         addChunkAndImports(routeChunk.fileName);
+        addChunkAndImports(layoutChunk.fileName);
 
         const localeAssets = Object.values(bundle).flatMap((item) => {
           if (item.type !== "chunk") return [];
