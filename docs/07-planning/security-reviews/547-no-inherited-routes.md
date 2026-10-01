@@ -45,3 +45,14 @@ The implementation's earlier macOS `pnpm test:all --stage fast` attempt did not 
 ## Review attribution
 
 The independent reviewers produced the linked reports and verdicts. This note compiles that evidence; its author is not a reviewer and claims no independent review. The review verdicts do not waive or replace required current-head checks or the P0 phase finalizer.
+
+## Additional source and note-only validation recorded by the author
+
+These executions are author/CI evidence, not independent reviewer executions. They ran against source head `2751ab71e86e23cd20e9e7a30860a7b92190955e` unless identified as the later review-note-only tree:
+
+- Hosted fast CI run `36841339051` is on source head `2751ab71`. `static` passed: `pnpm lint:ci` checked 1,641 files (124 existing warnings) and `pnpm typecheck` completed with Turbo 9/9 tasks successful. The local `pnpm lint` on the subsequent note-only tree `751ba6920c43d73c94f2d4c03645f17b9ad95636` also passed, 8/8 package lint tasks; Biome reported no fixes.
+- The same hosted run's `unit + component` check passed 12/12 tasks: API 67 files / 536 tests, UI 59 files / 291 tests, and web 80 files / 351 tests.
+- Its `route policy coverage + permission matrix` check passed: 14 files / 88 tests; the separate `pnpm test:no-inherited-routes` step passed 1 file / 5 tests.
+- The hosted OpenAPI contract step passed: Redocly reported 17 findings, all in the main baseline (0 new); oasdiff 1.32.1 reported 0 unapproved breaking changes.
+- Hosted `36841277676` on the same source head passed, including PostgreSQL integration, accessibility, visual regression, and protected-route E2E.
+- `36841277670` remains an earlier canceled run and none of its canceled contexts are counted. Run `36841339051` completed with the PR-template check as its only failed fast job before this body/note update; its completed check results predate the note-only commit and are not claimed as exact-note-SHA statuses.
