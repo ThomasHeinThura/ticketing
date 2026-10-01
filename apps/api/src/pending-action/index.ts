@@ -7,7 +7,9 @@ import {
   jsonResponse,
 } from "../openapi";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
+import { requireSessionOnly } from "../utils/require-session-only";
 import {
+  pendingActionDecisionSchema,
   pendingActionListResponseSchema,
   pendingActionReadSchema,
 } from "./response";
@@ -15,7 +17,12 @@ import {
   pendingActionListQuerySchema,
   pendingActionParamSchema,
 } from "./schema";
-import { getOwnPendingAction, getOwnPendingActions } from "./service";
+import {
+  decideOwnPendingAction,
+  getOwnPendingAction,
+  getOwnPendingActions,
+  requirePendingActionRequesterIdentity,
+} from "./service";
 
 function readAuditContext(c: Context) {
   return {
@@ -59,6 +66,68 @@ const getPendingActionRoute = createRoute({
   },
 });
 
+const denyPendingActionRoute = createRoute({
+  method: "post",
+  operationId: "denyOwnPendingAction",
+  path: "/pending-actions/{id}/deny",
+  tags: ["Pending actions"],
+  summary: "Deny a pending action",
+  description:
+    "Records the requester's denial. Requires the requester's browser session.",
+  middleware: [requireSessionOnly()] as const,
+  request: { params: pendingActionParamSchema },
+  responses: {
+    200: jsonResponse(
+      "The terminal pending-action state",
+      pendingActionDecisionSchema,
+    ),
+    401: errorResponse("The caller has no current valid identity"),
+    403: errorResponse("A browser session is required"),
+    404: errorResponse("Pending action not found"),
+    409: errorResponse("Pending action is already terminal"),
+  },
+});
+
+const cancelPendingActionRoute = createRoute({
+  method: "post",
+  operationId: "cancelOwnPendingAction",
+  path: "/pending-actions/{id}/cancel",
+  tags: ["Pending actions"],
+  summary: "Cancel a pending action",
+  description:
+    "Cancels the requester's pending action from any authenticated credential.",
+  request: { params: pendingActionParamSchema },
+  responses: {
+    200: jsonResponse(
+      "The terminal pending-action state",
+      pendingActionDecisionSchema,
+    ),
+    401: errorResponse("The caller has no current valid identity"),
+    404: errorResponse("Pending action not found"),
+    409: errorResponse("Pending action is already terminal"),
+  },
+});
+
+async function decidePendingAction(
+  c: Context,
+  id: string,
+  outcome: "denied" | "cancelled",
+) {
+  const apiKey = c.get("apiKey") as ApiKey | undefined;
+  const requesterPersonId = await requirePendingActionRequesterIdentity(
+    c.get("userId"),
+    apiKey,
+  );
+  const session = c.get("session") as { id?: string } | null;
+  const result = await decideOwnPendingAction({
+    id,
+    requesterPersonId,
+    outcome,
+    sessionId: session?.id ?? null,
+  });
+  return c.json(pendingActionDecisionSchema.parse(result), 200);
+}
+
 const pendingAction = apiRouter()
   .openapi(listPendingActionsRoute, async (c) =>
     c.json(
@@ -81,6 +150,12 @@ const pendingAction = apiRouter()
       ),
       200,
     ),
+  )
+  .openapi(denyPendingActionRoute, (c) =>
+    decidePendingAction(c, c.req.valid("param").id, "denied"),
+  )
+  .openapi(cancelPendingActionRoute, (c) =>
+    decidePendingAction(c, c.req.valid("param").id, "cancelled"),
   );
 
 export default pendingAction;

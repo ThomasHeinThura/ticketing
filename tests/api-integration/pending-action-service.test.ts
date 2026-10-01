@@ -598,6 +598,18 @@ describe("pending-action service persistence", () => {
     async (outcome, state) => {
       const input = requestInput();
       const created = await createPendingAction(input);
+      const targetBefore = requireRow(
+        await db
+          .select({
+            id: schema.workItemTable.id,
+            deletedAt: schema.workItemTable.deletedAt,
+            archivedAt: schema.workItemTable.archivedAt,
+          })
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.key, "SUP-1"))
+          .limit(1),
+        "pending-action target before decision",
+      );
       const decided = await decideOwnPendingAction({
         id: created.pendingActionId,
         requesterPersonId: input.requesterPersonId,
@@ -606,6 +618,19 @@ describe("pending-action service persistence", () => {
       });
 
       expect(decided.state).toBe(state);
+      const targetAfter = requireRow(
+        await db
+          .select({
+            id: schema.workItemTable.id,
+            deletedAt: schema.workItemTable.deletedAt,
+            archivedAt: schema.workItemTable.archivedAt,
+          })
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.key, "SUP-1"))
+          .limit(1),
+        "pending-action target after decision",
+      );
+      expect(targetAfter).toEqual(targetBefore);
       const decisionEvents = await db
         .select()
         .from(schema.outboxTable)
@@ -641,14 +666,28 @@ describe("pending-action service persistence", () => {
     },
   );
 
-  it("AU-14: commits a decision and outbox event when its audit insert fails", async () => {
-    const input = requestInput();
-    const created = await createPendingAction(input);
-    const auditFailure = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
-    await db.execute(
-      sql.raw(`
+  it.each(["denied", "cancelled"] as const)(
+    "AU-14: commits %s and its outbox event when the decision audit insert fails",
+    async (outcome) => {
+      const input = requestInput();
+      const created = await createPendingAction(input);
+      const targetBefore = requireRow(
+        await db
+          .select({
+            id: schema.workItemTable.id,
+            deletedAt: schema.workItemTable.deletedAt,
+            archivedAt: schema.workItemTable.archivedAt,
+          })
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.key, "SUP-1"))
+          .limit(1),
+        "pending-action target before injected audit failure",
+      );
+      const auditFailure = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      await db.execute(
+        sql.raw(`
         CREATE OR REPLACE FUNCTION fail_pending_action_decision_audit_insert()
         RETURNS trigger LANGUAGE plpgsql AS $$
         BEGIN
@@ -659,56 +698,70 @@ describe("pending-action service persistence", () => {
         END;
         $$
       `),
-    );
-    await db.execute(
-      sql.raw(`
+      );
+      await db.execute(
+        sql.raw(`
         CREATE TRIGGER fail_pending_action_decision_audit_insert
         BEFORE INSERT ON audit_log
         FOR EACH ROW EXECUTE FUNCTION fail_pending_action_decision_audit_insert()
       `),
-    );
+      );
 
-    try {
-      const decided = await decideOwnPendingAction({
-        id: created.pendingActionId,
-        requesterPersonId: input.requesterPersonId,
-        outcome: "denied",
-      });
-      expect(decided.state).toBe("denied");
-      const [row] = await db
-        .select({ state: schema.pendingActionTable.state })
-        .from(schema.pendingActionTable)
-        .where(eq(schema.pendingActionTable.id, created.pendingActionId));
-      const events = await db
-        .select({ eventId: schema.outboxTable.eventId })
-        .from(schema.outboxTable)
-        .where(eq(schema.outboxTable.kind, "pending_action.decided"));
-      const auditRows = await db
-        .select({ id: schema.auditLogTable.id })
-        .from(schema.auditLogTable)
-        .where(eq(schema.auditLogTable.action, "pending_action.decided"));
+      try {
+        const decided = await decideOwnPendingAction({
+          id: created.pendingActionId,
+          requesterPersonId: input.requesterPersonId,
+          outcome,
+        });
+        const [row] = await db
+          .select({ state: schema.pendingActionTable.state })
+          .from(schema.pendingActionTable)
+          .where(eq(schema.pendingActionTable.id, created.pendingActionId));
+        const events = await db
+          .select({
+            eventId: schema.outboxTable.eventId,
+            payload: schema.outboxTable.payload,
+          })
+          .from(schema.outboxTable)
+          .where(eq(schema.outboxTable.kind, "pending_action.decided"));
+        const auditRows = await db
+          .select({ id: schema.auditLogTable.id })
+          .from(schema.auditLogTable)
+          .where(eq(schema.auditLogTable.action, "pending_action.decided"));
+        const [targetAfter] = await db
+          .select({
+            id: schema.workItemTable.id,
+            deletedAt: schema.workItemTable.deletedAt,
+            archivedAt: schema.workItemTable.archivedAt,
+          })
+          .from(schema.workItemTable)
+          .where(eq(schema.workItemTable.key, "SUP-1"));
 
-      expect(row?.state).toBe("denied");
-      expect(events).toHaveLength(1);
-      expect(auditRows).toHaveLength(0);
-      expect(auditFailure).toHaveBeenCalledWith(
-        expect.stringContaining("AU-14:"),
-        expect.anything(),
-      );
-    } finally {
-      auditFailure.mockRestore();
-      await db.execute(
-        sql.raw(
-          "DROP TRIGGER IF EXISTS fail_pending_action_decision_audit_insert ON audit_log",
-        ),
-      );
-      await db.execute(
-        sql.raw(
-          "DROP FUNCTION IF EXISTS fail_pending_action_decision_audit_insert()",
-        ),
-      );
-    }
-  });
+        expect(decided.state).toBe(outcome);
+        expect(row?.state).toBe(outcome);
+        expect(events).toHaveLength(1);
+        expect(events[0]?.payload).toMatchObject({ payload: { outcome } });
+        expect(auditRows).toHaveLength(0);
+        expect(targetAfter).toEqual(targetBefore);
+        expect(auditFailure).toHaveBeenCalledWith(
+          "AU-14: pending-action decision audit write failed",
+          expect.anything(),
+        );
+      } finally {
+        auditFailure.mockRestore();
+        await db.execute(
+          sql.raw(
+            "DROP TRIGGER IF EXISTS fail_pending_action_decision_audit_insert ON audit_log",
+          ),
+        );
+        await db.execute(
+          sql.raw(
+            "DROP FUNCTION IF EXISTS fail_pending_action_decision_audit_insert()",
+          ),
+        );
+      }
+    },
+  );
 
   it("rolls a decision back if its transactional outbox insert fails", async () => {
     const input = requestInput();
