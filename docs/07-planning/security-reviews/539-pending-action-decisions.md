@@ -148,3 +148,69 @@ At my GitHub snapshot, `pull request template + security review` and G8 were red
 ## Image and boot evidence
 
 The Luna author built exact-source image `taskdesk:pr539-f5ea09ad`, image ID `sha256:35e39cead2bc10a9264aa0f264a087ffa9f9b026cfe97d1932a29694ea4d0ea4`, with revision label matching `f5ea09ad2983dd8b5dfa3c68e71740f4a102d470`. Its fresh disposable PostgreSQL18/Valkey fixture booted with live and ready HTTP200 at loopback62039, then all fixture containers/network were removed. Actual evidence is `/private/tmp/pr539-image-boot-f5ea09ad.txt`; this is author evidence, not a reviewer execution. The final follow-on commit only records these reviews.
+
+
+## Current-main continuation — 2026-10-01
+
+**Reviewed head:** `1683dd16f0c030128ab7b68382c4d56606ea2d7b`
+
+The following independent reports bind this source candidate. The subsequent commit records only this note; no reviewer is represented as having inspected a later SHA. Corrected ordinary comparison scopes supersede the earlier report wording.
+
+
+
+### pr539-1683-luna-main-delta-corrected
+
+# PR 539 exact-head main-import delta — GPT-6 Luna
+
+> **Supersedes** `/private/tmp/pr539-1683-luna-main-delta.md` to correct the first-parent and current-main path counts. The verdict and ten-feature-path byte-identity result are unchanged.
+
+- **Reviewed head:** `1683dd16f0c030128ab7b68382c4d56606ea2d7b`
+- **Previously reviewed feature source:** `5db4918313609c1a6964be0211c33363901fd3c0`; prior full ordinary reconsiderations and Sol security review read from `/private/tmp/pr539-5db4-luna-reconsider1.md`, `...reconsider2.md`, and `...sol-security.md`.
+- **Reviewer:** GPT-6 Luna, independent exact-head delta context; no authorship, direction, or remediation.
+- **Verdict:** **CLEAR for the main-import delta only.** This does not replace a full-panel review, fresh security delta review, or merge-readiness decision.
+
+## History and source identity
+
+The candidate merge has first parent `737fc0b0de316d05a667fadabb98e02fe0b48c76` and second parent/current main `c27b2ee771eba19f193a0d20cfc1048e9c6d21a9`.
+
+Comparison scopes are distinct:
+
+- First-parent import (`737...1683`): **8 paths**, exactly PR #531's isolated RLS prototype/config/evidence paths. The PR #538 probes and note were already present at the first parent; this merge adds none of them.
+- Current-main-relative candidate (`origin/main...HEAD`): **11 paths**, comprising the ten previously reviewed PR #539 feature paths and its review note.
+- Comparing the old full-review head (`5db...1683`) includes both the unchanged PR #539 source and intervening main-import material; it is not the current PR diff.
+
+`git diff --quiet 5db4918 1683dd1 --` over all ten PR #539 source/test/contract paths returned **0** (byte-identical): pending-action route/policy/response/service, pending-actions contract, OpenAPI, auth helper, service/HTTP integration tests, and permission matrix. No global API route or authority implementation changed in this import. The only `apps/api/package.json` change appends the isolated RLS TypeScript config to `typecheck`; its Vitest config includes only `tests/rls-prototype`, whose global setup owns a fresh PostgreSQL Testcontainer. Temporary policies affect that disposable test database, not migrations, runtime schema, API configuration, or production behavior. I found no interaction with deny/cancel routes, identity, audit/outbox semantics, API contract, or tests at the reviewed feature source.
+
+## Verification and limits
+
+No tests or builds were run for this source-identical import, honoring the quiet-window instruction and the task's no-rerun boundary. The previously reviewed source and its recorded two-file/26-test run remain applicable. The orchestrator separately reports the combined hosted PostgreSQL run passed 124 files/1,561 tests and the current image is live/ready; these are not my executions. The security-scope RLS paths still need the independently required exact-head Sol delta confirmation.
+
+
+### pr539-1683-sol-main-delta
+
+# PR #539 — independent GPT-6 Sol security confirmation of current-main import
+
+**Reviewed head:** `1683dd16f0c030128ab7b68382c4d56606ea2d7b`
+**Current main/base:** `c27b2ee771eba19f193a0d20cfc1048e9c6d21a9`
+**Prior full security-reviewed source:** `5db4918313609c1a6964be0211c33363901fd3c0`
+**Reviewer and independence:** Fresh independent GPT-6 Sol context. I did not author, direct, or remediate this candidate or the imported main changes. This is a per-PR exact-head delta confirmation, not a P4 phase finalizer.
+**Verdict:** **CLEAR for the current-main integration delta.** No blocking or non-blocking security finding in the import. This is not overall merge clearance.
+
+## Exact history and scope
+
+I verified the live GitHub head/base and PR file list, the prior full Sol and #538-import Sol reports, the fresh independent Luna delta report, both parents of the current merge and its first-parent/current-main diffs. The merge's first parent is `737fc0b0de316d05a667fadabb98e02fe0b48c76`, which differs from the prior `f5ea09ad` merge only by PR #539's security-review note. The second parent and merge base are current main `c27b2ee7`. The **first-parent import is eight PR #531 RLS prototype/config/results/review paths**. PR #538's two CI probes and note were already in the first parent from the preceding main integration; they are not new in this merge. The current-main-to-head **net PR diff is 11 paths**: the ten previously reviewed deny/cancel source/spec/contract/test paths and PR #539's own review note.
+
+`git diff --quiet 5db4918 1683dd1 --` over all ten PR #539 source/spec/contract/test paths returned 0. The service transaction, requester identity and session-only route enforcement, row lock, state/outbox atomicity, AU-14 audit failure handling, OpenAPI result and permission matrix are byte-identical to the full-reviewed source. The imported API package change only adds the dedicated RLS TypeScript project to the normal typecheck command. Its Vitest config includes only `tests/rls-prototype/**/*.test.ts`, with a separate disposable PostgreSQL Testcontainer and temporary RLS policies; there is no production migration, auth or pending-action route change. These test-only imports do not affect the pending-action contract snapshot, audit writer, outbox insert or current identity check. I found no security composition conflict.
+
+## Verification and limits
+
+**No local tests or builds were run for this source-identical import delta.** The prior full Sol run of pending-action PostgreSQL tests (2 files/26) remains prior evidence, not my execution in this pass. The orchestrator separately reports current-head API typecheck, hosted PostgreSQL 124 files/1,561 tests and image boot/live/ready HTTP 200; I did not perform or independently verify those operations. AU-14's alerting metric and administrator notifications remain tracked unfinished debt; this import neither implements nor waives them. The wider approval/execution/step-up/expiry scheduler remain separate slices. Required exact-head checks and PR evidence remain the orchestrator's separate gate. A later head or base change needs another exact-head decision.
+
+
+### Orchestrator image and integration evidence
+
+Shipping image `taskdesk:pr539-1683dd16`, image ID `sha256:c7ea4422611b9e486c67b922c608f52115f199ff739dd57d557f100f03f0b141`, built with revision `1683dd16f0c030128ab7b68382c4d56606ea2d7b`. The isolated PostgreSQL 18/Valkey stack booted healthy and both `/api/public/health/live` and `/api/public/health/ready` returned 200. Full hosted PostgreSQL integration at this source passed 124 files/1,561 tests. Build/boot logs: `/private/tmp/pr539-1683-docker-build.log` and `/private/tmp/pr539-1683-smoke-boot.log`; hosted log `/private/tmp/pr539-1683-pg-hosted.log`.
+
+The current API typecheck passed. No frontend source changed, so this continuation adds no screen-verification claim. The full source security/service evidence and AU-14 operator-reporting residual remain recorded above.
+
+Every required check must be green on the final note-only candidate before protected merge. No stage completion or gate waiver is claimed.
