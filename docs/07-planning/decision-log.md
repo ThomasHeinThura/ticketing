@@ -5,6 +5,83 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-01 · P0 observability uses bounded internal metrics and operation-bound rotation
+
+**Decision:** follow the P0 target contract in [observability.md](../01-architecture/observability.md),
+[api-design.md](../01-architecture/api-design.md), and PA-15 in
+[pending-actions.md](../01-architecture/pending-actions.md). Pino and `prom-client` are
+planned choices; no dependencies are added by this decision or the documentation PR, and
+no runtime behavior is claimed. Logs use allowlisted, redacted structured records with
+trace correlation in log/span context only. Metric labels use finite enums or registered
+HTTP route templates; work-item and SLA metrics are instance-wide aggregates. Job and
+database-operation producers remain withheld until their owners define finite labels, and
+plugin-instance identifiers are not approved dimensions.
+
+The target metrics endpoint is exact `GET /metrics` on a separate internal listener at port
+9464, not exposed by a host port or Traefik route. Its bearer is 32 random bytes encoded as
+43-character unpadded base64url and only a 32-byte digest is stored. Scrapes reread the
+current digest from PostgreSQL. Log-level changes use version compare-and-set and a maximum
+five-second refresh. Token rotation is elevated, session-only, bound to the exact
+`metrics_token_rotate` route/version/server-canonical `{version}` body, and consumes its
+one-use confirmation atomically with the rotation CAS. Existing pending-action ID/payload
+binding is preserved. Unsupported required verification fails closed. Current source has no
+separate Node metrics listener/manifest, P0 metric producers, factor verifier, or SSO step-up
+adapter; the existing Hono `/metrics` fixture is a placeholder, not the target listener.
+
+AU-14 keeps the existing audit-failure behavior: safe counter/log reporting is an operational
+signal, not the required durable notification to every current instance administrator; that
+notification remains unfinished. RUM, tracing, Sentry, deep health, broad dashboards, and
+P4 UI remain deferred.
+
+**Why:** aggregate operating metrics are still sensitive, unbounded labels leak inventory,
+and a session-wide elevation window cannot bind rotation to fresh action-specific proof.
+Separate listener coverage must complement Hono route coverage.
+
+**Authorization and status:** Thomas's standing recommended-decisions authorization covers
+this recommended documentation decision. It does not authorize a gate waiver or establish
+implementation, runtime acceptance, or H1–H6 completion.
+
+**Decided by:** Thomas, under the standing recommended-decisions authorization; recorded by
+the orchestrator on 2026-10-01.
+
+### 2026-10-01 · Notification fan-out uses event parents, delivery children and digest groups
+
+**Decision:** retain exactly one `outbox` row per domain event, with
+`outbox.event_id = DomainEvent.id` as the parent primary key and consumer idempotency key.
+Materialize one `notification_delivery` row per unique
+`(event_id, recipient_person_id, channel)` and one in-app row per distinct event/person in
+the originating transaction. A delivery child's own stable `id` owns its provider attempt
+and `outbox_dedupe_reservation`; it never replaces the event id. Event-time digest
+preferences attach children to a `notification_digest` group in that same transaction.
+Digest membership seals after its stored local-time window, provider calls are fenced by the
+group lease and the member dedupe reservations, and current reach/preferences are checked
+again at send time. Child, group and parent retention is child-before-parent, with holds
+preserving matching history. Provider-accepted but uncommitted outcomes remain at-least-once.
+
+**Why:** the former contract placed one recipient/channel on the event-envelope primary row,
+which cannot represent several recipients or channels without changing the canonical event
+identity used by consumers. Separate delivery children preserve the event id while giving
+each provider attempt independent uniqueness, retry, lease, reach and retention state. A
+single relational digest group provides a sealed aggregate boundary without hiding members
+inside JSON or coupling inbox read retention to provider delivery.
+
+**Alternatives:** make one `outbox` row per recipient/channel with a different primary key
+(rejected because it changes the existing envelope schema and event-consumer idempotency
+assumption); use the in-app `notification` row as the provider queue (rejected because inbox
+read retention, visibility and multiple channels have different lifecycles); store all
+recipients in one parent payload (rejected because partial outcomes cannot be leased,
+retried or held independently); create notification children after commit (rejected because
+it breaks NO-8 atomicity); send each digest candidate separately (rejected because it breaks
+NO-6's one-summary-message contract).
+
+Parent event requeue reruns only idempotent event-consumer materialization and does not
+reset, recreate or resend already materialized notification children. Requeueing an
+individual notification keeps its child id and respects any live reservation. Webhook
+redelivery remains the explicit per-target action in WH-8.
+
+**Decided by:** Thomas, under the standing recommended-decisions authorization; recorded by
+the orchestrator on 2026-10-01.
+
 ### 2026-10-01 · Pending-action decisions follow the existing AU-14 mutation contract
 
 **Reconciliation:** denial/cancellation mutations preserve the already-decided AU-14

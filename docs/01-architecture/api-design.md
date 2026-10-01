@@ -39,14 +39,71 @@ claim a version the toolchain cannot produce.
 | --- | --- | --- |
 | `/api/*` | The application API | capability |
 | `/api/me/*` | The caller's own records: settings, preferences, API keys, approvals | `authenticated + self` |
-| `/api/public/*` | Unauthenticated: branding, `health/live` and `health/ready`, the login page's provider **buttons only** (label + id — never discovery URLs, tenant ids or domain restrictions), terminology, CSP reports | `public` with reason — **no exceptions**, so the router's blanket kind is true of every route under it |
+| `/api/public/*` | Unauthenticated: branding, `health/live` and `health/ready`, the login page's provider **buttons only** (label + id — never discovery URLs, tenant ids or domain restrictions), terminology, CSP reports, and the two origin-specific `POST /api/public/{agent|portal}/notification-preference-handoffs` routes (one-purpose signed email token; short-lived selector handoff only) | `public` with reason — **no exceptions**, so the router's blanket kind is true of every route under it |
 | `/api/instance/*` | God Mode. `instance:*` capabilities. Includes the dependency-enumerating deep health check, `GET /api/instance/health/deep` — capability `instance:admin`, scope `instance`; it is **not** on the public router, and the `/metrics` bearer token is not an alternative credential for it | capability |
 | `/api/portal/*` | Customer portal — a deliberately narrow, separate router | `portal` with predicate |
 | `/auth/*` | better-auth handler | `delegated: better-auth` |
 | `/ws` | WebSocket upgrade | `delegated: websocket` (Origin-checked — [realtime.md](realtime.md)) |
-| `/metrics` | Prometheus scrape, bearer-guarded | `delegated: metrics` |
+| `/metrics` | Exact `GET /metrics` Prometheus scrape on its own Node listener, bearer-guarded | `delegated: metrics` |
 | `/scim/v2/*` | Inbound SCIM 2.0 provisioning — Microsoft Entra first. `application/scim+json`. Authenticated by a per-connection bearer token that fixes the organisation, portal scope and allowed resources server-side ([identity-provisioning.md](../03-features/identity-provisioning.md)) | `delegated: scim` |
 | `/openapi.json` · `/docs` | Spec and Scalar reference UI | `public` |
+
+### Metrics listener and permission coverage
+
+The `/metrics` route is served by a separate Node listener on fixed internal port 9464; it
+is not mounted on the Hono API application and has no Traefik route. The module that starts
+that listener exports its declarative listener manifest: listener port, exact method and
+path, and delegated policy key `GET /metrics`. `tests/permissions/route-coverage.test.ts`
+enumerates this manifest as well as `app.routes`. Coverage fails if the listener is present
+without the delegated policy, if the policy is orphaned, or if the constructed listener
+does not match its manifest. A handwritten test-only route list is insufficient evidence.
+
+The listener accepts only `GET /metrics` without a query string. `HEAD`, `OPTIONS`, or any
+other method on that path returns `405`; every other path returns `404`.
+
+### Observability administration and step-up
+
+The instance administrator API contract is:
+
+```
+GET   /api/instance/observability                       instance:admin, instance scope
+PATCH /api/instance/observability                       instance:admin, instance scope
+POST  /api/instance/observability/metrics-token/rotate  instance:admin, instance scope, elevated, session-only
+POST  /api/me/step-up/challenges                       authenticated + self, session-only
+POST  /api/me/step-up                                   authenticated + self, session-only
+```
+
+GET returns exactly `{version, logLevels, metricsTokenConfigured,
+metricsTokenRotatedAt}` with `Cache-Control: no-store`; neither digest nor token is included.
+PATCH accepts only `{version, logLevels}`, uses compare-and-set on the singleton version,
+audits changed keys only, and never accepts a token. A stale version returns `409
+version_conflict` with the current safe version. Rotation accepts only `{version}`, returns
+exactly `{version, token, metricsTokenRotatedAt}` once with `Cache-Control: no-store`, and
+requires a single-use `X-TaskDesk-Step-Up-Token` bound to this exact operation, version and
+canonical request body. For the operation binding, the parsed body is exactly one property,
+`version`, whose value is a positive safe integer; request validation rejects unknown
+properties. Syntactically valid JSON may contain insignificant whitespace or equivalent
+JSON numeric spelling. The server serializes the validated value as UTF-8
+`{"version":<base-10 integer>}` with no whitespace and hashes those canonical bytes for both
+challenge and execution. It never hashes raw wire bytes or trusts a client hash. Equivalent
+wire JSON therefore binds to the same semantic operation; a different parsed version or
+extra property fails. Duplicate-key rejection is not implied by ordinary JSON/Zod parsing;
+the parsed semantic value is the binding contract. Challenge and step-up mint responses are also
+`Cache-Control: no-store`; the challenge nonce and step-up token each appear once.
+
+Each successful configuration mutation appends the audit-only key
+`instance.observability_changed`, with actor, trace id and changed keys (`logLevels` or
+`metricsToken`) only; values, bearer token, hash and arbitrary before/after objects never
+enter audit. An audit append failure follows AU-14: roll back the nested audit savepoint,
+report the failure through the defined operational signal, and preserve the committed
+configuration mutation.
+
+The rotation binding is not implementable merely by marking the policy elevated. It depends
+on a challenge/token verifier that actually validates the required fresh authentication
+method and atomically consumes the token with the rotation CAS. Where the account's required
+method cannot be verified, return `403 step_up_unavailable` and do not rotate. See
+[security-model.md](security-model.md#sessions-csrf-and-step-up) and
+[pending-actions.md](pending-actions.md) `PA-15`.
 
 ### Why `/api/portal/*` is separate
 
@@ -73,11 +130,19 @@ these forms, and `PolicyMap<typeof routes>` makes a mismatch a type error.
 ## Workspace context
 
 Many routes are workspace-scoped but carry no workspace in the path (`/api/custom-fields`,
-`/api/capabilities`, `/api/webhooks`, `/api/views`, `/api/notifications`). They read the
+`/api/capabilities`, `/api/webhooks`, `/api/views`). They read the
 workspace from the **`X-Workspace-Id` header** (or `?workspace=` for GET), which the
 policy middleware validates against the identity's memberships **before** the policy
 check. Absent ⇒ `400`; not a member ⇒ `404`. The typed client sets the header from the
 current workspace automatically; there is no other mechanism.
+
+Notification inbox routes under `/api/notification` are authenticated-self routes: they
+derive `person_id` from the session and do not require workspace context. Each returned or
+mutated notification must also pass reach filtering for its referenced resource under that
+resource's policy; inaccessible or deleted resources are omitted from collections and
+cannot be read or mutated by id. Notification preference routes are self routes too, but
+workspace- and project-scoped preference routes validate the selected scope against the
+person's current reach.
 
 ## URL shape
 

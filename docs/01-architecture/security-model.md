@@ -29,11 +29,11 @@ audit trail; session and API-key material; the image and release artefacts.
 | **Malicious MCP client / runaway agent / typosquatted `@taskdesk/mcp`** | Exfiltrate via a key; amplify writes; harvest `TASKDESK_API_KEY` | Key capability subset ∩ owner authority; `is_mcp` keys read-only by default; `is_mcp` ceiling; burst auto-disable; idempotency; no MCP-only data path; `@taskdesk` scope reserved, provenance + 2FA on publish, internal packages `private` |
 | **Hostile content read by a model** (prompt injection through ticket text) | Make a staff agent or an AI feature act with staff authority | Tool output marked untrusted (`MC-15`); destructive/bulk tools need out-of-band human approval (`MC-7`); AI retrieval scoped to the triggering identity; model output sanitised as user input — [AI and MCP surfaces](#ai-and-mcp-surfaces) |
 | **Rogue automation / job** | Act beyond the rule author's authority | Automations run as their `effective_role_id` (clamped, `AM-3`); placeholder expansion checked against the destination's visibility (`AM-11`); jobs carry `actor_type = 'system'` and still write through scoped repositories; manual job triggers are `instance:manage_jobs`, audited, rate-limited; per-organisation job workload caps |
-| **Account-recovery social engineering** ("please reset my MFA") | Get an administrator to remove a second factor | `reset-mfa` is elevated, requires a recorded verification note, emails every address on file, revokes all sessions and keys ([auth-and-identity.md](auth-and-identity.md#multi-factor-authentication)) |
+| **Account-recovery social engineering** ("please reset my MFA") | Get an administrator to remove a second factor | The planned `reset-mfa` operation is elevated, requires a recorded verification note, emails every address on file, and revokes all sessions and keys; current source does not provide an MFA adapter or reset route ([auth-and-identity.md](auth-and-identity.md#multi-factor-authentication)) |
 | **Compromised SCIM token, or a hostile customer's own IdP** | Create staff, reach another organisation, grant authority, enumerate users | Organisation and portal are fixed by the connection the token belongs to, never by the request (`IP-4`); a customer connection can create only customer-side people in its own organisation with the customer role (`IP-2`); no connection can grant `instance:admin` or `sees_all`; token hashed, rotatable with immediate invalidation, rate-limited; every denial is a provisioning event — [SCIM](#scim--an-inbound-privileged-management-api) |
 | **A deletion nobody meant** (mis-click, scripted key, injected agent) | Destroy data faster than anyone can stop it | Every user-initiated deletion is a `pending_action` approved by the requesting human in a browser session; bound to exact targets and payload; single-use; 15-minute expiry; re-authorised at execution; no model, key or automation can approve — [Deletion approval](#deletion-approval) |
 | **Anonymous internet** | Enumerate users/providers; bomb mail; DoS; distinguish "not found" from "not yours" | Anonymous rate-limit class; constant-time auth responses; **constant-shape 404** (same body, same lookup path, same bucket); minimal `/api/public/*`; `health/deep` authenticated; quotas with real defaults; event-loop lag alerting |
-| **Legal hold / e-discovery** (not an adversary — an obligation) | Delete what must be retained; fail to produce what must be produced | A per-organisation or per-person **legal hold** flag suspends `audit-purge`, the soft-delete purge in `session-cleanup`, `attachment-gc` and hard delete for that scope ([background-jobs.md](background-jobs.md)); the per-tenant export already required for subject rights ([data-protection.md](../05-operations/data-protection.md)) is the discovery export |
+| **Legal hold / e-discovery** (not an adversary — an obligation) | Delete what must be retained; fail to produce what must be produced | A per-organisation or per-person **legal hold** suspends `audit-purge`, matching read-notification, notification-child, digest-group and event-envelope retention purges, soft-delete purge in `session-cleanup`, `attachment-gc`, and hard delete for that scope. Credential/ephemeral expiry cleanup, including expired `outbox_dedupe_reservation` rows, continues; see the per-table matching and exception rules in [background-jobs.md](background-jobs.md) and [data-protection.md](../05-operations/data-protection.md) |
 
 Residual risks accepted, and where they are recorded: no malware scanning by default
 ([attachments.md](../03-features/attachments.md)); metering integrity is contractual
@@ -63,15 +63,18 @@ GPT-6 Sol security review before P0 closes ([phases.md](../07-planning/phases.md
 
 Five policy kinds, defined once in [RBAC](rbac.md): capability (optionally `orOwner`),
 `authenticated + self`, `portal + predicate`, `public + reason`, `delegated + reason`.
-`tests/permissions/route-coverage.test.ts` enumerates **Hono's router** — not the OpenAPI
-document — and fails on any route without a policy of a known shape. `/auth/*`, `/ws` and
-`/metrics` are **explicitly allowlisted, with the surface behind them unenumerated**, not
-"covered": `/auth/*` is one mounted handler whose endpoint set is defined by the better-auth
-**plugin list**, which is rebuilt at runtime from database configuration. The control there is
-a different assertion — the constructed plugin list must equal the approved list (no
-`anonymous`, no `deviceAuthorization`, no `bearer`) — re-run on every runtime rebuild, logging
-and alerting on a diff. Policies also carry `elevated` and `sessionOnly`, so elevation is a
-build failure to omit rather than a prose table someone forgot ([RBAC](rbac.md)).
+`tests/permissions/route-coverage.test.ts` enumerates Hono `app.routes` and every non-Hono
+listener manifest exported by its runtime constructor, not the OpenAPI document. `/auth/*`
+and `/ws` are Hono/delegated surfaces; the internal `GET /metrics` listener is a separate
+Node server on port 9464 and is absent from `app.routes`. Its constructor must export its
+exact method/path/port/delegated-policy key, and coverage compares the constructed listener
+with that manifest. Before implementation, the listener manifest and policy are planned,
+not current coverage. `/auth/*` is one mounted handler whose endpoint set is defined by the
+better-auth **plugin list**, which is rebuilt at runtime from database configuration. The
+control there is a different assertion — the constructed plugin list must equal the approved
+list (no `anonymous`, no `deviceAuthorization`, no `bearer`) — re-run on every runtime
+rebuild, logging and alerting on a diff. Policies also carry `elevated` and `sessionOnly`,
+so elevation is a build failure to omit rather than a prose table someone forgot ([RBAC](rbac.md)).
 
 ### 2. The scope object is resolved by the framework, not the handler
 
@@ -79,10 +82,15 @@ A policy's `scope` names *which* object the capability is checked against; the p
 middleware **loads that object from the route's declared scope source, checks reach, checks
 authority, and hands the already-authorized row to the handler**. The scope source is the
 path parameter for most routes and, for workspace-scoped collection routes with no workspace
-in the path (`/api/custom-fields`, `/api/capabilities`, `/api/webhooks`, `/api/views`,
-`/api/notifications`), the required `X-Workspace-Id` header or `?workspace=` query parameter,
-validated the same way; `POST /api/work-items/search` takes it from the filter body. Handlers
-never re-load by id from user input. This closes the classic IDOR (a valid capability in
+in the path (`/api/custom-fields`, `/api/capabilities`, `/api/webhooks`, `/api/views`), the
+required `X-Workspace-Id` header or `?workspace=` query parameter, validated the same way;
+`POST /api/work-items/search` takes it from the filter body. `/api/notification` is instead
+session-self scoped: the recipient is the session person, and each notification is additionally
+filtered against current reach to its referenced resource. Collection filtering happens before
+pagination and counts; direct reads or mutations of an inaccessible or deleted resource's
+notification return not found. Notification preference routes are also session-self scoped;
+workspace/project preference mutations separately validate current reach to that workspace or
+project. Handlers never re-load by id from user input. This closes the classic IDOR (a valid capability in
 project A, an id from project B): `tests/permissions/idor-fuzz.test.ts` takes every scoped
 route and substitutes ids from the other seeded tenant **at every scope source — path segment,
 header and search body alike** — asserting 404.
@@ -160,9 +168,11 @@ constrained hard:
 - **No automatic account linking on email.** A sign-in through provider B for an email that
   exists via provider A is refused with an explanation; linking requires an authenticated
   session on A plus an explicit confirmation. better-auth's auto-link defaults are off.
-- "MFA satisfied upstream" prefers the token's `amr`/`acr` claim (challenge when absent);
-  the static per-provider flag remains for providers that emit neither, and setting it is
-  elevated and shown in a security-posture panel.
+- **Planned upstream-MFA contract:** verified per-login `amr`/`acr` evidence may satisfy a
+  configured provider mapping; absent or unsupported evidence must not satisfy a required
+  policy. A static per-provider flag is configuration only, never proof that a particular
+  sign-in used MFA or fresh step-up proof. Current API source has no upstream-MFA verifier,
+  so this configuration does not establish MFA availability.
 
 ## SCIM — an inbound privileged management API
 
@@ -225,7 +235,7 @@ The server is.
 | CSRF | **No state-changing GET, ever** (a lint rule). The CSRF controls apply **only to cookie-authenticated requests**, because the cookie is the only ambient-authority credential: an unsafe method presented with a session cookie requires `Origin` (or `Referer`) to equal the request host's own origin **and** a matching double-submit token; either failing is a 403. `SameSite` alone is not the control — the agent and portal are sibling subdomains. Requests authenticated by a **bearer token, a personal or service API key, or a SCIM token** are exempt from both checks: they are not sent automatically by a browser, so there is nothing for a cross-site page to forge, and non-browser clients (curl, CI, Microsoft Entra's SCIM client, the MCP server) send no `Origin` at all. This is the single statement of the rule; [api-design.md](api-design.md) cites it |
 | Session rotation | The session id is regenerated on authentication, on impersonation start/end, and on MFA enrolment (fixation) |
 | Defaults | Idle 12 h, absolute 30 days, concurrent 5 — configurable in God Mode within maxima of 7 days idle / 90 days absolute |
-| Step-up for elevated actions | Re-authentication means the **second factor** when the account has one — never "password *or* MFA". SSO-only accounts re-authenticate at the IdP with `prompt=login`. The re-auth is minted by `POST /api/me/step-up` (session-only) and returns a **single-use confirmation token bound to the pending action's id**, valid five minutes; the pending action must already exist, so the token can never be broader than one approval, and a token that expires while the approver reads the summary is re-minted from the same endpoint for as long as the action is `pending`. A session-wide window is not enough. Statuses and re-minting: [pending-actions.md](pending-actions.md) `PA-15` |
+| Step-up for elevated actions | Re-authentication means the **second factor** when the account has one — never "password *or* MFA". The initial supported account class is a current local-password session with no enrolled or required second factor, after rechecking the current identity and verifying that password. SSO-only accounts require a validated IdP response with exact configured issuer/audience and single-use `state`/`nonce` bound to challenge/session/subject/connection, a `prompt=login` request, and signed `auth_time` satisfying `challenge.created_at - 60s <= auth_time <= callback_received_at + 60s` and `callback_received_at - auth_time <= 5min`; callback must precede challenge expiry. If policy requires MFA, fresh `amr`/`acr` evidence must satisfy the configured provider mapping or a real local factor; a static upstream-MFA flag is insufficient. Missing/untrustworthy evidence, changed subject/connection/session, or unavailable required verifier fails closed (`403 step_up_unavailable` or authentication failure), with no password/email-OTP fallback. `POST /api/me/step-up/challenges` and `POST /api/me/step-up` mint a single-use confirmation only after actual proof verification. It binds either to one existing pending-action id/payload hash or to the first explicitly registered operation (`metrics_token_rotate`) with its exact route, version and server-computed body hash; no session-wide window exists. The token is valid five minutes after issuance, hash-only at rest, and consumed atomically with its protected action. Existing pending-action tokens remain re-mintable while the action is pending. Missing required verification support fails closed with `403 step_up_unavailable`. Current source enables neither better-auth `twoFactor` nor a verified fresh-SSO step-up callback, so affected methods cannot be claimed usable until their adapters are implemented and tested. Details: [pending-actions.md](pending-actions.md) `PA-15` |
 | Elevated list | The single list in [RBAC](rbac.md) |
 
 ## Impersonation
@@ -338,7 +348,8 @@ action, entity, before, after. **`audit_log` is for security-relevant events; `a
 is the user-visible journal** — not every mutation writes both. Always audited, regardless
 of outcome:
 
-- Sign-in success and failure; MFA enrolment and reset; session revocation
+- Sign-in success and failure; planned MFA enrolment and reset when their adapters are
+  implemented; session revocation
 - Impersonation start and end, and every action during it
 - Role, membership and rank changes; invitations sent and redeemed
 - Plugin configuration changes and **tests** (keys changed, never values); secret rotation
@@ -380,10 +391,13 @@ incident.** Three things are specified and none of them is left to the implement
 workspace administrator sees rows with their `workspace_id` **and** whose entity is in
 their reach — a manager with two projects does not read a third project's `before`/`after`
 payloads through the workspace audit screen; instance-wide reads need `instance:read_audit`.
-An **audit write failure alerts** (a metric and a notification to every instance
-administrator), because the deliberate trade in `AU-14` — the mutation still succeeds — is
-only acceptable if someone finds out. Rows contain PII deliberately; the erasure position
-is in [data-protection.md](../05-operations/data-protection.md).
+An **audit write failure alerts** through
+`taskdesk_audit_write_failures_total{operation}` and a safe error-level log line, because
+the deliberate trade in `AU-14` — the mutation still succeeds — is only acceptable if
+someone finds out. The metric is an operational signal, not the required durable notification
+to every current instance administrator; that notification path remains unimplemented, so
+AU-14 is unfinished. Rows contain PII deliberately; the erasure position is in
+[data-protection.md](../05-operations/data-protection.md).
 
 ## Public and operational endpoints
 
@@ -393,12 +407,14 @@ is in [data-protection.md](../05-operations/data-protection.md).
   is planned at `GET /api/instance/health/deep`, policy kind 1 with `instance:admin`; the
   current API does not serve it. If implemented, it must not live behind a per-route
   exception under a router whose blanket kind is `public` because it enumerates dependencies.
-- `/metrics` is a planned bearer-guarded surface with a constant-time comparison and, where
-  the operator can, a separate listener not exposed by Traefik. Its labels are cross-tenant
-  inventory and must be treated as sensitive. The current API image does not serve `/metrics`
-  or read a metrics bearer token. When implemented, the token will be policy kind 5
-  (`delegated: 'metrics'`) and will grant **`/metrics` and nothing else** — never an
-  alternative credential for `/api/instance/health/deep` or any other route.
+- `/metrics` is a planned bearer-guarded surface with a constant-time comparison on a
+  separate Node listener at fixed internal port 9464, not published to the host or exposed
+  through Traefik. The listener accepts only exact `GET /metrics` without a query; `HEAD`,
+  `OPTIONS` and other methods on that path return 405, while other paths return 404. The
+  current API image does not serve `/metrics` or read a metrics bearer token. When
+  implemented, the hash-only credential will be reread from PostgreSQL on every scrape and
+  authorize policy kind 5 (`delegated: 'metrics'`) for **`/metrics` and nothing else** —
+  never an alternative credential for `/api/instance/health/deep` or any other route.
 - An **anonymous rate-limit class**, keyed by IP and — for anything that sends mail — by
   target email, covers `/api/public/*`, the non-login `/auth/*` endpoints (magic link, OTP,
   reset) and the WebSocket upgrade. Those endpoints respond identically and in constant time
@@ -428,10 +444,18 @@ is in [data-protection.md](../05-operations/data-protection.md).
 ## Data lifecycle
 
 Organisation hard delete purges: work items, comments, attachments and objects, time and
-cost entries, notifications, sessions, API keys, webhooks, invitations, outbox rows,
-idempotency responses, `metric_snapshot` rows carrying its `organisation_id`, search
-vectors, and cached identity entries. Audit rows keep an organisation tombstone. Deleted
-data persists in backups for the retention period stated in
+cost entries, notifications, `notification_delivery` children, empty `notification_digest`
+groups, sessions, API keys, webhooks, invitations, `outbox` event envelopes and their
+`outbox_dedupe_reservation` rows (which cascade from delivery ownership), idempotency
+responses, `metric_snapshot` rows carrying its `organisation_id`, search vectors, and cached
+identity entries. Delete scoped notification children before empty groups; delete a parent
+event only after no child references it, so no digest membership or event-child reference
+dangles. Person deletion also
+removes that person's children, then empty groups and reservations owned by those children.
+Lease expiry ends reservation authority immediately and allows takeover; daily
+`session-cleanup` later physically removes expired reservation rows. No recipient id remains
+in a reservation after person deletion or expiry cleanup. Audit rows keep an organisation
+tombstone. Deleted data persists in backups for the retention period stated in
 [backup-and-restore.md](../05-operations/backup-and-restore.md) — the answer a DPA asks for.
 Quotas ship with **real defaults** (storage 20 GB, portal users 500, webhooks 10, API
 600/min per organisation), not "unlimited", and the installer applies them.
