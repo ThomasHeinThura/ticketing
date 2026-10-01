@@ -5,6 +5,7 @@ import {
   medianOfThreeWithRetry,
 } from "../../../scripts/ci/lib/performance-budget.mjs";
 import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
+import { attachPerformanceNetworkCapture } from "./helpers/performance-network-summary";
 import { createVersionedTaskFixture } from "./helpers/versioned-task-fixture";
 
 const G13_TRANSITIONS = [
@@ -73,6 +74,7 @@ const WORKSPACE_ID = "ws-g11";
 const PROJECT_ID = "project-g11";
 const TYPE_ID = "type-g11";
 const SCREENSHOT_DIR = "test-results/g11-screens";
+let networkAttachmentSequence = 0;
 
 async function captureScreen(page: Page, name: string) {
   await mkdir(SCREENSHOT_DIR, { recursive: true });
@@ -1010,19 +1012,88 @@ async function withPerformancePage(
     baseURL: PERFORMANCE_BASE_URL,
     viewport: { width: 1280, height: 720 },
   });
-  const page = await context.newPage();
-  const resetFixture = await installPerformanceApiFixture(page, fixtureOptions);
+  const networkCapture = attachPerformanceNetworkCapture(
+    context,
+    PERFORMANCE_BASE_URL,
+  );
   let session:
     | Awaited<ReturnType<typeof installFast4gAndCpuThrottle>>
     | undefined;
+  let sampleOutcome:
+    | { status: "success"; value: number }
+    | { status: "failure"; error: unknown }
+    | undefined;
 
   try {
+    const page = await context.newPage();
+    const resetFixture = await installPerformanceApiFixture(
+      page,
+      fixtureOptions,
+    );
     if (throttled) session = await installFast4gAndCpuThrottle(page);
-    return await sample(page, resetFixture);
+    sampleOutcome = {
+      status: "success",
+      value: await sample(page, resetFixture),
+    };
+  } catch (error) {
+    sampleOutcome = { status: "failure", error };
   } finally {
-    if (session) await session.detach();
-    await context.close();
+    const cleanupErrors: unknown[] = [];
+    if (session) {
+      try {
+        await session.detach();
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+    try {
+      await context.close();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    let networkSummary: string | undefined;
+    try {
+      networkSummary = networkCapture.finish();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    if (networkSummary !== undefined) {
+      networkAttachmentSequence += 1;
+      try {
+        await test
+          .info()
+          .attach(`g11-network-sample-${networkAttachmentSequence}.json`, {
+            body: networkSummary,
+            contentType: "application/json",
+          });
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+    if (cleanupErrors.length > 0) {
+      if (sampleOutcome?.status === "failure") {
+        sampleOutcome = {
+          status: "failure",
+          error: new AggregateError(
+            [sampleOutcome.error, ...cleanupErrors],
+            "G11 sample and evidence cleanup failed.",
+          ),
+        };
+      } else {
+        sampleOutcome = {
+          status: "failure",
+          error: new AggregateError(
+            cleanupErrors,
+            "G11 sample evidence cleanup failed.",
+          ),
+        };
+      }
+    }
   }
+  if (sampleOutcome?.status === "failure") throw sampleOutcome.error;
+  if (sampleOutcome === undefined)
+    throw new Error("G11 sample did not produce an outcome.");
+  return sampleOutcome.value;
 }
 
 async function waitForTwoFrames(page: Page) {

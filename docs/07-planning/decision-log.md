@@ -5,6 +5,75 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-01 · G11 failure evidence avoids timed DOM snapshots and raw network secrets
+
+**Decision:** G11's Playwright run retains failure traces with actions, screencast, source,
+and attachment data, but disables automatic DOM snapshots during timed samples. Playwright
+1.63 also leaves its trace network files empty in this mode. Each benchmark context therefore
+attaches a separate bounded, sanitized network summary containing only method, a closed
+known-safe benchmark route template (or the fixed label `unrecognized`), resource type,
+finite response status, and available finite timing. It may include a boolean request-failure
+flag. Dynamic path values are always replaced by fixed placeholders, independent of their
+contents; unknown path shapes retain no path detail. It retains no raw request or response
+objects, headers, cookies, bodies, full URLs, or query strings, and reports truncation.
+Explicit screenshots taken after measured actions and all functional assertions remain
+required.
+Playwright DOM snapshot serialization was observed
+inside hosted metric windows on exact source `13516958be469aa353d9b5f7e0b113880b31ed17`
+(run `36860954427`). This measurement change removes competing instrumentation without
+changing product budgets, marks, throttles, fixtures, retry policy, row/card counts, or the
+paint-visibility contract. Any resulting timing change requires a new hosted canonical run;
+the separate diagnostic profile is not acceptance evidence. Disabling DOM snapshots reduces
+DOM-state replay detail.
+
+**Why:** hosted source attribution showed Playwright DOM snapshot serialization executing
+inside the timed windows, including recursive document traversal. The separate sanitized
+network summary restores useful request evidence without copying query strings or credentials
+into a HAR. Closed route templates prevent opaque IDs, including all-letter bearer-like values,
+from being retained as path text. This changes how G11 measures rendering and is not evidence
+of an application speedup or a gate pass.
+
+**Recorded by:** task orchestrator under the bounded G11 measurement-repair assignment,
+2026-10-01.
+
+### 2026-10-01 · Notification fan-out uses event parents, delivery children and digest groups
+
+**Decision:** retain exactly one `outbox` row per domain event, with
+`outbox.event_id = DomainEvent.id` as the parent primary key and consumer idempotency key.
+Materialize one `notification_delivery` row per unique
+`(event_id, recipient_person_id, channel)` and one in-app row per distinct event/person in
+the originating transaction. A delivery child's own stable `id` owns its provider attempt
+and `outbox_dedupe_reservation`; it never replaces the event id. Event-time digest
+preferences attach children to a `notification_digest` group in that same transaction.
+Digest membership seals after its stored local-time window, provider calls are fenced by the
+group lease and the member dedupe reservations, and current reach/preferences are checked
+again at send time. Child, group and parent retention is child-before-parent, with holds
+preserving matching history. Provider-accepted but uncommitted outcomes remain at-least-once.
+
+**Why:** the former contract placed one recipient/channel on the event-envelope primary row,
+which cannot represent several recipients or channels without changing the canonical event
+identity used by consumers. Separate delivery children preserve the event id while giving
+each provider attempt independent uniqueness, retry, lease, reach and retention state. A
+single relational digest group provides a sealed aggregate boundary without hiding members
+inside JSON or coupling inbox read retention to provider delivery.
+
+**Alternatives:** make one `outbox` row per recipient/channel with a different primary key
+(rejected because it changes the existing envelope schema and event-consumer idempotency
+assumption); use the in-app `notification` row as the provider queue (rejected because inbox
+read retention, visibility and multiple channels have different lifecycles); store all
+recipients in one parent payload (rejected because partial outcomes cannot be leased,
+retried or held independently); create notification children after commit (rejected because
+it breaks NO-8 atomicity); send each digest candidate separately (rejected because it breaks
+NO-6's one-summary-message contract).
+
+Parent event requeue reruns only idempotent event-consumer materialization and does not
+reset, recreate or resend already materialized notification children. Requeueing an
+individual notification keeps its child id and respects any live reservation. Webhook
+redelivery remains the explicit per-target action in WH-8.
+
+**Decided by:** Thomas, under the standing recommended-decisions authorization; recorded by
+the orchestrator on 2026-10-01.
+
 ### 2026-10-01 · Pending-action decisions follow the existing AU-14 mutation contract
 
 **Reconciliation:** denial/cancellation mutations preserve the already-decided AU-14

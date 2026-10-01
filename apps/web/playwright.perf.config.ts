@@ -10,7 +10,13 @@ export default defineConfig({
   timeout: 180_000,
   use: {
     baseURL: "http://127.0.0.1:4178",
-    trace: "retain-on-failure",
+    trace: {
+      mode: "retain-on-failure",
+      snapshots: false,
+      screenshots: true,
+      sources: true,
+      attachments: true,
+    },
     ...devices["Desktop Chrome"],
   },
   webServer: {
