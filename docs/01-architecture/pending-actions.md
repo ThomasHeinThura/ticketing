@@ -251,6 +251,14 @@ count of all pending actions owned by the caller. `GET /api/me/pending-actions/{
 returns that caller's action in any state so API and MCP clients can poll its outcome;
 another requester's id is indistinguishable from a missing id and returns 404.
 
+Both reads resolve the caller's current database identity before querying actions, for
+session and API-key credentials alike. No current valid identity (including an inactive
+person, banned user, or an inapplicable customer organisation/key) returns 401 on both
+routes, consistently with [RBAC](rbac.md#404-versus-403-versus-409). A surviving credential
+does not preserve a deactivated owner's access. This refusal happens before action lookup
+and writes no `pending_action.viewed` audit. A valid identity still gets 404 for a missing
+or foreign action. The authenticated-self policy does not require a workspace capability.
+
 Both routes return the same explicit allowlisted DTO, in camel case:
 `id`, `action`, `origin`, `targetType`, `targetIds`, `summary`, `confirmation`, `state`,
 `createdAt`, `expiresAt`, `invalidationReason`, `decidedAt`, `executedAt`, and

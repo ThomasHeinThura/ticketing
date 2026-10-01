@@ -11432,7 +11432,14 @@
             }
           },
           "401": {
-            "description": "Missing or invalid credentials"
+            "description": "The caller has no current valid identity",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }
@@ -11469,7 +11476,14 @@
             }
           },
           "401": {
-            "description": "Missing or invalid credentials"
+            "description": "The caller has no current valid identity",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "404": {
             "description": "Pending action not found",

@@ -5,6 +5,22 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-01 · Pending-action reads require current owner identity
+
+**Decision:** resolve the current database identity before either pending-action self read,
+for sessions and API keys. If no valid identity resolves, return 401 before querying an
+action or writing a viewed audit. Keep 404 for a valid caller querying a missing or foreign
+action. Apply the existing identity resolver's lifecycle, organisation and key-owner rules;
+authenticated-self reads do not require a workspace capability.
+
+**Why:** an API key can remain cryptographically valid after its owner is banned or
+deactivated. Stored summaries must stop being readable when the current identity becomes
+invalid. The existing permission evaluator treats an absent resolved identity as 401;
+using the same response for both self routes exposes no action-existence information.
+
+**Decided by:** Thomas, under the 2026-10-01 standing instruction to use recommended
+decisions; recorded by the orchestrator after PR #528's independent security finding.
+
 ### 2026-10-01 · Pending-action self-read API contract
 
 **Decision:** `GET /api/me/pending-actions` returns only the caller's pending actions,

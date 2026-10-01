@@ -14,6 +14,7 @@ import {
   workspaceTable,
 } from "../database/schema";
 import { enqueueOutboxEvent } from "../events/outbox";
+import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
@@ -216,23 +217,22 @@ export async function createPendingAction(input: CreatePendingActionInput) {
 export async function getOwnPendingActions(
   userId: string,
   options: { cursor?: string; limit: number },
+  apiKey: { id: string; userId: string; enabled: boolean } | undefined,
   auditContext: { apiKeyId: string | null; traceId: string },
 ) {
-  const [person] = await db
-    .select({ id: personTable.id })
-    .from(personTable)
-    .where(eq(personTable.userId, userId))
-    .limit(1);
-  if (!person) {
-    return {
-      data: [],
-      page: { nextCursor: null, hasMore: false },
-      meta: { total: 0 },
-    };
+  const identity = await resolveIdentity({
+    userId,
+    credential: apiKey ? "api_key" : "session",
+    apiKey: apiKey
+      ? { enabled: apiKey.enabled, ownerUserId: apiKey.userId }
+      : undefined,
+  });
+  if (!identity) {
+    throw new HTTPException(401, { message: "Authentication required" });
   }
 
   const conditions = [
-    eq(pendingActionTable.requestedByPersonId, person.id),
+    eq(pendingActionTable.requestedByPersonId, identity.personId),
     eq(pendingActionTable.state, "pending"),
   ];
   if (options.cursor !== undefined) {
@@ -270,7 +270,7 @@ export async function getOwnPendingActions(
     .from(pendingActionTable)
     .where(
       and(
-        eq(pendingActionTable.requestedByPersonId, person.id),
+        eq(pendingActionTable.requestedByPersonId, identity.personId),
         eq(pendingActionTable.state, "pending"),
       ),
     );
@@ -281,7 +281,12 @@ export async function getOwnPendingActions(
     toPendingActionRead(pendingAction, requestingKeyName),
   );
   for (const { pendingAction } of pageRows) {
-    await auditViewed(pendingAction.id, pendingAction, person.id, auditContext);
+    await auditViewed(
+      pendingAction.id,
+      pendingAction,
+      identity.personId,
+      auditContext,
+    );
   }
   const lastRow = pageRows.at(-1)?.pendingAction;
 
@@ -301,15 +306,18 @@ export async function getOwnPendingActions(
 export async function getOwnPendingAction(
   userId: string,
   id: string,
+  apiKey: { id: string; userId: string; enabled: boolean } | undefined,
   auditContext: { apiKeyId: string | null; traceId: string },
 ) {
-  const [person] = await db
-    .select({ id: personTable.id })
-    .from(personTable)
-    .where(eq(personTable.userId, userId))
-    .limit(1);
-  if (!person) {
-    throw new HTTPException(404, { message: "Pending action not found" });
+  const identity = await resolveIdentity({
+    userId,
+    credential: apiKey ? "api_key" : "session",
+    apiKey: apiKey
+      ? { enabled: apiKey.enabled, ownerUserId: apiKey.userId }
+      : undefined,
+  });
+  if (!identity) {
+    throw new HTTPException(401, { message: "Authentication required" });
   }
 
   const [result] = await db
@@ -329,7 +337,7 @@ export async function getOwnPendingAction(
     .where(
       and(
         eq(pendingActionTable.id, id),
-        eq(pendingActionTable.requestedByPersonId, person.id),
+        eq(pendingActionTable.requestedByPersonId, identity.personId),
       ),
     )
     .limit(1);
@@ -342,7 +350,7 @@ export async function getOwnPendingAction(
   await auditViewed(
     result.pendingAction.id,
     result.pendingAction,
-    person.id,
+    identity.personId,
     auditContext,
   );
   return data;

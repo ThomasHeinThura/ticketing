@@ -378,6 +378,74 @@ describe("GET /api/me/pending-actions", () => {
     ]);
   });
 
+  it("rejects list and detail reads after a valid API-key owner's identity is revoked", async () => {
+    const { app } = createApp();
+    const scenarios = ["inactive", "banned"] as const;
+
+    for (const lifecycle of scenarios) {
+      const { user, workspace } = await createWorkspaceMember();
+      await createPersonFor(user.id, workspace.organisationId);
+      const pending = await createPendingAction(user.id, {
+        id: `pa-owner-${lifecycle}`,
+        payloadSummary: {
+          target: `PRIVATE_${lifecycle.toUpperCase()}_SUMMARY`,
+        },
+      });
+      const rawKey = `taskdesk_test_${randomUUID()}`;
+      await db.insert(schema.apikeyTable).values({
+        referenceId: user.id,
+        userId: user.id,
+        key: hashApiKeyForTest(rawKey),
+        name: `owner-${lifecycle}-key`,
+        start: rawKey.slice(0, 12),
+        prefix: "taskdesk",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      if (lifecycle === "inactive") {
+        await db
+          .update(schema.personTable)
+          .set({ active: false })
+          .where(eq(schema.personTable.userId, user.id));
+      } else {
+        await db
+          .update(schema.userTable)
+          .set({ banned: true })
+          .where(eq(schema.userTable.id, user.id));
+      }
+
+      const headers = { "x-api-key": rawKey };
+      const listResponse = await app.request("/api/me/pending-actions", {
+        headers,
+      });
+      expect(listResponse.status).toBe(401);
+      expect(await listResponse.text()).not.toContain(
+        `PRIVATE_${lifecycle.toUpperCase()}_SUMMARY`,
+      );
+
+      const detailResponse = await app.request(
+        `/api/me/pending-actions/${pending.id}`,
+        { headers },
+      );
+      expect(detailResponse.status).toBe(401);
+      expect(await detailResponse.text()).not.toContain(
+        `PRIVATE_${lifecycle.toUpperCase()}_SUMMARY`,
+      );
+
+      const viewed = await db
+        .select({ id: schema.auditLogTable.id })
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.action, "pending_action.viewed"),
+            eq(schema.auditLogTable.entityId, pending.id),
+          ),
+        );
+      expect(viewed).toEqual([]);
+    }
+  });
+
   it("does not return a summary when its viewed audit write fails", async () => {
     const { user, workspace } = await createWorkspaceMember();
     await createPersonFor(user.id, workspace.organisationId);

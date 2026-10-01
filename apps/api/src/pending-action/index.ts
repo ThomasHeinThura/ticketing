@@ -38,6 +38,7 @@ const listPendingActionsRoute = createRoute({
       "The caller's pending actions",
       pendingActionListResponseSchema,
     ),
+    401: errorResponse("The caller has no current valid identity"),
     400: errorResponse("Invalid cursor or limit"),
   },
 });
@@ -53,6 +54,7 @@ const getPendingActionRoute = createRoute({
   request: { params: pendingActionParamSchema },
   responses: {
     200: jsonResponse("The caller's pending action", pendingActionReadSchema),
+    401: errorResponse("The caller has no current valid identity"),
     404: errorResponse("Pending action not found"),
   },
 });
@@ -63,6 +65,7 @@ const pendingAction = apiRouter()
       await getOwnPendingActions(
         c.get("userId"),
         c.req.valid("query"),
+        c.get("apiKey"),
         readAuditContext(c),
       ),
       200,
@@ -73,6 +76,7 @@ const pendingAction = apiRouter()
       await getOwnPendingAction(
         c.get("userId"),
         c.req.valid("param").id,
+        c.get("apiKey"),
         readAuditContext(c),
       ),
       200,
