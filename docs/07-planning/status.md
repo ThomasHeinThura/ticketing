@@ -2739,7 +2739,7 @@ in `## Blocked`, above, which are a separate, still-live concern.
 | CLA, for a possible dual licence | Before the first external contribution | Thomas |
 | Final product name | Before P7 | Thomas |
 | ~~Whether to sell externally~~ | Decided: yes — but the **AWS Marketplace listing itself is deferred beyond the current 3–4-month scope** (2026-09-05); BYOL/contract preferred when it comes — see [decision log](decision-log.md) | — |
-| Docs-site stack — fresh Fumadocs app (recommended) / kaneo's marketing site + `/docs` / Mintlify | Before P0's `apps/site` skeleton | Thomas |
+| Docs-site stack — recorded recommendation is a fresh headless Fumadocs app with Next.js static export; Thomas's read of the completed spec and H1–H6 approval remain pending before implementation | Before P0's `apps/site` skeleton | Thomas |
 | Visual-regression tool for gate G8 — Playwright `toHaveScreenshot` with in-repo baselines, or Chromatic | Before P0's UX gate scripts | Thomas |
 | Gate consolidation in release-plan.md — confirm as a waiver or revert | Before `2.0.0` | Thomas |
 | WAL archiving for point-in-time recovery | Before real customer data | Thomas |
