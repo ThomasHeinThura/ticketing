@@ -18,6 +18,7 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { realpathSync, symlinkSync } from "node:fs";
 import path from "node:path";
 import { after, describe, it } from "node:test";
 import {
@@ -33,6 +34,8 @@ import {
 after(cleanUpScratchRepos);
 
 const NODE = process.execPath;
+
+const canonicalPath = (candidate) => realpathSync(candidate);
 
 /** Evaluate a module snippet that imports from an ABSOLUTE path, with an independent cwd. */
 function evaluateAcross(cwd, code, env = {}) {
@@ -91,10 +94,37 @@ describe("repoRoot resolves against the caller's cwd, not the script's own locat
 
     assert.equal(
       repoRoot,
-      callerDir,
+      canonicalPath(callerDir),
       "must be the CALLER's worktree, not the script's own",
     );
-    assert.notEqual(repoRoot, scriptDir);
+    assert.notEqual(repoRoot, canonicalPath(scriptDir));
+  });
+
+  it("resolves a caller reached through a symlinked parent to its canonical worktree root", () => {
+    const scriptDir = scriptCheckout("a-script-owner-parent-alias");
+    const callerDir = scratchDir("repo-root-parent-alias-caller");
+    initRepo(callerDir);
+    installCheckers(callerDir);
+    commit(callerDir, "chore: bootstrap aliased caller worktree");
+
+    const aliasParent = scratchDir("repo-root-parent-alias");
+    const aliasDir = path.join(aliasParent, "caller");
+    symlinkSync(callerDir, aliasDir, "dir");
+
+    const repoModule = path.join(scriptDir, "scripts/ci/lib/repo.mjs");
+    const { repoRoot } = evaluateAcross(
+      aliasDir,
+      `import { repoRoot } from ${JSON.stringify(repoModule)};
+       console.log(JSON.stringify({ repoRoot }));`,
+    );
+
+    assert.notEqual(
+      aliasDir,
+      canonicalPath(aliasDir),
+      "the probe must use a real alias",
+    );
+    assert.equal(repoRoot, canonicalPath(callerDir));
+    assert.notEqual(repoRoot, canonicalPath(scriptDir));
   });
 
   it("changedFiles() reports the CALLING worktree's own diff, not the script checkout's diff", () => {
@@ -134,7 +164,7 @@ describe("repoRoot resolves against the caller's cwd, not the script's own locat
 
     assert.equal(
       repoRoot,
-      scriptDir,
+      canonicalPath(scriptDir),
       "with no git work tree at all to resolve, the fallback must still find the checker's own checkout",
     );
   });
@@ -214,6 +244,6 @@ describe("repoRoot resolves against the caller's cwd, not the script's own locat
        console.log(JSON.stringify({ repoRoot }));`,
     );
 
-    assert.equal(repoRoot, callerDir);
+    assert.equal(repoRoot, canonicalPath(callerDir));
   });
 });
