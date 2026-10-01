@@ -558,8 +558,8 @@
 		{
 			"idx": 79,
 			"version": "7",
-			"when": 1790806670796,
-			"tag": "0079_project_default_comment_visibility",
+			"when": 1790821787590,
+			"tag": "0079_task_version",
 			"breakpoints": true
 		}
 	]

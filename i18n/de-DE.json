@@ -1917,7 +1917,8 @@
 		},
 		"update": {
 			"success": "Aufgabe erfolgreich aktualisiert",
-			"error": "Aufgabe konnte nicht aktualisiert werden"
+			"error": "Aufgabe konnte nicht aktualisiert werden",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "Link kopieren",

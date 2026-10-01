@@ -19,17 +19,25 @@ export function withTaskDeskRequestHeaders(
   return { ...init, headers, credentials: "include" };
 }
 
+export function createApiFetch(
+  fetchImpl: typeof fetch = fetch,
+  requestWindowId = windowId,
+) {
+  return (input: RequestInfo | URL, init?: RequestInit) => {
+    return fetchImpl(
+      input,
+      withTaskDeskRequestHeaders(init, requestWindowId),
+    ).catch((error) => {
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        throw new Error(
+          `Failed to connect to API server at ${apiUrl}. This might be due to CORS configuration issues or the server not running. Please check your environment variables and server status.`,
+        );
+      }
+      throw error;
+    });
+  };
+}
+
 export const client = hc<AppType>(apiUrl, {
-  fetch: (input: RequestInfo | URL, init?: RequestInit) => {
-    return fetch(input, withTaskDeskRequestHeaders(init, windowId)).catch(
-      (error) => {
-        if (error instanceof TypeError && error.message.includes("fetch")) {
-          throw new Error(
-            `Failed to connect to API server at ${apiUrl}. This might be due to CORS configuration issues or the server not running. Please check your environment variables and server status.`,
-          );
-        }
-        throw error;
-      },
-    );
-  },
+  fetch: createApiFetch(),
 });

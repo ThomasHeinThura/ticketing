@@ -134,7 +134,7 @@ different blast radii.
 ### General
 
 Instance name · default locale · default timezone · date and number format ·
-audit retention · notification retention · deleted-item retention · support email ·
+audit retention · notification retention (`notification_retention_days`, default 90) · deleted-item retention · support email ·
 terms and privacy URLs
 
 ### Branding
@@ -153,10 +153,10 @@ before save.
 Per provider: type · display name · **portal scope** (agent / customer / both) ·
 discovery or endpoint URLs · client id · client secret · scopes · claim mapping ·
 JIT provisioning (side, organisation, role) · group-to-role mapping · domain restriction ·
-MFA-satisfied-upstream flag · enabled
+MFA-satisfied-upstream setting (planned; not verified or enforced by current API source) · enabled
 
-Instance-wide: MFA policy · session idle timeout · session absolute lifetime ·
-concurrent session limit · password policy
+Instance-wide: MFA policy (planned; no current factor enforcement) · session idle timeout ·
+session absolute lifetime · concurrent session limit · password policy
 
 ### Organisations
 
@@ -193,13 +193,11 @@ Per job: schedule · enabled · last run · manual trigger
 
 ### Observability
 
-Sentry DSN · OTLP endpoint and headers · trace sample rate · metrics bearer token ·
-log level per module
-
-The metrics bearer token is a planned God Mode → Observability setting, never an
-environment variable. The current API image does not read the setting or serve `/metrics`;
-see [observability.md](../01-architecture/observability.md) for the target contract and
-[runbook.md](runbook.md) for the currently usable diagnostics.
+The planned administrator API stores per-module log levels and a hash-only metrics bearer
+token in `instance_setting`; it adds no application environment variable. The current API
+image does not read these settings or serve `/metrics`. See
+[observability.md](../01-architecture/observability.md) for the target contract and
+[runbook.md](runbook.md) for currently usable diagnostics.
 
 ### AI (optional, off by default)
 

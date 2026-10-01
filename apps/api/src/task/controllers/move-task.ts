@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, max } from "drizzle-orm";
+import { and, asc, eq, isNull, max, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -239,6 +239,7 @@ async function moveTask({
         columnId: resolvedColumn.id,
         number: nextTaskNumber,
         position: nextPosition,
+        version: sql`${taskTable.version} + 1`,
       })
       .where(eq(taskTable.id, taskId))
       .returning();

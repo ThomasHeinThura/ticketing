@@ -67,7 +67,6 @@ exact context appears in the ruleset.
 │ pnpm check:skips     no .skip / .only            │
 │ pnpm test:ci-scripts  gate checkers + red probes │
 │ pr-template check    sections filled, tiers named│
-│ no-inherited-routes  removals stay removed       │
 ├─ Test ───────────────────────────────────────────┤
 │ pnpm test                unit + component        │
 │ pnpm test:coverage       90 % statements, lines,  │
@@ -75,6 +74,9 @@ exact context appears in the ruleset.
 │ pnpm test:permissions    route coverage (Hono    │
 │                          router), role × route   │
 │                          matrix ×2, custom roles │
+│ pnpm test:no-inherited-routes  fork removals stay │
+│                          absent from the router,  │
+│                          auth plugins and lockfile│
 │ pnpm test:contract       OpenAPI lint, drift,    │
 │                          and breaking changes   │
 │ pnpm test:mcp            tool → route parity     │
@@ -149,7 +151,8 @@ sharded four ways:**
 ├─ Integration ────────────────────────────────────┤
 │ pnpm test:integration    Testcontainers Postgres,│
 │                          lifecycle/, migrations  │
-│                          from empty, anonymiser  │
+│                          from empty, anonymiser, │
+│                          additive seed profiles  │
 ├─ Browser ────────────────────────────────────────┤
 │ pnpm test:e2e            protected-route redirect│
 │                          browser smoke today;    │
@@ -187,6 +190,10 @@ The GPT-6 Sol **security review** is a required section of `.github/pull_request
 CI checks it non-empty, naming GPT-6 Sol, whenever the diff touches **any** of — this list is the
 authoritative scope; [sdlc.md](sdlc.md) and [security-model.md](../01-architecture/security-model.md)
 cite it and do not restate it:
+
+Opus 5.5's optional sampled big review is outside this per-PR status-check gate. It does not
+satisfy or delay the required GPT-6 Sol review; when a sample is selected, follow the packet
+process in [agent-workflow.md](agent-workflow.md#model-policy).
 
 ```
 apps/api/src/**/policy.ts            packages/permissions/**
@@ -452,11 +459,13 @@ trail and is excluded). **`check:env`** fails on a `process.env` read outside
 [configuration-reference.md](../05-operations/configuration-reference.md)'s list;
 **`check:vocabulary`** on a table, capability, event key or job name absent from its
 authority document; **`check:skips`** on `.skip(`, `.only(` or `describe.skip`.
-**`tests/permissions/no-inherited-integration-routes.test.ts`** asserts no route matches
-`public-project|github|gitea|slack|discord|telegram|generic-webhook`, that `octokit` and
-`@octokit/webhooks` are absent from the lockfile, and that the better-auth plugin list equals
-the approved list (no `anonymous`, `deviceAuthorization` or `bearer`) — the fork-time removal
-list made executable ([decision log](../07-planning/decision-log.md)).
+**`pnpm test:no-inherited-routes`** runs
+`tests/permissions/no-inherited-integration-routes.test.ts` as a separately reconciled fast
+gate inside the existing required route-policy context. The test inspects the constructed
+Hono router, constructed better-auth plugins, and exact `octokit` / `@octokit/webhooks`
+lockfile package names. The full `pnpm test:permissions` suite also runs this test. This makes
+the fork-time removal list executable without broadening the existing route-policy status
+context ([decision log](../07-planning/decision-log.md)).
 `pnpm test:a11y` runs axe against every exported `packages/ui` Storybook story and the
 screens exercised by the current Playwright E2E suite. It uses the existing `axe-core`
 dependency declared by `packages/ui` and scans the logged-out protected-route redirect's
@@ -485,7 +494,27 @@ On merge:
 8. Package and publish the Helm chart (`helm package`, pushed as an OCI artefact next to the
    image).
 9. Publish `@taskdesk/mcp` to npm if it changed.
-10. Deploy the documentation site.
+
+### Planned docs-site build and publication (not implemented)
+
+When the separate static docs site is implemented, run its build and static-site smoke tests
+on pull requests. Place those checks inside an existing required context with visible failure,
+or add a new exact context and verify it is registered in the protected-main ruleset before
+relying on it. A standalone green job that branch protection does not require is not a gate.
+
+On protected-main updates, the release workflow may build the separate docs image, scan it,
+generate an SBOM, sign it and publish `edge`/source-SHA digests. It does not deploy. A change
+to the docs-image digest must independently trigger a UAT pull that verifies the published
+digest's cosign signature and expected workflow identity, then updates only the docs service;
+the current app-image updater does not watch or deploy this second image. Test the docs
+service independently in UAT for container health, HTTPS on its verified proxy route, search
+over a published page, and a real unknown-path 404. Retain the previous known-good docs
+digest for docs-only rollback, leaving the app image untouched. Production promotion is a
+manual pin to the independently verified immutable docs digest after UAT verification, not a
+tag selection. Do not give PR or main-build workflows production credentials or automatic
+production deployment authority. This is a target contract, not evidence that the site build,
+job, image, router or deployment exists. The implementation contract is in
+[docs-site plan](../08-docs-site/plan.md).
 
 **No version-bump commit on merge or release.** The Release workflow runs after each `main`
 update to publish the signed `edge`/SHA images. A maintainer may also dispatch it from

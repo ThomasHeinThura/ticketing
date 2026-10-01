@@ -1924,7 +1924,8 @@
 		},
 		"update": {
 			"success": "タスクを更新しました",
-			"error": "タスクの更新に失敗しました"
+			"error": "タスクの更新に失敗しました",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "リンクをコピー",

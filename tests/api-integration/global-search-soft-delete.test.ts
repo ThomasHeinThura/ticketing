@@ -14,7 +14,12 @@ import {
   createWorkspaceMember,
 } from "./helpers/fixtures";
 
-type SearchResult = { id: string; type: string; title: string };
+type SearchResult = {
+  id: string;
+  type: string;
+  title: string;
+  version?: number;
+};
 
 async function search(workspaceId: string, query: string) {
   const { app } = createApp();
@@ -94,5 +99,51 @@ describe("API integration: global search excludes a soft-deleted project", () =>
       "Unique Searchable Task Title",
     );
     expect(afterDelete.some((r) => r.id === task.id)).toBe(false);
+  });
+
+  it("includes current versions for both task search paths without versioning project results", async () => {
+    const member = await createWorkspaceMember({ role: "admin" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+      name: "RevisionNeedle Project",
+    });
+    const [task] = await db
+      .insert(schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "RevisionNeedle Task",
+        status: "to-do",
+        columnId: columns.todo.id,
+        priority: "medium",
+        number: 23,
+        position: 1,
+      })
+      .returning({
+        id: schema.taskTable.id,
+        version: schema.taskTable.version,
+      });
+    if (!task) throw new Error("failed to seed task");
+
+    mockAuthenticatedSession(member.user);
+
+    const textResults = await search(member.workspace.id, "RevisionNeedle");
+    const textTask = textResults.find(
+      (result) => result.id === task.id && result.type === "task",
+    );
+    expect(textTask?.version).toBe(task.version);
+    const projectResult = textResults.find(
+      (result) => result.id === project.id && result.type === "project",
+    );
+    expect(projectResult).toBeDefined();
+    expect(projectResult).not.toHaveProperty("version");
+
+    const shortIdResults = await search(
+      member.workspace.id,
+      `${project.slug}-23`,
+    );
+    const shortIdTask = shortIdResults.find(
+      (result) => result.id === task.id && result.type === "task",
+    );
+    expect(shortIdTask?.version).toBe(task.version);
   });
 });

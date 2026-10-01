@@ -1,5 +1,5 @@
 {
-	"id": "b89284f0-f7cb-4393-bfa3-bd2fcc4d04d8",
+	"id": "b965c525-cb30-4dd4-a75e-221ac9f86f1e",
 	"prevId": "cf3a5d60-ddaf-46ae-82b5-092b9a3422a1",
 	"version": "7",
 	"dialect": "postgresql",
@@ -3786,13 +3786,6 @@
 					"primaryKey": false,
 					"notNull": false
 				},
-				"default_comment_visibility": {
-					"name": "default_comment_visibility",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true,
-					"default": "'internal'"
-				},
 				"created_at": {
 					"name": "created_at",
 					"type": "timestamp",
@@ -3881,12 +3874,7 @@
 				}
 			},
 			"policies": {},
-			"checkConstraints": {
-				"project_default_comment_visibility_allowed": {
-					"name": "project_default_comment_visibility_allowed",
-					"value": "\"project\".\"default_comment_visibility\" in ('public', 'internal')"
-				}
-			},
+			"checkConstraints": {},
 			"isRLSEnabled": false
 		},
 		"public.role": {
@@ -5169,6 +5157,13 @@
 					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": false
+				},
+				"version": {
+					"name": "version",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 1
 				},
 				"created_at": {
 					"name": "created_at",

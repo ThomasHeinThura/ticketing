@@ -1923,7 +1923,8 @@
 		},
 		"update": {
 			"success": "Tarefa atualizada com sucesso",
-			"error": "Falha ao atualizar tarefa"
+			"error": "Falha ao atualizar tarefa",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "Copiar link",

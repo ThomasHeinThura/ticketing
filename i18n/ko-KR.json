@@ -1924,7 +1924,8 @@
 		},
 		"update": {
 			"success": "작업이 업데이트되었습니다",
-			"error": "작업 업데이트에 실패했습니다"
+			"error": "작업 업데이트에 실패했습니다",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "링크 복사",

@@ -25,23 +25,24 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Validation | **Zod 4** | Single source for request/response schemas and OpenAPI |
 | ORM | **Drizzle 0.45** | `drizzle-kit` migrations, forward-only |
 | Database | **PostgreSQL 18** | Only store for primary data. See below — bumped from 16 |
-| Auth | **better-auth 1.6** | Magic link, email OTP, API keys, generic OAuth/OIDC inherited; `twoFactor` added in P0; `anonymous`, `deviceAuthorization`, `bearer` and the `organization` plugin **removed at fork**; `admin` kept as a session primitive only — the per-plugin table is in [auth-and-identity.md](auth-and-identity.md) |
+| Auth | **better-auth 1.6** | Magic link, email OTP, API keys, generic OAuth/OIDC inherited; `twoFactor` is specified for P0 and `passkey` for a later stage, but neither is enabled in current source and no verified MFA/step-up factor adapter is available; `anonymous`, `deviceAuthorization`, `bearer` and the `organization` plugin **removed at fork**; `admin` kept as a session primitive only — the per-plugin table is in [auth-and-identity.md](auth-and-identity.md) |
 | IDs | **CUID2** | Sortable-ish, URL-safe, non-enumerable |
-| WebSocket | **@hono/node-ws** | In-memory or Valkey pub/sub adapter |
+| WebSocket | **`@hono/node-server` built-in upgrade helper + `ws`** | In-memory or Valkey pub/sub adapter |
 | Cache / pub-sub | **Valkey 9** (Redis-compatible) via **ioredis** | Optional; degrades to in-memory |
 | Object storage | **@aws-sdk/client-s3** — a plain S3-API client, no vendor SDK | **`storage.filesystem` on a fresh install** (decision log 2026-09-05); **SeaweedFS** shipped as an opt-in Compose profile for self-hosted S3; any real S3 in production. **Not MinIO** — see below |
 | Scheduling | **croner** + `job_lease` table | In-process, replica-safe |
 | Email | **nodemailer** via `packages/email` | React Email templates |
 | Errors | **Sentry** (optional) | Configured in God Mode, not env-only |
 | Tracing | **OpenTelemetry** | Optional exporter; v1 never got this and regretted it |
-| Logging | **Pino** + `pino-http` | Structured JSON with `traceId`. Not in kaneo — added |
-| Metrics | **prom-client** | `/metrics`, bearer-guarded. Not in kaneo — added |
+| Logging | **Pino** | Structured JSON with `traceId`; Hono middleware constructs records from an explicit typed field allowlist. Pino redaction is defense in depth. `pino-http` is not selected because raw request serialization is not the intended integration. Not in kaneo — planned |
+| Metrics | **prom-client** | Bounded HTTP and AU-14 counters on a separate internal `/metrics` listener, bearer-guarded. Not in kaneo — planned |
 
 ## Frontend
 
 | Concern | Choice | Notes |
 | --- | --- | --- |
 | Framework | **React 19** | React Compiler enabled |
+| Documentation site | **Proposed:** Next.js `16.3.8` static export with headless Fumadocs (`fumadocs-core` `16.15.17`, `fumadocs-mdx` `15.4.5`) | Separate, planned `apps/site`; exact proposed packages/licenses are recorded in [the site plan](../08-docs-site/plan.md) and [decision log](../07-planning/decision-log.md). Not installed or implemented. |
 | Bundler | **Vite 8** (kaneo's current; was listed as 5 in error) | Two entries: `entry.agent.tsx`, `entry.portal.tsx` |
 | Routing | **TanStack Router** | File-based, typed, search-param schemas |
 | Server state | **TanStack Query 5** | The only place server data lives |
@@ -174,8 +175,7 @@ at `packages/ui` extraction (decided 2026-09-05), with retained Radix in `KNOWN-
 | Kafka / RabbitMQ | Postgres outbox + Valkey pub/sub |
 | Elasticsearch | Postgres full-text first; revisit only if measured to be insufficient |
 
-Note: the docs site (`apps/site`) *does* use **Next.js + Fumadocs**, following kaneo.
-That is a separate deployable and does not affect the app.
+The planned docs site is a separate static export, not an inherited kaneo application. The stack and boundary are specified in [the docs-site plan](../08-docs-site/plan.md); they do not change the Vite agent/portal application.
 
 ## Version policy
 

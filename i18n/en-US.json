@@ -1930,7 +1930,8 @@
 		},
 		"update": {
 			"success": "Task updated successfully",
-			"error": "Failed to update task"
+			"error": "Failed to update task",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "Copy link",

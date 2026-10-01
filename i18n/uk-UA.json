@@ -1929,7 +1929,8 @@
 		},
 		"update": {
 			"success": "Завдання успішно оновлено",
-			"error": "Не вдалося оновити завдання"
+			"error": "Не вдалося оновити завдання",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "Копіювати посилання",

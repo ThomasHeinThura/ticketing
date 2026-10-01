@@ -1923,7 +1923,8 @@
 		},
 		"update": {
 			"success": "Attività aggiornata con successo",
-			"error": "Aggiornamento attività fallito"
+			"error": "Aggiornamento attività fallito",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "Copia link",

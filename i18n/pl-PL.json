@@ -2172,7 +2172,8 @@
 		},
 		"update": {
 			"error": "Nie udało się zaktualizować zadania",
-			"success": "Zadanie zaktualizowano pomyślnie"
+			"success": "Zadanie zaktualizowano pomyślnie",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"view": {
 			"board": "Tablica",

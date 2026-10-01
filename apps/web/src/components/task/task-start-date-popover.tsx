@@ -10,6 +10,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { TaskUpdateError } from "@/lib/task-update-error";
 import { toast } from "@/lib/toast";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type Task from "@/types/task";
@@ -39,11 +40,13 @@ export default function TaskStartDatePopover({
       toast.success(t("tasks:popover.startDate.updateSuccess"));
       setOpen(false);
     } catch (error) {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("tasks:popover.startDate.updateError"),
-      );
+      if (!(error instanceof TaskUpdateError)) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t("tasks:popover.startDate.updateError"),
+        );
+      }
     }
   };
 

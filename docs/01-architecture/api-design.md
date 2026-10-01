@@ -39,14 +39,218 @@ claim a version the toolchain cannot produce.
 | --- | --- | --- |
 | `/api/*` | The application API | capability |
 | `/api/me/*` | The caller's own records: settings, preferences, API keys, approvals | `authenticated + self` |
-| `/api/public/*` | Unauthenticated: branding, `health/live` and `health/ready`, the login page's provider **buttons only** (label + id — never discovery URLs, tenant ids or domain restrictions), terminology, CSP reports | `public` with reason — **no exceptions**, so the router's blanket kind is true of every route under it |
+| `/api/public/*` | Unauthenticated: branding, `health/live` and `health/ready`, the login page's provider **buttons only** (label + id — never discovery URLs, tenant ids or domain restrictions), terminology, CSP reports, and the two origin-specific `POST /api/public/{agent|portal}/notification-preference-handoffs` routes (one-purpose signed email token; short-lived selector handoff only) | `public` with reason — **no exceptions**, so the router's blanket kind is true of every route under it |
 | `/api/instance/*` | God Mode. `instance:*` capabilities. Includes the dependency-enumerating deep health check, `GET /api/instance/health/deep` — capability `instance:admin`, scope `instance`; it is **not** on the public router, and the `/metrics` bearer token is not an alternative credential for it | capability |
 | `/api/portal/*` | Customer portal — a deliberately narrow, separate router | `portal` with predicate |
 | `/auth/*` | better-auth handler | `delegated: better-auth` |
 | `/ws` | WebSocket upgrade | `delegated: websocket` (Origin-checked — [realtime.md](realtime.md)) |
-| `/metrics` | Prometheus scrape, bearer-guarded | `delegated: metrics` |
+| `/metrics` | Exact `GET /metrics` Prometheus scrape on its own Node listener, bearer-guarded | `delegated: metrics` |
 | `/scim/v2/*` | Inbound SCIM 2.0 provisioning — Microsoft Entra first. `application/scim+json`. Authenticated by a per-connection bearer token that fixes the organisation, portal scope and allowed resources server-side ([identity-provisioning.md](../03-features/identity-provisioning.md)) | `delegated: scim` |
 | `/openapi.json` · `/docs` | Spec and Scalar reference UI | `public` |
+
+### Metrics listener and permission coverage
+
+The `/metrics` route is served by a separate Node listener on fixed internal port 9464; it
+is not mounted on the Hono API application and has no Traefik route. The module that starts
+that listener exports its declarative listener manifest: listener port, exact method and
+path, and delegated policy key `GET /metrics`. `tests/permissions/route-coverage.test.ts`
+enumerates this manifest as well as `app.routes`. Coverage fails if the listener is present
+without the delegated policy, if the policy is orphaned, or if the constructed listener
+does not match its manifest. A handwritten test-only route list is insufficient evidence.
+
+The listener accepts only `GET /metrics` without a query string. `HEAD`, `OPTIONS`, or any
+other method on that path returns `405`; every other path returns `404`.
+
+### Observability administration and step-up
+
+The instance administrator API contract is:
+
+```
+GET   /api/instance/observability                       instance:admin, instance scope
+PATCH /api/instance/observability                       instance:admin, instance scope
+POST  /api/instance/observability/metrics-token/rotate  instance:admin, instance scope, elevated, session-only
+POST  /api/me/step-up/challenges                       authenticated + self, session-only
+POST  /api/me/step-up                                   authenticated + self, session-only
+```
+
+GET returns exactly `{version, logLevels, metricsTokenConfigured,
+metricsTokenRotatedAt}` with `Cache-Control: no-store`; neither digest nor token is included.
+PATCH accepts only `{version, logLevels}`, uses compare-and-set on the singleton version,
+audits changed keys only, and never accepts a token. A stale version returns `409
+version_conflict` with the current safe version. Rotation accepts only `{version}`, returns
+exactly `{version, token, metricsTokenRotatedAt}` once with `Cache-Control: no-store`, and
+requires a single-use `X-TaskDesk-Step-Up-Token` bound to this exact operation, version and
+canonical request body. For the operation binding, the parsed body is exactly one property,
+`version`, whose value is a positive safe integer; request validation rejects unknown
+properties. Syntactically valid JSON may contain insignificant whitespace or equivalent
+JSON numeric spelling. The server serializes the validated value as UTF-8
+`{"version":<base-10 integer>}` with no whitespace and hashes those canonical bytes for both
+challenge and execution. It never hashes raw wire bytes or trusts a client hash. Equivalent
+wire JSON therefore binds to the same semantic operation; a different parsed version or
+extra property fails. Duplicate-key rejection is not implied by ordinary JSON/Zod parsing;
+the parsed semantic value is the binding contract. Challenge and step-up mint responses are also
+`Cache-Control: no-store`; the challenge nonce and step-up token each appear once.
+
+Each successful configuration mutation appends the audit-only key
+`instance.observability_changed`, with actor, trace id and changed keys (`logLevels` or
+`metricsToken`) only; values, bearer token, hash and arbitrary before/after objects never
+enter audit. An audit append failure follows AU-14: roll back the nested audit savepoint,
+report the failure through the defined operational signal, and preserve the committed
+configuration mutation.
+
+The rotation binding is not implementable merely by marking the policy elevated. It depends
+on a challenge/token verifier that actually validates the required fresh authentication
+method and atomically consumes the token with the rotation CAS. Where the account's required
+method cannot be verified, return `403 step_up_unavailable` and do not rotate. See
+[security-model.md](security-model.md#sessions-csrf-and-step-up) and
+[pending-actions.md](pending-actions.md) `PA-15`.
+
+### Identity-connection configuration compare-and-set
+
+`PATCH /api/instance/identity-connections/{id}` carries the connection's expected positive
+safe-integer `configVersion` with the configured fields. Under the `IP-22` total lock order,
+compare it with `identity_connection.config_version`; a stale version returns
+`409 version_conflict` with only the current safe version and changes nothing. Every
+committed connection-configuration mutation advances the version exactly once. In
+particular, changing JIT enabled/default-role/target policy and lowering an enabled agent
+connection's `max_role_rank` apply the `IP-22` source-scoped retirement, projection,
+audit/provisioning and existing event/outbox changes in the same CAS transaction. The
+shared lock/retry protocol prevents racing a mapping write, OIDC login, SCIM synchronization,
+role edit or connection disable into committing stale authority. This ordinary connection
+update is not a new PA-15 operation; the two OIDC mapping routes below retain their separate
+operation-bound proof.
+
+The separate administration route `PATCH /api/instance/identity-connections/{id}/scim` has
+a proposed route-wide `instance:admin`, `elevated: true`, `sessionOnly: true` policy. Its
+strict request/response DTO, edit/omission semantics, parent `config_version` CAS, and
+dedicated PA-15 route/body/version binding are not specified by this contract. They are an
+open owner obligation tracked in [issue #561](https://github.com/ThomasHeinThura/ticketing/issues/561).
+Do not infer an operation key or reuse an OIDC/metrics proof. Until that contract is
+specified, a mounted SCIM administration write fails closed with the existing
+`403 step_up_unavailable` response and makes no configuration or grant mutation.
+
+### OIDC group-mapping administration
+
+The existing agent connection editor and organisation Identity tab use this single route
+family. The organisation screen is server-filtered through the connection's persisted
+`organisation_id`; it does not supply or select an organisation in a mapping request.
+
+```
+GET   /api/instance/identity-connections/{id}/oidc-group-mappings
+      instance:admin, instance scope, elevated: false
+POST  /api/instance/identity-connections/{id}/oidc-group-mappings
+      instance:admin, instance scope, elevated, session-only
+PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}
+      instance:admin, instance scope, elevated, session-only
+```
+
+The GET policy declares `scopeSource: instance` and an explicit elevation exemption reason:
+read-only mapping configuration returns no credentials or provider claims. Each route
+requires `instance:admin`, `scope: instance`, and `scopeSource: instance`; mapping writes
+also require `elevated: true` and `sessionOnly: true`. API keys, MCP keys and impersonation
+sessions receive `403 session_required` before a write or step-up operation. The collection
+and item handlers load the connection from `{id}`; an item must belong to that connection.
+Unknown connections and missing or foreign mapping ids share the same `404` response.
+
+All request objects are strict and reject unknown properties. In particular, callers cannot
+supply `organisationId`, `portalScope`, capabilities, `seesAll`, grant source, `createdBy`,
+or external identity/person ids. These routes accept only God Mode session requests; neither
+OIDC claims nor a SCIM bearer can invoke them. Errors use RFC 9457 problem details, never
+SCIM error objects. Administrator configuration responses use `Cache-Control: no-store`.
+
+`MappingDto` is an explicit projection of the persisted mapping and contains exactly:
+
+```json
+{
+  "id": "...",
+  "externalGroupId": "...",
+  "externalGroupNameSnapshot": null,
+  "roleId": "...",
+  "scope": "organisation",
+  "scopeId": "...",
+  "enabled": true,
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+```
+
+`scopeId` is the persisted organisation id for customer mappings and workspace id for agent
+mappings. No provider response, raw claim list, credential, secret or unlisted database
+column is returned. GET returns `{data: MappingDto[], configVersion}` ordered by immutable
+`externalGroupId`; `configVersion` is the current positive `identity_connection.config_version`.
+
+POST accepts exactly `{configVersion, externalGroupId, externalGroupNameSnapshot?, roleId,
+scope, scopeId?, enabled?}`. `configVersion` is a positive safe integer. The immutable
+`externalGroupId` is a canonical lower-case, hyphenated Entra object-id UUID, validated by
+the same canonicalizer used for the IP-28 token `groups` array before matching or
+uniqueness validation. A malformed id is rejected. It is never a group name or email.
+`externalGroupNameSnapshot` is display-only and defaults to null; `enabled` defaults to
+true. Customer connections require `scope: "organisation"`, omit `scopeId`, resolve the
+persisted scope id from the connection's organisation, and accept only the existing customer
+role. Agent connections require `scope: "workspace"`, an existing workspace with
+`deleted_at IS NULL` owned by the unique active, non-deleted internal organisation, and an
+existing staff role scoped to that workspace. The instance administrator explicitly selects
+the workspace. Create, target change, enable and login reconciliation revalidate this
+predicate and the role's current rank/capabilities under `max_role_rank`; neither the agent
+connection nor provider data chooses the workspace. Agent connections keep
+`organisation_id = NULL`. See `IP-3` and `IP-20` in
+[identity-provisioning.md](../03-features/identity-provisioning.md).
+`201` returns `{data: MappingDto, configVersion}` with the incremented version.
+
+PATCH accepts exactly `{configVersion, externalGroupNameSnapshot?, roleId?, scopeId?,
+enabled?}` and requires at least one mutable property. `externalGroupId`, `scope`, the
+connection, organisation and portal scope cannot change through PATCH. A customer mapping
+cannot change its resolved organisation target. An agent `scopeId` change is a target
+change. `200` returns `{data: MappingDto, configVersion}` with the incremented version.
+There is no mapping DELETE, bulk replacement, or omission-as-removal operation in the first
+release; `enabled: false` is the administrative removal action and preserves mapping and
+grant/audit history.
+
+Every create, edit and enable revalidates the current Entra connection, portal and
+organisation, target ownership, role existence and side/scope, current rank against
+`max_role_rank`, administrator authority/rank guardrails and forbidden capabilities. All
+mapping writes are unconditionally elevated even for customer, display-only or otherwise
+non-authority changes; the SCIM mapping elevation thresholds do not apply to these OIDC
+routes (IP-6). The
+same validation runs for disabled rows. A mapping can never mint a role or capability,
+`instance:admin`, `sees_all`, customer-to-staff access or cross-organisation/workspace reach.
+Invalid persisted mappings fail closed at read and reconciliation boundaries. The write
+compares body `configVersion` with `identity_connection.config_version` under the same
+connection lock/transaction as the mapping mutation and advances it exactly once on success.
+Stale versions return `409 version_conflict` with only the current safe version; duplicate
+`(identity_connection_id, external_group_id)` returns `409`; validation failures return
+`422` with field errors; unknown/foreign resources remain masked as `404`; missing
+capability/elevation is `403`. A failed check makes no mapping, grant or version change.
+
+Both writes always require a PA-15 operation-bound step-up confirmation, not only when a
+handler decides the selected role is risky. PA-15 registers
+`oidc_group_mapping_create` for the POST route and `oidc_group_mapping_update` for the PATCH
+route. Challenge and proof-completion requests bind the operation key, exact route,
+connection id, mapping id for update, expected `configVersion`, and the strict validated
+request body. The server serializes the schema-parsed body in declared property order,
+omitting absent optional fields while preserving explicit nulls and applying declared
+defaults, then hashes UTF-8 JSON for the closed envelope `{routeKey, connectionId,
+mappingId?, request}`. Neither client-selected route keys nor client-supplied hashes are
+accepted. Execution recomputes the same envelope from the path and validated body and
+consumes the five-minute single-use proof atomically with the version compare-and-set and
+mutation. A stale version or failed validation rolls back token consumption; retry requires
+a new challenge for the current version and exact request. An unavailable required factor
+or SSO verifier returns `403 step_up_unavailable` without mutation. This proof is not the
+metrics rotation operation and does not create a session-wide freshness window.
+
+In one write transaction, use the shared `IP-22` total lock order and closure
+rediscovery/retry; revalidate caller authority, mapping, role and rank under those locks.
+Create makes no grant; a later validated OIDC login must observe the group claim. Disable,
+role change or target change retires only active OIDC grants from that mapping, recomputes
+each affected one-role effective membership, writes the existing
+`provisioning_event` kind `group.mapping_changed` and safe `audit_log` evidence under
+AU-14, and publishes authority-cache invalidation after commit. Re-enable never resurrects
+retired grants before a later validated OIDC login through this connection with complete
+matching groups and current admission. A SCIM update cannot restore an OIDC grant; SCIM
+grants require fresh authenticated SCIM evidence. A write for connection A cannot change
+connection B, SCIM, direct or another mapping's grants. No Graph lookup or new event key is
+introduced. The existing identity-connection DELETE remains the PA-5/GM-6 pending-action
+operation.
 
 ### Why `/api/portal/*` is separate
 
@@ -73,11 +277,19 @@ these forms, and `PolicyMap<typeof routes>` makes a mismatch a type error.
 ## Workspace context
 
 Many routes are workspace-scoped but carry no workspace in the path (`/api/custom-fields`,
-`/api/capabilities`, `/api/webhooks`, `/api/views`, `/api/notifications`). They read the
+`/api/capabilities`, `/api/webhooks`, `/api/views`). They read the
 workspace from the **`X-Workspace-Id` header** (or `?workspace=` for GET), which the
 policy middleware validates against the identity's memberships **before** the policy
 check. Absent ⇒ `400`; not a member ⇒ `404`. The typed client sets the header from the
 current workspace automatically; there is no other mechanism.
+
+Notification inbox routes under `/api/notification` are authenticated-self routes: they
+derive `person_id` from the session and do not require workspace context. Each returned or
+mutated notification must also pass reach filtering for its referenced resource under that
+resource's policy; inaccessible or deleted resources are omitted from collections and
+cannot be read or mutated by id. Notification preference routes are self routes too, but
+workspace- and project-scoped preference routes validate the selected scope against the
+person's current reach.
 
 ## URL shape
 

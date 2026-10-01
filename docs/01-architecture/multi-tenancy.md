@@ -136,13 +136,16 @@ a rare person signing in twice; the alternative is a many-to-many identity model
 itself on every authorization check.
 - Identity providers are bound per portal, and a customer connection is bound to exactly
   one organisation by `identity_connection.organisation_id`
-  ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-1`). **That
-  column is the only thing that selects the organisation.**
-- A connection's `domain_bindings` do something narrower and easier to misread: a domain
-  binding **refuses** a token whose address domain belongs to a *different* connection. It
-  never selects the organisation, and it is not a second, weaker route to one — an email
-  domain is evidence for rejecting, never for choosing (`IP-9`,
-  [auth-and-identity.md](auth-and-identity.md#what-every-authoidc-plugin-must-do--the-protocol-floor)).
+  ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-1`). After
+  authenticated admission, **that persisted column is the only source of organisation
+  scope**; login routing cannot set or alter it.
+- A visitor's typed email domain may route unauthenticated customer-login initiation to a
+  configured connection. The connection's persisted `organisation_id`, not the domain,
+  supplies organisation scope; state-binding and post-validation collision rules follow
+  [identity-provisioning.md](../03-features/identity-provisioning.md) `IP-9`. A match never
+  admits a subject. The limited domain-to-SSO/IdP-destination disclosure across the
+  unauthenticated flow is defined by `IP-29`; it is not organisation scope or a published
+  customer inventory. An unbound domain falls through to non-SSO methods.
 
 ## Provisioning a new customer organisation
 
@@ -173,7 +176,9 @@ one performed most often.
 2. A 30-day window during which restore is one click.
 3. Hard delete purges the **complete** list in [security-model.md § Data lifecycle](security-model.md#data-lifecycle)
    — work items, comments, attachments and objects, time and cost entries, notifications,
-   sessions, API keys, webhooks, invitations, outbox rows, idempotency responses,
+   `notification_delivery` children, empty `notification_digest` groups, sessions, API keys,
+   webhooks, invitations, outbox event envelopes and their
+   `outbox_dedupe_reservation` leases (owned by delivery children), idempotency responses,
    `metric_snapshot` rows for the organisation, search vectors and cached identities.
    `audit_log` rows are retained with `organisation_id` set null as the tombstone, because
    deleting an audit trail on request defeats its purpose. Backups retain deleted data for

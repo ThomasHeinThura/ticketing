@@ -23,6 +23,7 @@ async function exportTasks(projectId: string) {
 
   const tasks = await db
     .select({
+      version: taskTable.version,
       id: taskTable.id,
       title: taskTable.title,
       number: taskTable.number,
@@ -81,6 +82,7 @@ async function exportTasks(projectId: string) {
       exportedAt: new Date().toISOString(),
     },
     tasks: tasks.map((task) => ({
+      version: task.version,
       title: task.title,
       description: task.description || "",
       status: task.status,

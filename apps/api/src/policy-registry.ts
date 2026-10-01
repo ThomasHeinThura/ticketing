@@ -47,6 +47,7 @@ import { labelPolicies } from "./label/policy";
 import { notificationPolicies } from "./notification/policy";
 import { notificationPreferencesPolicies } from "./notification-preferences/policy";
 import { oauthPolicies } from "./oauth/policy";
+import { pendingActionPolicies } from "./pending-action/policy";
 import { projectPolicies } from "./project/policy";
 import { searchPolicies } from "./search/policy";
 import { taskPolicies } from "./task/policy";
@@ -280,6 +281,10 @@ export const POLICY_SOURCES = [
   },
   { name: "apps/api/src/search/policy.ts", policies: searchPolicies },
   { name: "apps/api/src/user/policy.ts", policies: userPolicies },
+  {
+    name: "apps/api/src/pending-action/policy.ts",
+    policies: pendingActionPolicies,
+  },
   { name: "apps/api/src/oauth/policy.ts", policies: oauthPolicies },
   { name: "apps/api/src/config/policy.ts", policies: configPolicies },
   { name: "apps/api/src/audit/policy.ts", policies: auditPolicies },
