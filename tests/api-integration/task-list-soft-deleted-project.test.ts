@@ -81,4 +81,36 @@ describe("API integration: task listing/export against a soft-deleted project", 
     const response = await exportTasksRequest(project.id);
     expect(response.status).toBe(404);
   });
+
+  it("WI-7a: includes each exported task's current row version", async () => {
+    const member = await createWorkspaceMember({ role: "owner" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = await db
+      .insert(schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Exported task revision",
+        description: "Export includes the concurrency token",
+        status: "to-do",
+        columnId: columns.todo.id,
+        priority: "medium",
+        number: 1,
+        position: 1,
+      })
+      .returning({ version: schema.taskTable.version });
+    mockAuthenticatedSession(member.user);
+
+    const response = await exportTasksRequest(project.id);
+    expect(response.status).toBe(200);
+    const exported = (await response.json()) as {
+      tasks: Array<{ title: string; version: number }>;
+    };
+    const exportedTask = exported.tasks.find(
+      ({ title }) => title === "Exported task revision",
+    );
+    expect(exportedTask?.version).toBe(task[0]?.version);
+    expect(Number.isInteger(exportedTask?.version)).toBe(true);
+  });
 });

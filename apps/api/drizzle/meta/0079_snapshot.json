@@ -1,5 +1,5 @@
 {
-	"id": "3d112f5b-8e40-4476-b970-23320e7007c4",
+	"id": "b965c525-cb30-4dd4-a75e-221ac9f86f1e",
 	"prevId": "cf3a5d60-ddaf-46ae-82b5-092b9a3422a1",
 	"version": "7",
 	"dialect": "postgresql",
@@ -4172,81 +4172,6 @@
 			},
 			"isRLSEnabled": false
 		},
-		"public.service_calendar": {
-			"name": "service_calendar",
-			"schema": "",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "text",
-					"primaryKey": true,
-					"notNull": true
-				},
-				"workspace_id": {
-					"name": "workspace_id",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"name": {
-					"name": "name",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"timezone": {
-					"name": "timezone",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"windows": {
-					"name": "windows",
-					"type": "jsonb",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"holidays": {
-					"name": "holidays",
-					"type": "jsonb",
-					"primaryKey": false,
-					"notNull": true
-				}
-			},
-			"indexes": {
-				"service_calendar_workspace_id_idx": {
-					"name": "service_calendar_workspace_id_idx",
-					"columns": [
-						{
-							"expression": "workspace_id",
-							"isExpression": false,
-							"asc": true,
-							"nulls": "last"
-						}
-					],
-					"isUnique": false,
-					"concurrently": false,
-					"method": "btree",
-					"with": {}
-				}
-			},
-			"foreignKeys": {
-				"service_calendar_workspace_id_workspace_id_fk": {
-					"name": "service_calendar_workspace_id_workspace_id_fk",
-					"tableFrom": "service_calendar",
-					"tableTo": "workspace",
-					"columnsFrom": ["workspace_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "cascade"
-				}
-			},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
-			"policies": {},
-			"checkConstraints": {},
-			"isRLSEnabled": false
-		},
 		"public.session": {
 			"name": "session",
 			"schema": "",
@@ -5232,6 +5157,13 @@
 					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": false
+				},
+				"version": {
+					"name": "version",
+					"type": "integer",
+					"primaryKey": false,
+					"notNull": true,
+					"default": 1
 				},
 				"created_at": {
 					"name": "created_at",

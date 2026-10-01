@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { isCapability, type PolicyMap } from "@taskdesk/permissions";
-import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
@@ -14,6 +14,7 @@ import {
   workspaceTable,
 } from "../database/schema";
 import { enqueueOutboxEvent } from "../events/outbox";
+import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
@@ -24,6 +25,7 @@ import {
   type PendingActionKind,
   requiredConfirmation,
 } from "./payload";
+import { pendingActionReadSchema } from "./response";
 
 const ACTION_TTL_MS = 15 * 60 * 1000;
 
@@ -212,40 +214,146 @@ export async function createPendingAction(input: CreatePendingActionInput) {
   };
 }
 
-export async function getOwnPendingActions(requesterPersonId: string) {
+export async function getOwnPendingActions(
+  userId: string,
+  options: { cursor?: string; limit: number },
+  apiKey: { id: string; userId: string; enabled: boolean } | undefined,
+  auditContext: { apiKeyId: string | null; traceId: string },
+) {
+  const identity = await resolveIdentity({
+    userId,
+    credential: apiKey ? "api_key" : "session",
+    apiKey: apiKey
+      ? { enabled: apiKey.enabled, ownerUserId: apiKey.userId }
+      : undefined,
+  });
+  if (!identity) {
+    throw new HTTPException(401, { message: "Authentication required" });
+  }
+
+  const conditions = [
+    eq(pendingActionTable.requestedByPersonId, identity.personId),
+    eq(pendingActionTable.state, "pending"),
+  ];
+  if (options.cursor !== undefined) {
+    const cursor = decodePendingActionCursor(options.cursor);
+    const cursorCondition = or(
+      lt(pendingActionTable.createdAt, cursor.createdAt),
+      and(
+        eq(pendingActionTable.createdAt, cursor.createdAt),
+        lt(pendingActionTable.id, cursor.id),
+      ),
+    );
+    if (cursorCondition) conditions.push(cursorCondition);
+  }
+
   const rows = await db
-    .select()
+    .select({
+      pendingAction: pendingActionTable,
+      requestingKeyName: apikeyTable.name,
+    })
+    .from(pendingActionTable)
+    .leftJoin(
+      apikeyTable,
+      and(
+        eq(apikeyTable.id, pendingActionTable.credentialId),
+        eq(apikeyTable.referenceId, userId),
+        eq(pendingActionTable.credentialType, "api_key"),
+      ),
+    )
+    .where(and(...conditions))
+    .orderBy(desc(pendingActionTable.createdAt), desc(pendingActionTable.id))
+    .limit(options.limit + 1);
+
+  const [count] = await db
+    .select({ total: sql<number>`count(*)::int` })
     .from(pendingActionTable)
     .where(
       and(
-        eq(pendingActionTable.requestedByPersonId, requesterPersonId),
+        eq(pendingActionTable.requestedByPersonId, identity.personId),
         eq(pendingActionTable.state, "pending"),
       ),
-    )
-    .orderBy(pendingActionTable.createdAt);
+    );
 
-  for (const row of rows) await auditViewed(row.id, row);
-  return rows.map(toPublicPendingAction);
+  const hasMore = rows.length > options.limit;
+  const pageRows = hasMore ? rows.slice(0, options.limit) : rows;
+  const data = pageRows.map(({ pendingAction, requestingKeyName }) =>
+    toPendingActionRead(pendingAction, requestingKeyName),
+  );
+  for (const { pendingAction } of pageRows) {
+    await auditViewed(
+      pendingAction.id,
+      pendingAction,
+      identity.personId,
+      auditContext,
+    );
+  }
+  const lastRow = pageRows.at(-1)?.pendingAction;
+
+  return {
+    data,
+    page: {
+      nextCursor:
+        hasMore && lastRow
+          ? encodePendingActionCursor(lastRow.createdAt, lastRow.id)
+          : null,
+      hasMore,
+    },
+    meta: { total: count?.total ?? 0 },
+  };
 }
 
 export async function getOwnPendingAction(
-  requesterPersonId: string,
+  userId: string,
   id: string,
+  apiKey: { id: string; userId: string; enabled: boolean } | undefined,
+  auditContext: { apiKeyId: string | null; traceId: string },
 ) {
-  const [row] = await db
-    .select()
+  const identity = await resolveIdentity({
+    userId,
+    credential: apiKey ? "api_key" : "session",
+    apiKey: apiKey
+      ? { enabled: apiKey.enabled, ownerUserId: apiKey.userId }
+      : undefined,
+  });
+  if (!identity) {
+    throw new HTTPException(401, { message: "Authentication required" });
+  }
+
+  const [result] = await db
+    .select({
+      pendingAction: pendingActionTable,
+      requestingKeyName: apikeyTable.name,
+    })
     .from(pendingActionTable)
+    .leftJoin(
+      apikeyTable,
+      and(
+        eq(apikeyTable.id, pendingActionTable.credentialId),
+        eq(apikeyTable.referenceId, userId),
+        eq(pendingActionTable.credentialType, "api_key"),
+      ),
+    )
     .where(
       and(
         eq(pendingActionTable.id, id),
-        eq(pendingActionTable.requestedByPersonId, requesterPersonId),
+        eq(pendingActionTable.requestedByPersonId, identity.personId),
       ),
     )
     .limit(1);
-  if (!row)
+  if (!result)
     throw new HTTPException(404, { message: "Pending action not found" });
-  await auditViewed(row.id, row);
-  return toPublicPendingAction(row);
+  const data = toPendingActionRead(
+    result.pendingAction,
+    result.requestingKeyName,
+  );
+  await auditViewed(
+    result.pendingAction.id,
+    result.pendingAction,
+    identity.personId,
+    auditContext,
+  );
+  return data;
 }
 
 export async function decideOwnPendingAction(input: {
@@ -355,11 +463,14 @@ export async function decideOwnPendingAction(input: {
 async function auditViewed(
   id: string,
   row: typeof pendingActionTable.$inferSelect,
+  actorId: string,
+  auditContext: { apiKeyId: string | null; traceId: string },
 ) {
   await appendAuditLog(db, {
-    actorId: row.requestedByPersonId,
-    actorType: "person",
-    traceId: row.traceId,
+    actorId,
+    actorType: auditContext.apiKeyId === null ? "person" : "api_key",
+    apiKeyId: auditContext.apiKeyId,
+    traceId: auditContext.traceId,
     workspaceId: row.workspaceId,
     projectId: row.projectId,
     organisationId: row.organisationId,
@@ -367,6 +478,80 @@ async function auditViewed(
     entityType: "pending_action",
     entityId: id,
     after: { rendered: true },
+  });
+}
+
+type PendingActionCursor = {
+  createdAt: Date;
+  id: string;
+};
+
+function encodePendingActionCursor(createdAt: Date, id: string): string {
+  return Buffer.from(
+    JSON.stringify({ v: 1, createdAt: createdAt.toISOString(), id }),
+    "utf8",
+  ).toString("base64url");
+}
+
+function decodePendingActionCursor(value: string): PendingActionCursor {
+  if (!/^[A-Za-z0-9_-]{1,256}$/.test(value)) {
+    throw new HTTPException(400, { message: "cursor: malformed" });
+  }
+
+  let candidate: unknown;
+  try {
+    candidate = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+  } catch {
+    throw new HTTPException(400, { message: "cursor: malformed" });
+  }
+
+  if (typeof candidate !== "object" || candidate === null) {
+    throw new HTTPException(400, { message: "cursor: malformed" });
+  }
+  const payload = candidate as Record<string, unknown>;
+  const createdAtValue = payload.createdAt;
+  const id = payload.id;
+  if (
+    Object.keys(payload).length !== 3 ||
+    payload.v !== 1 ||
+    typeof createdAtValue !== "string" ||
+    typeof id !== "string" ||
+    id.length === 0 ||
+    id.length > 64 ||
+    id.includes("\u0000")
+  ) {
+    throw new HTTPException(400, { message: "cursor: malformed" });
+  }
+
+  const createdAt = new Date(createdAtValue);
+  if (
+    Number.isNaN(createdAt.getTime()) ||
+    createdAt.toISOString() !== createdAtValue
+  ) {
+    throw new HTTPException(400, { message: "cursor: malformed" });
+  }
+  return { createdAt, id };
+}
+
+function toPendingActionRead(
+  row: typeof pendingActionTable.$inferSelect,
+  requestingKeyName: string | null,
+) {
+  return pendingActionReadSchema.parse({
+    id: row.id,
+    action: row.action,
+    origin: row.origin,
+    targetType: row.targetType,
+    targetIds: row.targetIds,
+    summary: row.payloadSummary,
+    confirmation: row.confirmationRequired,
+    state: row.state,
+    createdAt: row.createdAt.toISOString(),
+    expiresAt: row.expiresAt.toISOString(),
+    invalidationReason: row.invalidationReason,
+    decidedAt: row.decidedAt?.toISOString() ?? null,
+    executedAt: row.executedAt?.toISOString() ?? null,
+    requestingKeyName,
   });
 }
 

@@ -45,6 +45,7 @@ import notification from "./notification";
 import notificationPreferences from "./notification-preferences";
 import oauth from "./oauth";
 import { createRoute, errorResponse, jsonResponse, z } from "./openapi";
+import pendingAction from "./pending-action";
 // Issue #8: `assertRouteIsClassified` refuses a request whose route has no policy entry at
 // all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
 // comparison, off by default. See the call sites below and each file's own header comment.
@@ -69,7 +70,7 @@ import {
   writeAttachmentUploadedObject,
   writeUploadedObject,
 } from "./storage/filesystem";
-import task from "./task";
+import task, { taskV2 } from "./task";
 import taskRelation from "./task-relation";
 import timeEntry from "./time-entry";
 import user from "./user";
@@ -1013,6 +1014,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
   const capabilitiesApi = api.route("/capabilities", capabilities);
   const projectApi = api.route("/project", project);
   const taskApi = api.route("/task", task);
+  const taskV2Api = api.route("/v2/task", taskV2);
   const columnApi = api.route("/column", column);
   const activityApi = api.route("/activity", activity);
   const cannedResponseApi = api.route("/canned-responses", cannedResponse);
@@ -1027,6 +1029,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     "/notification-preferences",
     notificationPreferences,
   );
+  const pendingActionApi = api.route("/me", pendingAction);
   const searchApi = api.route("/search", search);
   const serviceCalendarApi = api.route("/service-calendars", serviceCalendar);
   const taskRelationApi = api.route("/task-relation", taskRelation);
@@ -1205,10 +1208,12 @@ export function createApp(options: { staticRoot?: string } = {}) {
     labelApi,
     notificationApi,
     notificationPreferencesApi,
+    pendingActionApi,
     projectApi,
     searchApi,
     serviceCalendarApi,
     taskApi,
+    taskV2Api,
     taskRelationApi,
     timeEntryApi,
     userApi,
@@ -1428,10 +1433,12 @@ const {
   labelApi,
   notificationApi,
   notificationPreferencesApi,
+  pendingActionApi,
   projectApi,
   searchApi,
   serviceCalendarApi,
   taskApi,
+  taskV2Api,
   taskRelationApi,
   timeEntryApi,
   userApi,
@@ -1480,6 +1487,7 @@ export type AppType =
   | typeof configApi
   | typeof projectApi
   | typeof taskApi
+  | typeof taskV2Api
   | typeof columnApi
   | typeof activityApi
   | typeof attachmentApi
@@ -1490,6 +1498,7 @@ export type AppType =
   | typeof labelApi
   | typeof notificationApi
   | typeof notificationPreferencesApi
+  | typeof pendingActionApi
   | typeof searchApi
   | typeof serviceCalendarApi
   | typeof taskRelationApi

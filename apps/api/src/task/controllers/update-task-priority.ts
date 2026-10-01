@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { taskTable } from "../../database/schema";
@@ -18,7 +18,7 @@ async function updateTaskPriority({
     const existingTask = await lockTaskAndAssertProjectLive(tx, id);
     const [updatedTask] = await tx
       .update(taskTable)
-      .set({ priority })
+      .set({ priority, version: sql`${taskTable.version} + 1` })
       .where(eq(taskTable.id, id))
       .returning();
     return { existingTask, updatedTask };

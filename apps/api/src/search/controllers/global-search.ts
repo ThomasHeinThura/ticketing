@@ -42,6 +42,7 @@ type SearchResult = {
   createdAt: Date;
   relevanceScore: number;
   taskNumber?: number;
+  version?: number;
   projectSlug?: string;
   priority?: string;
   status?: string;
@@ -186,6 +187,7 @@ async function globalSearch(params: SearchParams): Promise<{
           userName: userTable.name,
           createdAt: taskTable.createdAt,
           taskNumber: taskTable.number,
+          version: taskTable.version,
           priority: taskTable.priority,
           status: taskTable.status,
         })
@@ -227,6 +229,7 @@ async function globalSearch(params: SearchParams): Promise<{
           createdAt: task.createdAt,
           relevanceScore: 10, // Highest relevance for exact short-id match
           taskNumber: task.taskNumber || undefined,
+          version: task.version,
           priority: task.priority || undefined,
           status: task.status,
         });
@@ -256,6 +259,7 @@ async function globalSearch(params: SearchParams): Promise<{
         userName: userTable.name,
         createdAt: taskTable.createdAt,
         taskNumber: taskTable.number,
+        version: taskTable.version,
         priority: taskTable.priority,
         status: taskTable.status,
         relevanceScore: taskRelevanceScore.as("relevanceScore"),
@@ -296,6 +300,7 @@ async function globalSearch(params: SearchParams): Promise<{
         createdAt: task.createdAt,
         relevanceScore: task.relevanceScore,
         taskNumber: task.taskNumber || undefined,
+        version: task.version,
         priority: task.priority || undefined,
         status: task.status,
       });

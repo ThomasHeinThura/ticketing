@@ -119,6 +119,7 @@ const task = {
   dueDate: null,
   position: 1,
   createdAt: "2026-08-05T00:00:00.000Z",
+  version: 1,
   userId: null,
   assigneeId: null,
   assigneeName: null,

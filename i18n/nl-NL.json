@@ -1902,7 +1902,8 @@
 		},
 		"update": {
 			"success": "Taak succesvol bijgewerkt",
-			"error": "Bijwerken taak mislukt"
+			"error": "Bijwerken taak mislukt",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "Link kopiëren",
