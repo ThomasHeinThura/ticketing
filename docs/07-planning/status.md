@@ -14,6 +14,67 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
+`a0ecc965c9de65af5575361eb6c5286bf05a4bdd` (verified 2026-10-01 03:15 UTC).**
+PR #528's bounded pending-action self-read API merged after three recorded independent
+reviews (two Luna ordinary passes and a full Sol security pass), all 17 required checks,
+and image build/isolated boot/readiness verification. Its final candidate was
+`09a1d7c6ad2bdaf14b41e735abd0a5b251c7bb03`; the last commit only records the security
+review of code head `9424583d9219c1a7806184515a1f92d73ef98994`. Both self reads resolve
+the current identity before reading or auditing; banned/deactivated API-key owners receive
+401, and valid callers receive 404 for missing or foreign actions. This does not complete
+approval execution, step-up, expiry, the DELETE retrofit or its UI.
+
+The local Traefik app now runs that reviewed image, digest
+`sha256:27d4f4e274f162063e2d64a02457f3777834655b9e39c45e9a5a8de702cb2ee6`.
+The normal `scripts/deploy.sh local` completed and its readiness probe passed. Both
+`ticketing.localhost` and `portal.localhost` returned HTTP 200 for `/` and
+`/api/public/health/ready`. The supported first-run flow created one local administrator;
+its strong password is kept in a private file outside the repository. In Chrome at
+1800×947, the orchestrator signed in, created the TaskDesk Dev workspace and Dev
+Verification project, created DV-1, changed its status to In Progress, assigned it to the
+administrator, and opened its task panel and list. The activity entries and the preserved
+task were visible after the image deployment and browser reload. Portal browser
+verification is blocked on its separate local-certificate warning, handed to Thomas.
+
+**P0 remains open.** Draft #525 is at
+`cc1660ea94643050f4d43bcd9e3f0b0be3690ad6`. Its latest hosted run passed G13's six
+route measurements and deliberate layout-shift red probe. Nine strict G11 budgets still
+fail: list render 579.4/500 ms, LCP 2692/2500 ms, detail paint 529.0/300 ms, create
+258.4/200 ms, palette open 220.8/200 ms, palette navigation 724.2/200 ms, state change
+309.8/200 ms, assignment 295.5/200 ms, and board render 794.3/500 ms. CLS, sign-in,
+comment and drag-frame p95 pass. Hosted PostgreSQL integration passed 122 files/1549
+tests; web tests passed 79 files/350 tests; G8 passed 138 stories and three screen cases.
+Negative preload and fixed-table experiments were reverted after measured regressions.
+A bounded command-palette launcher split is being tested; it is not accepted evidence.
+G11 is still absent from the required ruleset contexts and must be required before #525
+can merge. No budget or gate is waived.
+
+The #8 audit remains the 2026-10-01 01:56 UTC read-only sample recorded below: 68
+requests across three low-volume days, 21 route keys and 14 router groups, with no
+disagreement or evaluator-error rows. It does not meet the approximately seven-day
+representative soak. P0's full exit-criteria reconciliation and additional Sol finalizer
+also remain required; the performance and soak findings are not a complete stage checklist.
+
+**Parallel work:** P1's concurrency fix is draft PR #529 at
+`5967c5ffe29c87d5df0c57beac9bdfdb331bee48`, synchronized with this main. It adds a
+task version and rejects stale full PUTs under the task-row lock while narrow, bulk and
+move writers atomically advance that version. Focused real-PostgreSQL testing passed
+three files/72 tests, web-client testing one file/one test, and MCP testing two files/15
+tests. Independent review, the Sol security pass, image/browser evidence and full gates
+remain pending; the current hosted OpenAPI drift failure is being investigated. P1 #512
+remains draft at `f90ad9e768b413299536f1e3501b4f05876fd8ab`, with CA-15 linkage and
+its detail-journey acceptance evidence incomplete.
+
+P2 #513 remains draft at `225f97a359ab863350d2771062681a8ab8158426`; its prior focused
+15/15 PostgreSQL tests and Luna/Sol verdicts bind that recorded head. It needs current-main
+integration; AU-14 notification/metric behaviour, CAL-8 usage dependencies and the #428
+DELETE retrofit remain open. P1/P2 migration acceptance must be serialized before the
+P3 identity schema lane starts. Portal work still depends on intake/catalogue/approval
+foundations. Check live GitHub heads, reviews and checks before acting.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
 `bf1d67264cd590a1f439e0c22037794218ea68e7` (verified 2026-10-01 01:56 UTC).**
 PR #520's DOMPurify 3.4.16 update merged after the exact candidate passed all 17 required
 checks, independent Luna and Sol review, image build/boot/health, and an isolated HTTP
@@ -2162,8 +2223,9 @@ are required before cutover. Do not treat further code review as a substitute fo
 G8 is merged through #507 and required by `protect-main` ruleset 22365005; its scope is
 every exported Storybook story and every in-progress or complete route-kind inventory row.
 Future routes activate with implementation. G11 remains disabled on main; draft #525's
-hosted budgets and G13 measurement are red/incomplete. Obtain current-head reviews and
-green CI, then require the G11 status context. G4 is enabled by #501. The #10 checklist
+hosted budgets remain red; its latest G13 measurements and deliberate red probe pass.
+Obtain current-head reviews and green CI, then require the G11 status context before
+merging #525. G4 is enabled by #501. The #10 checklist
 still needs reconciliation with the implemented gates.
 
 ### P1 #447 — saved-view candidate needs a current base and gates
@@ -2184,9 +2246,11 @@ full-task write race is separately open as #526. Check live GitHub state before 
 ### P2 #33 / P3 #39 shared-schema ordering
 
 The #33 calendar candidate is draft PR #513 and remains partial. CAL-8 usage, AU-14 alerting
-and the pending-action DELETE retrofit remain open. P3 #39's six-table
-persistence work shares Drizzle schema, relation and migration-journal files, so that work
-starts after the #33 lane releases them. #39's eventual completion still requires its 25-test
+and the pending-action DELETE retrofit remain open. P1 #529 and P2 #513 both currently
+use migration 0079; acceptance must be serialized and the later candidate regenerated
+against the first one's merged schema. P3 #39's six-table persistence work shares Drizzle
+schema, relation and migration-journal files, so that work starts after those lanes release
+them. #39's eventual completion still requires its 25-test
 real-Entra gate. P3 #38 remains dependent on request/catalogue/intake/approval foundations.
 
 ### Design-review ownership — P2 #36
