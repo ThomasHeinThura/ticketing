@@ -193,13 +193,11 @@ Per job: schedule · enabled · last run · manual trigger
 
 ### Observability
 
-Sentry DSN · OTLP endpoint and headers · trace sample rate · metrics bearer token ·
-log level per module
-
-The metrics bearer token is a planned God Mode → Observability setting, never an
-environment variable. The current API image does not read the setting or serve `/metrics`;
-see [observability.md](../01-architecture/observability.md) for the target contract and
-[runbook.md](runbook.md) for the currently usable diagnostics.
+The planned administrator API stores per-module log levels and a hash-only metrics bearer
+token in `instance_setting`; it adds no application environment variable. The current API
+image does not read these settings or serve `/metrics`. See
+[observability.md](../01-architecture/observability.md) for the target contract and
+[runbook.md](runbook.md) for currently usable diagnostics.
 
 ### AI (optional, off by default)
 

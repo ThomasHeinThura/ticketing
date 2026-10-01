@@ -230,7 +230,7 @@ The server is.
 | CSRF | **No state-changing GET, ever** (a lint rule). The CSRF controls apply **only to cookie-authenticated requests**, because the cookie is the only ambient-authority credential: an unsafe method presented with a session cookie requires `Origin` (or `Referer`) to equal the request host's own origin **and** a matching double-submit token; either failing is a 403. `SameSite` alone is not the control — the agent and portal are sibling subdomains. Requests authenticated by a **bearer token, a personal or service API key, or a SCIM token** are exempt from both checks: they are not sent automatically by a browser, so there is nothing for a cross-site page to forge, and non-browser clients (curl, CI, Microsoft Entra's SCIM client, the MCP server) send no `Origin` at all. This is the single statement of the rule; [api-design.md](api-design.md) cites it |
 | Session rotation | The session id is regenerated on authentication, on impersonation start/end, and on MFA enrolment (fixation) |
 | Defaults | Idle 12 h, absolute 30 days, concurrent 5 — configurable in God Mode within maxima of 7 days idle / 90 days absolute |
-| Step-up for elevated actions | Re-authentication means the **second factor** when the account has one — never "password *or* MFA". SSO-only accounts re-authenticate at the IdP with `prompt=login`. The re-auth is minted by `POST /api/me/step-up` (session-only) and returns a **single-use confirmation token bound to the pending action's id**, valid five minutes; the pending action must already exist, so the token can never be broader than one approval, and a token that expires while the approver reads the summary is re-minted from the same endpoint for as long as the action is `pending`. A session-wide window is not enough. Statuses and re-minting: [pending-actions.md](pending-actions.md) `PA-15` |
+| Step-up for elevated actions | Re-authentication means the **second factor** when the account has one — never "password *or* MFA". The initial supported account class is a current local-password session with no enrolled or required second factor, after rechecking the current identity and verifying that password. SSO-only accounts require a fresh IdP `prompt=login` callback bound to the same challenge/session/subject. `POST /api/me/step-up/challenges` and `POST /api/me/step-up` mint a single-use confirmation only after actual proof verification. It binds either to one existing pending-action id/payload hash or to the first explicitly registered operation (`metrics_token_rotate`) with its exact route, version and server-computed body hash; no session-wide window exists. The token is valid five minutes after issuance, hash-only at rest, and consumed atomically with its protected action. Existing pending-action tokens remain re-mintable while the action is pending. Missing required verification support fails closed with `403 step_up_unavailable`. Current source enables neither better-auth `twoFactor` nor a verified fresh-SSO step-up callback, so affected methods cannot be claimed usable until their adapters are implemented and tested. Details: [pending-actions.md](pending-actions.md) `PA-15` |
 | Elevated list | The single list in [RBAC](rbac.md) |
 
 ## Impersonation
@@ -385,10 +385,13 @@ incident.** Three things are specified and none of them is left to the implement
 workspace administrator sees rows with their `workspace_id` **and** whose entity is in
 their reach — a manager with two projects does not read a third project's `before`/`after`
 payloads through the workspace audit screen; instance-wide reads need `instance:read_audit`.
-An **audit write failure alerts** (a metric and a notification to every instance
-administrator), because the deliberate trade in `AU-14` — the mutation still succeeds — is
-only acceptable if someone finds out. Rows contain PII deliberately; the erasure position
-is in [data-protection.md](../05-operations/data-protection.md).
+An **audit write failure alerts** through
+`taskdesk_audit_write_failures_total{operation}` and a safe error-level log line, because
+the deliberate trade in `AU-14` — the mutation still succeeds — is only acceptable if
+someone finds out. The metric is an operational signal, not the required durable notification
+to every current instance administrator; that notification path remains unimplemented, so
+AU-14 is unfinished. Rows contain PII deliberately; the erasure position is in
+[data-protection.md](../05-operations/data-protection.md).
 
 ## Public and operational endpoints
 
@@ -398,12 +401,14 @@ is in [data-protection.md](../05-operations/data-protection.md).
   is planned at `GET /api/instance/health/deep`, policy kind 1 with `instance:admin`; the
   current API does not serve it. If implemented, it must not live behind a per-route
   exception under a router whose blanket kind is `public` because it enumerates dependencies.
-- `/metrics` is a planned bearer-guarded surface with a constant-time comparison and, where
-  the operator can, a separate listener not exposed by Traefik. Its labels are cross-tenant
-  inventory and must be treated as sensitive. The current API image does not serve `/metrics`
-  or read a metrics bearer token. When implemented, the token will be policy kind 5
-  (`delegated: 'metrics'`) and will grant **`/metrics` and nothing else** — never an
-  alternative credential for `/api/instance/health/deep` or any other route.
+- `/metrics` is a planned bearer-guarded surface with a constant-time comparison on a
+  separate Node listener at fixed internal port 9464, not published to the host or exposed
+  through Traefik. The listener accepts only exact `GET /metrics` without a query; `HEAD`,
+  `OPTIONS` and other methods on that path return 405, while other paths return 404. The
+  current API image does not serve `/metrics` or read a metrics bearer token. When
+  implemented, the hash-only credential will be reread from PostgreSQL on every scrape and
+  authorize policy kind 5 (`delegated: 'metrics'`) for **`/metrics` and nothing else** —
+  never an alternative credential for `/api/instance/health/deep` or any other route.
 - An **anonymous rate-limit class**, keyed by IP and — for anything that sends mail — by
   target email, covers `/api/public/*`, the non-login `/auth/*` endpoints (magic link, OTP,
   reset) and the WebSocket upgrade. Those endpoints respond identically and in constant time

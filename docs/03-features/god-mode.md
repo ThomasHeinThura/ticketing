@@ -229,8 +229,11 @@ as plugins; they have no separate section.
 
 ### Observability
 
-Sentry DSN, OTLP endpoint and headers, trace sample rate, the `/metrics` bearer token, log
-level per module. Runtime settings, not environment variables
+The P0 administrator API configures log levels and rotates the `/metrics` bearer token;
+these are database-backed runtime settings, never environment variables. Token rotation is
+an elevated, session-only operation and requires a one-use operation-bound step-up token.
+Sentry DSN, OTLP endpoint and headers, trace sample rate, and the full God Mode screen remain
+deferred; this API contract does not claim the P4 screen is implemented
 ([observability.md](../01-architecture/observability.md)).
 
 ### MCP usage

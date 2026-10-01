@@ -170,10 +170,16 @@ Borrowed from OpenProject's journal design.
   number of `audit.read` rows, which is an acceptable cost for "reading the log is itself
   a reviewable action."
 - `AU-14` **If the audit write fails, the mutation still succeeds** — losing a mutation
-  because auditing failed is worse than a gap — but the failure is never silent: an
-  error-level log line, an `audit_write_failures_total` metric that alerts, and a
-  notification to every instance administrator, because the trade is acceptable only if
-  someone finds out ([security-model.md](../01-architecture/security-model.md#audit)).
+  because auditing failed is worse than a gap — but the failure is never silent: a safe
+  error-level log line and `taskdesk_audit_write_failures_total{operation}` alert, plus a
+  durable notification to every current instance administrator. The counter's closed
+  initial `operation` values are `mutation`, `pending_action_decision`, and
+  `pending_action_self_read`; its increment and log line happen outside a rolled-back audit
+  savepoint. The alert is an operational reporting seam, not the required administrator
+  notification. That notification remains unimplemented and AU-14 remains unfinished until
+  the durable notification path exists and is exercised
+  ([security-model.md](../01-architecture/security-model.md#audit),
+  [observability.md](../01-architecture/observability.md)).
 - `AU-15` Rows are **hash-chained**: `row_hash` is SHA-256 over the **canonical form defined
   once in data-model.md §11** — the ordered column list (`prev_hash` **included**, as its
   first field, per §11's own "Hash input" list — corrected 2026-09-16: an earlier version
@@ -214,12 +220,14 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | --- | --- |
 | `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
 | `auth.mfa_enrolled` · `auth.mfa_reset` | Second factor enrolled; reset by an administrator (with the verification note) |
+| `auth.step_up_issued` · `auth.step_up_consumed` · `auth.step_up_denied` | A single-use step-up confirmation is issued, consumed, or denied; record binding kind and fixed operation key/route where applicable, never proof, nonce, token, hash or request body |
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
 | `project.reach_changed` | `owner_team_id` or `parent_id` changed ([rbac.md](../01-architecture/rbac.md#reach)) |
 | `invitation.sent` · `invitation.redeemed` · `invitation.revoked` | Invitations |
 | `plugin.changed` · `plugin.tested` · `secrets.rekeyed` | Plugin configuration (keys only, never values), a `test()` call even when unsaved, key rotation |
 | `feature_flag.changed` | Any level |
+| `instance.observability_changed` | Log-level keys or the metrics-token setting changed; record changed key names only, never values, token, hash, or arbitrary before/after documents |
 | `permission.denied` | A 403 or an out-of-reach 404 on a scoped route |
 | `work_item.exported` · `report.exported` · `attachment.downloaded` · `config.exported` · `instance.exported` | Data leaving through a person's hands |
 | `bulk.performed` | One summary row per bulk operation (plus one per item) |
@@ -270,7 +278,7 @@ GET  /api/work-items/{key}/reconstruct?at=…    work_item:read
 | Case | Behaviour |
 | --- | --- |
 | Very large before/after payload | Truncated at 64 KB with a marker; the full diff remains in `activity` for work items |
-| Audit write fails | The mutation still succeeds (`AU-14`); error-level log line, alerting metric, and a notification to every instance administrator. Losing a mutation because auditing failed is worse than a gap — a deliberate, monitored trade |
+| Audit write fails | The mutation still succeeds (`AU-14`); safe error-level log and `taskdesk_audit_write_failures_total{operation}` alert. Durable notification to every current instance administrator remains required but unimplemented; AU-14 is unfinished until it is delivered |
 | Clock skew across replicas | Timestamps come from the database, never from the application |
 | Actor deleted | Rows retain the id and a tombstoned display name |
 | Retention shortened | Applies from the next purge. The change is audited |
