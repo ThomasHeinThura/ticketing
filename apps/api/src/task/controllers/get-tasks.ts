@@ -139,6 +139,7 @@ async function getTasks(projectId: string, options: GetTasksOptions = {}) {
     dueDate: taskTable.dueDate,
     position: taskTable.position,
     createdAt: taskTable.createdAt,
+    version: taskTable.version,
     userId: taskTable.userId,
     assigneeName: userTable.name,
     assigneeId: userTable.id,

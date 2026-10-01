@@ -1907,7 +1907,8 @@
 		},
 		"update": {
 			"success": "Tugas berhasil diperbarui",
-			"error": "Gagal memperbarui tugas"
+			"error": "Gagal memperbarui tugas",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "Salin tautan",

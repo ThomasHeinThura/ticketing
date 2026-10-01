@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { taskActivityTable, taskTable } from "../../database/schema";
@@ -21,7 +21,7 @@ async function updateTaskTitle({
     }
     const [task] = await tx
       .update(taskTable)
-      .set({ title })
+      .set({ title, version: sql`${taskTable.version} + 1` })
       .where(eq(taskTable.id, id))
       .returning();
 

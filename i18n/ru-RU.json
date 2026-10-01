@@ -1945,7 +1945,8 @@
 		},
 		"update": {
 			"success": "Задача успешно обновлена",
-			"error": "Не удалось обновить задачу"
+			"error": "Не удалось обновить задачу",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "Скопировать ссылку",

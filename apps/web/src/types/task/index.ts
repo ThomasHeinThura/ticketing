@@ -25,6 +25,7 @@ type Task = {
   dueDate: string | null;
   position: number | null;
   createdAt: string;
+  version: number;
   updatedAt?: string;
   userId: string | null;
   assigneeId: string | null;
