@@ -16,9 +16,11 @@ export type PendingActionExpireOutcome = {
 };
 
 /**
- * PA-8: expire only due pending actions. The database clock is sampled after each
- * candidate row has been locked so timestamptz values are compared without session
- * timezone coercion and a lock wait cannot make the decision use stale time.
+ * Current PA-8 slice: expire due workspace-scoped actions from the supported
+ * work-item-delete request flow. The database clock is sampled after each row is
+ * locked so timestamptz comparisons stay timezone-safe and lock waits cannot make
+ * the decision use stale time. Organisation/instance actions need an event-scope
+ * contract before this worker can process their nullable workspace scope.
  */
 export async function expirePendingActions(): Promise<PendingActionExpireOutcome> {
   return withJobLease(
@@ -26,7 +28,23 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
     async () => {
       let expired = 0;
       let scanned = 0;
-      let degraded = false;
+      const unsupported = await db.execute<{ exists: boolean }>(sql`
+        SELECT EXISTS (
+          SELECT 1
+          FROM pending_action
+          WHERE state = 'pending'
+            AND workspace_id IS NULL
+            AND expires_at <= clock_timestamp()
+        ) AS exists
+      `);
+      let degraded = unsupported.rows[0]?.exists === true;
+      let unsupportedLogged = false;
+      if (degraded) {
+        console.error(
+          "pending-action-expire: due pending actions lack workspace scope; skipped",
+        );
+        unsupportedLogged = true;
+      }
       let cursor: { expiresAt: string; id: string } | undefined;
 
       while (scanned < MAX_ROWS_PER_RUN) {
@@ -41,6 +59,7 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
             SELECT id, expires_at
             FROM pending_action
             WHERE state = 'pending'
+              AND workspace_id IS NOT NULL
               AND expires_at <= clock_timestamp()
               ${afterCursor}
             ORDER BY expires_at, id
@@ -70,12 +89,12 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
 
             if (!row) continue;
             if (!row.workspace_id) {
-              console.error(
-                "pending-action-expire: row has no workspace scope",
-                {
-                  pendingActionId: row.id,
-                },
-              );
+              if (!unsupportedLogged) {
+                console.error(
+                  "pending-action-expire: due pending actions lack workspace scope; skipped",
+                );
+                unsupportedLogged = true;
+              }
               batchDegraded = true;
               continue;
             }
