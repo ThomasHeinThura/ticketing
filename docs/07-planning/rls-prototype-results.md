@@ -16,10 +16,12 @@ attachment reads agree while preserving the stored organisation mismatch. In thi
 warmed local run, the RLS-on median increased by 0.213 ms (19.1%) for the work-item list,
 0.449 ms (85.4%) for comments, and 0.564 ms (110.6%) for attachments. Those values quantify
 this fixture only; they do not establish whether the cost is material for production
-workloads. It does **not** justify a production policy rollout by itself:
-the GUC is writable by the
-database role, tenant scope must be derived by trusted application code, a real PgBouncer
-path was not exercised, and the fixture exposed an attachment attribution mismatch.
+workloads. It does **not** justify a production policy rollout by itself: the GUC is
+writable by the database role, tenant scope must be derived by trusted application code,
+the application has no GUC-setting wrapper and is not routed through PgBouncer by this
+prototype, and the fixture exposed an attachment attribution mismatch. This candidate adds
+a repeatable test of prototype scope through real PgBouncer transaction pooling; it does not
+establish application-wrapper or production compatibility.
 Project/actor reach is intentionally broader than the tenant policy. Keep the application
 permission and reach checks primary as the architecture requires.
 
@@ -40,8 +42,10 @@ The prototype's dedicated TypeScript project is also included in the API package
 `typecheck` script, so the monorepo `pnpm typecheck` gate checks it without a separate CI
 task or coverage-guard change.
 
-The suite starts a new `postgres:18-alpine` Testcontainer and applies all real Drizzle
-migrations from this base. It never reads `.env`, `TASKDESK_DATABASE_URL`, or the migration
+The suite starts a fresh `postgres:18-alpine` Testcontainer and pinned PgBouncer container
+on a UUID-named private Docker network, maps only random ports on `127.0.0.1`, and applies
+all real Drizzle migrations from this base. Each run uses a unique database name and
+generated credentials. It never reads `.env`, `TASKDESK_DATABASE_URL`, or the migration
 database URL, and it cannot connect to local development, UAT, or production. It seeds
 three organisations (using the migration-seeded internal organisation plus two customer
 fixtures), creates customer workspaces directly because no application writer creates
@@ -57,14 +61,17 @@ and RLS-on probe requests in each sample pair, with eight warmups and 40 measure
 per query. Each sample includes pool checkout, transaction begin/commit, and the read.
 EXPLAIN runs separately and does not contribute to sample timing.
 
-This exercises `pg.Pool` reuse with a single physical backend, not an actual PgBouncer
-process or production connection wrapper. It verifies transaction-local scope is removed
-after commit and rollback, empty/unset scopes fail closed, and subsequent customer scope
-does not leak across reuse. It also shows the GUC is caller-controlled: the SELECT role can
-set it to customer B and read B's 300 rows. Therefore this GUC is not an identity
-credential. It is useful only when the trusted application wrapper derives and binds the
-organisation set for the request; it does not protect against arbitrary SQL execution by
-that role.
+The original `c891e9b` direct-pool measurements exercised `pg.Pool` reuse with one physical
+backend; they did not exercise PgBouncer. The candidate retains those direct PostgreSQL
+pools for direct-vs-direct policy timing and routes separate probe connections through a
+real PgBouncer transaction pool. The automated test verifies transaction-local scope is
+removed after commit and rollback, empty/unset scopes fail closed, customer A/B do not
+bleed across reuse, and two separate logical clients queue on and reuse the same single
+backend. The GUC remains caller-controlled: the SELECT role can set it to customer B and
+read B's 300 rows. Therefore this GUC is not an identity credential. It is useful only when
+the trusted application wrapper derives and binds the organisation set for the request; it
+does not protect against arbitrary SQL execution by that role. The application wrapper
+itself is not implemented or tested through PgBouncer.
 
 ## Tenant boundary results
 
@@ -178,7 +185,12 @@ stability and production costs.
 
 ## Test evidence
 
-* `pnpm --filter @taskdesk/api exec vitest run --silent=false --reporter=verbose --config vitest.rls-prototype.config.ts` — **1 test passed**, including route/controller comparison on the refreshed candidate; log: `/private/tmp/pr531-actual-read-path-test.log`.
+The following records the earlier application-read-path candidate and repository gates; it
+is historical context, not a claim that those full gates were rerun for the PgBouncer-only
+extension. Its latest dedicated test/typecheck and scoped lint evidence is in the section
+below.
+
+* `pnpm --filter @taskdesk/api exec vitest run --silent=false --reporter=verbose --config vitest.rls-prototype.config.ts` — **1 test passed** on the earlier candidate, including route/controller comparison; log: `/private/tmp/pr531-actual-read-path-test.log`.
 * `pnpm --filter @taskdesk/api exec tsc --noEmit -p tsconfig.rls-prototype.json` — **passed** after building the workspace `@taskdesk/email` type declarations required by the API test project. This project is now invoked by the normal API `typecheck` script; re-run that gate on this candidate before treating typecheck as green.
 * `pnpm lint:ci` — **passed on the current worktree**, checked 1,621 files, with 124 warnings.
 * `pnpm --filter @taskdesk/api typecheck` — **passed** with the dedicated prototype TypeScript config included by the package script.
@@ -190,6 +202,68 @@ stability and production costs.
   This does not clear the separate existing environment ratchet findings: the repository
   audit still records 49 active unapproved names and two unattributable files (issue #10).
 * `pnpm exec biome check --write tests/rls-prototype/rls-prototype.test.ts` — completed on this candidate, applying formatting/import order only. The remaining isolated `RLS_PROTOTYPE_DATABASE_URL` undeclared-Turbo-environment warnings are non-blocking; the suite is run directly with Vitest, not through a cached Turbo task.
+
+## Automated PgBouncer transaction-pool repeatability
+
+The bounded extension is test-only. Code and setup are in source commit
+`283678e1cd1642065fcb82321f45402b06a2373a` (based directly on
+`1118552f7bbee00ba2e694a021db969dda2769da`). It routes the prototype `probePool` and two
+independent logical-client pools through an actual PgBouncer process; the existing baseline,
+application route, and RLS timing comparison pools remain direct PostgreSQL connections.
+The suite still uses only the existing Testcontainers dependencies (`testcontainers` and
+`@testcontainers/postgresql` 12.1.0); it adds no package or runtime dependency.
+
+The latest repeatability run on 2026-10-01 used Node 26.8.2, pnpm 10.32.1, Docker Engine
+29.4.0, and Vitest 4.1.11. PostgreSQL reported `18.6`; the `postgres:18-alpine` tag resolved
+locally to `postgres@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873`.
+PgBouncer reported `1.25.2`, from
+`pgbouncer/pgbouncer@sha256:c0c55b277858ca308eb5df7baf8b83fbaea60b2c666604f29d8fe25e9decac68`.
+The test read back `pool_mode=transaction` and `default_pool_size=1` from its admin
+interface. The isolated run database was `taskdesk_rls_1afed7645a2a4c92`; generated
+credentials are intentionally not written to the log or this report.
+
+The single new test passed. It verified the server connection as the expected database and
+the probe role flags (`rolsuper=false`, `rolbypassrls=false`, not owner of `work_item`).
+Across all three tables it compared the complete sorted visible ID sets against the
+handwritten valid-tenant predicate:
+
+| Scope/table | Rows | SHA-256 of ordered IDs |
+| --- | ---: | --- |
+| Customer A `work_item` | 600 | `6671983679966e1c967616e6ffbe8dd2286692fa5617d3fd09519ded83c27c11` |
+| Customer A `comment` | 600 | `3f3fda34094bcff593ee015eb9ab925b11e8c737aa488e618ef0886e1e2ca732` |
+| Customer A `attachment` | 602 | `5dca6ca30a94a21cf8121a414b413481e6baf6312de51a9bff6b9ef024bc4dc1` |
+| Customer B `work_item` | 300 | `8805631360ad831a490bd5057ba93dacc5e9752d542336a07dc6961e9441b1a4` |
+| Customer B `comment` | 300 | `61bd348511e3723a65e5177dae2109edcedc1ec83ccb713994bfbd00efbb000f` |
+| Customer B `attachment` | 300 | `4d6a1c29773f71c8e17b6a0b1fe5a37e22c5db09db0588789cab518eef7db928` |
+
+The probe found zero visible rows for unset scope after commit, unset scope after rollback,
+and empty scope for each of the three tables. Distinct A and B logical clients both reached
+backend PID 771 in the final run. While client A held a scoped transaction, PgBouncer
+reported `cl_active=2`, `cl_waiting=1`, `sv_active=1`, and `pool_mode=transaction`; after
+release, client B observed scope `UNSET` before setting B and returned only B rows. The
+database reported exactly one `taskdesk_rls_probe` server backend after the probe. The same
+scope set was read and checked on every sequential client transaction after backend reuse.
+
+The first automated attempt stopped at the probe's `SHOW CONFIG` decoder because this
+PgBouncer release names the setting column `key` rather than `name`; correcting the decoder
+made the run pass. The final dedicated Vitest command passed **1 file / 2 tests**. The
+dedicated TypeScript check (`pnpm --filter @taskdesk/api exec tsc --noEmit -p
+tsconfig.rls-prototype.json`) passed. Scoped `biome check` passed with 11
+`noUndeclaredEnvVars` warnings for ephemeral suite-only variables; these variables are
+created and removed by Vitest global setup, and this command does not run via Turbo. Docker
+inspection after completion found no containers or networks labelled for this probe.
+
+This validates the small prototype's transaction-local `set_config(..., true)` behavior
+through the stated PgBouncer version and topology. PostgreSQL documents the `is_local=true`
+setting as transaction-local ([`set_config`](https://www.postgresql.org/docs/18/functions-admin.html));
+PgBouncer documents transaction mode as releasing a server connection at transaction end and
+lists session `SET`/`RESET` as incompatible with transaction pooling
+([pooling modes](https://www.pgbouncer.org/config.html#pool_mode),
+[`features`](https://www.pgbouncer.org/features.html)). This test uses `set_config` inside
+explicit transactions, but it does not exercise the application's request authority,
+connection wrapper, driver preparation behavior, failover, multiple PgBouncer instances,
+or deployed configuration. Its timings are deliberately not compared with the historical
+direct-connection measurements, and it adds no performance claim.
 
 This document is evidence for the RLS P0 prototype decision, not a claim that P0 or the
 RLS work is complete. Any adoption, runtime wrapper, policy/migration, or status/decision
