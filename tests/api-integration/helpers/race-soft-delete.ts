@@ -6,6 +6,43 @@ type FreezeTarget = {
   freeze: "delete" | "archive";
 };
 
+export async function observesLockBlocker(
+  client: Client,
+  lockOwnerPid: number,
+) {
+  // pg_stat_activity's current-query data is cached after its first read in a
+  // transaction. This observer intentionally polls inside the transaction
+  // holding the row lock, so refresh the snapshot before every poll.
+  await client.query("SELECT pg_stat_clear_snapshot()");
+  const result = await client.query<{ waiting: boolean }>(
+    `
+      SELECT EXISTS (
+        SELECT 1
+        FROM pg_stat_activity
+        WHERE datname = current_database()
+          AND pid <> pg_backend_pid()
+          AND wait_event_type = 'Lock'
+          AND $1 = ANY(pg_blocking_pids(pid))
+      ) AS waiting
+    `,
+    [lockOwnerPid],
+  );
+  return result.rows[0]?.waiting === true;
+}
+
+export async function waitForLockBlocker(
+  client: Client,
+  lockOwnerPid: number,
+  shouldStop: () => boolean = () => false,
+) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline && !shouldStop()) {
+    if (await observesLockBlocker(client, lockOwnerPid)) return true;
+    if (!shouldStop()) await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return false;
+}
+
 async function raceProjectOrItemFreeze<T>(
   target: FreezeTarget,
   operation: () => Promise<T>,
@@ -55,31 +92,11 @@ async function raceProjectOrItemFreeze<T>(
         },
       );
 
-    let blockedOnRowLock = false;
-    const deadline = Date.now() + 5_000;
-    while (
-      Date.now() < deadline &&
-      !blockedOnRowLock &&
-      operationResult === undefined
-    ) {
-      const result = await client.query<{ waiting: boolean }>(
-        `
-          SELECT EXISTS (
-            SELECT 1
-            FROM pg_stat_activity
-            WHERE datname = current_database()
-              AND pid <> pg_backend_pid()
-              AND wait_event_type = 'Lock'
-              AND $1 = ANY(pg_blocking_pids(pid))
-          ) AS waiting
-        `,
-        [lockOwnerPid],
-      );
-      blockedOnRowLock = result.rows[0]?.waiting === true;
-      if (!blockedOnRowLock && operationResult === undefined) {
-        await new Promise((resolve) => setTimeout(resolve, 25));
-      }
-    }
+    const blockedOnRowLock = await waitForLockBlocker(
+      client,
+      lockOwnerPid,
+      () => operationResult !== undefined,
+    );
 
     await client.query("COMMIT");
     transactionOpen = false;

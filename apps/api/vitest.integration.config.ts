@@ -4,7 +4,10 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["../../tests/api-integration/**/*.test.ts"],
+    include: [
+      "../../tests/api-integration/**/*.test.ts",
+      "scripts/seed-postgres.test.ts",
+    ],
     // Runs once, in the main process, before setupFiles/workers -- see that
     // file for why this is the right place to start a CI-only Testcontainers
     // Postgres (#10).
