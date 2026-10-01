@@ -178,8 +178,12 @@ child id. If any key is owned by another live reservation, release reservations 
 for this call and the group lease, defer until that lease expires, and do not increment
 attempts. Keep and renew the group lease and every member reservation through the provider
 call; use a 30-second absolute deadline, renew every 15 seconds, and expire leases 60 seconds
-after each post-lock PostgreSQL wall-clock sample. Store the canonical payload hash for the
-attempt before calling the adapter. Providers that support idempotency receive
+after each post-lock PostgreSQL wall-clock sample. In one fenced pre-provider transaction,
+revalidate the current unexpired group and reservation tokens, persist the canonical payload
+hash, and increment the group's existing `attempts` exactly once after membership,
+eligibility, dedupe and all reservations are accepted. Commit that transaction before calling
+the adapter; provider I/O never runs inside a database transaction. Providers that support
+idempotency receive
 `(digest id, payload_hash)`. A retry with the same content reuses that identity. If reach or
 eligible content changes, rebuild the safe summary and hash; an ambiguous earlier aggregate
 may therefore be sent again, which is part of the at-least-once boundary.
@@ -187,13 +191,16 @@ may therefore be sent again, which is part of the at-least-once boundary.
 Success is one transaction conditional on the current, unexpired group token and every held
 reservation token. It marks only included children delivered with one completion clock
 sample, marks members failing current checks suppressed, marks the group delivered, and
-releases reservations. A definite failure increments the group attempt count, leaves included
-children pending, and releases reservations and the group lease. A deadline or crash is
-ambiguous: count a group attempt, stop renewal, keep reservations until expiry, and retry the
-same group no earlier than both group and member lease expiry. The group's attempt count is
-authoritative; child attempts remain zero because children are not sent independently. After
-six group attempts, mark the group and remaining pending children dead in one transaction.
-A stale group or reservation token cannot commit success after takeover.
+releases reservations. Definite failure leaves included children pending and releases
+reservations and the group lease; it does not increment attempts again. A deadline or process
+crash is ambiguous: stop renewal, keep reservations until expiry, and retry the same group no
+earlier than both group and member lease expiry. The durable pre-provider increment already
+accounts for that authorized attempt, including a crash before provider I/O or after provider
+acceptance but before completion commits. Child attempts remain zero because children are not
+sent independently. Six durable group attempt authorizations are the cap; recovery after an
+expired sixth attempt marks the group and its remaining pending children dead under the safe
+recovery fence and cannot authorize a seventh call. A stale group or reservation token cannot
+authorize provider I/O or commit success after takeover.
 
 ## Delivery
 
@@ -207,9 +214,15 @@ A stale group or reservation token cannot commit success after takeover.
   apply customer-side visibility plus current resource reach before creating any inbox or
   delivery row. A persistence failure rolls back the business change.
 - `NO-9` `outbox-drain` processes event consumers and external notification children with
-  retry and exponential backoff. A notification child dead-letters after six attempts and is
-  visible in God Mode; a digest uses its group's six-attempt limit. One child's state never
-  stands in for another's.
+  retry and exponential backoff. Immediately before provider I/O, after eligibility,
+  membership, dedupe and reservation checks succeed, one fenced transaction durably
+  increments the existing attempt counter for exactly one authorized provider attempt. The
+  transaction commits before I/O; provider calls never run inside it. A notification child
+  dead-letters after six durable attempt authorizations and is visible in God Mode; a digest
+  uses its group's six-attempt limit. One child's state never stands in for another's. A
+  contention defer, quiet-hours defer, suppression, or failed reservation claim consumes no
+  attempt; lease renewal and post-outcome handling never increment or refund one. Backoff is
+  selected using the already-incremented durable attempt number.
 - `NO-10` Provider delivery failure never fails the originating request. Failure to persist
   the event, inbox, child or digest membership in the mutation transaction does roll back
   the business mutation, so the system cannot silently lose the notification candidate.
@@ -256,19 +269,37 @@ A stale group or reservation token cannot commit success after takeover.
   The adapter has a 30-second absolute deadline including connection setup and response wait;
   retries do not reset it. Request cancellation and stop awaiting at the deadline even if
   the adapter ignores cancellation. Renew the reservation every 15 seconds to 60 seconds
-  from the renewal's post-lock database wall-clock sample. Success means the worker atomically
-  marks this child delivered, sets `delivered_at` from the completion sample, and releases
-  its reservation while the same delivery id/token still own an unexpired lease. A definite
-  failure increments only this child, schedules the standard backoff and releases its lease.
-  Deadline/crash/unknown response is ambiguous: count the attempt, keep the reservation until
-  expiry, stop renewal, and do not retry before expiry. After six attempts mark this child
-  dead. A stale token cannot complete or release a new owner's lease.
+  from the renewal's post-lock database wall-clock sample. Before calling the adapter, one
+  fenced pre-provider transaction verifies eligibility and the unexpired owner/token
+  reservation, then durably increments this child's existing `attempts` exactly once. It
+  commits before I/O. A failed fence or transaction means no provider call and no consumed
+  attempt. Success means the worker atomically marks this child delivered, sets `delivered_at`
+  from the completion sample, and releases its reservation while the same delivery id/token
+  still own an unexpired lease. A definite failure schedules the standard backoff using the
+  already-durable attempt number and releases its lease; outcome handling does not increment
+  again. Deadline, crash or unknown response is ambiguous: the pre-provider increment already
+  consumed the attempt, so keep the reservation until expiry, stop renewal, and do not retry
+  before expiry. A crash after authorization but before I/O still consumes that slot; this
+  deliberate tradeoff bounds actual calls to at most six while allowing fewer calls than
+  authorized slots. After six authorizations, mark this child dead; expiry or recovery of an
+  ambiguous sixth attempt cannot authorize a seventh. A stale token cannot authorize I/O,
+  complete, or release a new owner's lease.
 
   If a provider accepted before the process crashed, hung, or lost the response before the
   database commit, that external effect cannot be rolled back; a later retry can send again.
   Delivery is at-least-once, not exactly-once. A provider idempotency header may use the
   stable child id where supported, but correctness does not depend on provider support. Keep
   the one parent `outbox.event_id = DomainEvent.id`; child `id` is the per-delivery identity.
+
+  Acceptance cases: a crash after the durable increment but before adapter I/O consumes one
+  attempt; provider acceptance followed by a process crash before completion also consumes
+  exactly that one attempt and remains at-least-once; repeated lease expiry/recovery after the
+  sixth authorization ends dead without a seventh provider call for both direct children and
+  digest groups. A failed pre-provider transaction rolls back without consuming an attempt.
+  Contention, quiet-hours deferral, suppression, duplicate-reservation claim failure and lease
+  renewal consume none. A worker whose owner/token fence is expired or stale cannot proceed to
+  provider I/O. Digest member child counters stay zero and all frozen pending members become
+  terminal with the group's sixth-attempt dead-letter transition.
 
 The event envelope's processing state never means that a particular notification provider
 succeeded. Notification children and digest groups own provider status and retention

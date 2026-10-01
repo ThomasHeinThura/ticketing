@@ -242,6 +242,19 @@ After acquisition, suppress only when a different delivery id with the same tupl
 committed success in the prior five minutes. The reservation owner is the child id, never
 the event id.
 
+Only after eligibility, membership, dedupe and all reservations are accepted, one fenced
+pre-provider transaction revalidates the current unexpired owner/token reservation and
+durably increments the existing direct child's `attempts` once. Commit before provider I/O;
+never call an adapter inside a transaction. For a digest, the equivalent transaction
+revalidates the group and all member reservation tokens, stores the canonical attempted
+payload hash, and increments the existing group `attempts` once; digest member child
+attempts stay zero. A failed transaction or stale/expired fence cannot authorize provider
+I/O and consumes no attempt. The durable increment is not repeated or refunded by lease
+renewal, completion, failure, timeout or recovery. This deliberately means a process crash
+after authorization but before the actual call uses one of the six slots. Thus each direct
+delivery or digest group can have at most six provider call starts, though a crash before I/O
+can leave fewer than six actual calls.
+
 Digest candidates attach to a collecting notification_digest group in the event transaction.
 Groups partition by recipient, channel, workspace, optional organisation, cadence and UTC
 window. Resolve the time zone from the person's quiet-hours zone, falling back to the
@@ -276,19 +289,23 @@ ineligible children, mark the group delivered and release reservations. Provider
 may use the child id or (digest id, payload_hash) where supported; correctness does not rely
 on provider support.
 
-A definite immediate failure increments that child's attempts, schedules backoff (30 s, 2
-m, 10 m, 1 h, 6 h, 24 h), and releases its reservation; the sixth attempt marks it dead.
-A definite group failure increments group attempts, leaves included children pending, and
-releases group/member leases. Child attempts remain zero for group members. After six group
-attempts, atomically dead-letter the group and its remaining pending children. Timeout,
-crash or unknown response is ambiguous: count the child or group attempt, stop renewal, keep
-leases until expiry and retry no earlier than all applicable expiries. A stale token cannot
-commit success or release a new owner's lease. A provider-accepted but uncommitted request
-may be sent again after retry. Delivery is at-least-once, not exactly-once.
+A definite immediate failure schedules backoff from the already-incremented attempt number
+(30 s, 2 m, 10 m, 1 h, 6 h, 24 h) and releases its reservation; outcome handling does not
+increment again. The sixth authorization marks it dead. A definite group failure leaves
+included children pending and releases group/member leases; group attempts are not repeated
+and child attempts remain zero. After six group authorizations, atomically dead-letter the
+group and its remaining pending children. Timeout, crash or unknown response is ambiguous:
+the durable authorization already counts, so stop renewal, keep leases until expiry and retry
+no earlier than all applicable expiries. Recovery after an expired sixth attempt marks the
+child or group dead under the safe fence and cannot authorize a seventh provider call. A
+stale or expired token cannot authorize a provider call, commit success or release a new
+owner's lease. A provider-accepted but uncommitted request may be sent again after retry;
+delivery remains at-least-once, not exactly-once.
 
 This is a target contract. Runtime fan-out, reservations, lock-delayed wall-clock sampling,
-digest grouping/sealing, deadlines, send-time reach checks and child/group retention are not
-implemented. Acceptance cases are specified in notifications.md#delivery. The existing
+digest grouping/sealing, deadlines, durable attempt authorization, send-time reach checks
+and child/group retention are not implemented. Acceptance cases are specified in
+notifications.md#delivery. The existing
 database clock helper uses transaction-start time and is insufficient for this protocol; it
 must be changed or bypassed.
 

@@ -373,8 +373,8 @@ were logged. OpenProject's model; the alternative silently rewrites history.
 | `notification_preference` | `person_id`, `scope` (`global`\|`workspace`\|`project`), `scope_id` null only for `global`, `channel` (`in_app` ∪ `notify.*` plugin ids; `in_app` always on), `event_kind`, `enabled`, `digest` (`off`\|`hourly`\|`daily`). Check: `scope = 'global'` iff `scope_id is null`; workspace/project scopes require a non-null id. `UNIQUE NULLS NOT DISTINCT (person_id, scope, scope_id, channel, event_kind)` so global preferences are unique too |
 | `notification_preference_handoff` | `handle_hash` (unique SHA-256; raw handle never stored), `audience` (`agent`\|`customer`), `recipient_person_id`, `event_kind`, `channel`, `scope`, `scope_id` null, `created_at`, `expires_at` (10 minutes after creation). Stores only validated selector claims; raw signed email tokens are never persisted |
 | `outbox` | Exactly one durable event-envelope row per domain event: `event_id` (the `DomainEvent.id`; primary key), `kind`, `payload jsonb` (the complete [events.md](events.md) envelope, retained for consumers/replay), `workspace_id` **not null**, `organisation_id` null (copied from envelope scope), `state` (`pending`\|`delivered`\|`dead`) for parent event-consumer processing only, `attempts` (non-negative), `next_attempt_at`, `last_error`, `created_at`, `updated_at`. Parent `delivered` means event-consumer processing/materialization completed; it never means that any notification recipient/channel provider succeeded. Child delivery and digest state is independent. Terminal parent rows are retained for 30 days after `updated_at` and are not purged while a retained child references them. Parent processing/replay must not rematerialize duplicate children, enforced by the child and inbox uniqueness keys below |
-| `notification_delivery` | One durable external candidate per `(event_id, recipient_person_id, channel)`: `id` primary key (delivery identity and provider idempotency key where supported), `event_id` FK to `outbox.event_id` with `ON DELETE CASCADE`, `recipient_person_id` FK to `person` with `ON DELETE CASCADE`, `channel` (`notify.*`), `workspace_id` **not null**, `organisation_id` null (copied and verified against the parent event scope by the atomic writer), `dedupe_key`, `digest_id` null (FK to `notification_digest.id` with `ON DELETE RESTRICT` until children are purged), `state` (`pending`\|`delivered`\|`dead`\|`suppressed`), `attempts` (non-negative; direct deliveries only), `next_attempt_at`, `delivered_at timestamp without time zone` null (UTC), `last_error`, `created_at`, `updated_at`. Unique `(event_id, recipient_person_id, channel)` prevents duplicate fan-out. Immediate deliveries have `digest_id is null`; digest candidates reference exactly one group. Recipient and tenant scope are stored for reach, hold, export and purge queries; reads do not infer scope from payload |
-| `notification_digest` | One group per `(recipient_person_id, channel, workspace_id, organisation_id, cadence, window_start_at, window_end_at)`, unique with NULLS NOT DISTINCT semantics for optional `organisation_id`: `id` primary key, `recipient_person_id` FK to `person` with `ON DELETE CASCADE`, channel, workspace/organisation scope, `cadence` (`hourly`\|`daily`), resolved `timezone`, UTC `window_start_at`/`window_end_at`, `state` (`collecting`\|`pending`\|`delivered`\|`dead`\|`suppressed`), `attempts`, `next_attempt_at`, `delivered_at`, `last_error`, `created_at`, `updated_at`, `payload_hash` (canonical body of the latest attempted payload), `lease_token` and UTC `lease_expires_at`. Membership is represented only by `notification_delivery.digest_id`; no separate membership table. The recipient/channel/scope/window partition cannot mix tenants or destinations. A collecting group accepts members only before `window_end_at`; sealing freezes membership. Group success/failure applies only to the included children; six group attempts dead-letter the group and its remaining pending children together |
+| `notification_delivery` | One durable external candidate per `(event_id, recipient_person_id, channel)`: `id` primary key (delivery identity and provider idempotency key where supported), `event_id` FK to `outbox.event_id` with `ON DELETE CASCADE`, `recipient_person_id` FK to `person` with `ON DELETE CASCADE`, `channel` (`notify.*`), `workspace_id` **not null**, `organisation_id` null (copied and verified against the parent event scope by the atomic writer), `dedupe_key`, `digest_id` null (FK to `notification_digest.id` with `ON DELETE RESTRICT` until children are purged), `state` (`pending`\|`delivered`\|`dead`\|`suppressed`), `attempts` (non-negative; direct deliveries only; durably incremented once in the fenced pre-provider transaction for each authorized direct provider attempt), `next_attempt_at`, `delivered_at timestamp without time zone` null (UTC), `last_error`, `created_at`, `updated_at`. Unique `(event_id, recipient_person_id, channel)` prevents duplicate fan-out. Immediate deliveries have `digest_id is null`; digest candidates reference exactly one group. Recipient and tenant scope are stored for reach, hold, export and purge queries; reads do not infer scope from payload |
+| `notification_digest` | One group per `(recipient_person_id, channel, workspace_id, organisation_id, cadence, window_start_at, window_end_at)`, unique with NULLS NOT DISTINCT semantics for optional `organisation_id`: `id` primary key, `recipient_person_id` FK to `person` with `ON DELETE CASCADE`, channel, workspace/organisation scope, `cadence` (`hourly`\|`daily`), resolved `timezone`, UTC `window_start_at`/`window_end_at`, `state` (`collecting`\|`pending`\|`delivered`\|`dead`\|`suppressed`), `attempts` (durably incremented once in the fenced pre-provider transaction for each authorized group provider attempt), `next_attempt_at`, `delivered_at`, `last_error`, `created_at`, `updated_at`, `payload_hash` (canonical body of the latest authorized attempted payload), `lease_token` and UTC `lease_expires_at`. Membership is represented only by `notification_delivery.digest_id`; no separate membership table. The recipient/channel/scope/window partition cannot mix tenants or destinations. A collecting group accepts members only before `window_end_at`; sealing freezes membership. Group success/failure applies only to the included children; six group attempt authorizations dead-letter the group and its remaining pending children together |
 | `outbox_dedupe_reservation` | One row per active notification key: `reservation_key bytea` primary key (32-byte SHA-256 of the canonical recipient/channel/dedupe-key tuple below); `recipient_person_id` references `person` with `ON DELETE CASCADE`; `channel`, `dedupe_key` with a unique constraint on the exact tuple; `owner_delivery_id` references `notification_delivery.id` with `ON DELETE CASCADE`; `lease_token uuid`, `lease_expires_at timestamp without time zone` (UTC). A hash conflict whose stored tuple differs fails closed. Atomically acquire only when absent or logically expired; initial acquire and expired takeover set `lease_expires_at` to 60 seconds after that operation's post-lock PostgreSQL wall-clock sample and set a fresh token. A live lease may only be renewed by the same delivery id presenting its current token, and renewal preserves that token while setting expiry to 60 seconds after the renewal's post-lock wall-clock sample. Even the same delivery cannot reacquire its live lease with a new token. At expiry the old token immediately stops authorizing renewal or completion and another worker may take over with a fresh token, even while the expired row still exists. Daily `session-cleanup` physically deletes expired reservation rows; physical deletion is not required for takeover |
 | `webhook` | `workspace_id`, `url`, `secret` (encrypted), `secret_previous`, `secret_rotated_at`, `events text[]`, `active`, `disabled_at`, `disabled_reason`, `created_by` |
 | `webhook_delivery` | `webhook_id`, `event_id`, `attempt`, `status_code`, `duration_ms`, `request_body jsonb`, `response_body` (truncated), `error`, `attempted_at` |
@@ -423,13 +423,24 @@ completion require an unexpired lease. If renewal fails, the worker must stop th
 request when possible and must not commit success with the expired token.
 
 The channel adapter call has a 30-second absolute deadline covering connection setup and
-response wait. The worker requests cancellation at that deadline and stops awaiting even if
-the adapter ignores cancellation. While the call is active, renew the reservation every 15
-seconds to 60 seconds from the renewal's PostgreSQL wall-clock sample. On deadline, count the
-attempt and apply the six-attempt limit; if retries remain, leave the candidate pending with
-`next_attempt_at` no earlier than the lease expiry, otherwise mark it dead. Stop renewing
-without releasing: provider acceptance may be ambiguous. A worker may
-reclaim only after expiry and must use a fresh token. These values and normal/hung-call cases
+response wait. Immediately before each provider call, after eligibility, dedupe and
+reservation acceptance, one transaction verifies the current unexpired owner/token fence
+and durably increments the existing `notification_delivery.attempts` exactly once. It
+commits before provider I/O; no provider call runs in a database transaction. A failed
+transaction or fence means no call and no consumed attempt. The digest equivalent verifies
+the unexpired group and member reservation tokens, stores the canonical attempted payload
+hash and increments the existing group `attempts` once in the same pre-provider transaction;
+member child attempts remain zero. Completion, definite failure, timeout, lease renewal and
+recovery never increment or refund an attempt. This durable count includes an authorized
+attempt whose process crashes before I/O, an intentional tradeoff that can leave fewer than
+six actual calls while guaranteeing no more than six. The worker requests cancellation at
+the deadline and stops awaiting even if the adapter ignores cancellation. While the call is
+active, renew the reservation every 15 seconds to 60 seconds from the renewal's PostgreSQL
+wall-clock sample. On deadline or ambiguous crash, keep the reservation until expiry and
+leave the candidate pending with `next_attempt_at` no earlier than the lease expiry if
+attempts remain; after the sixth authorization, safe recovery marks it dead and cannot start
+a seventh call. Stop renewing without releasing: provider acceptance may be ambiguous. A
+worker may reclaim only after expiry and must use a fresh token. These values and normal/hung-call cases
 are acceptance requirements in
 [notifications.md](../03-features/notifications.md#delivery); runtime support is not claimed
 by this contract.
@@ -461,8 +472,9 @@ partial index on `(recipient_person_id, channel, dedupe_key, delivered_at desc)`
 child's `state = 'delivered'` and `delivered_at` and freeing the reservation in the same
 database transaction, conditional on the live reservation token. A suppressed candidate
 is marked `suppressed` and frees the reservation without setting `delivered_at`. A definite
-failed attempt increments that child's retry state and frees the reservation; an ambiguous
-attempt retains it until expiry. A retry of the same delivery id is excluded from its own
+failure schedules backoff from the already-durable attempt number and frees the reservation;
+an ambiguous attempt retains it until expiry. Neither outcome increments the counter again.
+A retry of the same delivery id is excluded from its own
 duplicate lookup. One event may have many child ids, one per recipient/channel.
 
 Digest candidates attach to a `notification_digest` group in the event mutation transaction.
@@ -488,14 +500,15 @@ matching members before rendering. If another live owner exists, release acquire
 reservations and the group lease, defer until that lease expires, and do not increment
 attempts. Keep and renew group and member leases through the 30-second absolute adapter
 deadline, every 15 seconds, to 60 seconds from the post-lock DB clock sample. Persist the
-canonical attempted body hash before
-the call; provider idempotency, where supported, is `(digest id, payload_hash)`. On success,
+canonical attempted body hash in the same durable pre-provider transaction as the group's
+attempt increment, before the call; provider idempotency, where supported, is `(digest id, payload_hash)`. On success,
 one transaction conditional on the unexpired current group token and every held reservation
 token marks included children delivered with one completion clock, suppresses newly
 ineligible children, marks the group delivered and releases reservations. Definite failures
-increment group attempts, keep included children pending, and release leases. Ambiguous
-timeouts count a group attempt, keep reservations until expiry, stop renewal, and retry the
-same group no earlier than group and member lease expiry. Group attempts are authoritative;
+keep included children pending and release leases without incrementing again. Ambiguous
+timeouts use the already-incremented group attempt, keep reservations until expiry, stop
+renewal, and retry the same group no earlier than group and member lease expiry. Group
+attempts are authoritative;
 child attempts remain zero because children are not sent individually. After six group
 attempts, mark the group and its remaining pending children dead. This is at-least-once:
 changed payload after an ambiguous outcome may produce a second aggregate, while current
