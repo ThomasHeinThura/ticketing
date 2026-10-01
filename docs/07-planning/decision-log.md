@@ -5,6 +5,22 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-01 · P0 public docs site uses headless Fumadocs and static export
+
+**Decision:** recommend a fresh self-hosted documentation site at `apps/site`, using Next.js static export with headless Fumadocs. `fumadocs-core` supplies source/navigation/search data and `fumadocs-mdx` compiles local MDX; compose interactive controls from `@taskdesk/ui` and existing tokens. Do not import `fumadocs-ui`, copy kaneo's marketing app, or copy Mintlify content. The site is separate from the Vite agent/portal app and does not change its shared route registry.
+
+The proposed exact direct npm dependencies are `next@16.3.8` (MIT), `fumadocs-core@16.15.17` (MIT), `fumadocs-mdx@15.4.5` (MIT) and development-only `@types/mdx@2.0.14` (MIT). Reuse React `19.2.8`, `react-dom`, TypeScript, Tailwind/tokens and `@taskdesk/ui`. Zod `^4.6.5` and MDX tooling are transitive and require resolved-license/advisory inspection at implementation. These are recommendations for a future implementation, not installed dependencies or an authorization to change a manifest or lockfile.
+
+P0's public routes are `/`, `/docs`, `/search` backed by a generated static search index, and a true static 404. If the pinned Fumadocs build cannot produce working static search, remove `/search` from P0 and amend the site contract before implementation; do not ship a nonfunctional search control. Content is limited to verified existing behavior and stays separate from internal `docs/`. The site has no API proxy, auth, personalization, analytics or feedback endpoint.
+
+The separate image is proposed to use `nginxinc/nginx-unprivileged:1.30.5-alpine3.24@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e`, subject to digest/platform verification and image SBOM/license review at implementation. Its static site origin is planned as `docs.<domain>`, separate from both app origins and the conditional `files.<domain>`. Build, scan, SBOM, sign and publish on protected `main`; do not deploy from CI. Deliver to UAT through the existing pull process and promote to production manually by immutable digest. The docs plan records static serving, proxy and health-check behavior.
+
+**Why:** static export avoids a public runtime service and request-dependent behavior. Headless Fumadocs allows TaskDesk to use its own shared design system without importing a second UI library; an independently hosted docs origin keeps public documentation content away from authenticated application origins.
+
+**Authorization and status:** recorded under Thomas's standing recommended-decisions authorization. This entry does not assert that Thomas read the completed specification, grant H1–H6 approval, waive dependency/review gates, or establish implementation, deployment or stage completion. The proposed dependencies remain uninstalled.
+
+**Recorded by:** docs-site specification author, 2026-10-01.
+
 ### 2026-10-01 · P0 observability uses bounded internal metrics and operation-bound rotation
 
 **Decision:** follow the P0 target contract in [observability.md](../01-architecture/observability.md),
