@@ -5,6 +5,32 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · G11 route-paint marks require visible detail at the two-frame endpoint
+
+**Decision:** the canonical work-list-to-detail route marker accepts its existing
+two-animation-frame endpoint only while the existing detail-loading or detail node is
+connected, visible through CSS visibility/opacity, and has a non-zero layout box. The mark
+records only the bounded target kind (`loading` or `detail`); it captures no node content.
+The generated cold diagnostic uses this same recorder. Its report separately includes the
+`performance.now()`-bracketed probe duration/count, rounds measured durations upward to
+0.1 ms, and states that a 0.0 ms reading is below report resolution and does not establish
+zero observer effect.
+
+The route-start event, two-frame endpoint, selectors, WLP-1 click, 500-row fixture, detail
+and URL assertions, viewport, throttling, budgets, retry policy, and 22 canonical acceptance
+cases remain unchanged. A separate browser regression proves that a connected hidden or
+zero-box WLP-1 detail node does not mark until it becomes visible. The marker semantics
+changed, so a fresh exact-source canonical G11 baseline is required before any comparison;
+historical presence-marker timings cannot establish a like-for-like improvement. The cold
+recording remains diagnostic-only and cannot establish G11 acceptance.
+
+**Authorization and status:** implements the owning G11 first-visible contract under
+Thomas's standing recommended-decision authorization and the bounded 2026-10-01 visibility
+amendment. No hosted capture or report publication is authorized before fresh ordinary
+review and the independent full GPT-6 Sol privacy/security review on the exact source.
+
+**Recorded by:** bounded P0 diagnostic-remediation author, 2026-10-02.
+
 ### 2026-10-01 · P0 public docs site uses headless Fumadocs and static export
 
 **Decision:** recommend a fresh self-hosted documentation site at `apps/site`, using Next.js static export with headless Fumadocs. `fumadocs-core` supplies source/navigation/search data and `fumadocs-mdx` compiles local MDX; compose interactive controls from `@taskdesk/ui` and existing tokens. Do not import `fumadocs-ui`, copy kaneo's marketing app, or copy Mintlify content. The site is separate from the Vite agent/portal app and does not change its shared route registry.

@@ -67,6 +67,18 @@ function finite(value, min = 0, max = Number.MAX_SAFE_INTEGER) {
   return Number.isFinite(value) && value >= min && value <= max;
 }
 
+function exactKeys(value, expected, label) {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error(`Invalid ${label} schema.`);
+  const actual = Object.keys(value).sort();
+  const allowed = [...expected].sort();
+  if (
+    actual.length !== allowed.length ||
+    actual.some((key, i) => key !== allowed[i])
+  )
+    throw new Error(`Invalid ${label} schema.`);
+}
+
 function safeRoute(value, origin) {
   try {
     const parsed = new URL(value);
@@ -381,6 +393,13 @@ export function buildSanitizedColdReport(input) {
     !finite(input.routePaintMs, 0, 600_000) ||
     input.routeStartMs <= 0 ||
     input.routePaintMs <= 0 ||
+    !["loading", "detail"].includes(input.routePaintTarget) ||
+    !Number.isInteger(input.routeVisibilityProbeCount) ||
+    input.routeVisibilityProbeCount < 1 ||
+    input.routeVisibilityProbeCount > 100_000 ||
+    !finite(input.routeVisibilityProbeTotalMs, 0, 60_000) ||
+    !finite(input.routeVisibilityProbeMaxMs, 0, 10_000) ||
+    input.routeVisibilityProbeMaxMs > input.routeVisibilityProbeTotalMs ||
     !Number.isInteger(input.rowsAtPostObserverSample) ||
     input.rowsAtPostObserverSample < 0 ||
     input.rowsAtPostObserverSample > 500 ||
@@ -420,6 +439,8 @@ export function buildSanitizedColdReport(input) {
     throw new Error("Candidate SHA does not bind to the exact source SHA.");
   if (!/^[a-f0-9]{64}$/i.test(provenance.benchmarkSha256 ?? ""))
     throw new Error("Missing canonical benchmark hash.");
+  if (!/^[a-f0-9]{64}$/i.test(provenance.routePaintRecorderSha256 ?? ""))
+    throw new Error("Missing shared route-paint recorder hash.");
   for (const version of [
     provenance.nodeVersion,
     provenance.pnpmVersion,
@@ -470,6 +491,8 @@ export function buildSanitizedColdReport(input) {
       sourceSha: provenance.sourceSha.toLowerCase(),
       candidateHeadSha: provenance.candidateHeadSha.toLowerCase(),
       benchmarkSha256: provenance.benchmarkSha256.toLowerCase(),
+      routePaintRecorderSha256:
+        provenance.routePaintRecorderSha256.toLowerCase(),
       perfConfigSha256,
       networkHelperSha256,
       nodeVersion: provenance.nodeVersion,
@@ -504,6 +527,21 @@ export function buildSanitizedColdReport(input) {
       clickRoute: "/agent/work-items/:workItem",
       routeStartMs: Math.round(input.routeStartMs * 10) / 10,
       routePaintMs: Math.round(input.routePaintMs * 10) / 10,
+      routePaintTarget: input.routePaintTarget,
+      visibilityProbeOverhead: {
+        measurement: "performance.now-bracketed probe duration",
+        resolutionMs: 0.1,
+        mayPerturbMark: true,
+        resolutionNote:
+          "A 0.0 ms reading is below report resolution and is not evidence of zero observer effect.",
+        sampleCount: boundedCount(
+          input.routeVisibilityProbeCount,
+          100_000,
+          "visibility probe",
+        ),
+        totalMs: Math.ceil(input.routeVisibilityProbeTotalMs * 10) / 10,
+        maxMs: Math.ceil(input.routeVisibilityProbeMaxMs * 10) / 10,
+      },
       detailVisible: true,
       detailUrlVerified: true,
     },
@@ -570,23 +608,41 @@ export function buildSanitizedColdReport(input) {
 
 export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
   const assetBasenames = requireAssetBasenames(verifiedAssetBasenames);
-  const allowedRootKeys = new Set([
-    "schemaVersion",
-    "kind",
-    "acceptance",
-    "provenance",
-    "environment",
-    "journey",
-    "clocks",
-    "resources",
-    "mutuallyExclusiveMainThreadPhases",
-    "nonCausalOverlays",
-    "phaseTotalsMs",
-    "windowAccounting",
-    "interpretation",
-  ]);
-  if (Object.keys(report).some((key) => !allowedRootKeys.has(key)))
-    throw new Error("Sanitized report contains an unknown field.");
+  exactKeys(
+    report,
+    [
+      "schemaVersion",
+      "kind",
+      "acceptance",
+      "provenance",
+      "environment",
+      "journey",
+      "clocks",
+      "resources",
+      "mutuallyExclusiveMainThreadPhases",
+      "nonCausalOverlays",
+      "phaseTotalsMs",
+      "windowAccounting",
+      "interpretation",
+    ],
+    "root report",
+  );
+  if (
+    report.schemaVersion !== 1 ||
+    report.kind !== "hosted-cold-work-list-to-detail-diagnostic" ||
+    report.acceptance !== "diagnostic-only"
+  )
+    throw new Error("Cold report identity is invalid.");
+  if (
+    !Array.isArray(report.resources) ||
+    report.resources.length > COLD_MAX_RESOURCES
+  )
+    throw new Error("Resource table is missing or oversized.");
+  if (
+    !Array.isArray(report.mutuallyExclusiveMainThreadPhases) ||
+    report.mutuallyExclusiveMainThreadPhases.length > COLD_MAX_PHASE_SEGMENTS
+  )
+    throw new Error("Phase table is missing or oversized.");
   const encoded = JSON.stringify(report);
   if (Buffer.byteLength(encoded, "utf8") > COLD_REPORT_MAX_BYTES)
     throw new Error("Sanitized report exceeded its byte bound.");
@@ -611,12 +667,132 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
         `Sanitized report contains forbidden field content: ${forbidden}`,
       );
   }
-  if (!/^[\w{}:/.-]+$/.test(report.journey.directRoute))
-    throw new Error(
-      "Sanitized route template contains unsupported characters.",
-    );
-  if (report.acceptance !== "diagnostic-only")
-    throw new Error("Cold report must remain diagnostic-only.");
+  exactKeys(
+    report.environment,
+    ["viewport", "network", "cpuSlowdown", "rows"],
+    "environment",
+  );
+  exactKeys(report.environment.viewport, ["width", "height"], "viewport");
+  exactKeys(
+    report.environment.network,
+    ["profile", "downKbps", "upKbps", "rttMs"],
+    "network profile",
+  );
+  if (
+    report.environment.viewport.width !== 1280 ||
+    report.environment.viewport.height !== 720 ||
+    report.environment.network.profile !== "Fast 4G" ||
+    report.environment.network.downKbps !== 1600 ||
+    report.environment.network.upKbps !== 750 ||
+    report.environment.network.rttMs !== 150 ||
+    report.environment.cpuSlowdown !== 4 ||
+    report.environment.rows !== 500
+  )
+    throw new Error("Cold recording environment is outside its fixed profile.");
+  exactKeys(
+    report.journey,
+    [
+      "directRoute",
+      "lcpMs",
+      "lcpElementTag",
+      "rowsAtPostObserverSample",
+      "rowCountSampleAtMs",
+      "rowCountSampleAfterLcpEntryMs",
+      "rowCountSampleTimebase",
+      "rowsReadyCount",
+      "clickTarget",
+      "clickRoute",
+      "routeStartMs",
+      "routePaintMs",
+      "routePaintTarget",
+      "visibilityProbeOverhead",
+      "detailVisible",
+      "detailUrlVerified",
+    ],
+    "journey",
+  );
+  if (
+    report.journey.directRoute !== "/agent/projects/:project/work" ||
+    report.journey.clickRoute !== "/agent/work-items/:workItem"
+  )
+    throw new Error("Journey route is not a fixed route template.");
+  exactKeys(
+    report.journey.visibilityProbeOverhead,
+    [
+      "measurement",
+      "resolutionMs",
+      "mayPerturbMark",
+      "resolutionNote",
+      "sampleCount",
+      "totalMs",
+      "maxMs",
+    ],
+    "visibility probe overhead",
+  );
+  if (
+    report.journey.visibilityProbeOverhead.measurement !==
+      "performance.now-bracketed probe duration" ||
+    report.journey.visibilityProbeOverhead.resolutionMs !== 0.1 ||
+    report.journey.visibilityProbeOverhead.mayPerturbMark !== true ||
+    report.journey.visibilityProbeOverhead.resolutionNote !==
+      "A 0.0 ms reading is below report resolution and is not evidence of zero observer effect." ||
+    !Number.isInteger(report.journey.visibilityProbeOverhead.sampleCount) ||
+    !finite(report.journey.visibilityProbeOverhead.sampleCount, 1, 100_000) ||
+    !finite(report.journey.visibilityProbeOverhead.totalMs, 0, 60_000) ||
+    !finite(report.journey.visibilityProbeOverhead.maxMs, 0, 10_000) ||
+    report.journey.visibilityProbeOverhead.maxMs >
+      report.journey.visibilityProbeOverhead.totalMs
+  )
+    throw new Error("Invalid visibility probe overhead evidence.");
+  if (
+    !["loading", "detail"].includes(report.journey.routePaintTarget) ||
+    report.journey.lcpElementTag !== "h1" ||
+    report.journey.clickTarget !== "WLP-1" ||
+    report.journey.rowsReadyCount !== 500 ||
+    report.journey.detailVisible !== true ||
+    report.journey.detailUrlVerified !== true
+  )
+    throw new Error("Journey evidence does not match the bounded recording.");
+  for (const key of [
+    "lcpMs",
+    "rowCountSampleAtMs",
+    "rowCountSampleAfterLcpEntryMs",
+    "routeStartMs",
+    "routePaintMs",
+  ])
+    if (!finite(report.journey[key], 0, 600_000))
+      throw new Error("Invalid journey timing value.");
+  if (
+    report.journey.lcpMs <= 0 ||
+    report.journey.routeStartMs <= 0 ||
+    report.journey.routePaintMs <= 0 ||
+    Math.abs(
+      report.journey.rowCountSampleAtMs -
+        report.journey.lcpMs -
+        report.journey.rowCountSampleAfterLcpEntryMs,
+    ) > 0.11
+  )
+    throw new Error("Journey timing correlation is invalid.");
+  if (
+    !Number.isInteger(report.journey.rowsAtPostObserverSample) ||
+    !finite(report.journey.rowsAtPostObserverSample, 0, 500) ||
+    report.journey.rowCountSampleTimebase !== "document-performance-timeline-ms"
+  )
+    throw new Error("Invalid post-observer row sample.");
+  exactKeys(
+    report.clocks,
+    [
+      "alignmentUncertaintyMs",
+      "pairwiseCoordinateRoundingMs",
+      "alignmentBound",
+      "driftBetweenSamples",
+      "dataLoss",
+      "traceEventCount",
+      "timelineRecordCount",
+      "cpuSamples",
+    ],
+    "clocks",
+  );
   if (
     report.clocks.alignmentBound !==
       "maximum-sampled-offset-residual-plus-bracket" ||
@@ -625,9 +801,16 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
   )
     throw new Error("Clock report overstates unmeasured alignment precision.");
   if (
-    report.journey.rowCountSampleTimebase !== "document-performance-timeline-ms"
+    !finite(report.clocks.alignmentUncertaintyMs, 0, 1000) ||
+    report.clocks.dataLoss !== false ||
+    !Number.isInteger(report.clocks.traceEventCount) ||
+    !finite(report.clocks.traceEventCount, 0, 1_000_000) ||
+    !Number.isInteger(report.clocks.timelineRecordCount) ||
+    !finite(report.clocks.timelineRecordCount, 0, 1_000_000) ||
+    !Number.isInteger(report.clocks.cpuSamples) ||
+    !finite(report.clocks.cpuSamples, 0, 500_000)
   )
-    throw new Error("Post-observer row sample is missing its timebase.");
+    throw new Error("Invalid clock or capture integrity report.");
   const metadata = { ...report };
   delete metadata.resources;
   const encodedMetadata = JSON.stringify(metadata);
@@ -637,37 +820,74 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
         "Verified asset basename leaked outside resource labels.",
       );
   }
-  const allowedProvenanceKeys = new Set([
-    "sourceSha",
-    "candidateHeadSha",
+  exactKeys(
+    report.provenance,
+    [
+      "sourceSha",
+      "candidateHeadSha",
+      "benchmarkSha256",
+      "routePaintRecorderSha256",
+      "perfConfigSha256",
+      "networkHelperSha256",
+      "nodeVersion",
+      "pnpmVersion",
+      "playwrightVersion",
+      "chromiumVersion",
+      "build",
+    ],
+    "provenance",
+  );
+  exactKeys(
+    report.provenance.build,
+    ["indexHtmlSha256", "manifestSha256", "dist", "javascript", "sourceMaps"],
+    "build provenance",
+  );
+  for (const value of [
+    report.provenance.sourceSha,
+    report.provenance.candidateHeadSha,
+  ])
+    if (!/^[a-f0-9]{40}$/.test(value))
+      throw new Error("Invalid source binding.");
+  if (report.provenance.sourceSha !== report.provenance.candidateHeadSha)
+    throw new Error("Source hashes do not match the candidate head.");
+  for (const key of [
     "benchmarkSha256",
+    "routePaintRecorderSha256",
     "perfConfigSha256",
     "networkHelperSha256",
+    "indexHtmlSha256",
+    "manifestSha256",
+  ])
+    if (
+      !/^[a-f0-9]{64}$/.test(
+        report.provenance[key] ?? report.provenance.build[key],
+      )
+    )
+      throw new Error("Invalid source or build hash binding.");
+  for (const key of ["dist", "javascript", "sourceMaps"]) {
+    exactKeys(
+      report.provenance.build[key],
+      ["count", "sha256"],
+      `${key} build aggregate`,
+    );
+    if (
+      !Number.isInteger(report.provenance.build[key].count) ||
+      !finite(report.provenance.build[key].count, 0, 20_000) ||
+      !/^[a-f0-9]{64}$/.test(report.provenance.build[key].sha256)
+    )
+      throw new Error("Invalid build aggregate.");
+  }
+  for (const key of [
     "nodeVersion",
     "pnpmVersion",
     "playwrightVersion",
     "chromiumVersion",
-    "build",
-  ]);
-  if (
-    Object.keys(report.provenance).some(
-      (key) => !allowedProvenanceKeys.has(key),
+  ])
+    if (
+      typeof report.provenance[key] !== "string" ||
+      !/^\d+(?:\.\d+){2,3}(?:[-+][A-Za-z0-9.-]+)?$/.test(report.provenance[key])
     )
-  )
-    throw new Error("Cold report provenance contains an unknown field.");
-  const allowedBuildKeys = new Set([
-    "indexHtmlSha256",
-    "manifestSha256",
-    "dist",
-    "javascript",
-    "sourceMaps",
-  ]);
-  if (
-    Object.keys(report.provenance.build).some(
-      (key) => !allowedBuildKeys.has(key),
-    )
-  )
-    throw new Error("Cold report build provenance contains an unknown field.");
+      throw new Error("Invalid tool-version provenance.");
   if (
     Object.keys(report.nonCausalOverlays).sort().join(",") !==
       "idleRequestTemporalOverlap,note" ||
@@ -696,7 +916,7 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     KNOWN_ROUTES.map((route) => `/${route.join("/")}` || "/"),
   );
   for (const resource of report.resources) {
-    const allowedResourceKeys = new Set([
+    const allowedResourceKeys = [
       "method",
       "route",
       "resourceType",
@@ -707,9 +927,44 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
       "failed",
       "priority",
       "timingMs",
-    ]);
-    if (Object.keys(resource).some((key) => !allowedResourceKeys.has(key)))
+    ];
+    if (
+      !resource ||
+      typeof resource !== "object" ||
+      Array.isArray(resource) ||
+      Object.keys(resource).some((key) => !allowedResourceKeys.includes(key))
+    )
       throw new Error("Resource report contains an unknown field.");
+    for (const key of [
+      "method",
+      "route",
+      "resourceType",
+      "source",
+      "initiatorType",
+      "initiatorSource",
+    ])
+      if (typeof resource[key] !== "string")
+        throw new Error("Resource string field has an invalid type.");
+    if (!METHODS.has(resource.method) && resource.method !== "OTHER")
+      throw new Error("Resource method is invalid.");
+    if (!RESOURCE_TYPES.has(resource.resourceType))
+      throw new Error("Resource type is invalid.");
+    if (!INITIATOR_TYPES.has(resource.initiatorType))
+      throw new Error("Resource initiator type is invalid.");
+    if ("status" in resource && !finite(resource.status, 100, 599))
+      throw new Error("Resource status is invalid.");
+    if ("failed" in resource && typeof resource.failed !== "boolean")
+      throw new Error("Resource failure flag is invalid.");
+    if ("priority" in resource && !PRIORITIES.has(resource.priority))
+      throw new Error("Resource priority is invalid.");
+    if ("timingMs" in resource) {
+      exactKeys(resource.timingMs, ["start", "end"], "resource timing");
+      if (
+        !finite(resource.timingMs.start, -60_000, 600_000) ||
+        !finite(resource.timingMs.end, resource.timingMs.start, 600_000)
+      )
+        throw new Error("Resource timing is invalid.");
+    }
     if (resource.route !== "unrecognized" && !routeLabels.has(resource.route))
       throw new Error("Resource route is not a known fixed template.");
     if (
@@ -725,6 +980,63 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     )
       throw new Error("Resource initiator is not a verified route or asset.");
   }
+  for (const segment of report.mutuallyExclusiveMainThreadPhases) {
+    exactKeys(segment, ["phase", "startMs", "durationMs"], "phase segment");
+    if (
+      !PHASES.has(segment.phase) ||
+      !finite(segment.startMs, -60_000, 600_000) ||
+      !finite(segment.durationMs, 0, 600_000)
+    )
+      throw new Error("Phase segment is invalid.");
+  }
+  exactKeys(report.phaseTotalsMs, [...PHASES], "phase totals");
+  for (const duration of Object.values(report.phaseTotalsMs))
+    if (!finite(duration, 0, 600_000))
+      throw new Error("Phase total is invalid.");
+  exactKeys(
+    report.windowAccounting,
+    ["lcpWindow", "clickToPaintWindow", "phaseTotalsByWindow", "note"],
+    "window accounting",
+  );
+  exactKeys(report.windowAccounting.lcpWindow, ["lcpMs"], "LCP window");
+  exactKeys(
+    report.windowAccounting.clickToPaintWindow,
+    ["routeStartMs", "routePaintMs"],
+    "click window",
+  );
+  exactKeys(
+    report.windowAccounting.phaseTotalsByWindow,
+    ["lcp", "clickToPaint"],
+    "window phase totals",
+  );
+  if (
+    report.windowAccounting.lcpWindow.lcpMs !== report.journey.lcpMs ||
+    report.windowAccounting.clickToPaintWindow.routeStartMs !==
+      report.journey.routeStartMs ||
+    report.windowAccounting.clickToPaintWindow.routePaintMs !==
+      report.journey.routePaintMs
+  )
+    throw new Error("Window boundaries do not match the journey marks.");
+  for (const windowTotals of Object.values(
+    report.windowAccounting.phaseTotalsByWindow,
+  )) {
+    exactKeys(windowTotals, [...PHASES], "window phase total");
+    for (const duration of Object.values(windowTotals))
+      if (!finite(duration, 0, 600_000))
+        throw new Error("Window phase duration is invalid.");
+  }
+  if (
+    report.windowAccounting.note !==
+    "Main-thread phases are exclusive; resource intervals are a correlated overlay and are not added to phase totals."
+  )
+    throw new Error("Window accounting note is invalid.");
+  exactKeys(report.interpretation, ["causalEdges", "rule"], "interpretation");
+  if (
+    report.interpretation.causalEdges !== "unresolved-by-design" ||
+    report.interpretation.rule !==
+      "A proposed edge is unresolved when its clock uncertainty intervals overlap; temporal proximity alone is not causal evidence."
+  )
+    throw new Error("Interpretation overstates causal evidence.");
   return true;
 }
 

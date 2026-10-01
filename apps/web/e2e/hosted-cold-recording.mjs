@@ -460,10 +460,21 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
       const routeState = await page.evaluate(() => ({
         routeStartMs: (window as G11Window).__g11Metrics.routeStart,
         routePaintMs: (window as G11Window).__g11Metrics.routePaint,
+        routePaintTarget: (window as G11Window).__g11Metrics.routePaintTarget,
+        routeVisibilityProbeCount:
+          (window as G11Window).__g11Metrics.routeVisibilityProbeCount,
+        routeVisibilityProbeTotalMs:
+          (window as G11Window).__g11Metrics.routeVisibilityProbeTotalMs,
+        routeVisibilityProbeMaxMs:
+          (window as G11Window).__g11Metrics.routeVisibilityProbeMaxMs,
         timeOriginMs: performance.timeOrigin,
       }));
       if (routeState.timeOriginMs !== lcpState.timeOriginMs) throw new Error("navigation-clock-reset");
-      if (routeState.routeStartMs <= 0 || routeState.routePaintMs <= 0) throw new Error("route-paint-mark");
+      if (
+        routeState.routeStartMs <= 0 ||
+        routeState.routePaintMs <= 0 ||
+        !["loading", "detail"].includes(routeState.routePaintTarget)
+      ) throw new Error("route-paint-mark");
       await expect(page.getByTestId("work-item-detail")).toBeVisible({ timeout: 15_000 });
       const detailUrl = new URL(page.url());
       if (detailUrl.pathname !== "/agent/work-items/WLP-1") throw new Error("detail-url");
@@ -482,6 +493,10 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
         clickTarget: WORK_ITEM_KEY,
         routeStartMs: routeState.routeStartMs,
         routePaintMs: routeState.routePaintMs,
+        routePaintTarget: routeState.routePaintTarget,
+        routeVisibilityProbeCount: routeState.routeVisibilityProbeCount,
+        routeVisibilityProbeTotalMs: routeState.routeVisibilityProbeTotalMs,
+        routeVisibilityProbeMaxMs: routeState.routeVisibilityProbeMaxMs,
         detailVisible: true,
         urlVerified: true,
         clockUncertaintyMs: rawCapture.uncertaintyMs,
@@ -539,6 +554,9 @@ try {
     readFile(perfConfigPath),
     readFile(networkHelperPath),
   ]);
+  const routePaintRecorder = await readFile(
+    join(scriptDir, "helpers/route-paint-recorder.ts"),
+  );
   const canonicalBenchmarkSha256 = safeSha256(benchmark);
   const sourceSha = execFileSync("git", ["rev-parse", "HEAD"], {
     cwd: repoDir,
@@ -567,6 +585,7 @@ try {
     sourceSha,
     candidateHeadSha,
     benchmarkSha256: canonicalBenchmarkSha256,
+    routePaintRecorderSha256: safeSha256(routePaintRecorder),
     perfConfigSha256: safeSha256(perfConfig),
     networkHelperSha256: safeSha256(networkHelper),
     expectedSourceSha: candidateHeadSha,
@@ -580,10 +599,11 @@ try {
     benchmark.match(/http:\/\/127\.0\.0\.1:4178/g) ?? [];
   if (previewOccurrences.length !== 3)
     throw new Error("Canonical preview binding changed unexpectedly.");
-  const routePaintMarker = "else metrics.routePaint = elapsed;";
+  const routePaintMarker =
+    'import { installRoutePaintRecorder } from "./helpers/route-paint-recorder";';
   if (benchmark.split(routePaintMarker).length - 1 !== 1)
     throw new Error(
-      "Canonical route-paint correlation point changed unexpectedly.",
+      "Canonical shared route-paint recorder binding changed unexpectedly.",
     );
   const source = benchmark.replaceAll("http://127.0.0.1:4178", origin);
   if (source.includes("http://127.0.0.1:4178"))

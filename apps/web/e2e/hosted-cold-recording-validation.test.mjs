@@ -23,6 +23,7 @@ function reportInput(overrides = {}) {
       expectedSourceSha: sourceSha,
       candidateHeadSha: sourceSha,
       benchmarkSha256: hash,
+      routePaintRecorderSha256: hash,
       perfConfigSha256: hash,
       networkHelperSha256: hash,
       nodeVersion: "24.19.0",
@@ -102,6 +103,10 @@ function reportInput(overrides = {}) {
     clickTarget: "WLP-1",
     routeStartMs: 160,
     routePaintMs: 55,
+    routePaintTarget: "detail",
+    routeVisibilityProbeCount: 5,
+    routeVisibilityProbeTotalMs: 0.4,
+    routeVisibilityProbeMaxMs: 0.2,
     detailVisible: true,
     urlVerified: true,
     clockUncertaintyMs: 1.4,
@@ -129,6 +134,17 @@ test("cold report binds the exact source and emits only bounded diagnostic evide
   });
   assert.equal(report.environment.rows, 500);
   assert.equal(report.journey.clickTarget, "WLP-1");
+  assert.equal(report.journey.routePaintTarget, "detail");
+  assert.deepEqual(report.journey.visibilityProbeOverhead, {
+    measurement: "performance.now-bracketed probe duration",
+    resolutionMs: 0.1,
+    mayPerturbMark: true,
+    resolutionNote:
+      "A 0.0 ms reading is below report resolution and is not evidence of zero observer effect.",
+    sampleCount: 5,
+    totalMs: 0.4,
+    maxMs: 0.2,
+  });
   assert.equal(report.journey.lcpElementTag, "h1");
   assert.equal(report.journey.rowsAtPostObserverSample, 310);
   assert.equal(report.journey.rowCountSampleAtMs, 151);
@@ -197,7 +213,7 @@ test("only current manifest assets survive resource and initiator labels", () =>
   report.journey.unexpectedMetadata = [...assetBasenames][0];
   assert.throws(
     () => assertColdReportPrivacy(report, assetBasenames),
-    /leaked outside resource labels/,
+    /journey schema/,
   );
   delete report.journey.unexpectedMetadata;
 
@@ -347,6 +363,56 @@ test("privacy assertion rejects diagnostic reports that contain raw network or D
   report.rawUrl = "/private?token=secret";
   assert.throws(
     () => assertColdReportPrivacy(report, assetBasenames),
-    /unknown field/,
+    /schema/,
   );
+});
+
+test("privacy assertion closes nested string-bearing schemas and fixed journey routes", () => {
+  const cases = [
+    {
+      change(report) {
+        report.environment.customerLabel = "tenant-private-acme";
+      },
+      expected: /environment schema/,
+    },
+    {
+      change(report) {
+        report.journey.customerLabel = "tenant-private-acme";
+      },
+      expected: /journey schema/,
+    },
+    {
+      change(report) {
+        report.journey.directRoute = "/agent/projects/customer-private/work";
+      },
+      expected: /fixed route template/,
+    },
+    {
+      change(report) {
+        report.journey.clickRoute = "/agent/work-items/customer-private";
+      },
+      expected: /fixed route template/,
+    },
+    {
+      change(report) {
+        report.resources[0].route = "/api/projects/customer-private/work-items";
+      },
+      expected: /known fixed template/,
+    },
+    {
+      change(report) {
+        report.windowAccounting.interpretation = "private";
+      },
+      expected: /window accounting schema/,
+    },
+  ];
+
+  for (const { change, expected } of cases) {
+    const report = buildSanitizedColdReport(reportInput());
+    change(report);
+    assert.throws(
+      () => assertColdReportPrivacy(report, assetBasenames),
+      expected,
+    );
+  }
 });
