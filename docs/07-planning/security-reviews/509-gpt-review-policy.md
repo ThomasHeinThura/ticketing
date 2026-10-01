@@ -1,6 +1,6 @@
 # PR #509 — GPT review-policy documentation security review
 
-**Candidate source reviewed:** `4990c4f6fda2e87f34aa7ee2393f210eef567e97`
+**Reviewed head:** `4990c4f6fda2e87f34aa7ee2393f210eef567e97`
 **Comparison base:** `ea903fbaad57894436bca37bc5f63b4df799daf3` (accepted `main`)
 **Classification:** Security-scope paths are touched, but the four-file change makes no authority, trust-boundary, review-tier, or gate pass/fail semantic change. The lightest security row applies: one independent GPT-6 Luna ordinary review followed by an independent lightweight GPT-6 Sol confirmation.
 **Current candidate note commit:** This file is a note-only follow-up to the reviewed source head. Recheck PR #509's exact head and the review-note binding before relying on it.
