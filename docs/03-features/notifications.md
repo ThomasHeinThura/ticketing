@@ -190,7 +190,10 @@ unique key, digest values, and per-person quiet-hours fields are defined in
   statement-local wall-clock expression during implementation.
 
   After acquiring the reservation, query for a **different** outbox row with the same three
-  fields, `delivered_at >= sample - interval '5 minutes'`, and `id <> candidate.id`. The
+  fields, `delivered_at >= sample - interval '5 minutes'`, and
+  `event_id <> candidate.event_id`. The stable outbox row identifier is its `event_id`
+  primary key; reservation `owner_outbox_id` refers to that value, not a separate `id`
+  column. The
   partial index on `(recipient_person_id, channel, dedupe_key, delivered_at desc)` where
   `delivered_at is not null` supports those equality and time-range predicates. If a match
   exists, set the candidate `state = 'suppressed'` without sending or setting its
