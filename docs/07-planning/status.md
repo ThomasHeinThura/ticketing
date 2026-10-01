@@ -14,6 +14,249 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
+`2d67c47f6877671e6e00b662aa9734a9ff244d94` (verified 2026-10-01 07:54 UTC).**
+PR #545's deterministic, additive P0 seed profiles merged through the protected flow at
+07:49:05 UTC. Final candidate `559482887305604bf1294545576620b09061e378` passed all
+17 required checks, with hosted PostgreSQL integration at 125 files/1,567 tests and
+unit/component at 12/12 tasks. Independent Luna and full Sol source reviews and separate
+current-main composition reviews cover actual source `81445b4c`; the final commit only
+records their evidence. The separate seed suite passed 2 files/18 tests. Its execution is
+not attributed to the general hosted integration job; a distinct follow-up is wiring that
+coverage into the existing fast/integration runners. Minimal, realistic and hostile CLI
+profiles and reruns passed in a private disposable database, with 52 projects, 10,020
+items and 200 placeholder people, and zero login users or memberships. No persistent
+user database was seeded or reset. [Protected merge evidence](https://github.com/ThomasHeinThura/ticketing/pull/545#issuecomment-5927155772).
+
+The normal local deployment completed with reviewed source image
+`sha256:eb81c27c009854d6c2d8200a864e484624dcafaf19f36e008e0c7bddd71f5b1b`.
+Both Traefik hosts, `ticketing.localhost` and `portal.localhost`, returned 200 for `/`,
+liveness and readiness with certificate validation. Chrome reload verified the preserved
+DV-1 task, In Progress status, administrator assignee and three activity entries; the
+portal sign-in entry also opened normally. Private deployment/health/browser artifacts
+are `/private/tmp/taskdesk-local-deploy-20261001-2d67.log`,
+`/private/tmp/taskdesk-2d67-traefik-health.json`, and
+`/private/tmp/taskdesk-2d67-{dev-task,portal-sign-in}.png`.
+
+**P0 remains open.** The 500-row native-anchor routing experiment was rejected and
+reverted to clean #525 source `a4592f52`: final keyboard navigation medians were
+243.3 ms baseline and 238.6 ms candidate, both above 200 ms, while palette opening
+changed from 62.8 to 70.5 ms. The baseline half overlapped nine focused calendar tests;
+these are diagnostic observations, not acceptance evidence. Original fixtures, auth,
+marks, budgets and retained trace mode were preserved. A single CPU-attribution capture
+is being prepared/run under a brief local quiet window; no optimization is accepted.
+The seed CI follow-up's full disposable integration run exercised 126 files/1,579 total
+tests but failed one concurrency assertion in `work-item-update.test.ts`; diagnosis and
+its required independent review/gates remain pending. Representative authorization soak,
+other P0 exit criteria and the additional Sol phase finalizer remain incomplete.
+
+**Parallel acceptance:** calendar #513 is at `0911590d`, based on this main. Its API/schema
+review passed at preceding source `726cc9eb`, including 16 PostgreSQL tests, 83 permission
+tests and the CAL-15 non-UTC timestamp round trip. A UI review found four remaining
+English literals, now replaced using existing translation keys; current-head UI confirmation,
+third ordinary review, full Sol security review, image/browser/G8 and protected gates remain
+pending. Calendar migration 0080 follows accepted task-version 0079; #512 regenerates after
+calendar acceptance, and shared-schema writes remain serialized. Identity trust #544 is
+at `27b254e8`, synchronized with prior main `bd615cb4`, and still needs current-main
+composition and independent design/security clearance. Full pending-action approval,
+execution, step-up, workers, DELETE retrofit, UI and AU-14 alerting remain unfinished.
+Check live GitHub before dispatch or merge; no stage completion or waiver is claimed.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
+`bd615cb4c42b975053180616dc7be6dbebff3f7c` (verified 2026-10-01 07:20 UTC).**
+
+Protected PR #539 merged at 07:16:37 UTC. Its final candidate
+`bf45df60cd03ddadda0f409c229d3d6dc32181e0` passed all 17 required checks, including
+125 PostgreSQL files / 1,567 tests and all 12 unit/component tasks. Independent Luna and
+Sol composition reviews cleared source `3fb1aa4c6c7ae45b7e47f1151c7405b349670de5`;
+the final commits only recorded their evidence. Its image booted healthy and live/ready
+returned 200 in a disposable stack. Deny/cancel HTTP transitions are accepted; full approval,
+execution, step-up, workers, DELETE retrofits, UI and AU-14 operator alerts remain open.
+P4 is not complete. The persistent Traefik dev stack still runs the previously verified
+#529 concurrency image; it has not yet been refreshed to this merge.
+
+**P0 remains the priority.** Seed PR #545 now has source
+`1a549fbf5321a1a13fd822bd1f4fe6e3945b4a12`. The fresh Sol review of the prior source
+found that reruns repaired missing defaults before verification. The structural fix runs
+population helpers only for newly created workspace/project fixtures, verifies reused
+manifests before dependent writes, and adds four missing-type/template/column/state
+preservation regressions. Fresh independent Luna and full Sol reviews both pass at this
+source; both independently ran the disposable PostgreSQL seed suite (2 files / 18 tests).
+The current image builds and boots healthy. Actual CLI profiles/reruns in a separate
+fixture and final current-main integration/gates are in progress. No persistent dev data
+was seeded. Fixture people remain placeholders, with no login users or authority grants;
+the 10k legacy-UI journey remains unproven.
+
+G11 PR #525 remains at `a4592f521ca5046044242a7701b2574cc12bd7bb`, with nine strict
+budgets failing in the hosted exact-head run. The ownership chunking experiment found an
+empty Projects-only SCC set and failed before output generation or timing. It was reverted;
+baseline source and dist are restored. Earlier recursive grouping and page prewarm attempts
+also failed and remain rejected. No G11 optimization, budget waiver or P0 completion is
+claimed. Representative runtime soak, remaining exit criteria and the Sol finalizer stay open.
+
+**Parallel implementation:** fresh ordinary review of calendar PR #513 at
+`83dcc8a3a6c4bf188eccfd024e2615f054c4c41d` requires changes: shared calendars lack
+version/If-Match stale-write protection and required lifecycle timestamps. Its focused
+PostgreSQL suite passes 15 tests; those tests did not establish the missing behavior.
+The owning Luna lane is correcting schema, API and UI under the sole schema/migration lease.
+Main task-version migration `0079` stays intact; calendars use `0080`. P1 #512 and P3
+schema work wait for that serialized acceptance. Independent review, image/browser evidence
+and final gates remain required on the corrected calendar head; P2 is open.
+
+P3 draft #544 still specifies the Entra-only JIT trust clarification at
+`92438d9357d75b4979be6b2b7af879e6c46b7cec`. Independent owning-design review is pending;
+identity runtime/schema and real-Entra acceptance are not delivered. P0–P4 remain open.
+Check live GitHub heads and gates before acting.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
+`2242665c65faca25cc58eb070b686eb4c06d6487` (verified 2026-10-01 07:05 UTC).**
+
+PR #529 merged through the protected flow at 06:52:25 UTC; its exact final candidate
+`859c948aef872b2e2aef4755358152b7e6f483f9` passed all 17 required checks, including
+124 PostgreSQL files/1,561 tests and all 12 unit/component package tasks. The independent
+ordinary panel, recovery/transport continuations and Sol confirmations bind their actual
+source heads in the committed review note. Actual Chrome reproduced a stale-write 409,
+one error message and authoritative task restoration; image boot/health and reload passed.
+Issue #526 is closed for that bounded first-party contract. The deprecated legacy route
+retains its explicitly documented unversioned third-party compatibility window. P1 is open.
+
+**Local development:** normal deployment now runs the reviewed concurrency image,
+`sha256:bd93ebe2789ff737ff148ba5595faf25cf026589027206a1cb4494b712645d02`.
+Both HTTPS readiness endpoints returned 200. Chrome reload preserved DV-1's title,
+In Progress status, self-assignment and three activity entries; portal sign-in opens.
+Evidence: `/private/tmp/taskdesk-224-dev-task.png` and
+`/private/tmp/taskdesk-224-portal-sign-in.png` (1800×947). Distinct customer entry and
+customer journeys remain unimplemented. Credentials remain private outside the repository.
+
+**P0 remains open.** PR #525 is still at `a4592f521ca5046044242a7701b2574cc12bd7bb`.
+Its exact hosted run failed nine G11 budgets: list 685.4/500 ms, LCP 2704/2500 ms,
+detail 527.2/300 ms, create 258.7/200 ms, palette open 655.4/200 ms,
+palette navigation 611.4/200 ms, state 283/200 ms, assignment 290.1/200 ms and
+board 797.5/500 ms. G13's six measurements and deliberate red probe passed. A recursive
+Projects chunk group failed manifest invariants and was reverted before timing. A full
+Projects-graph idle prewarm preserved manifest boundaries but worsened canonical navigation
+from 273.1 ms to 1,308.8 ms; it too was reverted. The baseline source/dist are restored. A
+module-ownership experiment is being prepared; no optimization or stage completion is claimed.
+G11 still must become a required context after its strict budgets pass.
+
+Seed PR #541 was superseded by clean-history draft #545 at
+`f480420d5f4f2be3a84fedf333bb6ed8c1b25bca`. Its additive fixtures now reject noncanonical
+workspace/project IDs and have collision/rollback regressions. Historical implicit-database,
+dotenv and fixture-ownership findings were fixed. The replacement changes only the CLI test
+from #541's latest source: runtime-generated synthetic credentials and Vitest environment
+stubs remove the scanner/environment findings without a suppression, baseline growth or
+history rewrite. Fourteen focused tests and check:env pass. Current ordinary test-delta
+review is clear; the fresh full Sol pass, current image boot and final gates remain pending.
+This does not prove the 10k legacy-UI journey or create login users/memberships. The #8
+representative soak, other P0 exit criteria and separate Sol finalizer remain incomplete.
+
+**Parallel work:** P4 #539 is at note-only candidate
+`bf45df60cd03ddadda0f409c229d3d6dc32181e0`, with current source
+`3fb1aa4c6c7ae45b7e47f1151c7405b349670de5`. Independent Luna/Sol composition reviews
+clear the task-version main import; current focused PostgreSQL 26, permissions 83,
+API four-config typecheck and OpenAPI 163 pass. Its combined image built, booted healthy
+and answered live/ready 200. Final exact-candidate checks are still pending. Full approval,
+step-up, expiry/invalidation, DELETE retrofits, UI and AU-14 operator alerting remain open.
+
+P2 #513's current-main/migration integration is assigned after #529 established task-version
+migration 0079; calendar acceptance must preserve it and use the next migration. P1 #512 and
+P3 schema work wait for that serialized handoff. P3 draft #544 at
+`92438d9357d75b4979be6b2b7af879e6c46b7cec` specifies Entra-only first-release JIT trust and
+a callback domain bound to that same connection. Independent design review and closure of
+the active owning security findings remain pending; there is no identity runtime/schema or
+real-Entra acceptance evidence. P0–P4 remain open. Check live heads/gates before acting.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
+`c27b2ee771eba19f193a0d20cfc1048e9c6d21a9` (verified 2026-10-01 06:14 UTC).**
+
+Since the 03:15 snapshot, protected PRs #532 (TaskDesk public branding), #535 (canonical
+filesystem-root aliases), #537 (Node/JSDOM test storage), #538 (canonical CI root probes)
+and #531 (the bounded RLS prototype) have merged. Each had the applicable independent
+Luna and Sol evidence, all 17 required checks green on its final candidate, and image
+build/boot evidence where shipping inputs changed. Issues #533, #534 and #536 are closed.
+PR #531's final candidate was `fd38764b813fdd76719495f76838042ea039583a`; full hosted
+PostgreSQL integration passed 123 files/1,555 tests. Its production image built and answered
+live/readiness probes in an isolated stack. The prototype compares existing application
+filters with PostgreSQL row policies; it does not enable production RLS or complete P0.
+
+**Local development:** normal `scripts/deploy.sh local` completed with the reviewed #531
+image, `sha256:e5ca1d9e38298601fa78a167f4fa3d387ee4af3745d2db43ed411584f95f09ba`.
+Both HTTPS hosts answered readiness with 200. Actual Chrome reload preserved the signed-in
+administrator and DV-1's In Progress status, self-assignment and three activity entries.
+The portal certificate warning is resolved and its normal sign-in screen opens. Evidence:
+`/private/tmp/taskdesk-c27-dev-task.png` and
+`/private/tmp/taskdesk-c27-portal-sign-in.png` (1800×947). Distinct customer portal entry
+and journeys remain unimplemented. Credentials stay in a private file outside the repository.
+
+**P0 remains open.** Draft #525 is now at
+`a4592f521ca5046044242a7701b2574cc12bd7bb`, with normal main integration through #538.
+The last hosted budget evidence still binds older `cc1660ea`: nine strict G11 budgets fail
+(list 579.4/500 ms, LCP 2692/2500 ms, detail 529.0/300 ms, create 258.4/200 ms, palette
+open 220.8/200 ms, navigation 724.2/200 ms, state 309.8/200 ms, assignment 295.5/200 ms,
+board 794.3/500 ms); six G13 routes and its deliberate red probe pass. The exact-a459
+scheduler experiment also failed navigation (baseline final 226.1 ms, candidate 255.5 ms)
+and was fully reverted. No application optimization from that experiment is accepted.
+A single correlated Enter/guard/fallback/paint capture is being prepared to identify the
+actual dominant work. G11 is still absent from required ruleset contexts and must be
+required before #525 merges. No budget, review or gate is waived.
+
+Draft #541's additive seed CLI covers explicit minimal, realistic and hostile profiles
+in an already-migrated database; realistic fixtures contain 50 projects/10,000 items and
+200 placeholder staff people without credentials or memberships. It does not reset data
+or grant authority. Source `fa13a53d324131b25c447c9ffe643916cce494fb` closes the first
+review's default-drift blocker with exact manifests and transactional rollback coverage.
+Both ordinary reviewers ran one PostgreSQL file/six tests. The second review's subsequent
+field concern was misattributed to the workflow table and is being corrected against the
+actual schema. Current-main integration, required independent Sol review, image evidence
+and final hosted gates remain pending. This is seed groundwork, not manual 10k-item UI
+acceptance or a P0 completion claim.
+
+The #8 audit remains the 01:56 UTC sample: 68 requests over three low-volume days,
+21 route keys/14 router groups, 46 agreeing and 22 unevaluated rows, zero disagreement
+or evaluator-error rows. It does not meet the approximately seven-day representative soak.
+The P0 exit audit also retains disabled manifest gates, environment-read residuals,
+agent/portal entry separation, operational/accessibility acceptance and the additional
+fresh independent Sol phase finalizer. A green baseline is not full stage acceptance.
+
+**Parallel candidates:** P1 #529 is draft at
+`f8750d27a834b1e3522e185005d6f5cfc5e0a6c2`. Its initial full panel, bounded transport
+continuation and subsequent UI recovery have recorded independent Luna verdicts and the
+further full Sol pass at f875. Hosted source-head PostgreSQL passed 124 files/1,561 tests;
+unit/component passed 12 tasks (API 66 files/530 tests; web 80 files/351 tests). The shipping
+image booted live/ready. Actual Chrome proved a stale v2 write returns 409 once, restores
+the authoritative status/title without losing the concurrent edit, and stays correct after
+reload; task panel, date context menu, backlog/create modal, Gantt move and list were also
+used. Review-note publication, current-main composition and exact-candidate gates remain
+before merge. Unversioned legacy third-party writes retain their documented overwrite risk.
+
+P4 #539 is ready at note-only `737fc0b0de316d05a667fadabb98e02fe0b48c76`, recording
+current-source ordinary/Sol clearance for deny/cancel and the main import through #538.
+Its shipping image booted successfully; 16 required checks are green and full PostgreSQL
+integration is running at this read. It still needs the newly merged main integration and
+applicable exact-head evidence. Existing AU-14 permits mutation state/event commit when
+an audit append fails, with error reporting; administrator notification/metric debt stays
+open. Deny is session-only, cancel accepts the requester's valid current credential, and
+both are self-only with locked single-winner state decisions. This does not complete
+approval execution, step-up, expiry workers, every DELETE route or the UI.
+
+P1 #512 remains draft at `f90ad9e768b413299536f1e3501b4f05876fd8ab` with CA-15 and
+journey evidence incomplete. P2 #513 remains draft at
+`225f97a359ab863350d2771062681a8ab8158426`; its recorded 15-test PostgreSQL and Luna/Sol
+evidence binds that head. Its calendar migration collides with #529's 0079 and must be
+regenerated after the concurrency schema merges. CAL-8, AU-14 alerting and DELETE remain
+open. P3's read-only six-table persistence plan is prepared; implementation also waits for
+the owning identity-security findings to be cleared, canonical persistence ambiguities to
+be resolved and shared schema/journal ownership to be released. The 25-test real-Entra
+acceptance remains required. Check live GitHub heads and checks before acting.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
 `a0ecc965c9de65af5575361eb6c5286bf05a4bdd` (verified 2026-10-01 03:15 UTC).**
 PR #528's bounded pending-action self-read API merged after three recorded independent
 reviews (two Luna ordinary passes and a full Sol security pass), all 17 required checks,
@@ -2240,18 +2483,23 @@ only.
 
 Issue #28 still has three distinct dependencies: #446 needs comment/submission storage, #448
 needs a portal-caller identity path, and #449 needs a system-actor transition mechanism.
-#499 and #502 are closed; their liveness and archive-freeze fixes are merged. The stale
-full-task write race is separately open as #526. Check live GitHub state before dispatch.
+#499 and #502 are closed; their liveness and archive-freeze fixes are merged. The first-party full-task write race is closed as #526 through protected PR #529; its
+documented unversioned third-party compatibility window remains. Check live GitHub state
+before dispatch.
 
-### P2 #33 / P3 #39 shared-schema ordering
+### P2 #33 / P3 #39 shared-schema ordering and identity review
 
 The #33 calendar candidate is draft PR #513 and remains partial. CAL-8 usage, AU-14 alerting
-and the pending-action DELETE retrofit remain open. P1 #529 and P2 #513 both currently
-use migration 0079; acceptance must be serialized and the later candidate regenerated
-against the first one's merged schema. P3 #39's six-table persistence work shares Drizzle
+and the pending-action DELETE retrofit remain open. Protected PR #529 has established
+task-version migration 0079 on main. Calendar PR #513 uses migration 0080 and awaits
+independent review and protected acceptance; P1 #512 must regenerate its later migration
+from that accepted schema. Acceptance and shared-schema writes remain serialized.
+P3 #39's six-table persistence work shares Drizzle
 schema, relation and migration-journal files, so that work starts after those lanes release
-them. #39's eventual completion still requires its 25-test
-real-Entra gate. P3 #38 remains dependent on request/catalogue/intake/approval foundations.
+them. The owning security review still lists JIT/domain trust and the OIDC protocol floor;
+identity implementation waits for those findings to be independently reconciled and cleared.
+The read-only six-table plan also identifies canonical persistence details that must be
+resolved before DDL. #39's eventual completion still requires its 25-test real-Entra gate. P3 #38 remains dependent on request/catalogue/intake/approval foundations.
 
 ### Design-review ownership — P2 #36
 
