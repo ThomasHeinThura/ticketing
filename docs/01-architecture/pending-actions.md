@@ -167,17 +167,107 @@ thing that is hashed or executed.
 - `PA-14` The same mechanism carries the MCP server's other destructive tools —
   `decide_approval`, and any bulk operation above 50 items — with `action =
   'mcp_destructive'` ([mcp-server.md](../03-features/mcp-server.md) `MC-7`, `MC-17`).
-- `PA-15` **Step-up is minted per pending action, and can be re-minted.**
-  `POST /api/me/step-up` (session-only, `authenticated + self`) takes a `pendingActionId`,
-  performs the re-authentication described in
-  [security-model.md](security-model.md#sessions-csrf-and-step-up), and returns a
-  **single-use token bound to that id**, valid **five minutes**. It can only be called after
-  the pending action exists, so a token can never be broader than one approval. The token's
-  five minutes are shorter than the action's fifteen on purpose: an approver who reads a
-  project-deletion summary for six minutes has a live action and a dead token, and simply
-  mints another — `POST /api/me/step-up` succeeds for as long as the action is `pending`. An
-  approval that needs a token and has none is `403 step_up_required`; one presenting an
-  expired or already-used token is `403 step_up_expired`. Both leave the action `pending`.
+- `PA-15` **Step-up is single-use and bound to one pending action or one explicitly
+  registered operation.** `step_up_confirmation` in [data-model.md](data-model.md) owns a
+  session/person-bound challenge and confirmation. `POST /api/me/step-up/challenges`
+  (`authenticated + self`, session-only) creates a five-minute challenge for either the
+  current requester's pending action or the first registered operation,
+  `metrics_token_rotate`. Pending-action binding uses its existing `pending_action.id` and
+  `payload_hash`; operation binding uses the exact fixed route key, operation key, expected
+  singleton version and server-computed canonical request-body hash. The client cannot
+  choose a route or submit a hash. The response contains an opaque challenge id and a
+  one-time 32-byte random nonce encoded as 43-character unpadded base64url; only its SHA-256
+  digest is stored.
+
+  `POST /api/me/step-up` takes the same discriminated binding plus challenge id, nonce and a
+  method-specific proof. It verifies the live session/person, exact binding, nonce,
+  five-minute expiry and actual fresh re-authentication before issuing a new random
+  32-byte confirmation token. Only its SHA-256 digest is stored. The 43-character token is
+  returned once with no-store headers and expires five minutes after issuance. There is no
+  session-wide grace window, token readback, or client assertion that re-authentication
+  succeeded. A fresh challenge is required after expiry or failed proof. New challenges and
+  tokens invalidate older unused material for the same session and binding; consumed rows
+  are retained for at most 24 hours for replay diagnosis.
+
+  Challenge requests are a strict discriminated union:
+
+  ```json
+  { "kind": "pending_action", "pendingActionId": "..." }
+  { "kind": "operation", "operation": "metrics_token_rotate", "version": 7 }
+  ```
+
+  For an operation, the server requires current `instance:admin` and a matching current
+  `observability_config_version`, then hashes the canonical body bytes defined in
+  [api-design.md](api-design.md#observability-administration-and-step-up). For a pending
+  action, it verifies current requester ownership and pending state and takes the existing
+  payload hash itself. The no-store response is `{challengeId, challengeNonce, expiresAt,
+  reauthenticationMethods}`; the nonce is 32 random bytes as unpadded 43-character
+  base64url. The step-up request repeats the binding to prevent completing a different
+  challenge target:
+
+  ```json
+  { "kind": "operation", "operation": "metrics_token_rotate", "version": 7,
+    "challengeId": "...", "challengeNonce": "...",
+    "proof": { "method": "password", "value": "..." } }
+  ```
+
+  The only initial proof is the current password for the supported local-password account
+  class with no enrolled/required second factor. TOTP, backup-code, or SSO proof may be
+  accepted only after its adapter exists and verifies the live challenge; an SSO callback
+  stores a server-verifiable receipt and accepts no client claim of success. The mint
+  response is the no-store `{stepUpToken, expiresAt}`; no proof is logged or persisted.
+
+  The first operation binding is only the exact `POST
+  /api/instance/observability/metrics-token/rotate` with `{version}`. Its execution uses the
+  `X-TaskDesk-Step-Up-Token` header and recomputes the canonical request hash server-side.
+  In one database transaction, re-read the current active person and session, re-evaluate
+  the exact `instance:admin` route policy, lock the confirmation row found by token digest,
+  compare its fixed-length hash and exact route/body/version/session/person binding, mark it
+  consumed conditionally, compare-and-set the singleton version, rotate the token hash, and
+  append the safe audit row in a nested savepoint. Those writes commit together. A stale
+  version returns `409
+  version_conflict` and rolls back token consumption; the retry needs a new challenge bound
+  to the new version. A wrong, expired, replayed, or mismatched token returns the same
+  generic `403 step_up_expired`; missing token is `403 step_up_required`. These denials do
+  not rotate the credential. Pending-action approval retains its existing pending-id
+  binding, five-minute token lifetime, re-mintability while pending, and `pending` state on
+  denial.
+
+  For SSO step-up, the callback must validate the exact configured issuer and audience,
+  single-use `state` and `nonce` bound to challenge/session/subject/connection, and the
+  requested `prompt=login`. It must include signed `auth_time` satisfying
+  `challenge.created_at - 60s <= auth_time <= callback_received_at + 60s` and
+  `callback_received_at - auth_time <= 5min`; the callback must arrive before challenge
+  expiry. Missing or untrustworthy `auth_time`, changed subject/connection/session, or
+  unavailable auth context fails closed (`403 step_up_unavailable` or authentication
+  failure). Where policy requires MFA, fresh `amr`/`acr` evidence must satisfy the configured
+  connection mapping or a real local factor; a static upstream-MFA flag alone is not proof.
+  No password/email-OTP fallback is allowed for an SSO-only account.
+
+  Re-authentication must be actually verified. The initial supported account class is a
+  current local-password session with no enrolled or required second factor, where the
+  server rechecks the current credential/identity and verifies the password. The current
+  source does not enable better-auth `twoFactor` and does not implement a fresh Entra
+  `prompt=login` callback or other verified factor adapter. A method that the account
+  requires but the server cannot verify fails closed with `403 step_up_unavailable`; sign-in
+  email OTP or a client success flag must not substitute for a missing required factor. The
+  protected operation cannot be called usable for unsupported account classes until their
+  applicable re-authentication adapters exist and are tested. Detailed binding and
+  transaction rules are in
+  [security-model.md](security-model.md#sessions-csrf-and-step-up) and
+  [api-design.md](api-design.md#observability-administration-and-step-up).
+
+  Challenge creation and proof attempts are rate-limited by session/person/IP. Missing or
+  revoked session is `401`; API, MCP, or impersonation credentials are `403
+  session_required`; a missing required proof is `403 step_up_required`; expired, consumed,
+  malformed, or mismatched proof material shares generic `403 step_up_expired`; unavailable
+  required verification is `403 step_up_unavailable`; stale operation version is `409
+  version_conflict`; exhausted attempt limits return `429`. Errors expose no factor,
+  credential, challenge/token id, hash, nonce, or request body. Audit `auth.step_up_issued`,
+  `auth.step_up_consumed`, and `auth.step_up_denied` with actor, session/person, binding,
+  outcome and trace id only; `auth.step_up_denied` records failed proof/verification or
+  replay. Never record proof, nonce, token/hash, or arbitrary body.
+  `pending_action.step_up_token_id` records the consumed confirmation row id, not its secret.
 
 ## Confirmation levels
 
@@ -243,6 +333,7 @@ GET     /api/me/pending-actions/{id}                      authenticated + self
 POST    /api/me/pending-actions/{id}/approve              authenticated + self, session-only
 POST    /api/me/pending-actions/{id}/deny                 authenticated + self, session-only
 POST    /api/me/pending-actions/{id}/cancel               authenticated + self
+POST    /api/me/step-up/challenges                       authenticated + self, session-only  (PA-15)
 POST    /api/me/step-up                                   authenticated + self, session-only  (PA-15)
 GET     /api/workspaces/{id}/pending-actions              workspace:manage_settings (read-only)
 POST    /api/instance/purge                               instance:admin  E  (PA-13)
