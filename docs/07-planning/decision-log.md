@@ -5,29 +5,39 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
-### 2026-10-01 · Legacy full-task PUT uses the work-item optimistic-concurrency contract (#526)
+### 2026-10-01 · Pending-action reads require current owner identity
 
-**Decision:** while legacy task screens and `/api/task` remain active, full-task
-`PUT /api/task/{id}` uses the `api-design.md` `If-Match` version contract. Task responses expose
-an integer row version; every persisted task-row update advances it. The PUT checks the
-asserted version after locking the task and returns 409 with asserted/current versions on a
-mismatch, with no row or event side effects. Every full-task caller must send the version from
-the task it read. Existing field-specific status/assignee and move routes remain scoped to
-their requested fields and advance the same version. No last-write-wins exception is added
-for those fields or for other full-task PUT fields. The owning specification is
-`work-items.md` WI-7a.
+**Decision:** resolve the current database identity before either pending-action self read,
+for sessions and API keys. If no valid identity resolves, return 401 before querying an
+action or writing a viewed audit. Keep 404 for a valid caller querying a missing or foreign
+action. Apply the existing identity resolver's lifecycle, organisation and key-owner rules;
+authenticated-self reads do not require a workspace capability.
 
-**Why:** the compatibility endpoint replaces multiple fields from one possibly stale task
-snapshot. A row lock alone serializes writes but still permits a late stale replacement to
-undo a status or assignee change. A row version checked under that lock preserves the latest
-committed change, including when requests finish in the reverse order.
+**Why:** an API key can remain cryptographically valid after its owner is banned or
+deactivated. Stored summaries must stop being readable when the current identity becomes
+invalid. The existing permission evaluator treats an absent resolved identity as 401;
+using the same response for both self routes exposes no action-existence information.
 
-**Alternatives:** keep last-write-wins for legacy PUT (rejected because completion order can
-silently revert a concurrent edit); merge selected protected fields in the server (rejected
-because intent cannot be distinguished from a stale snapshot without a client revision).
+**Decided by:** Thomas, under the 2026-10-01 standing instruction to use recommended
+decisions; recorded by the orchestrator after PR #528's independent security finding.
 
-**Decided by:** the orchestrating session under the bounded #526 task-update concurrency
-assignment; recorded before implementation.
+### 2026-10-01 · Pending-action self-read API contract
+
+**Decision:** `GET /api/me/pending-actions` returns only the caller's pending actions,
+ordered by `created_at DESC, id DESC`, with the standard opaque cursor and limit (default
+50, maximum 200) and `{ data, page, meta }` envelope. `GET
+/api/me/pending-actions/{id}` returns the caller's action in any state for polling; another
+requester's id returns the same 404 as a missing id. Both use one explicit allowlisted DTO:
+id, action, origin, target type and ids, summary, required confirmation, state, timestamps,
+invalidation reason, and the own API key's name when available. Payload/hash, route key,
+credential id, step-up token id, trace id, and internal error stay private. A read that
+renders a summary writes `pending_action.viewed`; an audit failure fails the read.
+
+**Why:** clients need a stable way to discover approval requests and poll their outcomes.
+The persistence row contains internal authorization and execution data, so returning it
+directly would expose fields that the UI and polling contract do not need.
+
+**Decided by:** task orchestrator, 2026-10-01.
 
 ### 2026-10-01 · G8 requires implemented screens now and activates future routes with implementation
 

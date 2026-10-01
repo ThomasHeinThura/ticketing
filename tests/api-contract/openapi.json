@@ -1857,6 +1857,175 @@
           "updatedAt"
         ]
       },
+      "PendingActionListResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingActionRead"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PendingActionPage"
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "total"
+            ]
+          }
+        },
+        "required": [
+          "data",
+          "page",
+          "meta"
+        ]
+      },
+      "PendingActionRead": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "delete",
+              "bulk_delete",
+              "purge",
+              "mcp_destructive"
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "web",
+              "api",
+              "mcp"
+            ]
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "confirmation": {
+            "type": "string",
+            "enum": [
+              "click",
+              "typed_name",
+              "typed_count",
+              "typed_name_step_up",
+              "typed_count_step_up"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "denied",
+              "cancelled",
+              "expired",
+              "invalidated",
+              "executed",
+              "failed"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "invalidationReason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "credential_revoked",
+              "requester_deactivated",
+              "reach_lost",
+              "capability_removed",
+              "version_changed",
+              "scope_changed",
+              null
+            ]
+          },
+          "decidedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "executedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "requestingKeyName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "origin",
+          "targetType",
+          "targetIds",
+          "summary",
+          "confirmation",
+          "state",
+          "createdAt",
+          "expiresAt",
+          "invalidationReason",
+          "decidedAt",
+          "executedAt",
+          "requestingKeyName"
+        ]
+      },
+      "PendingActionPage": {
+        "type": "object",
+        "properties": {
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "nextCursor",
+          "hasMore"
+        ]
+      },
       "SearchResponse": {
         "type": "object",
         "properties": {
@@ -11201,6 +11370,123 @@
           },
           "404": {
             "description": "Workspace rule not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/pending-actions": {
+      "get": {
+        "operationId": "listOwnPendingActions",
+        "tags": [
+          "Pending actions"
+        ],
+        "summary": "List the caller's pending actions",
+        "description": "Returns pending actions owned by the authenticated caller, newest first.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller's pending actions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActionListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid cursor or limit",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The caller has no current valid identity",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/pending-actions/{id}": {
+      "get": {
+        "operationId": "getOwnPendingAction",
+        "tags": [
+          "Pending actions"
+        ],
+        "summary": "Get one of the caller's pending actions",
+        "description": "Returns the caller's action in any state so API and MCP clients can poll its outcome.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The caller's pending action",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActionRead"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The caller has no current valid identity",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pending action not found",
             "content": {
               "text/plain": {
                 "schema": {
