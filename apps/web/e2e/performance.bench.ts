@@ -4,6 +4,7 @@ import {
   median,
   medianOfThreeWithRetry,
 } from "../../../scripts/ci/lib/performance-budget.mjs";
+import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
 
 const G13_TRANSITIONS = [
   "work-list",
@@ -1007,69 +1008,6 @@ async function waitForTwoFrames(page: Page) {
   );
 }
 
-async function installLastItemPaintRecorder(
-  page: Page,
-  selector: string,
-  count: number,
-  metric: "listPaint" | "boardPaint",
-) {
-  await page.addInitScript(
-    ({ itemSelector, itemCount, metricName }) => {
-      const debug = {
-        hasDocumentElement: Boolean(document.documentElement),
-        hasMetricsAtInstall: Boolean((window as G11Window).__g11Metrics),
-        callbackCount: 0,
-        lastItemCount: 0,
-        targetFound: false,
-      };
-      (window as Window & { __g11PaintDebug?: typeof debug }).__g11PaintDebug =
-        debug;
-      const installObserver = () => {
-        if (!document.documentElement) {
-          document.addEventListener("DOMContentLoaded", installObserver, {
-            once: true,
-          });
-          return;
-        }
-        debug.hasDocumentElement = true;
-        const observe = () => {
-          debug.callbackCount += 1;
-          const items = document.querySelectorAll(itemSelector);
-          debug.lastItemCount = items.length;
-          if (items.length < itemCount) return;
-
-          const target = items.item(itemCount - 1);
-          if (!target) return;
-          debug.targetFound = true;
-          observer.disconnect();
-          target.scrollIntoView({ block: "nearest" });
-          const writeMark = () => {
-            requestAnimationFrame(() =>
-              requestAnimationFrame(() => {
-                const metrics = (window as G11Window).__g11Metrics;
-                if (!metrics) {
-                  writeMark();
-                  return;
-                }
-                metrics[metricName] = performance.now();
-              }),
-            );
-          };
-          writeMark();
-        };
-        const observer = new MutationObserver(observe);
-        observer.observe(document.documentElement, {
-          childList: true,
-          subtree: true,
-        });
-        observe();
-      };
-      installObserver();
-    },
-    { itemSelector: selector, itemCount: count, metricName: metric },
-  );
-}
-
 async function openWorkList(page: Page) {
   await page.goto(WORK_LIST_PATH);
   const rows = page.locator("[data-testid=work-item-list-populated] tbody tr");
@@ -1444,7 +1382,11 @@ async function collectG13WindowMeasurement(
 
 async function collectListRender(page: Page) {
   const rowSelector = "[data-testid=work-item-list-populated] tbody tr";
-  await installLastItemPaintRecorder(page, rowSelector, 500, "listPaint");
+  await installLastItemPaintRecorder(page, {
+    kind: "list",
+    expectedCount: 500,
+    metric: "listPaint",
+  });
   await page.goto(WORK_LIST_PATH);
   await expect(page.locator(rowSelector)).toHaveCount(500, {
     timeout: 30_000,
@@ -1493,12 +1435,11 @@ async function openLegacyBoard(page: Page) {
 }
 
 async function collectBoardRender(page: Page) {
-  await installLastItemPaintRecorder(
-    page,
-    '[data-task-id="legacy-task-200"]',
-    1,
-    "boardPaint",
-  );
+  await installLastItemPaintRecorder(page, {
+    kind: "board",
+    expectedCount: 200,
+    metric: "boardPaint",
+  });
   await page.goto(
     "/dashboard/workspace/" +
       WORKSPACE_ID +
@@ -1509,6 +1450,10 @@ async function collectBoardRender(page: Page) {
   await expect(
     page.getByText("Seeded legacy task 200", { exact: true }),
   ).toHaveCount(1, { timeout: 30_000 });
+  await expect(page.locator('[data-task-id^="legacy-task-"]')).toHaveCount(
+    200,
+    { timeout: 30_000 },
+  );
   await page.waitForFunction(
     () => (window as G11Window).__g11Metrics.boardPaint > 0,
     undefined,
