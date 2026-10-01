@@ -8,9 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { defaultRolePayloads } from "../../packages/permissions/src/legacy-better-auth-access-control";
 
 const PROBE_ROLE = "taskdesk_rls_probe";
-const PROBE_PASSWORD = "rls-prototype-only";
 const BASELINE_ROLE = "taskdesk_rls_baseline";
-const BASELINE_PASSWORD = "rls-baseline-only";
 const GUC_NAME = "taskdesk.rls_organisation_ids";
 const ROWS_PER_PROJECT = 300;
 const WARMUP_COUNT = 8;
@@ -45,14 +43,19 @@ type ExplainSummary = {
 
 let ownerPool: Pool;
 let probePool: Pool;
+let directProbePool: Pool;
 let measureBaselinePool: Pool;
+let pgbouncerAdminPool: Pool;
+let logicalClientAPool: Pool;
+let logicalClientBPool: Pool;
 let projectFixtures: ProjectFixture[];
 let organisationIds: { internal: string; customerA: string; customerB: string };
+let probePassword: string;
+let baselinePassword: string;
+let databaseName: string;
 let applicationDatabaseModule:
   | typeof import("../../apps/api/src/database")
   | undefined;
-let previousTaskdeskDatabaseUrl: string | undefined;
-let previousTaskdeskAuthSecret: string | undefined;
 
 const RLS_POLICIES = [
   "CREATE POLICY rls_proto_work_item_read ON public.work_item FOR SELECT TO taskdesk_rls_probe USING (",
@@ -192,6 +195,26 @@ async function withTransaction<T>(
     throw error;
   } finally {
     client.release();
+  }
+}
+
+async function withOpenTenantTransaction<T>(
+  client: PoolClient,
+  organisationId: string,
+  work: () => Promise<T>,
+): Promise<T> {
+  await client.query("BEGIN");
+  try {
+    await client.query("SELECT set_config($1, $2, true)", [
+      GUC_NAME,
+      organisationId,
+    ]);
+    const result = await work();
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
   }
 }
 
@@ -404,10 +427,10 @@ async function createFixture() {
 
 async function configureProbeRoleAndPolicies() {
   await ownerPool.query(
-    `CREATE ROLE ${PROBE_ROLE} LOGIN PASSWORD '${PROBE_PASSWORD}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS`,
+    `CREATE ROLE ${PROBE_ROLE} LOGIN PASSWORD '${probePassword}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS`,
   );
   await ownerPool.query(
-    `CREATE ROLE ${BASELINE_ROLE} LOGIN PASSWORD '${BASELINE_PASSWORD}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT BYPASSRLS`,
+    `CREATE ROLE ${BASELINE_ROLE} LOGIN PASSWORD '${baselinePassword}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT BYPASSRLS`,
   );
   for (const role of [PROBE_ROLE, BASELINE_ROLE]) {
     await ownerPool.query(`GRANT USAGE ON SCHEMA public TO ${role}`);
@@ -432,21 +455,49 @@ async function configureProbeRoleAndPolicies() {
     "ALTER TABLE public.attachment ENABLE ROW LEVEL SECURITY",
   );
 
+  const directProbeUrl = roleUrl(
+    process.env.RLS_PROTOTYPE_DATABASE_URL ?? "",
+    PROBE_ROLE,
+    probePassword,
+  );
+  const pgbouncerUrl = process.env.RLS_PROTOTYPE_PGBOUNCER_URL;
+  if (!pgbouncerUrl) throw new Error("PgBouncer Testcontainer URL missing");
   probePool = new Pool({
-    connectionString: roleUrl(
-      process.env.RLS_PROTOTYPE_DATABASE_URL ?? "",
-      PROBE_ROLE,
-      PROBE_PASSWORD,
-    ),
+    connectionString: pgbouncerUrl,
     max: 1,
     idleTimeoutMillis: 1_000,
+    connectionTimeoutMillis: 5_000,
+  });
+  directProbePool = new Pool({
+    connectionString: directProbeUrl,
+    max: 1,
+    idleTimeoutMillis: 1_000,
+    connectionTimeoutMillis: 5_000,
+  });
+  const adminUrl = new URL(pgbouncerUrl);
+  adminUrl.username = "postgres";
+  adminUrl.password = "";
+  adminUrl.pathname = "/pgbouncer";
+  pgbouncerAdminPool = new Pool({
+    connectionString: adminUrl.toString(),
+    max: 1,
+    connectionTimeoutMillis: 5_000,
+  });
+  logicalClientAPool = new Pool({
+    connectionString: pgbouncerUrl,
+    max: 1,
+    connectionTimeoutMillis: 5_000,
+  });
+  logicalClientBPool = new Pool({
+    connectionString: pgbouncerUrl,
+    max: 1,
     connectionTimeoutMillis: 5_000,
   });
   measureBaselinePool = new Pool({
     connectionString: roleUrl(
       process.env.RLS_PROTOTYPE_DATABASE_URL ?? "",
       BASELINE_ROLE,
-      BASELINE_PASSWORD,
+      baselinePassword,
     ),
     max: 1,
     idleTimeoutMillis: 1_000,
@@ -508,14 +559,12 @@ async function seedApplicationStaffActor(
 async function loadApplicationReadPath() {
   const containerUrl = process.env.RLS_PROTOTYPE_DATABASE_URL;
   if (!containerUrl) throw new Error("Prototype Testcontainer URL missing");
-  previousTaskdeskDatabaseUrl = process.env.TASKDESK_DATABASE_URL;
-  previousTaskdeskAuthSecret = process.env.TASKDESK_AUTH_SECRET;
   // Set the container URL before importing any app/database/auth module. Use the
   // isolated NOBYPASSRLS probe role; never inherit a developer or shared DB URL.
   process.env.TASKDESK_DATABASE_URL = roleUrl(
     containerUrl,
     PROBE_ROLE,
-    PROBE_PASSWORD,
+    probePassword,
   );
   process.env.TASKDESK_AUTH_SECRET =
     "rls-prototype-test-secret-with-more-than-32-characters";
@@ -536,7 +585,7 @@ async function loadApplicationReadPath() {
   }>("SELECT current_user, current_database()");
   expect(connectedAs.rows[0]).toEqual({
     current_user: PROBE_ROLE,
-    current_database: "taskdesk_rls_prototype",
+    current_database: databaseName,
   });
 
   async function requestAsStaff(
@@ -835,9 +884,24 @@ async function visibleIds(
   });
 }
 
+async function idsOnClient(
+  client: PoolClient,
+  table: "work_item" | "comment" | "attachment",
+): Promise<string[]> {
+  const result = await client.query<{ id: string }>(
+    `SELECT id FROM public.${table} ORDER BY id`,
+  );
+  return result.rows.map((row) => row.id);
+}
+
+function normalizeScope(value: string | null): string {
+  return value ? value : "UNSET";
+}
+
 async function expectedTenantIdsFromPrototypePredicate(
   table: "work_item" | "comment" | "attachment",
   organisationId: string,
+  pool: Pool = probePool,
 ): Promise<string[]> {
   let query: string;
   if (table === "work_item") {
@@ -850,7 +914,7 @@ async function expectedTenantIdsFromPrototypePredicate(
     query =
       "SELECT a.id FROM public.attachment AS a JOIN public.workspace AS ws ON ws.id = a.workspace_id WHERE ws.organisation_id = $1 AND (a.work_item_id IS NULL OR EXISTS (SELECT 1 FROM public.work_item AS wi WHERE wi.id = a.work_item_id AND wi.workspace_id = a.workspace_id)) AND (a.comment_id IS NULL OR EXISTS (SELECT 1 FROM public.comment AS c WHERE c.id = a.comment_id AND c.workspace_id = a.workspace_id)) AND a.submission_id IS NULL ORDER BY a.id";
   }
-  return withTransaction(probePool, null, async (client) => {
+  return withTransaction(pool, null, async (client) => {
     const result = await client.query<{ id: string }>(query, [organisationId]);
     return result.rows.map((row) => row.id);
   });
@@ -894,7 +958,7 @@ async function pairedWorkloadQueries(): Promise<Measurement[]> {
       const order: Measurement["mode"][] =
         i % 2 === 0 ? ["rls-off", "rls-on"] : ["rls-on", "rls-off"];
       for (const mode of order) {
-        const pool = mode === "rls-off" ? measureBaselinePool : probePool;
+        const pool = mode === "rls-off" ? measureBaselinePool : directProbePool;
         const tenantScope = mode === "rls-on" ? scope : null;
         const start = performance.now();
         const result = await withTransaction(pool, tenantScope, (client) =>
@@ -907,7 +971,7 @@ async function pairedWorkloadQueries(): Promise<Measurement[]> {
     }
 
     for (const mode of ["rls-off", "rls-on"] as const) {
-      const pool = mode === "rls-off" ? measureBaselinePool : probePool;
+      const pool = mode === "rls-off" ? measureBaselinePool : directProbePool;
       const plan = await withTransaction(
         pool,
         mode === "rls-on" ? scope : null,
@@ -938,7 +1002,21 @@ describe("P0 RLS prototype — isolated, test-only evidence", () => {
         "RLS_PROTOTYPE_DATABASE_URL is only set by this suite's Testcontainers globalSetup",
       );
     }
+    probePassword = process.env.RLS_PROTOTYPE_PROBE_PASSWORD ?? "";
+    baselinePassword = process.env.RLS_PROTOTYPE_BASELINE_PASSWORD ?? "";
+    databaseName = decodeURIComponent(new URL(containerUrl).pathname.slice(1));
+    if (!probePassword || !baselinePassword || !databaseName) {
+      throw new Error("Isolated RLS prototype credentials or database missing");
+    }
     ownerPool = new Pool({ connectionString: containerUrl, max: 4 });
+    const verifiedTarget = await ownerPool.query<{
+      current_user: string;
+      current_database: string;
+    }>("SELECT current_user, current_database()");
+    expect(verifiedTarget.rows[0]).toEqual({
+      current_user: "postgres",
+      current_database: databaseName,
+    });
     await migrate(drizzle(ownerPool), {
       migrationsFolder: resolve(process.cwd(), "drizzle"),
     });
@@ -948,23 +1026,323 @@ describe("P0 RLS prototype — isolated, test-only evidence", () => {
 
   afterAll(async () => {
     await probePool?.end();
+    await directProbePool?.end();
     await measureBaselinePool?.end();
+    await pgbouncerAdminPool?.end();
+    await logicalClientAPool?.end();
+    await logicalClientBPool?.end();
     if (applicationDatabaseModule) {
       await applicationDatabaseModule.getDatabasePool().end();
       applicationDatabaseModule = undefined;
     }
     await ownerPool?.end();
-    if (previousTaskdeskDatabaseUrl === undefined) {
-      delete process.env.TASKDESK_DATABASE_URL;
-    } else {
-      process.env.TASKDESK_DATABASE_URL = previousTaskdeskDatabaseUrl;
-    }
-    if (previousTaskdeskAuthSecret === undefined) {
-      delete process.env.TASKDESK_AUTH_SECRET;
-    } else {
-      process.env.TASKDESK_AUTH_SECRET = previousTaskdeskAuthSecret;
-    }
+    delete process.env.TASKDESK_DATABASE_URL;
+    delete process.env.TASKDESK_AUTH_SECRET;
   }, 30_000);
+
+  it("isolates tenant scope through a real PgBouncer transaction pool", async () => {
+    const postgresVersion = (
+      await ownerPool.query<{ server_version: string }>("SHOW server_version")
+    ).rows[0]?.server_version;
+    expect(postgresVersion).toMatch(/^18\./);
+
+    const versionResult = await pgbouncerAdminPool.query<{
+      version: string;
+      libevent: string;
+    }>("SHOW VERSION");
+    const version = versionResult.rows[0]?.version;
+    expect(version).toContain("1.25.2");
+
+    const configResult = await pgbouncerAdminPool.query<{
+      key: string;
+      value: string;
+    }>("SHOW CONFIG");
+    const config = new Map(
+      configResult.rows.map(({ key, value }) => [key, value]),
+    );
+    expect(config.get("pool_mode")).toBe("transaction");
+    expect(config.get("default_pool_size")).toBe("1");
+
+    const endpoint = await probePool.query<{
+      current_user: string;
+      current_database: string;
+    }>("SELECT current_user, current_database()");
+    expect(endpoint.rows[0]).toEqual({
+      current_user: PROBE_ROLE,
+      current_database: databaseName,
+    });
+
+    const role = await ownerPool.query<{
+      is_superuser: boolean;
+      bypasses_rls: boolean;
+      owns_work_item: boolean;
+    }>(
+      "SELECT r.rolsuper AS is_superuser, r.rolbypassrls AS bypasses_rls, c.relowner = r.oid AS owns_work_item " +
+        "FROM pg_roles AS r CROSS JOIN pg_class AS c " +
+        "WHERE r.rolname = $1 AND c.oid = 'public.work_item'::regclass",
+      [PROBE_ROLE],
+    );
+    expect(role.rows[0]).toEqual({
+      is_superuser: false,
+      bypasses_rls: false,
+      owns_work_item: false,
+    });
+
+    const expectedIds: Record<
+      "customerA" | "customerB",
+      Record<"work_item" | "comment" | "attachment", string[]>
+    > = {
+      customerA: { work_item: [], comment: [], attachment: [] },
+      customerB: { work_item: [], comment: [], attachment: [] },
+    };
+    await setRlsEnabled(false);
+    try {
+      for (const table of ["work_item", "comment", "attachment"] as const) {
+        expectedIds.customerA[table] =
+          await expectedTenantIdsFromPrototypePredicate(
+            table,
+            organisationIds.customerA,
+            ownerPool,
+          );
+        expectedIds.customerB[table] =
+          await expectedTenantIdsFromPrototypePredicate(
+            table,
+            organisationIds.customerB,
+            ownerPool,
+          );
+      }
+    } finally {
+      await setRlsEnabled(true);
+    }
+
+    const clientA = await logicalClientAPool.connect();
+    const clientB = await logicalClientBPool.connect();
+    expect(clientA).not.toBe(clientB);
+    try {
+      const aPid = await withOpenTenantTransaction(
+        clientA,
+        organisationIds.customerA,
+        async () => {
+          const pid = (
+            await clientA.query<{ pid: number }>(
+              "SELECT pg_backend_pid() AS pid",
+            )
+          ).rows[0]?.pid;
+          if (pid === undefined)
+            throw new Error("missing PgBouncer backend PID");
+          for (const table of ["work_item", "comment", "attachment"] as const) {
+            expect(await idsOnClient(clientA, table)).toEqual(
+              expectedIds.customerA[table],
+            );
+          }
+          return pid;
+        },
+      );
+
+      await clientB.query("BEGIN");
+      const bPid = (
+        await clientB.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")
+      ).rows[0]?.pid;
+      expect(bPid).toBe(aPid);
+      const afterCommitScope = await clientB.query<{ scope: string | null }>(
+        "SELECT NULLIF(current_setting($1, true), '') AS scope",
+        [GUC_NAME],
+      );
+      expect(normalizeScope(afterCommitScope.rows[0]?.scope ?? null)).toBe(
+        "UNSET",
+      );
+      for (const table of ["work_item", "comment", "attachment"] as const) {
+        expect(await idsOnClient(clientB, table)).toEqual([]);
+      }
+      await clientB.query("SELECT set_config($1, '', true)", [GUC_NAME]);
+      for (const table of ["work_item", "comment", "attachment"] as const) {
+        expect(await idsOnClient(clientB, table)).toEqual([]);
+      }
+      await clientB.query("SELECT set_config($1, $2, true)", [
+        GUC_NAME,
+        organisationIds.customerB,
+      ]);
+      for (const table of ["work_item", "comment", "attachment"] as const) {
+        expect(await idsOnClient(clientB, table)).toEqual(
+          expectedIds.customerB[table],
+        );
+      }
+      await clientB.query("COMMIT");
+
+      await clientA.query("BEGIN");
+      await clientA.query("SELECT set_config($1, $2, true)", [
+        GUC_NAME,
+        organisationIds.customerA,
+      ]);
+      expect(await idsOnClient(clientA, "work_item")).toEqual(
+        expectedIds.customerA.work_item,
+      );
+      const rollbackPid = (
+        await clientA.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")
+      ).rows[0]?.pid;
+      expect(rollbackPid).toBe(aPid);
+      await clientA.query("ROLLBACK");
+
+      await clientB.query("BEGIN");
+      const rollbackScope = await clientB.query<{ scope: string | null }>(
+        "SELECT NULLIF(current_setting($1, true), '') AS scope",
+        [GUC_NAME],
+      );
+      expect(normalizeScope(rollbackScope.rows[0]?.scope ?? null)).toBe(
+        "UNSET",
+      );
+      for (const table of ["work_item", "comment", "attachment"] as const) {
+        expect(await idsOnClient(clientB, table)).toEqual([]);
+      }
+      await clientB.query("COMMIT");
+
+      let signalAReady: () => void = () => {};
+      let signalAFailed: (error: unknown) => void = () => {};
+      const aReady = new Promise<void>((resolve, reject) => {
+        signalAReady = resolve;
+        signalAFailed = reject;
+      });
+      let releaseA: () => void = () => {};
+      const holdA = new Promise<void>((resolve) => {
+        releaseA = resolve;
+      });
+      const aConcurrent = (async () => {
+        try {
+          await clientA.query("BEGIN");
+          await clientA.query("SELECT set_config($1, $2, true)", [
+            GUC_NAME,
+            organisationIds.customerA,
+          ]);
+          const pid = (
+            await clientA.query<{ pid: number }>(
+              "SELECT pg_backend_pid() AS pid",
+            )
+          ).rows[0]?.pid;
+          if (pid === undefined)
+            throw new Error("missing concurrent A backend PID");
+          signalAReady();
+          await holdA;
+          const ids = await idsOnClient(clientA, "work_item");
+          await clientA.query("COMMIT");
+          return { pid, ids };
+        } catch (error) {
+          signalAFailed(error);
+          throw error;
+        }
+      })();
+      await aReady;
+
+      let signalBBeginSubmitted: () => void = () => {};
+      const bBeginSubmitted = new Promise<void>((resolve) => {
+        signalBBeginSubmitted = resolve;
+      });
+      const bConcurrent = (async () => {
+        const begin = clientB.query("BEGIN");
+        signalBBeginSubmitted();
+        await begin;
+        const scope = await clientB.query<{ scope: string | null }>(
+          "SELECT NULLIF(current_setting($1, true), '') AS scope",
+          [GUC_NAME],
+        );
+        const unsetScope = normalizeScope(scope.rows[0]?.scope ?? null);
+        await clientB.query("SELECT set_config($1, $2, true)", [
+          GUC_NAME,
+          organisationIds.customerB,
+        ]);
+        const pid = (
+          await clientB.query<{ pid: number }>("SELECT pg_backend_pid() AS pid")
+        ).rows[0]?.pid;
+        if (pid === undefined)
+          throw new Error("missing concurrent B backend PID");
+        const ids = await idsOnClient(clientB, "work_item");
+        await clientB.query("COMMIT");
+        return { pid, unsetScope, ids };
+      })();
+      await bBeginSubmitted;
+
+      const deadline = Date.now() + 5_000;
+      let waitingPool:
+        | {
+            cl_waiting: string;
+            sv_active: string;
+          }
+        | undefined;
+      try {
+        while (Date.now() < deadline) {
+          const pools = await pgbouncerAdminPool.query<{
+            database: string;
+            user: string;
+            cl_waiting: string;
+            sv_active: string;
+          }>("SHOW POOLS");
+          waitingPool = pools.rows.find(
+            (pool) =>
+              pool.database === "probe" &&
+              pool.user === PROBE_ROLE &&
+              Number(pool.cl_waiting) === 1 &&
+              Number(pool.sv_active) === 1,
+          );
+          if (waitingPool) break;
+          await new Promise<void>((resolve) => setTimeout(resolve, 20));
+        }
+      } catch (error) {
+        releaseA();
+        await Promise.allSettled([aConcurrent, bConcurrent]);
+        throw error;
+      }
+      releaseA();
+      const [aResult, bResult] = await Promise.all([aConcurrent, bConcurrent]);
+      expect(waitingPool).toBeDefined();
+      expect(aResult.ids).toEqual(expectedIds.customerA.work_item);
+      expect(bResult.unsetScope).toBe("UNSET");
+      expect(bResult.ids).toEqual(expectedIds.customerB.work_item);
+      expect(aResult.pid).toBe(aPid);
+      expect(bResult.pid).toBe(aPid);
+
+      const serverBackends = await ownerPool.query<{ pid: number }>(
+        "SELECT pid FROM pg_stat_activity WHERE datname = $1 AND usename = $2 ORDER BY pid",
+        [databaseName, PROBE_ROLE],
+      );
+      expect(serverBackends.rows.map((row) => row.pid)).toEqual([aPid]);
+
+      console.info(
+        `RLS_PGBOUNCER_RESULTS ${JSON.stringify({
+          postgresVersion,
+          version,
+          poolMode: config.get("pool_mode"),
+          defaultPoolSize: config.get("default_pool_size"),
+          databaseName,
+          role: role.rows[0],
+          reusedBackendPid: aPid,
+          logicalClientsDistinct: clientA !== clientB,
+          rows: {
+            customerA: Object.fromEntries(
+              Object.entries(expectedIds.customerA).map(([table, ids]) => [
+                table,
+                { count: ids.length, sha256: digestIds(ids) },
+              ]),
+            ),
+            customerB: Object.fromEntries(
+              Object.entries(expectedIds.customerB).map(([table, ids]) => [
+                table,
+                { count: ids.length, sha256: digestIds(ids) },
+              ]),
+            ),
+          },
+          committedScopeUnsetRows: 0,
+          rolledBackScopeUnsetRows: 0,
+          emptyScopeRows: 0,
+          concurrentPoolState: waitingPool,
+          concurrentClientBObservedScope: bResult.unsetScope,
+          concurrentBackendPids: [aResult.pid, bResult.pid],
+          backendCountAfterProbe: serverBackends.rows.length,
+        })}`,
+      );
+    } finally {
+      clientA.release();
+      clientB.release();
+    }
+  }, 60_000);
 
   it("measures pooling, tenant agreement, parent consistency, and hot-read overhead", async () => {
     const customerA = [organisationIds.customerA];
