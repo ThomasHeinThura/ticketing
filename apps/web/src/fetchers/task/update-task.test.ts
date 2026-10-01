@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TaskUpdateError } from "@/lib/task-update-error";
 import updateTask from "./update-task";
 
 const mocks = vi.hoisted(() => ({ put: vi.fn() }));
@@ -54,5 +55,18 @@ describe("updateTask optimistic concurrency", () => {
         header: { "if-match": '"1"' },
       });
     }
+  });
+
+  it("classifies transport failures for single-owner mutation feedback", async () => {
+    mocks.put.mockRejectedValue(new TypeError("Network request failed"));
+
+    const request = updateTask(staleTask.id, staleTask);
+    await expect(request).rejects.toBeInstanceOf(TaskUpdateError);
+    await expect(request).rejects.toMatchObject({
+      name: "TaskUpdateError",
+      status: 0,
+      cause: expect.any(TypeError),
+    });
+    expect(mocks.put).toHaveBeenCalledTimes(1);
   });
 });

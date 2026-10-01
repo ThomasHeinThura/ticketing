@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { cn } from "@/lib/cn";
-import { HttpError } from "@/lib/http-error";
+import { TaskUpdateError } from "@/lib/task-update-error";
 import { toast } from "@/lib/toast";
 import type Task from "@/types/task";
 
@@ -98,7 +98,7 @@ export function GanttTaskBar({
         });
         return true;
       } catch (error) {
-        if (!(error instanceof HttpError)) {
+        if (!(error instanceof TaskUpdateError)) {
           toast.error(
             error instanceof Error
               ? error.message

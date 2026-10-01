@@ -7,7 +7,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import updateTask from "@/fetchers/task/update-task";
-import { HttpError } from "@/lib/http-error";
+import { TaskUpdateError } from "@/lib/task-update-error";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
 import type { ProjectWithTasks } from "@/types/project";
@@ -113,7 +113,7 @@ describe("useUpdateTask conflict recovery", () => {
     queryClient.setQueryData(["tasks", staleProject.id], staleProject);
     useProjectStore.getState().setProject(staleProject);
     vi.mocked(updateTask).mockRejectedValue(
-      new HttpError(409, "Failed to update task"),
+      new TaskUpdateError(409, "Failed to update task"),
     );
 
     const { result } = renderHook(
@@ -192,5 +192,62 @@ describe("useUpdateTask conflict recovery", () => {
         attemptedTask,
       ),
     ).toBe(newerLocalProject);
+  });
+
+  it("removes a failed optimistic row missing from the refreshed project", () => {
+    const attemptedTask = task("task-1");
+    const laterLocalTask = task("task-2", { title: "Later local edit" });
+    const localProject = project([attemptedTask, laterLocalTask]);
+    const restored = restoreTaskUpdate(
+      localProject,
+      project([]),
+      attemptedTask.id,
+      attemptedTask,
+    );
+
+    expect(restored).not.toBe(localProject);
+    expect(restored.columns.flatMap(({ tasks }) => tasks)).toEqual([
+      laterLocalTask,
+    ]);
+  });
+
+  it("shows one hook-owned toast for transport failures and removes absent rows", async () => {
+    const staleTask = task("task-1");
+    const staleProject = project([staleTask]);
+    queryClient.setQueryData(["tasks", staleProject.id], staleProject);
+    useProjectStore.getState().setProject(staleProject);
+    vi.mocked(updateTask).mockRejectedValue(
+      new TaskUpdateError(0, "Failed to update task", {
+        cause: new TypeError("Network request failed"),
+      }),
+    );
+
+    const { result } = renderHook(
+      () => {
+        useQuery({
+          queryKey: ["tasks", staleProject.id],
+          queryFn: async () => project([]),
+        });
+        return useUpdateTask();
+      },
+      { wrapper },
+    );
+
+    await act(async () => {
+      await expect(
+        result.current.mutateAsync(staleTask),
+      ).rejects.toBeInstanceOf(TaskUpdateError);
+    });
+
+    await waitFor(() => {
+      expect(
+        useProjectStore
+          .getState()
+          .project?.columns.flatMap(({ tasks }) => tasks),
+      ).toEqual([]);
+    });
+    expect(toast.error).toHaveBeenCalledTimes(1);
+    expect(toast.error).toHaveBeenCalledWith("tasks:update.error");
+    expect(updateTask).toHaveBeenCalledTimes(1);
   });
 });

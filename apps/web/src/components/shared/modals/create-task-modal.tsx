@@ -52,9 +52,9 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { formatDateMedium } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
-import { HttpError } from "@/lib/http-error";
 import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
+import { TaskUpdateError } from "@/lib/task-update-error";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -491,7 +491,7 @@ function CreateTaskModal({
       }
     } catch (error) {
       didSubmitRef.current = false;
-      if (!(error instanceof HttpError)) {
+      if (!(error instanceof TaskUpdateError)) {
         toast.error(
           error instanceof Error
             ? error.message

@@ -83,11 +83,7 @@ export function restoreTaskUpdate(
   const currentTask = taskFrom(current, taskId);
   const authoritativeTask = taskFrom(authoritative, taskId);
   const authoritativeLocation = taskLocation(authoritative, taskId);
-  if (
-    !authoritativeTask ||
-    !authoritativeLocation ||
-    !sameFullTaskWrite(currentTask, expectedCurrent)
-  ) {
+  if (!sameFullTaskWrite(currentTask, expectedCurrent)) {
     return current;
   }
 
@@ -100,6 +96,11 @@ export function restoreTaskUpdate(
     plannedTasks: current.plannedTasks.filter(({ id }) => id !== taskId),
     archivedTasks: current.archivedTasks.filter(({ id }) => id !== taskId),
   };
+
+  // A refreshed authoritative project may no longer contain a deleted task
+  // or one moved to another project. Once the ownership guard matches, remove
+  // the optimistic row rather than leaving a phantom on this project.
+  if (!authoritativeTask || !authoritativeLocation) return restored;
 
   let destination: Task[];
   if (authoritativeLocation.kind === "column") {

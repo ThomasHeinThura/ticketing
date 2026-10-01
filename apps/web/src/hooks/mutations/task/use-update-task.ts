@@ -5,7 +5,7 @@ import {
 } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import updateTask from "@/fetchers/task/update-task";
-import { HttpError } from "@/lib/http-error";
+import { TaskUpdateError } from "@/lib/task-update-error";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
 import type { ProjectWithTasks } from "@/types/project";
@@ -142,7 +142,7 @@ export function useUpdateTask() {
     },
     onError: (error, variables, context) => {
       toast.error(
-        error instanceof HttpError && error.status === 409
+        error instanceof TaskUpdateError && error.status === 409
           ? t("tasks:update.conflict")
           : t("tasks:update.error"),
       );
