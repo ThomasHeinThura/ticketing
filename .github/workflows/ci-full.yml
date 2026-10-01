@@ -156,3 +156,16 @@ jobs:
           path: apps/web/test-results/
           if-no-files-found: warn
           retention-days: 7
+      - name: Capture non-acceptance hosted G11 CPU and timeline profile
+        if: always()
+        run: >-
+          pnpm --dir apps/web exec node e2e/hosted-profile.mjs
+          --output="$RUNNER_TEMP/taskdesk-g11-hosted-profile-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+      - name: Upload hosted G11 source attribution profile
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hosted-g11-source-profile-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/taskdesk-g11-hosted-profile-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: error
+          retention-days: 7

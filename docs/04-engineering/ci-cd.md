@@ -188,6 +188,16 @@ commands above document future suites; none are enabled yet. The `e2e - protecte
 redirect` smoke, G4's `a11y - accessibility (G4, axe)` scan, and G8's `visual regression
 (G8)` are required branch-protection status checks.
 
+After the canonical `pnpm test:perf` run and its `playwright-performance` upload, the full
+performance job also attempts one separate hosted CPU/timeline diagnostic against the same
+production build. It copies the canonical benchmark to a temporary generated spec and runs
+only focused list/LCP, detail, command-palette and board capture journeys; the committed
+benchmark, its retry policy and its strict budgets are not changed. Raw CDP CPU profiles and
+trace events are saved before Playwright attachments to a run-unique directory and uploaded
+as `hosted-g11-source-profile-*`, with generated asset/map hashes and run provenance. The
+instrumentation is diagnostic evidence, never G11 acceptance timing, and does not replace,
+relax or reinterpret the canonical budget result.
+
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
 The GPT-6 Sol **security review** is a required section of `.github/pull_request_template.md`
