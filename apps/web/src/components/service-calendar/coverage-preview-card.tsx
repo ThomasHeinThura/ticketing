@@ -11,6 +11,7 @@ import {
 } from "@taskdesk/ui";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ServiceCalendar } from "@/fetchers/service-calendar";
 import type { useServiceCalendarPreview } from "@/hooks/queries/service-calendar/use-service-calendar-preview";
 import { weeklyCoverHours } from "@/lib/service-calendar-form";
@@ -28,6 +29,7 @@ export function CoveragePreviewCard({
   preview: ReturnType<typeof useServiceCalendarPreview>;
   onYearChange: (year: number) => void;
 }) {
+  const { t } = useTranslation("serviceCalendars");
   const [yearDraft, setYearDraft] = useState(String(year));
 
   useEffect(() => setYearDraft(String(year)), [year]);
@@ -45,15 +47,12 @@ export function CoveragePreviewCard({
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Coverage preview</CardTitle>
-          <CardDescription>
-            Calculated by the server with its timezone database. Values reflect
-            the last saved settings; save changes to recalculate.
-          </CardDescription>
+          <CardTitle>{t("preview.title")}</CardTitle>
+          <CardDescription>{t("preview.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="preview-year">Preview year</Label>
+            <Label htmlFor="preview-year">{t("preview.year")}</Label>
             <Input
               id="preview-year"
               type="number"
@@ -72,19 +71,19 @@ export function CoveragePreviewCard({
               aria-describedby="preview-year-help"
             />
             <p id="preview-year-help" className="text-xs text-muted-foreground">
-              The year is saved in this page URL.
+              {t("preview.yearHelp")}
             </p>
           </div>
           {isNew ? (
             <p className="text-sm text-muted-foreground">
-              Save this calendar to calculate its annual cover.
+              {t("preview.saveToCalculate")}
             </p>
           ) : preview.isLoading ? (
             <Skeleton className="h-20 w-full" />
           ) : preview.isError ? (
             <div className="space-y-2">
               <p className="text-sm text-destructive">
-                Coverage preview is unavailable.
+                {t("preview.unavailable")}
               </p>
               <Button
                 type="button"
@@ -93,7 +92,7 @@ export function CoveragePreviewCard({
                 onClick={() => void preview.refetch()}
               >
                 <RefreshCw aria-hidden="true" />
-                Retry preview
+                {t("preview.retry")}
               </Button>
             </div>
           ) : preview.data ? (
@@ -102,17 +101,17 @@ export function CoveragePreviewCard({
                 <strong className="text-lg tabular-nums">
                   {weeklyCoverHours(preview.data.weeklyCoverMinutes)}
                 </strong>{" "}
-                hours of cover per week
+                {t("preview.weeklyHours")}
               </p>
               <p className="text-sm">
                 <strong className="text-lg tabular-nums">
                   {weeklyCoverHours(preview.data.annualCoverMinutes)}
                 </strong>{" "}
-                hours in {preview.data.year} after holidays
+                {t("preview.annualHours", { year: preview.data.year })}
               </p>
               {!preview.data.hasCover ? (
                 <p className="text-sm text-warning-foreground">
-                  This calendar has no cover windows.
+                  {t("preview.zeroCover")}
                 </p>
               ) : null}
             </div>
@@ -121,8 +120,7 @@ export function CoveragePreviewCard({
       </Card>
       {!isNew && calendar ? (
         <p className="text-xs text-muted-foreground">
-          Calendar: {calendar.name}. Changes take effect immediately for SLAs
-          that use it.
+          {t("preview.calendar", { name: calendar.name })}
         </p>
       ) : null}
     </>

@@ -125,6 +125,27 @@ describe("useWorkspacePermission", () => {
     });
   });
 
+  it("resolves an explicitly row-scoped workspace instead of the active workspace", async () => {
+    capabilitiesGet.mockResolvedValue({
+      ok: true,
+      json: async () => fullCapabilityMap({ manageServiceCalendars: true }),
+    });
+
+    const { result } = renderHook(
+      () => useWorkspacePermission("calendar-owner-workspace"),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.isCheckingPermissions).toBe(false);
+    });
+
+    expect(capabilitiesGet).toHaveBeenCalledWith({
+      query: { workspaceId: "calendar-owner-workspace" },
+    });
+    expect(result.current.canManageServiceCalendars()).toBe(true);
+  });
+
   it("exposes service-calendar management from its exact canonical capability", async () => {
     capabilitiesGet.mockResolvedValue({
       ok: true,

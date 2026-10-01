@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { HolidayFields } from "@/components/service-calendar/holiday-fields";
 import type { Holiday } from "@/fetchers/service-calendar";
 
@@ -25,23 +26,20 @@ export function HolidayListCard({
   onPatch: (index: number, patch: Partial<Holiday>) => void;
   onRemove: (index: number) => void;
 }) {
+  const { t } = useTranslation("serviceCalendars");
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-3">
         <div className="space-y-1">
-          <CardTitle>Holidays</CardTitle>
-          <CardDescription>
-            A holiday removes all cover for that calendar-local date. Annual
-            rules stay recurring without yearly expansion.
-          </CardDescription>
+          <CardTitle>{t("holidays.title")}</CardTitle>
+          <CardDescription>{t("holidays.description")}</CardDescription>
           <p className="text-xs text-muted-foreground">
-            Adding a past holiday can move deadlines later. The affected item
-            count is unavailable until calendar usage is implemented.
+            {t("holidays.pastWarning")}
           </p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={onAdd}>
           <Plus aria-hidden="true" />
-          Add holiday
+          {t("holidays.add")}
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -57,9 +55,7 @@ export function HolidayListCard({
             />
           ))
         ) : (
-          <p className="text-sm text-muted-foreground">
-            No holidays configured.
-          </p>
+          <p className="text-sm text-muted-foreground">{t("holidays.none")}</p>
         )}
       </CardContent>
     </Card>

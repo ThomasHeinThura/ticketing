@@ -15,6 +15,7 @@ import {
 } from "@taskdesk/ui";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import type { UseFormReturn } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { CalendarDetailsCard } from "@/components/service-calendar/calendar-details-card";
 import { CoveragePreviewCard } from "@/components/service-calendar/coverage-preview-card";
@@ -42,13 +43,14 @@ export function ServiceCalendarEditorView({
   form: UseFormReturn<CalendarMetadata>;
   onYearChange: (year: number) => void;
 }) {
+  const { t } = useTranslation("serviceCalendars");
   const { calendar, loading, isCalendarError, refetchCalendar, saving } = state;
 
   if (loading) {
     return (
       <main className="flex h-full flex-col gap-4 overflow-y-auto p-6">
-        <PageTitle title="Service calendar" />
-        <div role="status" aria-label="Loading service calendar">
+        <PageTitle title={t("editor.pageTitle")} />
+        <div role="status" aria-label={t("editor.loading")}>
           <Skeleton className="h-12 w-2/3" />
           <Skeleton className="mt-4 h-72 w-full" />
         </div>
@@ -59,21 +61,21 @@ export function ServiceCalendarEditorView({
   if (isCalendarError) {
     return (
       <main className="flex h-full flex-col gap-4 overflow-y-auto p-6">
-        <PageTitle title="Service calendar" />
+        <PageTitle title={t("editor.pageTitle")} />
         <Alert variant="error">
-          <AlertTitle>Calendar could not be loaded</AlertTitle>
+          <AlertTitle>{t("editor.loadErrorTitle")}</AlertTitle>
           <AlertDescription>
-            The calendar may be unavailable or outside your workspace access.
+            {t("editor.loadErrorDescription")}
             <Button className="w-fit" onClick={() => void refetchCalendar()}>
               <RefreshCw aria-hidden="true" />
-              Retry
+              {t("editor.retry")}
             </Button>
             <Button
               className="w-fit"
               render={<Link to={routes.serviceCalendars.path} />}
               variant="outline"
             >
-              Back to calendars
+              {t("editor.back")}
             </Button>
           </AlertDescription>
         </Alert>
@@ -86,8 +88,8 @@ export function ServiceCalendarEditorView({
       <PageTitle
         title={
           isNew
-            ? "New service calendar"
-            : (calendar?.name ?? "Service calendar")
+            ? t("editor.newTitle")
+            : (calendar?.name ?? t("editor.pageTitle"))
         }
       />
       <main className="flex h-full flex-col gap-6 overflow-y-auto p-6">
@@ -99,10 +101,10 @@ export function ServiceCalendarEditorView({
               size="sm"
             >
               <ArrowLeft aria-hidden="true" />
-              All calendars
+              {t("editor.allCalendars")}
             </Button>
             <h1 className="text-2xl font-semibold">
-              {isNew ? "New service calendar" : calendar?.name}
+              {isNew ? t("editor.newTitle") : calendar?.name}
             </h1>
           </div>
           <Button
@@ -115,24 +117,28 @@ export function ServiceCalendarEditorView({
               state.isCheckingPermissions
             }
           >
-            {saving ? "Saving…" : isNew ? "Create calendar" : "Save changes"}
+            {saving
+              ? t("editor.saving")
+              : isNew
+                ? t("editor.create")
+                : t("editor.save")}
           </Button>
         </div>
 
         {state.calendarConflict ? (
           <Alert variant="error" role="alert">
-            <AlertTitle>Calendar changed while you were editing</AlertTitle>
+            <AlertTitle>{t("editor.conflictTitle")}</AlertTitle>
             <AlertDescription>
-              Your draft is still available. Reload the latest calendar to
-              discard it, or keep your draft and save it against version{" "}
-              {state.calendarConflict.currentVersion}.
+              {t("editor.conflictDescription", {
+                version: state.calendarConflict.currentVersion,
+              })}
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={state.reloadLatest}
                 >
-                  Discard draft and reload latest
+                  {t("editor.discardReload")}
                 </Button>
                 <Button type="button" onClick={state.keepDraft}>
                   Keep my draft
@@ -148,10 +154,9 @@ export function ServiceCalendarEditorView({
         />
         {!state.canManageCalendars && !state.isCheckingPermissions ? (
           <Alert variant="info">
-            <AlertTitle>Read-only access</AlertTitle>
+            <AlertTitle>{t("editor.readOnlyTitle")}</AlertTitle>
             <AlertDescription>
-              Your workspace role does not allow creating or editing service
-              calendars. Contact a workspace administrator if you need access.
+              {t("editor.readOnlyDescription")}
             </AlertDescription>
           </Alert>
         ) : null}
@@ -165,9 +170,7 @@ export function ServiceCalendarEditorView({
             disabled={!state.canManageCalendars || state.isCheckingPermissions}
             className="m-0 min-w-0 border-0 p-0"
           >
-            <legend className="sr-only">
-              Editable service calendar settings
-            </legend>
+            <legend className="sr-only">{t("editor.editableLegend")}</legend>
             <div className="space-y-6">
               <CalendarDetailsCard form={form} />
               <WeeklyCoverCard
@@ -207,17 +210,13 @@ export function ServiceCalendarEditorView({
         >
           <AlertDialogPopup>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                Confirm calendar timezone change
-              </AlertDialogTitle>
+              <AlertDialogTitle>{t("editor.timezoneTitle")}</AlertDialogTitle>
               <AlertDialogDescription className="text-foreground">
                 Changing the calendar timezone immediately changes how SLA
                 deadlines are calculated for work items using this calendar.
               </AlertDialogDescription>
               <p className="text-sm text-foreground">
-                The affected open-item count is not available yet. The calendar
-                usage count is not available yet. Confirm to continue without
-                that count.
+                {t("editor.timezoneCount")}
               </p>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -233,7 +232,7 @@ export function ServiceCalendarEditorView({
                 disabled={saving}
                 onClick={() => void state.confirmTimezoneChange()}
               >
-                Confirm and save
+                {t("editor.confirmSave")}
               </Button>
             </AlertDialogFooter>
           </AlertDialogPopup>
@@ -252,41 +251,34 @@ function EditorNotices({
   calendar?: ServiceCalendar;
   hasCover: boolean;
 }) {
+  const { t } = useTranslation("serviceCalendars");
   return (
     <>
       <Alert variant="warning">
-        <AlertTitle>Changes affect SLA deadlines immediately</AlertTitle>
+        <AlertTitle>{t("editor.changesTitle")}</AlertTitle>
         <AlertDescription className="text-foreground">
-          Editing cover or holidays recalculates SLA state on the next read. The
-          affected-item count is not available in this slice because the usage
-          endpoint depends on project calendar references (#437) and the
-          sla_policy table.
+          {t("editor.changesDescription")}
         </AlertDescription>
       </Alert>
       {!isNew && calendar && !hasCover ? (
         <Alert variant="warning">
-          <AlertTitle>This calendar provides zero weekly cover</AlertTitle>
+          <AlertTitle>{t("editor.zeroWeeklyTitle")}</AlertTitle>
           <AlertDescription className="text-foreground">
-            With no windows, SLA clocks using this calendar never advance.
+            {t("editor.zeroWeeklyDescription")}
           </AlertDescription>
         </Alert>
       ) : null}
       {isNew && !hasCover ? (
         <Alert variant="warning">
-          <AlertTitle>This calendar currently provides zero cover</AlertTitle>
+          <AlertTitle>{t("editor.zeroTitle")}</AlertTitle>
           <AlertDescription className="text-foreground">
-            Add at least one window before saving if this calendar should move
-            SLA clocks.
+            {t("editor.zeroDescription")}
           </AlertDescription>
         </Alert>
       ) : null}
       <Alert variant="info">
-        <AlertTitle>Limited calendar tools</AlertTitle>
-        <AlertDescription>
-          Configure windows and holidays manually. Presets, cloning, country
-          holidays, .ics import, reference counts, and safe deletion are not
-          available in the current API slice.
-        </AlertDescription>
+        <AlertTitle>{t("editor.limitedTitle")}</AlertTitle>
+        <AlertDescription>{t("editor.limitedDescription")}</AlertDescription>
       </Alert>
     </>
   );

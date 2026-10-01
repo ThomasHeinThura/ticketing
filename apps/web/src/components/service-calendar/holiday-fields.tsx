@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@taskdesk/ui";
 import { Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { Holiday } from "@/fetchers/service-calendar";
 
 export function HolidayFields({
@@ -24,15 +25,20 @@ export function HolidayFields({
   onPatch: (patch: Partial<Holiday>) => void;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation("serviceCalendars");
   const kind =
     "date" in holiday ? "date" : "from" in holiday ? "range" : "annual";
 
   return (
     <fieldset className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-      <legend className="px-1 text-sm font-medium">Holiday {index + 1}</legend>
+      <legend className="px-1 text-sm font-medium">
+        {t("holidays.item", { count: index + 1 })}
+      </legend>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor={`holiday-${index}-kind`}>Holiday pattern</Label>
+          <Label htmlFor={`holiday-${index}-kind`}>
+            {t("holidays.pattern")}
+          </Label>
           <Select
             value={kind}
             onValueChange={(value) => {
@@ -50,16 +56,18 @@ export function HolidayFields({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="date">One date</SelectItem>
-              <SelectItem value="range">Date range</SelectItem>
-              <SelectItem value="annual">Repeats every year</SelectItem>
+              <SelectItem value="date">{t("holidays.date")}</SelectItem>
+              <SelectItem value="range">{t("holidays.range")}</SelectItem>
+              <SelectItem value="annual">{t("holidays.annual")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {kind === "date" ? (
           <div className="space-y-1.5">
-            <Label htmlFor={`holiday-${index}-date`}>Date</Label>
+            <Label htmlFor={`holiday-${index}-date`}>
+              {t("holidays.dateLabel")}
+            </Label>
             <Input
               id={`holiday-${index}-date`}
               type="date"
@@ -71,7 +79,9 @@ export function HolidayFields({
         ) : kind === "range" && "from" in holiday ? (
           <>
             <div className="space-y-1.5">
-              <Label htmlFor={`holiday-${index}-from`}>From</Label>
+              <Label htmlFor={`holiday-${index}-from`}>
+                {t("holidays.from")}
+              </Label>
               <Input
                 id={`holiday-${index}-from`}
                 type="date"
@@ -81,7 +91,9 @@ export function HolidayFields({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor={`holiday-${index}-to`}>Through</Label>
+              <Label htmlFor={`holiday-${index}-to`}>
+                {t("holidays.through")}
+              </Label>
               <Input
                 id={`holiday-${index}-to`}
                 type="date"
@@ -94,7 +106,9 @@ export function HolidayFields({
         ) : kind === "annual" && "recurs" in holiday ? (
           <>
             <div className="space-y-1.5">
-              <Label htmlFor={`holiday-${index}-month`}>Month</Label>
+              <Label htmlFor={`holiday-${index}-month`}>
+                {t("holidays.month")}
+              </Label>
               <Input
                 id={`holiday-${index}-month`}
                 type="number"
@@ -108,7 +122,9 @@ export function HolidayFields({
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor={`holiday-${index}-day`}>Day</Label>
+              <Label htmlFor={`holiday-${index}-day`}>
+                {t("holidays.day")}
+              </Label>
               <Input
                 id={`holiday-${index}-day`}
                 type="number"
@@ -125,7 +141,9 @@ export function HolidayFields({
         ) : null}
 
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor={`holiday-${index}-name`}>Name (optional)</Label>
+          <Label htmlFor={`holiday-${index}-name`}>
+            {t("holidays.nameOptional")}
+          </Label>
           <Input
             id={`holiday-${index}-name`}
             value={holiday.name ?? ""}
@@ -139,10 +157,10 @@ export function HolidayFields({
         size="sm"
         className="self-start"
         onClick={onRemove}
-        aria-label={`Remove holiday ${index + 1}`}
+        aria-label={t("holidays.removeHoliday", { count: index + 1 })}
       >
         <Trash2 aria-hidden="true" />
-        <span className="sm:sr-only">Remove</span>
+        <span className="sm:sr-only">{t("holidays.remove")}</span>
       </Button>
     </fieldset>
   );

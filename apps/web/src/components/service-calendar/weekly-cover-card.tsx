@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@taskdesk/ui";
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { WindowFields } from "@/components/service-calendar/window-fields";
 import type { CalendarWindow, Weekday } from "@/fetchers/service-calendar";
 import type { CalendarWindowsForm } from "@/lib/service-calendar-form";
@@ -42,6 +43,7 @@ export function WeeklyCoverCard({
   onAdd: (day: Weekday) => void;
   onRemove: (day: Weekday, index: number) => void;
 }) {
+  const { t } = useTranslation("serviceCalendars");
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor),
@@ -50,11 +52,8 @@ export function WeeklyCoverCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Weekly cover</CardTitle>
-        <CardDescription>
-          Windows use local wall-clock times in the selected timezone. Add
-          separate windows around breaks; a window cannot cross midnight.
-        </CardDescription>
+        <CardTitle>{t("weekly.title")}</CardTitle>
+        <CardDescription>{t("weekly.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <DndContext
@@ -62,7 +61,7 @@ export function WeeklyCoverCard({
           onDragEnd={onDragEnd}
           sensors={sensors}
         >
-          {WEEKDAYS.map(({ key, label }) => (
+          {WEEKDAYS.map(({ key }) => (
             <section
               key={key}
               aria-labelledby={`calendar-day-${key}`}
@@ -72,7 +71,7 @@ export function WeeklyCoverCard({
                 id={`calendar-day-${key}`}
                 className="pt-2 text-sm font-medium"
               >
-                {label}
+                {t(`weekdays.${key}`)}
               </h3>
               <div className="space-y-2">
                 {windows[key].length ? (
@@ -88,7 +87,9 @@ export function WeeklyCoverCard({
                     />
                   ))
                 ) : (
-                  <p className="py-2 text-sm text-muted-foreground">No cover</p>
+                  <p className="py-2 text-sm text-muted-foreground">
+                    {t("weekly.none")}
+                  </p>
                 )}
               </div>
               <Button
@@ -96,10 +97,10 @@ export function WeeklyCoverCard({
                 variant="outline"
                 size="sm"
                 onClick={() => onAdd(key)}
-                aria-label={`Add window on ${label}`}
+                aria-label={t("weekly.addOn", { day: t(`weekdays.${key}`) })}
               >
                 <Plus aria-hidden="true" />
-                Add window
+                {t("weekly.add")}
               </Button>
             </section>
           ))}

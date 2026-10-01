@@ -5,14 +5,14 @@ import type {
   Weekday,
 } from "@/fetchers/service-calendar";
 
-export const WEEKDAYS: { key: Weekday; label: string }[] = [
-  { key: "mon", label: "Monday" },
-  { key: "tue", label: "Tuesday" },
-  { key: "wed", label: "Wednesday" },
-  { key: "thu", label: "Thursday" },
-  { key: "fri", label: "Friday" },
-  { key: "sat", label: "Saturday" },
-  { key: "sun", label: "Sunday" },
+export const WEEKDAYS: { key: Weekday }[] = [
+  { key: "mon" },
+  { key: "tue" },
+  { key: "wed" },
+  { key: "thu" },
+  { key: "fri" },
+  { key: "sat" },
+  { key: "sun" },
 ];
 
 export type CalendarWindowsForm = Record<Weekday, CalendarWindow[]>;

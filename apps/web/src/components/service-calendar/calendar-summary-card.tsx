@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@taskdesk/ui";
+import { useTranslation } from "react-i18next";
 import type { ServiceCalendar } from "@/fetchers/service-calendar";
 import { routes } from "@/lib/routes";
 import { WEEKDAYS, weeklyCoverHours } from "@/lib/service-calendar-form";
@@ -15,6 +16,7 @@ export function CalendarSummaryCard({
 }: {
   calendar: ServiceCalendar;
 }) {
+  const { t } = useTranslation("serviceCalendars");
   const weeklyMinutes = WEEKDAYS.reduce(
     (sum, day) =>
       sum +
@@ -44,16 +46,18 @@ export function CalendarSummaryCard({
         </div>
         <div className="shrink-0 text-right">
           <div className="font-medium tabular-nums">
-            {weeklyCoverHours(weeklyMinutes)} h/week
+            {t("list.weeklyHours", { hours: weeklyCoverHours(weeklyMinutes) })}
           </div>
           <p className="text-xs text-muted-foreground">
-            {calendar.holidays?.length ?? 0} manual holidays
+            {t("list.manualHolidays", {
+              count: calendar.holidays?.length ?? 0,
+            })}
           </p>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         <p className="text-xs text-muted-foreground">
-          Policy and project usage counts are not available yet.
+          {t("list.usageUnavailable")}
         </p>
       </CardContent>
     </Card>

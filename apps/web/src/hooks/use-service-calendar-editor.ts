@@ -2,6 +2,7 @@ import type { DragEndEvent } from "@dnd-kit/core";
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { z } from "zod";
 import type {
   CalendarWindow,
@@ -48,8 +49,7 @@ export function useServiceCalendarEditor({
   year: number;
   onCreated: (id: string, year: number) => Promise<void>;
 }) {
-  const { canManageServiceCalendars, isCheckingPermissions } =
-    useWorkspacePermission();
+  const { t } = useTranslation("serviceCalendars");
   const { data: workspace, isLoading: isWorkspaceLoading } =
     useActiveWorkspace();
   const {
@@ -58,6 +58,10 @@ export function useServiceCalendarEditor({
     isError: isCalendarError,
     refetch: refetchCalendar,
   } = useServiceCalendar(isNew ? "" : calendarId);
+  const { canManageServiceCalendars, isCheckingPermissions } =
+    useWorkspacePermission(
+      isNew ? (workspace?.id ?? null) : (calendar?.workspaceId ?? null),
+    );
   const preview = useServiceCalendarPreview(isNew ? "" : calendarId, year);
   const createCalendar = useCreateServiceCalendar();
   const updateCalendar = useUpdateServiceCalendar();
@@ -88,14 +92,14 @@ export function useServiceCalendarEditor({
   const metadataSchema = useMemo(
     () =>
       z.object({
-        name: z.string().trim().min(1, "Enter a calendar name").max(120),
+        name: z.string().trim().min(1, t("details.nameRequired")).max(120),
         timezone: z
           .string()
           .trim()
-          .min(1, "Choose an IANA timezone")
-          .refine(isValidIanaTimezone, "Enter a valid IANA timezone"),
+          .min(1, t("details.timezoneRequired"))
+          .refine(isValidIanaTimezone, t("details.timezoneInvalid")),
       }),
-    [],
+    [t],
   );
   const form = useForm<CalendarMetadata>({
     resolver: standardSchemaResolver(metadataSchema),
@@ -122,14 +126,14 @@ export function useServiceCalendarEditor({
 
   async function persist(values: CalendarMetadata) {
     if (!canManageServiceCalendars()) {
-      toast.error("You do not have permission to manage service calendars.");
+      toast.error(t("editor.readOnlyDescription"));
       return;
     }
     const invalidWindow = WEEKDAYS.some(({ key }) =>
       windows[key].some((window) => window.from >= window.to),
     );
     if (invalidWindow) {
-      setWindowError("Each window must end after it starts.");
+      setWindowError(t("weekly.windowInvalid"));
       return;
     }
     setWindowError("");
@@ -143,12 +147,12 @@ export function useServiceCalendarEditor({
 
     try {
       if (isNew) {
-        if (!workspace?.id) throw new Error("Choose a workspace first.");
+        if (!workspace?.id) throw new Error(t("weekly.chooseWorkspace"));
         const created = await createCalendar.mutateAsync({
           workspaceId: workspace.id,
           ...data,
         });
-        toast.success("Service calendar created");
+        toast.success(t("weekly.created"));
         await onCreated(created.id, year);
       } else {
         const updated = await updateCalendar.mutateAsync({
@@ -158,7 +162,7 @@ export function useServiceCalendarEditor({
         });
         form.reset({ name: updated.name, timezone: updated.timezone });
         setCalendarConflict(null);
-        toast.success("Service calendar saved");
+        toast.success(t("weekly.saved"));
       }
     } catch (error) {
       if (error instanceof ServiceCalendarConflictError) {
@@ -166,18 +170,18 @@ export function useServiceCalendarEditor({
           assertedVersion: error.assertedVersion,
           currentVersion: error.currentVersion,
         });
-        await refetchCalendar();
+        await Promise.all([refetchCalendar(), preview.refetch()]);
         return;
       }
       toast.error(
-        error instanceof Error ? error.message : "Failed to save calendar",
+        error instanceof Error ? error.message : t("weekly.saveFailed"),
       );
     }
   }
 
   async function handleSave(values: CalendarMetadata) {
     if (!canManageServiceCalendars()) {
-      toast.error("You do not have permission to manage service calendars.");
+      toast.error(t("editor.readOnlyDescription"));
       return;
     }
     if (

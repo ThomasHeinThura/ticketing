@@ -8,6 +8,7 @@ import {
   Label,
 } from "@taskdesk/ui";
 import type { UseFormReturn } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import type { CalendarMetadata } from "@/hooks/use-service-calendar-editor";
 import { timezoneOptions } from "@/lib/service-calendar-form";
 
@@ -18,17 +19,16 @@ export function CalendarDetailsCard({
 }: {
   form: UseFormReturn<CalendarMetadata>;
 }) {
+  const { t } = useTranslation("serviceCalendars");
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Calendar details</CardTitle>
-        <CardDescription>
-          All windows and date-only holidays use this IANA timezone.
-        </CardDescription>
+        <CardTitle>{t("details.title")}</CardTitle>
+        <CardDescription>{t("details.description")}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="calendar-name">Name</Label>
+          <Label htmlFor="calendar-name">{t("details.name")}</Label>
           <Input
             id="calendar-name"
             autoComplete="off"
@@ -43,11 +43,11 @@ export function CalendarDetailsCard({
           ) : null}
         </div>
         <div className="space-y-2">
-          <Label htmlFor="calendar-timezone">IANA timezone</Label>
+          <Label htmlFor="calendar-timezone">{t("details.timezone")}</Label>
           <Input
             id="calendar-timezone"
             list="service-calendar-timezones"
-            placeholder="Select or enter a timezone"
+            placeholder={t("details.timezonePlaceholder")}
             autoComplete="off"
             {...form.register("timezone")}
             aria-invalid={Boolean(form.formState.errors.timezone)}
@@ -58,7 +58,7 @@ export function CalendarDetailsCard({
             ))}
           </datalist>
           <p className="text-xs text-muted-foreground">
-            Start typing to find a timezone. UTC is available as a choice.
+            {t("details.timezoneHelp")}
           </p>
           {form.formState.errors.timezone ? (
             <p className="text-sm text-destructive" role="alert">

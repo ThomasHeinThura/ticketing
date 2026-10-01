@@ -675,12 +675,57 @@ describe("API integration: service calendars (CAL-1–CAL-15)", () => {
     expect(calendar.version).toBe(1);
     expect(Number.isNaN(Date.parse(calendar.createdAt))).toBe(false);
     expect(Number.isNaN(Date.parse(calendar.updatedAt))).toBe(false);
+    const lifecycleColumnTypes = await db.execute<{
+      column_name: string;
+      data_type: string;
+    }>(sql`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'service_calendar'
+        AND column_name IN ('created_at', 'updated_at')
+      ORDER BY column_name
+    `);
+    expect(lifecycleColumnTypes.rows).toEqual([
+      { column_name: "created_at", data_type: "timestamp with time zone" },
+      { column_name: "updated_at", data_type: "timestamp with time zone" },
+    ]);
 
     const fixedCreatedAt = new Date("2020-01-01T00:00:00.000Z");
     await db
       .update(schema.serviceCalendarTable)
       .set({ createdAt: fixedCreatedAt, updatedAt: fixedCreatedAt })
       .where(eq(schema.serviceCalendarTable.id, calendar.id));
+
+    const timezoneRoundTrip = await db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL TIME ZONE 'America/Los_Angeles'`);
+      const rendered = await tx.execute<{
+        created_at: string;
+        updated_at: string;
+      }>(sql`
+        SELECT created_at::text, updated_at::text
+        FROM service_calendar
+        WHERE id = ${calendar.id}
+      `);
+      const loaded = await tx
+        .select({
+          createdAt: schema.serviceCalendarTable.createdAt,
+          updatedAt: schema.serviceCalendarTable.updatedAt,
+        })
+        .from(schema.serviceCalendarTable)
+        .where(eq(schema.serviceCalendarTable.id, calendar.id));
+      return { rendered: rendered.rows[0], loaded: loaded[0] };
+    });
+    expect(timezoneRoundTrip.rendered).toEqual({
+      created_at: "2019-12-31 16:00:00-08",
+      updated_at: "2019-12-31 16:00:00-08",
+    });
+    expect(timezoneRoundTrip.loaded?.createdAt.toISOString()).toBe(
+      "2020-01-01T00:00:00.000Z",
+    );
+    expect(timezoneRoundTrip.loaded?.updatedAt.toISOString()).toBe(
+      "2020-01-01T00:00:00.000Z",
+    );
 
     let signalLockAcquired: (() => void) | undefined;
     let releaseLock: (() => void) | undefined;
