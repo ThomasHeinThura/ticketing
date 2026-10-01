@@ -126,6 +126,40 @@ export function installLastItemPaintRecorderInDocument(
     const visibleBox = (target: Element) => {
       if (!target.isConnected || target.getClientRects().length === 0)
         return null;
+
+      const visibilityTarget = target as Element & {
+        checkVisibility?: (options?: {
+          checkOpacity?: boolean;
+          checkVisibilityCSS?: boolean;
+        }) => boolean;
+      };
+      if (
+        visibilityTarget.checkVisibility &&
+        !visibilityTarget.checkVisibility({
+          checkOpacity: true,
+          checkVisibilityCSS: true,
+        })
+      )
+        return null;
+
+      // Older engines do not expose the options used by Chromium's visibility check.
+      if (!visibilityTarget.checkVisibility) {
+        for (
+          let ancestor: Element | null = target;
+          ancestor;
+          ancestor = ancestor.parentElement
+        ) {
+          const ancestorStyle = getComputedStyle(ancestor);
+          if (
+            ancestorStyle.display === "none" ||
+            ancestorStyle.visibility === "hidden" ||
+            ancestorStyle.visibility === "collapse" ||
+            Number(ancestorStyle.opacity) === 0
+          )
+            return null;
+        }
+      }
+
       const style = getComputedStyle(target);
       if (
         style.display === "none" ||
