@@ -39,7 +39,7 @@ claim a version the toolchain cannot produce.
 | --- | --- | --- |
 | `/api/*` | The application API | capability |
 | `/api/me/*` | The caller's own records: settings, preferences, API keys, approvals | `authenticated + self` |
-| `/api/public/*` | Unauthenticated: branding, `health/live` and `health/ready`, the login page's provider **buttons only** (label + id — never discovery URLs, tenant ids or domain restrictions), terminology, CSP reports | `public` with reason — **no exceptions**, so the router's blanket kind is true of every route under it |
+| `/api/public/*` | Unauthenticated: branding, `health/live` and `health/ready`, the login page's provider **buttons only** (label + id — never discovery URLs, tenant ids or domain restrictions), terminology, CSP reports, and the two origin-specific `POST /api/public/{agent|portal}/notification-preference-handoffs` routes (one-purpose signed email token; short-lived selector handoff only) | `public` with reason — **no exceptions**, so the router's blanket kind is true of every route under it |
 | `/api/instance/*` | God Mode. `instance:*` capabilities. Includes the dependency-enumerating deep health check, `GET /api/instance/health/deep` — capability `instance:admin`, scope `instance`; it is **not** on the public router, and the `/metrics` bearer token is not an alternative credential for it | capability |
 | `/api/portal/*` | Customer portal — a deliberately narrow, separate router | `portal` with predicate |
 | `/auth/*` | better-auth handler | `delegated: better-auth` |
@@ -73,11 +73,19 @@ these forms, and `PolicyMap<typeof routes>` makes a mismatch a type error.
 ## Workspace context
 
 Many routes are workspace-scoped but carry no workspace in the path (`/api/custom-fields`,
-`/api/capabilities`, `/api/webhooks`, `/api/views`, `/api/notifications`). They read the
+`/api/capabilities`, `/api/webhooks`, `/api/views`). They read the
 workspace from the **`X-Workspace-Id` header** (or `?workspace=` for GET), which the
 policy middleware validates against the identity's memberships **before** the policy
 check. Absent ⇒ `400`; not a member ⇒ `404`. The typed client sets the header from the
 current workspace automatically; there is no other mechanism.
+
+Notification inbox routes under `/api/notification` are authenticated-self routes: they
+derive `person_id` from the session and do not require workspace context. Each returned or
+mutated notification must also pass reach filtering for its referenced resource under that
+resource's policy; inaccessible or deleted resources are omitted from collections and
+cannot be read or mutated by id. Notification preference routes are self routes too, but
+workspace- and project-scoped preference routes validate the selected scope against the
+person's current reach.
 
 ## URL shape
 

@@ -27,6 +27,7 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Accept invitation | `/agent/invite` | route | P3 | ⬜ |
 | Workspace home (default dashboard) | `/agent` | route | P1 | ⬜ |
 | Inbox | `/agent/inbox` | route | P1 | ⬜ |
+| Notifications inbox | `/agent/notifications` | route | P1 | ⬜ |
 | My work | `/agent/my-work` | route | P1 | ⬜ |
 | Triage | `/agent/triage` | route | P2 | ⬜ |
 | Command palette | — | overlay | P1 | ⬜ |
