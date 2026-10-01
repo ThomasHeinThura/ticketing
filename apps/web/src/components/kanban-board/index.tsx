@@ -17,24 +17,17 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { produce } from "immer";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useShallow } from "zustand/react/shallow";
+import { useEffect, useMemo, useState } from "react";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
-import { isTaskCompleted } from "@/lib/due-date-status";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
-import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { ProjectWithTasks } from "@/types/project";
 import BulkToolbar from "../bulk-selection/bulk-toolbar";
 import Column from "./column";
-import TaskCard, {
-  TaskCardDeleteConfirmation,
-  type TaskCardDisplayPreferences,
-  type TaskCompletionColumn,
-} from "./task-card";
+import TaskCard, { TaskCardDeleteConfirmation } from "./task-card";
 import TaskCardContextMenuContent from "./task-card-context-menu/task-card-context-menu-content";
 
 type KanbanBoardProps = {
@@ -44,28 +37,7 @@ type KanbanBoardProps = {
 
 function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
   const queryClient = useQueryClient();
-  const setProject = useProjectStore((state) => state.setProject);
-  const storedProject = useProjectStore((state) => state.project);
-  const cardProject =
-    storedProject?.id === project.id ? storedProject : project;
-  const displayPreferences = useUserPreferencesStore(
-    useShallow(
-      (state): TaskCardDisplayPreferences => ({
-        showAssignees: state.showAssignees,
-        showPriority: state.showPriority,
-        showDueDates: state.showDueDates,
-        showLabels: state.showLabels,
-        showTaskNumbers: state.showTaskNumbers,
-        showTaskItemCounts: state.showTaskItemCounts,
-      }),
-    ),
-  );
-  const completionColumns = useMemo<TaskCompletionColumn[]>(
-    () =>
-      cardProject.columns?.map(({ slug, isFinal }) => ({ slug, isFinal })) ??
-      [],
-    [cardProject.columns],
-  );
+  const { setProject } = useProjectStore();
   const {
     setAvailableTasks,
     focusNext,
@@ -107,10 +79,10 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
     setContextMenuTaskId(taskCard.dataset.taskId ?? null);
   };
 
-  const openContextMenuForTask = useCallback((taskId: string) => {
+  const openContextMenuForTask = (taskId: string) => {
     setContextMenuTaskId(taskId);
     setIsContextMenuOpen(true);
-  }, []);
+  };
 
   useEffect(() => {
     if (project?.columns) {
@@ -340,9 +312,6 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                       workspaceId={workspace?.id}
                       workspaceUsers={workspaceUsers}
                       onContextMenuTask={openContextMenuForTask}
-                      projectSlug={cardProject.slug}
-                      completionColumns={completionColumns}
-                      displayPreferences={displayPreferences}
                     />
                   </div>
                 ))}
@@ -373,12 +342,6 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                 workspaceId={workspace?.id}
                 workspaceUsers={workspaceUsers}
                 onContextMenuTask={openContextMenuForTask}
-                projectSlug={cardProject.slug}
-                taskIsCompleted={isTaskCompleted(
-                  activeTask.status,
-                  completionColumns,
-                )}
-                displayPreferences={displayPreferences}
               />
             </div>
           </div>

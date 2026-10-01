@@ -1,10 +1,6 @@
 import { useState } from "react";
 import type { ProjectWithTasks } from "@/types/project";
-import type {
-  TaskCardDisplayPreferences,
-  TaskCardProps,
-  TaskCompletionColumn,
-} from "../task-card";
+import type { TaskCardProps } from "../task-card";
 import { ColumnDropzone } from "./column-dropzone";
 import { ColumnHeader } from "./column-header";
 
@@ -14,9 +10,6 @@ type ColumnProps = {
   workspaceId?: string;
   workspaceUsers: TaskCardProps["workspaceUsers"];
   onContextMenuTask: TaskCardProps["onContextMenuTask"];
-  projectSlug: string;
-  completionColumns: TaskCompletionColumn[];
-  displayPreferences: TaskCardDisplayPreferences;
 };
 
 function Column({
@@ -25,9 +18,6 @@ function Column({
   workspaceId,
   workspaceUsers,
   onContextMenuTask,
-  projectSlug,
-  completionColumns,
-  displayPreferences,
 }: ColumnProps) {
   const [isDropzoneOver, setIsDropzoneOver] = useState(false);
 
@@ -51,9 +41,6 @@ function Column({
           workspaceId={workspaceId}
           workspaceUsers={workspaceUsers}
           onContextMenuTask={onContextMenuTask}
-          projectSlug={projectSlug}
-          completionColumns={completionColumns}
-          displayPreferences={displayPreferences}
         />
       </div>
     </div>
