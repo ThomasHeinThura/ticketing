@@ -151,7 +151,8 @@ sharded four ways:**
 ├─ Integration ────────────────────────────────────┤
 │ pnpm test:integration    Testcontainers Postgres,│
 │                          lifecycle/, migrations  │
-│                          from empty, anonymiser  │
+│                          from empty, anonymiser, │
+│                          additive seed profiles  │
 ├─ Browser ────────────────────────────────────────┤
 │ pnpm test:e2e            protected-route redirect│
 │                          browser smoke today;    │
