@@ -92,3 +92,60 @@ This does not establish manual browser verification or a live WebSocket handshak
 previously recorded moderate advisories through `ip-address@10.3.1` and `fast-uri@3.1.7`
 remain; this composition does not claim a vulnerability-free dependency graph. Required
 current-source CI and review gates remain authoritative.
+
+## Current-source independent clearance and labelled runtime — 2026-10-01
+
+**Reviewed head:** `e83e0166eb32f3cedcf727df249a8dd3c7ca8933`
+**Comparison base:** `eb68dcdf82da341c750bd5e6d89f061830d73d60`
+
+- **Ordinary review:** fresh independent GPT-6 Luna context
+  `/root/p0_avatar555_luna2`; [review 5381981171](https://github.com/ThomasHeinThura/ticketing/pull/542#pullrequestreview-5381981171).
+  Verdict **CLEAR** for the full five-path dependency/composition diff, with the advisory
+  residual below. The reviewer ran libs tests (2 files / 5 tests), libs typecheck,
+  dependency inventory (9 workspace packages/apps / 1,184 source files), and diff checks.
+  Its permission-suite attempt passed 84 tests but failed four route-coverage assertions
+  because the review worktree contained a built `apps/web/dist`; this environment-precondition
+  failure is retained, not represented as a passing 88-test reviewer run.
+- **Full security review:** fresh independent GPT-6 Sol context
+  `/root/p0_hono542_e83_sol_security`; [review 5382077039](https://github.com/ThomasHeinThura/ticketing/pull/542#pullrequestreview-5382077039).
+  Verdict **CLEAR for the current public-only static configuration**, with no blocking
+  security finding. It reviewed the runtime peer graph, API/auth/CORS/static/WebSocket
+  boundaries, typed client, Vite/Docker layout and static tests. It ran 1 API test file /
+  19 tests, diff checks, a bounded malformed-static-path reproduction, and the moderate-level
+  dependency audit. The audit reported five moderate `ip-address`/`fast-uri` findings; its
+  feed did not report the two newer primary advisories below.
+
+The selected Hono 4.13.7 and Node adapter 1.19.17 remain within the affected ranges of
+[GHSA-5r4p-p66f-jhc7](https://github.com/honojs/hono/security/advisories/GHSA-5r4p-p66f-jhc7)
+and [GHSA-rmxm-3fg6-px4f](https://github.com/honojs/node-server/security/advisories/GHSA-rmxm-3fg6-px4f),
+published September 29. This PR does not fix those advisories. Both exclude public-only
+static files. The reviewed production layout copies only public built web files to
+`/app/public`, strips source maps, stores attachments outside that root and serves protected
+data through authenticated API handlers. The Sol reproduction returned 401 for an ordinary
+unauthenticated API path, public SPA HTML for its malformed double-encoded counterpart,
+and 404 for missing file paths. It found no private byte under the static root; the malformed
+path behavior is still present. A protected static subtree or private mount would invalidate
+this disposition. [Issue #557](https://github.com/ThomasHeinThura/ticketing/issues/557) tracks
+a compatible update: a Hono-only bump cannot fix the separate Node static helper, and the
+installed WebSocket adapter's Node-server peer range must be resolved before upgrading it.
+
+The orchestrator independently downloaded exact-source CI job logs: unit/component job
+`110454527883` passed 12 tasks (API 67 files / 536 tests, UI 59/291, web 80/351); PostgreSQL
+job `110452489618` passed 126 files / 1,579 tests / 5 tasks. These results are scoped to
+`e83e0166`; the final note-only head must still pass every required GitHub check.
+
+A fresh Docker build from clean source `e83e0166` passed all five build tasks and produced
+`taskdesk:hono542-e83e0166`, image
+`sha256:34291f03cb39cd5ffec244c01011b22831cc57bc954c76ae3ed5171b304cf8e0`.
+Its OCI revision label matches the full reviewed source above. Evidence:
+`/private/tmp/pr542-e83-image-build.log` and `/private/tmp/pr542-e83-image-inspect.json`.
+The isolated project `taskdesk542e83` published no host ports; migration exited 0,
+PostgreSQL/Valkey/application reached healthy status, the application ran as UID 10001,
+and live/ready probes returned `{"status":"ok"}`. The one-shot migration container's
+inherited healthcheck is not an application-health claim; its success criterion is exit 0.
+Only that disposable project's containers, network and volumes were removed, with cleanup
+exit 0. Runtime proof: `/private/tmp/pr542-e83-smoke-proof.json`.
+
+These are real independent source reviews and an isolated image/runtime check. They do not
+claim manual browser verification, a live WebSocket handshake, H1 approval, vulnerability-free
+dependencies, stage completion or a phase finalizer. No quality gate is waived.
