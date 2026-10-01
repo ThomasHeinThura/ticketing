@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { rewriteHostedProfileOrigin } from "./hosted-profile-validation.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const webDir = resolve(scriptDir, "..");
@@ -44,6 +45,13 @@ async function sha256(path) {
   return createHash("sha256")
     .update(await readFile(path))
     .digest("hex");
+}
+
+async function pullRequestHeadSha() {
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  if (!eventPath) return null;
+  const event = JSON.parse(await readFile(eventPath, "utf8"));
+  return event.pull_request?.head?.sha ?? null;
 }
 
 async function collectBuildEvidence() {
@@ -107,7 +115,10 @@ async function listFiles(directory) {
 const generatedSource = String.raw`
 import { writeFile } from "node:fs/promises";
 import type { CDPSession } from "@playwright/test";
-import { assertHostedCaptureComplete } from "./hosted-profile-validation.mjs";
+import {
+  assertHostedCaptureComplete,
+  rewriteHostedProfileOrigin,
+} from "./hosted-profile-validation.mjs";
 
 const HOSTED_PROFILE_OUTPUT = __HOSTED_PROFILE_OUTPUT__;
 
@@ -223,6 +234,7 @@ test("Hosted G11 attribution profile: list, LCP, detail, palette, and board", as
   test.setTimeout(600_000);
   const provenance = {
     sourceSha: "__SOURCE_SHA__",
+    candidateHeadSha: "__CANDIDATE_HEAD_SHA__",
     canonicalBenchmarkSha256: "__CANONICAL_BENCH_SHA256__",
     canonicalPreviewPort: 4178,
     diagnosticPreviewPort: 4179,
@@ -417,18 +429,14 @@ try {
     .replace("__HOSTED_PROFILE_OUTPUT__", JSON.stringify(outputDir))
     .replace("__PLAYWRIGHT_VERSION__", playwrightPackage.version)
     .replace("__SOURCE_SHA__", sourceSha)
+    .replace(
+      "__CANDIDATE_HEAD_SHA__",
+      JSON.stringify(await pullRequestHeadSha()),
+    )
     .replace("__CANONICAL_BENCH_SHA256__", canonicalBenchmarkSha256)
     .replace("__PNPM_VERSION__", pnpmVersion)
     .replace("__BUILD_EVIDENCE__", buildProvenance);
-  const generatedBenchmarkSource = source.replace(
-    'const PERFORMANCE_BASE_URL = "http://127.0.0.1:4178";',
-    'const PERFORMANCE_BASE_URL = "http://127.0.0.1:4179";',
-  );
-  if (generatedBenchmarkSource === source) {
-    throw new Error(
-      "Could not isolate the diagnostic preview port from the canonical benchmark",
-    );
-  }
+  const generatedBenchmarkSource = rewriteHostedProfileOrigin(source);
   await writeFile(generatedSpec, generatedBenchmarkSource + extra);
   await writeFile(generatedConfig, configText);
   await mkdir(outputDir, { recursive: true });

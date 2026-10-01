@@ -57,3 +57,19 @@ export function assertHostedCaptureComplete(payload, path) {
     );
   }
 }
+
+export function rewriteHostedProfileOrigin(source) {
+  const canonicalOrigin = "http://127.0.0.1:4178";
+  const diagnosticOrigin = "http://127.0.0.1:4179";
+  const occurrences = source.split(canonicalOrigin).length - 1;
+  if (occurrences !== 3) {
+    throw new Error(
+      `Expected exactly 3 canonical preview origins in copied benchmark; found ${occurrences}`,
+    );
+  }
+  const rewritten = source.replaceAll(canonicalOrigin, diagnosticOrigin);
+  if (rewritten.includes(canonicalOrigin) || occurrences !== 3) {
+    throw new Error("Hosted profile origin rewrite was incomplete");
+  }
+  return rewritten;
+}

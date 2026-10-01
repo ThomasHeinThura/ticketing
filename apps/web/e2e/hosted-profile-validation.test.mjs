@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assertHostedCaptureComplete } from "./hosted-profile-validation.mjs";
+import {
+  assertHostedCaptureComplete,
+  rewriteHostedProfileOrigin,
+} from "./hosted-profile-validation.mjs";
 
 const validPayload = () => ({
   cpuProfile: {
@@ -77,3 +80,19 @@ for (const [label, mutate] of [
     );
   });
 }
+
+test("rewrites all expected fixture origins in the temporary benchmark copy", () => {
+  const origin = "http://127.0.0.1:4178";
+  const source = `base=${origin}; allow=${origin}; preflight=${origin}`;
+  assert.equal(
+    rewriteHostedProfileOrigin(source),
+    source.replaceAll(origin, "http://127.0.0.1:4179"),
+  );
+});
+
+test("fails closed if the temporary benchmark origin count changes", () => {
+  assert.throws(
+    () => rewriteHostedProfileOrigin("http://127.0.0.1:4178"),
+    /Expected exactly 3 canonical preview origins/,
+  );
+});
