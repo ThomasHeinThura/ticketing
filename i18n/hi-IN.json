@@ -1913,7 +1913,8 @@
 		},
 		"update": {
 			"success": "कार्य सफलतापूर्वक अपडेट किया गया",
-			"error": "कार्य अपडेट करने में विफल"
+			"error": "कार्य अपडेट करने में विफल",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "लिंक कॉपी करें",

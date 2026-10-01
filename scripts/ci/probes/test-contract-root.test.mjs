@@ -18,6 +18,7 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { realpathSync } from "node:fs";
 import path from "node:path";
 import { after, describe, it } from "node:test";
 import {
@@ -69,11 +70,14 @@ describe("test-contract.mjs resolves the approved-breaks path against the caller
 
     assert.equal(
       approvedBreaksFilePath,
-      path.join(callerDir, "scripts/ci/openapi-approved-breaks.json"),
+      path.join(
+        realpathSync(callerDir),
+        "scripts/ci/openapi-approved-breaks.json",
+      ),
       "must resolve against the CALLER's worktree, not the script's own checkout",
     );
     assert.equal(
-      approvedBreaksFilePath.startsWith(scriptDir),
+      approvedBreaksFilePath.startsWith(realpathSync(scriptDir)),
       false,
       "must not resolve against the script checkout's own path",
     );

@@ -1,9 +1,9 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { getProjectWorkspaceId } from "../../utils/assert-assignable-user";
+import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
 async function updateTaskStatus({
@@ -15,35 +15,26 @@ async function updateTaskStatus({
   status: string;
   currentUserId: string;
 }) {
-  const existingTask = await db.query.taskTable.findFirst({
-    where: eq(taskTable.id, id),
-  });
-
-  if (!existingTask) {
-    throw new HTTPException(404, {
-      message: "Task not found",
+  const { existingTask, updatedTask } = await db.transaction(async (tx) => {
+    const existingTask = await lockTaskAndAssertProjectLive(tx, id);
+    await assertValidTaskStatus(status, existingTask.projectId, tx);
+    const column = await tx.query.columnTable.findFirst({
+      where: and(
+        eq(columnTable.projectId, existingTask.projectId),
+        eq(columnTable.slug, status),
+      ),
     });
-  }
-
-  // #202: a task inside a soft-deleted project is frozen for its project's 30-day
-  // recovery window (#187, PR-16). `getProjectWorkspaceId` applies that exclusion
-  // and throws 404; the workspace id itself isn't needed here.
-  await getProjectWorkspaceId(existingTask.projectId);
-
-  await assertValidTaskStatus(status, existingTask.projectId);
-
-  const column = await db.query.columnTable.findFirst({
-    where: and(
-      eq(columnTable.projectId, existingTask.projectId),
-      eq(columnTable.slug, status),
-    ),
+    const [updatedTask] = await tx
+      .update(taskTable)
+      .set({
+        status,
+        columnId: column?.id ?? null,
+        version: sql`${taskTable.version} + 1`,
+      })
+      .where(eq(taskTable.id, id))
+      .returning();
+    return { existingTask, updatedTask };
   });
-
-  const [updatedTask] = await db
-    .update(taskTable)
-    .set({ status, columnId: column?.id ?? null })
-    .where(eq(taskTable.id, id))
-    .returning();
 
   if (!updatedTask) {
     throw new HTTPException(500, {

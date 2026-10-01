@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
-    "test:e2e": "playwright test --config playwright.config.ts"
+    "test:e2e": "playwright test --config playwright.config.ts",
+    "test:visual": "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -72,7 +73,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
-    "dompurify": "^3.4.12",
+    "dompurify": "^3.4.16",
     "file-saver": "^2.0.5",
     "framer-motion": "^13.0.0",
     "highlight.js": "^11.11.1",

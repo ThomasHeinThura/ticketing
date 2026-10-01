@@ -162,13 +162,23 @@ sharded four ways:**
 └──────────────────────────────────────────────────┘
 ```
 
-The current Playwright suite is a real-browser smoke for the already-specified logged-out
-protected-route redirect and its preserved destination. The `security`, `reduced-motion`,
-and `mobile-320` project commands above document future suites; none are enabled yet. The
-current smoke does not yet satisfy authenticated agent/portal journeys; these still need
-deterministic application fixtures and acceptance flows. The `e2e - protected-route
-redirect` smoke and G4's `a11y - accessibility (G4, axe)` scan are required branch-protection
-status checks.
+The Playwright suite includes the logged-out protected-route redirect and G8 visual
+snapshots for every exported `packages/ui` Storybook story and each implemented inventory
+route. G8 uses deterministic in-browser fixtures, in-repository Chromium baselines, and a
+scope check that requires every inventory route marked in progress or complete to be
+registered in the generated route tree and to have a screenshot case and baseline. A
+registered inventory route group with no in-progress or complete row also fails, so adding
+a screen requires its route, status, fixture and baseline together. The current inventory
+has 122 route rows: two are in progress and have G8 cases; the other 120 are not started.
+The old inherited `/dashboard` routes are not counted as TaskDesk v2 inventory routes
+because they do not match the inventory's canonical URLs. The inventory's future-stage
+screens become required as they move to in progress. The current `/auth/sign-in` screen is
+also snapshotted as a documented legacy route while the inventory's `/agent/sign-in` route
+is not started. The `security`,
+`reduced-motion`, and `mobile-320` project
+commands above document future suites; none are enabled yet. The `e2e - protected-route
+redirect` smoke, G4's `a11y - accessibility (G4, axe)` scan, and G8's `visual regression
+(G8)` are required branch-protection status checks.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.

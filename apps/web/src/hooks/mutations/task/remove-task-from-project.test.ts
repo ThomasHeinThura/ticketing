@@ -13,6 +13,7 @@ function task(id: string, status: string): Task {
     startDate: null,
     dueDate: null,
     position: 0,
+    version: 1,
     createdAt: "2026-08-31T00:00:00.000Z",
     updatedAt: "2026-08-31T00:00:00.000Z",
     userId: null,

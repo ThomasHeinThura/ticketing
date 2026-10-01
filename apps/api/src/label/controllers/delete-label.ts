@@ -1,120 +1,160 @@
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { labelTable, projectTable, taskTable } from "../../database/schema";
+import { labelTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
+import {
+  type lockLegacyTaskRow,
+  lockLegacyTaskRowIfPresent,
+  lockProjectsAndAssertLive,
+  lockTaskAndAssertProjectLive,
+} from "../../task/assert-task-project-live";
+import { lockWorkspaceLabelNames } from "../label-name-lock";
 
 async function deleteLabel(id: string, userId: string) {
-  const label = await db.query.labelTable.findFirst({
-    where: (label, { eq }) => eq(label.id, id),
+  const labelSnapshot = await db.query.labelTable.findFirst({
+    where: eq(labelTable.id, id),
   });
-
-  if (!label) {
-    throw new HTTPException(404, {
-      message: "Label not found",
-    });
+  if (!labelSnapshot) {
+    throw new HTTPException(404, { message: "Label not found" });
   }
 
-  if (label.taskId) {
-    // Task-level label: fetch task, delete with event + GitHub sync
-    const [task] = await db
-      .select({
-        id: taskTable.id,
-        projectId: taskTable.projectId,
-        workspaceId: projectTable.workspaceId,
-      })
-      .from(taskTable)
-      .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-      .where(eq(taskTable.id, label.taskId))
-      .limit(1);
+  const result = await db.transaction(async (tx) => {
+    await lockWorkspaceLabelNames(tx, labelSnapshot.workspaceId, [
+      labelSnapshot.name,
+    ]);
+    let lockedTask: Awaited<ReturnType<typeof lockLegacyTaskRow>> | undefined;
+    if (labelSnapshot.taskId) {
+      lockedTask = await lockTaskAndAssertProjectLive(tx, labelSnapshot.taskId);
+    }
+    const [label] = await tx
+      .select()
+      .from(labelTable)
+      .where(eq(labelTable.id, id))
+      .for("update");
+    if (!label) {
+      throw new HTTPException(404, { message: "Label not found" });
+    }
 
-    if (!task) {
-      throw new HTTPException(404, {
-        message: "Task not found",
+    if (
+      label.taskId !== labelSnapshot.taskId ||
+      label.workspaceId !== labelSnapshot.workspaceId ||
+      label.name !== labelSnapshot.name
+    ) {
+      throw new HTTPException(409, {
+        message: "Label changed; retry the request",
       });
     }
 
-    const [deletedLabel] = await db
+    if (label.taskId) {
+      if (!lockedTask) {
+        throw new HTTPException(404, { message: "Task not found" });
+      }
+      const [deletedLabel] = await tx
+        .delete(labelTable)
+        .where(eq(labelTable.id, id))
+        .returning();
+      if (!deletedLabel) {
+        throw new HTTPException(404, { message: "Label not found" });
+      }
+      return {
+        deletedLabel,
+        affectedLabels: [
+          {
+            label: deletedLabel,
+            taskId: lockedTask.id,
+            projectId: lockedTask.projectId,
+          },
+        ],
+      };
+    }
+
+    const affectedLabels = label.workspaceId
+      ? await tx
+          .select({
+            label: labelTable,
+            taskId: taskTable.id,
+            projectId: taskTable.projectId,
+          })
+          .from(labelTable)
+          .innerJoin(taskTable, eq(labelTable.taskId, taskTable.id))
+          .where(
+            and(
+              eq(labelTable.workspaceId, label.workspaceId),
+              eq(labelTable.name, label.name),
+              isNotNull(labelTable.taskId),
+            ),
+          )
+      : [];
+    const taskIds = [
+      ...new Set(affectedLabels.map((entry) => entry.taskId)),
+    ].sort();
+    const tasks = new Map<
+      string,
+      Awaited<ReturnType<typeof lockLegacyTaskRow>>
+    >();
+    for (const taskId of taskIds) {
+      const task = await lockLegacyTaskRowIfPresent(tx, taskId);
+      if (task) tasks.set(taskId, task);
+    }
+    await lockProjectsAndAssertLive(
+      tx,
+      [...tasks.values()].map((task) => task.projectId),
+    );
+
+    const remainingTaskIds = [...tasks.keys()];
+    const remainingCopies =
+      label.workspaceId && remainingTaskIds.length
+        ? await tx
+            .select({ id: labelTable.id })
+            .from(labelTable)
+            .where(
+              and(
+                eq(labelTable.workspaceId, label.workspaceId),
+                eq(labelTable.name, label.name),
+                isNotNull(labelTable.taskId),
+                inArray(labelTable.taskId, remainingTaskIds),
+              ),
+            )
+            .orderBy(asc(labelTable.taskId), asc(labelTable.id))
+            .for("update")
+        : [];
+
+    const [deletedLabel] = await tx
       .delete(labelTable)
       .where(eq(labelTable.id, id))
       .returning();
-
     if (!deletedLabel) {
-      throw new HTTPException(404, {
-        message: "Label not found",
-      });
+      throw new HTTPException(404, { message: "Label not found" });
     }
 
-    if (deletedLabel.taskId) {
-    }
-
-    await publishEvent("task.label_deleted", {
-      label: deletedLabel,
-      task,
-      projectId: task.projectId,
-      taskId: task.id,
-      userId,
-      type: "label_deleted",
+    const deletedCopies = remainingCopies.length
+      ? await tx
+          .delete(labelTable)
+          .where(
+            inArray(
+              labelTable.id,
+              remainingCopies.map((copy) => copy.id),
+            ),
+          )
+          .returning()
+      : [];
+    const emittedRows = deletedCopies.flatMap((child) => {
+      const taskId = child.taskId;
+      const task = taskId ? tasks.get(taskId) : undefined;
+      return task && taskId
+        ? [{ label: child, taskId, projectId: task.projectId }]
+        : [];
     });
+    return {
+      deletedLabel,
+      affectedLabels: emittedRows,
+    };
+  });
 
-    return deletedLabel;
-  }
-
-  // Workspace-level label: delete the label and cascade to all task-level copies
-  const [deletedLabel] = await db
-    .delete(labelTable)
-    .where(eq(labelTable.id, id))
-    .returning();
-
-  if (!deletedLabel) {
-    throw new HTTPException(404, {
-      message: "Label not found",
-    });
-  }
-
-  // Label without a workspace: the cascade filter below could never match
-  if (label.workspaceId === null) {
-    return deletedLabel;
-  }
-
-  // Capture affected task-level labels before cascading so we have data
-  // for events and provider sync
-  const affectedLabels = await db
-    .select({
-      label: labelTable,
-      taskId: taskTable.id,
-      projectId: projectTable.id,
-      workspaceId: projectTable.workspaceId,
-    })
-    .from(labelTable)
-    .innerJoin(taskTable, eq(labelTable.taskId, taskTable.id))
-    .innerJoin(projectTable, eq(taskTable.projectId, projectTable.id))
-    .where(
-      and(
-        eq(labelTable.workspaceId, label.workspaceId),
-        eq(labelTable.name, label.name),
-        isNotNull(labelTable.taskId),
-      ),
-    );
-
-  // Cascade: delete all task-level copies of this label so existing tasks lose it
-  await db
-    .delete(labelTable)
-    .where(
-      and(
-        eq(labelTable.workspaceId, label.workspaceId),
-        eq(labelTable.name, label.name),
-        isNotNull(labelTable.taskId),
-      ),
-    );
-
-  // Emit events and sync providers for each affected task
-  for (const { label: l, taskId, projectId } of affectedLabels) {
-    if (l.taskId) {
-    }
-
+  for (const { label, taskId, projectId } of result.affectedLabels) {
     await publishEvent("task.label_deleted", {
-      label: l,
+      label,
       task: { id: taskId, projectId },
       projectId,
       taskId,
@@ -123,7 +163,7 @@ async function deleteLabel(id: string, userId: string) {
     });
   }
 
-  return deletedLabel;
+  return result.deletedLabel;
 }
 
 export default deleteLabel;

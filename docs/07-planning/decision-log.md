@@ -5,6 +5,159 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-01 · Pending-action decisions follow the existing AU-14 mutation contract
+
+**Reconciliation:** denial/cancellation mutations preserve the already-decided AU-14
+contract: action state and its outbox event commit together; an audit append failure rolls
+back its nested audit savepoint, reports the error and does not undo the committed mutation.
+The existing self-read contract remains separate: a summary-rendering read fails if its
+viewed audit cannot be written. This introduces no waiver or new exception.
+
+**Why:** the initial decision-route reviews inferred a conflicting fail-closed mutation
+rule from PA-11. The authoritative audit/security documents and Thomas's existing AU-14
+decision explicitly require mutation success with operator reporting. PR #539's candidate PA-11 text points to
+that contract, and real PostgreSQL service/HTTP tests exercise both audit failure and
+outbox failure independently. Metric/administrator alerting remains unfinished work.
+
+**Recorded by:** orchestrator, reconciling Thomas's existing AU-14 decision and the
+independent ordinary/security reconsiderations for PR #539. No new approval policy is made.
+
+### 2026-10-01 · Pending-action reads require current owner identity
+
+**Decision:** resolve the current database identity before either pending-action self read,
+for sessions and API keys. If no valid identity resolves, return 401 before querying an
+action or writing a viewed audit. Keep 404 for a valid caller querying a missing or foreign
+action. Apply the existing identity resolver's lifecycle, organisation and key-owner rules;
+authenticated-self reads do not require a workspace capability.
+
+**Why:** an API key can remain cryptographically valid after its owner is banned or
+deactivated. Stored summaries must stop being readable when the current identity becomes
+invalid. The existing permission evaluator treats an absent resolved identity as 401;
+using the same response for both self routes exposes no action-existence information.
+
+**Decided by:** Thomas, under the 2026-10-01 standing instruction to use recommended
+decisions; recorded by the orchestrator after PR #528's independent security finding.
+
+### 2026-10-01 · Pending-action self-read API contract
+
+**Decision:** `GET /api/me/pending-actions` returns only the caller's pending actions,
+ordered by `created_at DESC, id DESC`, with the standard opaque cursor and limit (default
+50, maximum 200) and `{ data, page, meta }` envelope. `GET
+/api/me/pending-actions/{id}` returns the caller's action in any state for polling; another
+requester's id returns the same 404 as a missing id. Both use one explicit allowlisted DTO:
+id, action, origin, target type and ids, summary, required confirmation, state, timestamps,
+invalidation reason, and the own API key's name when available. Payload/hash, route key,
+credential id, step-up token id, trace id, and internal error stay private. A read that
+renders a summary writes `pending_action.viewed`; an audit failure fails the read.
+
+**Why:** clients need a stable way to discover approval requests and poll their outcomes.
+The persistence row contains internal authorization and execution data, so returning it
+directly would expose fields that the UI and polling contract do not need.
+
+**Decided by:** task orchestrator, 2026-10-01.
+
+### 2026-10-01 · Versioned task writes use a successor route; legacy PUT stays compatible (#526)
+
+**Decision:** first-party full-task writes use required-precondition `PUT
+/api/v2/task/{id}` with the existing authorization chain and locked task-version comparison.
+The released `PUT /api/task/{id}` remains supported as a deprecated compatibility operation:
+omitting `If-Match` preserves its prior request behavior, while a supplied header is strictly
+parsed and enforced under the same lock. Both operations, and every other persisted task-row
+writer, atomically advance `task.version`. First-party web and MCP full-task writers use the
+versioned route. The legacy route emits `Deprecation: @1790812800`, `Sunset: Thu, 01 Apr 2027
+00:00:00 GMT`, and a `successor-version` Link to the v2 operation. Deprecation starts
+2026-10-01; removal is allowed only after both the sunset date and two subsequent minor
+releases, with no automatic removal. Unversioned third-party legacy clients retain their
+existing overwrite risk during migration; #526 protects first-party writers and version-aware
+requests, not every legacy client.
+
+**Why:** the stable 2.0 API cannot gain a required request header without a breaking change.
+The versioned operation enforces the concurrency contract while the legacy operation remains
+compatible and gives clients a dated successor path.
+
+**Alternatives:** make the old header optional only in OpenAPI (rejected because runtime and
+contract would disagree); exempt the break in the closed allowlist (rejected because stable
+API breaks require a successor version); remove legacy compatibility immediately (rejected
+because existing clients need a migration window).
+
+**Decided by:** Thomas under the standing all-recommended-decisions instruction, recorded by
+the orchestrating session on 2026-10-01.
+
+### 2026-10-01 · Legacy full-task PUT uses the work-item optimistic-concurrency contract (#526)
+
+**Decision:** while legacy task screens and `/api/task` remain active, full-task
+`PUT /api/task/{id}` uses the `api-design.md` `If-Match` version contract. Task responses expose
+an integer row version; every persisted task-row update advances it. The PUT checks the
+asserted version after locking the task and returns 409 with asserted/current versions on a
+mismatch, with no row or event side effects. Every full-task caller must send the version from
+the task it read. Existing field-specific status/assignee and move routes remain scoped to
+their requested fields and advance the same version. No last-write-wins exception is added
+for those fields or for other full-task PUT fields. The owning specification is
+`work-items.md` WI-7a.
+
+**Why:** the compatibility endpoint replaces multiple fields from one possibly stale task
+snapshot. A row lock alone serializes writes but still permits a late stale replacement to
+undo a status or assignee change. A row version checked under that lock preserves the latest
+committed change, including when requests finish in the reverse order.
+
+**Alternatives:** keep last-write-wins for legacy PUT (rejected because completion order can
+silently revert a concurrent edit); merge selected protected fields in the server (rejected
+because intent cannot be distinguished from a stale snapshot without a client revision).
+
+**Decided by:** the orchestrating session under the bounded #526 task-update concurrency
+assignment; recorded before implementation.
+
+### 2026-10-01 · G8 requires implemented screens now and activates future routes with implementation
+
+**Decision:** G8 requires screenshot comparison for every exported UI Storybook story and
+every `route`-kind inventory row marked in progress or complete. A route first marked in
+progress must gain its route registration, deterministic fixture, and committed baseline in
+that same change. Routes still marked not started remain planned work and do not need a
+baseline before implementation. Every inventory route is part of G8's eventual scope.
+
+**Why:** requiring baselines for future routes before they exist would force feature work
+solely to satisfy a gate. Deferring an implemented screen would leave a coverage gap. This
+states the active acceptance rule and the activation point explicitly in the UX-gate spec.
+
+**Alternatives:** require every planned route immediately (rejected because not-started
+routes do not exist yet); cover only today's active rows without an activation rule
+(rejected because future routes could remain uncovered).
+
+**Decided by:** Thomas, under the 2026-10-01 standing instruction to use recommended
+decisions; recorded by the orchestrator.
+
+### 2026-09-30 · TaskDesk public links use the Bimats host
+
+**Decision:** use `https://taskdesk.bimats.com` for current TaskDesk website links and the
+default OpenAPI server. The former `taskdesk.app` domain is not TaskDesk's domain. Preserve the
+separate UAT hostnames already defined by deployment configuration; never infer UAT from
+`uat.taskdesk.app`.
+
+Historical decisions, incidents, and review notes keep the hostnames that were accurate when
+written. This decision changes current links and defaults prospectively.
+
+**Why:** Thomas confirmed that `taskdesk.bimats.com` is the mapped product host and that the
+company domain is `bimats.com`. Current links to `taskdesk.app` and the prior `uat.taskdesk.app`
+reachability assumption were incorrect.
+
+**Decided by:** Thomas, 2026-09-30.
+
+### 2026-09-29 · G8 route coverage advances with screen implementation
+
+**Decision:** enable G8 incrementally across the screen inventory. Every route marked in
+progress or complete must have a registered application route, deterministic browser
+fixture, and committed screenshot baseline in the same change. A registered inventory
+route whose rows are all still marked not started fails the scope check. Every exported UI
+Storybook story remains covered. Routes still marked not started are planned work and are
+not represented as already covered; their G8 requirement activates when implementation
+moves them into progress. The eventual scope remains every inventory route.
+
+**Why:** the inventory includes future-stage screens that do not exist yet. Requiring their
+screenshots before implementation would force building future features just to satisfy the
+gate, while omitting them from the eventual contract would leave permanent coverage gaps.
+
+**Decided by:** Thomas, 2026-09-29.
+
 ### 2026-09-29 · OpenAI model routing replaces Claude/`pal-mcp` routing
 
 **Decision:** TaskDesk's active AI workflow moves to an OpenAI-first two-tier model policy.

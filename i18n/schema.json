@@ -1,6 +1,6 @@
 {
 	"$schema": "https://json-schema.org/draft/2020-12/schema",
-	"$id": "https://taskdesk.app/i18n/schema.json",
+	"$id": "https://taskdesk.bimats.com/i18n/schema.json",
 	"title": "TaskDesk locale schema",
 	"type": "object",
 	"additionalProperties": false,
@@ -6310,6 +6310,9 @@
 			"type": "object",
 			"additionalProperties": false,
 			"properties": {
+				"title": {
+					"type": "string"
+				},
 				"status": {
 					"type": "object",
 					"additionalProperties": false,
@@ -7586,10 +7589,10 @@
 						"title": {
 							"type": "string"
 						},
-						"searchPlaceholder": {
+						"jumpToToday": {
 							"type": "string"
 						},
-						"jumpToToday": {
+						"searchPlaceholder": {
 							"type": "string"
 						},
 						"hideTasks": {
@@ -7629,8 +7632,8 @@
 					"required": [
 						"pageTitle",
 						"title",
-						"searchPlaceholder",
 						"jumpToToday",
+						"searchPlaceholder",
 						"hideTasks",
 						"showTasks",
 						"noTasks",
@@ -7824,9 +7827,12 @@
 						},
 						"error": {
 							"type": "string"
+						},
+						"conflict": {
+							"type": "string"
 						}
 					},
-					"required": ["success", "error"]
+					"required": ["success", "error", "conflict"]
 				},
 				"contextMenu": {
 					"type": "object",
@@ -8183,6 +8189,7 @@
 				}
 			},
 			"required": [
+				"title",
 				"status",
 				"priority",
 				"boardSearchPlaceholder",
@@ -8922,6 +8929,353 @@
 				"copyUrl",
 				"branding"
 			]
+		},
+		"workItems": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"list": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"pageTitle": {
+							"type": "string"
+						},
+						"pageTitleWithProject": {
+							"type": "string"
+						},
+						"heading": {
+							"type": "string"
+						},
+						"columnKey": {
+							"type": "string"
+						},
+						"columnTitle": {
+							"type": "string"
+						},
+						"columnPriority": {
+							"type": "string"
+						},
+						"columnDueDate": {
+							"type": "string"
+						},
+						"columnState": {
+							"type": "string"
+						},
+						"columnAssignee": {
+							"type": "string"
+						},
+						"noDueDate": {
+							"type": "string"
+						},
+						"noPriority": {
+							"type": "string"
+						},
+						"unassigned": {
+							"type": "string"
+						},
+						"assigneeInactive": {
+							"type": "string"
+						},
+						"priority": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"urgent": {
+									"type": "string"
+								},
+								"high": {
+									"type": "string"
+								},
+								"medium": {
+									"type": "string"
+								},
+								"low": {
+									"type": "string"
+								}
+							},
+							"required": ["urgent", "high", "medium", "low"]
+						},
+						"loading": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"errorTitle": {
+							"type": "string"
+						},
+						"errorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"unavailableFieldLabel": {
+							"type": "string"
+						},
+						"partialNoticeTitle": {
+							"type": "string"
+						},
+						"partialNoticeDescription": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"pageTitle",
+						"pageTitleWithProject",
+						"heading",
+						"columnKey",
+						"columnTitle",
+						"columnPriority",
+						"columnDueDate",
+						"columnState",
+						"columnAssignee",
+						"noDueDate",
+						"noPriority",
+						"unassigned",
+						"assigneeInactive",
+						"priority",
+						"loading",
+						"emptyTitle",
+						"emptyDescription",
+						"errorTitle",
+						"errorDescription",
+						"retry",
+						"unavailable",
+						"unavailableFieldLabel",
+						"partialNoticeTitle",
+						"partialNoticeDescription"
+					]
+				},
+				"create": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"trigger": {
+							"type": "string"
+						},
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"fieldType": {
+							"type": "string"
+						},
+						"typePlaceholder": {
+							"type": "string"
+						},
+						"typesLoading": {
+							"type": "string"
+						},
+						"typesError": {
+							"type": "string"
+						},
+						"typesRetry": {
+							"type": "string"
+						},
+						"noTypes": {
+							"type": "string"
+						},
+						"fieldTitle": {
+							"type": "string"
+						},
+						"titlePlaceholder": {
+							"type": "string"
+						},
+						"fieldDescription": {
+							"type": "string"
+						},
+						"descriptionPlaceholder": {
+							"type": "string"
+						},
+						"fieldPriority": {
+							"type": "string"
+						},
+						"priorityNone": {
+							"type": "string"
+						},
+						"submit": {
+							"type": "string"
+						},
+						"submitting": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"close": {
+							"type": "string"
+						},
+						"success": {
+							"type": "string"
+						},
+						"errorTitle": {
+							"type": "string"
+						},
+						"errorForbidden": {
+							"type": "string"
+						},
+						"errorInvalid": {
+							"type": "string"
+						},
+						"errorGeneric": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"trigger",
+						"title",
+						"description",
+						"fieldType",
+						"typePlaceholder",
+						"typesLoading",
+						"typesError",
+						"typesRetry",
+						"noTypes",
+						"fieldTitle",
+						"titlePlaceholder",
+						"fieldDescription",
+						"descriptionPlaceholder",
+						"fieldPriority",
+						"priorityNone",
+						"submit",
+						"submitting",
+						"cancel",
+						"close",
+						"success",
+						"errorTitle",
+						"errorForbidden",
+						"errorInvalid",
+						"errorGeneric"
+					]
+				},
+				"detail": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"loading": {
+							"type": "string"
+						},
+						"notFoundDescription": {
+							"type": "string"
+						},
+						"errorTitle": {
+							"type": "string"
+						},
+						"errorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"keyLabel": {
+							"type": "string"
+						},
+						"titleLabel": {
+							"type": "string"
+						},
+						"stateLabel": {
+							"type": "string"
+						},
+						"priorityLabel": {
+							"type": "string"
+						},
+						"dueDateLabel": {
+							"type": "string"
+						},
+						"assigneeLabel": {
+							"type": "string"
+						},
+						"descriptionHeading": {
+							"type": "string"
+						},
+						"detailsHeading": {
+							"type": "string"
+						},
+						"projectLabel": {
+							"type": "string"
+						},
+						"startDateLabel": {
+							"type": "string"
+						},
+						"createdLabel": {
+							"type": "string"
+						},
+						"updatedLabel": {
+							"type": "string"
+						},
+						"unassigned": {
+							"type": "string"
+						},
+						"inactiveAssignee": {
+							"type": "string"
+						},
+						"noPriority": {
+							"type": "string"
+						},
+						"noDueDate": {
+							"type": "string"
+						},
+						"noStartDate": {
+							"type": "string"
+						},
+						"noDescription": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"unavailableFieldLabel": {
+							"type": "string"
+						},
+						"partialNoticeTitle": {
+							"type": "string"
+						},
+						"partialNoticeDescription": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"loading",
+						"notFoundDescription",
+						"errorTitle",
+						"errorDescription",
+						"retry",
+						"keyLabel",
+						"titleLabel",
+						"stateLabel",
+						"priorityLabel",
+						"dueDateLabel",
+						"assigneeLabel",
+						"descriptionHeading",
+						"detailsHeading",
+						"projectLabel",
+						"startDateLabel",
+						"createdLabel",
+						"updatedLabel",
+						"unassigned",
+						"inactiveAssignee",
+						"noPriority",
+						"noDueDate",
+						"noStartDate",
+						"noDescription",
+						"unavailable",
+						"unavailableFieldLabel",
+						"partialNoticeTitle",
+						"partialNoticeDescription"
+					]
+				}
+			},
+			"required": ["list", "create", "detail"]
 		}
 	},
 	"required": [
@@ -8935,6 +9289,7 @@
 		"invitations",
 		"workspace",
 		"team",
-		"publicProject"
+		"publicProject",
+		"workItems"
 	]
 }
