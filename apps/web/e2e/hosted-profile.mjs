@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -51,7 +51,31 @@ async function collectBuildEvidence() {
   const manifestPath = join(dist, ".vite", "manifest.json");
   const mapPaths = await listMapFiles(dist);
   const indexPath = join(dist, "index.html");
+  const outputBuild = join(outputDir, "build-dist");
+  const distFiles = await listFiles(dist);
+  const javascriptFiles = distFiles.filter((path) => path.endsWith(".js"));
+  if (mapPaths.length === 0 || javascriptFiles.length === 0) {
+    throw new Error(
+      `Built dist is missing expected JavaScript/source maps (js=${javascriptFiles.length}, maps=${mapPaths.length})`,
+    );
+  }
+  await mkdir(outputDir, { recursive: true });
+  await cp(dist, outputBuild, { recursive: true, errorOnExist: true });
+  const copiedEvidence = await Promise.all(
+    distFiles.map(async (path) => {
+      const relativePath = relative(dist, path);
+      const copiedPath = join(outputBuild, relativePath);
+      const sourceHash = await sha256(path);
+      const copiedHash = await sha256(copiedPath);
+      if (sourceHash !== copiedHash) {
+        throw new Error(`Copied build asset hash mismatch: ${relativePath}`);
+      }
+      return { path: relativePath, sha256: sourceHash };
+    }),
+  );
   return {
+    retainedDist: "build-dist/",
+    retainedFiles: copiedEvidence,
     indexHtml: {
       path: relative(repoDir, indexPath),
       sha256: await sha256(indexPath),
@@ -69,9 +93,21 @@ async function collectBuildEvidence() {
   };
 }
 
+async function listFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = await Promise.all(
+    entries.map((entry) => {
+      const path = join(directory, entry.name);
+      return entry.isDirectory() ? listFiles(path) : [path];
+    }),
+  );
+  return files.flat().sort();
+}
+
 const generatedSource = String.raw`
 import { writeFile } from "node:fs/promises";
 import type { CDPSession } from "@playwright/test";
+import { assertHostedCaptureComplete } from "./hosted-profile-validation.mjs";
 
 const HOSTED_PROFILE_OUTPUT = __HOSTED_PROFILE_OUTPUT__;
 
@@ -79,21 +115,6 @@ async function captureHostedProfileScreen(page: Page, name: string) {
   const directory = HOSTED_PROFILE_OUTPUT + "/screenshots";
   await mkdir(directory, { recursive: true });
   await page.screenshot({ path: directory + "/" + name + ".png" });
-}
-
-function assertHostedCaptureComplete(payload: {
-  counts: { cpuProfileNodes: number; cpuSamples: number; timeDeltas: number; timelineEvents: number };
-  tracingComplete: { dataLossOccurred: boolean };
-}, path: string) {
-  if (
-    payload.counts.cpuProfileNodes === 0 ||
-    payload.counts.cpuSamples === 0 ||
-    payload.counts.timeDeltas === 0 ||
-    payload.counts.timelineEvents === 0 ||
-    payload.tracingComplete.dataLossOccurred !== false
-  ) {
-    throw new Error("Incomplete hosted profile; raw payload was saved to " + path);
-  }
 }
 
 async function hostedProfileClock(page: Page, session: CDPSession) {
@@ -200,16 +221,6 @@ async function beginHostedProfile(
 
 test("Hosted G11 attribution profile: list, LCP, detail, palette, and board", async ({ browser }) => {
   test.setTimeout(600_000);
-  let rejectsEmptyCapture = false;
-  try {
-    assertHostedCaptureComplete({
-      counts: { cpuProfileNodes: 1, cpuSamples: 0, timeDeltas: 1, timelineEvents: 1 },
-      tracingComplete: { dataLossOccurred: false },
-    }, "empty-payload-self-check");
-  } catch {
-    rejectsEmptyCapture = true;
-  }
-  if (!rejectsEmptyCapture) throw new Error("Hosted profile validator accepted an empty CPU sample payload");
   const provenance = {
     sourceSha: "__SOURCE_SHA__",
     canonicalBenchmarkSha256: "__CANONICAL_BENCH_SHA256__",
@@ -428,6 +439,17 @@ try {
     "--config=playwright.hosted-profile.generated.config.ts",
     "--workers=1",
   ];
+  const validation = spawnSync(
+    process.execPath,
+    ["--test", join(scriptDir, "hosted-profile-validation.test.mjs")],
+    { cwd: webDir, stdio: "inherit" },
+  );
+  if (validation.error) throw validation.error;
+  if (validation.status !== 0) {
+    throw new Error(
+      `Hosted profile payload validation tests failed with status ${validation.status}`,
+    );
+  }
   if (listOnly) playwrightArgs.push("--list");
   const result = spawnSync("pnpm", playwrightArgs, {
     cwd: webDir,
