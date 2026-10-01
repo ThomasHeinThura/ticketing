@@ -179,6 +179,7 @@ async function seedProfile(profile: SeedProfile) {
       .from(schema.workspaceTable)
       .where(eq(schema.workspaceTable.slug, workspaceSlug))
       .limit(1);
+    const isNewWorkspace = !existingWorkspace;
     let workspace = existingWorkspace;
     if (!workspace) {
       [workspace] = await tx
@@ -200,7 +201,9 @@ async function seedProfile(profile: SeedProfile) {
     ) {
       throw new Error(`Fixture workspace conflict: ${workspaceSlug}`);
     }
-    await seedWorkspaceDefaults(workspace.id, tx);
+    if (isNewWorkspace) {
+      await seedWorkspaceDefaults(workspace.id, tx);
+    }
 
     const { types, templates } = await verifyWorkspaceDefaults(
       tx,
@@ -210,48 +213,8 @@ async function seedProfile(profile: SeedProfile) {
     const defaultType = types.find((type) => type.key === "task");
     if (!defaultType) fixtureConflict(namespace, "work-item-type", "task");
 
-    const personIds: string[] = [];
-    for (let index = 0; index < counts.people; index += 1) {
-      const id = `${namespace}-person-${String(index + 1).padStart(3, "0")}`;
-      const [existing] = await tx
-        .select()
-        .from(schema.personTable)
-        .where(eq(schema.personTable.id, id))
-        .limit(1);
-      if (existing) {
-        if (
-          existing.organisationId !== organisation.id ||
-          existing.userId !== null ||
-          !existing.isPlaceholder ||
-          existing.side !== "staff" ||
-          !existing.active ||
-          existing.jobTitle !== `Seed role ${index + 1}`
-        ) {
-          throw new Error(`Fixture person conflict: ${id}`);
-        }
-      } else {
-        await tx.insert(schema.personTable).values({
-          id,
-          organisationId: organisation.id,
-          side: "staff",
-          jobTitle: `Seed role ${index + 1}`,
-          isPlaceholder: true,
-          active: true,
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
-      personIds.push(id);
-    }
-    const fixturePeople = await tx
-      .select({ id: schema.personTable.id })
-      .from(schema.personTable)
-      .where(like(schema.personTable.id, `${namespace}-person-%`));
-    if (fixturePeople.length !== counts.people) {
-      throw new Error(`Fixture person count mismatch for ${namespace}`);
-    }
-
     const projectIds: string[] = [];
+    const stateByProject = new Map<string, string>();
     for (let index = 0; index < counts.projects; index += 1) {
       const suffix = String(index + 1).padStart(2, "0");
       const slug = `${namespace}-project-${suffix}`;
@@ -311,6 +274,16 @@ async function seedProfile(profile: SeedProfile) {
       if (claim?.projectId !== project.id) {
         throw new Error(`Fixture project slug is permanently claimed: ${slug}`);
       }
+      const defaultStateId = await verifyProjectDefaults(
+        tx,
+        project.id,
+        namespace,
+        templates,
+      );
+      if (!defaultStateId) {
+        fixtureConflict(namespace, "default-state", project.id);
+      }
+      stateByProject.set(project.id, defaultStateId);
       projectIds.push(project.id);
     }
 
@@ -322,18 +295,51 @@ async function seedProfile(profile: SeedProfile) {
     if (projects.length !== counts.projects) {
       throw new Error(`Unexpected fixture project count for ${namespace}`);
     }
-    const stateByProject = new Map<string, string>();
-    for (const projectId of projectIds) {
-      const defaultStateId = await verifyProjectDefaults(
-        tx,
-        projectId,
-        namespace,
-        templates,
+    if (stateByProject.size !== projectIds.length) {
+      throw new Error(
+        `Unexpected fixture project state count for ${namespace}`,
       );
-      if (!defaultStateId) {
-        fixtureConflict(namespace, "default-state", projectId);
+    }
+
+    const personIds: string[] = [];
+    for (let index = 0; index < counts.people; index += 1) {
+      const id = `${namespace}-person-${String(index + 1).padStart(3, "0")}`;
+      const [existing] = await tx
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.id, id))
+        .limit(1);
+      if (existing) {
+        if (
+          existing.organisationId !== organisation.id ||
+          existing.userId !== null ||
+          !existing.isPlaceholder ||
+          existing.side !== "staff" ||
+          !existing.active ||
+          existing.jobTitle !== `Seed role ${index + 1}`
+        ) {
+          throw new Error(`Fixture person conflict: ${id}`);
+        }
+      } else {
+        await tx.insert(schema.personTable).values({
+          id,
+          organisationId: organisation.id,
+          side: "staff",
+          jobTitle: `Seed role ${index + 1}`,
+          isPlaceholder: true,
+          active: true,
+          createdAt: now,
+          updatedAt: now,
+        });
       }
-      stateByProject.set(projectId, defaultStateId);
+      personIds.push(id);
+    }
+    const fixturePeople = await tx
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(like(schema.personTable.id, `${namespace}-person-%`));
+    if (fixturePeople.length !== counts.people) {
+      throw new Error(`Fixture person count mismatch for ${namespace}`);
     }
 
     const existingItems = await tx
