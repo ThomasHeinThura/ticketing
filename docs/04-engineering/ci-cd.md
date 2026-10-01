@@ -67,7 +67,6 @@ exact context appears in the ruleset.
 │ pnpm check:skips     no .skip / .only            │
 │ pnpm test:ci-scripts  gate checkers + red probes │
 │ pr-template check    sections filled, tiers named│
-│ no-inherited-routes  removals stay removed       │
 ├─ Test ───────────────────────────────────────────┤
 │ pnpm test                unit + component        │
 │ pnpm test:coverage       90 % statements, lines,  │
@@ -75,6 +74,9 @@ exact context appears in the ruleset.
 │ pnpm test:permissions    route coverage (Hono    │
 │                          router), role × route   │
 │                          matrix ×2, custom roles │
+│ pnpm test:no-inherited-routes  fork removals stay │
+│                          absent from the router,  │
+│                          auth plugins and lockfile│
 │ pnpm test:contract       OpenAPI lint, drift,    │
 │                          and breaking changes   │
 │ pnpm test:mcp            tool → route parity     │
@@ -452,11 +454,13 @@ trail and is excluded). **`check:env`** fails on a `process.env` read outside
 [configuration-reference.md](../05-operations/configuration-reference.md)'s list;
 **`check:vocabulary`** on a table, capability, event key or job name absent from its
 authority document; **`check:skips`** on `.skip(`, `.only(` or `describe.skip`.
-**`tests/permissions/no-inherited-integration-routes.test.ts`** asserts no route matches
-`public-project|github|gitea|slack|discord|telegram|generic-webhook`, that `octokit` and
-`@octokit/webhooks` are absent from the lockfile, and that the better-auth plugin list equals
-the approved list (no `anonymous`, `deviceAuthorization` or `bearer`) — the fork-time removal
-list made executable ([decision log](../07-planning/decision-log.md)).
+**`pnpm test:no-inherited-routes`** runs
+`tests/permissions/no-inherited-integration-routes.test.ts` as a separately reconciled fast
+gate inside the existing required route-policy context. The test inspects the constructed
+Hono router, constructed better-auth plugins, and exact `octokit` / `@octokit/webhooks`
+lockfile package names. The full `pnpm test:permissions` suite also runs this test. This makes
+the fork-time removal list executable without broadening the existing route-policy status
+context ([decision log](../07-planning/decision-log.md)).
 `pnpm test:a11y` runs axe against every exported `packages/ui` Storybook story and the
 screens exercised by the current Playwright E2E suite. It uses the existing `axe-core`
 dependency declared by `packages/ui` and scans the logged-out protected-route redirect's
