@@ -73,9 +73,24 @@ is true only when the selected direct grant explicitly carries it.
 
 The effective row has a unique `(person_id, scope, scope_id)` key. Before adding that
 constraint, migration work audits duplicates and requires a deterministic,
-owner-approved repair. Backfill a legacy membership as direct only where its provenance is
-established; an ambiguous non-null `derived_from` stops migration for explicit
-reconciliation, never a guessed direct grant. The existing lookup index remains.
+owner-approved repair. A future cut-over first performs a read-only provenance preflight
+over **every** legacy membership row before any DDL, backfill, uniqueness constraint, or
+effective projection. A row can be classified only from durable evidence establishing its
+exact source and the required grant fields: an explicit administrator grant (including an
+invitation only where inviter, target, and grant are unambiguously linked), a
+connection-bound JIT default, or a specific SCIM group membership. A valid
+`derived_from` link may prove a SCIM group source; `derived_from IS NULL` does not prove a
+direct grant because invitation, JIT, and SCIM memberships may also have null provenance.
+Any ambiguous or unclassified row, including one with null `derived_from`, stops the
+**entire migration before DDL or data changes** and requires explicit owner-approved,
+per-row reconciliation. Never guess a direct grant, discard a row, or create a partial
+effective projection. Migration proceeds only after every row is classified and duplicate
+repairs are owner-approved. DDL, complete grant backfill, effective projection, and
+constraints then run in one transaction; any failure rolls the whole cut-over back to the
+unchanged pre-migration schema and membership data. Non-transactional DDL is not permitted
+for this cut-over. Recovery supplies the missing approved classifications, reruns the
+read-only preflight against unchanged legacy data, then retries the complete migration. The
+existing lookup index remains.
 `membership.derived_from` stops being written and stays null during transition; remove it
 only in a documented forward migration after the grant ledger is authoritative.
 

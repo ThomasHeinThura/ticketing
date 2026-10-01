@@ -190,12 +190,26 @@ The direct membership lookup index remains. The target adds partial indexes for 
 `(person_id, scope, scope_id)`; unique active JIT grant on
 `(external_identity_id, scope, scope_id)`; and unique active OIDC/SCIM group grants on
 `(external_identity_id, oidc_group_mapping_id)` and
-`(external_identity_id, scim_group_mapping_id)`. Effective membership uniqueness requires a
-duplicate-row audit and deterministic owner-approved repair before migration. Backfill only
-rows whose direct provenance is established; an ambiguous non-null `derived_from` stops the
-migration for explicit reconciliation and is never guessed to be direct. A role/mapping
-change retires the old grant and inserts a new row; it does not edit a grant into a different
-authority source or role. `claim_missing` records an absent or malformed OIDC groups claim
+`(external_identity_id, scim_group_mapping_id)`. Before any schema DDL, backfill, unique
+constraint, or effective projection, a future migration must run a read-only provenance
+preflight over **every** legacy membership row. Classify a row only when durable evidence
+establishes its exact source and required grant fields: an explicit administrator grant
+(including an invitation only where its inviter, target, and grant are unambiguously
+linked), a connection-bound JIT default, or a specific SCIM group membership.
+`derived_from` may identify a SCIM group link when that linkage validates, but
+`derived_from IS NULL` does not prove a direct grant; invitation, JIT, and SCIM rows may
+also have null provenance. Any ambiguous or unclassified row, including one with null
+`derived_from`, stops the **whole migration before DDL or data changes** and requires
+explicit owner-approved, per-row reconciliation. Do not guess direct provenance, discard a
+row, or materialize partial effective state. Only after every row is classified and any
+duplicate-row repair is explicitly approved may the migration proceed. Its DDL, complete
+grant backfill, effective projection, and constraints must run in one transaction; any
+failure rolls back the entire migration so the old schema and membership data remain
+unchanged. Do not use non-transactional DDL for this cut-over. Recovery requires supplying
+the missing owner-approved classifications, rerunning the read-only preflight against the
+unchanged legacy data, then retrying the complete migration. A role/mapping change retires
+the old grant and inserts a new row; it does not edit a grant into a different authority
+source or role. `claim_missing` records an absent or malformed OIDC groups claim
 that yields no usable current set; `claim_removed` records an omitted group from an otherwise
 complete valid set; `claim_overage` records the Entra overage form.
 

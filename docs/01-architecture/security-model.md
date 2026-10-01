@@ -143,8 +143,9 @@ Covered fully in [RBAC](rbac.md). The security-relevant summary:
 
 ## Identity provisioning and account linking
 
-The one place an IdP claim influences authority is just-in-time provisioning, so it is
-constrained hard:
+IdP claims can influence stored grants only through validated, connection-bound
+provisioning or reconciliation. Stored TaskDesk grants, not claims, authorize requests, so
+the trust boundary is constrained hard:
 
 - **Protocol floor first:** every `auth.oidc` plugin uses PKCE (`S256`), a single-use
   `state` bound to the session and portal, and a validated `nonce`; the ID token's
@@ -168,8 +169,19 @@ constrained hard:
   TaskDesk lifecycle controls apply.
 - Provisioning `side = staff`, or a group→role rule that grants above `member`, is an
   elevated configuration change.
-- Group→role mapping is applied **at provisioning only**. It is never re-evaluated at login
-  — so de-provisioning is a directory action, symmetric and audited, not an IdP side effect.
+- OIDC group mappings are re-evaluated on every validated login through the same identity
+  connection. A complete, well-formed groups array replaces only that external identity's
+  OIDC group grants; absent, malformed, or overage groups retire only that identity's prior
+  OIDC group grants. A permitted JIT-default grant and independent direct, SCIM, and other-
+  connection grants remain governed by their own current evidence. Overage raises the
+  existing provisioning event and operator warning; there is no Graph lookup in the first
+  release. Invalid or unverified tokens cause no grant mutation. One connection's login
+  never re-evaluates or retires another connection's grants.
+- SCIM group mappings change only when an authenticated SCIM synchronization or an
+  administrative mapping/connection change supplies that source's evidence. SCIM group
+  removal retires only its linked SCIM grant; it does not retire OIDC, direct, or other
+  SCIM grants. Upstream removal between validated logins or SCIM updates is not observable
+  immediately; the documented cache and session revocation controls still apply.
 - **No automatic account linking on email.** A sign-in through provider B for an email that
   exists via provider A is refused with an explanation; linking requires an authenticated
   session on A plus an explicit confirmation. better-auth's auto-link defaults are off.

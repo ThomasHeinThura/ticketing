@@ -526,9 +526,13 @@ to prove `accountLinking.enabled` is `false` rather than inferring it from behav
 proves a revoked session fails on the next request — the SLA stated in
 [auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions). The OIDC
 reevaluation, grant-provenance, effective-role, SCIM global-deactivation, and concurrency
-assertions above are subcases of these same 25 tests. Duplicate-row migration rejection and
-provenance backfill evidence are required when the schema is implemented. This is planned
-coverage only; none of these subcases is implemented or claimed as run here.
+assertions above are subcases of these same 25 tests. Migration evidence must prove read-only
+classification of every legacy membership before any DDL, backfill, constraint, or
+projection; null or otherwise ambiguous `derived_from` must stop the whole migration
+without partial change. Prove owner-approved reconciliation, full transaction rollback on
+failure, and successful backfill only after all rows are classified. Duplicate-row migration
+rejection and provenance backfill evidence are required when the schema is implemented. This
+is planned coverage only; none of these subcases is implemented or claimed as run here.
 
 The planned `tests/e2e/security/` negative E2E suite must cover state-changing GET,
 cookie-authenticated unsafe requests with a missing or mismatched `Origin`/`Referer`, and

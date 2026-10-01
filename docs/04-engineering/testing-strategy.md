@@ -226,10 +226,15 @@ independence and fail-closed equal-rank conflicts; 14 and 19–22 retain credent
 protocol boundaries; 16 and 23 prove linked-connection and disable isolation; 17 proves safe
 grant/audit records; 18 proves placeholder claims cannot get grants; and 24–25 retain the
 no-auto-link and separate cache/session SLA checks. Test 12 or 17 includes a real-PostgreSQL
-concurrency subcase for OIDC login racing SCIM group removal on one person/scope. Duplicate
-membership-row detection, explicit provenance backfill, and migration refusal on ambiguous
-`derived_from` are required when schema work begins. These are subcases of the existing named
-tests, not current test evidence; none is claimed implemented or run. The 25-test real-Entra
+concurrency subcase for OIDC login racing SCIM group removal on one person/scope. Migration
+coverage must classify every legacy membership from durable evidence in a read-only
+preflight before any DDL, backfill, uniqueness constraint, or projection. Null `derived_from`
+does not prove direct provenance; any ambiguous or unclassified row must stop the whole
+migration with no partial schema or data change. Assert that owner-approved reconciliation
+is required, any failure rolls back DDL and data changes together, and a successful backfill
+occurs only after all rows are classified. Duplicate-membership detection, explicit
+provenance backfill, and migration refusal are subcases of the existing named tests, not
+current test evidence; none is claimed implemented or run. The 25-test real-Entra
 gate remains required. The planned `tests/e2e/security/` suite must cover the CSRF negatives
 stated in the security model before the applicable security gate is claimed; the suite is not
 implemented at this candidate. `/scim/v2/*` is also inside the IDOR fuzz and tenant-isolation

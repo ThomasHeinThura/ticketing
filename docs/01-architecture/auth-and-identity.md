@@ -235,9 +235,11 @@ they exist.
   `upn` supplies contact/display metadata only. An absent usable address may fail a profile
   data requirement, never the admission decision by proving or disproving domain ownership.
 - **The `groups` claim carries object ids, and can go missing** — `IP-28`. Mapping is keyed
-  on the group object id with a name snapshot; on overage the claim is ignored, the JIT
-  default role is provisioned, and a `provisioning_event` and Health warning are raised. No
-  Graph call in the first release.
+  on the group object id with a name snapshot. On a valid login with absent, malformed, or
+  overage groups, retire only this external identity's prior OIDC group grants; keep only a
+  currently permitted JIT-default grant and independent direct, SCIM, or other-connection
+  grants. Emit the existing `provisioning_event` and Health warning for overage. Do not
+  query Graph in the first release. Invalid or unverified tokens do not mutate grants.
 
 Home-realm routing, connection-bound callback scope and deny-only post-validation domain
 collision checks follow the single boundary in `IP-9`; `identity_connection.organisation_id`
