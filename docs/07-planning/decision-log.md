@@ -5,6 +5,28 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · P0 production advisory floors for ip-address and fast-uri (#557)
+
+**Decision:** raise only the existing pnpm override floors for `ip-address` to `^10.7.1`
+and `fast-uri` to `^3.1.8`, and regenerate the lockfile. Registry metadata was reverified
+on 2026-10-02: `ip-address@10.7.1` is MIT and requires Node >=12; `fast-uri@3.1.8` is
+BSD-3-Clause. The final compatible lock graph resolves `ip-address@10.7.2` and
+`fast-uri@3.1.8`. The accepted `main@917c93ad` production audit contained four moderate
+`ip-address` advisories and one moderate `fast-uri` advisory; it was not five advisories
+from `ip-address` alone. `pnpm audit --prod` reports zero advisories after these floors.
+
+No audit threshold, ignore list, or unrelated override was changed. This is limited to
+the two existing transitive packages and does not assert an application-level exploit.
+The Hono/WebSocket migration's separate Origin/session-portal limitation remains open
+under [#560](https://github.com/ThomasHeinThura/ticketing/issues/560); these dependency
+floors do not fix or waive that finding.
+
+**Authorization and status:** Thomas's standing recommended-decision authorization covers
+these bounded patched-version floors. Registry metadata, lock consumers, and the direct
+production audit were checked; this entry is not independent review or acceptance evidence.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
 ### 2026-10-02 · P0 API upgrades use the patched Node adapter WebSocket helper (#557)
 
 **Decision:** `apps/api` owns direct exact runtime dependencies `hono@4.13.12` (MIT),
