@@ -216,6 +216,7 @@ export async function createPendingAction(input: CreatePendingActionInput) {
 export async function getOwnPendingActions(
   userId: string,
   options: { cursor?: string; limit: number },
+  auditContext: { apiKeyId: string | null; traceId: string },
 ) {
   const [person] = await db
     .select({ id: personTable.id })
@@ -280,7 +281,7 @@ export async function getOwnPendingActions(
     toPendingActionRead(pendingAction, requestingKeyName),
   );
   for (const { pendingAction } of pageRows) {
-    await auditViewed(pendingAction.id, pendingAction);
+    await auditViewed(pendingAction.id, pendingAction, person.id, auditContext);
   }
   const lastRow = pageRows.at(-1)?.pendingAction;
 
@@ -297,7 +298,11 @@ export async function getOwnPendingActions(
   };
 }
 
-export async function getOwnPendingAction(userId: string, id: string) {
+export async function getOwnPendingAction(
+  userId: string,
+  id: string,
+  auditContext: { apiKeyId: string | null; traceId: string },
+) {
   const [person] = await db
     .select({ id: personTable.id })
     .from(personTable)
@@ -334,7 +339,12 @@ export async function getOwnPendingAction(userId: string, id: string) {
     result.pendingAction,
     result.requestingKeyName,
   );
-  await auditViewed(result.pendingAction.id, result.pendingAction);
+  await auditViewed(
+    result.pendingAction.id,
+    result.pendingAction,
+    person.id,
+    auditContext,
+  );
   return data;
 }
 
@@ -445,11 +455,14 @@ export async function decideOwnPendingAction(input: {
 async function auditViewed(
   id: string,
   row: typeof pendingActionTable.$inferSelect,
+  actorId: string,
+  auditContext: { apiKeyId: string | null; traceId: string },
 ) {
   await appendAuditLog(db, {
-    actorId: row.requestedByPersonId,
-    actorType: "person",
-    traceId: row.traceId,
+    actorId,
+    actorType: auditContext.apiKeyId === null ? "person" : "api_key",
+    apiKeyId: auditContext.apiKeyId,
+    traceId: auditContext.traceId,
     workspaceId: row.workspaceId,
     projectId: row.projectId,
     organisationId: row.organisationId,

@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
@@ -10,6 +10,16 @@ import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 beforeEach(async () => {
   await resetTestDatabase();
 });
+
+function hashApiKeyForTest(key: string): string {
+  return createHash("sha256")
+    .update(key)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
 
 async function createPendingAction(
   userId: string,
@@ -236,6 +246,7 @@ describe("GET /api/me/pending-actions", () => {
     const { app } = createApp();
     const ownResponse = await app.request(
       `/api/me/pending-actions/${terminal.id}`,
+      { headers: { "x-request-id": "session-pending-action-read" } },
     );
     expect(ownResponse.status).toBe(200);
     expect(await ownResponse.json()).toMatchObject({
@@ -253,7 +264,12 @@ describe("GET /api/me/pending-actions", () => {
     expect(foreignResponse.status).toBe(404);
 
     const viewed = await db
-      .select({ id: schema.auditLogTable.id })
+      .select({
+        actorId: schema.auditLogTable.actorId,
+        actorType: schema.auditLogTable.actorType,
+        apiKeyId: schema.auditLogTable.apiKeyId,
+        traceId: schema.auditLogTable.traceId,
+      })
       .from(schema.auditLogTable)
       .where(
         and(
@@ -261,7 +277,105 @@ describe("GET /api/me/pending-actions", () => {
           eq(schema.auditLogTable.entityId, terminal.id),
         ),
       );
-    expect(viewed).toHaveLength(1);
+    expect(viewed).toEqual([
+      {
+        actorId: terminal.requestedByPersonId,
+        actorType: "person",
+        apiKeyId: null,
+        traceId: "session-pending-action-read",
+      },
+    ]);
+  });
+
+  it("attributes API-key list and detail reads to the current key and request trace", async () => {
+    const { user, workspace } = await createWorkspaceMember();
+    await createPersonFor(user.id, workspace.organisationId);
+    const pending = await createPendingAction(user.id, {
+      id: "pa-api-key-read",
+    });
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    const key = requireRow(
+      await db
+        .insert(schema.apikeyTable)
+        .values({
+          referenceId: user.id,
+          userId: user.id,
+          key: hashApiKeyForTest(rawKey),
+          name: "read-audit-test-key",
+          start: rawKey.slice(0, 12),
+          prefix: "taskdesk",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning({ id: schema.apikeyTable.id }),
+      "API key",
+    );
+    const person = requireRow(
+      await db
+        .select({ id: schema.personTable.id })
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, user.id))
+        .limit(1),
+      "viewing person",
+    );
+    const { app } = createApp();
+
+    const listResponse = await app.request("/api/me/pending-actions", {
+      headers: {
+        "x-api-key": rawKey,
+        "x-request-id": "api-key-pending-action-list",
+      },
+    });
+    expect(listResponse.status).toBe(200);
+    const listJson = await listResponse.text();
+    expect(listJson).not.toContain(key.id);
+    expect(listJson).not.toContain("apiKeyId");
+    expect(listJson).not.toContain("traceId");
+
+    const detailResponse = await app.request(
+      `/api/me/pending-actions/${pending.id}`,
+      {
+        headers: {
+          "x-api-key": rawKey,
+          "x-request-id": "api-key-pending-action-detail",
+        },
+      },
+    );
+    expect(detailResponse.status).toBe(200);
+    const detailJson = await detailResponse.text();
+    expect(detailJson).not.toContain(key.id);
+    expect(detailJson).not.toContain("apiKeyId");
+    expect(detailJson).not.toContain("traceId");
+
+    const viewed = await db
+      .select({
+        actorId: schema.auditLogTable.actorId,
+        actorType: schema.auditLogTable.actorType,
+        apiKeyId: schema.auditLogTable.apiKeyId,
+        traceId: schema.auditLogTable.traceId,
+      })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.action, "pending_action.viewed"),
+          eq(schema.auditLogTable.entityId, pending.id),
+        ),
+      )
+      .orderBy(schema.auditLogTable.traceId);
+    expect(viewed).toEqual([
+      {
+        actorId: person.id,
+        actorType: "api_key",
+        apiKeyId: key.id,
+        traceId: "api-key-pending-action-detail",
+      },
+      {
+        actorId: person.id,
+        actorType: "api_key",
+        apiKeyId: key.id,
+        traceId: "api-key-pending-action-list",
+      },
+    ]);
   });
 
   it("does not return a summary when its viewed audit write fails", async () => {

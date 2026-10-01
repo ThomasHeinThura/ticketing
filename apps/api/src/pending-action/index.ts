@@ -1,9 +1,12 @@
+import type { Context } from "hono";
 import {
+  type ApiKey,
   apiRouter,
   createRoute,
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { normaliseTraceId } from "../permissions/shadow-middleware";
 import {
   pendingActionListResponseSchema,
   pendingActionReadSchema,
@@ -13,6 +16,13 @@ import {
   pendingActionParamSchema,
 } from "./schema";
 import { getOwnPendingAction, getOwnPendingActions } from "./service";
+
+function readAuditContext(c: Context) {
+  return {
+    apiKeyId: (c.get("apiKey") as ApiKey | undefined)?.id ?? null,
+    traceId: normaliseTraceId(c.req.header("x-request-id")),
+  };
+}
 
 const listPendingActionsRoute = createRoute({
   method: "get",
@@ -50,13 +60,21 @@ const getPendingActionRoute = createRoute({
 const pendingAction = apiRouter()
   .openapi(listPendingActionsRoute, async (c) =>
     c.json(
-      await getOwnPendingActions(c.get("userId"), c.req.valid("query")),
+      await getOwnPendingActions(
+        c.get("userId"),
+        c.req.valid("query"),
+        readAuditContext(c),
+      ),
       200,
     ),
   )
   .openapi(getPendingActionRoute, async (c) =>
     c.json(
-      await getOwnPendingAction(c.get("userId"), c.req.valid("param").id),
+      await getOwnPendingAction(
+        c.get("userId"),
+        c.req.valid("param").id,
+        readAuditContext(c),
+      ),
       200,
     ),
   );
