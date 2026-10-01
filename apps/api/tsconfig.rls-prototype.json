@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.tests.json",
+  "include": [
+    "../../tests/rls-prototype/**/*.ts",
+    "./vitest.rls-prototype.config.ts"
+  ]
+}
