@@ -5,6 +5,44 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-01 · Notification fan-out uses event parents, delivery children and digest groups
+
+**Decision:** retain exactly one `outbox` row per domain event, with
+`outbox.event_id = DomainEvent.id` as the parent primary key and consumer idempotency key.
+Materialize one `notification_delivery` row per unique
+`(event_id, recipient_person_id, channel)` and one in-app row per distinct event/person in
+the originating transaction. A delivery child's own stable `id` owns its provider attempt
+and `outbox_dedupe_reservation`; it never replaces the event id. Event-time digest
+preferences attach children to a `notification_digest` group in that same transaction.
+Digest membership seals after its stored local-time window, provider calls are fenced by the
+group lease and the member dedupe reservations, and current reach/preferences are checked
+again at send time. Child, group and parent retention is child-before-parent, with holds
+preserving matching history. Provider-accepted but uncommitted outcomes remain at-least-once.
+
+**Why:** the former contract placed one recipient/channel on the event-envelope primary row,
+which cannot represent several recipients or channels without changing the canonical event
+identity used by consumers. Separate delivery children preserve the event id while giving
+each provider attempt independent uniqueness, retry, lease, reach and retention state. A
+single relational digest group provides a sealed aggregate boundary without hiding members
+inside JSON or coupling inbox read retention to provider delivery.
+
+**Alternatives:** make one `outbox` row per recipient/channel with a different primary key
+(rejected because it changes the existing envelope schema and event-consumer idempotency
+assumption); use the in-app `notification` row as the provider queue (rejected because inbox
+read retention, visibility and multiple channels have different lifecycles); store all
+recipients in one parent payload (rejected because partial outcomes cannot be leased,
+retried or held independently); create notification children after commit (rejected because
+it breaks NO-8 atomicity); send each digest candidate separately (rejected because it breaks
+NO-6's one-summary-message contract).
+
+Parent event requeue reruns only idempotent event-consumer materialization and does not
+reset, recreate or resend already materialized notification children. Requeueing an
+individual notification keeps its child id and respects any live reservation. Webhook
+redelivery remains the explicit per-target action in WH-8.
+
+**Decided by:** Thomas, under the standing recommended-decisions authorization; recorded by
+the orchestrator on 2026-10-01.
+
 ### 2026-10-01 · Pending-action decisions follow the existing AU-14 mutation contract
 
 **Reconciliation:** denial/cancellation mutations preserve the already-decided AU-14

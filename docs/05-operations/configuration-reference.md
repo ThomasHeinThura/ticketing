@@ -134,7 +134,7 @@ different blast radii.
 ### General
 
 Instance name · default locale · default timezone · date and number format ·
-audit retention · notification retention · deleted-item retention · support email ·
+audit retention · notification retention (`notification_retention_days`, default 90) · deleted-item retention · support email ·
 terms and privacy URLs
 
 ### Branding
