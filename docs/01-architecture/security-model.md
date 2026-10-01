@@ -151,14 +151,13 @@ constrained hard:
   connection's configured, exact `required_entra_app_role` and `acct=0` before a new person
   or membership is created (`IP-27`). Missing/malformed account type or role, and guests,
   fail closed. Other provider JIT remains disabled until its own admission rule is approved.
-- **Email-like claims and domains are not authority.** `email`, `preferred_username` and
-  `upn` are contact/display metadata, never proof of address ownership, JIT admission,
-  organisation selection or account linking. `domain_bindings` support home-realm discovery
-  and deny-only collision checks: a collision may refuse sign-in, while a matching domain
-  never admits a subject. The selected connection, bound in OIDC `state`, supplies portal and
-  organisation scope. Upstream app-role deassignment alone does not promise immediate
-  revocation of an already issued TaskDesk session; existing TaskDesk lifecycle controls
-  apply.
+- **Identity routing and admission follow `IP-9`.** A typed customer-login domain may route
+  an unauthenticated login initiation to a configured connection; the selected connection's
+  persisted organisation, portal and id are then bound in single-use state. Callback claims
+  cannot reselect scope. Email-like claims are contact/display metadata only, and a
+  post-validation domain collision can deny but never admit. Upstream app-role deassignment
+  alone does not promise immediate revocation of an already issued TaskDesk session; existing
+  TaskDesk lifecycle controls apply.
 - Provisioning `side = staff`, or a group→role rule that grants above `member`, is an
   elevated configuration change.
 - Group→role mapping is applied **at provisioning only**. It is never re-evaluated at login

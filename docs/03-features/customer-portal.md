@@ -134,17 +134,15 @@ misconfigured away through the role editor.
   deactivates them when they leave. Instance administrators configure it (God Mode →
   Organisations → *org* → Identity); customers cannot configure their own IdP in the first
   release (`IP-5`). Invitation (`CP-11`) remains the path for organisations without SSO.
-- `CP-18` **The login page does home-realm discovery, and enumerates nothing.** Customer
-  connections are per-organisation, so a list of sign-in buttons would name every customer
-  organisation to every anonymous visitor. The portal login page shows no organisation or
-  connection list at all: it asks for an email address, and the server resolves the
-  connection from the connection's `domain_bindings` — redirecting to that organisation's
-  IdP, or falling through to the non-SSO methods. A bound domain and an unknown domain
-  produce the **same body, the same status and the same timing class**, so the page cannot
-  be used to discover whether an organisation is a customer. The full rule is
-  [identity-provisioning.md](identity-provisioning.md) `IP-29`; the agent login page is the
-  opposite case and may list its providers
-  ([auth-and-identity.md](../01-architecture/auth-and-identity.md#per-portal-binding)).
+- `CP-18` **The login page routes without enumerating organisations or connections.** It
+  asks for an email address and may use its typed domain to route login initiation to a
+  configured customer OIDC flow; an unbound domain falls through to existing non-SSO methods.
+  Bound and unbound domains keep the same response body, status and timing class. Routing is
+  only for login initiation; state scope and post-validation collision behavior follow the
+  single rule in `IP-9`. The agent login page may list its instance-level providers
+  ([auth-and-identity.md](../01-architecture/auth-and-identity.md#per-portal-binding)); the
+  full customer-login contract is [identity-provisioning.md](identity-provisioning.md)
+  `IP-9`/`IP-29`.
 - `CP-15` A customer may **withdraw their own submission** at any point before it is
   triaged — raised in error, no longer needed, or superseded by another request. Withdrawal
   is a submission status (`withdrawn`), not a deletion: it remains visible in "My requests"

@@ -161,8 +161,10 @@ God Mode → Organisations → Contoso → Identity → [ Add connection ]   (cu
 
 Two things the form deliberately **cannot** express, because `IP-4` forbids them: **side**
 is never chosen — it follows the connection's portal (`agent` ⇒ staff, `customer` ⇒
-customer); **organisation** is never derived from a claim or an email domain — a customer
-connection is bound to one organisation at creation, an agent connection to the instance.
+customer); after authenticated admission, **organisation scope** comes only from the selected
+connection's persisted `organisation_id` — never directly from a claim or typed email domain.
+A customer connection is bound to one organisation at creation; an agent connection is
+instance-scoped.
 The same form serves both places it appears: God Mode → Authentication → *Add connection*
 (agent) and God Mode → Organisations → *org* → Identity → *Add connection* (customer, with
 the organisation pre-filled and locked).
@@ -180,15 +182,20 @@ auth reconfiguration suite asserts each of them against a mock IdP:
 
 - **PKCE with `S256`** on every authorization-code flow, including confidential clients.
 - A **`state`** value that is single-use, CSPRNG-generated, bound to the initiating
-  session *and* to the portal it was started from, and expired after ten minutes.
+  session and portal, and expired after ten minutes. Its server-side context for customer
+  home-realm routing records the selected identity-connection id and its persisted
+  `organisation_id`; the callback consumes this context and cannot reselect these values
+  (`IP-7`, `IP-9`).
 - A **`nonce`** in the request, validated in the ID token; the ID token's `iss`, `aud`,
   `exp` and signature (via the discovered JWKS, cached, with key rotation honoured) are
   validated before any claim is read.
 - Redirect URIs are exact-match, per portal, and never taken from the request.
 - The issuer is the connection's **resolved, tenant-specific** issuer, and — for Entra —
   the token's `tid` must equal the connection's tenant as well as its `iss` (`IP-26`).
-- The domain mapping and the account-linking rules below apply **after** the token is
-  validated, never to raw claims.
+- Customer login initiation may use the visitor's typed email domain for connection
+  routing. Callback-claim collision checks and account-linking rules apply only after the
+  token is validated; the callback cannot change the connection or scope bound in state
+  (`IP-9`).
 
 ### What Microsoft Entra actually sends — the claim rules
 
@@ -201,17 +208,20 @@ they exist.
 - **The issuer must be a specific tenant** — `IP-26`. `/common` and `/organizations` are
   refused at save; the connection stores the resolved tenant-specific issuer; every ID token
   must match both `iss` and `tid`. `05-no-user-controlled-tenant-selection.test.ts`.
-- **The identifier is `oid` + `tid`, and there may be no `email` claim** — `IP-27`. Address
-  precedence `email` → `preferred_username` → `upn`; no `email_verified` claim exists at
-  all; JIT fails closed rather than inventing an address.
+- **New-person admission and profile metadata are separate** — `IP-27`. Entra JIT requires
+  the selected connection's exact configured app role and `acct=0` after exact token
+  validation. The durable identifier is `oid` + `tid`; `email` → `preferred_username` →
+  `upn` supplies contact/display metadata only. An absent usable address may fail a profile
+  data requirement, never the admission decision by proving or disproving domain ownership.
 - **The `groups` claim carries object ids, and can go missing** — `IP-28`. Mapping is keyed
   on the group object id with a name snapshot; on overage the claim is ignored, the JIT
   default role is provisioned, and a `provisioning_event` and Health warning are raised. No
   Graph call in the first release.
 
-A domain binding **refuses** a token whose email domain belongs to another connection. It
-never *selects* the organisation — that is `identity_connection.organisation_id`, resolved
-from the connection ([multi-tenancy.md](multi-tenancy.md)).
+Home-realm routing, connection-bound callback scope and deny-only post-validation domain
+collision checks follow the single boundary in `IP-9`; `identity_connection.organisation_id`
+is persisted on the selected connection and is the only customer-organisation scope source
+([multi-tenancy.md](multi-tenancy.md)).
 
 ### Per-portal binding
 
@@ -230,22 +240,18 @@ plugins may be `both` ([ADR 0003](adr/0003-better-auth-primary.md),
 
 **The agent login screen renders the providers scoped to `agent`** — there are few of them,
 they belong to the instance, and naming them discloses nothing. **The portal login screen
-renders no connection list at all.** Customer connections are per-organisation, so a list
-would name every customer organisation to every anonymous visitor. The portal asks for an
-email address and resolves the connection server-side from `domain_bindings`
-([customer-portal.md](../03-features/customer-portal.md) `CP-18`,
-[identity-provisioning.md](../03-features/identity-provisioning.md) `IP-29`).
+renders no connection list at all.** Customer connections are per-organisation; the portal
+may use the typed email domain to route login initiation to a configured connection, with an
+unbound domain falling through to non-SSO methods. The authoritative routing/admission and
+state-scope boundary is `IP-9`/`IP-29` and `CP-18`.
 
-For first-release Entra new-person JIT, the validated token must match the selected
-connection's exact issuer, tenant and audience, contain its configured required app role,
-and carry `acct=0` before person or membership creation (`IP-27`). Missing or malformed
-`acct` and guest accounts fail closed. The optional `acct` claim must be requested in the
-Entra app registration. `email`, `preferred_username`, `upn` and their domains are contact or
-discovery metadata only; domain bindings can deny a cross-connection collision but cannot
-admit a subject or select an organisation. The selected connection supplies portal and
-organisation. Other provider JIT stays disabled until its own admission rule is approved.
-Upstream app-role deassignment alone does not promise immediate revocation of an existing
-TaskDesk session. This does not define a guest-login or alternate account-linking path.
+New-person JIT admission follows the single authoritative rule in `IP-9` and `IP-27`
+after OIDC validation; no provider-specific exception is inferred here. For customer sign-in,
+state-bound connection and scope follow `IP-7`/`IP-9`. Callback email-like claims are
+metadata only; any cross-connection domain collision can deny after validation, never admit
+or switch scope. Upstream app-role deassignment alone does not promise immediate revocation
+of an existing TaskDesk session. The first-release rule does not define a guest-login or
+alternate account-linking path.
 
 ## Identity architecture — the authoritative model
 

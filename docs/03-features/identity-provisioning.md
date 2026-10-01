@@ -109,24 +109,39 @@ de-provisioning writes.
 
 - `IP-7` Every connection enforces the protocol floor in
   [auth-and-identity.md](../01-architecture/auth-and-identity.md#what-every-authoidc-plugin-must-do--the-protocol-floor):
-  PKCE `S256`; single-use random `state` bound to the initiating session **and portal**;
-  `nonce` validated; exact redirect-URI match; ID-token signature, `iss`, `aud`, `exp`
-  validated before any claim is read. Any failure ⇒ sign-in fails, audited.
+  PKCE `S256`; single-use random `state` bound to the initiating session and portal; the
+  server-side state context binds the selected connection id, portal and persisted
+  organisation id; `nonce` validated; exact redirect-URI match; ID-token signature, `iss`,
+  `aud`, `exp` validated before any claim is read. A callback must consume and honor that
+  context; no callback claim may replace its connection or scope. Any failure ⇒ sign-in
+  fails, audited.
 - `IP-8` A customer connection's callback is accepted **only on the portal origin**, an
   agent connection's only on the agent origin; the resulting session carries the matching
   `session.portal` and is unusable on the other host.
-- `IP-9` `domain_bindings` support home-realm discovery and deny-only collision checks.
-  They never prove that a subject owns an address or may join an organisation, and a domain
-  match never grants JIT. A collision with a domain bound to another connection may refuse
-  sign-in, but an unbound address domain alone does not establish or select a connection,
-  organisation or identity. The selected connection, bound in OIDC `state`, is the source of
-  portal and organisation scope
+- `IP-9` **Home-realm routing is separate from identity admission and organisation scope.**
+  At unauthenticated customer-login initiation, the visitor's typed email domain may resolve
+  one configured customer connection through `domain_bindings` and route the browser to
+  initiate that connection's OIDC flow. This chooses only which configured login flow to
+  start; it proves neither address ownership nor permission to sign in, and creates no
+  person or membership. The server binds the selected connection id, its `customer` portal
+  and its persisted `organisation_id` into the single-use OIDC `state` described by `IP-7`.
+  After callback and authenticated admission, that state and the selected connection are
+  authoritative: callback email-like claims and domains cannot change/reselect the
+  connection, portal or organisation, create an organisation, or link identities by email.
+  The durable subject still resolves only under the selected connection; same-connection
+  SCIM subject matching follows `IP-19`, while cross-connection email linking remains
+  forbidden by `IP-18`. A token whose
+  validated email-like claim has a domain bound to another connection may be refused **after
+  token validation**; this collision check is deny-only. Neither a matching nor an unbound
+  callback domain admits a subject. An unbound typed domain may fall through to existing
+  non-SSO methods under `IP-29`; it never guesses or creates an organisation. The selected
+  connection's persisted `organisation_id` alone supplies customer organisation scope
   ([multi-tenancy.md](../01-architecture/multi-tenancy.md),
   [security-model.md](../01-architecture/security-model.md#identity-provisioning-and-account-linking)).
   New-person JIT in the first release is available only on Microsoft Entra connections and
-  requires the connection-specific subject-admission predicate in `IP-27`. Other provider
-  JIT stays disabled until its own admission rule is approved. No email-like claim or domain
-  is an authority, tenant-selection or account-linking signal.
+  requires the subject-admission predicate in `IP-27`; other provider JIT stays disabled
+  until its own rule is approved. Email-like claims remain contact/display metadata and never
+  prove address ownership, grant JIT, change scope or link an account.
 - `IP-10` JIT provisioning (create on first login) is a per-connection policy, off by
   default for customer connections when SCIM is enabled — the directory, not the login,
   creates people. When both are on, the first login **links** to the SCIM-created record by
@@ -161,16 +176,13 @@ de-provisioning writes.
   for admission. Generic and other provider JIT remains disabled until its own admission
   rule is approved. The first-release Entra JIT rule rejects guests, including a missing or
   malformed `acct`; it does not create a guest-login or alternate account-linking path.
-- `IP-29` **The portal login page performs home-realm discovery; it never enumerates.**
-  Customer connections are per-organisation, so a list of them would name every customer
-  organisation to every anonymous visitor. The portal login page therefore renders **no list
-  of organisations or connections**: it asks for an email address and resolves the
-  connection server-side from `domain_bindings` (`IP-9`). The response is
-  **constant-shape** — a bound domain and an unknown domain return the same body, the same
-  status and the same timing class — so the page cannot be used to test whether an
-  organisation exists here. The agent login page is the opposite case and may list its
-  providers: they are instance-level and few
-  ([customer-portal.md](customer-portal.md) `CP-18`,
+- `IP-29` **The portal login page performs non-enumerating home-realm routing.** It renders
+  no organisation or connection list. A typed email domain may route an unauthenticated
+  visitor to a configured customer OIDC flow; an unbound domain falls through to existing
+  non-SSO methods. Bound and unbound inputs keep the same body, status and timing class.
+  This routing does not establish identity or scope; `IP-9` owns the state-binding and
+  post-validation collision behavior. The agent login page may list its instance-level
+  providers ([customer-portal.md](customer-portal.md) `CP-18`,
   [auth-and-identity.md](../01-architecture/auth-and-identity.md#per-portal-binding)).
 
 ### SCIM endpoint
@@ -339,7 +351,7 @@ filtered to `organisation_id`; there is one implementation.
 
 | Case | Behaviour |
 | --- | --- |
-| Entra sends a user whose email domain is bound to another connection | Refused `409`, provisioning event `request.denied`, administrator notified |
+| After token validation, Entra's email-like claim has a domain bound to another connection | Refused `409` by the deny-only collision check; provisioning event `request.denied`; administrator notified. The domain never switches connection or organisation |
 | Token used after rotation | `401`; provisioning event `auth.failed`; counted against the anonymous rate class |
 | Two connections claim the same organisation | Refused at save — one active customer connection per organisation in the first release |
 | Connection disabled or deleted while users have sessions | Disabling or deleting an identity connection **revokes every session issued through that connection immediately** — the same treatment as suspending an organisation; new logins are refused; SCIM calls return `403 connection_disabled`. Editing a connection's configuration while it stays enabled does **not** revoke anything |
@@ -382,9 +394,11 @@ listed in [testing-strategy.md](../04-engineering/testing-strategy.md).
 05-no-user-controlled-tenant-selection.test.ts — also rejects JIT for wrong `iss`/`tid`/`aud`,
    missing/malformed `oid`, without this connection's exact required app role, with
    missing/malformed `acct` or `acct=1`, and for an unapproved provider; a role from another
-   connection cannot satisfy the selected connection; changing email-like claims never
-   changes subject, organisation or portal; a domain collision may deny but a domain match
-   never admits; these are subcases, not additional acceptance tests
+   connection cannot satisfy the selected connection; typed-domain routing binds the
+   selected connection, portal and persisted organisation into state, and callback
+   email-like claims cannot change them or link by email; same-connection subject matching
+   follows IP-19; a post-validation domain collision may deny but a domain match never
+   admits; these are subcases, not additional acceptance tests
 06-customer-connection-cannot-create-staff-or-authority.test.ts
 07-scim-create-scoped-person.test.ts — same- and cross-connection conflicts return the same generic 409
 08-scim-filter-username-externalid-listresponse.test.ts

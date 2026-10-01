@@ -5,7 +5,7 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
-### 2026-10-01 · First-release Entra JIT requires connection-bound subject admission
+### 2026-10-01 · Entra JIT admission and home-realm routing are connection-bound
 
 **Decision:** before creating a new person or membership through first-release Entra JIT,
 validate the selected connection's exact `iss`, `tid` and `aud`, resolve immutable `oid`
@@ -15,14 +15,16 @@ Missing, malformed or nonmatching role, missing/malformed `acct`, and guest `acc
 closed before creation. The Entra app registration must assign the app role and request the
 optional `acct` claim. This app role is only an IdP admission signal; it grants no TaskDesk
 role, capability, organisation, portal scope, or reach. Other provider JIT remains disabled
-until its own subject-admission rule is approved.
-
-`email`, `preferred_username`, `upn` and their domains are contact/display or home-realm
-discovery metadata only. They never prove address ownership, grant JIT, select an organisation
-or portal, or link identities. A domain collision may deny sign-in, but a matching or
-unbound domain is not a JIT admission rule. The selected connection bound in OIDC `state`
-remains the source of portal and organisation. Existing SCIM scope/lifecycle and the
-no-email-account-linking rules are unchanged. Upstream Entra app-role deassignment alone
+until its own subject-admission rule is approved. For unauthenticated customer login
+initiation, a typed email domain may route to a configured connection; its server-side
+single-use state context binds that connection id, customer portal and persisted
+`organisation_id`. Callback claims cannot select or change connection or scope. This routing
+is not identity or admission proof. After token validation, a cross-connection domain
+collision may deny sign-in; a matching domain never admits. `email`, `preferred_username`,
+`upn` and their domains are not address-ownership proof, JIT authority, organisation
+selection or identity-linking signals. An unbound typed domain may fall through to existing
+non-SSO methods without guessing or creating an organisation. Existing SCIM scope/lifecycle
+and no-email-account-linking rules are unchanged. Upstream Entra app-role deassignment alone
 does not promise immediate revocation of an already issued TaskDesk session.
 
 Add planned trust negatives as subcases of acceptance test 05 and protocol negatives under
@@ -38,8 +40,8 @@ address claims as proof. `jit_policy` already stores per-connection JIT configur
 additional key is documented in the authoritative data model without a new table or TaskDesk
 authority. Domain bindings remain useful for discovery and conservative collision refusal.
 
-**Decided by:** Thomas, under the standing instruction to use recommended decisions; recorded
-by the orchestrator, 2026-10-01.
+**Decision-maker:** the orchestrator, adopting its recommended reconciliation under Thomas's
+standing authorization, 2026-10-01.
 
 ### 2026-10-01 · Pending-action decisions follow the existing AU-14 mutation contract
 
