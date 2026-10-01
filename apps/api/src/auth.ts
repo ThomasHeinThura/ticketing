@@ -34,6 +34,13 @@ import { resolveAuthSecret } from "./utils/require-auth-secret";
 import { TRUSTED_CLIENT_IP_HEADER } from "./utils/resolve-client-ip";
 import { ensureStaffPersonForUser } from "./utils/seed-internal-organisation";
 
+export function assertCookieDomainIsNotConfiguredForHostIsolation() {
+  if (process.env.COOKIE_DOMAIN)
+    throw new Error(
+      "COOKIE_DOMAIN is incompatible with the host-isolated agent and portal origins.",
+    );
+}
+
 config();
 
 const githubSso = getGithubSsoOAuthCredentials();

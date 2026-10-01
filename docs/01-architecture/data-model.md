@@ -87,7 +87,7 @@ erDiagram
 
 | Table | Purpose |
 | --- | --- |
-| `instance_setting` | Singleton row: `setup_completed_at` (the durable first-run marker — [auth-and-identity.md](auth-and-identity.md)), `setup_token_hash` and `setup_token_expires_at` (the current setup token's SHA-256 hash and one-hour expiry — never the raw token; both null once consumed, regenerated on every boot while `setup_completed_at` is null — [auth-and-identity.md](auth-and-identity.md) § Break-glass), instance name, default locale, timezone, retention periods, support email, terms/privacy URLs, session idle/absolute defaults and maxima, `reopen_window_days` (default 14), `clarification_window_days` (default 14), `approval_default_expiry_days` (default 7 — [approvals.md](../03-features/approvals.md) `AP-4`; a request may override it up to the 90-day cap, but the default itself is instance-wide, not per-workspace or per-request-type), `attachment_max_bytes`, `attachment_max_per_item`, `attachment_allowed_extensions text[]`, `mcp_write_ceiling_per_minute`, `api_key_burst_threshold`, health thresholds |
+| `instance_setting` | Singleton row: `setup_completed_at` (the durable first-run marker — [auth-and-identity.md](auth-and-identity.md)), `setup_token_hash` and `setup_token_expires_at` (the current setup token's SHA-256 hash and one-hour expiry — never the raw token; both null once consumed, regenerated on every boot while `setup_completed_at` is null — [auth-and-identity.md](auth-and-identity.md) § Break-glass), instance name, default locale, timezone, retention periods including `notification_retention_days` (default 90), support email, terms/privacy URLs, session idle/absolute defaults and maxima, `reopen_window_days` (default 14), `clarification_window_days` (default 14), `approval_default_expiry_days` (default 7 — [approvals.md](../03-features/approvals.md) `AP-4`; a request may override it up to the 90-day cap, but the default itself is instance-wide, not per-workspace or per-request-type), `attachment_max_bytes`, `attachment_max_per_item`, `attachment_allowed_extensions text[]`, `mcp_write_ceiling_per_minute`, `api_key_burst_threshold`, health thresholds |
 | `instance_branding` | Product name, logos (light/dark), favicon, accent colour, login background, footer links, `css_overrides jsonb` — **bounded** to the enumerated variable set in [design-system.md](../02-design/design-system.md), validated server-side |
 | `instance_plugin_config` | One row per configured plugin instance. Full columns: `plugin_id`, `instance_key`, `display_name`, `enabled`, `config jsonb`, `secrets bytea` (AES-256-GCM, envelope prefixed with `key_id`), `scope` (`instance`\|`workspace`), `workspace_id` null, `portal_scope` (`agent`\|`customer`\|`both`, auth plugins), `config_version integer`, `updated_by`. **v.** Shape per [plugin-architecture.md](plugin-architecture.md) |
 | `instance_feature_flag` | `feature_key`, `enabled`, `locked`. The flag key enumeration lives in [plugin-architecture.md](plugin-architecture.md) and nowhere else |
@@ -128,7 +128,7 @@ by the portal-boundary middleware ([auth-and-identity.md](auth-and-identity.md))
 | `invitation` | `email`, `organisation_id`, `role_id`, `token_hash`, `expires_at`, `state`, `invited_by` |
 | `api_key` | Extension of better-auth's `apikey`: `apikey_id`, `workspace_id` null, `person_id` null (`CHECK` exactly one set — a workspace key is a service key with no person), `capabilities jsonb` (a service key's set is bounded by its creator's expanded authority at creation), `ip_allowlist inet[]`, `rate_limit_per_minute`, `expires_at`, `last_used_at`, `last_used_ip`, `prefix`, `is_mcp`, `disabled_at`, `disabled_reason`. **`CHECK (NOT is_mcp OR person_id IS NOT NULL)`** — an MCP key is always a personal key owned by a named human; service keys are never MCP keys ([mcp-server.md](../03-features/mcp-server.md)) |
 | `user_preference` | `person_id`, `scope` (`global`\|`workspace`\|`project`), `scope_id` null, `key`, `value jsonb`. The per-user UI store: layout per project, density, chosen columns, column widths, collapsed groups, pinned views, drafts. Unique `(person_id, scope, scope_id, key)` |
-| `legal_hold` | `scope` (`organisation`\|`person`), `scope_id`, `placed_by`, `placed_at`, `reason`, `lifted_by` null, `lifted_at` null. An **open** row (`lifted_at is null`) suspends `audit-purge`, the soft-delete purge in `session-cleanup`, `attachment-gc` and every hard delete for that scope — [security-model.md](security-model.md), [background-jobs.md](background-jobs.md), [data-protection.md](../05-operations/data-protection.md). Placing and lifting write `legal_hold.placed` / `legal_hold.lifted` audit rows. Partial unique index `(scope, scope_id) where lifted_at is null` — at most one open hold per scope |
+| `legal_hold` | `scope` (`organisation`\|`person`), `scope_id`, `placed_by`, `placed_at`, `reason`, `lifted_by` null, `lifted_at` null. An **open** row (`lifted_at is null`) suspends `audit-purge`, `attachment-gc`, soft-delete purge, read-notification retention purge, terminal notification-child/digest/event-envelope retention purge, and hard delete of held business/history data in the matching scope. It does not suspend physical cleanup of an expired `outbox_dedupe_reservation`; see [background-jobs.md](background-jobs.md) and [data-protection.md](../05-operations/data-protection.md). Placing and lifting write `legal_hold.placed` / `legal_hold.lifted` audit rows. Partial unique index `(scope, scope_id) where lifted_at is null` — at most one open hold per scope |
 
 `sees_all` on a membership is the explicit reach grant. `inherited_from` records that a
 membership came from an ancestor project, per OpenProject's model.
@@ -369,9 +369,13 @@ were logged. OpenProject's model; the alternative silently rewrites history.
 | --- | --- |
 | `automation` | `workspace_id`, `project_id` null (null = workspace rule), `project_filter jsonb` null, `name`, `enabled`, `trigger` (an event key from [events.md](events.md) or `schedule`), `schedule_cron` null, `conditions jsonb`, `actions jsonb`, `effective_role_id`, `position`, `stop_processing`, `created_by`. **v** |
 | `automation_run` | `automation_id`, `work_item_id`, `event_id`, `triggered_at`, `matched`, `results jsonb`, `error` |
-| `notification` | `person_id`, `kind` (event key), `title`, `body`, `resource_type`, `resource_id`, `read_at` |
-| `notification_preference` | `person_id`, `scope` (`global`\|`workspace`\|`project`), `scope_id` null, `channel` (`in_app` ∪ `notify.*` plugin ids; `in_app` always on), `event_kind`, `enabled`, `digest` (`off`\|`hourly`\|`daily`). Unique `(person_id, scope, scope_id, channel, event_kind)` |
-| `outbox` | `event_id` (the event envelope id; primary key), `kind`, `payload jsonb` (the complete [events.md](events.md) envelope, retained for retry), `dedupe_key`, `workspace_id` **not null**, `organisation_id` null — both written from the event envelope's `scope`; they are the join key `outbox-drain` matches against `webhook.workspace_id` and against `notification_preference` scopes, and the workspace must not have to be dug out of `payload` on every row; `state` (`pending`\|`delivered`\|`dead`), `attempts` (non-negative), `next_attempt_at`, `last_error` |
+| `notification` | `person_id`, `event_id` null for legacy/non-event rows (source `DomainEvent.id`; deliberately no FK because inbox and event retention differ), `kind` (event key), `title`, `body`, `resource_type` (closed discriminator; allowed values and event mapping are listed in [notifications.md](../03-features/notifications.md#permissions)), `resource_id`, `read_at`. Event-derived rows have a partial unique key `(event_id, person_id)` where `event_id is not null`, so event replay cannot create a second inbox row for that person |
+| `notification_preference` | `person_id`, `scope` (`global`\|`workspace`\|`project`), `scope_id` null only for `global`, `channel` (`in_app` ∪ `notify.*` plugin ids; `in_app` always on), `event_kind`, `enabled`, `digest` (`off`\|`hourly`\|`daily`). Check: `scope = 'global'` iff `scope_id is null`; workspace/project scopes require a non-null id. `UNIQUE NULLS NOT DISTINCT (person_id, scope, scope_id, channel, event_kind)` so global preferences are unique too |
+| `notification_preference_handoff` | `handle_hash` (unique SHA-256; raw handle never stored), `audience` (`agent`\|`customer`), `recipient_person_id`, `event_kind`, `channel`, `scope`, `scope_id` null, `created_at`, `expires_at` (10 minutes after creation). Stores only validated selector claims; raw signed email tokens are never persisted |
+| `outbox` | Exactly one durable event-envelope row per domain event: `event_id` (the `DomainEvent.id`; primary key), `kind`, `payload jsonb` (the complete [events.md](events.md) envelope, retained for consumers/replay), `workspace_id` **not null**, `organisation_id` null (copied from envelope scope), `state` (`pending`\|`delivered`\|`dead`) for parent event-consumer processing only, `attempts` (non-negative), `next_attempt_at`, `last_error`, `created_at`, `updated_at`. Parent `delivered` means event-consumer processing/materialization completed; it never means that any notification recipient/channel provider succeeded. Child delivery and digest state is independent. Terminal parent rows are retained for 30 days after `updated_at` and are not purged while a retained child references them. Parent processing/replay must not rematerialize duplicate children, enforced by the child and inbox uniqueness keys below |
+| `notification_delivery` | One durable external candidate per `(event_id, recipient_person_id, channel)`: `id` primary key (delivery identity and provider idempotency key where supported), `event_id` FK to `outbox.event_id` with `ON DELETE CASCADE`, `recipient_person_id` FK to `person` with `ON DELETE CASCADE`, `channel` (`notify.*`), `workspace_id` **not null**, `organisation_id` null (copied and verified against the parent event scope by the atomic writer), `dedupe_key`, `digest_id` null (FK to `notification_digest.id` with `ON DELETE RESTRICT` until children are purged), `state` (`pending`\|`delivered`\|`dead`\|`suppressed`), `attempts` (non-negative; direct deliveries only; durably incremented once in the fenced pre-provider transaction for each authorized direct provider attempt), `next_attempt_at`, `delivered_at timestamp without time zone` null (UTC), `last_error`, `created_at`, `updated_at`. Unique `(event_id, recipient_person_id, channel)` prevents duplicate fan-out. Immediate deliveries have `digest_id is null`; digest candidates reference exactly one group. Recipient and tenant scope are stored for reach, hold, export and purge queries; reads do not infer scope from payload |
+| `notification_digest` | One group per `(recipient_person_id, channel, workspace_id, organisation_id, cadence, window_start_at, window_end_at)`, unique with NULLS NOT DISTINCT semantics for optional `organisation_id`: `id` primary key, `recipient_person_id` FK to `person` with `ON DELETE CASCADE`, channel, workspace/organisation scope, `cadence` (`hourly`\|`daily`), resolved `timezone`, UTC `window_start_at`/`window_end_at`, `state` (`collecting`\|`pending`\|`delivered`\|`dead`\|`suppressed`), `attempts` (durably incremented once in the fenced pre-provider transaction for each authorized group provider attempt), `next_attempt_at`, `delivered_at`, `last_error`, `created_at`, `updated_at`, `payload_hash` (canonical body of the latest authorized attempted payload), `lease_token` and UTC `lease_expires_at`. Membership is represented only by `notification_delivery.digest_id`; no separate membership table. The recipient/channel/scope/window partition cannot mix tenants or destinations. A collecting group accepts members only before `window_end_at`; sealing freezes membership. Group success/failure applies only to the included children; six group attempt authorizations dead-letter the group and its remaining pending children together |
+| `outbox_dedupe_reservation` | One row per active notification key: `reservation_key bytea` primary key (32-byte SHA-256 of the canonical recipient/channel/dedupe-key tuple below); `recipient_person_id` references `person` with `ON DELETE CASCADE`; `channel`, `dedupe_key` with a unique constraint on the exact tuple; `owner_delivery_id` references `notification_delivery.id` with `ON DELETE CASCADE`; `lease_token uuid`, `lease_expires_at timestamp without time zone` (UTC). A hash conflict whose stored tuple differs fails closed. Atomically acquire only when absent or logically expired; initial acquire and expired takeover set `lease_expires_at` to 60 seconds after that operation's post-lock PostgreSQL wall-clock sample and set a fresh token. A live lease may only be renewed by the same delivery id presenting its current token, and renewal preserves that token while setting expiry to 60 seconds after the renewal's post-lock wall-clock sample. Even the same delivery cannot reacquire its live lease with a new token. At expiry the old token immediately stops authorizing renewal or completion and another worker may take over with a fresh token, even while the expired row still exists. Daily `session-cleanup` physically deletes expired reservation rows; physical deletion is not required for takeover |
 | `webhook` | `workspace_id`, `url`, `secret` (encrypted), `secret_previous`, `secret_rotated_at`, `events text[]`, `active`, `disabled_at`, `disabled_reason`, `created_by` |
 | `webhook_delivery` | `webhook_id`, `event_id`, `attempt`, `status_code`, `duration_ms`, `request_body jsonb`, `response_body` (truncated), `error`, `attempted_at` |
 | `external_link` | `entity_type`, `entity_id`, `system`, `external_id`, `url`, `title`, `project_id` null, `organisation_id` null (denormalised at insert, for the same reach-filtering reason as `custom_field_value`) — provenance for any entity, not only work items |
@@ -388,12 +392,127 @@ were logged. OpenProject's model; the alternative silently rewrites history.
 | `policy_shadow_event` | One row per non-`agree` shadow outcome, capped at 50 rows per `(day, route_key, outcome, reason_code)` bucket by the writer (not a database constraint): `route_key`, `router_group`, `policy_kind` null, `policy_capability` null, `outcome` (the four non-`agree` values above), `reason_code` null, `legacy_allowed` null, `legacy_status` null, `policy_allowed` null, `policy_status` null, `policy_code` null, `diagnostic` null, `identity_kind` null, `workspace_id` null, `trace_id` null (accepted from the caller only when it matches `^[A-Za-z0-9._-]{1,128}$` — and untrusted even when it passes, per `shadow-evaluation.ts`'s own comment; otherwise generated server-side), `created_at`. Ids and decision codes only — **never** a request body, header, secret, email or name. No foreign key to `workspace`/`user`/`project`: evidence about a row must keep recording through the exact conditions it exists to catch (a stale or foreign id), and must never itself block that row's deletion |
 | `pending_action` | The server-enforced approval record for every user-initiated deletion and every destructive MCP call ([pending-actions.md](pending-actions.md)): `requested_by_person_id`, `credential_type` (`session`\|`api_key`), `credential_id` null, `origin` (`web`\|`api`\|`mcp`), `action` (`delete`\|`bulk_delete`\|`purge`\|`mcp_destructive`), `target_type`, `target_ids text[]` (**sorted**), `target_versions jsonb` null, `payload jsonb` (the canonical request this approval is bound to — `action`, `route_key`, `target_type`, the sorted `target_ids`, the scope ids, `confirmation_required`; `payload_hash` is taken over exactly this and nothing else, so two agents hash the same bytes), `route_key text` (the policy-registry key of the route that would execute — re-run at approval time, so the decision is checked against the same policy the request was), `payload_hash`, `payload_summary jsonb` (what the dialog renders), `workspace_id` null, `project_id` null, `organisation_id` null, `confirmation_required` (`click`\|`typed_name`\|`typed_count`\|`typed_name_step_up`\|`typed_count_step_up`), `confirmation_supplied jsonb` null, `state` (`pending`\|`approved`\|`denied`\|`cancelled`\|`expired`\|`invalidated`\|`executed`\|`failed`), `invalidation_reason text` null (set with `state = 'invalidated'`, one of `credential_revoked`\|`requester_deactivated`\|`reach_lost`\|`capability_removed`\|`version_changed`\|`scope_changed` — the `PA-9` causes, so the dialog can say which one), `created_at`, `expires_at` (+15 min), `decided_by_person_id` null, `decision_session_id` null, `decided_at` null, `step_up_token_id` null, `executed_at` null, `error` null, `trace_id`. Single-use by state machine; every transition writes `audit_log` |
 
-`outbox` is the reliability mechanism for webhooks and notifications: a mutation writes
-the outbox row in the same transaction as the change, and a scheduled job drains it with
-retry and exponential backoff. `import_record_link` makes imports **idempotent and
+`outbox` is the durable event envelope for consumers, including webhooks, automations and
+notification fan-out: a mutation writes one parent event row in the same transaction as
+the change. Each distinct eligible person gets one inbox row and each enabled external
+recipient/channel gets one `notification_delivery` child in that same transaction. The
+parent's processing state is independent from each child provider result. `import_record_link` makes imports **idempotent and
 re-runnable**. Imports use a **bulk write path** — no per-row outbox, no per-row
 broadcast, one summary event per chunk, audit at run level — see
 [import-strategy.md](../06-data-import/import-strategy.md).
+
+For notification deduplication, each `notification_delivery` stores `recipient_person_id`,
+`channel`, and `dedupe_key`. Its own stable `id` is the delivery identity; `event_id` remains
+the source event envelope id and is not a child-row key. Before checking for recent success
+or calling a channel, the drain atomically acquires the matching
+`outbox_dedupe_reservation`. Its `reservation_key` serializes replicas for the same
+person/channel/key. It is SHA-256 over the domain tag
+`taskdesk:outbox-dedupe-reservation:v1`, a zero byte, then `recipient_person_id`, `channel`,
+and `dedupe_key` in that order. Each field is encoded as its exact UTF-8 bytes prefixed by
+its byte length as an unsigned 32-bit big-endian integer; do not trim, case-fold, or
+Unicode-normalize values. Store the 32-byte digest. Keep the three original fields and a
+unique constraint on their exact tuple; if a digest conflict finds a different tuple, fail
+closed and do not send.
+
+Acquisition succeeds only for an absent or expired reservation and always assigns a fresh
+random `lease_token`. A live reservation can only be renewed when both `owner_delivery_id`
+and the supplied token match; renewal preserves the token. This rule applies even when a
+second worker presents the same delivery id: a new token cannot rotate or steal that live
+lease. Completion and release also require the matching owner and token; renewal and
+completion require an unexpired lease. If renewal fails, the worker must stop the provider
+request when possible and must not commit success with the expired token.
+
+The channel adapter call has a 30-second absolute deadline covering connection setup and
+response wait. Immediately before each provider call, after eligibility, dedupe and
+reservation acceptance, one transaction verifies the current unexpired owner/token fence
+and durably increments the existing `notification_delivery.attempts` exactly once. It
+commits before provider I/O; no provider call runs in a database transaction. A failed
+transaction or fence means no call and no consumed attempt. The digest equivalent verifies
+the unexpired group and member reservation tokens, stores the canonical attempted payload
+hash and increments the existing group `attempts` once in the same pre-provider transaction;
+member child attempts remain zero. Completion, definite failure, timeout, lease renewal and
+recovery never increment or refund an attempt. This durable count includes an authorized
+attempt whose process crashes before I/O, an intentional tradeoff that can leave fewer than
+six actual calls while guaranteeing no more than six. The worker requests cancellation at
+the deadline and stops awaiting even if the adapter ignores cancellation. While the call is
+active, renew the reservation every 15 seconds to 60 seconds from the renewal's PostgreSQL
+wall-clock sample. On deadline or ambiguous crash, keep the reservation until expiry and
+leave the candidate pending with `next_attempt_at` no earlier than the lease expiry if
+attempts remain; after the sixth authorization, safe recovery marks it dead and cannot start
+a seventh call. Stop renewing without releasing: provider acceptance may be ambiguous. A
+worker may reclaim only after expiry and must use a fresh token. These values and normal/hung-call cases
+are acceptance requirements in
+[notifications.md](../03-features/notifications.md#delivery); runtime support is not claimed
+by this contract.
+
+Use one authoritative PostgreSQL wall-clock value per atomic reservation operation. After
+any reservation-row lock wait has finished, sample `clock_timestamp() AT TIME ZONE 'UTC'`
+exactly once in that operation (for example, in a materialized CTE) and reuse the value for
+the acquire/takeover/renew/complete predicates and timestamp writes. Expiry checks compare
+`lease_expires_at` with that sample; successful delivery writes `delivered_at` from the same
+sample used by completion. The recent-success query is a separate statement after reservation
+acquisition and takes its own single wall-clock sample after any lock wait; its cutoff is
+`delivered_at >= sample - interval '5 minutes'`. Do not use transaction-start `now()` or a
+`statement_timestamp()` captured before a lock wait. This follows the UTC `dbNowUtc()`
+convention in [background-jobs.md](background-jobs.md#leasing), but the current helper wraps
+transaction-start `now()`; changing that implementation to the required wall-clock source is
+future implementation work, not part of this docs-only PR.
+
+Released reservations are deleted. Lease validity ends at `lease_expires_at`, independently
+of physical row cleanup: takeover is allowed as soon as the lease is expired, while daily
+`session-cleanup` later deletes expired rows so a crashed worker cannot retain a recipient id
+indefinitely. The person and `owner_delivery_id` foreign keys also cascade reservation
+deletion on person deletion, delivery deletion and organisation hard-delete.
+
+After acquiring the reservation, a candidate is suppressed only if a **different** delivery
+id matches all three values and has `delivered_at >= sample - interval '5 minutes'`. The
+partial index on `(recipient_person_id, channel, dedupe_key, delivered_at desc)` where
+`delivered_at is not null` serves that equality-plus-time-range lookup on
+`notification_delivery`. A successful adapter acceptance is committed by setting that
+child's `state = 'delivered'` and `delivered_at` and freeing the reservation in the same
+database transaction, conditional on the live reservation token. A suppressed candidate
+is marked `suppressed` and frees the reservation without setting `delivered_at`. A definite
+failure schedules backoff from the already-durable attempt number and frees the reservation;
+an ambiguous attempt retains it until expiry. Neither outcome increments the counter again.
+A retry of the same delivery id is excluded from its own
+duplicate lookup. One event may have many child ids, one per recipient/channel.
+
+Digest candidates attach to a `notification_digest` group in the event mutation transaction.
+The group uses the candidate preference and resolved time zone at event time; later
+preference or time-zone changes affect future candidates only. Hourly windows run from one
+local top-of-hour to the next and daily windows from one local midnight to the next, using
+`person.quiet_hours_timezone` or `instance_setting.timezone` as fallback. Store the resolved
+zone and UTC boundaries to make daylight-saving transitions unambiguous. The writer samples
+database wall time: if the target window ended or its group is sealed, attach to the next
+eligible window. A row lock serializes attachment against sealing. After window end,
+`outbox-drain` seals `collecting` to `pending` and freezes membership before rendering a
+deterministic bounded summary. Digest group leases fence one provider call; delivery child
+ids remain the event/dedupe identities. At send time, recheck current reach, channel
+preference and quiet hours. If any candidate is no longer eligible, suppress it; quiet hours
+defer the whole group. Urgent events bypass digests and have `digest_id is null`.
+
+Within a sealed group, order members by `(created_at, id)`. For each dedupe tuple, include
+the earliest eligible member and suppress a later member within five minutes of that
+earlier included candidate; retain distinct events outside the interval. Acquire each
+remaining tuple reservation in canonical key order, owned by its deterministic representative
+child, then query for a different delivery id with a recent committed success. Suppress
+matching members before rendering. If another live owner exists, release acquired
+reservations and the group lease, defer until that lease expires, and do not increment
+attempts. Keep and renew group and member leases through the 30-second absolute adapter
+deadline, every 15 seconds, to 60 seconds from the post-lock DB clock sample. Persist the
+canonical attempted body hash in the same durable pre-provider transaction as the group's
+attempt increment, before the call; provider idempotency, where supported, is `(digest id, payload_hash)`. On success,
+one transaction conditional on the unexpired current group token and every held reservation
+token marks included children delivered with one completion clock, suppresses newly
+ineligible children, marks the group delivered and releases reservations. Definite failures
+keep included children pending and release leases without incrementing again. Ambiguous
+timeouts use the already-incremented group attempt, keep reservations until expiry, stop
+renewal, and retry the same group no earlier than group and member lease expiry. Group
+attempts are authoritative;
+child attempts remain zero because children are not sent individually. After six group
+attempts, mark the group and its remaining pending children dead. This is at-least-once:
+changed payload after an ambiguous outcome may produce a second aggregate, while current
+reach is rechecked on every send.
 
 ### The audit hash chain
 
@@ -540,7 +659,15 @@ create index on custom_field_value (entity_type, entity_id);
 create index on custom_field_value (project_id) where project_id is not null;
 create index on outbox (state, next_attempt_at) where state = 'pending';
 create index on outbox (workspace_id, state);
-create index on outbox (dedupe_key) where dedupe_key is not null;
+create unique index on notification (event_id, person_id) where event_id is not null;
+create unique index on notification_delivery (event_id, recipient_person_id, channel);
+create index on notification_delivery (state, next_attempt_at) where state = 'pending';
+create index on notification_delivery (workspace_id, state);
+create index on notification_delivery (digest_id) where digest_id is not null;
+create index on notification_delivery (recipient_person_id, channel, dedupe_key, delivered_at desc) where delivered_at is not null;
+create unique index on notification_digest (recipient_person_id, channel, workspace_id, organisation_id, cadence, window_start_at, window_end_at) nulls not distinct;
+create index on notification_digest (state, next_attempt_at) where state in ('collecting', 'pending');
+create unique index on outbox_dedupe_reservation (recipient_person_id, channel, dedupe_key);
 create index on audit_log (entity_type, entity_id, created_at desc);
 create index on audit_log (workspace_id, created_at desc);
 create index on attachment (state) where state = 'pending';
@@ -586,15 +713,46 @@ create index on work_item using gin (search_vector);
 | --- | --- | --- |
 | `audit_log` | 12 months | Yes, God Mode |
 | `activity` | Forever | No — it is the journal |
-| `notification` | 90 days once read | Yes |
+| `notification` | Configured `notification_retention_days` (90 days by default), once read | Yes, God Mode |
+| Terminal `notification_delivery` rows (`delivered`, `dead`, `suppressed`) | 30 days after terminal `updated_at` | No |
+| Terminal `notification_digest` groups | 30 days after terminal `updated_at`, after eligible children are removed | No |
+| Terminal `outbox` event envelopes (`delivered`, `dead`) | 30 days after terminal `updated_at`, after eligible children are removed | No |
 | `webhook_delivery` | 30 days | Yes |
 | `automation_run` | 30 days | Yes |
 | `idempotency_key` | 24 hours | No |
 | `session` | On expiry | Yes |
 | Soft-deleted work items, projects, workspaces, custom fields, comments | 30 days, then purged | Yes |
-| Rows under an open `legal_hold` | Never purged while the hold is open | No |
+| Held audit, notification, notification delivery/digest, outbox, attachment, and soft-deleted history rows | Not retention-purged while the matching hold is open | No |
+| Expired `outbox_dedupe_reservation` | Physically removed by daily cleanup after lease expiry, even under legal hold | No |
 | `metric_snapshot` | 24 months at daily grain; hourly grain 90 days | Yes |
 | `cycle_snapshot` | With the cycle | No |
+
+`session-cleanup` applies child-before-parent retention. A `notification_delivery` row is
+purged only when terminal (`delivered`, `dead`, `suppressed`), at least 30 days past its
+terminal `updated_at`, and no matching hold is open. A person hold matches
+`recipient_person_id`. An organisation hold matches the source `organisation_id`, the
+recipient's organisation, or the owning organisation of the referenced notification resource,
+resolved using [notifications.md](../03-features/notifications.md#permissions). The source
+and recipient organisations do not stand in for resource ownership. If ownership cannot be
+resolved, retain the child while any organisation hold is open. Pending children are never
+retention-purged. Any retained child, including a pending or held child, keeps its parent
+`outbox` event envelope. Delete eligible children first; a terminal parent becomes purgeable
+only after 30 days, only when no child remains that must be retained, and no open organisation
+hold matches its source scope. A child retained by any matching hold therefore retains its
+parent and can conservatively retain sibling history through the shared parent.
+
+A digest group remains pending while any member awaits delivery. Retain terminal groups for
+30 days after terminal `updated_at` only when no matching hold applies to any member. Apply
+each member's person, source-organisation, recipient-organisation and resource-owning-
+organisation matches above; if any member's resource ownership cannot be resolved, retain the
+group while any organisation hold is open. Do not purge a group while any child references it.
+Delete eligible terminal children first, then delete an eligible terminal group only when it
+is empty. For shared group history, one held child, including one held through its
+resource-owning organisation, retains the group and history; that retained child also keeps
+its parent event envelope. Hard deletion of a person or organisation removes scoped children,
+then empty groups and applicable parent events; reservation ownership cascades from the
+delivery child. Inbox retention remains independent and never controls child or event
+retention.
 
 ## Related
 

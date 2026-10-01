@@ -14,7 +14,7 @@ import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
 import { captureCheckoutIntent } from "./lib/checkout-intent";
 import { AppI18nProvider } from "./lib/i18n/provider";
 import { parseWorkItemListSearchFromQueryString } from "./lib/routes";
-import { routeTree } from "./routeTree.gen";
+import { routeTree } from "./routeTree.agent.gen";
 
 // Capture a pricing-page `?checkout=<plan>-<interval>` deep link before the
 // router runs and strips it across the sign-up → onboarding redirect chain.

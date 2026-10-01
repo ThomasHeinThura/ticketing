@@ -33,7 +33,7 @@ audit trail; session and API-key material; the image and release artefacts.
 | **Compromised SCIM token, or a hostile customer's own IdP** | Create staff, reach another organisation, grant authority, enumerate users | Organisation and portal are fixed by the connection the token belongs to, never by the request (`IP-4`); a customer connection can create only customer-side people in its own organisation with the customer role (`IP-2`); no connection can grant `instance:admin` or `sees_all`; token hashed, rotatable with immediate invalidation, rate-limited; every denial is a provisioning event — [SCIM](#scim--an-inbound-privileged-management-api) |
 | **A deletion nobody meant** (mis-click, scripted key, injected agent) | Destroy data faster than anyone can stop it | Every user-initiated deletion is a `pending_action` approved by the requesting human in a browser session; bound to exact targets and payload; single-use; 15-minute expiry; re-authorised at execution; no model, key or automation can approve — [Deletion approval](#deletion-approval) |
 | **Anonymous internet** | Enumerate users/providers; bomb mail; DoS; distinguish "not found" from "not yours" | Anonymous rate-limit class; constant-time auth responses; **constant-shape 404** (same body, same lookup path, same bucket); minimal `/api/public/*`; `health/deep` authenticated; quotas with real defaults; event-loop lag alerting |
-| **Legal hold / e-discovery** (not an adversary — an obligation) | Delete what must be retained; fail to produce what must be produced | A per-organisation or per-person **legal hold** flag suspends `audit-purge`, the soft-delete purge in `session-cleanup`, `attachment-gc` and hard delete for that scope ([background-jobs.md](background-jobs.md)); the per-tenant export already required for subject rights ([data-protection.md](../05-operations/data-protection.md)) is the discovery export |
+| **Legal hold / e-discovery** (not an adversary — an obligation) | Delete what must be retained; fail to produce what must be produced | A per-organisation or per-person **legal hold** suspends `audit-purge`, matching read-notification, notification-child, digest-group and event-envelope retention purges, soft-delete purge in `session-cleanup`, `attachment-gc`, and hard delete for that scope. Credential/ephemeral expiry cleanup, including expired `outbox_dedupe_reservation` rows, continues; see the per-table matching and exception rules in [background-jobs.md](background-jobs.md) and [data-protection.md](../05-operations/data-protection.md) |
 
 Residual risks accepted, and where they are recorded: no malware scanning by default
 ([attachments.md](../03-features/attachments.md)); metering integrity is contractual
@@ -79,10 +79,15 @@ A policy's `scope` names *which* object the capability is checked against; the p
 middleware **loads that object from the route's declared scope source, checks reach, checks
 authority, and hands the already-authorized row to the handler**. The scope source is the
 path parameter for most routes and, for workspace-scoped collection routes with no workspace
-in the path (`/api/custom-fields`, `/api/capabilities`, `/api/webhooks`, `/api/views`,
-`/api/notifications`), the required `X-Workspace-Id` header or `?workspace=` query parameter,
-validated the same way; `POST /api/work-items/search` takes it from the filter body. Handlers
-never re-load by id from user input. This closes the classic IDOR (a valid capability in
+in the path (`/api/custom-fields`, `/api/capabilities`, `/api/webhooks`, `/api/views`), the
+required `X-Workspace-Id` header or `?workspace=` query parameter, validated the same way;
+`POST /api/work-items/search` takes it from the filter body. `/api/notification` is instead
+session-self scoped: the recipient is the session person, and each notification is additionally
+filtered against current reach to its referenced resource. Collection filtering happens before
+pagination and counts; direct reads or mutations of an inaccessible or deleted resource's
+notification return not found. Notification preference routes are also session-self scoped;
+workspace/project preference mutations separately validate current reach to that workspace or
+project. Handlers never re-load by id from user input. This closes the classic IDOR (a valid capability in
 project A, an id from project B): `tests/permissions/idor-fuzz.test.ts` takes every scoped
 route and substitutes ids from the other seeded tenant **at every scope source — path segment,
 header and search body alike** — asserting 404.
@@ -428,10 +433,18 @@ is in [data-protection.md](../05-operations/data-protection.md).
 ## Data lifecycle
 
 Organisation hard delete purges: work items, comments, attachments and objects, time and
-cost entries, notifications, sessions, API keys, webhooks, invitations, outbox rows,
-idempotency responses, `metric_snapshot` rows carrying its `organisation_id`, search
-vectors, and cached identity entries. Audit rows keep an organisation tombstone. Deleted
-data persists in backups for the retention period stated in
+cost entries, notifications, `notification_delivery` children, empty `notification_digest`
+groups, sessions, API keys, webhooks, invitations, `outbox` event envelopes and their
+`outbox_dedupe_reservation` rows (which cascade from delivery ownership), idempotency
+responses, `metric_snapshot` rows carrying its `organisation_id`, search vectors, and cached
+identity entries. Delete scoped notification children before empty groups; delete a parent
+event only after no child references it, so no digest membership or event-child reference
+dangles. Person deletion also
+removes that person's children, then empty groups and reservations owned by those children.
+Lease expiry ends reservation authority immediately and allows takeover; daily
+`session-cleanup` later physically removes expired reservation rows. No recipient id remains
+in a reservation after person deletion or expiry cleanup. Audit rows keep an organisation
+tombstone. Deleted data persists in backups for the retention period stated in
 [backup-and-restore.md](../05-operations/backup-and-restore.md) — the answer a DPA asks for.
 Quotas ship with **real defaults** (storage 20 GB, portal users 500, webhooks 10, API
 600/min per organisation), not "unlimited", and the installer applies them.

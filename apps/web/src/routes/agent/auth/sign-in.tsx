@@ -14,11 +14,11 @@ import useGetConfig from "@/hooks/queries/config/use-get-config";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
-import { AuthLayout } from "../../components/auth/layout";
-import { OtpSignInForm } from "../../components/auth/otp-sign-in-form";
-import { SignInForm } from "../../components/auth/sign-in-form";
-import { SignInFormSkeleton } from "../../components/auth/sign-in-form-skeleton";
-import { AuthToggle } from "../../components/auth/toggle";
+import { AuthLayout } from "../../../components/auth/layout";
+import { OtpSignInForm } from "../../../components/auth/otp-sign-in-form";
+import { SignInForm } from "../../../components/auth/sign-in-form";
+import { SignInFormSkeleton } from "../../../components/auth/sign-in-form-skeleton";
+import { AuthToggle } from "../../../components/auth/toggle";
 
 const signInSearchSchema = z.object({
   invitationId: z.string().optional(),
@@ -41,6 +41,7 @@ function SignIn() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
   const [autoLoginFailed, setAutoLoginFailed] = useState(false);
+  const baseUrl = window.location.origin;
   const lastLoginMethod = authClient.getLastUsedLoginMethod();
   const { data: config, isLoading: isConfigLoading } = useGetConfig();
   const autoLoginTriggered = useRef(false);
@@ -57,7 +58,6 @@ function SignIn() {
   }, [search.redirect]);
 
   const getCallbackUrl = useCallback(() => {
-    const baseUrl = import.meta.env.VITE_CLIENT_URL;
     const redirectPath = getSafeRedirectPath();
     if (redirectPath) {
       return `${baseUrl}${redirectPath}`;
@@ -66,7 +66,7 @@ function SignIn() {
       return `${baseUrl}/invitation/accept/${invitationId}`;
     }
     return `${baseUrl}/dashboard`;
-  }, [invitationId, getSafeRedirectPath]);
+  }, [baseUrl, invitationId, getSafeRedirectPath]);
 
   const handleCustomOAuth = useCallback(async () => {
     setIsCustomOAuthLoading(true);
@@ -74,7 +74,7 @@ function SignIn() {
       const result = await authClient.signIn.oauth2({
         providerId: "custom",
         callbackURL: getCallbackUrl(),
-        errorCallbackURL: `${import.meta.env.VITE_CLIENT_URL}/auth/sign-in`,
+        errorCallbackURL: `${baseUrl}/auth/sign-in`,
       });
       if (result.error) {
         throw new Error(result.error.message);
@@ -87,7 +87,7 @@ function SignIn() {
     } finally {
       setIsCustomOAuthLoading(false);
     }
-  }, [getCallbackUrl, t]);
+  }, [baseUrl, getCallbackUrl, t]);
 
   const handleSignInGoogle = async () => {
     setIsGoogleLoading(true);
@@ -95,7 +95,7 @@ function SignIn() {
       const result = await authClient.signIn.social({
         provider: "google",
         callbackURL: getCallbackUrl(),
-        errorCallbackURL: `${import.meta.env.VITE_CLIENT_URL}/auth/sign-in`,
+        errorCallbackURL: `${baseUrl}/auth/sign-in`,
       });
       if (result.error) {
         throw new Error(result.error.message);
@@ -115,7 +115,7 @@ function SignIn() {
       const result = await authClient.signIn.social({
         provider: "github",
         callbackURL: getCallbackUrl(),
-        errorCallbackURL: `${import.meta.env.VITE_CLIENT_URL}/auth/sign-in`,
+        errorCallbackURL: `${baseUrl}/auth/sign-in`,
       });
       if (result.error) {
         throw new Error(result.error.message);
@@ -135,7 +135,7 @@ function SignIn() {
       const result = await authClient.signIn.social({
         provider: "discord",
         callbackURL: getCallbackUrl(),
-        errorCallbackURL: `${import.meta.env.VITE_CLIENT_URL}/auth/sign-in`,
+        errorCallbackURL: `${baseUrl}/auth/sign-in`,
       });
       if (result.error) {
         throw new Error(result.error.message);

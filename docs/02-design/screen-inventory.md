@@ -2,14 +2,17 @@
 
 Every screen in the product, its route, its kind, its stage, and its status.
 
-**Kind:** `route` — has a URL in `lib/routes.ts` · `overlay` — a pane/palette over another
+**Kind:** `route` — has a declared URL · `overlay` — a pane/palette over another
 screen · `dialog` — modal · `section` — a region of a parent screen.
 **Status:** ⬜ not started · 🟡 in progress · ✅ done · 🔒 blocked
 
 Update this file as part of the work. It is the answer to "what is left?" Rewritten
 2026-09-05: the [planning review](../07-planning/review-2026-09-05.md) found the counts
 wrong in five of seven stages and about twenty screens the specs require missing. Routes
-are written in full so a script can check them against `lib/routes.ts`.
+are written in full so `check:inventory` can compare active screens with the generated agent
+and portal route metadata. Not-started rows are planned URLs; they do not claim a route is
+implemented. The checker reports planned and inherited-route counts separately. This
+prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-planning/decision-log.md#2026-09-28--10s-gate-scope-semantics-decided-applicable-now-gates-required-future-stage-gates-activate-with-their-prerequisite).
 
 ---
 
@@ -24,6 +27,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 | Accept invitation | `/agent/invite` | route | P3 | ⬜ |
 | Workspace home (default dashboard) | `/agent` | route | P1 | ⬜ |
 | Inbox | `/agent/inbox` | route | P1 | ⬜ |
+| Notifications inbox | `/agent/notifications` | route | P1 | ⬜ |
 | My work | `/agent/my-work` | route | P1 | ⬜ |
 | Triage | `/agent/triage` | route | P2 | ⬜ |
 | Command palette | — | overlay | P1 | ⬜ |
@@ -173,6 +177,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
+| Portal unavailable notice (P0 interim state) | `/` | route | P0 | 🟡 |
 | Sign in | `/portal/sign-in` | route | P3 | ⬜ |
 | Accept invitation | `/portal/invite` | route | P3 | ⬜ |
 | Home | `/portal` | route | P3 | ⬜ |
@@ -199,14 +204,14 @@ build if it drifts.
 
 | Stage | Screens |
 | --- | --- |
-| P0 Foundation | 6 |
+| P0 Foundation | 7 |
 | P1 Core work | 33 |
 | P2 Service desk | 18 |
 | P3 Portal & identity | 21 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **137** |
+| **Total** | **139** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see
@@ -214,11 +219,13 @@ more screens at 100%, delivered a stage at a time — see
 
 ## Rules
 
-- Every row of kind `route` is in `lib/routes.ts`; `G5` checks exactly those rows.
-- Rows whose route differs only by a query string (`?layout=`, `?tab=`, `?lens=`) share one
-  **canonical route**; `check:inventory` compares canonical routes (query stripped) against
-  the generated `lib/routes.ts`, so the 136 rows map to fewer route entries by design — that
-  is not a defect. The two `*` rows are distinct routes because they live on different origins.
+- Both generated route trees contribute every actual route to the deterministic metadata
+  re-exported by `lib/routes.ts`; G5 builds and parses a URL for every generated template.
+- Rows marked in progress or complete must match the generated route trees. Not-started
+  route rows remain planned work; they become required when implementation moves them to
+  in progress. Rows whose route differs only by a query string (`?layout=`, `?tab=`,
+  `?lens=`) share one **canonical route** for inventory comparison, while their query-state
+  round trips remain a separate G5 requirement for implemented list surfaces.
 - Assignment has no screen of its own — its rules live in project settings and the work-item
   side pane ([assignment.md](../03-features/assignment.md)); `check:inventory` exempts it
   explicitly.

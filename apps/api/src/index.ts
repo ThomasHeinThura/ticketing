@@ -1,4 +1,5 @@
 import { statSync } from "node:fs";
+import type { IncomingMessage } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
@@ -16,7 +17,10 @@ import { HTTPException } from "hono/http-exception";
 import activity from "./activity";
 import attachment from "./attachment";
 import audit from "./audit";
-import { auth } from "./auth";
+import {
+  assertCookieDomainIsNotConfiguredForHostIsolation,
+  auth,
+} from "./auth";
 import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
 import column from "./column";
@@ -85,6 +89,10 @@ import { migrateSessionColumn } from "./utils/migrate-session-column";
 import { migrateWorkspaceUserEmail } from "./utils/migrate-workspace-user-email";
 import { normalizeApiServerUrl } from "./utils/openapi-spec";
 import { rejectNulByte } from "./utils/reject-nul-byte";
+import {
+  parseConfiguredOrigins,
+  selectOriginFromContext,
+} from "./utils/request-origin";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
@@ -109,11 +117,13 @@ type ApiKey = {
 };
 
 type AppVariables = {
+  Bindings: { incoming?: IncomingMessage & { authority?: string } };
   Variables: {
     user: User | null;
     session: Session | null;
     userId: string;
     apiKey?: ApiKey;
+    appOrigin: "agent" | "portal" | "unknown";
   };
 };
 
@@ -180,11 +190,11 @@ function buildContentDisposition(filename: string, inline: boolean) {
  * Both candidates are checked in order; the first that looks like a real
  * build (a directory containing `index.html`) wins.
  */
-function defaultStaticRootCandidates(): string[] {
+function defaultStaticRootCandidates(surface: "agent" | "portal"): string[] {
   const currentDir = dirname(fileURLToPath(import.meta.url));
   return [
-    join(currentDir, "../../../public"),
-    join(currentDir, "../../web/dist"),
+    join(currentDir, "../../../public", surface),
+    join(currentDir, `../../web/dist/${surface}`),
   ];
 }
 
@@ -196,7 +206,7 @@ function defaultStaticRootCandidates(): string[] {
  * having been built.
  */
 export function resolveStaticRoot(
-  candidates: string[] = defaultStaticRootCandidates(),
+  candidates: string[] = defaultStaticRootCandidates("agent"),
 ): string | undefined {
   return candidates.find((candidate) => {
     try {
@@ -210,8 +220,31 @@ export function resolveStaticRoot(
   });
 }
 
+function resolveStaticRoots(options: {
+  agent?: string;
+  portal?: string;
+}): Record<"agent" | "portal", string | undefined> {
+  return {
+    agent: resolveStaticRoot(
+      options.agent ? [options.agent] : defaultStaticRootCandidates("agent"),
+    ),
+    portal: resolveStaticRoot(
+      options.portal ? [options.portal] : defaultStaticRootCandidates("portal"),
+    ),
+  };
+}
+
 function isApiRequestPath(path: string): boolean {
   return path === "/api" || path.startsWith("/api/");
+}
+
+function denyByHost(c: Context<AppVariables>) {
+  if (isApiRequestPath(c.req.path)) {
+    return c.req.method === "HEAD"
+      ? c.body(null, 404, { "content-type": "application/json" })
+      : c.json({ message: "Not Found" }, 404);
+  }
+  return c.body(null, 404);
 }
 
 /**
@@ -220,44 +253,29 @@ function isApiRequestPath(path: string): boolean {
  * content-type, and any unmatched non-API GET falls back to `index.html` so
  * client-side routing survives a hard refresh or a direct URL.
  *
- * Deliberately a no-op when no build is found (dev environments that only
- * run the API) rather than throwing — see `resolveStaticRoot`'s log line,
- * which fires exactly once, at startup, in that case.
+ * Registers unconditionally so the permission route inventory is independent of whether
+ * the build ran before API import. A missing selected root returns 503 for document paths.
  *
  * A request path under `/api` is never touched here, matched or not — that
  * surface keeps its own routing and its own 404s, unconditionally.
  *
- * This `app.use("*", ...)` registration is itself conditional on `staticRoot` being found —
- * it never runs, and never appears in `app.routes`, when no build is on disk. That matters to
- * `packages/permissions`: `DECLARED_ROUTER_MIDDLEWARE` in `route-coverage.ts` declares an
- * exact, unconditional count of 2 registrations at the same `"ALL /*"` key (CORS and
- * compress, above), so `pnpm test:permissions` must always run against a router built without
- * `apps/web/dist` present, or this registration voids that declaration for CORS/compress too
- * (issue #165 — see `tests/permissions/README.md` and `docs/04-engineering/ci-cd.md`).
+ * This `app.use("*", ...)` registration is unconditional and declared by identity for the
+ * policy route-coverage gate. It works with each host's separate root and never falls back
+ * across origins.
  */
 function registerStaticServing(
   app: Hono<AppVariables>,
-  staticRootOverride?: string,
+  staticRoots: Record<"agent" | "portal", string | undefined>,
 ) {
-  // An override still goes through the same "is this actually a build"
-  // check as the real candidates, rather than being trusted blindly — a
-  // test (or a future caller) that passes a directory with no `index.html`
-  // gets the same graceful skip as the no-override, nothing-found case.
-  const staticRoot = staticRootOverride
-    ? resolveStaticRoot([staticRootOverride])
-    : resolveStaticRoot();
-
-  if (!staticRoot) {
+  if (!staticRoots.agent && !staticRoots.portal) {
     console.warn(
-      "[static] No built web app found (checked the production /app/public location and apps/web/dist) — the API will not serve the web UI. Expected whenever only the API is running, e.g. before `pnpm --filter @taskdesk/web build` in local development.",
+      "[static] No built web apps found; both origin roots will return 503 for document requests until the independent web builds exist.",
     );
-    return;
   }
-
-  console.log(`[static] Serving the built web app from ${staticRoot}`);
-
-  const serveAsset = serveStatic({ root: staticRoot });
-  const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
+  for (const [surface, staticRoot] of Object.entries(staticRoots)) {
+    if (staticRoot)
+      console.log(`[static] Serving the ${surface} app from ${staticRoot}`);
+  }
 
   // Named (not inline in `.use()`) so its exact function reference can be declared to
   // `permissions/shadow-middleware.ts` (Opus delta F5) as reviewed catch-all
@@ -275,6 +293,18 @@ function registerStaticServing(
       return next();
     }
 
+    const surface = c.get("appOrigin");
+    if (surface !== "agent" && surface !== "portal") return next();
+    const staticRoot = staticRoots[surface];
+    if (!staticRoot) {
+      return c.req.method === "HEAD"
+        ? c.body(null, 503, { "content-type": "application/json" })
+        : c.json({ message: "Service Unavailable" }, 503);
+    }
+
+    const serveAsset = serveStatic({ root: staticRoot });
+    const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
+
     // `serveStatic`'s own "not found" signal is calling its `next` argument
     // (typed to return `void`, not a `Response`), so the decision below
     // can't be made from inside that callback's return value — it just
@@ -284,9 +314,7 @@ function registerStaticServing(
       assetMissing = true;
     });
 
-    if (!assetMissing) {
-      return result;
-    }
+    if (!assetMissing) return result;
 
     // No matching file. A request whose last path segment has an extension
     // (".js", ".png", a stray ".env", ...) is a genuinely missing asset and
@@ -295,16 +323,18 @@ function registerStaticServing(
     // instead of a loud failure. Anything else is a client-side route and
     // gets the SPA shell.
     const lastSegment = c.req.path.split("/").pop() ?? "";
-    if (lastSegment.includes(".")) {
-      return next();
-    }
+    if (lastSegment.includes(".")) return next();
+    if (surface === "portal") return c.notFound();
     return serveIndex(c, next);
   };
   declareCatchAllMiddleware(serveStaticOrSpaShell);
   app.use("*", serveStaticOrSpaShell);
 }
 
-export function createApp(options: { staticRoot?: string } = {}) {
+export function createApp(
+  options: { staticRoot?: string; portalStaticRoot?: string } = {},
+) {
+  assertCookieDomainIsNotConfiguredForHostIsolation();
   const app = new Hono<AppVariables>();
 
   app.onError((err, c) => {
@@ -318,6 +348,51 @@ export function createApp(options: { staticRoot?: string } = {}) {
   });
   const nodeWs = createNodeWebSocket({ app });
   const { upgradeWebSocket, injectWebSocket } = nodeWs;
+  const origins = parseConfiguredOrigins(
+    process.env.TASKDESK_AGENT_URL,
+    process.env.TASKDESK_PORTAL_URL,
+  );
+  const hostRoutingGuard = async (c: Context<AppVariables>, next: Next) => {
+    const selected = selectOriginFromContext(c, origins);
+    const isHealthPath =
+      c.req.path === "/api/health" ||
+      c.req.path === "/api/public/health/live" ||
+      c.req.path === "/api/public/health/ready";
+    const isHealthRequest =
+      isHealthPath && (c.req.method === "GET" || c.req.method === "HEAD");
+    const upgrade = c.req.header("upgrade")?.toLowerCase();
+    const connection = c.req.header("connection")?.toLowerCase() ?? "";
+    const isWebSocketUpgrade =
+      upgrade === "websocket" && connection.includes("upgrade");
+
+    if (selected === "invalid") return denyByHost(c);
+    if (isWebSocketUpgrade && (selected !== "agent" || isHealthPath))
+      return denyByHost(c);
+    if (isHealthRequest) {
+      // Preserve the loopback health probes used by Docker and deploy.sh. A
+      // syntactically valid unknown Host reaches only these exact GET/HEAD routes.
+      c.set("appOrigin", selected === "unknown" ? "unknown" : selected);
+      await next();
+      if (c.req.method === "HEAD")
+        return new Response(null, {
+          status: c.res.status,
+          statusText: c.res.statusText,
+          headers: c.res.headers,
+        });
+      return;
+    }
+    if (selected === "unknown") return denyByHost(c);
+    c.set("appOrigin", selected);
+    if (selected === "portal") {
+      if (isApiRequestPath(c.req.path)) return denyByHost(c);
+      if (c.req.method !== "GET" && c.req.method !== "HEAD")
+        return denyByHost(c);
+    }
+    return next();
+  };
+  declareCatchAllMiddleware(hostRoutingGuard);
+  app.use("*", hostRoutingGuard);
+
   const corsOriginSource = [
     process.env.CORS_ORIGINS,
     process.env.TASKDESK_AGENT_URL,
@@ -1185,7 +1260,42 @@ export function createApp(options: { staticRoot?: string } = {}) {
   );
 
   app.route("/api", api);
-  registerStaticServing(app, options.staticRoot);
+  registerStaticServing(
+    app,
+    resolveStaticRoots({
+      agent: options.staticRoot,
+      portal: options.portalStaticRoot,
+    }),
+  );
+
+  // Hono's in-process Request adapter does not synthesize a Host header from
+  // either a relative path or an absolute URL. Supply the authority the caller
+  // addressed so these requests exercise the same Host guard as Node HTTP. The
+  // real listener remains responsible for raw duplicate-header behavior.
+  const honoRequest = app.request.bind(app);
+  app.request = ((input, requestInit, bindings) => {
+    if (
+      typeof input === "string" &&
+      !new Headers(requestInit?.headers).has("host")
+    ) {
+      const headers = new Headers(requestInit?.headers);
+      if (input.startsWith("/")) {
+        headers.set("host", origins[0].authority);
+        return honoRequest(
+          new URL(input, origins[0].url),
+          { ...requestInit, headers },
+          bindings,
+        );
+      }
+      try {
+        headers.set("host", new URL(input).host);
+        return honoRequest(input, { ...requestInit, headers }, bindings);
+      } catch {
+        // Let Hono parse malformed input and preserve its normal error path.
+      }
+    }
+    return honoRequest(input, requestInit, bindings);
+  }) as typeof app.request;
 
   return {
     app,

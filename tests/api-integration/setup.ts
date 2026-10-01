@@ -78,7 +78,8 @@ assertTestDatabaseUrl(process.env.TASKDESK_DATABASE_URL);
 process.env.NODE_ENV = "test";
 process.env.TASKDESK_AUTH_SECRET = "test-secret-with-at-least-32-chars";
 process.env.KANEO_API_URL = "http://localhost:1337";
-process.env.TASKDESK_AGENT_URL = "http://localhost:5173";
+process.env.TASKDESK_AGENT_URL = "http://localhost:1337";
+process.env.TASKDESK_PORTAL_URL = "http://portal.localhost:5174";
 // DISABLE_GUEST_ACCESS is gone with the guest surface it gated: anonymous() was
 // removed server-side in #6, and the client, the two buttons and hasGuestAccess
 // followed. Nothing reads this variable any more.
