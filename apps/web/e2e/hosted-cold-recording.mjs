@@ -567,7 +567,6 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
   try {
     await withPerformancePage(browser, true, async (page) => {
     const capture = await startColdCapture(page);
-    try {
       coldStage = "journey";
       await page.goto(WORK_LIST_PATH);
       await capture.align();
