@@ -146,8 +146,25 @@ test.describe("G11 last-item paint recorder in Chromium", () => {
       return {
         rowCount: body?.rows.length,
         targetText: target?.textContent,
+        connected: Boolean(target?.isConnected),
+        rect: rect
+          ? {
+              x: rect.x,
+              y: rect.y,
+              width: rect.width,
+              height: rect.height,
+              top: rect.top,
+              right: rect.right,
+              bottom: rect.bottom,
+              left: rect.left,
+            }
+          : null,
         visible: Boolean(
-          rect && rect.top >= 0 && rect.bottom <= window.innerHeight,
+          rect &&
+            rect.width > 0 &&
+            rect.height > 0 &&
+            rect.top >= 0 &&
+            rect.bottom <= window.innerHeight,
         ),
         scrollCalls: (window as Window & { __scrollCalls?: number })
           .__scrollCalls,
@@ -158,6 +175,7 @@ test.describe("G11 last-item paint recorder in Chromium", () => {
         ).__g11PaintDebug?.lastPaintFrameCount,
       };
     });
+    console.info("G11 actual terminal row evidence", JSON.stringify(evidence));
     expect(evidence.rowCount).toBe(500);
     expect(evidence.targetText).toContain("Work item 500");
     expect(evidence.visible).toBe(true);
@@ -320,10 +338,46 @@ test.describe("G11 last-item paint recorder in Chromium", () => {
     });
     await install(page, BOARD_OPTIONS);
     await waitForMark(page, "boardPaint");
-    expect(
-      await page.evaluate(
-        () => (window as Window & { __scrollCalls?: number }).__scrollCalls,
-      ),
-    ).toBe(0);
+    const evidence = await page.evaluate(() => {
+      const cards = document.querySelectorAll('[data-task-id^="legacy-task-"]');
+      const target = document.querySelector('[data-task-id="legacy-task-200"]');
+      const rect = target?.getBoundingClientRect();
+      return {
+        cardCount: cards.length,
+        targetId: target?.getAttribute("data-task-id"),
+        connected: Boolean(target?.isConnected),
+        rect: rect
+          ? {
+              x: rect.x,
+              y: rect.y,
+              width: rect.width,
+              height: rect.height,
+              top: rect.top,
+              right: rect.right,
+              bottom: rect.bottom,
+              left: rect.left,
+            }
+          : null,
+        visible: Boolean(
+          rect &&
+            rect.width > 0 &&
+            rect.height > 0 &&
+            rect.right > 0 &&
+            rect.bottom > 0 &&
+            rect.left < window.innerWidth &&
+            rect.top < window.innerHeight,
+        ),
+        scrollCalls: (window as Window & { __scrollCalls?: number })
+          .__scrollCalls,
+      };
+    });
+    console.info("G11 actual terminal card evidence", JSON.stringify(evidence));
+    expect(evidence.cardCount).toBe(200);
+    expect(evidence.targetId).toBe("legacy-task-200");
+    expect(evidence.connected).toBe(true);
+    expect(evidence.rect?.width).toBeGreaterThan(0);
+    expect(evidence.rect?.height).toBeGreaterThan(0);
+    expect(evidence.visible).toBe(true);
+    expect(evidence.scrollCalls).toBe(0);
   });
 });
