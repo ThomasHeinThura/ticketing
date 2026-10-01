@@ -177,7 +177,9 @@ de-provisioning writes.
   for admission. Generic and other provider JIT remains disabled until its own admission
   rule is approved. The first-release Entra JIT rule rejects guests, including a missing or
   malformed `acct`; it does not create a guest-login or alternate account-linking path.
-- `IP-29` **The portal login page has a limited domain-specific SSO disclosure.** It does
+- `IP-29` **The portal login page has a limited domain-specific SSO disclosure.** See
+  [ADR 0014](../01-architecture/adr/0014-limited-home-realm-disclosure.md) for the rationale
+  and alternatives. It does
   not list customer organisations or connections. A visitor supplies an email address;
   its domain may select one configured customer SSO connection for login initiation. A
   bound domain may lead to that connection's IdP; an unbound domain follows available

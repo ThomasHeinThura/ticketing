@@ -35,7 +35,7 @@ organisation names, connection identifiers, secrets, claim mappings, or TaskDesk
 existence through this flow. The anonymous rate limit reduces bulk probing; it does not hide
 the binding or restore non-enumeration. Equal initial response body, status, or timing is not
 a privacy guarantee for the complete flow. The feature authority for this boundary is
-[identity provisioning, IP-29](../../03-features/identity-provisioning.md#ip-29-the-portal-login-page-has-a-limited-domain-specific-sso-disclosure).
+[identity provisioning, IP-29](../../03-features/identity-provisioning.md#oidc-login).
 
 This disclosure does not grant identity or TaskDesk authority. The typed domain selects only
 which unauthenticated OIDC flow starts. Server-side single-use state pins the selected
