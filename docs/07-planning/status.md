@@ -27,20 +27,20 @@ retains its explicitly documented unversioned third-party compatibility window. 
 
 **Local development:** normal deployment now runs the reviewed concurrency image,
 `sha256:bd93ebe2789ff737ff148ba5595faf25cf026589027206a1cb4494b712645d02`.
-Both HTTPS readiness endpoints returned200. Chrome reload preserved DV-1's title,
+Both HTTPS readiness endpoints returned 200. Chrome reload preserved DV-1's title,
 In Progress status, self-assignment and three activity entries; portal sign-in opens.
 Evidence: `/private/tmp/taskdesk-224-dev-task.png` and
 `/private/tmp/taskdesk-224-portal-sign-in.png` (1800×947). Distinct customer entry and
 customer journeys remain unimplemented. Credentials remain private outside the repository.
 
 **P0 remains open.** PR #525 is still at `a4592f521ca5046044242a7701b2574cc12bd7bb`.
-Its exact hosted run failed nine G11 budgets: list685.4/500ms, LCP2704/2500ms,
-detail527.2/300ms, create258.7/200ms, palette-open655.4/200ms,
-palette-navigation611.4/200ms, state283/200ms, assignment290.1/200ms and
-board797.5/500ms. G13's six measurements and deliberate red probe passed. A recursive
+Its exact hosted run failed nine G11 budgets: list 685.4/500 ms, LCP 2704/2500 ms,
+detail 527.2/300 ms, create 258.7/200 ms, palette open 655.4/200 ms,
+palette navigation 611.4/200 ms, state 283/200 ms, assignment 290.1/200 ms and
+board 797.5/500 ms. G13's six measurements and deliberate red probe passed. A recursive
 Projects chunk group failed manifest invariants and was reverted before timing. A full
 Projects-graph idle prewarm preserved manifest boundaries but worsened canonical navigation
-from273.1ms to1,308.8ms; it too was reverted. The baseline source/dist are restored. A
+from 273.1 ms to 1,308.8 ms; it too was reverted. The baseline source/dist are restored. A
 module-ownership experiment is being prepared; no optimization or stage completion is claimed.
 G11 still must become a required context after its strict budgets pass.
 
@@ -58,13 +58,13 @@ representative soak, other P0 exit criteria and separate Sol finalizer remain in
 **Parallel work:** P4 #539 is at note-only candidate
 `bf45df60cd03ddadda0f409c229d3d6dc32181e0`, with current source
 `3fb1aa4c6c7ae45b7e47f1151c7405b349670de5`. Independent Luna/Sol composition reviews
-clear the task-version main import; current focused PostgreSQL26, permissions83,
-API four-config typecheck and OpenAPI163 pass. Its combined image built, booted healthy
-and answered live/ready200. Final exact-candidate checks are still pending. Full approval,
+clear the task-version main import; current focused PostgreSQL 26, permissions 83,
+API four-config typecheck and OpenAPI 163 pass. Its combined image built, booted healthy
+and answered live/ready 200. Final exact-candidate checks are still pending. Full approval,
 step-up, expiry/invalidation, DELETE retrofits, UI and AU-14 operator alerting remain open.
 
 P2 #513's current-main/migration integration is assigned after #529 established task-version
-migration0079; calendar acceptance must preserve it and use the next migration. P1 #512 and
+migration 0079; calendar acceptance must preserve it and use the next migration. P1 #512 and
 P3 schema work wait for that serialized handoff. P3 draft #544 at
 `92438d9357d75b4979be6b2b7af879e6c46b7cec` specifies Entra-only first-release JIT trust and
 a callback domain bound to that same connection. Independent design review and closure of
