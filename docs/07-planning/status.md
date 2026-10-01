@@ -14,16 +14,46 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
-`f7ae8cc846030b10678c9860e4d4bda4f15b93a1` (verified 2026-10-01 10:14 UTC).**
-Protected PR #547 merged at 10:04:06 UTC. Final candidate
-`29850e0a1285164f4d319d969317e163d87d8455` passed all 17 required checks before protected
-merge. Hosted PostgreSQL integration passed 126 files / 1,579 tests / 5 tasks. Unit/component
-passed 12/12 tasks (API 67 files / 536 tests; UI 59 files / 291 tests; web 80 files / 351
-tests), route policy/permission matrix passed 14 files / 88 tests, and the focused
-`test:no-inherited-routes` gate passed 1 file / 5 tests. Independent Luna and full Sol
-reviews bind source `2751ab71e86e23cd20e9e7a30860a7b92190955e`; later commits only record
-review evidence. The new focused inherited-route regression is enabled on main; G11 remains
-disabled, and the other disabled gates remain explicit work. This test/config/documentation
+`f7ae8cc846030b10678c9860e4d4bda4f15b93a1` (verified 2026-10-01 10:54 UTC).** PR #547
+remains the latest protected main change. The verified 10:14 merge evidence, local OrbStack
+runtime image and limitations are recorded immediately below.
+
+**P0 remains open.** Draft #525 is at `3f49f616f251a411f4f0d1afcccb7da08a51a935`.
+Its current-source 13-case functional Chromium regression passes 13/13. The canonical
+22-case local G11 run on this source ran once, with one worker, from 10:48:33 to 10:54:29
+UTC and passed 22/22; all strict local G11 metrics and G13 checks passed. Drag evidence
+records 100 versioned PUTs with quoted `If-Match: "1"`; `legacy-task-1` persisted
+`in-progress` after reload, and measured frame p95 was 16.7 ms against the <20 ms budget.
+This is local run evidence only; there was no separate focused preflight or rerun. At 10:54
+UTC the hosted G11 job (`36851102379`, job `110332688884`) was still in progress, and the
+fast PR-template/security-review check was failing. The canonical evidence archive is
+`/private/tmp/p0-g11-canonical-3f49f616-104833`. Do not treat G11 as accepted or #525 as
+merge-ready: current exact-head reviews and green required CI remain pending, and G11 must be
+present as a required branch-protection context before #525 may merge. No aggregate
+acceptance or causal savings claim is made. Restored-dist provenance, representative
+authorization soak, other P0 exit gates and the fresh Sol phase finalizer remain incomplete.
+
+PR #508 is draft at `223526e1d002ca3657558c9d5851e5b831d62b77`; its bounded retention delta
+adds resource-owning-organization hold coverage and configurable 90-day default wording.
+Fresh ordinary reviews and Sol review remain pending; no contract acceptance is claimed.
+PR #544 is draft at `9a957996a29c3d685d508d3e0dfa80019873be27`; its ordinary panel and Sol
+review remain pending, and owning findings 81/82 remain open. PR #513 is draft at
+`0ca995a28ae3e079723d14607b8d8d4f95dd75da` with calendar browser and acceptance gaps still
+open. P1/P2/P3/P4 remain open. No stage completion or gate waiver is claimed.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
+`f7ae8cc846030b10678c9860e4d4bda4f15b93a1` (verified 2026-10-01 10:14 UTC; factual
+corrections recorded 10:54 UTC).** Protected PR #547 merged at 10:04:06 UTC. Final
+candidate `29850e0a1285164f4d319d969317e163d87d8455` passed all 17 required checks before
+protected merge. Hosted PostgreSQL integration passed 126 files / 1,579 tests / 5 tasks.
+Unit/component passed 12/12 tasks (API 67 files / 536 tests; UI 59 files / 291 tests; web
+80 files / 351 tests), route policy/permission matrix passed 14 files / 88 tests, and the
+focused `test:no-inherited-routes` gate passed 1 file / 5 tests. Independent Luna and full
+Sol reviews bind source `2751ab71e86e23cd20e9e7a30860a7b92190955e`; later commits only
+record review evidence. The focused inherited-route regression is enabled on main; G11
+remains disabled, and the other disabled gates remain explicit work. This test/config/docs
 change did not alter runtime behavior. No image rebuild, deployment of this SHA, or new
 browser evidence is claimed. See [PR #547](https://github.com/ThomasHeinThura/ticketing/pull/547)
 and its [review note](security-reviews/547-no-inherited-routes.md).
@@ -35,20 +65,25 @@ certificate-validated HTTPS probes, healthy services and API-verified administra
 workspace, project and DEV-1 creation remain the verified local-runtime evidence. The fresh
 Chrome screen check remains blocked by the browser-extension interface.
 
-**P0 remains open.** #525 is at `22b3a259f3e53355a239ee0a98f81bd5e066461e`. The 22-case
-canonical local run on earlier source `8dda28990c14ee0f3a6a42c4d091fd58213303c5` passed
-21 cases; one drag-column assertion failed and produced no frame-p95 result. Current-source
-functional Chromium regressions pass 11/11, while hosted evidence is queued or running.
-Restored-dist provenance remains under investigation. These results do not establish
-aggregate budget acceptance or causal savings. The authorization soak, remaining exit gates
-and fresh Sol phase finalizer remain incomplete.
+**P0 remains open.** At this snapshot #525 source was
+`22b3a259f3e53355a239ee0a98f81bd5e066461e`. The earlier 22-case canonical local run on
+source `8dda28990c14ee0f3a6a42c4d091fd58213303c5` passed 21 cases; its drag-column
+assertion failed before producing a frame-p95 result. The hosted 22-case G11 run for source
+`22b3a259f3e53355a239ee0a98f81bd5e066461e` (run `36845273012`, job `110314042091`)
+completed at 10:01:30 UTC with 13 passed and 9 failed: eight timing budgets (list
+501.8/500 ms, LCP 2,652/2,500 ms, route 457.2/300 ms, create 217.9/200 ms, palette
+keyboard 399.6/200 ms, state 235.4/200 ms, assignment 242.1/200 ms, board 712.7/500 ms)
+and a drag rollback before frame-p95 measurement. Those are failed historical acceptance
+results for that source. They do not establish current-source aggregate budget acceptance
+or causal savings. Restored-dist provenance remains under investigation. The authorization
+soak, remaining exit gates and fresh Sol phase finalizer remain incomplete.
 
-Calendar #513 and identity trust #544 remain partial with the browser/identity reviews and
-acceptance gaps in the preceding snapshot; P1/P2/P3/P4 remain open. Notification #508 now
-has candidate source `94fb7afda0d852a19dd2f4293a9481f31b0c36b` after reverting an unnecessary
-work-hours touch. The 24 work-hours rows remain untouched and `check:reviews` passes, but
-three fresh ordinary reviews and Sol review remain pending; no contract or acceptance is
-claimed. No stage completion or gate waiver is claimed.
+Calendar #513 and identity trust #544 remain partial with browser/identity review and
+acceptance gaps. P1/P2/P3/P4 remain open. Notification #508 candidate source was
+`094fb7afda0d852a19dd2f4293a9481f31b0c36b`; its unnecessary **webhooks** touch was reverted.
+The 24 webhooks owning review rows remain open and unmodified; `check:reviews` passed on that
+source. Three fresh ordinary reviews and Sol review remained pending. No notification
+contract or acceptance was claimed. No stage completion or gate waiver is claimed.
 
 ---
 
@@ -2566,12 +2601,14 @@ every exported Storybook story and every in-progress or complete route-kind inve
 Future routes activate with implementation. PR #547 enabled the focused inherited-route
 regression in `test:all`; nine other declared gate entries remain disabled/pending. G11 is
 among them and remains disabled on main. #525's current head is
-`22b3a259f3e53355a239ee0a98f81bd5e066461e`; its 11 functional Chromium regressions pass.
-The canonical local timing run on earlier source `8dda28990c14ee0f3a6a42c4d091fd58213303c5`
-recorded 21/22 passes and one failed drag-column assertion without a frame-p95 result;
-current-head hosted evidence is pending. No aggregate budget or savings claim is accepted.
-G4 is enabled by #501. The #10 checklist still needs reconciliation with the implemented
-gates.
+`3f49f616f251a411f4f0d1afcccb7da08a51a935`; its current-source functional Chromium
+regressions pass 13/13. The earlier source `8dda28990c14ee0f3a6a42c4d091fd58213303c5`
+canonical run recorded 21/22 passes and one failed drag-column assertion without frame-p95.
+The current-source canonical local run passed 22/22 once with one worker; the hosted G11
+check remains pending, as recorded in the newest snapshot. No aggregate budget or savings
+claim is accepted. G11 must be added as a required branch-protection context before #525 can
+merge. G4 is enabled by #501. The #10 checklist still needs reconciliation with the
+implemented gates.
 
 ### P1 #447 — saved-view candidate needs a current base and gates
 
