@@ -24,6 +24,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 | Accept invitation | `/agent/invite` | route | P3 | ⬜ |
 | Workspace home (default dashboard) | `/agent` | route | P1 | ⬜ |
 | Inbox | `/agent/inbox` | route | P1 | ⬜ |
+| Notifications inbox | `/agent/notifications` | route | P1 | ⬜ |
 | My work | `/agent/my-work` | route | P1 | ⬜ |
 | Triage | `/agent/triage` | route | P2 | ⬜ |
 | Command palette | — | overlay | P1 | ⬜ |
@@ -200,13 +201,13 @@ build if it drifts.
 | Stage | Screens |
 | --- | --- |
 | P0 Foundation | 6 |
-| P1 Core work | 33 |
+| P1 Core work | 34 |
 | P2 Service desk | 18 |
 | P3 Portal & identity | 21 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **137** |
+| **Total** | **138** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see
