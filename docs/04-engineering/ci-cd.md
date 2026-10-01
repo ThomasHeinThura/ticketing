@@ -499,13 +499,18 @@ or add a new exact context and verify it is registered in the protected-main rul
 relying on it. A standalone green job that branch protection does not require is not a gate.
 
 On protected-main updates, the release workflow may build the separate docs image, scan it,
-generate an SBOM, sign it and publish `edge`/source-SHA digests. It does not deploy. Normal
-UAT delivery pulls the published digest through the existing environment process; production
-promotion is manual by immutable digest after UAT verification. Do not give PR or main-build
-workflows production credentials or automatic production deployment authority. Runtime health
-and HTTPS route smoke checks are required before any deployment claim. This is a target
-contract, not evidence that the site build, job, image, router or deployment exists. The
-implementation contract is in [docs-site plan](../08-docs-site/plan.md).
+generate an SBOM, sign it and publish `edge`/source-SHA digests. It does not deploy. A change
+to the docs-image digest must independently trigger a UAT pull that verifies the published
+digest's cosign signature and expected workflow identity, then updates only the docs service;
+the current app-image updater does not watch or deploy this second image. Test the docs
+service independently in UAT for container health, HTTPS on its verified proxy route, search
+over a published page, and a real unknown-path 404. Retain the previous known-good docs
+digest for docs-only rollback, leaving the app image untouched. Production promotion is a
+manual pin to the independently verified immutable docs digest after UAT verification, not a
+tag selection. Do not give PR or main-build workflows production credentials or automatic
+production deployment authority. This is a target contract, not evidence that the site build,
+job, image, router or deployment exists. The implementation contract is in
+[docs-site plan](../08-docs-site/plan.md).
 
 **No version-bump commit on merge or release.** The Release workflow runs after each `main`
 update to publish the signed `edge`/SHA images. A maintainer may also dispatch it from

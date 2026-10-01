@@ -196,14 +196,19 @@ are written in full so a script can check them against `lib/routes.ts`.
 ## Docs Site (planned; implementation not present)
 
 These public-origin screens use the future site-local `apps/site/lib/routes.ts`, not the
-`apps/web` route registry. They remain ⬜ until the site is built and verified.
+`apps/web` route registry. They remain ⬜ until the site is built and verified. This separate
+six-column table declares `Origin` explicitly so the current G8 checker, which parses the
+canonical five-column app inventory tables only, does not treat docs-host routes as app
+routes. G8 currently covers `apps/web` only; the docs route registry and docs visual catalog
+do not exist until the site is implemented. This distinction preserves the app G8 checks and
+does not waive them.
 
-| Screen | Route | Kind | Stage | Status |
-| --- | --- | --- | --- | :-: |
-| Documentation home | `/` | route | P0 | ⬜ |
-| Documentation index and concept page | `/docs` | route | P0 | ⬜ |
-| Documentation search | `/search` | route | P0 | ⬜ |
-| Not found (docs origin) | `*` | route | P0 | ⬜ |
+| Origin | Screen | Route | Kind | Stage | Status |
+| --- | --- | --- | --- | --- | :-: |
+| Docs Site | Documentation home | `/` | route | P0 | ⬜ |
+| Docs Site | Documentation index and inline concept section | `/docs` | route | P0 | ⬜ |
+| Docs Site | Documentation search | `/search` | route | P0 | ⬜ |
+| Docs Site | Not found (docs origin) | `*` | route | P0 | ⬜ |
 
 ---
 
@@ -227,7 +232,7 @@ independently, including canonical query-route handling.
 | P6 Import | 2 |
 | **Total** | **142** |
 
-The P0 and total counts include the four planned docs-origin routes above; these are inventory targets, not implemented screens. For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
+The P0 and total counts include the four planned docs-origin routes above; these are inventory targets, not implemented screens. The `/docs` concept section is content at the existing route, not a fifth route. For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see
 [Product principles](../00-overview/product-principles.md), principle 7.
 
