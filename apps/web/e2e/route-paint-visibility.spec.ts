@@ -500,14 +500,41 @@ test.describe("G11 route-paint visibility marker", () => {
       expect(gutterTarget.rect.right).toBeLessThan(gutterTarget.clipEdge);
       await frameCycles(page);
       expect((await readMetrics(page))?.routePaint ?? 0).toBe(0);
-      await page.locator("#target").evaluate((node) => {
+      const visibleGeometry = await page.locator("#target").evaluate((node) => {
         const target = node as HTMLElement;
         const clip = document.querySelector("#rtl-scroll") as HTMLElement;
         const clipRect = clip.getBoundingClientRect();
+        const previousLeft = Number.parseFloat(target.style.left) || 0;
+        target.style.width = "12px";
         const targetRect = target.getBoundingClientRect();
-        const destination = clipRect.left + clip.clientLeft + 12;
-        target.style.left = `${destination - targetRect.left}px`;
+        const destination = clipRect.left + clip.clientLeft + 8;
+        // `left` is a relative-position offset from the static position. Add
+        // the desired physical delta to the existing CSS offset; replacing it
+        // with `destination - currentRect.left` applies the original static
+        // offset a second time and can leave the target clipped on Linux.
+        target.style.left = `${previousLeft + destination - targetRect.left}px`;
+        const visibleRect = target.getBoundingClientRect();
+        const safeLeft = clipRect.left + clip.clientLeft + 1;
+        const safeTop = clipRect.top + clip.clientTop + 1;
+        const safeRight =
+          clipRect.left + clip.clientLeft + clip.clientWidth - 2;
+        const safeBottom =
+          clipRect.top + clip.clientTop + clip.clientHeight - 2;
+        return {
+          safeIntersectionWidth: Math.max(
+            0,
+            Math.min(visibleRect.right, safeRight) -
+              Math.max(visibleRect.left, safeLeft),
+          ),
+          safeIntersectionHeight: Math.max(
+            0,
+            Math.min(visibleRect.bottom, safeBottom) -
+              Math.max(visibleRect.top, safeTop),
+          ),
+        };
       });
+      expect(visibleGeometry.safeIntersectionWidth).toBeGreaterThan(2);
+      expect(visibleGeometry.safeIntersectionHeight).toBeGreaterThan(2);
       await waitForMark(page);
       expect((await readMetrics(page))?.routePaintTarget).toBe("detail");
       return;
