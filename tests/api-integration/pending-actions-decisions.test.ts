@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { and, eq, sql } from "drizzle-orm";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -97,6 +97,92 @@ async function insertApiKey(userId: string) {
 }
 
 describe("POST /api/me/pending-actions/{id}/deny and /cancel", () => {
+  it.each([
+    ["deny", "denied"],
+    ["cancel", "cancelled"],
+  ] as const)(
+    "AU-14: succeeds with the %s transition when its audit insert fails",
+    async (route, outcome) => {
+      const { user, workspace, person } = await setupRequester();
+      const pending = await insertPendingAction(person.id, workspace.id);
+      mockAuthenticatedSession(user);
+      const { app } = createApp();
+      const auditFailure = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => undefined);
+      await db.execute(
+        sql.raw(`
+          CREATE OR REPLACE FUNCTION fail_pending_action_decision_http_audit_insert()
+          RETURNS trigger LANGUAGE plpgsql AS $$
+          BEGIN
+            IF NEW.action = 'pending_action.decided' THEN
+              RAISE EXCEPTION 'test decision audit failure';
+            END IF;
+            RETURN NEW;
+          END;
+          $$
+        `),
+      );
+      await db.execute(
+        sql.raw(`
+          CREATE TRIGGER fail_pending_action_decision_http_audit_insert
+          BEFORE INSERT ON audit_log
+          FOR EACH ROW EXECUTE FUNCTION fail_pending_action_decision_http_audit_insert()
+        `),
+      );
+
+      try {
+        const response = await app.request(
+          `/api/me/pending-actions/${pending.id}/${route}`,
+          { method: "POST" },
+        );
+        expect(response.status).toBe(200);
+        expect(await response.json()).toMatchObject({ state: outcome });
+
+        const [row] = await db
+          .select({ state: schema.pendingActionTable.state })
+          .from(schema.pendingActionTable)
+          .where(eq(schema.pendingActionTable.id, pending.id));
+        const events = await db
+          .select({
+            eventId: schema.outboxTable.eventId,
+            payload: schema.outboxTable.payload,
+          })
+          .from(schema.outboxTable)
+          .where(eq(schema.outboxTable.kind, "pending_action.decided"));
+        const audits = await db
+          .select({ id: schema.auditLogTable.id })
+          .from(schema.auditLogTable)
+          .where(
+            and(
+              eq(schema.auditLogTable.action, "pending_action.decided"),
+              eq(schema.auditLogTable.entityId, pending.id),
+            ),
+          );
+        expect(row?.state).toBe(outcome);
+        expect(events).toHaveLength(1);
+        expect(events[0]?.payload).toMatchObject({ payload: { outcome } });
+        expect(audits).toHaveLength(0);
+        expect(auditFailure).toHaveBeenCalledWith(
+          "AU-14: pending-action decision audit write failed",
+          expect.anything(),
+        );
+      } finally {
+        auditFailure.mockRestore();
+        await db.execute(
+          sql.raw(
+            "DROP TRIGGER IF EXISTS fail_pending_action_decision_http_audit_insert ON audit_log",
+          ),
+        );
+        await db.execute(
+          sql.raw(
+            "DROP FUNCTION IF EXISTS fail_pending_action_decision_http_audit_insert()",
+          ),
+        );
+      }
+    },
+  );
+
   it("PA-9/PA-11: denies in a session, records audit and event, and cannot repeat", async () => {
     const { user, workspace, person } = await setupRequester();
     const pending = await insertPendingAction(person.id, workspace.id);
