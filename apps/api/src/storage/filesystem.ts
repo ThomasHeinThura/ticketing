@@ -118,6 +118,12 @@ function getFilesystemConfig(): FilesystemStorageConfig {
   };
 }
 
+/** All object paths and containment checks use the same canonical storage root. */
+async function getCanonicalFilesystemConfig(): Promise<FilesystemStorageConfig> {
+  const config = getFilesystemConfig();
+  return { ...config, root: await fsp.realpath(config.root) };
+}
+
 /**
  * Confirms the filesystem driver can actually be used: the configured root exists (creating it
  * if this is a fresh volume) and is writable by this process. Mirrors `s3.ts`'s
@@ -404,7 +410,7 @@ export async function writeUploadedObject(params: {
     throw new StoragePathError("Missing upload body.");
   }
 
-  const config = getFilesystemConfig();
+  const config = await getCanonicalFilesystemConfig();
   const candidate = resolveWithinRoot(config.root, params.key);
   const dir = path.dirname(candidate);
 
@@ -499,7 +505,7 @@ async function writeStreamToFile(
 }
 
 export async function getPrivateObject(key: string): Promise<AssetObject> {
-  const config = getFilesystemConfig();
+  const config = await getCanonicalFilesystemConfig();
   const candidate = resolveWithinRoot(config.root, key);
   await assertFileWithinRoot(candidate, config.root);
 
@@ -694,7 +700,7 @@ export async function writeAttachmentUploadedObject(params: {
     throw new StoragePathError("Missing upload body.");
   }
 
-  const config = getFilesystemConfig();
+  const config = await getCanonicalFilesystemConfig();
   const candidate = resolveWithinRoot(config.root, params.key);
   const dir = path.dirname(candidate);
 
@@ -766,7 +772,7 @@ export async function getObjectSizeAndHeader(
   key: string,
   headerBytes: number,
 ): Promise<{ contentLength: number; header: Buffer }> {
-  const config = getFilesystemConfig();
+  const config = await getCanonicalFilesystemConfig();
   const candidate = resolveWithinRoot(config.root, key);
   await assertFileWithinRoot(candidate, config.root);
 
@@ -815,7 +821,7 @@ export async function finalizeAttachmentObject(
   oldKey: string,
   newKey: string,
 ): Promise<void> {
-  const config = getFilesystemConfig();
+  const config = await getCanonicalFilesystemConfig();
   const oldCandidate = resolveWithinRoot(config.root, oldKey);
   const newCandidate = resolveWithinRoot(config.root, newKey);
 
@@ -830,7 +836,7 @@ export async function finalizeAttachmentObject(
 }
 
 export async function deleteObject(key: string): Promise<void> {
-  const config = getFilesystemConfig();
+  const config = await getCanonicalFilesystemConfig();
   const candidate = resolveWithinRoot(config.root, key);
 
   let real: string;

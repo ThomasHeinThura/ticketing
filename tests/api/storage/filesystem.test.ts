@@ -296,6 +296,47 @@ describe("filesystem storage driver", () => {
     }
   });
 
+  it("uses the canonical configured root through a parent alias and still rejects escapes", async () => {
+    const realParent = await mkdtemp(
+      path.join(tmpdir(), "taskdesk-fs-parent-"),
+    );
+    const aliasParent = `${realParent}-alias`;
+    const aliasedRoot = path.join(aliasParent, "attachments");
+    const outsideDir = await mkdtemp(
+      path.join(tmpdir(), "taskdesk-fs-outside-"),
+    );
+
+    try {
+      await symlink(realParent, aliasParent, "dir");
+      process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = aliasedRoot;
+      await assertStorageConfigured();
+
+      const key = "workspace/ws1/project/p1/task/t1/descriptions/alias.png";
+      const expires = Math.floor(Date.now() / 1000) + 300;
+      const token = signUploadTokenForTests(key, expires);
+      await writeUploadedObject({
+        key,
+        expires: String(expires),
+        token,
+        body: bodyFrom("through parent alias"),
+      });
+      const object = await getPrivateObject(key);
+      expect(await readAll(object.body)).toBe("through parent alias");
+      await deleteObject(key);
+
+      await writeFile(path.join(outsideDir, "secret.png"), "top secret");
+      await symlink(outsideDir, path.join(aliasedRoot, "escape"), "dir");
+      await expect(getPrivateObject("escape/secret.png")).rejects.toThrow(
+        StoragePathError,
+      );
+    } finally {
+      process.env.TASKDESK_STORAGE_FILESYSTEM_ROOT = root;
+      await rm(realParent, { recursive: true, force: true });
+      await rm(aliasParent, { recursive: true, force: true });
+      await rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
   it("rejects an expired upload URL", async () => {
     const key = "workspace/ws1/project/p1/task/t1/descriptions/img-1.png";
     const expires = Math.floor(Date.now() / 1000) - 10;
