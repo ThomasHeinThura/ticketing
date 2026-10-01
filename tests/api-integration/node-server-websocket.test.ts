@@ -1,8 +1,10 @@
+import { randomBytes } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import type { ClientRequest, IncomingMessage } from "node:http";
 import { request as httpRequest } from "node:http";
 import { createRequire } from "node:module";
-import type { AddressInfo } from "node:net";
+import type { AddressInfo, Socket } from "node:net";
+import { createConnection } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -118,9 +120,107 @@ function rawGet(port: number, path: string) {
   });
 }
 
+function deferred<T = void>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((done, fail) => {
+    resolve = done;
+    reject = fail;
+  });
+  return { promise, resolve, reject };
+}
+
+function holdStreamingResponse(port: number) {
+  const firstChunk = deferred<void>();
+  const bodyComplete = deferred<string>();
+  const responseInterrupted = deferred<void>();
+  const request = httpRequest(
+    { host: "127.0.0.1", port, path: "/__shutdown/hold", method: "GET" },
+    (response) => {
+      let body = "";
+      response.setEncoding("utf8");
+      response.on("data", (chunk: string) => {
+        body += chunk;
+        firstChunk.resolve();
+      });
+      response.on("end", () => bodyComplete.resolve(body));
+      response.on("aborted", () => responseInterrupted.resolve());
+      response.on("close", () => {
+        if (!response.complete) responseInterrupted.resolve();
+      });
+    },
+  );
+  request.on("error", () => responseInterrupted.resolve());
+  request.end();
+  return {
+    firstChunk: firstChunk.promise,
+    bodyComplete: bodyComplete.promise,
+    responseInterrupted: responseInterrupted.promise,
+  };
+}
+
+function openUnresponsiveWebSocket(port: number, cookie: string) {
+  const connected = deferred<Socket>();
+  const socket = createConnection({ host: "127.0.0.1", port });
+  const key = randomBytes(16).toString("base64");
+  let handshake = "";
+  socket.on("data", (chunk) => {
+    handshake += chunk.toString("latin1");
+    const end = handshake.indexOf("\r\n\r\n");
+    if (end === -1) return;
+    if (!handshake.startsWith("HTTP/1.1 101 ")) {
+      connected.reject(new Error("raw WebSocket handshake was rejected"));
+      return;
+    }
+    socket.removeAllListeners("data");
+    connected.resolve(socket);
+  });
+  socket.once("error", (error) => {
+    connected.reject(error);
+  });
+  socket.once("connect", () => {
+    socket.write(
+      [
+        "GET /api/ws/user HTTP/1.1",
+        `Host: 127.0.0.1:${port}`,
+        "Upgrade: websocket",
+        "Connection: Upgrade",
+        `Sec-WebSocket-Key: ${key}`,
+        "Sec-WebSocket-Version: 13",
+        "Origin: http://localhost:5173",
+        `Cookie: ${cookie}`,
+        "",
+        "",
+      ].join("\r\n"),
+    );
+  });
+  return connected.promise;
+}
+
+function createHeldHttpApp() {
+  const { app } = createApp();
+  const releaseResponse = deferred<void>();
+  const responseStarted = deferred<void>();
+  app.get("/__shutdown/hold", () => {
+    const body = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        controller.enqueue(new TextEncoder().encode("response-start-"));
+        responseStarted.resolve();
+        await releaseResponse.promise;
+        controller.enqueue(new TextEncoder().encode("response-end"));
+        controller.close();
+      },
+    });
+    return new Response(body, {
+      headers: { "content-type": "text/plain" },
+    });
+  });
+  return { app, releaseResponse, responseStarted };
+}
+
 describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
   const originalAgentUrl = process.env.TASKDESK_AGENT_URL;
-  let closeServer: (() => Promise<void>) | undefined;
+  let closeServer: (() => Promise<unknown>) | undefined;
 
   beforeEach(async () => {
     await resetTestDatabase();
@@ -308,28 +408,74 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     await serverClose;
   });
 
-  it("stops accepting before a stalled adapter and bounds shutdown", async () => {
-    const { app } = createApp();
+  it("joins the active HTTP response before resolving graceful shutdown", async () => {
+    const { app, releaseResponse, responseStarted } = createHeldHttpApp();
     const node = createNodeServer(app);
     closeServer = node.close;
     await listening(node.server);
 
-    let releaseAdapter: (() => void) | undefined;
-    const pendingAdapter = new Promise<void>((resolve) => {
-      releaseAdapter = resolve;
-    });
     const port = (node.server.address() as AddressInfo).port;
-    const startedAt = Date.now();
-    const closing = node.close(() => pendingAdapter);
+    const response = holdStreamingResponse(port);
+    await response.firstChunk;
+    await responseStarted.promise;
+
+    const httpClosed = deferred<void>();
+    node.server.once("close", () => httpClosed.resolve());
+    let settled = false;
+    const closing = node.close();
+    void closing.then(() => {
+      settled = true;
+    });
 
     expect(node.server.listening).toBe(false);
-    await expect(
-      fetch(`http://127.0.0.1:${port}/api/public/health/live`),
-    ).rejects.toThrow();
-    await closing;
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    releaseResponse.resolve();
+    await expect(response.bodyComplete).resolves.toBe(
+      "response-start-response-end",
+    );
+    await httpClosed.promise;
+    await expect(closing).resolves.toBe("graceful");
     closeServer = undefined;
-    expect(Date.now() - startedAt).toBeLessThan(6_000);
-    releaseAdapter?.();
+    expect(settled).toBe(true);
+  });
+
+  it("joins one pending adapter callback and returns one idempotent close promise", async () => {
+    const { app } = createApp();
+    const adapterGate = deferred<void>();
+    const adapterStarted = deferred<void>();
+    const shutdownAdapter = vi.fn(() => {
+      adapterStarted.resolve();
+      return adapterGate.promise;
+    });
+    const forceAdapter = vi.fn();
+    const node = createNodeServer(app, 0, {
+      shutdownAdapter,
+      forceAdapter,
+    });
+    closeServer = node.close;
+    await listening(node.server);
+
+    const httpClosed = deferred<void>();
+    node.server.once("close", () => httpClosed.resolve());
+    const closing = node.close();
+    expect(node.close()).toBe(closing);
+    await adapterStarted.promise;
+    await httpClosed.promise;
+    expect(shutdownAdapter).toHaveBeenCalledTimes(1);
+    expect(forceAdapter).not.toHaveBeenCalled();
+    let settled = false;
+    void closing.then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    adapterGate.resolve();
+    await expect(closing).resolves.toBe("graceful");
+    expect(forceAdapter).not.toHaveBeenCalled();
+    closeServer = undefined;
   });
 
   it("serves only public static files through raw Node HTTP paths", async () => {
@@ -380,5 +526,56 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       rmSync(staticRoot, { recursive: true, force: true });
       rmSync(privateFile, { force: true });
     }
+  });
+
+  it("forces active HTTP, a nonresponsive real WebSocket, and adapter cleanup at one deadline", async () => {
+    const member = await createWorkspaceMember();
+    mockAuthenticatedSession(member.user);
+    const { app } = createHeldHttpApp();
+    const adapterGate = deferred<void>();
+    const adapterStarted = deferred<void>();
+    const forceStarted = deferred<void>();
+    const shutdownAdapter = vi.fn(() => {
+      adapterStarted.resolve();
+      return adapterGate.promise;
+    });
+    const forceAdapter = vi.fn(() => forceStarted.resolve());
+    const node = createNodeServer(app, 0, {
+      shutdownTimeoutMs: 50,
+      shutdownAdapter,
+      forceAdapter,
+    });
+    closeServer = node.close;
+    await listening(node.server);
+
+    const port = (node.server.address() as AddressInfo).port;
+    const response = holdStreamingResponse(port);
+    await response.firstChunk;
+    const rawSocket = await openUnresponsiveWebSocket(
+      port,
+      "taskdesk.session_token=integration-session",
+    );
+    const socketClosed = new Promise<void>((resolve) => {
+      rawSocket.once("close", () => resolve());
+    });
+    await vi.waitFor(() => expect(node.websocketServer.clients.size).toBe(1));
+
+    const httpClosed = deferred<void>();
+    node.server.once("close", () => httpClosed.resolve());
+    const closing = node.close();
+    expect(node.close()).toBe(closing);
+    await adapterStarted.promise;
+    expect(shutdownAdapter).toHaveBeenCalledTimes(1);
+    expect(forceAdapter).not.toHaveBeenCalled();
+
+    await forceStarted.promise;
+    await expect(closing).resolves.toBe("forced");
+    await response.responseInterrupted;
+    await socketClosed;
+    await httpClosed.promise;
+    await vi.waitFor(() => expect(node.websocketServer.clients.size).toBe(0));
+    expect(forceAdapter).toHaveBeenCalledTimes(1);
+    adapterGate.resolve();
+    closeServer = undefined;
   });
 });

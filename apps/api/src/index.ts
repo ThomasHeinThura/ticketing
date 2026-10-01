@@ -1,4 +1,5 @@
 import { statSync } from "node:fs";
+import type { Server as HttpServer } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { serve, upgradeWebSocket } from "@hono/node-server";
@@ -95,6 +96,7 @@ import workspace from "./workspace";
 import {
   addConnection,
   addUserConnection,
+  forceShutdownWebSocketAdapter,
   initializeWebSocketAdapter,
   removeConnection,
   removeUserConnection,
@@ -1361,42 +1363,143 @@ export function resolvePort(rawPort: string | undefined): {
   };
 }
 
-export function createNodeServer(app: Hono<AppVariables>, port = 0) {
+type NodeServerShutdownOptions = {
+  shutdownTimeoutMs?: number;
+  shutdownAdapter?: () => Promise<void>;
+  forceAdapter?: () => void;
+};
+
+type ShutdownResult = "graceful" | "forced";
+
+export function createNodeServer(
+  app: Hono<AppVariables>,
+  port = 0,
+  options: NodeServerShutdownOptions = {},
+) {
   const websocketServer = new WebSocketServer({ noServer: true });
   const server = serve({
     fetch: app.fetch,
     port,
     websocket: { server: websocketServer },
   });
+  const httpServer = server as HttpServer;
 
-  let closePromise: Promise<void> | undefined;
-  const close = (shutdownAdapter: () => Promise<void> = async () => {}) => {
-    closePromise ??= new Promise((resolve) => {
-      // `server.close()` stops new HTTP requests and upgrade handshakes before
-      // any adapter operation can stall shutdown.
-      server.close();
-      const timeout = setTimeout(() => {
-        for (const client of websocketServer.clients) {
-          client.terminate();
-        }
-        resolve();
-      }, 5_000);
-      timeout.unref();
+  const shutdownTimeoutMs = options.shutdownTimeoutMs ?? 5_000;
+  const shutdownAdapter = options.shutdownAdapter ?? shutdownWebSocketAdapter;
+  const forceAdapter = options.forceAdapter ?? forceShutdownWebSocketAdapter;
+  let closePromise: Promise<ShutdownResult> | null = null;
+  const close = () => {
+    if (closePromise) return closePromise;
 
-      const finished = Promise.allSettled([
-        new Promise<void>((closeResolve) => {
-          websocketServer.close(() => closeResolve());
-        }),
-        shutdownAdapter(),
-      ]);
-      void finished.then(() => {
-        clearTimeout(timeout);
-        resolve();
-      });
-      for (const client of websocketServer.clients) {
-        client.close(1001, "Server shutting down");
-      }
+    let resolveClose!: (result: ShutdownResult) => void;
+    closePromise = new Promise<ShutdownResult>((resolve) => {
+      resolveClose = resolve;
     });
+
+    let httpClosed = false;
+    let websocketClosed = false;
+    let adapterClosed = false;
+    let forced = false;
+    let finished = false;
+    let deadline: ReturnType<typeof setTimeout>;
+    const finish = (timedOut = false) => {
+      if (finished) return;
+      if (!timedOut && (!httpClosed || !websocketClosed || !adapterClosed)) {
+        return;
+      }
+      finished = true;
+      clearTimeout(deadline);
+      resolveClose(forced ? "forced" : "graceful");
+    };
+    const forceResources = (reason: string) => {
+      if (forced) return;
+      forced = true;
+      console.error(`Forcing API shutdown: ${reason}`);
+      try {
+        httpServer.closeAllConnections();
+      } catch (error) {
+        console.error("Failed to close active HTTP connections:", error);
+      }
+      for (const client of websocketServer.clients) {
+        try {
+          client.terminate();
+        } catch (error) {
+          console.error("Failed to terminate a WebSocket client:", error);
+        }
+      }
+      try {
+        forceAdapter();
+      } catch (error) {
+        console.error("Failed to force-close WebSocket adapter:", error);
+      }
+    };
+    deadline = setTimeout(() => {
+      forceResources("graceful close exceeded the shared deadline");
+      finish(true);
+    }, shutdownTimeoutMs);
+
+    // Closing the listener is first so no new request or upgrade can race Redis cleanup.
+    try {
+      server.close((error) => {
+        if (error) {
+          const errorCode = (error as NodeJS.ErrnoException).code;
+          if (errorCode !== "ERR_SERVER_NOT_RUNNING" || server.listening) {
+            console.error("HTTP server close failed:", error);
+            forceResources("HTTP server close failed");
+          }
+        }
+        httpClosed = true;
+        finish();
+      });
+    } catch (error) {
+      if (server.listening) {
+        console.error("HTTP server close threw:", error);
+        forceResources("HTTP server close threw");
+      }
+      httpClosed = true;
+      finish();
+    }
+
+    try {
+      websocketServer.close((error) => {
+        if (error) {
+          console.error("WebSocket server close failed:", error);
+          forceResources("WebSocket server close failed");
+        }
+        websocketClosed = true;
+        finish();
+      });
+    } catch (error) {
+      console.error("WebSocket server close threw:", error);
+      forceResources("WebSocket server close threw");
+      websocketClosed = true;
+      finish();
+    }
+
+    for (const client of websocketServer.clients) {
+      try {
+        client.close(1001, "Server shutting down");
+      } catch (error) {
+        console.error("Failed to send WebSocket shutdown close:", error);
+        forceResources("WebSocket close frame failed");
+      }
+    }
+
+    void Promise.resolve()
+      .then(() => shutdownAdapter())
+      .then(
+        () => {
+          adapterClosed = true;
+          finish();
+        },
+        (error: unknown) => {
+          console.error("WebSocket adapter shutdown failed:", error);
+          adapterClosed = true;
+          forceResources("WebSocket adapter shutdown failed");
+          finish();
+        },
+      );
+
     return closePromise;
   };
 
@@ -1426,7 +1529,12 @@ export async function startServer(port = DEFAULT_PORT) {
 
     console.log("🛑 Shutting down gracefully...");
     shutdownScheduler();
-    await close(shutdownWebSocketAdapter);
+    const result = await close();
+    if (result === "graceful") {
+      console.log("✅ API shutdown completed gracefully");
+    } else {
+      console.error("⚠ API shutdown completed after forced resource closure");
+    }
     process.exit(0);
   };
 

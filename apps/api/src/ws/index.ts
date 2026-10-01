@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { WSContext } from "hono/ws";
 import { subscribeToEvent } from "../events";
+import type { RedisClient } from "../redis";
 import { isRedisConfigured } from "../redis";
 import type {
   BroadcastAdapter,
@@ -102,13 +103,21 @@ const projectBroadcastTimeouts = new Map<
 >();
 
 let adapter: BroadcastAdapter | null = null;
+let shutdownPromise: Promise<void> | null = null;
+let adapterBeingShutdown: BroadcastAdapter | null = null;
+let shutdownForced = false;
 
 // --- Subscribe to incoming broadcasts and deliver to local connections ---
-export async function initializeWebSocketAdapter() {
+export async function initializeWebSocketAdapter(
+  options: { redisClientFactory?: () => RedisClient } = {},
+) {
   if (adapter) return;
+  if (shutdownForced) {
+    throw new Error("WebSocket adapter was force-closed during shutdown");
+  }
 
   const nextAdapter = isRedisConfigured()
-    ? new RedisBroadcastAdapter()
+    ? new RedisBroadcastAdapter(options.redisClientFactory)
     : new InMemoryBroadcastAdapter();
 
   try {
@@ -134,7 +143,13 @@ export async function initializeWebSocketAdapter() {
   console.log(`📡 WebSockets Initialized using: "${adapter.constructor.name}"`);
 }
 
-export async function shutdownWebSocketAdapter() {
+export function shutdownWebSocketAdapter(): Promise<void> {
+  if (shutdownPromise) return shutdownPromise;
+
+  const currentAdapter = adapter;
+  adapter = null;
+  adapterBeingShutdown = currentAdapter;
+  currentAdapter?.beginShutdown?.();
   const pendingQueues = [...projectBroadcastQueues.entries()];
 
   for (const timeout of projectBroadcastTimeouts.values()) {
@@ -143,19 +158,39 @@ export async function shutdownWebSocketAdapter() {
   projectBroadcastTimeouts.clear();
   projectBroadcastQueues.clear();
 
-  const currentAdapter = adapter;
-  if (currentAdapter) {
-    await Promise.allSettled(
-      pendingQueues.flatMap(([projectId, queue]) =>
-        [...queue.values()].map(({ message, excludeInitiatorId }) =>
-          currentAdapter.publish({ projectId, message, excludeInitiatorId }),
+  const cleanup = async () => {
+    if (currentAdapter) {
+      await Promise.allSettled(
+        pendingQueues.flatMap(([projectId, queue]) =>
+          [...queue.values()].map(({ message, excludeInitiatorId }) =>
+            currentAdapter.publish({ projectId, message, excludeInitiatorId }),
+          ),
         ),
-      ),
-    );
-  }
+      );
+      if (!shutdownForced) await currentAdapter.shutdown();
+    }
+  };
 
-  await currentAdapter?.shutdown();
+  shutdownPromise = cleanup().finally(() => {
+    if (!shutdownForced) {
+      adapterBeingShutdown = null;
+      shutdownPromise = null;
+    }
+  });
+  return shutdownPromise;
+}
+
+export function forceShutdownWebSocketAdapter(): void {
+  if (shutdownForced) return;
+  shutdownForced = true;
   adapter = null;
+  for (const timeout of projectBroadcastTimeouts.values()) {
+    clearTimeout(timeout);
+  }
+  projectBroadcastTimeouts.clear();
+  projectBroadcastQueues.clear();
+  adapterBeingShutdown?.forceShutdown?.();
+  adapterBeingShutdown = null;
 }
 
 function deliverToLocalConnections(
