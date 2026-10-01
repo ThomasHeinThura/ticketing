@@ -2142,6 +2142,11 @@
           "taskNumber": {
             "type": "number"
           },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The current row version, present only for task results."
+          },
           "priority": {
             "type": "string"
           },
