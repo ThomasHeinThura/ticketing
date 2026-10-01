@@ -14,6 +14,55 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
+`bf1d67264cd590a1f439e0c22037794218ea68e7` (verified 2026-10-01 01:56 UTC).**
+PR #520's DOMPurify 3.4.16 update merged after the exact candidate passed all 17 required
+checks, independent Luna and Sol review, image build/boot/health, and an isolated HTTP
+browser smoke. The local Traefik app now runs that reviewed image, digest
+`sha256:bfa9b3c50d3d96abb8629e4ee29708aa6ddbb852d5ccbec8ed6d78877c3430bc`.
+Both `ticketing.localhost` and `portal.localhost` returned HTTP 200 for `/` and
+`/api/public/health/ready` after deployment. Chrome verification remains pending while
+Thomas handles the local certificate warning.
+
+**P0 remains open.** Draft #525 is at `2ccafc77d76232b1f9640ab6ffa3b29470f78685`.
+Its latest hosted G11 run fails nine strict budgets: list render 600.7/500 ms, LCP
+2696/2500 ms, detail route paint 554.7/300 ms, create 272.7/200 ms, palette open
+700.4/200 ms, palette navigation 697.9/200 ms, state change 271.9/200 ms,
+assignment 298.5/200 ms, and board render 911.7/500 ms. CLS, sign-in, comment and
+drag-frame p95 pass. PostgreSQL integration, accessibility and protected-route E2E
+pass; G8, unit/component and the incomplete PR evidence remain red. Independent Luna
+review also blocks the absent G13 skeleton-to-content measurement. Uncommitted board,
+palette, lazy detail and G13 fixes are being validated; they are not accepted evidence.
+G11 is not yet a required ruleset context.
+
+The read-only #8 audit at 2026-10-01 01:56 UTC found the same 68 requests across three
+days, **21 distinct route keys** and 14 router groups: 46 `agree`, 22 `unevaluated`,
+zero disagreement/evaluator-error/saturation rows and no capped non-agreeing buckets.
+The prior snapshot's 41-route claim was incorrect and is corrected in
+[the audit](https://github.com/ThomasHeinThura/ticketing/issues/8#issuecomment-5923168466).
+There is no October 1 traffic. The approximately seven-day representative soak remains
+unmet; no enforcement cutover or P0 completion/finalizer is claimed.
+
+**Parallel work:** P1 #512 is draft at `f90ad9e768b413299536f1e3501b4f05876fd8ab`.
+Its migration moved to `0079_project_default_comment_visibility`, preserving main's
+pending-action/outbox migrations. CA-15 comment-image linkage remains blocked on #446,
+and the detail journey's browser/visual/performance evidence remains incomplete.
+P1 #526 separately tracks the pre-existing stale full-task PUT race; its versioned-write
+contract is committed locally at `357e697e`, with implementation still open.
+
+P2 #513 is draft at `225f97a359ab863350d2771062681a8ab8158426`; focused PostgreSQL
+tests passed 15/15 and its latest Luna/Sol delta reviews cleared that head. It remains
+behind current main, with AU-14 administrator alerting, CAL-8 usage dependencies and
+the #428 DELETE retrofit open. P3 identity persistence remains behind the calendar
+schema lane; portal work depends on intake/catalogue/approval foundations.
+
+P4 #428 has a local bounded self-only pending-action list/detail API candidate based on
+`bf1d6726`; focused PostgreSQL read tests passed 3/3. It is not committed/reviewed or
+merged at this snapshot, and does not complete approval execution, step-up, expiry,
+DELETE retrofit or UI. Check GitHub for exact heads before acting.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
 `7e3e4ff506cc9486a8737a73383cc398d03c835a` (verified 2026-09-30 21:22 UTC).**
 PR #523's deterministic workspace-slug test fix merged at this head after all 17 required
 checks passed; issue #522 is closed. PR #524's archived-project guard remains in main at
@@ -2103,26 +2152,24 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 
 ### P0 #8 — shadow-mode soak and cutover
 
-The authorization mechanism is merged, but policy evaluation remains shadow-only. The latest
-available evidence is too sparse and incomplete for the required seven-day UAT soak; this
-refresh also could not resolve the UAT hostname. UAT infrastructure/traffic and a clean soak
+The authorization mechanism is merged, but policy evaluation remains shadow-only. The live
+v2 UAT app is healthy; the 2026-10-01 read-only audit still finds only three low-volume days
+and unexercised routers. Representative traffic and the approximately seven-day clean soak
 are required before cutover. Do not treat further code review as a substitute for that evidence.
 
 ### P0 #10 — G8/G11 CI gates
 
-G8 scope is resolved and written in the 2026-10-01 decision-log entry: every exported
-Storybook story and every in-progress or complete route-kind inventory row is covered; a
-future route's baseline activates with its implementation. The #507 candidate implements
-that rule and fails closed on missing inventory structure. It remains held for fresh exact-head
-reviews, and `protect-main` ruleset 22365005 must require `visual regression (G8)` before the
-passing job is merge-enforced. G11 remains skipped without a candidate. Both gates are
-required now under Thomas's 2026-09-28 scope decision. G4 is enabled on `main` by #501. The
-#10 checklist is also stale and needs reconciliation.
+G8 is merged through #507 and required by `protect-main` ruleset 22365005; its scope is
+every exported Storybook story and every in-progress or complete route-kind inventory row.
+Future routes activate with implementation. G11 remains disabled on main; draft #525's
+hosted budgets and G13 measurement are red/incomplete. Obtain current-head reviews and
+green CI, then require the G11 status context. G4 is enabled by #501. The #10 checklist
+still needs reconciliation with the implemented gates.
 
 ### P1 #447 — saved-view candidate needs a current base and gates
 
-The remote head is `dc8f317a07ef82157183cc275f2651a6c2d4c104`, GitHub reports `DIRTY`, and its
-latest `registers` and `unit + component` checks failed. #504 has since merged the attachment
+The remote head is `62cf8002ab339f18169394267c36c4dc1230a1bd`, and GitHub reports `DIRTY`.
+#504 has since merged the attachment
 R6 test-order repair; update #447 from current `main`, then rerun checks and obtain reviews for
 the refreshed exact head. Existing reviews and checks remain evidence for their recorded heads
 only.
@@ -2130,15 +2177,14 @@ only.
 ### P1 attachment/liveness follow-ups
 
 Issue #28 still has three distinct dependencies: #446 needs comment/submission storage, #448
-needs a portal-caller identity path, and #449 needs a system-actor transition mechanism. Issue
-#499 tracks three additional liveness checks found during #498's review. Issue #502 tracks
-archive-freeze enforcement across legacy `/api/task` writes. These issues are open follow-up
-work; check their live GitHub state before dispatch.
+needs a portal-caller identity path, and #449 needs a system-actor transition mechanism.
+#499 and #502 are closed; their liveness and archive-freeze fixes are merged. The stale
+full-task write race is separately open as #526. Check live GitHub state before dispatch.
 
 ### P2 #33 / P3 #39 shared-schema ordering
 
-The #33 calendar API candidate is local and partial, with no open PR at this refresh. It does
-not complete issue #33's usage/import/preset/seed/clone/UI requirements. P3 #39's six-table
+The #33 calendar candidate is draft PR #513 and remains partial. CAL-8 usage, AU-14 alerting
+and the pending-action DELETE retrofit remain open. P3 #39's six-table
 persistence work shares Drizzle schema, relation and migration-journal files, so that work
 starts after the #33 lane releases them. #39's eventual completion still requires its 25-test
 real-Entra gate. P3 #38 remains dependent on request/catalogue/intake/approval foundations.
