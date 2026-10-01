@@ -25,7 +25,7 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Validation | **Zod 4** | Single source for request/response schemas and OpenAPI |
 | ORM | **Drizzle 0.45** | `drizzle-kit` migrations, forward-only |
 | Database | **PostgreSQL 18** | Only store for primary data. See below — bumped from 16 |
-| Auth | **better-auth 1.6** | Magic link, email OTP, API keys, generic OAuth/OIDC inherited; `twoFactor` added in P0; `anonymous`, `deviceAuthorization`, `bearer` and the `organization` plugin **removed at fork**; `admin` kept as a session primitive only — the per-plugin table is in [auth-and-identity.md](auth-and-identity.md) |
+| Auth | **better-auth 1.6** | Magic link, email OTP, API keys, generic OAuth/OIDC inherited; `twoFactor` is specified for P0 and `passkey` for a later stage, but neither is enabled in current source and no verified MFA/step-up factor adapter is available; `anonymous`, `deviceAuthorization`, `bearer` and the `organization` plugin **removed at fork**; `admin` kept as a session primitive only — the per-plugin table is in [auth-and-identity.md](auth-and-identity.md) |
 | IDs | **CUID2** | Sortable-ish, URL-safe, non-enumerable |
 | WebSocket | **@hono/node-ws** | In-memory or Valkey pub/sub adapter |
 | Cache / pub-sub | **Valkey 9** (Redis-compatible) via **ioredis** | Optional; degrades to in-memory |
@@ -34,8 +34,8 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Email | **nodemailer** via `packages/email` | React Email templates |
 | Errors | **Sentry** (optional) | Configured in God Mode, not env-only |
 | Tracing | **OpenTelemetry** | Optional exporter; v1 never got this and regretted it |
-| Logging | **Pino** + `pino-http` | Structured JSON with `traceId`. Not in kaneo — added |
-| Metrics | **prom-client** | `/metrics`, bearer-guarded. Not in kaneo — added |
+| Logging | **Pino** | Structured JSON with `traceId`; Hono middleware constructs records from an explicit typed field allowlist. Pino redaction is defense in depth. `pino-http` is not selected because raw request serialization is not the intended integration. Not in kaneo — planned |
+| Metrics | **prom-client** | Bounded HTTP and AU-14 counters on a separate internal `/metrics` listener, bearer-guarded. Not in kaneo — planned |
 
 ## Frontend
 

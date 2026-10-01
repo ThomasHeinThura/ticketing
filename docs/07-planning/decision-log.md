@@ -5,6 +5,45 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-01 · P0 observability uses bounded internal metrics and operation-bound rotation
+
+**Decision:** follow the P0 target contract in [observability.md](../01-architecture/observability.md),
+[api-design.md](../01-architecture/api-design.md), and PA-15 in
+[pending-actions.md](../01-architecture/pending-actions.md). Pino and `prom-client` are
+planned choices; no dependencies are added by this decision or the documentation PR, and
+no runtime behavior is claimed. Logs use allowlisted, redacted structured records with
+trace correlation in log/span context only. Metric labels use finite enums or registered
+HTTP route templates; work-item and SLA metrics are instance-wide aggregates. Job and
+database-operation producers remain withheld until their owners define finite labels, and
+plugin-instance identifiers are not approved dimensions.
+
+The target metrics endpoint is exact `GET /metrics` on a separate internal listener at port
+9464, not exposed by a host port or Traefik route. Its bearer is 32 random bytes encoded as
+43-character unpadded base64url and only a 32-byte digest is stored. Scrapes reread the
+current digest from PostgreSQL. Log-level changes use version compare-and-set and a maximum
+five-second refresh. Token rotation is elevated, session-only, bound to the exact
+`metrics_token_rotate` route/version/server-canonical `{version}` body, and consumes its
+one-use confirmation atomically with the rotation CAS. Existing pending-action ID/payload
+binding is preserved. Unsupported required verification fails closed. Current source has no
+separate Node metrics listener/manifest, P0 metric producers, factor verifier, or SSO step-up
+adapter; the existing Hono `/metrics` fixture is a placeholder, not the target listener.
+
+AU-14 keeps the existing audit-failure behavior: safe counter/log reporting is an operational
+signal, not the required durable notification to every current instance administrator; that
+notification remains unfinished. RUM, tracing, Sentry, deep health, broad dashboards, and
+P4 UI remain deferred.
+
+**Why:** aggregate operating metrics are still sensitive, unbounded labels leak inventory,
+and a session-wide elevation window cannot bind rotation to fresh action-specific proof.
+Separate listener coverage must complement Hono route coverage.
+
+**Authorization and status:** Thomas's standing recommended-decisions authorization covers
+this recommended documentation decision. It does not authorize a gate waiver or establish
+implementation, runtime acceptance, or H1–H6 completion.
+
+**Decided by:** Thomas, under the standing recommended-decisions authorization; recorded by
+the orchestrator on 2026-10-01.
+
 ### 2026-10-01 · Notification fan-out uses event parents, delivery children and digest groups
 
 **Decision:** retain exactly one `outbox` row per domain event, with

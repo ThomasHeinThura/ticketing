@@ -18,6 +18,29 @@ but the current API image does not start a listener on port `9464` and does not 
 and application logs below; do not export a `METRICS_TOKEN` or rely on the metrics commands
 until the endpoint is implemented and verified.
 
+## Audit-write failure alert (after instrumentation is deployed)
+
+The target urgent alert is `increase(taskdesk_audit_write_failures_total[5m]) > 0`, grouped
+by the closed `operation` label. It is not active in the current image. When an alert fires,
+preserve the alert timestamp and instance identity, then inspect that instance's application
+logs for the matching safe error-level record and `traceId`:
+
+```bash
+dc logs --since=15m taskdesk
+```
+
+Use `operation` to distinguish a mutation audit append, a pending-action decision append, or
+a pending-action self-read append. Confirm the operation's user-visible result and backing
+row before asking a caller to retry: AU-14 mutations and pending-action decisions may have
+committed even though their audit append failed; the pending-action self-read instead fails
+closed. Treat the result as a known audit gap, not as evidence that the append-only hash chain
+was altered. Record the affected time window and trace ids in the incident record without
+copying credentials or request bodies.
+
+The counter and log alert do not notify instance administrators. AU-14's durable
+administrator notification remains an implementation dependency; do not report the
+notification requirement as satisfied by this alert.
+
 ## Triage
 
 1. **Is it up?** `curl https://ticket.<domain>/api/public/health/ready`
@@ -87,7 +110,7 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 | Provider certificate expired | The test reports it |
 | Session secret rotated | Everyone signed out at once — expected, communicate it |
 | Account suspended | God Mode → Users |
-| MFA required, not enrolled | The user is routed to enrolment; confirm they see it |
+| MFA required, not enrolled | **Planned behavior:** after MFA enforcement is implemented, route the user to enrollment before protected use. Current API source has no factor enrollment/verifier; a required policy must fail closed until that support exists. |
 | Portal boundary | A customer on the agent origin — this is correct behaviour |
 | **All administrators locked out** | See break-glass below |
 
