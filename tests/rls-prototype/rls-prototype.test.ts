@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool, type PoolClient } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { defaultRolePayloads } from "../../packages/permissions/src/legacy-better-auth-access-control";
 
 const PROBE_ROLE = "taskdesk_rls_probe";
 const PROBE_PASSWORD = "rls-prototype-only";
@@ -46,6 +48,11 @@ let probePool: Pool;
 let measureBaselinePool: Pool;
 let projectFixtures: ProjectFixture[];
 let organisationIds: { internal: string; customerA: string; customerB: string };
+let applicationDatabaseModule:
+  | typeof import("../../apps/api/src/database")
+  | undefined;
+let previousTaskdeskDatabaseUrl: string | undefined;
+let previousTaskdeskAuthSecret: string | undefined;
 
 const RLS_POLICIES = [
   "CREATE POLICY rls_proto_work_item_read ON public.work_item FOR SELECT TO taskdesk_rls_probe USING (",
@@ -408,6 +415,13 @@ async function configureProbeRoleAndPolicies() {
       `GRANT SELECT ON public.workspace, public.organisation, public.project, public.state, public.state_template, public.work_item, public.comment, public.attachment TO ${role}`,
     );
   }
+  // The application read-path probe runs with the same non-owner NOBYPASSRLS role,
+  // while prototype RLS is explicitly disabled for its baseline requests. Give that
+  // disposable role read-only access to the route's auth, membership, identity and
+  // projection tables as well as the three policy tables.
+  await ownerPool.query(
+    `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${PROBE_ROLE}`,
+  );
 
   await ownerPool.query(RLS_POLICIES);
   await ownerPool.query(
@@ -440,6 +454,366 @@ async function configureProbeRoleAndPolicies() {
   });
 }
 
+type ApplicationStaffActor = {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    emailVerified: boolean;
+    image: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    role: string | null;
+    banned: boolean;
+  };
+  workspaces: string[];
+};
+
+async function seedApplicationStaffActor(
+  actorId: string,
+  workspaceIds: string[],
+): Promise<ApplicationStaffActor> {
+  const userId = `user_${actorId}`;
+  const insertedUser = await ownerPool.query<ApplicationStaffActor["user"]>(
+    'INSERT INTO public."user" (id, name, email, email_verified, role, banned) VALUES ($1, $2, $3, true, NULL, false) ' +
+      'RETURNING id, name, email, email_verified AS "emailVerified", image, created_at AS "createdAt", updated_at AS "updatedAt", role, banned',
+    [userId, `RLS prototype ${actorId}`, `${actorId}@rls-prototype.invalid`],
+  );
+  const user = insertedUser.rows[0];
+  if (!user) throw new Error(`Failed to seed ${actorId} user`);
+
+  await ownerPool.query(
+    "INSERT INTO public.person (id, user_id, organisation_id, side, active) VALUES ($1, $2, $3, 'staff', true)",
+    [`person_${actorId}`, userId, organisationIds.internal],
+  );
+
+  for (const workspaceId of workspaceIds) {
+    await ownerPool.query(
+      "INSERT INTO public.workspace_role (id, workspace_id, role, permission, is_system) VALUES ($1, $2, 'member', $3, true) ON CONFLICT (workspace_id, role) DO NOTHING",
+      [
+        `role_member_${actorId}_${workspaceId}`,
+        workspaceId,
+        JSON.stringify(defaultRolePayloads.member),
+      ],
+    );
+    await ownerPool.query(
+      "INSERT INTO public.workspace_member (id, workspace_id, user_id, role, joined_at) VALUES ($1, $2, $3, 'member', now())",
+      [`membership_${actorId}_${workspaceId}`, workspaceId, userId],
+    );
+  }
+
+  return { user, workspaces: workspaceIds };
+}
+
+async function loadApplicationReadPath() {
+  const containerUrl = process.env.RLS_PROTOTYPE_DATABASE_URL;
+  if (!containerUrl) throw new Error("Prototype Testcontainer URL missing");
+  previousTaskdeskDatabaseUrl = process.env.TASKDESK_DATABASE_URL;
+  previousTaskdeskAuthSecret = process.env.TASKDESK_AUTH_SECRET;
+  // Set the container URL before importing any app/database/auth module. Use the
+  // isolated NOBYPASSRLS probe role; never inherit a developer or shared DB URL.
+  process.env.TASKDESK_DATABASE_URL = roleUrl(
+    containerUrl,
+    PROBE_ROLE,
+    PROBE_PASSWORD,
+  );
+  process.env.TASKDESK_AUTH_SECRET =
+    "rls-prototype-test-secret-with-more-than-32-characters";
+
+  const [apiModule, authFixture, identityModule, databaseModule] =
+    await Promise.all([
+      import("../../apps/api/src/index"),
+      import("../api-integration/helpers/auth"),
+      import("../../apps/api/src/permissions/resolve-identity"),
+      import("../../apps/api/src/database"),
+    ]);
+  applicationDatabaseModule = databaseModule;
+  const app = apiModule.createApp().app;
+
+  const connectedAs = await databaseModule.getDatabasePool().query<{
+    current_user: string;
+    current_database: string;
+  }>("SELECT current_user, current_database()");
+  expect(connectedAs.rows[0]).toEqual({
+    current_user: PROBE_ROLE,
+    current_database: "taskdesk_rls_prototype",
+  });
+
+  async function requestAsStaff(
+    actor: ApplicationStaffActor,
+    path: string,
+  ): Promise<Response> {
+    const mock = authFixture.mockAuthenticatedSession(
+      actor.user as Parameters<typeof authFixture.mockAuthenticatedSession>[0],
+    );
+    try {
+      return await app.request(path);
+    } finally {
+      mock.mockRestore();
+    }
+  }
+
+  return {
+    app,
+    requestAsStaff,
+    resolveIdentity: identityModule.resolveIdentity,
+  };
+}
+
+function digestIds(ids: string[]): string {
+  return createHash("sha256")
+    .update([...ids].sort().join("\n"))
+    .digest("hex");
+}
+
+async function listAllWorkItemIds(
+  requestAsStaff: (
+    actor: ApplicationStaffActor,
+    path: string,
+  ) => Promise<Response>,
+  actor: ApplicationStaffActor,
+  project: ProjectFixture,
+): Promise<string[]> {
+  const ids: string[] = [];
+  let cursor: string | null = null;
+  let pages = 0;
+  do {
+    const query = new URLSearchParams({ limit: "100" });
+    if (cursor) query.set("cursor", cursor);
+    const response = await requestAsStaff(
+      actor,
+      `/api/projects/${project.id}/work-items?${query.toString()}`,
+    );
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      data: Array<{ id: string }>;
+      page: { nextCursor: string | null; hasMore: boolean };
+      meta: { total: number };
+    };
+    ids.push(...body.data.map((item) => item.id));
+    cursor = body.page.nextCursor;
+    pages += 1;
+    expect(pages).toBeLessThanOrEqual(ROWS_PER_PROJECT);
+    expect(body.meta.total).toBe(ROWS_PER_PROJECT);
+  } while (cursor);
+  expect(ids).toHaveLength(ROWS_PER_PROJECT);
+  return ids.sort();
+}
+
+async function visibleParentIds(
+  table: "comment" | "attachment",
+  parentWorkItemId: string,
+  organisationScope: string,
+): Promise<string[]> {
+  return withTransaction(probePool, [organisationScope], async (client) => {
+    const result = await client.query<{ id: string }>(
+      `SELECT id FROM public.${table} WHERE work_item_id = $1 ORDER BY id`,
+      [parentWorkItemId],
+    );
+    return result.rows.map((row) => row.id);
+  });
+}
+
+async function compareApplicationReadPaths() {
+  const internalWorkspace = "ws_internal_rls_probe";
+  const customerAWorkspace = "ws_customer_a_rls_probe";
+  const customerBWorkspace = "ws_customer_b_rls_probe";
+  const customerAStaff = await seedApplicationStaffActor(
+    "staff_customer_a_workspace",
+    [customerAWorkspace],
+  );
+  const internalCrossOrganisationStaff = await seedApplicationStaffActor(
+    "staff_internal_cross_organisation",
+    [internalWorkspace, customerAWorkspace, customerBWorkspace],
+  );
+
+  const application = await loadApplicationReadPath();
+  for (const actor of [customerAStaff, internalCrossOrganisationStaff]) {
+    const identity = await application.resolveIdentity({
+      userId: actor.user.id,
+      credential: "session",
+    });
+    expect(identity?.side).toBe("staff");
+    expect(identity?.organisationId).toBe(organisationIds.internal);
+  }
+
+  // Read the actual Hono route and list-work-items controller with all four real
+  // project fixtures. Page all 300 rows for each project; there is no handwritten
+  // application SQL in this comparison.
+  const customerAProjects = projectFixtures.filter(
+    (project) => project.organisationId === organisationIds.customerA,
+  );
+  const customerAActualWorkItems: string[] = [];
+  for (const project of customerAProjects) {
+    customerAActualWorkItems.push(
+      ...(await listAllWorkItemIds(
+        application.requestAsStaff,
+        customerAStaff,
+        project,
+      )),
+    );
+  }
+  const deniedResponse = await application.requestAsStaff(
+    customerAStaff,
+    "/api/projects/project_customer_b_allowed_rls_probe/work-items",
+  );
+  expect(deniedResponse.status).toBe(400);
+
+  const internalStaffActualWorkItems: string[] = [];
+  for (const project of projectFixtures) {
+    internalStaffActualWorkItems.push(
+      ...(await listAllWorkItemIds(
+        application.requestAsStaff,
+        internalCrossOrganisationStaff,
+        project,
+      )),
+    );
+  }
+
+  const commentsAndAttachments: Array<{
+    projectId: string;
+    actor: "customer-a-workspace-staff" | "internal-cross-organisation-staff";
+    commentRouteIds: string[];
+    rlsCommentIds: string[];
+    attachmentRouteIds: string[];
+    rlsAttachmentIds: string[];
+  }> = [];
+  for (const project of projectFixtures) {
+    const actor =
+      project.organisationId === organisationIds.customerA
+        ? customerAStaff
+        : internalCrossOrganisationStaff;
+    const audience =
+      actor === customerAStaff
+        ? "customer-a-workspace-staff"
+        : "internal-cross-organisation-staff";
+    const workItemKey = `${project.slug}-1`;
+    const activityResponse = await application.requestAsStaff(
+      actor,
+      `/api/work-items/${workItemKey}/activity`,
+    );
+    expect(activityResponse.status).toBe(200);
+    const activityBody = (await activityResponse.json()) as {
+      data: Array<{ id: string; kind: string }>;
+    };
+    const commentRouteIds = activityBody.data
+      .filter((row) => row.kind === "comment")
+      .map((row) => row.id)
+      .sort();
+    const attachmentResponse = await application.requestAsStaff(
+      actor,
+      `/api/work-items/${workItemKey}/attachments`,
+    );
+    expect(attachmentResponse.status).toBe(200);
+    const attachmentBody = (await attachmentResponse.json()) as Array<{
+      id: string;
+    }>;
+    const attachmentRouteIds = attachmentBody.map((row) => row.id).sort();
+    commentsAndAttachments.push({
+      projectId: project.id,
+      actor: audience,
+      commentRouteIds,
+      rlsCommentIds: [],
+      attachmentRouteIds,
+      rlsAttachmentIds: [],
+    });
+  }
+
+  // Re-enable the prototype policies only after the real Hono reads finish. The RLS
+  // pools then collect the same targeted parent reads and the full work-item sets.
+  await setRlsEnabled(true);
+  for (const sample of commentsAndAttachments) {
+    const project = projectFixtures.find(
+      (fixture) => fixture.id === sample.projectId,
+    );
+    if (!project)
+      throw new Error(`Missing project fixture ${sample.projectId}`);
+    const workItemId = `${project.id}-wi-1`;
+    sample.rlsCommentIds = await visibleParentIds(
+      "comment",
+      workItemId,
+      project.organisationId,
+    );
+    sample.rlsAttachmentIds = await visibleParentIds(
+      "attachment",
+      workItemId,
+      project.organisationId,
+    );
+  }
+
+  const commentMismatch = commentsAndAttachments.filter(
+    (sample) =>
+      JSON.stringify(sample.commentRouteIds) !==
+      JSON.stringify(sample.rlsCommentIds),
+  );
+  const attachmentMismatch = commentsAndAttachments.filter(
+    (sample) =>
+      JSON.stringify(sample.attachmentRouteIds) !==
+      JSON.stringify(sample.rlsAttachmentIds),
+  );
+  const expectedCorruptCommentMismatch = commentMismatch.filter(
+    (sample) =>
+      sample.commentRouteIds.includes(
+        "comment-parent-workspace-mismatch-prototype",
+      ) &&
+      !sample.rlsCommentIds.includes(
+        "comment-parent-workspace-mismatch-prototype",
+      ),
+  );
+  expect(commentMismatch).toHaveLength(1);
+  expect(expectedCorruptCommentMismatch).toHaveLength(1);
+  expect(attachmentMismatch).toHaveLength(0);
+
+  const rlsCustomerA = await visibleIds("work_item", [
+    organisationIds.customerA,
+  ]);
+  const rlsInternalStaff = await visibleIds("work_item", [
+    organisationIds.internal,
+    organisationIds.customerA,
+    organisationIds.customerB,
+  ]);
+  expect(customerAActualWorkItems.sort()).toEqual(rlsCustomerA.sort());
+  expect(internalStaffActualWorkItems.sort()).toEqual(rlsInternalStaff.sort());
+  await setRlsEnabled(false);
+
+  return {
+    customerADataScope: {
+      audience: "staff principal with explicit customer-A workspace membership",
+      noCustomerPrincipalTested: true,
+      outOfWorkspaceCustomerBStatus: deniedResponse.status,
+      actualWorkItemRows: customerAActualWorkItems.length,
+      actualWorkItemSha256: digestIds(customerAActualWorkItems),
+      rlsWorkItemRows: rlsCustomerA.length,
+      rlsWorkItemSha256: digestIds(rlsCustomerA),
+    },
+    internalCrossOrganisationStaff: {
+      identitySide: "staff",
+      homeOrganisationId: organisationIds.internal,
+      explicitWorkspaceMemberships: internalCrossOrganisationStaff.workspaces,
+      actualWorkItemRows: internalStaffActualWorkItems.length,
+      actualWorkItemSha256: digestIds(internalStaffActualWorkItems),
+      rlsWorkItemRows: rlsInternalStaff.length,
+      rlsWorkItemSha256: digestIds(rlsInternalStaff),
+    },
+    sampleReadRoutes: commentsAndAttachments.map((sample) => ({
+      ...sample,
+      commentMismatchIds: sample.commentRouteIds.filter(
+        (id) => !sample.rlsCommentIds.includes(id),
+      ),
+      attachmentMismatchIds: sample.attachmentRouteIds.filter(
+        (id) => !sample.rlsAttachmentIds.includes(id),
+      ),
+    })),
+    applicationReadLimitations: [
+      "These actual read requests use internal staff persons/users and explicit workspace memberships; this test creates no customer principal and exercises no customer portal agent access.",
+      "The live work-item route authorizes workspace membership, not project membership or sees_all. The identity resolver currently reports staff reach from memberships (seesAll is false); project-level actor authorization remains a separate, not-integrated control.",
+      "The app pool uses the isolated NOBYPASSRLS SELECT role while prototype RLS is disabled for baseline reads. RLS comparison uses the separate NOBYPASSRLS probe pool with transaction-local organisation scope.",
+      "For comments and attachments, actual Hono routes/controller reads are checked on one deterministic work item in each project; work-item list rows are fully paginated across every fixture project.",
+      "The invalid comment row exists only because the disposable fixture disables FK triggers for insertion. The actual activity route returns that malformed row, while the parent-consistency RLS policy rejects it; the production composite FK prevents this fixture state.",
+    ],
+  };
+}
+
 async function setRlsEnabled(enabled: boolean) {
   const suffix = enabled ? "ENABLE" : "DISABLE";
   for (const table of ["work_item", "comment", "attachment"]) {
@@ -461,7 +835,7 @@ async function visibleIds(
   });
 }
 
-async function appTenantIds(
+async function expectedTenantIdsFromPrototypePredicate(
   table: "work_item" | "comment" | "attachment",
   organisationId: string,
 ): Promise<string[]> {
@@ -575,7 +949,21 @@ describe("P0 RLS prototype — isolated, test-only evidence", () => {
   afterAll(async () => {
     await probePool?.end();
     await measureBaselinePool?.end();
+    if (applicationDatabaseModule) {
+      await applicationDatabaseModule.getDatabasePool().end();
+      applicationDatabaseModule = undefined;
+    }
     await ownerPool?.end();
+    if (previousTaskdeskDatabaseUrl === undefined) {
+      delete process.env.TASKDESK_DATABASE_URL;
+    } else {
+      process.env.TASKDESK_DATABASE_URL = previousTaskdeskDatabaseUrl;
+    }
+    if (previousTaskdeskAuthSecret === undefined) {
+      delete process.env.TASKDESK_AUTH_SECRET;
+    } else {
+      process.env.TASKDESK_AUTH_SECRET = previousTaskdeskAuthSecret;
+    }
   }, 30_000);
 
   it("measures pooling, tenant agreement, parent consistency, and hot-read overhead", async () => {
@@ -675,15 +1063,26 @@ describe("P0 RLS prototype — isolated, test-only evidence", () => {
     );
     expect(callerChosenOtherTenantRows).toBe(ROWS_PER_PROJECT);
 
-    // Capture application tenant-boundary results while RLS is disabled. The subsequent
-    // RLS reads contain no explicit organisation WHERE clause.
+    // Capture expected tenant IDs from the hand-written prototype predicates while RLS
+    // is disabled. This is not an application-layer read path; compare it with the actual
+    // route/controller reads only after that path has been exercised in the disposable DB.
     await setRlsEnabled(false);
-    const appTenantBaseline = {
-      work_item: await appTenantIds("work_item", organisationIds.customerA),
-      comment: await appTenantIds("comment", organisationIds.customerA),
-      attachment: await appTenantIds("attachment", organisationIds.customerA),
+    const applicationReadEvidence = await compareApplicationReadPaths();
+    const expectedTenantBaseline = {
+      work_item: await expectedTenantIdsFromPrototypePredicate(
+        "work_item",
+        organisationIds.customerA,
+      ),
+      comment: await expectedTenantIdsFromPrototypePredicate(
+        "comment",
+        organisationIds.customerA,
+      ),
+      attachment: await expectedTenantIdsFromPrototypePredicate(
+        "attachment",
+        organisationIds.customerA,
+      ),
     };
-    const appStaffProjects = await withTransaction(
+    const expectedStaffProjectSet = await withTransaction(
       probePool,
       null,
       async (client) => {
@@ -708,13 +1107,13 @@ describe("P0 RLS prototype — isolated, test-only evidence", () => {
       attachment: await visibleIds("attachment", customerA),
     };
     expect(rlsCustomerA.work_item.sort()).toEqual(
-      appTenantBaseline.work_item.sort(),
+      expectedTenantBaseline.work_item.sort(),
     );
     expect(rlsCustomerA.comment.sort()).toEqual(
-      appTenantBaseline.comment.sort(),
+      expectedTenantBaseline.comment.sort(),
     );
     expect(rlsCustomerA.attachment.sort()).toEqual(
-      appTenantBaseline.attachment.sort(),
+      expectedTenantBaseline.attachment.sort(),
     );
 
     const rlsStaffReach = {
@@ -723,9 +1122,9 @@ describe("P0 RLS prototype — isolated, test-only evidence", () => {
       attachment: await visibleIds("attachment", internalStaffScope),
     };
     const staffProjectExtra = rlsStaffReach.work_item.filter(
-      (id) => !appStaffProjects.includes(id),
+      (id) => !expectedStaffProjectSet.includes(id),
     );
-    expect(appStaffProjects.length).toBe(ROWS_PER_PROJECT * 3);
+    expect(expectedStaffProjectSet.length).toBe(ROWS_PER_PROJECT * 3);
     expect(staffProjectExtra.length).toBe(ROWS_PER_PROJECT);
 
     // Attachment.organisation_id is documented as NULL for internal data and the
@@ -774,7 +1173,7 @@ describe("P0 RLS prototype — isolated, test-only evidence", () => {
         comment: rlsStaffReach.comment.length,
         attachment: rlsStaffReach.attachment.length,
       },
-      projectLevelActorRows: appStaffProjects.length,
+      expectedRowsForHandSelectedProjects: expectedStaffProjectSet.length,
       extraRowsPermittedByTenantBackstop: staffProjectExtra.length,
       attachmentParentOrganisationMismatchRows: attachmentMismatch.rows,
       commentParentWorkspaceMismatchRows: commentWorkspaceMismatch.rows.map(
@@ -807,11 +1206,12 @@ describe("P0 RLS prototype — isolated, test-only evidence", () => {
         callerCanSelectAnotherScopeViaGuc: callerChosenOtherTenantRows,
       },
       boundary: mismatchEvidence,
+      applicationReadPaths: applicationReadEvidence,
       timings: pairedTimings,
       measurementLimits: [
         "Single local Testcontainer, 1,202 work items total, one 40-sample warmed run per query/mode; not a production forecast.",
         "The custom GUC is settable by the database role. RLS is not an independent identity authority: the application must derive and bind the scope from trusted authorization state, and the runtime role must not bypass row security.",
-        "Queries mirror the current work-item list, comment activity, and attachment list access shapes, but this isolated harness does not invoke HTTP routes or install an application GUC wrapper.",
+        "Hot-read timings use direct SQL shaped from the current work-item list, comment activity, and attachment controllers. Separate boundary checks invoke the actual Hono read routes, but no application GUC wrapper is installed.",
         "RLS was disabled/enabled on the same migrated tables and data; no production migration or schema was modified.",
       ],
     };
@@ -821,7 +1221,9 @@ describe("P0 RLS prototype — isolated, test-only evidence", () => {
     expect(rlsStaffReach.comment).toHaveLength(ROWS_PER_PROJECT * 4);
     expect(rlsStaffReach.attachment).toHaveLength(ROWS_PER_PROJECT * 4 + 2);
     expect(
-      rlsStaffReach.work_item.some((id) => appStaffProjects.includes(id)),
+      rlsStaffReach.work_item.some((id) =>
+        expectedStaffProjectSet.includes(id),
+      ),
     ).toBe(true);
   }, 180_000);
 });
