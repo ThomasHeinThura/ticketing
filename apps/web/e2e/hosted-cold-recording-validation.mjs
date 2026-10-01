@@ -4,7 +4,7 @@ export const COLD_REPORT_MAX_BYTES = 256 * 1024;
 export const COLD_MAX_RESOURCES = 2_048;
 export const COLD_MAX_PHASE_SEGMENTS = 100_000;
 const ROUTE_PAINT_CRITERION =
-  "A route-paint mark requires a positive axis-aligned target region after viewport and ancestor overflow/paint-containment clipping. Unsupported transforms, out-of-flow boxes, fragmented targets, and nonrectangular clips fail closed. This is not pixel-level or occlusion proof.";
+  "A route-paint mark requires a positive conservative inward-bounded axis-aligned target region after viewport and ancestor overflow/paint-containment clipping. Subpixel boundary strips may fail closed; ambiguous RTL/root or top-scrollbar origins, CSS zoom other than 1, unsupported transforms, out-of-flow boxes, fragmented targets, nonrectangular clips/masks, nondefault overflow-clip margins, and rounded overflow clips fail closed. This is not pixel-level or occlusion proof.";
 
 const METHODS = new Set([
   "CONNECT",

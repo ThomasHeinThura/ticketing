@@ -137,7 +137,15 @@ test("cold report binds the exact source and emits only bounded diagnostic evide
   assert.equal(report.journey.routePaintTarget, "detail");
   assert.match(
     report.interpretation.routePaintCriterion,
-    /positive axis-aligned target region after viewport and ancestor overflow\/paint-containment clipping/,
+    /positive conservative inward-bounded axis-aligned target region after viewport and ancestor overflow\/paint-containment clipping/,
+  );
+  assert.match(
+    report.interpretation.routePaintCriterion,
+    /Subpixel boundary strips may fail closed; ambiguous RTL\/root or top-scrollbar origins/,
+  );
+  assert.match(
+    report.interpretation.routePaintCriterion,
+    /CSS zoom other than 1/,
   );
   assert.match(
     report.interpretation.routePaintCriterion,

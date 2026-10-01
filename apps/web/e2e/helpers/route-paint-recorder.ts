@@ -44,13 +44,66 @@ export function installRoutePaintRecorder() {
       );
 
       if (region && supported) {
-        const viewportWidth = document.documentElement.clientWidth;
-        const viewportHeight = document.documentElement.clientHeight;
-        region.left = Math.max(region.left, 0);
-        region.top = Math.max(region.top, 0);
-        region.right = Math.min(region.right, viewportWidth);
-        region.bottom = Math.min(region.bottom, viewportHeight);
-        supported = region.right > region.left && region.bottom > region.top;
+        const root = document.documentElement;
+        const body = document.body;
+        const rootStyle = getComputedStyle(root);
+        const bodyStyle = getComputedStyle(body);
+        const rootVerticalOverflow = [rootStyle.overflowY, bodyStyle.overflowY];
+        const rootHorizontalOverflow = [
+          rootStyle.overflowX,
+          bodyStyle.overflowX,
+        ];
+        const rootVerticalScroll =
+          rootVerticalOverflow.includes("scroll") ||
+          (!rootVerticalOverflow.some((overflow) =>
+            ["hidden", "clip"].includes(overflow),
+          ) &&
+            (root.scrollHeight > root.clientHeight ||
+              body.scrollHeight > root.clientHeight));
+        const rootHorizontalScroll =
+          rootHorizontalOverflow.includes("scroll") ||
+          (!rootHorizontalOverflow.some((overflow) =>
+            ["hidden", "clip"].includes(overflow),
+          ) &&
+            (root.scrollWidth > root.clientWidth ||
+              body.scrollWidth > root.clientWidth));
+        const ambiguousViewportOrigin =
+          ((rootStyle.direction === "rtl" || bodyStyle.direction === "rtl") &&
+            rootVerticalScroll) ||
+          (rootStyle.writingMode !== "horizontal-tb" &&
+            (rootVerticalScroll || rootHorizontalScroll)) ||
+          ((rootStyle.scrollbarGutter.includes("both-edges") ||
+            bodyStyle.scrollbarGutter.includes("both-edges")) &&
+            (rootVerticalScroll || rootHorizontalScroll)) ||
+          ((rootVerticalScroll || rootHorizontalScroll) &&
+            (root.clientLeft !== 0 || root.clientTop !== 0));
+        const visualViewport = window.visualViewport;
+        const ambiguousVisualViewport =
+          visualViewport !== null &&
+          (visualViewport.scale !== 1 ||
+            visualViewport.offsetLeft !== 0 ||
+            visualViewport.offsetTop !== 0);
+        const viewportWidth = root.clientWidth;
+        const viewportHeight = root.clientHeight;
+        if (
+          ambiguousViewportOrigin ||
+          ambiguousVisualViewport ||
+          !Number.isInteger(viewportWidth) ||
+          !Number.isInteger(viewportHeight) ||
+          viewportWidth <= 1 ||
+          viewportHeight <= 1
+        ) {
+          supported = false;
+        } else {
+          // The measured layout viewport extent may be rounded outward. Keep a
+          // one-CSS-pixel inward strip at its far edges; root RTL/top-scrollbar
+          // origins are rejected above instead of assuming they start at zero.
+          region.left = Math.max(region.left, 0);
+          region.top = Math.max(region.top, 0);
+          region.right = Math.min(region.right, viewportWidth - 1);
+          region.bottom = Math.min(region.bottom, viewportHeight - 1);
+          supported = region.right > region.left && region.bottom > region.top;
+        }
       }
 
       for (
@@ -128,22 +181,45 @@ export function installRoutePaintRecorder() {
           break;
         }
         const ancestorRect = ancestorRects[0];
-        const clipLeft = ancestorRect.left + ancestor.clientLeft;
-        const clipTop = ancestorRect.top + ancestor.clientTop;
-        const clipRight = clipLeft + ancestor.clientWidth;
-        const clipBottom = clipTop + ancestor.clientHeight;
+        const clientLeft = ancestor.clientLeft;
+        const clientTop = ancestor.clientTop;
+        const clientWidth = ancestor.clientWidth;
+        const clientHeight = ancestor.clientHeight;
+        const clipLeft = ancestorRect.left + clientLeft + 1;
+        const clipTop = ancestorRect.top + clientTop + 1;
+        const clipRight = ancestorRect.left + clientLeft + clientWidth - 2;
+        const clipBottom = ancestorRect.top + clientTop + clientHeight - 2;
 
         if (
-          ![clipLeft, clipTop, clipRight, clipBottom].every(Number.isFinite)
+          ![
+            ancestorRect.left,
+            ancestorRect.top,
+            ancestorRect.right,
+            ancestorRect.bottom,
+          ].every(Number.isFinite) ||
+          ancestorRect.right <= ancestorRect.left ||
+          ancestorRect.bottom <= ancestorRect.top ||
+          ![clipLeft, clipTop, clipRight, clipBottom].every(Number.isFinite) ||
+          ![clientLeft, clientTop, clientWidth, clientHeight].every(
+            (value) => Number.isInteger(value) && value >= 0,
+          )
         ) {
           supported = false;
           break;
         }
         if (clipsX || containsPaint) {
+          if (clipRight <= clipLeft) {
+            supported = false;
+            break;
+          }
           region.left = Math.max(region.left, clipLeft);
           region.right = Math.min(region.right, clipRight);
         }
         if (clipsY || containsPaint) {
+          if (clipBottom <= clipTop) {
+            supported = false;
+            break;
+          }
           region.top = Math.max(region.top, clipTop);
           region.bottom = Math.min(region.bottom, clipBottom);
         }
