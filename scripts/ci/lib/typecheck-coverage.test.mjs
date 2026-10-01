@@ -208,6 +208,23 @@ async function walk(dir, out = []) {
   return out;
 }
 
+/** Assert a nonempty derived TypeScript tree is fully present in real compiler output. */
+function assertTreeIsFullyTypechecked(tree, onDisk, programUnion) {
+  assert.ok(
+    onDisk.length > 0,
+    `${tree} has no TypeScript files on disk — an empty tree cannot prove coverage.`,
+  );
+  const missing = onDisk.filter(
+    (file) => !programUnion.has(path.resolve(file)),
+  );
+  assert.deepEqual(
+    missing,
+    [],
+    `${tree}: ${onDisk.length - missing.length} of ${onDisk.length} files are in a ` +
+      `tsc program. Missing:\n  ${missing.map((file) => path.relative(repoRoot, file)).join("\n  ")}`,
+  );
+}
+
 /**
  * JSONC -> object. tsconfigs and turbo.json both carry `//` comments and trailing
  * commas, and `JSON.parse` rejects both.
@@ -424,7 +441,7 @@ describe("turbo must actually re-run typecheck when a test tree changes", () => 
 });
 
 describe("typecheck coverage of the test trees", () => {
-  it("every file under tests/api and tests/permissions is in a real tsc program", async () => {
+  it("every covered tree is fully present in the actually invoked tsc programs", async () => {
     const names = await tsconfigNames();
     const union = new Set();
     for (const name of names) {
@@ -432,47 +449,45 @@ describe("typecheck coverage of the test trees", () => {
     }
 
     const trees = await coveredTrees();
-    const uncovered = [];
     for (const tree of trees.covered) {
-      for (const file of await walk(path.join(repoRoot, tree))) {
-        if (!union.has(path.resolve(file)))
-          uncovered.push(path.relative(repoRoot, file));
-      }
+      assertTreeIsFullyTypechecked(
+        tree,
+        await walk(path.join(repoRoot, tree)),
+        union,
+      );
     }
+  });
 
-    assert.deepEqual(
-      uncovered,
-      [],
-      `${uncovered.length} test file(s) are in NO TypeScript program, so a broken ` +
-        "import in them cannot fail `pnpm typecheck`. Add the tree to an apps/api " +
-        `tsconfig include — and check no config EXCLUDES it:\n  ${uncovered.join("\n  ")}`,
+  it("accepts a complete one-file tree in a tsc program", () => {
+    const file = path.join(repoRoot, "tests/fixtures/seed-profiles.ts");
+    assert.doesNotThrow(() =>
+      assertTreeIsFullyTypechecked("tests/fixtures", [file], new Set([file])),
     );
   });
 
-  it("each covered tree has a meaningful number of files in the program, not one", async () => {
-    // A single stray file matching by accident is not coverage. This is the shape the
-    // exclude probe produced: tests/api collapsed from 40 members to 1.
-    const names = await tsconfigNames();
-    const union = new Set();
-    for (const name of names) {
-      for (const file of programFiles(name)) union.add(file);
-    }
+  it("rejects an omitted one-file tree, partial multi-file membership, and empty trees", () => {
+    const one = path.join(repoRoot, "tests/fixtures/seed-profiles.ts");
+    assert.throws(
+      () => assertTreeIsFullyTypechecked("tests/fixtures", [one], new Set()),
+      /0 of 1 files are in a tsc program/,
+    );
 
-    for (const tree of (await coveredTrees()).covered) {
-      const root = path.join(repoRoot, tree);
-      const onDisk = await walk(root);
-      const inProgram = onDisk.filter((file) => union.has(path.resolve(file)));
-      assert.equal(
-        inProgram.length,
-        onDisk.length,
-        `${tree}: ${inProgram.length} of ${onDisk.length} files are in a tsc program. ` +
-          "A partial program is how an excluded tree looks from the outside.",
-      );
-      assert.ok(
-        onDisk.length > 1,
-        `${tree} has ${onDisk.length} file(s) on disk — did the tree move?`,
-      );
-    }
+    const first = path.join(repoRoot, "tests/example-a.test.ts");
+    const second = path.join(repoRoot, "tests/example-b.test.ts");
+    assert.throws(
+      () =>
+        assertTreeIsFullyTypechecked(
+          "tests/example",
+          [first, second],
+          new Set([first]),
+        ),
+      /1 of 2 files are in a tsc program/,
+    );
+
+    assert.throws(
+      () => assertTreeIsFullyTypechecked("tests/empty", [], new Set()),
+      /has no TypeScript files on disk/,
+    );
   });
 
   it("every test tree is either covered or DECLARED exempt — no third option", async () => {

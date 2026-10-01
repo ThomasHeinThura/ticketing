@@ -358,7 +358,18 @@ Results recorded per release so regression is visible.
 
 ## Test data
 
-`tests/fixtures/` and `scripts/seed.ts`.
+`tests/fixtures/` and `scripts/seed.ts`. Run `pnpm seed minimal`, `pnpm seed realistic`, or
+`pnpm seed hostile` against the explicitly configured database. Seeding is additive and
+idempotent within a stable TaskDesk fixture namespace: it may create or reuse its own
+fixture rows, but never truncates, deletes, resets, or overwrites existing rows. A conflicting
+fixture identifier fails with an actionable error. The CLI does not run migrations; the
+database must already have the current schema. Integration coverage uses a fresh disposable
+PostgreSQL database and verifies profile counts, a repeated run, and preservation of an
+unrelated row. The command does not create login credentials or grant memberships/roles.
+The CLI verifies the complete fixture-owned default type/template sets and each project's
+default columns and concrete states against the existing code defaults, including state
+order, default selection, and template references. It retains database-generated row IDs;
+any conflicting or incomplete default set fails the seed transaction without rewriting it.
 
 Three sizes: **minimal** (one org, one project, ten items — for fast tests),
 **realistic** (as above, for manual and performance), **hostile** (empty strings, 500-
@@ -366,6 +377,14 @@ character titles, non-Latin scripts, emoji, right-to-left text, null-heavy recor
 deeply nested hierarchies).
 
 The hostile dataset finds more layout bugs than any other single technique.
+
+The hostile profile is deterministic and bounded. It includes work-item titles of exactly
+500 characters, empty strings only in schema-permitted text fields, nullable values omitted
+where the schema permits them, non-Latin text, emoji, right-to-left text, and a cycle-free
+parent chain. The current fixture uses one project and ten items, with a parent chain of
+depth ten; the realistic fixture distributes 200 items to each project. The 200 realistic
+people are staff-side placeholders with no login, memberships, or role grants. These bounded
+choices exercise the named cases without introducing identity or authorization behavior.
 
 ## Running
 
