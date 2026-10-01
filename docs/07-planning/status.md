@@ -14,6 +14,45 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
+`f7ae8cc846030b10678c9860e4d4bda4f15b93a1` (verified 2026-10-01 10:14 UTC).**
+Protected PR #547 merged at 10:04:06 UTC. Final candidate
+`29850e0a1285164f4d319d969317e163d87d8455` passed all 17 required checks before protected
+merge. Hosted PostgreSQL integration passed 126 files / 1,579 tests / 5 tasks. Unit/component
+passed 12/12 tasks (API 67 files / 536 tests; UI 59 files / 291 tests; web 80 files / 351
+tests), route policy/permission matrix passed 14 files / 88 tests, and the focused
+`test:no-inherited-routes` gate passed 1 file / 5 tests. Independent Luna and full Sol
+reviews bind source `2751ab71e86e23cd20e9e7a30860a7b92190955e`; later commits only record
+review evidence. The new focused inherited-route regression is enabled on main; G11 remains
+disabled, and the other disabled gates remain explicit work. This test/config/documentation
+change did not alter runtime behavior. No image rebuild, deployment of this SHA, or new
+browser evidence is claimed. See [PR #547](https://github.com/ThomasHeinThura/ticketing/pull/547)
+and its [review note](security-reviews/547-no-inherited-routes.md).
+
+The OrbStack local deployment recorded below continues to run the accepted #546 runtime
+image (`b311c8cc`, digest `sha256:963e431dd8f3623cea55d2e9280372b8864759401d4e0abdd0633f9476bc1c74`).
+#547 changed test coverage only; it did not produce a new shipped image. Seven
+certificate-validated HTTPS probes, healthy services and API-verified administrator,
+workspace, project and DEV-1 creation remain the verified local-runtime evidence. The fresh
+Chrome screen check remains blocked by the browser-extension interface.
+
+**P0 remains open.** #525 is at `22b3a259f3e53355a239ee0a98f81bd5e066461e`. The 22-case
+canonical local run on earlier source `8dda28990c14ee0f3a6a42c4d091fd58213303c5` passed
+21 cases; one drag-column assertion failed and produced no frame-p95 result. Current-source
+functional Chromium regressions pass 11/11, while hosted evidence is queued or running.
+Restored-dist provenance remains under investigation. These results do not establish
+aggregate budget acceptance or causal savings. The authorization soak, remaining exit gates
+and fresh Sol phase finalizer remain incomplete.
+
+Calendar #513 and identity trust #544 remain partial with the browser/identity reviews and
+acceptance gaps in the preceding snapshot; P1/P2/P3/P4 remain open. Notification #508 now
+has candidate source `94fb7afda0d852a19dd2f4293a9481f31b0c36b` after reverting an unnecessary
+work-hours touch. The 24 work-hours rows remain untouched and `check:reviews` passes, but
+three fresh ordinary reviews and Sol review remain pending; no contract or acceptance is
+claimed. No stage completion or gate waiver is claimed.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
 `494b7e9ac8db200e1c5c599b1b73911684314bbf` (verified 2026-10-01 09:59 UTC).**
 Protected PR #546 merged at 09:07:12 UTC. Its final candidate
 `a88f69eee9451c43a771875044a5c97987ba36ab` passed all 17 required checks, including
@@ -67,10 +106,9 @@ follows schema 0079, and #512's migration is regenerated later. P3 identity trus
 has ADR-0014's explicit limited-domain SSO/public-IdP-disclosure clarification at
 `eaf567c5195a54df1d63f10f1af77c681c0eba7c`; its ordinary panel and Sol review remain
 pending, owning findings 81/82 remain open, and no DDL or real-Entra completion is claimed.
-P4 notification #508 has a candidate at `0955eaaae4825b52d6546b7807ce83e6c178e46c`
-that proposes the structural parent/child digest contract. Its mechanical register and gate
-probes currently fail and are being diagnosed; ordinary and Sol reviews remain pending, so
-the proposal is not accepted and shared contracts stay held. P1/P2/P3/P4 are not complete.
+P4 notification #508 had candidate `0955eaaae4825b52d6546b7807ce83e6c178e46c`, which
+proposed the structural parent/child digest contract; the next candidate and current review
+state are recorded in the newer 10:14 snapshot above. P1/P2/P3/P4 are not complete.
 No stage completion or gate waiver is claimed.
 
 **2026-10-01 orchestrator snapshot — remote `main` at
@@ -2525,9 +2563,11 @@ are required before cutover. Do not treat further code review as a substitute fo
 
 G8 is merged through #507 and required by `protect-main` ruleset 22365005; its scope is
 every exported Storybook story and every in-progress or complete route-kind inventory row.
-Future routes activate with implementation. G11 remains disabled on main. #525's current
-head is `22b3a259f3e53355a239ee0a98f81bd5e066461e`; its 11 functional Chromium regressions
-pass. The canonical local timing run on earlier source `8dda28990c14ee0f3a6a42c4d091fd58213303c5`
+Future routes activate with implementation. PR #547 enabled the focused inherited-route
+regression in `test:all`; nine other declared gate entries remain disabled/pending. G11 is
+among them and remains disabled on main. #525's current head is
+`22b3a259f3e53355a239ee0a98f81bd5e066461e`; its 11 functional Chromium regressions pass.
+The canonical local timing run on earlier source `8dda28990c14ee0f3a6a42c4d091fd58213303c5`
 recorded 21/22 passes and one failed drag-column assertion without a frame-p95 result;
 current-head hosted evidence is pending. No aggregate budget or savings claim is accepted.
 G4 is enabled by #501. The #10 checklist still needs reconciliation with the implemented
