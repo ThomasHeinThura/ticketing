@@ -11,13 +11,16 @@ export function assertHostedCaptureComplete(payload, path) {
   const validNodes =
     Array.isArray(nodes) &&
     nodes.length > 0 &&
+    nodeIds.size === nodes.length &&
     nodes.every(
       (node) =>
         Number.isInteger(node.id) &&
         node.id > 0 &&
         node.callFrame !== null &&
         typeof node.callFrame === "object" &&
-        (node.children ?? []).every((child) => nodeIds.has(child)),
+        (node.children === undefined ||
+          (Array.isArray(node.children) &&
+            node.children.every((child) => nodeIds.has(child)))),
     );
   const validSamples =
     Array.isArray(samples) &&
@@ -25,11 +28,27 @@ export function assertHostedCaptureComplete(payload, path) {
     Array.isArray(deltas) &&
     deltas.length === samples.length &&
     samples.every((sample) => nodeIds.has(sample)) &&
-    deltas.every((delta) => Number.isFinite(delta) && delta > 0);
+    deltas.every((delta) => Number.isFinite(delta));
   const validProfileTiming =
     Number.isFinite(profile?.startTime) &&
     Number.isFinite(profile?.endTime) &&
     profile.endTime > profile.startTime;
+  let sampleTime = profile?.startTime;
+  const reconstructedSampleTimes = Array.isArray(deltas)
+    ? deltas.map((delta) => {
+        sampleTime += delta;
+        return sampleTime;
+      })
+    : [];
+  const validSampleTiming =
+    validProfileTiming &&
+    reconstructedSampleTimes.length === samples?.length &&
+    reconstructedSampleTimes.every(
+      (timestamp) =>
+        Number.isFinite(timestamp) &&
+        timestamp >= profile.startTime &&
+        timestamp <= profile.endTime,
+    );
   const timelineEvents = payload.traceEvents;
   const hasTimelineData =
     Array.isArray(timelineEvents) &&
@@ -44,7 +63,7 @@ export function assertHostedCaptureComplete(payload, path) {
   if (
     !validNodes ||
     !validSamples ||
-    !validProfileTiming ||
+    !validSampleTiming ||
     !hasTimelineData ||
     payload.counts?.cpuProfileNodes !== nodes?.length ||
     payload.counts?.cpuSamples !== samples?.length ||

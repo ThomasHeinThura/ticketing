@@ -30,11 +30,35 @@ test("accepts structurally consistent CPU and timeline capture", () => {
   );
 });
 
+test("accepts signed deltas that reconstruct out-of-order in-range samples", () => {
+  const payload = validPayload();
+  payload.cpuProfile.startTime = 100;
+  payload.cpuProfile.endTime = 500;
+  payload.cpuProfile.samples = [1, 1, 1];
+  payload.cpuProfile.timeDeltas = [200, -100, 200];
+  payload.counts.cpuSamples = 3;
+  payload.counts.timeDeltas = 3;
+  assert.doesNotThrow(() =>
+    assertHostedCaptureComplete(payload, "signed-delta-profile.json"),
+  );
+});
+
 for (const [label, mutate] of [
   [
     "unresolved sample node",
     (payload) => {
       payload.cpuProfile.samples = [9];
+    },
+  ],
+  [
+    "duplicate CPU node ID",
+    (payload) => {
+      payload.cpuProfile.nodes.push({
+        id: 1,
+        callFrame: { functionName: "duplicate" },
+        children: [],
+      });
+      payload.counts.cpuProfileNodes = 2;
     },
   ],
   [
@@ -44,9 +68,15 @@ for (const [label, mutate] of [
     },
   ],
   [
-    "non-finite sample duration",
+    "non-finite time delta",
     (payload) => {
       payload.cpuProfile.timeDeltas = [Number.NaN];
+    },
+  ],
+  [
+    "reconstructed sample outside profile interval",
+    (payload) => {
+      payload.cpuProfile.timeDeltas = [1001];
     },
   ],
   [

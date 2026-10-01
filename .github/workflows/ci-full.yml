@@ -166,4 +166,5 @@ jobs:
           name: hosted-g11-source-profile-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/taskdesk-g11-hosted-profile-${{ github.run_id }}-${{ github.run_attempt }}/
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 7
