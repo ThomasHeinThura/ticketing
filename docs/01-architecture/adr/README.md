@@ -50,6 +50,8 @@ Each with why it was rejected.
 | [0011](0011-ticket-lifecycle-engine.md) | One generic lifecycle engine for every work item, not per-category logic | Accepted |
 | [0012](0012-terminology-overlay.md) | Terminology overlay: renameable nouns, separate from renameable states | Accepted |
 | [0013](0013-marketplace-metering-plugin.md) | Marketplace listing and usage metering are an optional plugin, never a default | Accepted |
+| [0014](0014-limited-home-realm-disclosure.md) | Customer home-realm routing accepts limited domain-specific disclosure | Accepted |
+| [0015](0015-membership-grant-provenance.md) | Membership grant provenance and effective-role projection | Proposed — Thomas approval required, not granted |
 
 ## Numbering
 

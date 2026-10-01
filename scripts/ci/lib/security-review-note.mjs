@@ -2,10 +2,11 @@
  * Bind a committed security-review note to the code it actually reviewed.
  *
  * **GPT-F2 — the note was not bound to the reviewed code.** The PR-template check
- * verified two things about `## Security review`: at the time, that **Model:** matched
- * `^Opus`, and that the linked `docs/07-planning/security-reviews/<pr>-<slug>.md` existed
- * in the branch. (The active exact `GPT-6 Sol` model check lives in
- * `check-pr-template.mjs`.) Both are properties of the pull-request body and of a
+ * verified two things about `## Security review`: under the historical pre-migration
+ * rule, that **Model:** matched `^Opus`, and that the linked
+ * `docs/07-planning/security-reviews/<pr>-<slug>.md` existed in the branch. (The active
+ * exact `GPT-6 Sol` model check lives in `check-pr-template.mjs`.) Both are properties of
+ * the pull-request body and of a
  * filename. Neither says
  * anything about *which code* was reviewed, so once a note existed it stayed valid
  * forever:
@@ -15,10 +16,9 @@
  *   H3  more code       pushed                              -> gate STILL green
  *
  * At H3 the note is a stale artefact: the reviewer never saw H3's code, and nothing in
- * the repository or the body said so. That is the failure mode CLAUDE.md's third absolute
- * names — "a review recorded at the wrong tier is worse than no review, because it closes
- * the field that would otherwise stay visibly open" — with "wrong tier" replaced by
- * "wrong code".
+ * the repository or the body said so. AGENTS.md's exact-head rule requires the recorded
+ * review to bind to the candidate that is being merged; this is the same failure mode
+ * with a stale code head instead of a stale review tier.
  *
  * ## What is enforced
  *

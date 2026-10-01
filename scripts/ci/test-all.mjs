@@ -162,10 +162,9 @@ const manifest = [
     note: "needs a pull-request body; locally it does nothing useful.",
   },
   {
-    gate: "no-inherited-routes",
+    gate: "pnpm test:no-inherited-routes",
     stage: "fast",
-    run: null,
-    why: "tests/permissions/no-inherited-integration-routes.test.ts is #6's and #7's to write (docs/04-engineering/testing-strategy.md § Permission tests). It runs under `pnpm test:permissions` once it exists.",
+    run: ["pnpm", "test:no-inherited-routes"],
   },
   { gate: "pnpm test", stage: "fast", run: ["pnpm", "test"] },
   {

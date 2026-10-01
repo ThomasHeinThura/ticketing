@@ -1,9 +1,9 @@
 import { statSync } from "node:fs";
+import type { Server as HttpServer } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { serve } from "@hono/node-server";
+import { serve, upgradeWebSocket } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { createNodeWebSocket } from "@hono/node-ws";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { Session, User } from "better-auth/types";
 import { and, eq, sql } from "drizzle-orm";
@@ -13,6 +13,7 @@ import { Hono } from "hono";
 import { compress } from "hono/compress";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
+import { WebSocketServer } from "ws";
 import activity from "./activity";
 import attachment from "./attachment";
 import audit from "./audit";
@@ -96,6 +97,7 @@ import workspace from "./workspace";
 import {
   addConnection,
   addUserConnection,
+  forceShutdownWebSocketAdapter,
   initializeWebSocketAdapter,
   removeConnection,
   removeUserConnection,
@@ -317,8 +319,6 @@ export function createApp(options: { staticRoot?: string } = {}) {
     }
     return c.json({ message: "Internal Server Error" }, 500);
   });
-  const nodeWs = createNodeWebSocket({ app });
-  const { upgradeWebSocket, injectWebSocket } = nodeWs;
   const corsOriginSource = [
     process.env.CORS_ORIGINS,
     process.env.TASKDESK_AGENT_URL,
@@ -1192,7 +1192,6 @@ export function createApp(options: { staticRoot?: string } = {}) {
   return {
     app,
     api,
-    injectWebSocket,
     activityApi,
     attachmentApi,
     auditApi,
@@ -1367,10 +1366,150 @@ export function resolvePort(rawPort: string | undefined): {
   };
 }
 
-export async function startServer(
-  injectWebSocket: ReturnType<typeof createNodeWebSocket>["injectWebSocket"],
-  port = DEFAULT_PORT,
+type NodeServerShutdownOptions = {
+  shutdownTimeoutMs?: number;
+  shutdownAdapter?: () => Promise<void>;
+  forceAdapter?: () => void;
+};
+
+type ShutdownResult = "graceful" | "forced";
+
+export function createNodeServer(
+  app: Hono<AppVariables>,
+  port = 0,
+  options: NodeServerShutdownOptions = {},
 ) {
+  const websocketServer = new WebSocketServer({ noServer: true });
+  const server = serve({
+    fetch: app.fetch,
+    port,
+    websocket: { server: websocketServer },
+  });
+  const httpServer = server as HttpServer;
+
+  const shutdownTimeoutMs = options.shutdownTimeoutMs ?? 5_000;
+  const shutdownAdapter = options.shutdownAdapter ?? shutdownWebSocketAdapter;
+  const forceAdapter = options.forceAdapter ?? forceShutdownWebSocketAdapter;
+  let closePromise: Promise<ShutdownResult> | null = null;
+  const close = () => {
+    if (closePromise) return closePromise;
+
+    let resolveClose!: (result: ShutdownResult) => void;
+    closePromise = new Promise<ShutdownResult>((resolve) => {
+      resolveClose = resolve;
+    });
+
+    let httpClosed = false;
+    let websocketClosed = false;
+    let adapterClosed = false;
+    let forced = false;
+    let finished = false;
+    let deadline: ReturnType<typeof setTimeout>;
+    const finish = (timedOut = false) => {
+      if (finished) return;
+      if (!timedOut && (!httpClosed || !websocketClosed || !adapterClosed)) {
+        return;
+      }
+      finished = true;
+      clearTimeout(deadline);
+      resolveClose(forced ? "forced" : "graceful");
+    };
+    const forceResources = (reason: string) => {
+      if (forced) return;
+      forced = true;
+      console.error(`Forcing API shutdown: ${reason}`);
+      try {
+        httpServer.closeAllConnections();
+      } catch (error) {
+        console.error("Failed to close active HTTP connections:", error);
+      }
+      for (const client of websocketServer.clients) {
+        try {
+          client.terminate();
+        } catch (error) {
+          console.error("Failed to terminate a WebSocket client:", error);
+        }
+      }
+      try {
+        forceAdapter();
+      } catch (error) {
+        console.error("Failed to force-close WebSocket adapter:", error);
+      }
+    };
+    deadline = setTimeout(() => {
+      forceResources("graceful close exceeded the shared deadline");
+      finish(true);
+    }, shutdownTimeoutMs);
+
+    // Closing the listener is first so no new request or upgrade can race Redis cleanup.
+    try {
+      server.close((error) => {
+        if (error) {
+          const errorCode = (error as NodeJS.ErrnoException).code;
+          if (errorCode !== "ERR_SERVER_NOT_RUNNING" || server.listening) {
+            console.error("HTTP server close failed:", error);
+            forceResources("HTTP server close failed");
+          }
+        }
+        httpClosed = true;
+        finish();
+      });
+    } catch (error) {
+      if (server.listening) {
+        console.error("HTTP server close threw:", error);
+        forceResources("HTTP server close threw");
+      }
+      httpClosed = true;
+      finish();
+    }
+
+    try {
+      websocketServer.close((error) => {
+        if (error) {
+          console.error("WebSocket server close failed:", error);
+          forceResources("WebSocket server close failed");
+        }
+        websocketClosed = true;
+        finish();
+      });
+    } catch (error) {
+      console.error("WebSocket server close threw:", error);
+      forceResources("WebSocket server close threw");
+      websocketClosed = true;
+      finish();
+    }
+
+    for (const client of websocketServer.clients) {
+      try {
+        client.close(1001, "Server shutting down");
+      } catch (error) {
+        console.error("Failed to send WebSocket shutdown close:", error);
+        forceResources("WebSocket close frame failed");
+      }
+    }
+
+    void Promise.resolve()
+      .then(() => shutdownAdapter())
+      .then(
+        () => {
+          adapterClosed = true;
+          finish();
+        },
+        (error: unknown) => {
+          console.error("WebSocket adapter shutdown failed:", error);
+          adapterClosed = true;
+          forceResources("WebSocket adapter shutdown failed");
+          finish();
+        },
+      );
+
+    return closePromise;
+  };
+
+  return { server, websocketServer, close };
+}
+
+export async function startServer(port = DEFAULT_PORT) {
   try {
     await runApiBootTasks();
   } catch (error) {
@@ -1380,19 +1519,12 @@ export async function startServer(
 
   let shuttingDown = false;
 
-  const server = serve(
-    {
-      fetch: app.fetch,
-      port,
-    },
-    () => {
-      console.log(
-        `⚡ API is running at ${process.env.KANEO_API_URL || `http://localhost:${port}`}`,
-      );
-    },
-  );
-
-  injectWebSocket(server);
+  const { close, server } = createNodeServer(app, port);
+  server.on("listening", () => {
+    console.log(
+      `⚡ API is running at ${process.env.KANEO_API_URL || `http://localhost:${port}`}`,
+    );
+  });
 
   const gracefulShutdown = async () => {
     if (shuttingDown) return;
@@ -1400,8 +1532,12 @@ export async function startServer(
 
     console.log("🛑 Shutting down gracefully...");
     shutdownScheduler();
-    await shutdownWebSocketAdapter();
-    server.close();
+    const result = await close();
+    if (result === "graceful") {
+      console.log("✅ API shutdown completed gracefully");
+    } else {
+      console.error("⚠ API shutdown completed after forced resource closure");
+    }
     process.exit(0);
   };
 
@@ -1417,7 +1553,6 @@ export async function startServer(
 const createdApp = createApp();
 const {
   app,
-  injectWebSocket,
   activityApi,
   attachmentApi,
   auditApi,
@@ -1479,7 +1614,7 @@ if (isMainModule) {
         `⚠ TASKDESK_PORT="${rawPort}" is not a valid port (1-65535) — falling back to ${DEFAULT_PORT}`,
       );
     }
-    void startServer(injectWebSocket, port);
+    void startServer(port);
   }
 }
 

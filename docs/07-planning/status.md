@@ -1,5 +1,72 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## Blocked — 2026-10-01 17:19 UTC
+
+- **P0 #8 — authorization shadow soak:** authorization remains shadow-only. The read-only audit still shows only three low-volume days and unexercised routers against the representative approximately seven-day soak requirement. More code review cannot replace runtime evidence.
+- **P0 #10 — G8/G11 and PR #525:** G8 is required; G11 remains disabled on accepted `main` and absent from the live required ruleset contexts. #525's currently open source is the normal-restored `90c40391d2bee34bf831f340723858a78afd6311`; its previously rejected canonical board run `36884014471` passed 14/22 and failed eight budgets (list 577.1 ms, LCP 2660 ms, detail 1428.6 ms, palette 738.6 ms, navigation 328.3 ms, state 334.4 ms, assignment 327 ms, board 777.6 ms against 500/2500/300/200/200/200/200/500 ms). This run is not acceptance. The earlier full-tree revert matched `cf795`; do not repeat it or claim a cause. G11 is neither enabled on main nor required. The independent ordinary reviews and full Sol review clear exact source `ec40bc0a8f7e5f48819aee20d06fad2c46259440` only. Restored source `90c40391` matches the known restored tree, but exact-head ordinary reviews and its security-review binding remain pending; neither source evidence nor the failed G11 run is acceptance. No aggregate acceptance, causal savings, or P0 finalizer is claimed.
+- **P0 hosted G11 diagnostic #558:** exact source `dad75597dd2050257d7ffb01856a807d916a273d` remains open on the #525 branch. Three fresh ordinary Luna contexts found the privacy allowlist gap (regex-valid hashed asset names are not verified against the build manifest), clock uncertainty underbounded, and request-overlap labeling not causally supported. Author structural remediation is active; no hosted capture has been produced. The automatic canonical G11 run `36894720009` passed 14/22 and failed eight budgets; the diagnostic capture was skipped. This is diagnostic evidence, not G11 acceptance. A current exact-head ordinary review and applicable fresh Sol review remain outstanding after remediation.
+- **P0 profiles / two entries:** #549 is a diagnostic profile candidate; #550 remains based on older #525 source. Their 15/22 hosted runs with seven failures and diagnostic captures do not establish current-main acceptance, causal savings, or product-screen verification. G11 and browser acceptance remain open.
+- **P0 Avatar PR #555:** source `0e82d1dd41fdfb9eed6d350ec0a9fd13174f3dd3` has three independent Luna source reviews. Its image evidence does not close Thomas's H1 review or manual product-screen use; the latest PR-template check fails the unchecked H1 item. It is not merge-ready.
+- **P3 identity PR #544:** exact source `8746f61d75b782a67aa80ad6ba856d7c28e754a8` is a draft on accepted base `6581f750dfc2121da6bd300ad1f05d6c02f0e55a`. Current Luna reviews remain blocked on conditional OIDC elevation/admission semantics, SCIM versus validated OIDC source retirement, and grant-retirement/reenablement wording; Sol architecture consistency review is pending. Owning findings 81/82 and Thomas's finished-spec read remain open. The 25 named tests are planned, not run; ADR-0015 is proposed, not approved. CI is not a substitute for those reviews; no P3 or identity acceptance is claimed.
+- **Manual browser verification remains blocked:** the prior Chrome-extension handoff has no answer, and the current turn has no CUA interface. No authenticated screens were opened for these changes. This is a genuine verification block, not `n/a` evidence or a claim that the app is unready. Thomas's explicit finished-spec read remains pending; a documentation-site question was sent and has no response recorded here. No approval is inferred.
+- **Stages and gates:** P0–P7 remain open; no stage completion, H1 approval, quality-gate waiver, or phase-finalizer pass is claimed. P1–P4 and their manual, shared-schema, approval/execution, worker, DELETE retrofit, UI and AU-14 notification work remain unfinished.
+
+## 2026-10-01 orchestrator snapshot — accepted remote `main` at `c1c0b3b3784808ee04ca21f7a2456b0abd02a00d` (verified 2026-10-01 17:19 UTC)
+
+Protected PR #542 merged at 16:32:42 UTC as `6581f750dfc2121da6bd300ad1f05d6c02f0e55a`; reviewed source was `e83e0166eb32f3cedcf727df249a8dd3c7ca8933` and the final candidate was `c65143195425a550f9c29cde55edf33405e10d69`. Independent ordinary review and full Sol review are recorded; the final candidate passed all 17 required contexts. Hosted PostgreSQL passed 126 files / 1,579 tests / 5 tasks; unit/component passed 12 tasks (API 67/536, UI 59/291, web 80/351). The accepted image was built from source `e83e0166`, digest `sha256:34291f03cb39cd5ffec244c01011b22831cc57bc954c76ae3ed5171b304cf8e0`, with UID 10001 and disposable migration exit 0. The normal persistent OrbStack redeploy now runs that source/image with Hono 4.13.7: six app/Traefik/PostgreSQL/Valkey/Mailpit/loopback services were healthy, and seven certificate-validated HTTPS probes returned 200 for ticketing and portal root/live/ready and Mailpit root at 16:43:41 UTC (`/private/tmp/taskdesk-orbstack-health-hono542-164341.json`). This establishes the current local runtime image, not browser-screen verification. Hono 4.13.7 does not resolve the Sep 29 Hono/static-helper advisory; open issue [#557](https://github.com/ThomasHeinThura/ticketing/issues/557) tracks compatible package updates and WebSocket/malformed-path regression work. No advisory is dismissed or waived. See [PR #542](https://github.com/ThomasHeinThura/ticketing/pull/542) and the protected-merge evidence at [the PR comment](https://github.com/ThomasHeinThura/ticketing/pull/542#issuecomment-5935962898).
+
+Protected PR #556 merged at 17:11:01 UTC as the current accepted `main` SHA `c1c0b3b3784808ee04ca21f7a2456b0abd02a00d`. It records the static docs-site contract only. Reviewed source `e3420ce6ce0057b0c2da6cf560f6f7576df753b4` and final candidate `19705b0f4250190b355afb60e005f5e7ced63693` passed the applicable independent review and all 17 required contexts. Hosted PostgreSQL passed 126 files / 1,579 tests / 5 tasks; unit/component passed 12 tasks (API 67/536, UI 59/291, web 80/351). This is documentation/contracts only: no site/runtime/image work, Thomas spec-read, owning-finding closure or stage completion is claimed. See [PR #556](https://github.com/ThomasHeinThura/ticketing/pull/556) and its protected-merge proof at `/private/tmp/pr556-19705-required-proof.json`.
+
+The profile PR #549 and two-entry PR #550 remain open diagnostics. The #555 Avatar extraction remains open with manual H1/screen verification outstanding. The current open PR heads and review/check state were refreshed from GitHub at 17:19 UTC; consult live GitHub again before acting because those values can change.
+
+## Blocked — 2026-10-01 15:12 UTC
+
+- **P0 #8 — authorization shadow soak:** the authorization mechanism is merged, but policy evaluation remains shadow-only. Representative traffic and the approximately seven-day clean soak remain required before cutover. The 2026-10-01 read-only audit still found only three low-volume days and unexercised routers. Further code review does not substitute for this runtime evidence.
+- **P0 #10 — G8/G11 CI gates:** G8 is required on `protect-main` through #507. G11 remains disabled on accepted `main@fa475af5e493aec28ac247efd3b385a09b159ef5` and is absent from the ruleset's required status contexts; adding it as a required context is still necessary before #525 can close the gate. The last independently reviewed #525 source is `ec40bc0a8f7e5f48819aee20d06fad2c46259440`; its canonical hosted G11 run `36879197823` passed 15/22 and failed seven budgets: work-list LCP 2,572/2,500 ms, work-list-to-item route 1,080/300 ms, command palette 547.6/200 ms, palette keyboard navigation 296.8/200 ms, state change 220.8/200 ms, assignment 290.6/200 ms, and 200-item board render 590.6/500 ms. The independent Luna revert review and Sol security review clear source only, not G11 acceptance. At 15:12 UTC the orchestrator had begun the normal accepted-main composition; check GitHub for the resulting exact head, mergeability, and checks. Do not attribute the reverted direct-layout preload experiment to the current candidate: Sol found it could falsely pass the bundle budget, and the experiment was reverted. No G11 acceptance, causal savings, or phase-finalizer claim is made.
+- **P0 profile/two-entry candidates:** #549 remains a diagnostic profile candidate at `469c7b8e2623ae5a04d4e878e0cbe780eece9be3`; its hosted run `36871476832` passed 15/22 and failed seven. Its six-journey diagnostic capture and retained-file/source-map counts do not establish aggregate acceptance or causal savings. #550 remains at `2ad7e03b4cbb9041b811c33e5799097d82a83214` on the older #525 source `13516958be469aa353d9b5f7e0b113880b31ed17`; its hosted G11 run `36863667532` passed 15/22 and failed seven. Its reviews and isolated image/host/health evidence are limited to that source; current-main composition and manual browser acceptance are outstanding.
+- **P0 shared Avatar extraction, PR #555:** exact source `0e82d1dd41fdfb9eed6d350ec0a9fd13174f3dd3` has three independent Luna source reviews with no code finding. Manual product-screen use remains blocked by the browser-extension interface, and Thomas's H1 review remains pending. The exact-source image reported in the PR is `sha256:7a5fb5f7d3b3de7ed72b432fed956bc2696aa89387bdd07c7c0d4a69dd0e3093`, with a matching source label, UID 10001, disposable migration exit 0 and live/ready HTTP 200; this does not satisfy manual screens/H1. The latest PR-template check fails on the unchecked H1 item. Do not claim merge readiness.
+- **P3 identity PR #544:** current source is `f7ccef33fc866a9f55516043e2c5df5e471d85b8`, based on accepted main; it remains a draft. Three fresh ordinary reviews and the full Sol review are pending on this exact source. Owning findings 81/82 remain active for independent owner verification. The proposed ADR-0015/IP-28 grant-provenance material is still a proposal, not an approved ADR, implementation, or finding closure.
+- **P1 dependency PR #542:** remains open at `8a76d3592d20d7320de3b17d73c7a8771c475377`, based on `c4475d93f98384c79370a4383bad82df75ebb31e`; required checks are green on its recorded head, but current-main composition and manual browser acceptance remain outstanding.
+- **Manual browser verification remains blocked** by the Chrome extension interface. P1–P4 remain open. No stage completion, H1 approval, quality-gate waiver, or P0–P7 phase finalizer is claimed.
+
+## 2026-10-01 orchestrator snapshot — accepted remote `main` at `fa475af5e493aec28ac247efd3b385a09b159ef5` (verified 2026-10-01 15:12 UTC)
+
+Protected PR #553 merged at 15:05:25 UTC as `fa475af5e493aec28ac247efd3b385a09b159ef5`. It records bounded P0 observability, step-up and related documentation contracts only; it does not implement runtime listeners, metrics, MFA adapters or administrator notifications. The final PR head was `687bb36a33d9c6a0ed8ec35a3b69b8d2da015424`, with reviewed source `ab92c7d8a8920436be1bea2f896d0c1bd158e708`. Three ordinary Luna reviews (5380832497, 5380798857, 5380782972) and a full Sol review (5380902002) cover that source. The final candidate passed all 17 required contexts on the recorded fast/full runs; the optional GitGuardian failure remains visible for inherited generated disposable-credential expressions, with no dismissal or waiver. Hosted PostgreSQL passed 126 files / 1,579 tests / 5 tasks; unit/component passed 12 tasks (API 67/536, UI 59/291, web 80/351). See [PR #553](https://github.com/ThomasHeinThura/ticketing/pull/553), [review note](security-reviews/553-observability-contracts.md), and the protected-merge proof at `/private/tmp/pr553-687b-required-proof.json`.
+
+The persistent OrbStack deployment still runs runtime source `b311c8cc6ba65906812eeafbf5783d2632dfee53`, image `sha256:963e431dd8f3623cea55d2e9280372b8864759401d4e0abdd0633f9476bc1c74`. At 15:00:33 UTC, seven certificate-validated HTTPS probes returned 200 for ticketing and portal root/live/ready plus Mailpit root; the six local TaskDesk containers (app, Traefik, PostgreSQL, Valkey, Mailpit and loopback helper) were healthy when inspected. Evidence: `/private/tmp/taskdesk-orbstack-health-current.json`. This remains an older accepted runtime image, not a deployment of #553 or newer main. Manual Chrome verification remains blocked.
+
+## Blocked — 2026-10-01 14:10 UTC
+
+- **P0 remains open.** PR #525 is at `49945191290df76b25c2aac43948fa69b6e235be`; a strong independent Luna review and a full Sol security review clear this exact source, but its hosted G11 run (`36867553782`) passed 14/22 and failed eight strict timing budgets. The pull-request-template/security-review check also fails. PR #549 is at `469c7b8e2623ae5a04d4e878e0cbe780eece9be3`, with strong Luna and full Sol reviews clear on that exact source; its hosted canonical G11 run (`36871476832`) passed 15/22 and failed seven timing budgets. Its separate diagnostic capture passed one test across six journeys and hashed 1,250 retained files with 604 source maps; it establishes neither aggregate acceptance nor causal savings. PR #550 remains at `2ad7e03b4cbb9041b811c33e5799097d82a83214` on the older #525 base `13516958be469aa353d9b5f7e0b113880b31ed17`; its own hosted G11 run (`36863667532`) passed 15/22 and failed seven. Its reviews and isolated image/host/health evidence remain scoped to that source; it has not been composed on current #525 source, and manual browser verification is blocked. A separate P0 implementation is active without an open PR. No P0/G11 acceptance or phase finalizer is claimed.
+- **P0 observability PR #553** is at `a48a481e63c0fac91d3570a28aff9a54751e3465`. A review of prior head `ab342144e0ac85bdeabe303be8018abba9c7f108` was blocked by a contradiction in the MFA owner document. The current head includes an MFA status reconciliation, but no independent review of that exact head is recorded and no owning finding is confirmed closed. Listener, metric, MFA/SSO and administrator-notification runtime work remains future work.
+- **P3 identity PR #544** remains at `5629cfc0c38fc38d2a7dc18a6ab4695487344e98`; its JIT-domain and CSRF/PKCE/state/nonce owning findings remain open, and current-panel/Sol acceptance is incomplete. The IP-28 grant-provenance document under `/private/tmp` is a read-only proposal, not an approved ADR, authoritative contract, implementation, or evidence that any owning finding closed. Dependency PR #542 remains open at `8a76d3592d20d7320de3b17d73c7a8771c475377`; its exact composition against current main and manual browser acceptance remain outstanding.
+- **Manual browser verification remains blocked** by the Chrome extension interface after the retry. P1–P4 remain open; no stage completion, H1 approval, quality-gate waiver, or P0–P7 phase finalizer is claimed.
+
+## 2026-10-01 orchestrator snapshot — accepted remote `main` at `adf97f067c9b4f73b36f2a870a5e2c5319f93ebe` (verified 2026-10-01 14:10 UTC)
+
+Protected PR #551 merged at 13:39:04 UTC as `098274e1d353ce5731c06eaf7fbc72898798ce8d`. Its PgBouncer prototype is a test-only probe, not a production RLS wrapper or application connection-pool change. Implementation source `d832dccd1d7dda5cdcf034ffc216fabfaf52357d` received two independent Luna reviews and a full independent Sol review; note-only final candidate `8b501133fe5416fc419ec1a112eed9ac1fb04876` was bound to that source and passed all 17 required checks. Hosted PostgreSQL passed 126 files / 1,579 tests / 5 tasks; unit/component passed 12 tasks (API 67/536, UI 59/291, web 80/351). The optional GitGuardian status remained a failure for generated disposable credential expressions; it was not dismissed or waived. See [PR #551](https://github.com/ThomasHeinThura/ticketing/pull/551) and [security review note](security-reviews/551-rls-pgbouncer-prototype.md).
+
+Protected PR #554 merged at 14:04:28 UTC as the current `main` commit `adf97f067c9b4f73b36f2a870a5e2c5319f93ebe`. It stabilizes seed-preservation snapshots. The implementation/composition source `3019982d051595ede5bf992c104e62aba94d4dce` received the ordinary current-main delta and full Sol composition reviews; final candidate `ad34432cc05b5b65840b063103e0c78036881cb7` adds only the security-review note and passed all 17 required checks. Hosted PostgreSQL passed 126 files / 1,579 tests / 5 tasks; unit/component passed 12 tasks (API 67/536, UI 59/291, web 80/351). The optional GitGuardian status remained a failure for inherited generated-disposable-credential expressions; no alert was dismissed or gate waived. See [PR #554](https://github.com/ThomasHeinThura/ticketing/pull/554) and [security review note](security-reviews/554-seed-snapshot-order.md). Neither merge claims P0 completion or changes the accepted runtime image.
+
+The persistent OrbStack deployment still runs source `b311c8cc6ba65906812eeafbf5783d2632dfee53`, image `sha256:963e431dd8f3623cea55d2e9280372b8864759401d4e0abdd0633f9476bc1c74`. Seven certificate-validated HTTPS probes returned 200 at ticketing and portal root/live/ready and Mailpit root at 13:10:01 UTC; evidence is `/private/tmp/taskdesk-orbstack-health-1312.json`. This is not a deployment of #551, #554 or current main. No fresh manual screen evidence is claimed.
+
+## Blocked — 2026-10-01 13:01 UTC
+
+- **P0 remains open.** PR #525 is at `13516958be469aa353d9b5f7e0b113880b31ed17`; three fresh independent Luna reviews and a full Sol pass are recorded on this exact source. Its latest hosted G11 and pull-request-template/security-review checks fail. The trace repair was still uncommitted and unreviewed at this snapshot. The separate source-attribution work in #549 (`43531d083cba9354b7be9d9ec5eec5c830e20953`) recorded 13/22 canonical hosted G11 cases passing and 9 timing failures. Its diagnostic capture covers six journeys, hashes 1,250 build files and records 604 maps; it does not establish aggregate acceptance or causal savings. The recorder's 13 unchanged tests pass, but the corrected separate network-evidence design has not produced a new canonical run. Restored-dist provenance, the authorization soak, other exit criteria, and the fresh P0 Sol phase finalizer remain open.
+- **Two-entry P0 PR #550** is at `2ad7e03b4cbb9041b811c33e5799097d82a83214`. Three independent Luna ordinary reviews and a full independent Sol review are clear on that exact head. Its image build/boot, host matrix and three health probes passed and the isolated stack was cleaned up. Required hosted G11 (15/22, 7 failed; run `36863667532`, job `110373900971`) and PR-template/security-review checks fail. Manual desktop browser verification remains blocked by the Chrome extension interface. This is not merge-ready and does not close P0.
+- **RLS prototype PR #551** is at `d832dccd1d7dda5cdcf034ffc216fabfaf52357d`. Two independent Luna reviews and a fresh full Sol security review pass on the exact head. Its real PostgreSQL/PgBouncer prototype passed 1 file / 2 tests; current PostgreSQL integration passed 126 files / 1,579 tests, and the other required CI checks are green. The required PR-template/security-review check fails. GitGuardian reports two generic-password alerts for runtime-generated UUID-suffixed disposable test credentials; the required secret scan is green and the ruleset does not require GitGuardian. No incident dismissal, gate waiver, production RLS or application-pool claim is made.
+- **P3 identity PR #544** is at `5629cfc0c38fc38d2a7dc18a6ab4695487344e98`. One scoped ordinary documentation review approves its current delta, but the owning JIT-domain finding still requires OIDC group-role reevaluation/removal, the CSRF/PKCE/state/nonce finding remains open, and the 25 named tests have not been built or run. The required current panel and full Sol review remain outstanding; no P3 acceptance is claimed.
+- **Dependency PR #542** is at `8a76d3592d20d7320de3b17d73c7a8771c475377`; despite green required CI, browser verification is blocked and its future-main composition/exact delta against `1118552f7bbee00ba2e694a021db969dda2769da` remains outstanding. It is not merged.
+- **Manual browser verification remains blocked** by the Chrome extension interface; a newer close request is unanswered. No stage is complete. P1/P2/CAL manual and shared-migration gaps remain open.
+
+## 2026-10-01 orchestrator snapshot — accepted remote `main` at `1118552f7bbee00ba2e694a021db969dda2769da` (verified 2026-10-01 13:01 UTC)
+
+Protected PR #508 merged at 12:09:58 UTC as `1118552f7bbee00ba2e694a021db969dda2769da`; PR #548's status-only snapshot merged at 11:30:53 UTC as `c4475d93f98384c79370a4383bad82df75ebb31e`. PR #508 is a documentation-only notification fanout contract change. It accepts the fanout design contract only; it adds no notification runtime behavior and claims no P4/stage acceptance. #508 source `b42bb1d34590718b3e5983a024b5aa2b53c966c0` was reviewed by three independent ordinary Luna contexts and a full independent Sol pass. A later note-only commit (`985b9774f8b7c1346c0c820c0c4d031aa406f324`) recorded that review evidence; the exact final candidate passed all 17 required checks before protected merge. Evidence: [PR #508](https://github.com/ThomasHeinThura/ticketing/pull/508), [review note](security-reviews/508-notification-contracts.md), and [protected merge record](https://github.com/ThomasHeinThura/ticketing/pull/508#issuecomment-5931119244).
+
+The clean OrbStack deployment still runs accepted image source `b311c8cc6ba65906812eeafbf5783d2632dfee53`, digest `sha256:963e431dd8f3623cea55d2e9280372b8864759401d4e0abdd0633f9476bc1c74`, with six healthy services; its last verified health was 12:03:25.918 UTC. `ticketing.localhost` and `portal.localhost` use IPv6 loopback forwarding into normal Traefik TLS; WSO2 IPv4 and desktop volumes are preserved. These checks do not deploy #508 or a later source. The separate administrator API credentials remain private and were not read.
+
+No aggregate CI, stage completion, browser verification or gate waiver is claimed. P0 and the parallel lanes remain blocked as listed above. Check live GitHub before acting; this section records a point-in-time snapshot.
+
 ## Current review policy — 2026-09-29
 
 Thomas's 2026-09-29 decision sets GPT-6 Luna for implementation and ordinary review, and
@@ -12,6 +79,139 @@ orchestrator and supplied a GPT-prepared review packet; it is not a per-PR gate 
 substitute. Reviews below retain the exact heads and model tiers they actually covered.
 
 ---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
+`f7ae8cc846030b10678c9860e4d4bda4f15b93a1` (verified 2026-10-01 10:54 UTC).** PR #547
+remains the latest protected main change. The verified 10:14 merge evidence, local OrbStack
+runtime image and limitations are recorded immediately below.
+
+**P0 remains open.** Draft #525 is at `3f49f616f251a411f4f0d1afcccb7da08a51a935`.
+Its current-source 13-case functional Chromium regression passes 13/13. The canonical
+22-case local G11 run on this source ran once, with one worker, from 10:48:33 to 10:54:29
+UTC and passed 22/22; all strict local G11 metrics and G13 checks passed. Drag evidence
+records 100 versioned PUTs with quoted `If-Match: "1"`; `legacy-task-1` persisted
+`in-progress` after reload, and measured frame p95 was 16.7 ms against the <20 ms budget.
+This is local run evidence only; there was no separate focused preflight or rerun. At 10:54
+UTC the hosted G11 job (`36851102379`, job `110333098884`) was still in progress, and the
+fast PR-template/security-review check was failing. The canonical evidence archive is
+`/private/tmp/p0-g11-canonical-3f49f616-104833`. Do not treat G11 as accepted or #525 as
+merge-ready: current exact-head reviews and green required CI remain pending, and G11 must be
+present as a required branch-protection context before #525 may merge. No aggregate
+acceptance or causal savings claim is made. Restored-dist provenance, representative
+authorization soak, other P0 exit gates and the fresh Sol phase finalizer remain incomplete.
+
+PR #508 is draft at `223526e1d002ca3657558c9d5851e5b831d62b77`; its bounded retention delta
+adds resource-owning-organization hold coverage and configurable 90-day default wording.
+Fresh ordinary reviews and Sol review remain pending; no contract acceptance is claimed.
+PR #544 is draft at `9a957996a29c3d685d508d3e0dfa80019873be27`; its ordinary panel and Sol
+review remain pending, and owning findings 81/82 remain open. PR #513 is draft at
+`0ca995a28ae3e079723d14607b8d8d4f95dd75da` with calendar browser and acceptance gaps still
+open. P1/P2/P3/P4 remain open. No stage completion or gate waiver is claimed.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
+`f7ae8cc846030b10678c9860e4d4bda4f15b93a1` (verified 2026-10-01 10:14 UTC; factual
+corrections recorded 10:54 UTC).** Protected PR #547 merged at 10:04:06 UTC. Final
+candidate `29850e0a1285164f4d319d969317e163d87d8455` passed all 17 required checks before
+protected merge. Hosted PostgreSQL integration passed 126 files / 1,579 tests / 5 tasks.
+Unit/component passed 12/12 tasks (API 67 files / 536 tests; UI 59 files / 291 tests; web
+80 files / 351 tests), route policy/permission matrix passed 14 files / 88 tests, and the
+focused `test:no-inherited-routes` gate passed 1 file / 5 tests. Independent Luna and full
+Sol reviews bind source `2751ab71e86e23cd20e9e7a30860a7b92190955e`; later commits only
+record review evidence. The focused inherited-route regression is enabled on main; G11
+remains disabled, and the other disabled gates remain explicit work. This test/config/docs
+change did not alter runtime behavior. No image rebuild, deployment of this SHA, or new
+browser evidence is claimed. See [PR #547](https://github.com/ThomasHeinThura/ticketing/pull/547)
+and its [review note](security-reviews/547-no-inherited-routes.md).
+
+The OrbStack local deployment recorded below continues to run the accepted #546 runtime
+image (`b311c8cc`, digest `sha256:963e431dd8f3623cea55d2e9280372b8864759401d4e0abdd0633f9476bc1c74`).
+#547 changed test coverage only; it did not produce a new shipped image. Seven
+certificate-validated HTTPS probes, healthy services and API-verified administrator,
+workspace, project and DEV-1 creation remain the verified local-runtime evidence. The fresh
+Chrome screen check remains blocked by the browser-extension interface.
+
+**P0 remains open.** At this snapshot #525 source was
+`22b3a259f3e53355a239ee0a98f81bd5e066461e`. The earlier 22-case canonical local run on
+source `8dda28990c14ee0f3a6a42c4d091fd58213303c5` passed 21 cases; its drag-column
+assertion failed before producing a frame-p95 result. The hosted 22-case G11 run for source
+`22b3a259f3e53355a239ee0a98f81bd5e066461e` (run `36845273012`, job `110314042091`)
+completed at 10:01:30 UTC with 13 passed and 9 failed: eight timing budgets (list
+501.8/500 ms, LCP 2,652/2,500 ms, route 457.2/300 ms, create 217.9/200 ms, palette
+keyboard 399.6/200 ms, state 235.4/200 ms, assignment 242.1/200 ms, board 712.7/500 ms)
+and a drag rollback before frame-p95 measurement. Those are failed historical acceptance
+results for that source. They do not establish current-source aggregate budget acceptance
+or causal savings. Restored-dist provenance remains under investigation. The authorization
+soak, remaining exit gates and fresh Sol phase finalizer remain incomplete.
+
+Calendar #513 and identity trust #544 remain partial with browser/identity review and
+acceptance gaps. P1/P2/P3/P4 remain open. Notification #508 candidate source was
+`094fb7afda0d852a19dd2f4293a9481f31b0c36b`; its unnecessary **webhooks** touch was reverted.
+The 24 webhooks owning review rows remain open and unmodified; `check:reviews` passed on that
+source. Three fresh ordinary reviews and Sol review remained pending. No notification
+contract or acceptance was claimed. No stage completion or gate waiver is claimed.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
+`494b7e9ac8db200e1c5c599b1b73911684314bbf` (verified 2026-10-01 09:59 UTC).**
+Protected PR #546 merged at 09:07:12 UTC. Its final candidate
+`a88f69eee9451c43a771875044a5c97987ba36ab` passed all 17 required checks, including
+hosted PostgreSQL integration at 126 files/1,579 tests and unit/component at 12/12 tasks
+(API 67 files/536 tests; web 80 files/351 tests). Independent full Luna and full Sol
+reviews bind implementation source `aa1c1f7fef120b6ba48f5cc86896254f6a4e6c55`; the final
+candidate commit only records that evidence. See the [security review note](security-reviews/546-seed-ci-coverage.md)
+and [protected merge evidence](https://github.com/ThomasHeinThura/ticketing/pull/546#issuecomment-5928320706).
+
+The ordinary local deployment completed through the full `DOCKER_CONTEXT=orbstack`
+`scripts/deploy.sh local` path. Accepted runtime image source is `b311c8cc`, digest
+`sha256:963e431dd8f3623cea55d2e9280372b8864759401d4e0abdd0633f9476bc1c74`; app,
+Traefik, PostgreSQL, Valkey, Mailpit and the IPv6 loopback helper were healthy. Seven
+certificate-validated HTTPS probes returned 200 across both hosts' root/live/ready paths
+and Mailpit root. A fresh administrator login and creation of a workspace, project and
+DEV-1 task were verified through the API. Evidence is in
+`/private/tmp/taskdesk-orbstack-traefik-health.json` and private files under
+`/Users/heinthura/.codex/local-credentials/taskdesk-orbstack/`. Chrome screen verification
+for DEV-1 is still blocked by the pending browser-extension interface; no new screen claim
+is made. Old Docker Desktop volumes remain retained and its daemon is off. Default IPv6
+localhost ports 80/443 use the private Compose/startup forwarding helper; Traefik remains
+the only TLS termination point and existing WSO2 IPv4 ports are unchanged. Mailpit's
+official matching OCI manifest/layers were recovered and verified after daemon pull
+timeouts; this does not establish SMTP configuration in God Mode.
+
+**P0 remains open.** #525's current source is
+`22b3a259f3e53355a239ee0a98f81bd5e066461e`. Its structural recorder's canonical run on
+source `8dda28990c14ee0f3a6a42c4d091fd58213303c5` recorded 21 of 22 cases passing; one
+drag-column assertion failed and produced no frame-p95 result. The current source passes
+11/11 functional Chromium regressions. Hosted evidence for the current source is queued or
+running. Restored-dist provenance remains under investigation; profile 2a alone does not
+prove the older b28 source. No aggregate acceptance result or causal savings claim exists.
+Raw B508 profiles are documented in `/private/tmp/p0-g11-b508-source-profile.md`: CPU span
+is not CPU activity, and recorder overhead measured 52 ms with a scroll hotspot. No
+application optimization is justified. Avoid local heavy build/test work while this
+benchmark work continues. Representative authorization soak, remaining P0 exit criteria and
+the additional fresh Sol phase finalizer remain incomplete.
+
+**Parallel acceptance:** #547 is open at
+`29850e0a1285164f4d319d969317e163d87d8455`. Its implementation was reviewed at
+`2751ab71` by one independent strong full Luna review (including composition) and a further
+fresh full Sol pass; the current final note records those reviews, and no source changed
+after review. All 17 latest required checks are green on this exact head; G11 is skipped
+because it is disabled and is not required. The orchestrator is verifying the final suite
+counts before using the protected merge flow. It remains unmerged as of 09:59 UTC; record
+acceptance only after the orchestrator confirms the merge and updated `main` SHA.
+
+Calendar #513 remains partial: fixture support is off pending Chrome/manual light, dark,
+zoom and 409-recovery verification. Shared AU-14/CAL-8 gaps remain open; migration 0080
+follows schema 0079, and #512's migration is regenerated later. P3 identity trust #544 now
+has ADR-0014's explicit limited-domain SSO/public-IdP-disclosure clarification at
+`eaf567c5195a54df1d63f10f1af77c681c0eba7c`; its ordinary panel and Sol review remain
+pending, owning findings 81/82 remain open, and no DDL or real-Entra completion is claimed.
+P4 notification #508 had candidate `0955eaaae4825b52d6546b7807ce83e6c178e46c`, which
+proposed the structural parent/child digest contract; the next candidate and current review
+state are recorded in the newer 10:14 snapshot above. P1/P2/P3/P4 are not complete.
+No stage completion or gate waiver is claimed.
 
 **2026-10-01 orchestrator snapshot — remote `main` at
 `2d67c47f6877671e6e00b662aa9734a9ff244d94` (verified 2026-10-01 07:54 UTC).**
@@ -2465,11 +2665,17 @@ are required before cutover. Do not treat further code review as a substitute fo
 
 G8 is merged through #507 and required by `protect-main` ruleset 22365005; its scope is
 every exported Storybook story and every in-progress or complete route-kind inventory row.
-Future routes activate with implementation. G11 remains disabled on main; draft #525's
-hosted budgets remain red; its latest G13 measurements and deliberate red probe pass.
-Obtain current-head reviews and green CI, then require the G11 status context before
-merging #525. G4 is enabled by #501. The #10 checklist
-still needs reconciliation with the implemented gates.
+Future routes activate with implementation. PR #547 enabled the focused inherited-route
+regression in `test:all`; nine other declared gate entries remain disabled/pending. G11 is
+among them and remains disabled on main. #525's current head is
+`3f49f616f251a411f4f0d1afcccb7da08a51a935`; its current-source functional Chromium
+regressions pass 13/13. The earlier source `8dda28990c14ee0f3a6a42c4d091fd58213303c5`
+canonical run recorded 21/22 passes and one failed drag-column assertion without frame-p95.
+The current-source canonical local run passed 22/22 once with one worker; the hosted G11
+check remains pending, as recorded in the newest snapshot. No aggregate budget or savings
+claim is accepted. G11 must be added as a required branch-protection context before #525 can
+merge. G4 is enabled by #501. The #10 checklist still needs reconciliation with the
+implemented gates.
 
 ### P1 #447 — saved-view candidate needs a current base and gates
 
@@ -2489,17 +2695,16 @@ before dispatch.
 
 ### P2 #33 / P3 #39 shared-schema ordering and identity review
 
-The #33 calendar candidate is draft PR #513 and remains partial. CAL-8 usage, AU-14 alerting
-and the pending-action DELETE retrofit remain open. Protected PR #529 has established
-task-version migration 0079 on main. Calendar PR #513 uses migration 0080 and awaits
-independent review and protected acceptance; P1 #512 must regenerate its later migration
-from that accepted schema. Acceptance and shared-schema writes remain serialized.
-P3 #39's six-table persistence work shares Drizzle
-schema, relation and migration-journal files, so that work starts after those lanes release
-them. The owning security review still lists JIT/domain trust and the OIDC protocol floor;
-identity implementation waits for those findings to be independently reconciled and cleared.
-The read-only six-table plan also identifies canonical persistence details that must be
-resolved before DDL. #39's eventual completion still requires its 25-test real-Entra gate. P3 #38 remains dependent on request/catalogue/intake/approval foundations.
+The #33 calendar candidate is draft PR #513 and remains partial. Fixture support is off
+pending Chrome/manual light, dark, zoom and 409-recovery verification. CAL-8 usage, AU-14
+alerting and the pending-action DELETE retrofit remain open. Calendar PR #513 uses migration
+0080 after task-version 0079; P1 #512 regenerates its later migration after calendar
+acceptance. Acceptance and shared-schema writes remain serialized. P3 #39's six-table
+persistence work shares Drizzle schema, relation and migration-journal files. ADR-0014 now
+records the limited-domain SSO/public-IdP-disclosure clarification at #544's current head,
+but ordinary and Sol reviews remain pending and owning findings 81/82 stay open. No DDL or
+real-Entra completion is claimed; its eventual acceptance still requires the 25-test
+real-Entra gate. P3 #38 remains dependent on request/catalogue/intake/approval foundations.
 
 ### Design-review ownership — P2 #36
 
@@ -2553,7 +2758,7 @@ in `## Blocked`, above, which are a separate, still-live concern.
 | CLA, for a possible dual licence | Before the first external contribution | Thomas |
 | Final product name | Before P7 | Thomas |
 | ~~Whether to sell externally~~ | Decided: yes — but the **AWS Marketplace listing itself is deferred beyond the current 3–4-month scope** (2026-09-05); BYOL/contract preferred when it comes — see [decision log](decision-log.md) | — |
-| Docs-site stack — fresh Fumadocs app (recommended) / kaneo's marketing site + `/docs` / Mintlify | Before P0's `apps/site` skeleton | Thomas |
+| Docs-site stack — recorded recommendation is a fresh headless Fumadocs app with Next.js static export; Thomas's read of the completed spec and H1–H6 approval remain pending before implementation | Before P0's `apps/site` skeleton | Thomas |
 | Visual-regression tool for gate G8 — Playwright `toHaveScreenshot` with in-repo baselines, or Chromatic | Before P0's UX gate scripts | Thomas |
 | Gate consolidation in release-plan.md — confirm as a waiver or revert | Before `2.0.0` | Thomas |
 | WAL archiving for point-in-time recovery | Before real customer data | Thomas |

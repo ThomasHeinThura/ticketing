@@ -79,9 +79,14 @@ concurrency, cross-tenant isolation, migration application, job leasing, outbox 
 ## Permission tests — RBAC and its API, the structural layer
 Added 2026-09-06, from the fork-time removal list ([decision log](../07-planning/decision-log.md)):
 
-- `no-inherited-integration-routes.test.ts` — no route in Hono's router matches
-  `public-project|github|gitea|slack|discord|telegram|generic-webhook`; `octokit` and
-  `@octokit/webhooks` are absent from the lockfile.
+- `no-inherited-integration-routes.test.ts` — the constructed Hono router has no
+  `public-project`, GitHub, Gitea, Slack, Discord, Telegram or generic-webhook route; the
+  exact `octokit` and `@octokit/webhooks` package names are absent from lockfile package and
+  snapshot mappings and importer aliases. The constructed better-auth instance contains no
+  `anonymous`, `device-authorization` or `bearer` plugin. The independently reconciled
+  `pnpm test:no-inherited-routes` fast gate runs this test; `pnpm test:permissions` includes it
+  as well. The existing `better-auth-plugin-list.test.ts` remains the authoritative exact
+  approved-list assertion.
 - `no-anonymous-plugin.test.ts` — the constructed better-auth configuration contains no
   `anonymous`, `deviceAuthorization` or `bearer` plugin, `accountLinking.enabled` is `false`
   and `session.cookieCache` is disabled (reads the config, not the HTTP behaviour).
@@ -100,11 +105,15 @@ This layer exists specifically because of v1's eleven authorization holes, and i
 one layer that tests the API surface itself rather than a feature behind it — see
 [RBAC](../01-architecture/rbac.md) and [Security model](../01-architecture/security-model.md).
 
-**`route-coverage.test.ts`** — enumerates every route in **Hono's router** (`app.routes`),
-not the OpenAPI document — so `/auth/*`, `/ws` and `/metrics` are covered too — and fails
-if any lacks a policy entry of one of the five kinds in [RBAC](../01-architecture/rbac.md).
+**`route-coverage.test.ts`** — enumerates Hono `app.routes` and every non-Hono listener
+manifest exported by its runtime constructor, not the OpenAPI document. `/auth/*` and `/ws`
+are Hono/delegated surfaces; `GET /metrics` is a separate Node listener on port 9464 and is
+absent from `app.routes`. Its constructor must export the method/path/port/delegated-policy
+key, and coverage compares the constructed listener to that manifest. It fails for an
+unclassified listener route, orphaned delegated policy, or changed/extra method/path. Before
+the listener is implemented, its manifest and policy are planned, not current coverage.
 A public route must declare `public: true` *with a reason*; a delegated mount must say what
-it delegates to and why.
+it delegates to and why. OpenAPI alone proves none of these surfaces.
 
 **`matrix.test.ts`** — every built-in role against every route, asserted against a
 checked-in fixture. Changing access changes the fixture, which appears in the pull request
@@ -187,8 +196,8 @@ covered elsewhere:
 
 ## Identity provisioning tests — SCIM and Microsoft Entra
 
-**Where** — `tests/api-integration/identity/`. Seventeen named acceptance tests, numbered
-`01`–`17` in [identity-provisioning.md](../03-features/identity-provisioning.md#testing),
+**Where** — `tests/api-integration/identity/`. Twenty-five named acceptance tests, numbered
+`01`–`25` in [identity-provisioning.md](../03-features/identity-provisioning.md#testing),
 run on every PR against a mock IdP and, **before the P3 identity gate closes, against a real
 Microsoft Entra test tenant**. In one line each: agent OIDC is agent-portal-only; customer
 OIDC is bound to one organisation; portal sessions are isolated both ways; a SCIM token
@@ -197,7 +206,38 @@ a customer connection cannot create staff or authority; SCIM create/filter/updat
 reactivate behave per Entra; groups map only to permitted roles in scope; nothing grants
 `instance:admin` automatically; token rotation invalidates the old token and never leaks;
 OIDC protocol failures block sign-in; a second IdP does not auto-link on email; every
-identity event is audited. `/scim/v2/*` is also inside the IDOR fuzz and tenant-isolation
+identity event is audited. Test 05 also covers exact per-connection Entra app-role
+admission on first and repeat login, missing/malformed `acct` and guest rejection, unapproved
+provider JIT, collision-deny-only domain handling, valid negative-admission retirement of
+only the selected identity's OIDC/JIT grants, and no mutation for invalid tokens; test 15
+covers PKCE mismatch, state replay, wrong-portal or expired state, nonce mismatch, and the
+distinction between invalid-token no-mutation and valid absent/malformed/overage-group
+reconciliation. Test 05's planned browser assertions capture the
+complete bound- and unbound-domain flow: initial response, `Location` and cookie headers,
+navigation, and next screen. They verify the accepted domain-to-SSO-binding/public-IdP-
+destination disclosure and prohibit organisation/connection inventory, names, ids, discovery
+configuration, claim mappings, secrets, or a TaskDesk user-account-existence signal.
+The same 25 tests carry the source-provenance contract: tests 01–03 prove connection-only
+reevaluation within the fixed portal/organisation; 04, 06 and 09 prove foreign scope, side,
+reach and forbidden authority are rejected; 07–08 prove immutable same-connection subject
+resolution and SCIM-grant linkage; 10–11 prove global SCIM deactivation/re-derivation without
+resurrecting history; 12–13 prove one-role projection, direct-role precedence, group-source
+independence and fail-closed equal-rank conflicts; 14 and 19–22 retain credential and SCIM
+protocol boundaries; 16 and 23 prove linked-connection and disable isolation; 17 proves safe
+grant/audit records; 18 proves placeholder claims cannot get grants; and 24–25 retain the
+no-auto-link and separate cache/session SLA checks. Test 12 or 17 includes a real-PostgreSQL
+concurrency subcase for OIDC login racing SCIM group removal on one person/scope. Migration
+coverage must classify every legacy membership from durable evidence in a read-only
+preflight before any DDL, backfill, uniqueness constraint, or projection. Null `derived_from`
+does not prove direct provenance; any ambiguous or unclassified row must stop the whole
+migration with no partial schema or data change. Assert that owner-approved reconciliation
+is required, any failure rolls back DDL and data changes together, and a successful backfill
+occurs only after all rows are classified. Duplicate-membership detection, explicit
+provenance backfill, and migration refusal are subcases of the existing named tests, not
+current test evidence; none is claimed implemented or run. The 25-test real-Entra
+gate remains required. The planned `tests/e2e/security/` suite must cover the CSRF negatives
+stated in the security model before the applicable security gate is claimed; the suite is not
+implemented at this candidate. `/scim/v2/*` is also inside the IDOR fuzz and tenant-isolation
 suites like any other scoped surface.
 
 ## Pending-action tests — universal deletion approval
@@ -220,6 +260,32 @@ place: Customer A cannot infer Customer B's records through search, filter or `m
 (`private-request-404-to-colleague.spec.ts`, `CP-16`); an owner-team change cannot silently
 grant reach (`lead-cannot-change-owner-team-or-parent.spec.ts`); a parent-project change
 cannot cross an organisation (`reparent-refused-across-organisations.test.ts`).
+
+## Notification delivery attempt budgets
+
+**Where** — API integration tests against PostgreSQL, using the notification delivery
+contract in [notifications.md](../03-features/notifications.md#delivery).
+
+Prove the six-attempt cap from the durable pre-provider authorization transaction, for both
+direct children and sealed digest groups:
+
+- A crash after attempt authorization but before adapter I/O leaves the increment committed
+  and consumes that slot; provider acceptance followed by a crash before completion also
+  consumes exactly one slot and remains at-least-once.
+- Repeated lease expiry and recovery after the sixth authorization dead-letters the child or
+  group and cannot start a seventh provider call. Digest child counters remain zero, and all
+  frozen pending members become terminal with the group.
+- A rollback or failed owner/token/expiry fence in the pre-provider transaction consumes no
+  attempt and makes no provider call. A worker with a stale or expired fence cannot call the
+  adapter after takeover.
+- Contention, quiet-hours deferral, suppression, failed dedupe-reservation acquisition and
+  lease renewal consume no attempt. Completion and definite/ambiguous outcome handling do not
+  increment or refund the already durable count.
+- Backoff follows the durable attempt number; actual provider call starts never exceed six
+  for either a direct delivery or a digest group.
+
+These are acceptance requirements for the target design; documentation does not claim runtime
+or test implementation.
 
 ## Task and work-item lifecycle tests
 
@@ -363,9 +429,10 @@ Results recorded per release so regression is visible.
 idempotent within a stable TaskDesk fixture namespace: it may create or reuse its own
 fixture rows, but never truncates, deletes, resets, or overwrites existing rows. A conflicting
 fixture identifier fails with an actionable error. The CLI does not run migrations; the
-database must already have the current schema. Integration coverage uses a fresh disposable
-PostgreSQL database and verifies profile counts, a repeated run, and preservation of an
-unrelated row. The command does not create login credentials or grant memberships/roles.
+database must already have the current schema. The fast API suite covers the CLI's database
+configuration preflight without connecting to PostgreSQL. The disposable PostgreSQL
+integration suite verifies profile counts, a repeated run, and preservation of an unrelated
+row. The command does not create login credentials or grant memberships/roles.
 The CLI verifies the complete fixture-owned default type/template sets and each project's
 default columns and concrete states against the existing code defaults, including state
 order, default selection, and template references. It retains database-generated row IDs;
@@ -389,8 +456,8 @@ choices exercise the named cases without introducing identity or authorization b
 ## Running
 
 ```bash
-pnpm test                  # unit + component
-pnpm test:integration      # Testcontainers, incl. lifecycle/
+pnpm test                  # unit + component, including seed CLI preflight
+pnpm test:integration      # Testcontainers, incl. lifecycle/ and additive seed profiles
 pnpm test:permissions      # route coverage + matrix + tenant isolation + portal router
 pnpm test:contract         # OpenAPI spec validity + breaking-change diff
 pnpm test:mcp              # tool-to-route parity + idempotency + capability clamping

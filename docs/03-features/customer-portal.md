@@ -32,7 +32,7 @@ It must also be genuinely good on a phone. That is where customers will use it.
 | --- | --- |
 | Origin | `portal.<domain>` — separate from the agent origin |
 | Session | Separate cookie, scoped to that host |
-| Identity | Whichever providers are scoped to `customer` in God Mode — **never listed on the login page**; the visitor gives an email address and the connection is resolved server-side (`CP-18`) |
+| Identity | Whichever providers are scoped to `customer` in God Mode — **never listed on the login page**; typed-domain routing and its limited disclosure follow `CP-18`/`IP-29` |
 | Bundle | Contains no agent or God Mode code — asserted at build |
 | API | `/api/portal/*` — a narrow, separately reviewed router |
 
@@ -134,17 +134,14 @@ misconfigured away through the role editor.
   deactivates them when they leave. Instance administrators configure it (God Mode →
   Organisations → *org* → Identity); customers cannot configure their own IdP in the first
   release (`IP-5`). Invitation (`CP-11`) remains the path for organisations without SSO.
-- `CP-18` **The login page does home-realm discovery, and enumerates nothing.** Customer
-  connections are per-organisation, so a list of sign-in buttons would name every customer
-  organisation to every anonymous visitor. The portal login page shows no organisation or
-  connection list at all: it asks for an email address, and the server resolves the
-  connection from the connection's `domain_bindings` — redirecting to that organisation's
-  IdP, or falling through to the non-SSO methods. A bound domain and an unknown domain
-  produce the **same body, the same status and the same timing class**, so the page cannot
-  be used to discover whether an organisation is a customer. The full rule is
-  [identity-provisioning.md](identity-provisioning.md) `IP-29`; the agent login page is the
-  opposite case and may list its providers
-  ([auth-and-identity.md](../01-architecture/auth-and-identity.md#per-portal-binding)).
+- `CP-18` **The login page does not publish a provider list.** It asks for an email address
+  and may use its typed domain to route login initiation to a configured customer OIDC flow.
+  The complete bound and unbound flows are intentionally distinguishable and may disclose
+  that a supplied domain has an SSO binding and the IdP's public redirect destination. The
+  limited disclosure and prohibited inventory/account disclosures are defined once in
+  [identity-provisioning.md](identity-provisioning.md) `IP-29`; state scope and callback
+  collision behavior follow `IP-9`. The agent login page may list its instance-level
+  providers ([auth-and-identity.md](../01-architecture/auth-and-identity.md#per-portal-binding)).
 - `CP-15` A customer may **withdraw their own submission** at any point before it is
   triaged — raised in error, no longer needed, or superseded by another request. Withdrawal
   is a submission status (`withdrawn`), not a deletion: it remains visible in "My requests"
@@ -181,6 +178,9 @@ One row per portal action, each a [RBAC](../01-architecture/rbac.md) policy kind
 | --- | --- | --- |
 | View own profile | `self` | `GET /api/portal/me` |
 | Update own name and job title | `self` | `PATCH /api/portal/account` |
+| Read own customer-eligible notification preferences (`NO-21`) | `self` | `GET /api/portal/notification-preferences` |
+| Update own customer-eligible global notification preferences (`NO-21`) | `self` | `PUT /api/portal/notification-preferences` |
+| Resolve own notification email-link handoff (`NO-2`) | `self` | `GET /api/portal/notification-preferences/email-link-handoff` |
 | View home dashboard | `own_organisation` | `GET /api/portal/home` |
 | List own organisation's requests | `own_organisation` | `GET /api/portal/requests` |
 | View one request | `own_request` | `GET /api/portal/requests/{ref}` |
@@ -242,6 +242,9 @@ GET  /api/portal/kb                                        own_organisation  (P5
 GET  /api/portal/kb/{id}                                   own_organisation  (P5)
 GET  /api/portal/kb/deflection?q=                          own_organisation  (P5)
 PATCH /api/portal/account                                  self
+GET  /api/portal/notification-preferences                  self
+PUT  /api/portal/notification-preferences                  self
+GET  /api/portal/notification-preferences/email-link-handoff self
 ```
 
 The former list, kept for the diff only:
@@ -278,7 +281,7 @@ in your head — which is the point of not reusing the agent handlers.
 
 | Case | Behaviour |
 | --- | --- |
-| Customer's organisation is suspended, or `organisation.portal_access` is set false | Every session of that organisation's customer-side people is invalidated — in effect on their next request, per [auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions) — and sign-in shows a message with the support email |
+| Customer's organisation is suspended, or `organisation.portal_access` is set false | Every session of that organisation's customer-side people is invalidated — in effect on their next request, per [auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions) — and sign-in shows a message with the support email. Under [IP-22](identity-provisioning.md), this lifecycle also retires affected external identity grants with the existing `mapping_changed` reason and reprojects them atomically; direct grant provenance is retained, but portal denial still blocks access. Reopening alone does not restore external grants. |
 | Customer session hits the agent origin | Rejected at the callback and on every request; audited |
 | Work item moved to a project the customer cannot see | It disappears from their list. The bookmarked URL returns 404 |
 | Portal disabled by feature flag | The origin returns a maintenance page, not a broken app |

@@ -206,11 +206,21 @@ itself skip keys shaped differently from the ones the issue happened to count.)
 
 ## Rules
 
-- `EV-1` An event is written to `outbox` **in the same transaction** as the change that
-  caused it. There is no fire-and-forget path — see [data model](data-model.md).
-- `EV-2` Consumers are idempotent on `id`. A retried delivery, a replayed webhook or a
-  re-drained outbox row must not produce a second notification, a second automation run,
-  or a second webhook side effect.
+- `EV-1` Exactly one event-envelope row is written to `outbox` **in the same transaction**
+  as the change that caused it. Notification fan-out also writes, in that transaction, one
+  inbox row per distinct eligible person and one `notification_delivery` child per eligible
+  person/external channel; a digest candidate and its `notification_digest` membership are
+  materialized atomically too. There is no fire-and-forget path — see
+  [data model](data-model.md).
+- `EV-2` The envelope `id` (`outbox.event_id`) remains the idempotency key for event
+  consumers. Its value is identical in the envelope, parent row, webhook event reference,
+  automation run and notification source. One event may fan out to many distinct
+  `notification_delivery.id` values, each identifying one recipient/channel attempt unit;
+  the child id is not an event id and never replaces it. Unique `(event_id, person_id)` on
+  event-derived inbox rows and `(event_id, recipient_person_id, channel)` on delivery
+  children make materialization/replay idempotent. Re-draining a parent must not duplicate
+  a notification, automation run, or webhook side effect. Parent event-consumer completion
+  is distinct from any individual notification provider success.
 - `EV-3` `depth` increments on every event an automation's action produces; a rule does not
   fire on an event whose `originAutomationId` is itself (`AM-5`), and nothing fires past
   `depth = 5`.
