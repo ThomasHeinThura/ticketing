@@ -149,7 +149,7 @@ async function createApiKeyFor(
   return { rawKey, id: apiKey.id, name };
 }
 
-describe("API integration: service calendars (CAL-1–CAL-14)", () => {
+describe("API integration: service calendars (CAL-1–CAL-15)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
     recordedEvents.length = 0;
@@ -648,6 +648,105 @@ describe("API integration: service calendars (CAL-1–CAL-14)", () => {
       expect.objectContaining({ name: "First update" }),
       expect.objectContaining({ name: "Second update" }),
     ]);
+  });
+
+  it("CAL-15: rejects stale concurrent updates and preserves lifecycle timestamps", async () => {
+    const creator = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const created = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: creator.workspace.id,
+        name: "Versioned hours",
+        timezone: "UTC",
+        windows: weekdayWindows,
+        holidays: [],
+      }),
+    });
+    expect(created.status).toBe(200);
+    const calendar = (await created.json()) as {
+      id: string;
+      version: number;
+      createdAt: string;
+      updatedAt: string;
+    };
+    expect(calendar.version).toBe(1);
+    expect(Number.isNaN(Date.parse(calendar.createdAt))).toBe(false);
+    expect(Number.isNaN(Date.parse(calendar.updatedAt))).toBe(false);
+
+    const fixedCreatedAt = new Date("2020-01-01T00:00:00.000Z");
+    await db
+      .update(schema.serviceCalendarTable)
+      .set({ createdAt: fixedCreatedAt, updatedAt: fixedCreatedAt })
+      .where(eq(schema.serviceCalendarTable.id, calendar.id));
+
+    let signalLockAcquired: (() => void) | undefined;
+    let releaseLock: (() => void) | undefined;
+    const lockAcquired = new Promise<void>((resolve) => {
+      signalLockAcquired = resolve;
+    });
+    const lockReleased = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    const holdingTransaction = db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT id FROM service_calendar WHERE id = ${calendar.id} FOR UPDATE`,
+      );
+      signalLockAcquired?.();
+      await lockReleased;
+    });
+    await lockAcquired;
+    try {
+      const patch = (name: string) =>
+        app.request(`/api/service-calendars/${calendar.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json", "if-match": '"1"' },
+          body: JSON.stringify({ name }),
+        });
+      const firstPatch = patch("First versioned update");
+      await waitForBlockedCalendarRequests(1);
+      const secondPatch = patch("Second versioned update");
+      await waitForBlockedCalendarRequests(2);
+      releaseLock?.();
+      const responses = await Promise.all([firstPatch, secondPatch]);
+      expect(responses.map((response) => response.status).sort()).toEqual([
+        200, 409,
+      ]);
+      const conflictResponse = responses.find(
+        (response) => response.status === 409,
+      );
+      expect(conflictResponse).toBeDefined();
+      expect(await conflictResponse?.json()).toMatchObject({
+        assertedVersion: 1,
+        currentVersion: 2,
+      });
+    } finally {
+      releaseLock?.();
+      await holdingTransaction;
+    }
+
+    const [stored] = await db
+      .select()
+      .from(schema.serviceCalendarTable)
+      .where(eq(schema.serviceCalendarTable.id, calendar.id));
+    expect(stored?.version).toBe(2);
+    expect(stored?.createdAt.toISOString()).toBe(fixedCreatedAt.toISOString());
+    expect(stored?.updatedAt.getTime()).toBeGreaterThan(
+      fixedCreatedAt.getTime(),
+    );
+    const updates = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityType, "service_calendar"),
+          eq(schema.auditLogTable.entityId, calendar.id),
+          eq(schema.auditLogTable.action, "service_calendar.updated"),
+        ),
+      );
+    expect(updates).toHaveLength(1);
   });
 
   it("CAL-2: rejects overlapping windows", async () => {

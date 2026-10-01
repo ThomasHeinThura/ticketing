@@ -36,7 +36,9 @@ Seeded on workspace creation, all editable, all clonable.
 ## Data
 
 `service_calendar` — `workspace_id`, `name`, `timezone`, `windows` jsonb,
-`holidays` jsonb.
+`holidays` jsonb, `created_at`, `updated_at`, and `version integer not null default 1`.
+The timestamps follow the shared data-model convention; `version` marks calendars as
+optimistically concurrent resources.
 
 ```jsonc
 {
@@ -108,6 +110,14 @@ repeats every year (`CAL-12`).
   values contain only the calendar's name, timezone, windows and holidays. The work-item
   `activity` journal does not apply: its authoritative schema requires a `work_item_id`
   composite foreign key, and a calendar has no work item.
+- `CAL-15` Calendar responses include `createdAt`, `updatedAt`, and `version`. `PATCH`
+  accepts the optional `If-Match: "<version>"` header defined by
+  [api-design.md](../01-architecture/api-design.md#concurrency). When supplied, the
+  server compares it while holding the calendar row lock; a mismatch returns `409` with
+  the asserted and current versions and performs no mutation. Each successful update
+  increments `version` and advances `updated_at`. The editor sends the loaded version and,
+  after a `409`, keeps the draft available while offering to reload the latest calendar or
+  explicitly resubmit that draft against the latest version.
 - A `service_calendar.*` event must be recorded in the durable outbox in the same
   transaction as its calendar mutation (`EV-1`). Create and update now write their
   catalogue event envelopes transactionally. They do not use the post-commit in-memory

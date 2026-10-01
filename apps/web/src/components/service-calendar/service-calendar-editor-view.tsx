@@ -119,6 +119,28 @@ export function ServiceCalendarEditorView({
           </Button>
         </div>
 
+        {state.calendarConflict ? (
+          <Alert variant="error" role="alert">
+            <AlertTitle>Calendar changed while you were editing</AlertTitle>
+            <AlertDescription>
+              Your draft is still available. Reload the latest calendar to
+              discard it, or keep your draft and save it against version{" "}
+              {state.calendarConflict.currentVersion}.
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={state.reloadLatest}
+                >
+                  Discard draft and reload latest
+                </Button>
+                <Button type="button" onClick={state.keepDraft}>
+                  Keep my draft
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        ) : null}
         <EditorNotices
           isNew={isNew}
           calendar={calendar}

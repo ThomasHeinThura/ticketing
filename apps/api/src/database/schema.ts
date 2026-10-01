@@ -2838,6 +2838,12 @@ export const serviceCalendarTable = pgTable(
     timezone: text("timezone").notNull(),
     windows: jsonb("windows").notNull(),
     holidays: jsonb("holidays").notNull(),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
   },
   (table) => [index("service_calendar_workspace_id_idx").on(table.workspaceId)],
 );

@@ -2242,6 +2242,25 @@
           "relevanceScore"
         ]
       },
+      "ServiceCalendarVersionConflict": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "assertedVersion": {
+            "type": "integer"
+          },
+          "currentVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "message",
+          "assertedVersion",
+          "currentVersion"
+        ]
+      },
       "TaskRelationWithTasks": {
         "allOf": [
           {
@@ -12411,6 +12430,18 @@
                       },
                       "name": {
                         "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 1
                       }
                     },
                     "required": [
@@ -12419,7 +12450,10 @@
                       "holidays",
                       "id",
                       "workspaceId",
-                      "name"
+                      "name",
+                      "createdAt",
+                      "updatedAt",
+                      "version"
                     ]
                   }
                 }
@@ -12959,6 +12993,18 @@
                     },
                     "name": {
                       "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
                     }
                   },
                   "required": [
@@ -12967,7 +13013,10 @@
                     "holidays",
                     "id",
                     "workspaceId",
-                    "name"
+                    "name",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
                   ]
                 }
               }
@@ -13267,6 +13316,18 @@
                     },
                     "name": {
                       "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
                     }
                   },
                   "required": [
@@ -13275,7 +13336,10 @@
                     "holidays",
                     "id",
                     "workspaceId",
-                    "name"
+                    "name",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
                   ]
                 }
               }
@@ -13312,6 +13376,7 @@
           "Service calendars"
         ],
         "summary": "Update service calendar",
+        "description": "If-Match may contain the current quoted version. A mismatch returns 409 with asserted/current versions.",
         "parameters": [
           {
             "schema": {
@@ -13321,6 +13386,15 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9]\\d*\"$"
+            },
+            "required": false,
+            "name": "if-match",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -13824,6 +13898,18 @@
                     },
                     "name": {
                       "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
                     }
                   },
                   "required": [
@@ -13832,7 +13918,10 @@
                     "holidays",
                     "id",
                     "workspaceId",
-                    "name"
+                    "name",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
                   ]
                 }
               }
@@ -13867,6 +13956,16 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Calendar version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceCalendarVersionConflict"
                 }
               }
             }

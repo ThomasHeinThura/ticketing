@@ -25,17 +25,20 @@ import {
   createCalendar,
   getCalendar,
   listCalendars,
+  ServiceCalendarVersionConflictError,
   updateCalendar,
 } from "./repository";
 import {
   calendarListSchema,
   calendarPreviewSchema,
   calendarSchema,
+  calendarVersionConflictSchema,
 } from "./response";
 import {
   calendarDataSchema,
   calendarIdParam,
   createCalendarBody,
+  optionalCalendarIfMatchHeader,
   previewQuery,
   updateCalendarBody,
   workspaceIdQuery,
@@ -150,6 +153,8 @@ const updateRouteDef = createRoute({
   operationId: "updateServiceCalendar",
   tags: ["Service calendars"],
   summary: "Update service calendar",
+  description:
+    "If-Match may contain the current quoted version. A mismatch returns 409 with asserted/current versions.",
   middleware: [
     calendarReach,
     requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
@@ -157,6 +162,7 @@ const updateRouteDef = createRoute({
   ] as const,
   request: {
     params: calendarIdParam,
+    headers: optionalCalendarIfMatchHeader,
     body: {
       required: true,
       content: { "application/json": { schema: updateCalendarBody } },
@@ -167,6 +173,10 @@ const updateRouteDef = createRoute({
     400: errorResponse("Invalid calendar data"),
     403: errorResponse("Missing sla_policy:manage permission"),
     404: errorResponse("Service calendar not found"),
+    409: jsonResponse(
+      "Calendar version conflict",
+      calendarVersionConflictSchema,
+    ),
   },
 });
 const previewRoute = createRoute({
@@ -225,6 +235,9 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(updateRouteDef, async (c) => {
     const id = c.req.valid("param").id;
     const input = c.req.valid("json");
+    const ifMatch = c.req.valid("header")["if-match"];
+    const assertedVersion =
+      ifMatch === undefined ? undefined : Number(ifMatch.slice(1, -1));
     const existing = await getCalendar(id, c.get("workspaceId"));
     if (!existing)
       throw new HTTPException(404, { message: "Service calendar not found" });
@@ -235,11 +248,32 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
     };
     calendarValue(next);
     const apiKey = c.get("apiKey");
-    const result = await updateCalendar(id, c.get("workspaceId"), input, {
-      actorId: c.get("userId"),
-      actorType: apiKey ? "api_key" : "person",
-      apiKeyId: apiKey?.id ?? null,
-    });
+    let result: Awaited<ReturnType<typeof updateCalendar>> | undefined;
+    try {
+      result = await updateCalendar(
+        id,
+        c.get("workspaceId"),
+        input,
+        assertedVersion,
+        {
+          actorId: c.get("userId"),
+          actorType: apiKey ? "api_key" : "person",
+          apiKeyId: apiKey?.id ?? null,
+        },
+      );
+    } catch (error) {
+      if (error instanceof ServiceCalendarVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
     if (!result)
       throw new HTTPException(404, { message: "Service calendar not found" });
     return c.json(calendarSchema.parse(result.row), 200);

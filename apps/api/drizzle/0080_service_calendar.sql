@@ -4,7 +4,10 @@ CREATE TABLE "service_calendar" (
 	"name" text NOT NULL,
 	"timezone" text NOT NULL,
 	"windows" jsonb NOT NULL,
-	"holidays" jsonb NOT NULL
+	"holidays" jsonb NOT NULL,
+	"version" integer DEFAULT 1 NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 ALTER TABLE "service_calendar" ADD CONSTRAINT "service_calendar_workspace_id_workspace_id_fk" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspace"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint

@@ -8,6 +8,7 @@ import type {
   Holiday,
   Weekday,
 } from "@/fetchers/service-calendar";
+import { ServiceCalendarConflictError } from "@/fetchers/service-calendar";
 import { useCreateServiceCalendar } from "@/hooks/mutations/service-calendar/use-create-service-calendar";
 import { useUpdateServiceCalendar } from "@/hooks/mutations/service-calendar/use-update-service-calendar";
 import { useServiceCalendar } from "@/hooks/queries/service-calendar/use-service-calendar";
@@ -79,6 +80,10 @@ export function useServiceCalendarEditor({
   const [pendingSaveValues, setPendingSaveValues] =
     useState<CalendarMetadata | null>(null);
   const hydratedCalendarId = useRef<string | null>(null);
+  const [calendarConflict, setCalendarConflict] = useState<{
+    assertedVersion: number;
+    currentVersion: number;
+  } | null>(null);
 
   const metadataSchema = useMemo(
     () =>
@@ -148,12 +153,22 @@ export function useServiceCalendarEditor({
       } else {
         const updated = await updateCalendar.mutateAsync({
           id: calendarId,
+          version: calendar?.version ?? 1,
           data,
         });
         form.reset({ name: updated.name, timezone: updated.timezone });
+        setCalendarConflict(null);
         toast.success("Service calendar saved");
       }
     } catch (error) {
+      if (error instanceof ServiceCalendarConflictError) {
+        setCalendarConflict({
+          assertedVersion: error.assertedVersion,
+          currentVersion: error.currentVersion,
+        });
+        await refetchCalendar();
+        return;
+      }
       toast.error(
         error instanceof Error ? error.message : "Failed to save calendar",
       );
@@ -189,6 +204,34 @@ export function useServiceCalendarEditor({
   function cancelTimezoneChange() {
     setTimezoneConfirmationOpen(false);
     setPendingSaveValues(null);
+  }
+
+  function reloadLatest() {
+    const latest = calendar;
+    if (!latest) return;
+    hydratedCalendarId.current = null;
+    form.reset({ name: latest.name, timezone: latest.timezone });
+    setWindows(copyCalendarWindows(latest.windows));
+    setHolidays(latest.holidays.map((holiday) => ({ ...holiday })));
+    setWindowIds(
+      Object.fromEntries(
+        WEEKDAYS.map(({ key }) => [
+          key,
+          (latest.windows[key] ?? []).map(() => createFieldId()),
+        ]),
+      ) as Record<Weekday, string[]>,
+    );
+    setHolidayIds(latest.holidays.map(() => createFieldId()));
+    setCalendarConflict(null);
+  }
+
+  function keepDraft() {
+    if (
+      calendar &&
+      calendar.version >=
+        (calendarConflict?.currentVersion ?? Number.POSITIVE_INFINITY)
+    )
+      setCalendarConflict(null);
   }
 
   function updateWindow(
@@ -278,6 +321,9 @@ export function useServiceCalendarEditor({
   return {
     workspace,
     calendar,
+    calendarConflict,
+    reloadLatest,
+    keepDraft,
     preview,
     form,
     windows,

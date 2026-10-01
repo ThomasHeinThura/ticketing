@@ -10,14 +10,29 @@ export type ServiceCalendarPreview = InferResponseType<
   (typeof client)["service-calendars"][":id"]["preview"]["$get"],
   200
 >;
-export type ServiceCalendarInput = Omit<ServiceCalendar, "id" | "workspaceId">;
+export type ServiceCalendarInput = Omit<
+  ServiceCalendar,
+  "id" | "workspaceId" | "createdAt" | "updatedAt" | "version"
+>;
 export type CreateServiceCalendarRequest = ServiceCalendarInput & {
   workspaceId: string;
 };
 export type UpdateServiceCalendarRequest = {
   id: string;
+  version: number;
   data: ServiceCalendarInput;
 };
+
+export class ServiceCalendarConflictError extends HttpError {
+  constructor(
+    message: string,
+    public readonly assertedVersion: number,
+    public readonly currentVersion: number,
+  ) {
+    super(409, message);
+    this.name = "ServiceCalendarConflictError";
+  }
+}
 export type Holiday = ServiceCalendar["holidays"][number];
 export type CalendarWindow = NonNullable<
   ServiceCalendar["windows"][keyof ServiceCalendar["windows"]]
@@ -84,14 +99,28 @@ export async function createServiceCalendar(
 
 export async function updateServiceCalendar({
   id,
+  version,
   data,
 }: UpdateServiceCalendarRequest): Promise<ServiceCalendar> {
   const response = await client["service-calendars"][":id"].$patch({
     param: { id },
+    header: { "if-match": `"${version}"` },
     json: data,
   });
 
   if (!response.ok) {
+    if (response.status === 409) {
+      const conflict = (await response.json()) as {
+        message?: string;
+        assertedVersion?: number;
+        currentVersion?: number;
+      };
+      throw new ServiceCalendarConflictError(
+        conflict.message ?? "Calendar changed since it was loaded",
+        conflict.assertedVersion ?? version,
+        conflict.currentVersion ?? version,
+      );
+    }
     const detail = await response.text();
     throw new HttpError(response.status, detail || "Failed to save calendar");
   }

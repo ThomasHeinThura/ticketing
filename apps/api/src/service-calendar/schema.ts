@@ -33,6 +33,21 @@ const recurringHoliday = z
   );
 const holidaySchema = z.union([datedHoliday, rangedHoliday, recurringHoliday]);
 
+const POSTGRES_INTEGER_MAX = 2147483647;
+export const optionalCalendarIfMatchHeader = z.object({
+  "if-match": z
+    .string()
+    .regex(
+      /^"[1-9]\d*"$/,
+      'If-Match must be a positive quoted calendar version, e.g. "3"',
+    )
+    .refine(
+      (value) => Number(value.slice(1, -1)) <= POSTGRES_INTEGER_MAX,
+      `If-Match must not exceed ${POSTGRES_INTEGER_MAX}`,
+    )
+    .optional(),
+});
+
 export const calendarDataSchema = z.object({
   timezone: z
     .string()

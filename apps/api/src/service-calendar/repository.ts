@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { JsonValue } from "@taskdesk/domain";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   type AppendAuditLogInput,
   appendAuditLog,
@@ -200,6 +200,18 @@ export async function createCalendar(input: {
     return row;
   });
 }
+export class ServiceCalendarVersionConflictError extends Error {
+  constructor(
+    public readonly assertedVersion: number,
+    public readonly currentVersion: number,
+  ) {
+    super(
+      `Version mismatch: expected version ${assertedVersion}, but the calendar is now at version ${currentVersion}`,
+    );
+    this.name = "ServiceCalendarVersionConflictError";
+  }
+}
+
 export async function updateCalendar(
   id: string,
   workspaceId: string,
@@ -209,6 +221,7 @@ export async function updateCalendar(
     windows?: unknown;
     holidays?: unknown;
   },
+  assertedVersion: number | undefined,
   actor: CalendarActor,
 ) {
   return db.transaction(async (tx) => {
@@ -224,9 +237,19 @@ export async function updateCalendar(
       .limit(1)
       .for("update");
     if (!before) return undefined;
+    if (assertedVersion !== undefined && before.version !== assertedVersion) {
+      throw new ServiceCalendarVersionConflictError(
+        assertedVersion,
+        before.version,
+      );
+    }
     const [row] = await tx
       .update(serviceCalendarTable)
-      .set(input)
+      .set({
+        ...input,
+        version: sql`${serviceCalendarTable.version} + 1`,
+        updatedAt: new Date(),
+      })
       .where(
         and(
           eq(serviceCalendarTable.id, id),
