@@ -61,10 +61,8 @@ does with a webhook is build a link back.
   per-webhook secret. The secret is rotatable and never returned by the API.
 - `WH-2` Also sent: `X-TaskDesk-Event`, `X-TaskDesk-Delivery`, `X-TaskDesk-Timestamp`.
   Consumers should reject timestamps older than five minutes to prevent replay.
-- `WH-3` The domain event is written once to the `outbox` envelope **in the same transaction
-  as the change**, then `outbox-drain` dispatches matching webhook targets. The event id is
-  `DomainEvent.id`; it is not a per-webhook or per-notification delivery-row id. Each
-  webhook's attempt history is recorded in `webhook_delivery`. Never fire-and-forget.
+- `WH-3` Written to `outbox` **in the same transaction as the change**, then delivered by
+  `outbox-drain`. Never fire-and-forget.
 - `WH-4` Retry with exponential backoff: 30 s, 2 m, 10 m, 1 h, 6 h, 24 h. Dead after six
   attempts.
 - `WH-5` Ten-second timeout. Only `2xx` is success.
