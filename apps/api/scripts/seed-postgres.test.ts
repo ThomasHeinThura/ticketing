@@ -127,6 +127,89 @@ describe("P0 seed CLI profiles use isolated PostgreSQL and are additive", () => 
     }
   });
 
+  it("rejects a matching workspace slug owned by a non-fixture ID before writes", async () => {
+    const namespace = "taskdesk-seed-minimal";
+    const organisation = await ensureInternalOrganisation();
+    const workspaceId = "user-created-matching-seed-workspace";
+    const workspaceValues = {
+      id: workspaceId,
+      organisationId: organisation.id,
+      name: "TaskDesk minimal seed",
+      slug: `${namespace}-workspace`,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    await db.insert(schema.workspaceTable).values(workspaceValues);
+
+    try {
+      await expect(seed("minimal")).rejects.toThrow(
+        `Fixture workspace conflict: ${workspaceValues.slug}`,
+      );
+
+      const [workspace] = await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, workspaceId));
+      expect(workspace).toMatchObject(workspaceValues);
+      await expectNoSeedRowsInWorkspace(workspaceId, namespace);
+    } finally {
+      await db
+        .delete(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, workspaceId));
+    }
+  });
+
+  it("rejects a matching project slug owned by a non-fixture ID and rolls back defaults", async () => {
+    const namespace = "taskdesk-seed-minimal";
+    const organisation = await ensureInternalOrganisation();
+    const workspaceId = `${namespace}-workspace`;
+    const projectSlug = `${namespace}-project-01`;
+    const workspaceValues = {
+      id: workspaceId,
+      organisationId: organisation.id,
+      name: "TaskDesk minimal seed",
+      slug: `${namespace}-workspace`,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    const projectValues = {
+      id: "user-created-matching-seed-project",
+      workspaceId,
+      name: "TaskDesk minimal project 1",
+      slug: projectSlug,
+      icon: "Folder",
+      position: 0,
+      lastTaskNumber: 10,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    };
+    await db.insert(schema.workspaceTable).values(workspaceValues);
+    await db.insert(schema.projectTable).values(projectValues);
+
+    try {
+      await expect(seed("minimal")).rejects.toThrow(
+        `Fixture project conflict: ${projectSlug}`,
+      );
+
+      const [workspace] = await db
+        .select()
+        .from(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, workspaceId));
+      const [project] = await db
+        .select()
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.id, projectValues.id));
+      expect(workspace).toMatchObject(workspaceValues);
+      expect(project).toMatchObject(projectValues);
+      await expectNoSeedRowsInWorkspace(
+        workspaceId,
+        namespace,
+        projectValues.id,
+      );
+    } finally {
+      await db
+        .delete(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, workspaceId));
+    }
+  });
+
   for (const profile of ["minimal", "realistic", "hostile"] as const) {
     it(`${profile} has canonical counts after one run and no duplicates after two`, async () => {
       await seed(profile);
@@ -197,3 +280,37 @@ describe("P0 seed CLI profiles use isolated PostgreSQL and are additive", () => 
     expect(Number(violations.rows[0]?.total ?? 0)).toBe(0);
   });
 });
+
+async function expectNoSeedRowsInWorkspace(
+  workspaceId: string,
+  namespace: string,
+  preservedProjectId?: string,
+) {
+  const types = await db
+    .select()
+    .from(schema.workItemTypeTable)
+    .where(eq(schema.workItemTypeTable.workspaceId, workspaceId));
+  const templates = await db
+    .select()
+    .from(schema.stateTemplateTable)
+    .where(eq(schema.stateTemplateTable.workspaceId, workspaceId));
+  const projects = await db
+    .select()
+    .from(schema.projectTable)
+    .where(eq(schema.projectTable.workspaceId, workspaceId));
+  const people = await db
+    .select()
+    .from(schema.personTable)
+    .where(like(schema.personTable.id, `${namespace}-person-%`));
+  const items = await db
+    .select()
+    .from(schema.workItemTable)
+    .where(like(schema.workItemTable.key, `${namespace}-project-%-%`));
+  expect(types).toHaveLength(0);
+  expect(templates).toHaveLength(0);
+  expect(projects.map((project) => project.id)).toEqual(
+    preservedProjectId ? [preservedProjectId] : [],
+  );
+  expect(people).toHaveLength(0);
+  expect(items).toHaveLength(0);
+}

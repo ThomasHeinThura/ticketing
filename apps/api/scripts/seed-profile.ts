@@ -194,6 +194,7 @@ async function seedProfile(profile: SeedProfile) {
     }
     if (
       !workspace ||
+      workspace.id !== `${namespace}-workspace` ||
       workspace.organisationId !== organisation.id ||
       workspace.name !== `TaskDesk ${profile} seed`
     ) {
@@ -263,6 +264,7 @@ async function seedProfile(profile: SeedProfile) {
       if (existing) {
         project = existing;
         if (
+          project.id !== slug ||
           project.workspaceId !== workspace.id ||
           project.name !== `TaskDesk ${profile} project ${index + 1}` ||
           project.slug !== slug ||
