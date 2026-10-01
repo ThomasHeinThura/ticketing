@@ -1,7 +1,8 @@
 # PostgreSQL RLS prototype results
 
 **Run date:** 2026-10-01  
-**Base:** `a0ecc965c9de65af5575361eb6c5286bf05a4bdd` (`origin/main`)  
+**Measurement base:** `a0ecc965c9de65af5575361eb6c5286bf05a4bdd` (`origin/main`)  
+**Refreshed review base:** `c891e9bcd4abf9b77b4916561d9bc5ca367065e` (status-only PR #530 merge; prototype files unchanged)  
 **Scope:** isolated test-only prototype on `work_item`, `comment`, and `attachment`. No
 production migration, runtime policy, auth code, shared schema, CI task, or application
 connection wrapper changed.
@@ -125,6 +126,9 @@ stability and production costs.
 
 * `pnpm --filter @taskdesk/api exec vitest run --silent=false --reporter=verbose --config vitest.rls-prototype.config.ts` — **1 test passed**, on this base and current test-only worktree.
 * `pnpm --filter @taskdesk/api exec tsc --noEmit -p tsconfig.rls-prototype.json` — **passed** after building the workspace `@taskdesk/email` type declarations required by the API test project.
+* `pnpm lint:ci` — **passed**, checked 1,621 files, with 123 warnings.
+* `pnpm typecheck` — **passed**, all 9 workspace tasks succeeded.
+* `pnpm test` — **failed** on the refreshed review branch. The API suite reported 64/66 files passed and 525/529 tests passed (four failures across two files; one reported failure is in `tests/api/storage/index.test.ts`, where a temp storage path is rejected as a symlink escape). The web suite reported four failures in `src/hooks/use-task-filters-with-labels-support.test.tsx`. These paths are untouched by this test-only change; the failure is recorded rather than treated as a passing gate.
 * `pnpm check:env` — **passed**; the test harness lives under `tests/`, which the check
   does not scan as application runtime. Within its 29 application environment-read
   occurrences, the checker attributed every occurrence to the configuration reference.
