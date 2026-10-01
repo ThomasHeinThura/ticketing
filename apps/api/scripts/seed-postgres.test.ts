@@ -1,6 +1,6 @@
 import { and, count, eq, like, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { ensureTestDatabaseMigrated } from "../../../tests/api-integration/helpers/database";
+import { resetTestDatabase } from "../../../tests/api-integration/helpers/database";
 import {
   HOSTILE_HIERARCHY_DEPTH,
   HOSTILE_TITLE_LENGTH,
@@ -8,7 +8,7 @@ import {
   SEED_PROFILE_COUNTS,
   type SeedProfile,
 } from "../../../tests/fixtures/seed-profiles";
-import db, { getDatabasePool, schema } from "../src/database";
+import db, { schema } from "../src/database";
 import { DEFAULT_PROJECT_COLUMNS } from "../src/project/controllers/create-project";
 import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisation";
 import { seedProjectStates } from "../src/utils/seed-project-states";
@@ -54,14 +54,17 @@ async function profileCounts(profile: SeedProfile) {
   };
 }
 
-describe("P0 seed CLI profiles use isolated PostgreSQL and are additive", () => {
+describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () => {
   beforeAll(async () => {
-    await ensureTestDatabaseMigrated();
+    // This file joins the shared serial integration runner as well as the
+    // standalone seed runner. Start and finish with a clean disposable _test
+    // database so the fixed preservation fixture cannot collide or leak.
+    await resetTestDatabase();
     await db.insert(schema.userTable).values(unrelatedUser);
   });
 
   afterAll(async () => {
-    await getDatabasePool().end();
+    await resetTestDatabase();
   });
 
   it("rejects conflicting workspace defaults and rolls back inserted defaults", async () => {
