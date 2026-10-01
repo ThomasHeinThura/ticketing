@@ -1255,6 +1255,18 @@ async function collectCommandPaletteInteraction(
     projectsOptionId ?? "",
   );
   await page.keyboard.press("Enter");
+  const readNavigationPaint = async () => {
+    await page.waitForFunction(
+      () => (window as G11Window).__g11Metrics.paletteNavigationPaint > 0,
+      undefined,
+      { timeout: 15_000 },
+    );
+    return page.evaluate(
+      () => (window as G11Window).__g11Metrics.paletteNavigationPaint,
+    );
+  };
+  let navigationPaint =
+    metric === "navigate" ? await readNavigationPaint() : null;
   await expect(page).toHaveURL(
     new RegExp(`/dashboard/workspace/${WORKSPACE_ID}`),
   );
@@ -1262,14 +1274,7 @@ async function collectCommandPaletteInteraction(
     page.getByRole("main").getByText("Performance fixture", { exact: true }),
   ).toBeVisible();
   await captureScreen(page, "projects-from-command-palette");
-  await page.waitForFunction(
-    () => (window as G11Window).__g11Metrics.paletteNavigationPaint > 0,
-    undefined,
-    { timeout: 15_000 },
-  );
-  const navigationPaint = await page.evaluate(
-    () => (window as G11Window).__g11Metrics.paletteNavigationPaint,
-  );
+  navigationPaint ??= await readNavigationPaint();
   console.info("G11 palette navigation timing", navigationPaint);
   if (metric === "navigate") return navigationPaint;
   return clickToPaint;

@@ -180,6 +180,12 @@ workstream that introduces that screen. G11 is not claimed complete while a name
 journey lacks either an implemented measurement or an explicit not-yet-implemented
 dependency.
 
+For the keyboard Projects journey, the Playwright driver reads the existing in-page
+`paletteNavigationPaint` mark immediately after pressing Enter, before its destination URL,
+full-content and screenshot checks. Those functional checks still run unchanged afterward and
+remain required; only their ordering relative to the Node-side mark read is specified here.
+The in-page Enter start, visible pending-route predicate, and two-frame end mark do not move.
+
 **Enabled measurement harness, per metric:**
 
 | Metric | Tool | Throttling | Target route | Sample / flake policy |
