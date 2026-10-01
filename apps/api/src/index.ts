@@ -1,9 +1,8 @@
 import { statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { serve } from "@hono/node-server";
+import { serve, upgradeWebSocket } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { createNodeWebSocket } from "@hono/node-ws";
 import { OpenAPIHono } from "@hono/zod-openapi";
 import type { Session, User } from "better-auth/types";
 import { and, eq, sql } from "drizzle-orm";
@@ -13,6 +12,7 @@ import { Hono } from "hono";
 import { compress } from "hono/compress";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
+import { WebSocketServer } from "ws";
 import activity from "./activity";
 import attachment from "./attachment";
 import audit from "./audit";
@@ -316,8 +316,6 @@ export function createApp(options: { staticRoot?: string } = {}) {
     }
     return c.json({ message: "Internal Server Error" }, 500);
   });
-  const nodeWs = createNodeWebSocket({ app });
-  const { upgradeWebSocket, injectWebSocket } = nodeWs;
   const corsOriginSource = [
     process.env.CORS_ORIGINS,
     process.env.TASKDESK_AGENT_URL,
@@ -1190,7 +1188,6 @@ export function createApp(options: { staticRoot?: string } = {}) {
   return {
     app,
     api,
-    injectWebSocket,
     activityApi,
     attachmentApi,
     auditApi,
@@ -1364,10 +1361,40 @@ export function resolvePort(rawPort: string | undefined): {
   };
 }
 
-export async function startServer(
-  injectWebSocket: ReturnType<typeof createNodeWebSocket>["injectWebSocket"],
-  port = DEFAULT_PORT,
-) {
+export function createNodeServer(app: Hono<AppVariables>, port = 0) {
+  const websocketServer = new WebSocketServer({ noServer: true });
+  const server = serve({
+    fetch: app.fetch,
+    port,
+    websocket: { server: websocketServer },
+  });
+
+  let closePromise: Promise<void> | undefined;
+  const close = () => {
+    closePromise ??= new Promise((resolve) => {
+      server.close();
+      const timeout = setTimeout(() => {
+        for (const client of websocketServer.clients) {
+          client.terminate();
+        }
+      }, 5_000);
+      timeout.unref();
+
+      websocketServer.close(() => {
+        clearTimeout(timeout);
+        resolve();
+      });
+      for (const client of websocketServer.clients) {
+        client.close(1001, "Server shutting down");
+      }
+    });
+    return closePromise;
+  };
+
+  return { server, websocketServer, close };
+}
+
+export async function startServer(port = DEFAULT_PORT) {
   try {
     await runApiBootTasks();
   } catch (error) {
@@ -1377,19 +1404,12 @@ export async function startServer(
 
   let shuttingDown = false;
 
-  const server = serve(
-    {
-      fetch: app.fetch,
-      port,
-    },
-    () => {
-      console.log(
-        `⚡ API is running at ${process.env.KANEO_API_URL || `http://localhost:${port}`}`,
-      );
-    },
-  );
-
-  injectWebSocket(server);
+  const { close, server } = createNodeServer(app, port);
+  server.on("listening", () => {
+    console.log(
+      `⚡ API is running at ${process.env.KANEO_API_URL || `http://localhost:${port}`}`,
+    );
+  });
 
   const gracefulShutdown = async () => {
     if (shuttingDown) return;
@@ -1398,7 +1418,7 @@ export async function startServer(
     console.log("🛑 Shutting down gracefully...");
     shutdownScheduler();
     await shutdownWebSocketAdapter();
-    server.close();
+    await close();
     process.exit(0);
   };
 
@@ -1414,7 +1434,6 @@ export async function startServer(
 const createdApp = createApp();
 const {
   app,
-  injectWebSocket,
   activityApi,
   attachmentApi,
   auditApi,
@@ -1475,7 +1494,7 @@ if (isMainModule) {
         `⚠ TASKDESK_PORT="${rawPort}" is not a valid port (1-65535) — falling back to ${DEFAULT_PORT}`,
       );
     }
-    void startServer(injectWebSocket, port);
+    void startServer(port);
   }
 }
 
