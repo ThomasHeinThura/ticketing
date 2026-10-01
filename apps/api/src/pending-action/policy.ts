@@ -19,4 +19,23 @@ export const pendingActionPolicies = {
         "reads only an action owned by the authenticated caller; id names the action, not a person",
     },
   },
+  "POST /api/me/pending-actions/{id}/deny": {
+    authenticated: true,
+    self: true,
+    sessionOnly: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "denies only an action owned by the authenticated caller; id names the action, not a person",
+    },
+  },
+  "POST /api/me/pending-actions/{id}/cancel": {
+    authenticated: true,
+    self: true,
+    personParam: {
+      exempt: "no_person_parameter",
+      reason:
+        "cancels only an action owned by the authenticated caller; id names the action, not a person",
+    },
+  },
 } as const satisfies PolicyMap;

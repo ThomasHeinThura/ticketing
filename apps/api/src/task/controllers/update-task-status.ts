@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable, taskTable } from "../../database/schema";
@@ -26,7 +26,11 @@ async function updateTaskStatus({
     });
     const [updatedTask] = await tx
       .update(taskTable)
-      .set({ status, columnId: column?.id ?? null })
+      .set({
+        status,
+        columnId: column?.id ?? null,
+        version: sql`${taskTable.version} + 1`,
+      })
       .where(eq(taskTable.id, id))
       .returning();
     return { existingTask, updatedTask };

@@ -64,6 +64,57 @@ directly would expose fields that the UI and polling contract do not need.
 
 **Decided by:** task orchestrator, 2026-10-01.
 
+### 2026-10-01 · Versioned task writes use a successor route; legacy PUT stays compatible (#526)
+
+**Decision:** first-party full-task writes use required-precondition `PUT
+/api/v2/task/{id}` with the existing authorization chain and locked task-version comparison.
+The released `PUT /api/task/{id}` remains supported as a deprecated compatibility operation:
+omitting `If-Match` preserves its prior request behavior, while a supplied header is strictly
+parsed and enforced under the same lock. Both operations, and every other persisted task-row
+writer, atomically advance `task.version`. First-party web and MCP full-task writers use the
+versioned route. The legacy route emits `Deprecation: @1790812800`, `Sunset: Thu, 01 Apr 2027
+00:00:00 GMT`, and a `successor-version` Link to the v2 operation. Deprecation starts
+2026-10-01; removal is allowed only after both the sunset date and two subsequent minor
+releases, with no automatic removal. Unversioned third-party legacy clients retain their
+existing overwrite risk during migration; #526 protects first-party writers and version-aware
+requests, not every legacy client.
+
+**Why:** the stable 2.0 API cannot gain a required request header without a breaking change.
+The versioned operation enforces the concurrency contract while the legacy operation remains
+compatible and gives clients a dated successor path.
+
+**Alternatives:** make the old header optional only in OpenAPI (rejected because runtime and
+contract would disagree); exempt the break in the closed allowlist (rejected because stable
+API breaks require a successor version); remove legacy compatibility immediately (rejected
+because existing clients need a migration window).
+
+**Decided by:** Thomas under the standing all-recommended-decisions instruction, recorded by
+the orchestrating session on 2026-10-01.
+
+### 2026-10-01 · Legacy full-task PUT uses the work-item optimistic-concurrency contract (#526)
+
+**Decision:** while legacy task screens and `/api/task` remain active, full-task
+`PUT /api/task/{id}` uses the `api-design.md` `If-Match` version contract. Task responses expose
+an integer row version; every persisted task-row update advances it. The PUT checks the
+asserted version after locking the task and returns 409 with asserted/current versions on a
+mismatch, with no row or event side effects. Every full-task caller must send the version from
+the task it read. Existing field-specific status/assignee and move routes remain scoped to
+their requested fields and advance the same version. No last-write-wins exception is added
+for those fields or for other full-task PUT fields. The owning specification is
+`work-items.md` WI-7a.
+
+**Why:** the compatibility endpoint replaces multiple fields from one possibly stale task
+snapshot. A row lock alone serializes writes but still permits a late stale replacement to
+undo a status or assignee change. A row version checked under that lock preserves the latest
+committed change, including when requests finish in the reverse order.
+
+**Alternatives:** keep last-write-wins for legacy PUT (rejected because completion order can
+silently revert a concurrent edit); merge selected protected fields in the server (rejected
+because intent cannot be distinguished from a stale snapshot without a client revision).
+
+**Decided by:** the orchestrating session under the bounded #526 task-update concurrency
+assignment; recorded before implementation.
+
 ### 2026-10-01 · G8 requires implemented screens now and activates future routes with implementation
 
 **Decision:** G8 requires screenshot comparison for every exported UI Storybook story and

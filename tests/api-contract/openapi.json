@@ -328,6 +328,10 @@
             "type": "string",
             "format": "date-time"
           },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
           "userId": {
             "type": [
               "string",
@@ -379,6 +383,7 @@
           "dueDate",
           "position",
           "createdAt",
+          "version",
           "userId",
           "assigneeName",
           "assigneeId",
@@ -948,6 +953,10 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
           }
         },
         "required": [
@@ -962,7 +971,8 @@
           "priority",
           "startDate",
           "dueDate",
-          "createdAt"
+          "createdAt",
+          "version"
         ]
       },
       "TaskWithAssignee": {
@@ -1010,6 +1020,25 @@
           "task",
           "sourceProjectId",
           "destinationProjectId"
+        ]
+      },
+      "TaskVersionConflict": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "assertedVersion": {
+            "type": "integer"
+          },
+          "currentVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "message",
+          "assertedVersion",
+          "currentVersion"
         ]
       },
       "TaskExport": {
@@ -1060,6 +1089,10 @@
       "ExportedTask": {
         "type": "object",
         "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
           "title": {
             "type": "string"
           },
@@ -1101,6 +1134,7 @@
           }
         },
         "required": [
+          "version",
           "title",
           "description",
           "status",
@@ -2026,6 +2060,82 @@
           "hasMore"
         ]
       },
+      "PendingActionDecision": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "delete",
+              "bulk_delete",
+              "purge",
+              "mcp_destructive"
+            ]
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "web",
+              "api",
+              "mcp"
+            ]
+          },
+          "targetType": {
+            "type": "string"
+          },
+          "targetIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "summary": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "confirmation": {
+            "type": "string",
+            "enum": [
+              "click",
+              "typed_name",
+              "typed_count",
+              "typed_name_step_up",
+              "typed_count_step_up"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "denied",
+              "cancelled",
+              "expired"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "origin",
+          "targetType",
+          "targetIds",
+          "summary",
+          "confirmation",
+          "state",
+          "createdAt",
+          "expiresAt"
+        ]
+      },
       "SearchResponse": {
         "type": "object",
         "properties": {
@@ -2108,6 +2218,11 @@
           "taskNumber": {
             "type": "number"
           },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The current row version, present only for task results."
+          },
           "priority": {
             "type": "string"
           },
@@ -2154,6 +2269,10 @@
           "id": {
             "type": "string"
           },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
           "title": {
             "type": "string"
           },
@@ -2190,6 +2309,7 @@
         },
         "required": [
           "id",
+          "version",
           "title",
           "status",
           "priority",
@@ -7128,8 +7248,9 @@
         "tags": [
           "Tasks"
         ],
-        "summary": "Update task",
-        "description": "Replace every field of a task. Use the single-field routes for narrower edits.",
+        "deprecated": true,
+        "summary": "Update task (deprecated compatibility route)",
+        "description": "Deprecated compatibility route. Replace every field of a task. If If-Match is supplied, it must be the current quoted version and a mismatch returns 409. Without If-Match, prior last-write-wins behavior is preserved. Use PUT /api/v2/task/{id} for required optimistic concurrency or a single-field route for narrower edits.",
         "parameters": [
           {
             "schema": {
@@ -7138,6 +7259,15 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9]\\d*\"$"
+            },
+            "required": false,
+            "name": "if-match",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -7197,6 +7327,29 @@
         "responses": {
           "200": {
             "description": "The updated task",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor version operation.",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/v2/task/{id}>; rel=\"successor-version\""
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -7206,7 +7359,30 @@
             }
           },
           "400": {
-            "description": "Invalid body",
+            "description": "Invalid body or malformed If-Match header",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor version operation.",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/v2/task/{id}>; rel=\"successor-version\""
+                }
+              }
+            },
             "content": {
               "text/plain": {
                 "schema": {
@@ -7220,6 +7396,29 @@
           },
           "403": {
             "description": "Missing work_item:update or work_item:assign permission",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor version operation.",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/v2/task/{id}>; rel=\"successor-version\""
+                }
+              }
+            },
             "content": {
               "text/plain": {
                 "schema": {
@@ -7230,10 +7429,66 @@
           },
           "404": {
             "description": "Task not found",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor version operation.",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/v2/task/{id}>; rel=\"successor-version\""
+                }
+              }
+            },
             "content": {
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Task version conflict",
+            "headers": {
+              "Deprecation": {
+                "description": "This compatibility operation was deprecated on 2026-10-01.",
+                "schema": {
+                  "type": "string",
+                  "example": "@1790812800"
+                }
+              },
+              "Sunset": {
+                "description": "Earliest removal date, subject to two subsequent minor releases.",
+                "schema": {
+                  "type": "string",
+                  "example": "Thu, 01 Apr 2027 00:00:00 GMT"
+                }
+              },
+              "Link": {
+                "description": "Successor version operation.",
+                "schema": {
+                  "type": "string",
+                  "example": "</api/v2/task/{id}>; rel=\"successor-version\""
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskVersionConflict"
                 }
               }
             }
@@ -8282,6 +8537,144 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v2/task/{id}": {
+      "put": {
+        "operationId": "updateTaskV2",
+        "tags": [
+          "Tasks"
+        ],
+        "summary": "Update task with optimistic concurrency",
+        "description": "Replace every field of a task using its current quoted If-Match version. A mismatch returns 409 with asserted/current versions. Use the single-field routes for narrower edits.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9]\\d*\"$"
+            },
+            "required": true,
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "startDate": {
+                    "type": "string"
+                  },
+                  "dueDate": {
+                    "type": "string"
+                  },
+                  "priority": {
+                    "type": "string",
+                    "enum": [
+                      "no-priority",
+                      "low",
+                      "medium",
+                      "high",
+                      "urgent"
+                    ]
+                  },
+                  "status": {
+                    "type": "string"
+                  },
+                  "projectId": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "number"
+                  },
+                  "userId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title",
+                  "description",
+                  "priority",
+                  "status",
+                  "projectId",
+                  "position"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Task"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body or missing/malformed If-Match header",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing work_item:update or work_item:assign permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Task not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Task version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskVersionConflict"
                 }
               }
             }
@@ -11487,6 +11880,144 @@
           },
           "404": {
             "description": "Pending action not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/pending-actions/{id}/deny": {
+      "post": {
+        "operationId": "denyOwnPendingAction",
+        "tags": [
+          "Pending actions"
+        ],
+        "summary": "Deny a pending action",
+        "description": "Records the requester's denial. Requires the requester's browser session.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The terminal pending-action state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActionDecision"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The caller has no current valid identity",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A browser session is required",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pending action not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Pending action is already terminal",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/pending-actions/{id}/cancel": {
+      "post": {
+        "operationId": "cancelOwnPendingAction",
+        "tags": [
+          "Pending actions"
+        ],
+        "summary": "Cancel a pending action",
+        "description": "Cancels the requester's pending action from any authenticated credential.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The terminal pending-action state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingActionDecision"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The caller has no current valid identity",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Pending action not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Pending action is already terminal",
             "content": {
               "text/plain": {
                 "schema": {
