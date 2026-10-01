@@ -204,8 +204,13 @@ test route. Plus the default notification preferences new users inherit.
 
 ### Deliveries
 
-The outbox: pending, retrying and **dead** deliveries (notifications and webhooks), with
-requeue and discard. This is where "SMTP has been down for hours" is visible.
+The parent event envelopes, per-recipient/channel notification children, digest groups and
+per-target webhook attempts. Notification requeue acts on the same child id and respects a
+live reservation; it does not mint a replacement delivery. Requeueing a parent event
+replays only idempotent consumer materialization: it cannot reset or duplicate already
+materialized notification children. Webhook redelivery remains the per-event action in
+WH-8. Pending, retrying, suppressed and **dead** notification deliveries remain separately
+inspectable. This is where "SMTP has been down for hours" is visible.
 
 ### Features
 

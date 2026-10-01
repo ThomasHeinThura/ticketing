@@ -176,7 +176,9 @@ one performed most often.
 2. A 30-day window during which restore is one click.
 3. Hard delete purges the **complete** list in [security-model.md § Data lifecycle](security-model.md#data-lifecycle)
    — work items, comments, attachments and objects, time and cost entries, notifications,
-   sessions, API keys, webhooks, invitations, outbox rows, idempotency responses,
+   `notification_delivery` children, empty `notification_digest` groups, sessions, API keys,
+   webhooks, invitations, outbox event envelopes and their
+   `outbox_dedupe_reservation` leases (owned by delivery children), idempotency responses,
    `metric_snapshot` rows for the organisation, search vectors and cached identities.
    `audit_log` rows are retained with `organisation_id` set null as the tombstone, because
    deleting an audit trail on request defeats its purpose. Backups retain deleted data for

@@ -69,6 +69,10 @@ Data references: `custom_field_section`, `custom_field`, `custom_field_type_visi
 
 ## 5. `notifications.md`
 
+
+
+## Historical notifications findings — 2026-09-05 review
+
 **Verdict: not-ready.** 21 numbered rules, a strong events table and a good edge-case
 table — the best *behavioural* spec of the governance set. It is let down by the same
 class of problem as custom fields: the three-level preference model it specifies cannot be
@@ -97,6 +101,9 @@ under-specified (above). Channels align with `plugin-architecture.md`'s `notify`
 except `in-app`, which is correctly not a plugin but is not documented as an exception.
 
 ---
+
+
+**Disposition — 2026-09-29.** These dated design findings are closed in `docs/03-features/notifications.md` and `docs/02-design/screen-inventory.md`. The canonical spec now reconciles preference storage and channel vocabulary, owns the delivery and channel-test routes, defines the email-link token and recipient-mismatch behavior, and names the planned tests while explicitly marking unimplemented integration and browser acceptance as pending. The screen inventory records the inbox and recomputes P1/total as 34/138. This closes the design review only; it does not claim runtime notification delivery or browser acceptance is complete.
 
 ## 6. `automations.md`
 

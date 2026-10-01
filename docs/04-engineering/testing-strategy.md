@@ -237,6 +237,32 @@ place: Customer A cannot infer Customer B's records through search, filter or `m
 grant reach (`lead-cannot-change-owner-team-or-parent.spec.ts`); a parent-project change
 cannot cross an organisation (`reparent-refused-across-organisations.test.ts`).
 
+## Notification delivery attempt budgets
+
+**Where** — API integration tests against PostgreSQL, using the notification delivery
+contract in [notifications.md](../03-features/notifications.md#delivery).
+
+Prove the six-attempt cap from the durable pre-provider authorization transaction, for both
+direct children and sealed digest groups:
+
+- A crash after attempt authorization but before adapter I/O leaves the increment committed
+  and consumes that slot; provider acceptance followed by a crash before completion also
+  consumes exactly one slot and remains at-least-once.
+- Repeated lease expiry and recovery after the sixth authorization dead-letters the child or
+  group and cannot start a seventh provider call. Digest child counters remain zero, and all
+  frozen pending members become terminal with the group.
+- A rollback or failed owner/token/expiry fence in the pre-provider transaction consumes no
+  attempt and makes no provider call. A worker with a stale or expired fence cannot call the
+  adapter after takeover.
+- Contention, quiet-hours deferral, suppression, failed dedupe-reservation acquisition and
+  lease renewal consume no attempt. Completion and definite/ambiguous outcome handling do not
+  increment or refund the already durable count.
+- Backoff follows the durable attempt number; actual provider call starts never exceed six
+  for either a direct delivery or a digest group.
+
+These are acceptance requirements for the target design; documentation does not claim runtime
+or test implementation.
+
 ## Task and work-item lifecycle tests
 
 **Where** — `tests/api-integration/lifecycle/`.

@@ -178,6 +178,9 @@ One row per portal action, each a [RBAC](../01-architecture/rbac.md) policy kind
 | --- | --- | --- |
 | View own profile | `self` | `GET /api/portal/me` |
 | Update own name and job title | `self` | `PATCH /api/portal/account` |
+| Read own customer-eligible notification preferences (`NO-21`) | `self` | `GET /api/portal/notification-preferences` |
+| Update own customer-eligible global notification preferences (`NO-21`) | `self` | `PUT /api/portal/notification-preferences` |
+| Resolve own notification email-link handoff (`NO-2`) | `self` | `GET /api/portal/notification-preferences/email-link-handoff` |
 | View home dashboard | `own_organisation` | `GET /api/portal/home` |
 | List own organisation's requests | `own_organisation` | `GET /api/portal/requests` |
 | View one request | `own_request` | `GET /api/portal/requests/{ref}` |
@@ -239,6 +242,9 @@ GET  /api/portal/kb                                        own_organisation  (P5
 GET  /api/portal/kb/{id}                                   own_organisation  (P5)
 GET  /api/portal/kb/deflection?q=                          own_organisation  (P5)
 PATCH /api/portal/account                                  self
+GET  /api/portal/notification-preferences                  self
+PUT  /api/portal/notification-preferences                  self
+GET  /api/portal/notification-preferences/email-link-handoff self
 ```
 
 The former list, kept for the diff only:
