@@ -6,7 +6,10 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
-import { hashedBasename } from "./hosted-cold-recording-validation.mjs";
+import {
+  deriveManifestAssetBasenames,
+  hashedBasename,
+} from "./hosted-cold-recording-validation.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const webDir = resolve(scriptDir, "..");
@@ -15,10 +18,11 @@ const outputArg = process.argv.find((arg) => arg.startsWith("--output="));
 const candidateArg = process.argv.find((arg) =>
   arg.startsWith("--candidate-sha="),
 );
+const discoveryOnly = process.argv.includes("--list");
 const outputPath = outputArg?.slice("--output=".length);
-if (!outputPath || !candidateArg)
+if ((!outputPath && !discoveryOnly) || !candidateArg)
   throw new Error(
-    "Usage: hosted-cold-recording.mjs --candidate-sha=<exact-head> --output=<report.json>",
+    "Usage: hosted-cold-recording.mjs --candidate-sha=<exact-head> --output=<report.json> [--list]",
   );
 if (
   candidateArg?.slice("--candidate-sha=".length) &&
@@ -36,6 +40,8 @@ const generatedConfig = join(
   "playwright.hosted-cold-recording.generated.config.ts",
 );
 const scratchResults = join(scratch, "playwright-results");
+const reportPathForGeneration =
+  outputPath ?? join(scratch, "discovery-only-report.json");
 const origin = "http://127.0.0.1:4179";
 const safeSha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
@@ -83,6 +89,12 @@ async function readBuildEvidence() {
   };
   const manifest = await readFile(manifestPath);
   const indexHtml = await readFile(indexPath);
+  const parsedManifest = JSON.parse(manifest.toString("utf8"));
+  const distPaths = files.map((path) => path.slice(distDir.length + 1));
+  const assetBasenames = deriveManifestAssetBasenames(
+    parsedManifest,
+    distPaths,
+  );
   await hashFiles(jsFiles);
   await hashFiles(mapFiles);
   const distRows = await Promise.all(
@@ -93,11 +105,14 @@ async function readBuildEvidence() {
   );
   distRows.sort();
   return {
-    indexHtmlSha256: safeSha256(indexHtml),
-    manifestSha256: safeSha256(manifest),
-    dist: { count: files.length, sha256: safeSha256(distRows.join("\n")) },
-    javascript: await aggregateFiles(jsFiles),
-    sourceMaps: await aggregateFiles(mapFiles),
+    evidence: {
+      indexHtmlSha256: safeSha256(indexHtml),
+      manifestSha256: safeSha256(manifest),
+      dist: { count: files.length, sha256: safeSha256(distRows.join("\n")) },
+      javascript: await aggregateFiles(jsFiles),
+      sourceMaps: await aggregateFiles(mapFiles),
+    },
+    assetBasenames: [...assetBasenames].sort(),
   };
 }
 
@@ -107,10 +122,12 @@ import { dirname } from "node:path";
 import {
   assertColdReportPrivacy,
   buildSanitizedColdReport,
+  estimateClockAlignment,
 } from "./hosted-cold-recording-validation.mjs";
 
 const COLD_REPORT_PATH = __REPORT_PATH__;
 const COLD_PROVENANCE = __PROVENANCE__;
+const COLD_ASSET_BASENAMES = new Set(__ASSET_BASENAMES__);
 const COLD_MAX_EVENTS = 250_000;
 const COLD_MAX_NETWORK = 2_048;
 const COLD_MAX_CPU_SAMPLES = 500_000;
@@ -147,7 +164,6 @@ type CapturedRequest = {
   priority?: string;
 };
 type TraceInterval = { start: number; end: number; name: string; phase: string | null };
-type RequestTiming = { start: number; end: number };
 type RawRecord = Record<string, unknown>;
 
 function asRecord(value: unknown): RawRecord | undefined {
@@ -294,9 +310,8 @@ async function startColdCapture(page: Page) {
     const nodes = Array.isArray(profile?.nodes) ? profile.nodes : [];
     if (traceOverflow || networkOverflow || samples.length === 0 || samples.length > COLD_MAX_CPU_SAMPLES || nodes.length === 0 || nodes.length > COLD_MAX_CPU_NODES || completion.dataLossOccurred !== false)
       throw new Error("capture-integrity");
-    const offsets = clockSamples.map((sample) => sample.offsetMs);
-    const offsetMs = offsets.reduce((sum, value) => sum + value, 0) / offsets.length;
-    const clockRangeMs = (Math.max(...offsets) - Math.min(...offsets)) / 2;
+    const clockAlignment = estimateClockAlignment(clockSamples);
+    const offsetMs = clockAlignment.offsetMs;
     const toBrowserMs = (timestampSeconds: number) => timestampSeconds * 1000 - offsetMs;
     const resources = [...requests.values()].map((request) => ({
       url: request.url,
@@ -319,7 +334,7 @@ async function startColdCapture(page: Page) {
     return {
       resources,
       phases,
-      uncertaintyMs: Math.max(...clockSamples.map((sample) => sample.uncertaintyMs)) + clockRangeMs,
+      uncertaintyMs: clockAlignment.uncertaintyMs,
       traceEventCount: receivedTraceEventCount,
       timelineRecordCount: traceEvents.length,
       cpuSampleCount: samples.length,
@@ -416,20 +431,26 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
     const capture = await startColdCapture(page);
     try {
       await page.goto(WORK_LIST_PATH);
-      const startAlignment = await capture.align();
+      await capture.align();
       const rows = page.locator("[data-testid=work-item-list-populated] tbody tr");
       await page.waitForFunction(() => (window as G11Window).__g11Metrics.lcp > 0, undefined, { timeout: 30_000 });
-      const lcpState = await page.evaluate(() => ({
-        lcpMs: (window as G11Window).__g11Metrics.lcp,
-        lcpElementTag: (window as G11Window).__g11Metrics.lcpElement.split(/[.#]/, 1)[0].toLowerCase(),
-        timeOriginMs: performance.timeOrigin,
-        rowCount: document.querySelectorAll("[data-testid=work-item-list-populated] tbody tr").length,
-      }));
+      const lcpState = await page.evaluate(() => {
+        const lcpMs = (window as G11Window).__g11Metrics.lcp;
+        const sampleAtMs = performance.now();
+        return {
+          lcpMs,
+          lcpElementTag: (window as G11Window).__g11Metrics.lcpElement.split(/[.#]/, 1)[0].toLowerCase(),
+          timeOriginMs: performance.timeOrigin,
+          rowsAtPostObserverSample: document.querySelectorAll("[data-testid=work-item-list-populated] tbody tr").length,
+          rowCountSampleAtMs: sampleAtMs,
+          rowCountSampleAfterLcpEntryMs: Math.max(0, sampleAtMs - lcpMs),
+        };
+      });
       if (lcpState.lcpElementTag !== "h1") throw new Error("unexpected-lcp-element");
       await expect(rows).toHaveCount(500, { timeout: 30_000 });
       await waitForTwoFrames(page);
       const rowCount = await rows.count();
-      if (rowCount !== 500 || lcpState.rowCount > 500) throw new Error("row-count");
+      if (rowCount !== 500 || lcpState.rowsAtPostObserverSample > 500) throw new Error("row-count");
       const target = page.getByRole("link", { name: WORK_ITEM_KEY, exact: true });
       await expect(target).toHaveCount(1);
       const targetHref = await target.getAttribute("href");
@@ -439,30 +460,28 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
       const routeState = await page.evaluate(() => ({
         routeStartMs: (window as G11Window).__g11Metrics.routeStart,
         routePaintMs: (window as G11Window).__g11Metrics.routePaint,
-        routePaintState: (window as Window & { __coldRoutePaintState?: string }).__coldRoutePaintState ?? "none",
         timeOriginMs: performance.timeOrigin,
       }));
       if (routeState.timeOriginMs !== lcpState.timeOriginMs) throw new Error("navigation-clock-reset");
       if (routeState.routeStartMs <= 0 || routeState.routePaintMs <= 0) throw new Error("route-paint-mark");
-      if (!["loading", "content", "loading-and-content"].includes(routeState.routePaintState)) throw new Error("route-paint-state");
       await expect(page.getByTestId("work-item-detail")).toBeVisible({ timeout: 15_000 });
       const detailUrl = new URL(page.url());
       if (detailUrl.pathname !== "/agent/work-items/WLP-1") throw new Error("detail-url");
       const rawCapture = await capture.finish();
-      rawCapture.uncertaintyMs = Math.max(rawCapture.uncertaintyMs, startAlignment.uncertaintyMs);
-      const phases = labelRouterAuthWaits(rawCapture.phases, rawCapture.resources);
       const report = buildSanitizedColdReport({
         provenance: COLD_PROVENANCE,
+        assetBasenames: COLD_ASSET_BASENAMES,
         resources: rawCapture.resources,
-        phaseSegments: phases,
+        phaseSegments: rawCapture.phases,
         lcpMs: lcpState.lcpMs,
         lcpElementTag: lcpState.lcpElementTag,
-        rowsAtLcp: lcpState.rowCount,
+        rowsAtPostObserverSample: lcpState.rowsAtPostObserverSample,
+        rowCountSampleAtMs: lcpState.rowCountSampleAtMs,
+        rowCountSampleAfterLcpEntryMs: lcpState.rowCountSampleAfterLcpEntryMs,
         rowCount,
         clickTarget: WORK_ITEM_KEY,
         routeStartMs: routeState.routeStartMs,
         routePaintMs: routeState.routePaintMs,
-        routePaintState: routeState.routePaintState,
         detailVisible: true,
         urlVerified: true,
         clockUncertaintyMs: rawCapture.uncertaintyMs,
@@ -475,7 +494,7 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
         lcpWindow: { lcpMs: lcpState.lcpMs },
         clickWindow: { routeStartMs: routeState.routeStartMs, routePaintMs: routeState.routePaintMs },
       });
-      assertColdReportPrivacy(report);
+      assertColdReportPrivacy(report, COLD_ASSET_BASENAMES);
       await mkdir(dirname(COLD_REPORT_PATH), { recursive: true });
       await writeFile(COLD_REPORT_PATH, JSON.stringify(report, null, 2) + "\n", { mode: 0o600 });
     } catch {
@@ -484,31 +503,6 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
   }, { g13Windows: true });
 });
 
-function labelRouterAuthWaits(
-  segments: Array<{ phase: string; start: number; end: number }>,
-  resources: Array<{ url: string; timing?: RequestTiming }>,
-) {
-  const waitResources = resources.filter((resource) =>
-    resource.url === "http://127.0.0.1:4179/api/auth/get-session" ||
-    resource.url === "http://127.0.0.1:4179/api/projects/project-g11/work-items"
-  ).map((resource) => resource.timing).filter((timing): timing is RequestTiming => Boolean(timing));
-  return segments.flatMap((segment) => {
-    if (segment.phase !== "main-thread-idle") return [segment];
-    const boundaries = new Set([segment.start, segment.end]);
-    for (const wait of waitResources) {
-      if (wait.start < segment.end && wait.end > segment.start) {
-        boundaries.add(Math.max(segment.start, wait.start));
-        boundaries.add(Math.min(segment.end, wait.end));
-      }
-    }
-    const points = [...boundaries].sort((left, right) => left - right);
-    return points.slice(0, -1).map((start, index) => {
-      const end = points[index + 1];
-      const overlapsWait = waitResources.some((wait) => wait.start <= start && wait.end >= end);
-      return { phase: overlapsWait ? "router-auth-wait" : segment.phase, start, end };
-    });
-  });
-}
 `;
 
 const generatedConfigTemplate = `import { defineConfig, devices } from "@playwright/test";
@@ -558,14 +552,17 @@ try {
       "utf8",
     ),
   );
-  const build = await readBuildEvidence();
+  const buildEvidence = await readBuildEvidence();
   const pnpmVersion = execFileSync("pnpm", ["--version"], {
     cwd: repoDir,
     encoding: "utf8",
   }).trim();
-  const versionBrowser = await chromium.launch();
-  const chromiumVersion = versionBrowser.version();
-  await versionBrowser.close();
+  let chromiumVersion = "discovery-only";
+  if (!discoveryOnly) {
+    const versionBrowser = await chromium.launch();
+    chromiumVersion = versionBrowser.version();
+    await versionBrowser.close();
+  }
   const provenance = {
     sourceSha,
     candidateHeadSha,
@@ -577,7 +574,7 @@ try {
     pnpmVersion,
     playwrightVersion: playwrightPackage.version,
     chromiumVersion,
-    build,
+    build: buildEvidence.evidence,
   };
   const previewOccurrences =
     benchmark.match(/http:\/\/127\.0\.0\.1:4178/g) ?? [];
@@ -588,17 +585,19 @@ try {
     throw new Error(
       "Canonical route-paint correlation point changed unexpectedly.",
     );
-  const source = benchmark
-    .replaceAll("http://127.0.0.1:4178", origin)
-    .replace(
-      routePaintMarker,
-      `${routePaintMarker}\n          if (kind === "route") {\n            const coldWindow = window as Window & { __coldRoutePaintState?: string };\n            const loadingVisible = Boolean(document.querySelector('[data-testid="work-item-detail-loading"]')?.getClientRects().length);\n            const contentVisible = Boolean(document.querySelector('[data-testid="work-item-detail"]')?.getClientRects().length);\n            coldWindow.__coldRoutePaintState = loadingVisible ? (contentVisible ? "loading-and-content" : "loading") : contentVisible ? "content" : "none";\n          }`,
-    );
+  const source = benchmark.replaceAll("http://127.0.0.1:4178", origin);
   if (source.includes("http://127.0.0.1:4178"))
     throw new Error("Diagnostic preview rewrite was incomplete.");
   const extra = generatedRecorder
-    .replace("__REPORT_PATH__", JSON.stringify(resolve(outputPath)))
-    .replace("__PROVENANCE__", JSON.stringify(provenance));
+    .replace(
+      "__REPORT_PATH__",
+      JSON.stringify(resolve(reportPathForGeneration)),
+    )
+    .replace("__PROVENANCE__", JSON.stringify(provenance))
+    .replace(
+      "__ASSET_BASENAMES__",
+      JSON.stringify(buildEvidence.assetBasenames),
+    );
   await writeFile(generatedSpec, `${source}\n${extra}`, { mode: 0o600 });
   await writeFile(generatedConfig, generatedConfigTemplate, { mode: 0o600 });
   const validation = spawnSync(
@@ -616,13 +615,22 @@ try {
       "test",
       "--config=playwright.hosted-cold-recording.generated.config.ts",
       "--workers=1",
+      ...(discoveryOnly ? ["--list"] : []),
     ],
-    { cwd: webDir, stdio: "ignore" },
+    { cwd: webDir, stdio: discoveryOnly ? "inherit" : "ignore" },
   );
   if (result.error || result.status !== 0)
-    throw new Error("Hosted cold recording journey failed.");
-} catch {
-  await rm(outputPath, { force: true });
+    throw new Error(
+      discoveryOnly
+        ? "Generated cold test discovery failed."
+        : "Hosted cold recording journey failed.",
+    );
+  if (discoveryOnly)
+    process.stdout.write("Generated cold test discovery passed.\n");
+} catch (error) {
+  if (outputPath) await rm(outputPath, { force: true });
+  if (discoveryOnly && error instanceof Error)
+    process.stderr.write(`Generated discovery error: ${error.message}\n`);
   throw new Error(
     "Hosted cold recording did not produce a publishable bounded report.",
   );

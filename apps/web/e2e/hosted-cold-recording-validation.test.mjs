@@ -3,13 +3,21 @@ import test from "node:test";
 import {
   assertColdReportPrivacy,
   buildSanitizedColdReport,
+  deriveManifestAssetBasenames,
+  estimateClockAlignment,
+  hashedBasename,
 } from "./hosted-cold-recording-validation.mjs";
 
 const hash = "a".repeat(64);
 const sourceSha = "b".repeat(40);
+const assetBasenames = new Set([
+  "agent-initial-runtime-AbCdEf012345.js",
+  "_layout-AbCdEf012345.js",
+]);
 
 function reportInput(overrides = {}) {
   return {
+    assetBasenames,
     provenance: {
       sourceSha,
       expectedSourceSha: sourceSha,
@@ -83,16 +91,17 @@ function reportInput(overrides = {}) {
       { phase: "react-render-commit", start: 30, end: 50 },
       { phase: "dom-removal", start: 50, end: 60 },
       { phase: "paint-layout", start: 60, end: 90 },
-      { phase: "router-auth-wait", start: 90, end: 120 },
+      { phase: "main-thread-idle", start: 90, end: 120 },
     ],
     lcpMs: 150,
     lcpElementTag: "h1",
-    rowsAtLcp: 310,
+    rowsAtPostObserverSample: 310,
+    rowCountSampleAtMs: 151,
+    rowCountSampleAfterLcpEntryMs: 1,
     rowCount: 500,
     clickTarget: "WLP-1",
     routeStartMs: 160,
     routePaintMs: 55,
-    routePaintState: "loading",
     detailVisible: true,
     urlVerified: true,
     clockUncertaintyMs: 1.4,
@@ -121,7 +130,27 @@ test("cold report binds the exact source and emits only bounded diagnostic evide
   assert.equal(report.environment.rows, 500);
   assert.equal(report.journey.clickTarget, "WLP-1");
   assert.equal(report.journey.lcpElementTag, "h1");
-  assert.equal(report.journey.routePaintState, "loading");
+  assert.equal(report.journey.rowsAtPostObserverSample, 310);
+  assert.equal(report.journey.rowCountSampleAtMs, 151);
+  assert.equal(report.journey.rowCountSampleAfterLcpEntryMs, 1);
+  assert.equal(
+    report.journey.rowCountSampleTimebase,
+    "document-performance-timeline-ms",
+  );
+  assert.equal("rowsReadyAtLcp" in report.journey, false);
+  assert.equal("routePaintState" in report.journey, false);
+  assert.equal(
+    report.clocks.alignmentBound,
+    "maximum-sampled-offset-residual-plus-bracket",
+  );
+  assert.deepEqual(report.nonCausalOverlays.idleRequestTemporalOverlap, [
+    { route: "/api/projects/:project/work-items", overlapMs: 30 },
+  ]);
+  assert.equal(
+    report.nonCausalOverlays.note.includes("does not identify a wait boundary"),
+    true,
+  );
+  assert.equal(report.phaseTotalsMs["main-thread-idle"], 40);
   assert.equal(
     report.resources[0].source,
     "agent-initial-runtime-AbCdEf012345.js",
@@ -130,7 +159,7 @@ test("cold report binds the exact source and emits only bounded diagnostic evide
   assert.equal(report.resources[2].route, "/api/projects/:project/work-items");
   assert.equal(report.resources[4].route, "unrecognized");
   assert.equal(report.resources[4].source, "unrecognized");
-  assertColdReportPrivacy(report);
+  assertColdReportPrivacy(report, assetBasenames);
 });
 
 test("cold report strips queries and unsafe paths from resource and initiator labels", () => {
@@ -147,6 +176,95 @@ test("cold report strips queries and unsafe paths from resource and initiator la
   assert.equal(report.resources[4].initiatorSource, "unrecognized");
 });
 
+test("only current manifest assets survive resource and initiator labels", () => {
+  const privateBasename = "customer-acme-legal-AbCdEf012345.js";
+  const resources = reportInput().resources.map((resource) => ({
+    ...resource,
+  }));
+  resources[0].url = `http://127.0.0.1:4179/assets/${privateBasename}`;
+  resources[0].initiatorUrl = `http://127.0.0.1:4179/assets/${privateBasename}`;
+  const report = buildSanitizedColdReport(reportInput({ resources }));
+
+  assert.equal(report.resources[0].source, "unrecognized");
+  assert.equal(report.resources[0].initiatorSource, "unrecognized");
+  assert.equal(JSON.stringify(report).includes("customer-acme-legal"), false);
+  assert.equal(
+    JSON.stringify(report.provenance).includes("AbCdEf012345"),
+    false,
+  );
+  assertColdReportPrivacy(report, assetBasenames);
+
+  report.journey.unexpectedMetadata = [...assetBasenames][0];
+  assert.throws(
+    () => assertColdReportPrivacy(report, assetBasenames),
+    /leaked outside resource labels/,
+  );
+  delete report.journey.unexpectedMetadata;
+
+  report.resources[0].source = privateBasename;
+  assert.throws(
+    () => assertColdReportPrivacy(report, assetBasenames),
+    /verified asset or route/,
+  );
+});
+
+test("manifest allowlist contains only hashed assets present in the current dist inventory", () => {
+  const manifest = {
+    "src/main.tsx": {
+      file: "assets/agent-initial-runtime-AbCdEf012345.js",
+      css: ["assets/index-AbCdEf012345.css"],
+      assets: [
+        "assets/geist-latin-AbCdEf012345.woff2",
+        "assets/accept._inviteId-CPVYxqOq.js",
+      ],
+    },
+  };
+  const names = deriveManifestAssetBasenames(manifest, [
+    "assets/agent-initial-runtime-AbCdEf012345.js",
+    "assets/index-AbCdEf012345.css",
+    "assets/geist-latin-AbCdEf012345.woff2",
+    "assets/accept._inviteId-CPVYxqOq.js",
+    "assets/customer-acme-legal-AbCdEf012345.js",
+  ]);
+  assert.deepEqual([...names].sort(), [
+    "accept._inviteId-CPVYxqOq.js",
+    "agent-initial-runtime-AbCdEf012345.js",
+    "geist-latin-AbCdEf012345.woff2",
+    "index-AbCdEf012345.css",
+  ]);
+  assert.throws(
+    () =>
+      deriveManifestAssetBasenames(manifest, ["assets/not-the-manifest.js"]),
+    /not a current dist file/,
+  );
+  assert.equal(
+    hashedBasename("mermaid.core-DFihE3QI.js", "current build bytes")?.basename,
+    "mermaid.core-DFihE3QI.js",
+  );
+});
+
+test("clock uncertainty covers the largest residual from the chosen offset plus its bracket", () => {
+  const estimate = estimateClockAlignment([
+    { offsetMs: 0, uncertaintyMs: 0 },
+    { offsetMs: 0, uncertaintyMs: 0 },
+    { offsetMs: 10, uncertaintyMs: 0 },
+  ]);
+  assert.equal(Math.round(estimate.offsetMs * 100) / 100, 3.33);
+  assert.equal(Math.round(estimate.uncertaintyMs * 100) / 100, 6.67);
+  const roundedBound = buildSanitizedColdReport(
+    reportInput({ clockUncertaintyMs: estimate.uncertaintyMs }),
+  ).clocks.alignmentUncertaintyMs;
+  assert.equal(roundedBound, 6.7);
+
+  const withBrackets = estimateClockAlignment([
+    { offsetMs: 0, uncertaintyMs: 0.2 },
+    { offsetMs: 0, uncertaintyMs: 0.2 },
+    { offsetMs: 10, uncertaintyMs: 1.5 },
+  ]);
+  assert.ok(withBrackets.uncertaintyMs >= 8.16);
+  assert.throws(() => estimateClockAlignment([]), /samples/);
+});
+
 test("cold report rejects incomplete journey evidence, source drift, and capture loss", () => {
   for (const overrides of [
     { rowCount: 499 },
@@ -155,11 +273,11 @@ test("cold report rejects incomplete journey evidence, source drift, and capture
     { detailVisible: false },
     { routeStartMs: 0 },
     { routePaintMs: 0 },
-    { routePaintState: "none" },
     { traceDataLoss: true },
     { traceTruncated: true },
     { networkTruncated: true },
     { clockUncertaintyMs: 1001 },
+    { rowCountSampleAtMs: 149 },
     {
       provenance: {
         ...reportInput().provenance,
@@ -183,6 +301,15 @@ test("cold report rejects overlapping phases, invalid hashes, and oversized reso
         }),
       ),
     /overlapping/,
+  );
+  assert.throws(
+    () =>
+      buildSanitizedColdReport(
+        reportInput({
+          phaseSegments: [{ phase: "router-auth-wait", start: 0, end: 1 }],
+        }),
+      ),
+    /overlapping mutually exclusive phase segment/,
   );
 
   assert.throws(
@@ -218,5 +345,8 @@ test("cold report rejects overlapping phases, invalid hashes, and oversized reso
 test("privacy assertion rejects diagnostic reports that contain raw network or DOM fields", () => {
   const report = buildSanitizedColdReport(reportInput());
   report.rawUrl = "/private?token=secret";
-  assert.throws(() => assertColdReportPrivacy(report), /unknown field/);
+  assert.throws(
+    () => assertColdReportPrivacy(report, assetBasenames),
+    /unknown field/,
+  );
 });
