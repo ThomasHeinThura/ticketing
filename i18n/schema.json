@@ -7827,9 +7827,12 @@
 						},
 						"error": {
 							"type": "string"
+						},
+						"conflict": {
+							"type": "string"
 						}
 					},
-					"required": ["success", "error"]
+					"required": ["success", "error", "conflict"]
 				},
 				"contextMenu": {
 					"type": "object",

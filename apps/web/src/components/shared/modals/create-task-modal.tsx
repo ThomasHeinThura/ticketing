@@ -52,6 +52,7 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { formatDateMedium } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
+import { HttpError } from "@/lib/http-error";
 import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
@@ -490,11 +491,13 @@ function CreateTaskModal({
       }
     } catch (error) {
       didSubmitRef.current = false;
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("common:modals.createTask.createError"),
-      );
+      if (!(error instanceof HttpError)) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t("common:modals.createTask.createError"),
+        );
+      }
     }
   };
 

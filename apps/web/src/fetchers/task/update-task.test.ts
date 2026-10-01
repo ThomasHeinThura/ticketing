@@ -35,6 +35,7 @@ describe("updateTask optimistic concurrency", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ version: 2 }) })
       .mockResolvedValueOnce({
         ok: false,
+        status: 409,
         text: async () =>
           '{"message":"Version mismatch","assertedVersion":1,"currentVersion":2}',
       });
@@ -43,7 +44,10 @@ describe("updateTask optimistic concurrency", () => {
     const concurrentWrite = updateTask(staleTask.id, staleTask);
 
     await expect(firstWrite).resolves.toMatchObject({ version: 2 });
-    await expect(concurrentWrite).rejects.toThrow("assertedVersion");
+    await expect(concurrentWrite).rejects.toMatchObject({
+      status: 409,
+      message: "Failed to update task",
+    });
     expect(mocks.put).toHaveBeenCalledTimes(2);
     for (const [request] of mocks.put.mock.calls) {
       expect(request).toMatchObject({

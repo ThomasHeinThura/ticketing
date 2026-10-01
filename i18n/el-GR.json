@@ -1913,7 +1913,8 @@
 		},
 		"update": {
 			"success": "Η εργασία ενημερώθηκε με επιτυχία",
-			"error": "Αποτυχία ενημέρωσης εργασίας"
+			"error": "Αποτυχία ενημέρωσης εργασίας",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "Αντιγραφή συνδέσμου",

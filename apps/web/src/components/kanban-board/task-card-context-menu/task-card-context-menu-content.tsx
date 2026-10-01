@@ -25,6 +25,7 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getColumnIcon } from "@/lib/column";
 import { generateLink } from "@/lib/generate-link";
 import { getInitials } from "@/lib/get-initials";
+import { HttpError } from "@/lib/http-error";
 import { getPriorityLabel } from "@/lib/i18n/domain";
 import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
@@ -126,12 +127,13 @@ export default function TaskCardContextMenuContent({
             [field]: value,
           });
       }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : t("tasks:update.error"),
-      );
-    } finally {
       toast.success(t("tasks:update.success"));
+    } catch (error) {
+      if (!(error instanceof HttpError)) {
+        toast.error(
+          error instanceof Error ? error.message : t("tasks:update.error"),
+        );
+      }
     }
   };
 
