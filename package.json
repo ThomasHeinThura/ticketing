@@ -19,6 +19,7 @@
     "test:visual": "pnpm check:visual-scope && pnpm --filter @taskdesk/web test:visual",
     "test:a11y": "pnpm --filter @taskdesk/ui exec vitest run --config vitest.config.ts src/components/stories.accessibility.test.tsx && pnpm --filter @taskdesk/web exec playwright test --config playwright.config.ts --grep @a11y",
     "test:integration": "turbo test:integration",
+    "test:no-inherited-routes": "pnpm test:permissions -- no-inherited-integration-routes.test.ts",
     "test:permissions": "turbo test:permissions",
     "typecheck": "turbo typecheck",
     "prepare": "husky",

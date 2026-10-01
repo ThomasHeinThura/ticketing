@@ -79,9 +79,14 @@ concurrency, cross-tenant isolation, migration application, job leasing, outbox 
 ## Permission tests — RBAC and its API, the structural layer
 Added 2026-09-06, from the fork-time removal list ([decision log](../07-planning/decision-log.md)):
 
-- `no-inherited-integration-routes.test.ts` — no route in Hono's router matches
-  `public-project|github|gitea|slack|discord|telegram|generic-webhook`; `octokit` and
-  `@octokit/webhooks` are absent from the lockfile.
+- `no-inherited-integration-routes.test.ts` — the constructed Hono router has no
+  `public-project`, GitHub, Gitea, Slack, Discord, Telegram or generic-webhook route; the
+  exact `octokit` and `@octokit/webhooks` package names are absent from lockfile package and
+  snapshot mappings and importer aliases. The constructed better-auth instance contains no
+  `anonymous`, `device-authorization` or `bearer` plugin. The independently reconciled
+  `pnpm test:no-inherited-routes` fast gate runs this test; `pnpm test:permissions` includes it
+  as well. The existing `better-auth-plugin-list.test.ts` remains the authoritative exact
+  approved-list assertion.
 - `no-anonymous-plugin.test.ts` — the constructed better-auth configuration contains no
   `anonymous`, `deviceAuthorization` or `bearer` plugin, `accountLinking.enabled` is `false`
   and `session.cookieCache` is disabled (reads the config, not the HTTP behaviour).
