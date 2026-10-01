@@ -164,6 +164,7 @@ export const taskExportSchema = z
     tasks: z.array(
       z
         .object({
+          version: z.number().int().min(1),
           title: z.string(),
           description: z.string(),
           status: z.string(),
