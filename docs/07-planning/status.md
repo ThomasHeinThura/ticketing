@@ -14,6 +14,91 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
+`c27b2ee771eba19f193a0d20cfc1048e9c6d21a9` (verified 2026-10-01 06:14 UTC).**
+
+Since the 03:15 snapshot, protected PRs #532 (TaskDesk public branding), #535 (canonical
+filesystem-root aliases), #537 (Node/JSDOM test storage), #538 (canonical CI root probes)
+and #531 (the bounded RLS prototype) have merged. Each had the applicable independent
+Luna and Sol evidence, all 17 required checks green on its final candidate, and image
+build/boot evidence where shipping inputs changed. Issues #533, #534 and #536 are closed.
+PR #531's final candidate was `fd38764b813fdd76719495f76838042ea039583a`; full hosted
+PostgreSQL integration passed 123 files/1,555 tests. Its production image built and answered
+live/readiness probes in an isolated stack. The prototype compares existing application
+filters with PostgreSQL row policies; it does not enable production RLS or complete P0.
+
+**Local development:** normal `scripts/deploy.sh local` completed with the reviewed #531
+image, `sha256:e5ca1d9e38298601fa78a167f4fa3d387ee4af3745d2db43ed411584f95f09ba`.
+Both HTTPS hosts answered readiness with 200. Actual Chrome reload preserved the signed-in
+administrator and DV-1's In Progress status, self-assignment and three activity entries.
+The portal certificate warning is resolved and its normal sign-in screen opens. Evidence:
+`/private/tmp/taskdesk-c27-dev-task.png` and
+`/private/tmp/taskdesk-c27-portal-sign-in.png` (1800×947). Distinct customer portal entry
+and journeys remain unimplemented. Credentials stay in a private file outside the repository.
+
+**P0 remains open.** Draft #525 is now at
+`a4592f521ca5046044242a7701b2574cc12bd7bb`, with normal main integration through #538.
+The last hosted budget evidence still binds older `cc1660ea`: nine strict G11 budgets fail
+(list 579.4/500 ms, LCP 2692/2500 ms, detail 529.0/300 ms, create 258.4/200 ms, palette
+open 220.8/200 ms, navigation 724.2/200 ms, state 309.8/200 ms, assignment 295.5/200 ms,
+board 794.3/500 ms); six G13 routes and its deliberate red probe pass. The exact-a459
+scheduler experiment also failed navigation (baseline final 226.1 ms, candidate 255.5 ms)
+and was fully reverted. No application optimization from that experiment is accepted.
+A single correlated Enter/guard/fallback/paint capture is being prepared to identify the
+actual dominant work. G11 is still absent from required ruleset contexts and must be
+required before #525 merges. No budget, review or gate is waived.
+
+Draft #541's additive seed CLI covers explicit minimal, realistic and hostile profiles
+in an already-migrated database; realistic fixtures contain 50 projects/10,000 items and
+200 placeholder staff people without credentials or memberships. It does not reset data
+or grant authority. Source `fa13a53d324131b25c447c9ffe643916cce494fb` closes the first
+review's default-drift blocker with exact manifests and transactional rollback coverage.
+Both ordinary reviewers ran one PostgreSQL file/six tests. The second review's subsequent
+field concern was misattributed to the workflow table and is being corrected against the
+actual schema. Current-main integration, required independent Sol review, image evidence
+and final hosted gates remain pending. This is seed groundwork, not manual 10k-item UI
+acceptance or a P0 completion claim.
+
+The #8 audit remains the 01:56 UTC sample: 68 requests over three low-volume days,
+21 route keys/14 router groups, 46 agreeing and 22 unevaluated rows, zero disagreement
+or evaluator-error rows. It does not meet the approximately seven-day representative soak.
+The P0 exit audit also retains disabled manifest gates, environment-read residuals,
+agent/portal entry separation, operational/accessibility acceptance and the additional
+fresh independent Sol phase finalizer. A green baseline is not full stage acceptance.
+
+**Parallel candidates:** P1 #529 is draft at
+`f8750d27a834b1e3522e185005d6f5cfc5e0a6c2`. Its initial full panel, bounded transport
+continuation and subsequent UI recovery have recorded independent Luna verdicts and the
+further full Sol pass at f875. Hosted source-head PostgreSQL passed 124 files/1,561 tests;
+unit/component passed 12 tasks (API 66 files/530 tests; web 80 files/351 tests). The shipping
+image booted live/ready. Actual Chrome proved a stale v2 write returns 409 once, restores
+the authoritative status/title without losing the concurrent edit, and stays correct after
+reload; task panel, date context menu, backlog/create modal, Gantt move and list were also
+used. Review-note publication, current-main composition and exact-candidate gates remain
+before merge. Unversioned legacy third-party writes retain their documented overwrite risk.
+
+P4 #539 is ready at note-only `737fc0b0de316d05a667fadabb98e02fe0b48c76`, recording
+current-source ordinary/Sol clearance for deny/cancel and the main import through #538.
+Its shipping image booted successfully; 16 required checks are green and full PostgreSQL
+integration is running at this read. It still needs the newly merged main integration and
+applicable exact-head evidence. Existing AU-14 permits mutation state/event commit when
+an audit append fails, with error reporting; administrator notification/metric debt stays
+open. Deny is session-only, cancel accepts the requester's valid current credential, and
+both are self-only with locked single-winner state decisions. This does not complete
+approval execution, step-up, expiry workers, every DELETE route or the UI.
+
+P1 #512 remains draft at `f90ad9e768b413299536f1e3501b4f05876fd8ab` with CA-15 and
+journey evidence incomplete. P2 #513 remains draft at
+`225f97a359ab863350d2771062681a8ab8158426`; its recorded 15-test PostgreSQL and Luna/Sol
+evidence binds that head. Its calendar migration collides with #529's 0079 and must be
+regenerated after the concurrency schema merges. CAL-8, AU-14 alerting and DELETE remain
+open. P3's read-only six-table persistence plan is prepared; implementation also waits for
+the owning identity-security findings to be cleared, canonical persistence ambiguities to
+be resolved and shared schema/journal ownership to be released. The 25-test real-Entra
+acceptance remains required. Check live GitHub heads and checks before acting.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
 `a0ecc965c9de65af5575361eb6c5286bf05a4bdd` (verified 2026-10-01 03:15 UTC).**
 PR #528's bounded pending-action self-read API merged after three recorded independent
 reviews (two Luna ordinary passes and a full Sol security pass), all 17 required checks,
@@ -2243,15 +2328,17 @@ needs a portal-caller identity path, and #449 needs a system-actor transition me
 #499 and #502 are closed; their liveness and archive-freeze fixes are merged. The stale
 full-task write race is separately open as #526. Check live GitHub state before dispatch.
 
-### P2 #33 / P3 #39 shared-schema ordering
+### P2 #33 / P3 #39 shared-schema ordering and identity review
 
 The #33 calendar candidate is draft PR #513 and remains partial. CAL-8 usage, AU-14 alerting
 and the pending-action DELETE retrofit remain open. P1 #529 and P2 #513 both currently
 use migration 0079; acceptance must be serialized and the later candidate regenerated
 against the first one's merged schema. P3 #39's six-table persistence work shares Drizzle
 schema, relation and migration-journal files, so that work starts after those lanes release
-them. #39's eventual completion still requires its 25-test
-real-Entra gate. P3 #38 remains dependent on request/catalogue/intake/approval foundations.
+them. The owning security review still lists JIT/domain trust and the OIDC protocol floor;
+identity implementation waits for those findings to be independently reconciled and cleared.
+The read-only six-table plan also identifies canonical persistence details that must be
+resolved before DDL. #39's eventual completion still requires its 25-test real-Entra gate. P3 #38 remains dependent on request/catalogue/intake/approval foundations.
 
 ### Design-review ownership — P2 #36
 

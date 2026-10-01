@@ -5,6 +5,23 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-01 · Pending-action decisions follow the existing AU-14 mutation contract
+
+**Reconciliation:** denial/cancellation mutations preserve the already-decided AU-14
+contract: action state and its outbox event commit together; an audit append failure rolls
+back its nested audit savepoint, reports the error and does not undo the committed mutation.
+The existing self-read contract remains separate: a summary-rendering read fails if its
+viewed audit cannot be written. This introduces no waiver or new exception.
+
+**Why:** the initial decision-route reviews inferred a conflicting fail-closed mutation
+rule from PA-11. The authoritative audit/security documents and Thomas's existing AU-14
+decision explicitly require mutation success with operator reporting. PA-11 now points to
+that contract, and real PostgreSQL service/HTTP tests exercise both audit failure and
+outbox failure independently. Metric/administrator alerting remains unfinished work.
+
+**Recorded by:** orchestrator, reconciling Thomas's existing AU-14 decision and the
+independent ordinary/security reconsiderations for PR #539. No new approval policy is made.
+
 ### 2026-10-01 · Pending-action reads require current owner identity
 
 **Decision:** resolve the current database identity before either pending-action self read,
