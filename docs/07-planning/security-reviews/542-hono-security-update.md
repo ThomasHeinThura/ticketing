@@ -46,3 +46,49 @@ Performed against the exact reviewed source tree above, using the existing OrbSt
 - Optional/transitive lockfile churn remains broader than the direct Hono update.
 - No browser screen or seeded work-item detail was opened, and no manual Chrome claim or live WebSocket handshake is made. This is package metadata only; no UI source or visual behavior changed.
 - At the pre-documentation-update CI snapshot, all required CI contexts except `pull request template + security review` were green; integration had completed successfully. The template failure was caused by the Dependabot PR body omitting its required fixed sections. CI on the documentation commit and corrected PR body remains the authority for merge readiness; do not merge unless all required checks are green on that exact head.
+
+## Current-main composition and validation — 2026-10-01 15:45 UTC
+
+The Hono branch was normally merged with accepted `origin/main` at full SHA
+`eb68dcdf82da341c750bd5e6d89f061830d73d60`. Merge commit
+`57e1f201afebb2d4c41fe5ea74ac9749e83e7d9b` has parents the prior PR candidate
+`8a76d3592d20d7320de3b17d73c7a8771c475377` and that accepted main SHA. Relative to accepted
+main, the PR changes remain limited to `apps/api/package.json`, `apps/web/package.json`,
+`packages/libs/package.json`, `pnpm-lock.yaml`, and this evidence note; no application source
+or permission behavior was added by the composition.
+
+The reviews above remain bound to their recorded source `268f4b82`; they are historical
+source reviews and do not clear the new current-main composition. Fresh current-delta ordinary
+reviews and a fresh GPT-6 Sol security confirmation remain separate required gates. This
+composition record is not a reviewer verdict, a waiver, or merge authorization.
+
+Checks run on the composed tree:
+
+- `pnpm install --frozen-lockfile --ignore-scripts`: passed for all 10 workspace projects; lockfile current.
+- `pnpm check:deps`: passed, 9 workspace packages/apps and 1,184 source files.
+- `pnpm why hono -r --depth 0`: all three direct consumers (`@taskdesk/api`, `@taskdesk/web`,
+  `@taskdesk/libs`) resolve Hono 4.13.7. A separate Hono 4.13.12 remains under optional
+  `@prisma/dev`; the graph contains two Hono versions.
+- Built workspace prerequisites `@taskdesk/domain`, `@taskdesk/permissions`, and
+  `@taskdesk/email`; API and web typechecks passed; API and web production builds passed.
+- `@taskdesk/libs` tests: 2 files / 5 tests passed. API unit tests: 67 files / 536 tests
+  passed. API permission tests: 14 files / 88 tests passed. Web unit tests: 80 files / 351
+  tests passed. `git diff --check origin/main...HEAD` passed before this note update.
+- Docker image built from the composed runtime tree in OrbStack (Docker 29.4.0): image
+  `taskdesk:hono542-eb68dcdf`, ID
+  `sha256:f0783d088362e3349477dabb4ebce1a3980a1b38e2cbfccda23aaa8401058d95`, size
+  443,256,487 bytes. The image's revision label is `unknown`; the recorded source is the clean
+  current-main merge worktree at `57e1f201afebb2d4c41fe5ea74ac9749e83e7d9b`.
+- Booted an isolated Compose project `taskdesk542` using its own network
+  `taskdesk-542-smoke-eb68dcdf` and three project-scoped volumes. No host ports were
+  published. Migration exited 0 and logged successful database migration and application-role
+  setup. PostgreSQL, Valkey and TaskDesk reported healthy; in-container live and ready probes
+  both returned `{"status":"ok"}`. TaskDesk ran as UID/GID 10001 (`taskdesk`).
+- The isolated containers, network and volumes, plus the temporary environment/override
+  files, were removed after the probes. No persistent development stack or its volumes were
+  modified. The local image remains for evidence.
+
+This does not establish manual browser verification or a live WebSocket handshake. Five
+previously recorded moderate advisories through `ip-address@10.3.1` and `fast-uri@3.1.7`
+remain; this composition does not claim a vulnerability-free dependency graph. Required
+current-source CI and review gates remain authoritative.
