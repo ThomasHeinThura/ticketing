@@ -105,3 +105,13 @@ export function parseCandidateSha(args) {
   }
   return value;
 }
+
+export function hostedProfileTraceOptions() {
+  return {
+    mode: "retain-on-failure",
+    snapshots: false,
+    screenshots: true,
+    sources: true,
+    attachments: true,
+  };
+}

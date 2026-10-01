@@ -5,6 +5,7 @@ import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  hostedProfileTraceOptions,
   parseCandidateSha,
   rewriteHostedProfileOrigin,
 } from "./hosted-profile-validation.mjs";
@@ -388,7 +389,7 @@ export default defineConfig({
   reporter: "list",
   timeout: 600_000,
   outputDir: ${JSON.stringify(join(outputDir, "playwright-results"))},
-  use: { baseURL: "http://127.0.0.1:4179", trace: "retain-on-failure", ...devices["Desktop Chrome"] },
+  use: { baseURL: "http://127.0.0.1:4179", trace: ${JSON.stringify(hostedProfileTraceOptions())}, ...devices["Desktop Chrome"] },
   webServer: {
     command: "pnpm --filter @taskdesk/web preview --host 127.0.0.1 --port 4179 --strictPort",
     url: "http://127.0.0.1:4179/auth/sign-in",

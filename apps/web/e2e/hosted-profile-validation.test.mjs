@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assertHostedCaptureComplete,
+  hostedProfileTraceOptions,
   parseCandidateSha,
   rewriteHostedProfileOrigin,
 } from "./hosted-profile-validation.mjs";
@@ -141,4 +142,14 @@ test("parses optional candidate SHA values for provenance", () => {
     () => parseCandidateSha(["--candidate-sha=not-a-sha"]),
     /40-character Git SHA/,
   );
+});
+
+test("retains hosted diagnostic trace evidence without DOM snapshots", () => {
+  assert.deepEqual(hostedProfileTraceOptions(), {
+    mode: "retain-on-failure",
+    snapshots: false,
+    screenshots: true,
+    sources: true,
+    attachments: true,
+  });
 });
