@@ -700,7 +700,7 @@ create index on work_item using gin (search_vector);
 | --- | --- | --- |
 | `audit_log` | 12 months | Yes, God Mode |
 | `activity` | Forever | No — it is the journal |
-| `notification` | 90 days once read | Yes |
+| `notification` | Configured `notification_retention_days` (90 days by default), once read | Yes, God Mode |
 | Terminal `notification_delivery` rows (`delivered`, `dead`, `suppressed`) | 30 days after terminal `updated_at` | No |
 | Terminal `notification_digest` groups | 30 days after terminal `updated_at`, after eligible children are removed | No |
 | Terminal `outbox` event envelopes (`delivered`, `dead`) | 30 days after terminal `updated_at`, after eligible children are removed | No |
@@ -716,22 +716,30 @@ create index on work_item using gin (search_vector);
 
 `session-cleanup` applies child-before-parent retention. A `notification_delivery` row is
 purged only when terminal (`delivered`, `dead`, `suppressed`), at least 30 days past its
-terminal `updated_at`, and no matching person or source/recipient-organisation hold is open.
-Pending children are never retention-purged. Any retained child, including a pending or
-held child, keeps its parent `outbox` event envelope. Delete eligible children first; a
-terminal parent becomes purgeable only after 30 days and only when no child remains that
-must be retained. A person hold on one child retains that child and parent and can
-conservatively retain sibling history through the shared parent. Organisation holds cover
-the scoped parent and children.
+terminal `updated_at`, and no matching hold is open. A person hold matches
+`recipient_person_id`. An organisation hold matches the source `organisation_id`, the
+recipient's organisation, or the owning organisation of the referenced notification resource,
+resolved using [notifications.md](../03-features/notifications.md#permissions). The source
+and recipient organisations do not stand in for resource ownership. If ownership cannot be
+resolved, retain the child while any organisation hold is open. Pending children are never
+retention-purged. Any retained child, including a pending or held child, keeps its parent
+`outbox` event envelope. Delete eligible children first; a terminal parent becomes purgeable
+only after 30 days, only when no child remains that must be retained, and no open organisation
+hold matches its source scope. A child retained by any matching hold therefore retains its
+parent and can conservatively retain sibling history through the shared parent.
 
 A digest group remains pending while any member awaits delivery. Retain terminal groups for
-30 days after terminal `updated_at` and while any matching person, source-organisation or
-recipient-organisation hold applies. Do not purge a group while any child references it.
-Delete eligible terminal children first, then delete an eligible terminal group only when
-it is empty. For shared group history, one held child conservatively retains the group.
-Hard deletion of a person or organisation removes scoped children, then empty groups and
-applicable parent events; reservation ownership cascades from the delivery child. Inbox
-retention remains independent and never controls child or event retention.
+30 days after terminal `updated_at` only when no matching hold applies to any member. Apply
+each member's person, source-organisation, recipient-organisation and resource-owning-
+organisation matches above; if any member's resource ownership cannot be resolved, retain the
+group while any organisation hold is open. Do not purge a group while any child references it.
+Delete eligible terminal children first, then delete an eligible terminal group only when it
+is empty. For shared group history, one held child, including one held through its
+resource-owning organisation, retains the group and history; that retained child also keeps
+its parent event envelope. Hard deletion of a person or organisation removes scoped children,
+then empty groups and applicable parent events; reservation ownership cascades from the
+delivery child. Inbox retention remains independent and never controls child or event
+retention.
 
 ## Related
 

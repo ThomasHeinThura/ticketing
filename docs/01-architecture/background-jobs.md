@@ -122,20 +122,30 @@ of holds.
 
 Notification retention is separate from event and delivery retention. A terminal
 `notification_delivery` child (`delivered`, `dead`, `suppressed`) is eligible 30 days after
-terminal `updated_at`, only without a matching recipient-person, source-organisation or
-recipient-organisation hold. Pending children are never purged. Any retained child keeps its
-parent `outbox` envelope; delete eligible children before considering the parent. A terminal
-parent (`delivered`, `dead`) is eligible after 30 days only if no child must remain and no
-matching organisation hold applies. A person hold on one child retains that child and parent
-and may conservatively retain sibling history attached to the parent.
+terminal `updated_at` only when no matching hold applies. A person hold matches
+`recipient_person_id`. An organisation hold matches the source `organisation_id`, the
+recipient's organisation, or the owning organisation of the referenced notification resource,
+resolved using [notifications.md](../03-features/notifications.md#permissions). Do not assume
+the event's source organisation or the recipient's organisation is the resource-owning
+organisation. If resource ownership cannot be resolved, retain the child while any organisation
+hold is open. Pending children are never purged. Any retained child, including one retained by
+a resource-owning-organisation hold, keeps its parent `outbox` envelope; delete eligible
+children before considering the parent. A terminal parent (`delivered`, `dead`) is eligible
+after 30 days only if no child must remain and no open hold matches its source scope. A child
+retained by a person, recipient, source, or resource-owning-organisation hold therefore retains
+its parent and may conservatively retain sibling history attached to the parent.
 
 A `notification_digest` group stays pending while any child awaits delivery. Terminal groups
-are eligible 30 days after terminal `updated_at` under the same person and source/recipient
-organisation hold checks. Do not delete a group while any child references it. Purge eligible
-terminal children first, then an eligible terminal group only when empty. One held child
-conservatively keeps shared group history. Hard deletion removes scoped children, then empty
-groups and applicable parent events; reservation rows cascade from their delivery owner.
-Read inbox retention never deletes a delivery child or its event envelope.
+are eligible 30 days after terminal `updated_at` only when no matching hold applies to any
+member. Apply each child's person, source-organisation, recipient-organisation and
+resource-owning-organisation matches above; if a member's resource ownership cannot be
+resolved, retain its group while any organisation hold is open. Do not delete a group while any
+child references it. Purge eligible terminal children first, then an eligible terminal group
+only when empty. One held child, including one held through its resource-owning organisation,
+conservatively keeps the group and shared history. The retained child also keeps its parent
+`outbox` envelope. Hard deletion removes scoped children, then empty groups and applicable
+parent events; reservation rows cascade from their delivery owner. Read inbox retention never
+deletes a delivery child or its event envelope.
 
 Expired `outbox_dedupe_reservation` cleanup is exempt from legal holds. Lease authority ends
 at `lease_expires_at` and takeover may proceed immediately; daily cleanup physically removes
@@ -153,7 +163,13 @@ terminal group is purgeable after its 30-day window if unheld. Person or organis
 preserve matching children, groups and parent event history; unheld rows become eligible
 after the hold lifts. Inbox read-purge remains independent; unread rows remain. Expired
 reservations under the same hold are still physically removed, and takeover remains possible
-before cleanup.
+before cleanup. The organisation-hold acceptance case includes a terminal child whose event
+source scope and recipient organisation differ from the owning organisation of its referenced
+resource: an open hold on that resource-owning organisation retains the child, its digest
+group when present, and its parent event. An unresolved resource owner retains the child and
+group while any organisation hold is open. After the hold lifts and each row's own 30-day
+window has elapsed, cleanup removes eligible children first, then an empty group, then an
+eligible parent.
 
 All cadences are configurable in God Mode → Jobs (`instance:manage_jobs`). A job can be
 disabled, and a job can be triggered manually for debugging; both are audited.
