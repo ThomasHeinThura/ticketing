@@ -58,7 +58,7 @@ describe("G11 sanitized performance network evidence", () => {
       "http://127.0.0.1:4178",
     );
     const request = makeRequest(
-      "http://127.0.0.1:4178/api/fixture?token=secret",
+      "http://127.0.0.1:4178/api/projects/project-g11/work-items?token=secret",
     );
 
     completeRequest(mock.emit, request);
@@ -72,7 +72,7 @@ describe("G11 sanitized performance network evidence", () => {
     expect(summary.requests).toEqual([
       {
         method: "POST",
-        path: "/api/fixture",
+        path: "/api/projects/:project/work-items",
         resourceType: "fetch",
         status: 201,
         timing: { requestStart: 0, responseStart: 12.5, responseEnd: 18.25 },
@@ -86,13 +86,13 @@ describe("G11 sanitized performance network evidence", () => {
     expect(mock.listenerCount()).toBe(0);
   });
 
-  it("masks secret-like path segments and external origins", () => {
+  it("keeps known route templates and collapses unknown paths and origins", () => {
     const mock = makeContext();
     const capture = attachPerformanceNetworkCapture(
       mock.context,
       "http://127.0.0.1:4178",
     );
-    const secretPath = makeRequest(
+    const unknownPath = makeRequest(
       "http://127.0.0.1:4178/api/reset/token/short-secret",
       "TRACE",
     );
@@ -105,7 +105,7 @@ describe("G11 sanitized performance network evidence", () => {
       "GET",
     );
 
-    completeRequest(mock.emit, secretPath, 200);
+    completeRequest(mock.emit, unknownPath, 200);
     completeRequest(mock.emit, projectPath, 200);
     completeRequest(mock.emit, external, 200);
     const json = capture.finish();
@@ -114,14 +114,50 @@ describe("G11 sanitized performance network evidence", () => {
     };
 
     expect(summary.requests.map((request) => request.path)).toEqual([
-      "/api/reset/:redacted/:redacted",
-      "/agent/projects/:redacted/work",
+      "unrecognized",
+      "/agent/projects/:project/work",
       "external",
     ]);
     expect(summary.requests[0]?.method).toBe("OTHER");
     expect(json).not.toContain("short-secret");
     expect(json).not.toContain("outside.example");
     expect(json).not.toContain("token=x");
+  });
+
+  it("never retains opaque or unknown path values, regardless of shape", () => {
+    const mock = makeContext();
+    const capture = attachPerformanceNetworkCapture(
+      mock.context,
+      "http://127.0.0.1:4178",
+    );
+    const opaqueInvitation = makeRequest(
+      "http://127.0.0.1:4178/api/invitation/public/abcdefghijklmnopqrstuvwx?token=query-sentinel",
+    );
+    const shortKnownId = makeRequest(
+      "http://127.0.0.1:4178/api/project/a",
+      "GET",
+    );
+    const unknownNesting = makeRequest(
+      "http://127.0.0.1:4178/api/private/customtoken/level/nested-sentinel",
+    );
+
+    completeRequest(mock.emit, opaqueInvitation, 200);
+    completeRequest(mock.emit, shortKnownId, 200);
+    completeRequest(mock.emit, unknownNesting, 200);
+    const json = capture.finish();
+    const summary = JSON.parse(json) as {
+      requests: Array<Record<string, unknown>>;
+    };
+
+    expect(summary.requests.map((request) => request.path)).toEqual([
+      "unrecognized",
+      "/api/project/:project",
+      "unrecognized",
+    ]);
+    expect(json).not.toContain("abcdefghijklmnopqrstuvwx");
+    expect(json).not.toContain("query-sentinel");
+    expect(json).not.toContain("customtoken");
+    expect(json).not.toContain("nested-sentinel");
   });
 
   it("drops unknown methods, resource types, statuses, and non-finite timings", () => {
@@ -149,7 +185,7 @@ describe("G11 sanitized performance network evidence", () => {
     expect(summary.requests).toEqual([
       {
         method: "OTHER",
-        path: "/api/probe",
+        path: "unrecognized",
         resourceType: "other",
       },
     ]);

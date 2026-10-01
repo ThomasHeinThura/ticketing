@@ -2,7 +2,6 @@ import type { BrowserContext, Request, Response } from "@playwright/test";
 
 const MAX_REQUESTS = 2_048;
 const MAX_ATTACHMENT_BYTES = 256 * 1_024;
-const MAX_PATH_LENGTH = 160;
 
 const HTTP_METHODS = new Set([
   "CONNECT",
@@ -31,16 +30,49 @@ const RESOURCE_TYPES = new Set([
   "xhr",
 ]);
 
-const SENSITIVE_SEGMENTS =
-  /(?:access[-_]?token|api[-_]?key|authorization|bearer|credential|password|passwd|refresh[-_]?token|secret|session|signature|token)/i;
-const IDENTIFIER_PREDECESSORS =
-  /^(?:account|accounts|organization|organizations|person|people|project|projects|session|sessions|task|tasks|user|users|work-item|work-items|workspace|workspaces)$/i;
-const DYNAMIC_SEGMENTS = [
-  /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i,
-  /^[\da-f]{24,}$/i,
-  /^\d{12,}$/,
-  /^(?=.*[a-z])(?=.*\d)[a-z\d_-]{6,}$/i,
-];
+const UNRECOGNIZED_PATH = "unrecognized";
+
+// Only these bounded G11 benchmark route shapes retain structural path detail.
+// Dynamic segments are always emitted as their fixed template labels; their
+// supplied values are never classified by alphabet, length, or entropy.
+const SAFE_PATH_TEMPLATES = [
+  [],
+  ["auth", "sign-in"],
+  ["agent", "projects", ":project", "work"],
+  ["agent", "work-items", ":workItem"],
+  ["dashboard", "workspace", ":workspace"],
+  [
+    "dashboard",
+    "workspace",
+    ":workspace",
+    "project",
+    ":project",
+    "task",
+    ":task",
+  ],
+  ["dashboard", "workspace", ":workspace", "project", ":project", "board"],
+  ["api", "auth", "get-session"],
+  ["api", "auth", "sign-in", "email"],
+  ["api", "config"],
+  ["api", "workspace"],
+  ["api", "workspace", ":workspace", "work-item-types"],
+  ["api", "workspace", ":workspace", "members"],
+  ["api", "project"],
+  ["api", "project", ":project"],
+  ["api", "capabilities"],
+  ["api", "label", "workspace", ":workspace"],
+  ["api", "task", "tasks", ":project"],
+  ["api", "task", ":task"],
+  ["api", "column", ":project"],
+  ["api", "activity", ":task"],
+  ["api", "activity", "comment"],
+  ["api", "task", "status", ":task"],
+  ["api", "task", "assignee", ":task"],
+  ["api", "projects", ":project", "work-items"],
+  ["api", "work-items", ":workItem"],
+  ["api", "v2", "task", ":task"],
+  ["api", "ws", ":project"],
+] as const;
 
 type HttpMethod =
   | "CONNECT"
@@ -104,26 +136,19 @@ function safePath(urlValue: string, origin: string) {
   try {
     const parsed = new URL(urlValue);
     if (parsed.origin !== new URL(origin).origin) return "external";
-    if (parsed.pathname.length > MAX_PATH_LENGTH) return "/:redacted";
+    const pathname = parsed.pathname.replace(/\/+$/, "") || "/";
+    const segments = pathname === "/" ? [] : pathname.slice(1).split("/");
+    if (segments.some((segment) => segment.length === 0))
+      return UNRECOGNIZED_PATH;
 
-    const segments = parsed.pathname.split("/");
-    return segments
-      .map((segment, index) => {
-        if (!segment) return "";
-        if (segment.length > 80 || segment.includes("%")) return ":redacted";
-
-        const previousSegment = segments[index - 1] ?? "";
-        const isSensitive =
-          SENSITIVE_SEGMENTS.test(segment) ||
-          SENSITIVE_SEGMENTS.test(previousSegment) ||
-          IDENTIFIER_PREDECESSORS.test(previousSegment) ||
-          segment.includes("@") ||
-          DYNAMIC_SEGMENTS.some((pattern) => pattern.test(segment));
-        if (isSensitive || !/^[A-Za-z0-9._~-]+$/.test(segment))
-          return ":redacted";
-        return segment;
-      })
-      .join("/");
+    const template = SAFE_PATH_TEMPLATES.find(
+      (candidate) =>
+        candidate.length === segments.length &&
+        candidate.every(
+          (part, index) => part.startsWith(":") || part === segments[index],
+        ),
+    );
+    return template ? `/${template.join("/")}` || "/" : UNRECOGNIZED_PATH;
   } catch {
     return "external";
   }
