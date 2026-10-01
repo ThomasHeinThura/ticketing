@@ -2433,15 +2433,18 @@ only.
 
 Issue #28 still has three distinct dependencies: #446 needs comment/submission storage, #448
 needs a portal-caller identity path, and #449 needs a system-actor transition mechanism.
-#499 and #502 are closed; their liveness and archive-freeze fixes are merged. The stale
-full-task write race is separately open as #526. Check live GitHub state before dispatch.
+#499 and #502 are closed; their liveness and archive-freeze fixes are merged. The first-party full-task write race is closed as #526 through protected PR #529; its
+documented unversioned third-party compatibility window remains. Check live GitHub state
+before dispatch.
 
 ### P2 #33 / P3 #39 shared-schema ordering and identity review
 
 The #33 calendar candidate is draft PR #513 and remains partial. CAL-8 usage, AU-14 alerting
-and the pending-action DELETE retrofit remain open. P1 #529 and P2 #513 both currently
-use migration 0079; acceptance must be serialized and the later candidate regenerated
-against the first one's merged schema. P3 #39's six-table persistence work shares Drizzle
+and the pending-action DELETE retrofit remain open. Protected PR #529 has established
+task-version migration 0079 on main. Calendar PR #513 uses migration 0080 and awaits
+independent review and protected acceptance; P1 #512 must regenerate its later migration
+from that accepted schema. Acceptance and shared-schema writes remain serialized.
+P3 #39's six-table persistence work shares Drizzle
 schema, relation and migration-journal files, so that work starts after those lanes release
 them. The owning security review still lists JIT/domain trust and the OIDC protocol floor;
 identity implementation waits for those findings to be independently reconciled and cleared.
