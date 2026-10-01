@@ -112,6 +112,8 @@ export function ServiceCalendarEditorView({
             form="service-calendar-form"
             disabled={
               saving ||
+              (state.calendarConflict !== null &&
+                state.conflictRefreshState !== "ready") ||
               !state.workspace ||
               !state.canManageCalendars ||
               state.isCheckingPermissions
@@ -132,15 +134,35 @@ export function ServiceCalendarEditorView({
               {t("editor.conflictDescription", {
                 version: state.calendarConflict.currentVersion,
               })}
+              {state.conflictRefreshState === "refreshing" ? (
+                <p role="status">{t("editor.conflictRefreshing")}</p>
+              ) : null}
+              {state.conflictRefreshState === "error" ? (
+                <div role="alert" className="space-y-2">
+                  <p>{t("editor.conflictRefreshFailed")}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void state.refreshConflictState()}
+                  >
+                    {t("editor.retry")}
+                  </Button>
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   variant="outline"
+                  disabled={state.conflictRefreshState !== "ready"}
                   onClick={state.reloadLatest}
                 >
                   {t("editor.discardReload")}
                 </Button>
-                <Button type="button" onClick={state.keepDraft}>
+                <Button
+                  type="button"
+                  disabled={state.conflictRefreshState !== "ready"}
+                  onClick={state.keepDraft}
+                >
                   {t("editor.keepDraft")}
                 </Button>
               </div>

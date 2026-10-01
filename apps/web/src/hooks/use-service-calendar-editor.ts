@@ -7,6 +7,7 @@ import { z } from "zod";
 import type {
   CalendarWindow,
   Holiday,
+  ServiceCalendar,
   Weekday,
 } from "@/fetchers/service-calendar";
 import { ServiceCalendarConflictError } from "@/fetchers/service-calendar";
@@ -88,6 +89,11 @@ export function useServiceCalendarEditor({
     assertedVersion: number;
     currentVersion: number;
   } | null>(null);
+  const [conflictFreshCalendar, setConflictFreshCalendar] =
+    useState<ServiceCalendar | null>(null);
+  const [conflictRefreshState, setConflictRefreshState] = useState<
+    "idle" | "refreshing" | "ready" | "error"
+  >("idle");
 
   const metadataSchema = useMemo(
     () =>
@@ -157,11 +163,13 @@ export function useServiceCalendarEditor({
       } else {
         const updated = await updateCalendar.mutateAsync({
           id: calendarId,
-          version: calendar?.version ?? 1,
+          version: conflictFreshCalendar?.version ?? calendar?.version ?? 1,
           data,
         });
         form.reset({ name: updated.name, timezone: updated.timezone });
         setCalendarConflict(null);
+        setConflictFreshCalendar(null);
+        setConflictRefreshState("idle");
         toast.success(t("weekly.saved"));
       }
     } catch (error) {
@@ -170,7 +178,8 @@ export function useServiceCalendarEditor({
           assertedVersion: error.assertedVersion,
           currentVersion: error.currentVersion,
         });
-        await Promise.all([refetchCalendar(), preview.refetch()]);
+        setConflictFreshCalendar(null);
+        await refreshConflictState(error.currentVersion);
         return;
       }
       toast.error(
@@ -210,8 +219,34 @@ export function useServiceCalendarEditor({
     setPendingSaveValues(null);
   }
 
+  async function refreshConflictState(
+    expectedVersion = calendarConflict?.currentVersion ?? 0,
+  ) {
+    if (conflictRefreshState === "refreshing") return;
+    setConflictRefreshState("refreshing");
+    try {
+      const [calendarResult, previewResult] = await Promise.all([
+        refetchCalendar(),
+        preview.refetch(),
+      ]);
+      if (
+        calendarResult.isError ||
+        previewResult.isError ||
+        !calendarResult.data ||
+        calendarResult.data.version < expectedVersion
+      ) {
+        throw new Error("Calendar conflict refresh failed");
+      }
+      setConflictFreshCalendar(calendarResult.data);
+      setConflictRefreshState("ready");
+    } catch {
+      setConflictRefreshState("error");
+    }
+  }
+
   function reloadLatest() {
-    const latest = calendar;
+    if (conflictRefreshState !== "ready") return;
+    const latest = conflictFreshCalendar;
     if (!latest) return;
     hydratedCalendarId.current = null;
     form.reset({ name: latest.name, timezone: latest.timezone });
@@ -227,12 +262,15 @@ export function useServiceCalendarEditor({
     );
     setHolidayIds(latest.holidays.map(() => createFieldId()));
     setCalendarConflict(null);
+    setConflictFreshCalendar(null);
+    setConflictRefreshState("idle");
   }
 
   function keepDraft() {
     if (
-      calendar &&
-      calendar.version >=
+      conflictRefreshState === "ready" &&
+      conflictFreshCalendar &&
+      conflictFreshCalendar.version >=
         (calendarConflict?.currentVersion ?? Number.POSITIVE_INFINITY)
     )
       setCalendarConflict(null);
@@ -326,6 +364,8 @@ export function useServiceCalendarEditor({
     workspace,
     calendar,
     calendarConflict,
+    conflictRefreshState,
+    refreshConflictState,
     reloadLatest,
     keepDraft,
     preview,

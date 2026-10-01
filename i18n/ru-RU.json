@@ -2363,7 +2363,9 @@
 			"zeroDescription": "Add at least one window before saving if this calendar should move SLA clocks.",
 			"zeroTitle": "This calendar currently provides zero cover",
 			"zeroWeeklyDescription": "With no windows, SLA clocks using this calendar never advance.",
-			"zeroWeeklyTitle": "This calendar provides zero weekly cover"
+			"zeroWeeklyTitle": "This calendar provides zero weekly cover",
+			"conflictRefreshFailed": "The latest calendar could not be loaded. Your draft is safe; retry the refresh before choosing how to continue.",
+			"conflictRefreshing": "Refreshing the latest calendar…"
 		},
 		"holidays": {
 			"add": "Add holiday",

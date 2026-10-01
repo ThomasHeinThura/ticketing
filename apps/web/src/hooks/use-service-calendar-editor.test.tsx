@@ -84,6 +84,16 @@ function renderEditor() {
   );
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
+}
+
 describe("service calendar editor optimistic-concurrency recovery", () => {
   beforeEach(() => {
     Object.assign(mocks.calendar, {
@@ -170,6 +180,99 @@ describe("service calendar editor optimistic-concurrency recovery", () => {
     });
     act(() => result.current.reloadLatest());
     expect(result.current.form.getValues("name")).toBe("Latest saved");
+    expect(result.current.calendarConflict).toBeNull();
+  });
+
+  it("keeps recovery actions blocked until a deferred conflict refresh returns fresh data", async () => {
+    const refresh = deferred<{
+      data: Record<string, unknown>;
+      isError: boolean;
+    }>();
+    mocks.refetchCalendar.mockReturnValue(refresh.promise);
+    mocks.mutateAsync.mockRejectedValueOnce(
+      new ServiceCalendarConflictError("Version mismatch", 1, 2),
+    );
+
+    const { result } = renderEditor();
+    await waitFor(() =>
+      expect(result.current.form.getValues("name")).toBe("Original"),
+    );
+    act(() => result.current.form.setValue("name", "Keep this draft"));
+    let saving: Promise<void> | undefined;
+    act(() => {
+      saving = result.current.handleSave({
+        name: "Keep this draft",
+        timezone: "UTC",
+      });
+    });
+    await waitFor(() =>
+      expect(result.current.conflictRefreshState).toBe("refreshing"),
+    );
+
+    act(() => {
+      result.current.reloadLatest();
+      result.current.keepDraft();
+    });
+    expect(result.current.calendarConflict).not.toBeNull();
+    expect(result.current.form.getValues("name")).toBe("Keep this draft");
+
+    const latest = {
+      ...mocks.calendar,
+      name: "Fresh from server",
+      version: 2,
+    };
+    await act(async () => {
+      refresh.resolve({ data: latest, isError: false });
+      await saving;
+    });
+    expect(result.current.conflictRefreshState).toBe("ready");
+    act(() => result.current.reloadLatest());
+    expect(result.current.form.getValues("name")).toBe("Fresh from server");
+    expect(result.current.calendarConflict).toBeNull();
+  });
+
+  it("keeps the draft and conflict after a failed refresh, then retries successfully", async () => {
+    mocks.refetchCalendar
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce({
+        data: {
+          ...mocks.calendar,
+          name: "Fresh after retry",
+          version: 2,
+        },
+        isError: false,
+      });
+    mocks.mutateAsync.mockRejectedValueOnce(
+      new ServiceCalendarConflictError("Version mismatch", 1, 2),
+    );
+
+    const { result } = renderEditor();
+    await waitFor(() =>
+      expect(result.current.form.getValues("name")).toBe("Original"),
+    );
+    act(() => result.current.form.setValue("name", "Unsent draft"));
+    await act(async () => {
+      await result.current.handleSave({
+        name: "Unsent draft",
+        timezone: "UTC",
+      });
+    });
+
+    expect(result.current.conflictRefreshState).toBe("error");
+    expect(result.current.calendarConflict).not.toBeNull();
+    act(() => {
+      result.current.reloadLatest();
+      result.current.keepDraft();
+    });
+    expect(result.current.calendarConflict).not.toBeNull();
+    expect(result.current.form.getValues("name")).toBe("Unsent draft");
+
+    await act(async () => {
+      await result.current.refreshConflictState();
+    });
+    expect(result.current.conflictRefreshState).toBe("ready");
+    act(() => result.current.reloadLatest());
+    expect(result.current.form.getValues("name")).toBe("Fresh after retry");
     expect(result.current.calendarConflict).toBeNull();
   });
 });
