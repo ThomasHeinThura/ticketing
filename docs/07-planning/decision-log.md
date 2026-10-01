@@ -5,6 +5,37 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · P0 API upgrades use the patched Node adapter WebSocket helper (#557)
+
+**Decision:** `apps/api` owns direct exact runtime dependencies `hono@4.13.12` (MIT),
+`@hono/node-server@2.1.3` (MIT), and `ws@8.22.0` (MIT), plus development-only
+`@types/ws@8.18.2` (MIT). Remove `@hono/node-ws@1.3.1`: its peer range requires
+`@hono/node-server@^1.19.11` and excludes adapter 2.x. Raise the single pnpm override floors
+to Hono `^4.13.12` and Node adapter `^2.1.3`. Use `upgradeWebSocket` from
+`@hono/node-server`, with one `ws` `WebSocketServer({ noServer: true })` passed to the
+existing HTTP `serve()` listener.
+
+The migration preserves authentication before upgrade, user-route precedence, project
+reach checks and indistinguishable foreign/missing rejection, `windowId`, JSON events,
+ping handling, fan-out, close cleanup and bounded server shutdown. Public static files stay
+under the existing public build root, attachments stay private, and the adapter's default
+`allowPercentInPath: false` remains in force. The integration coverage exercises the real
+Node listener, including auth/reach handshakes and HTTP JSON/CORS/static/health behavior.
+
+**Security limitation:** `session.portal` is absent from the current session schema; runtime
+identity currently infers portal from identity side. This change does not add an Origin or
+session-portal binding and does not claim that the existing realtime contract is satisfied.
+The concrete owner follow-up is tracked in [#560](https://github.com/ThomasHeinThura/ticketing/issues/560),
+linked to #38 and #8; the existing High realtime finding remains open.
+
+**Authorization and status:** Thomas's standing recommended-decision authorization covers
+these direct dependencies and adapter choice. Registry metadata and licences were
+reverified on 2026-10-02. This decision records the implementation direction; it does not
+establish runtime acceptance, close the Origin/session-portal gap, waive review gates, or
+claim P0 completion.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
 ### 2026-10-01 · P0 public docs site uses headless Fumadocs and static export
 
 **Decision:** recommend a fresh self-hosted documentation site at `apps/site`, using Next.js static export with headless Fumadocs. `fumadocs-core` supplies source/navigation/search data and `fumadocs-mdx` compiles local MDX; compose interactive controls from `@taskdesk/ui` and existing tokens. Do not import `fumadocs-ui`, copy kaneo's marketing app, or copy Mintlify content. The site is separate from the Vite agent/portal app and does not change its shared route registry.
