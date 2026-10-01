@@ -1,11 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  assertColdMainThreadJourneyOverlap,
   assertColdReportPrivacy,
   buildSanitizedColdReport,
+  COLD_CLOCK_SUPPORTED_CHROMIUM_VERSION,
+  COLD_CLOCK_TIMER_ALLOWANCE_MS,
+  createColdClockSample,
   deriveManifestAssetBasenames,
   estimateClockAlignment,
   hashedBasename,
+  translateColdNetworkTimestamp,
+  translateColdTraceInterval,
 } from "./hosted-cold-recording-validation.mjs";
 
 const hash = "a".repeat(64);
@@ -14,6 +20,23 @@ const assetBasenames = new Set([
   "agent-initial-runtime-AbCdEf012345.js",
   "_layout-AbCdEf012345.js",
 ]);
+const TEST_TIME_ORIGIN_MS = 1_780_000_000_000;
+
+function makeClockSample(
+  offsetMs,
+  pageNowMs = 125,
+  originMs = TEST_TIME_ORIGIN_MS,
+) {
+  return createColdClockSample({
+    chromiumVersion: COLD_CLOCK_SUPPORTED_CHROMIUM_VERSION,
+    timestampSeconds: (offsetMs + pageNowMs) / 1000,
+    beforeMs: pageNowMs,
+    afterMs: pageNowMs,
+    beforeTimeOriginMs: originMs,
+    afterTimeOriginMs: originMs,
+    expectedTimeOriginMs: originMs,
+  });
+}
 
 function reportInput(overrides = {}) {
   return {
@@ -275,26 +298,204 @@ test("manifest allowlist contains only hashed assets present in the current dist
   );
 });
 
-test("clock uncertainty covers the largest residual from the chosen offset plus its bracket", () => {
-  const estimate = estimateClockAlignment([
-    { offsetMs: 0, uncertaintyMs: 0 },
-    { offsetMs: 0, uncertaintyMs: 0 },
-    { offsetMs: 10, uncertaintyMs: 0 },
+test("clock alignment accepts stable arbitrary Chromium tick origins without serializing them", () => {
+  const offsetMs = 3 * 24 * 60 * 60 * 1000;
+  const samples = [
+    makeClockSample(offsetMs),
+    makeClockSample(offsetMs, 250),
+    makeClockSample(offsetMs, 875),
+  ];
+  const estimate = estimateClockAlignment(samples);
+  const nearOriginEstimate = estimateClockAlignment([
+    makeClockSample(100),
+    makeClockSample(100, 250),
+    makeClockSample(100, 875),
   ]);
-  assert.equal(Math.round(estimate.offsetMs * 100) / 100, 3.33);
-  assert.equal(Math.round(estimate.uncertaintyMs * 100) / 100, 6.67);
+
+  assert.ok(estimate.offsetMs > 60_000);
+  assert.ok(estimate.uncertaintyMs >= COLD_CLOCK_TIMER_ALLOWANCE_MS);
+  assert.ok(estimate.uncertaintyMs < 0.21);
+  assert.ok(
+    Math.abs(estimate.uncertaintyMs - nearOriginEstimate.uncertaintyMs) < 0.001,
+  );
+  assert.equal(estimate.documentTimeOriginMs, TEST_TIME_ORIGIN_MS);
   const roundedBound = buildSanitizedColdReport(
     reportInput({ clockUncertaintyMs: estimate.uncertaintyMs }),
   ).clocks.alignmentUncertaintyMs;
-  assert.equal(roundedBound, 6.7);
+  assert.equal(roundedBound, Math.ceil(estimate.uncertaintyMs * 10) / 10);
+  const encoded = JSON.stringify(
+    buildSanitizedColdReport(
+      reportInput({ clockUncertaintyMs: estimate.uncertaintyMs }),
+    ),
+  );
+  assert.equal(encoded.includes(String(estimate.offsetMs)), false);
+  assert.equal(encoded.includes(String(TEST_TIME_ORIGIN_MS)), false);
+  assert.equal(encoded.includes("documentTimeOriginMs"), false);
+  assert.equal(encoded.includes("offsetMs"), false);
+});
 
-  const withBrackets = estimateClockAlignment([
-    { offsetMs: 0, uncertaintyMs: 0.2 },
-    { offsetMs: 0, uncertaintyMs: 0.2 },
-    { offsetMs: 10, uncertaintyMs: 1.5 },
-  ]);
-  assert.ok(withBrackets.uncertaintyMs >= 8.16);
+test("clock samples preserve seconds, milliseconds and microseconds in one page-relative domain", () => {
+  const offsetMs = 86_400_000;
+  const sample = createColdClockSample({
+    chromiumVersion: COLD_CLOCK_SUPPORTED_CHROMIUM_VERSION,
+    timestampSeconds: 86_400.125,
+    beforeMs: 125,
+    afterMs: 125,
+    beforeTimeOriginMs: TEST_TIME_ORIGIN_MS,
+    afterTimeOriginMs: TEST_TIME_ORIGIN_MS,
+    expectedTimeOriginMs: TEST_TIME_ORIGIN_MS,
+  });
+  assert.equal(sample.offsetMs, offsetMs);
+  const networkMs = translateColdNetworkTimestamp(
+    (offsetMs + 250) / 1000,
+    sample.offsetMs,
+  );
+  const trace = translateColdTraceInterval(
+    (offsetMs + 249) * 1000,
+    1000,
+    sample.offsetMs,
+  );
+  assert.ok(Math.abs(networkMs - 250) < 0.001);
+  assert.ok(Math.abs(trace.startMs - 249) < 0.001);
+  assert.ok(Math.abs(trace.endMs - 250) < 0.001);
+});
+
+test("clock alignment includes the two timer clamps and maximum sampled offset residual", () => {
+  const samples = [
+    makeClockSample(100_000, 125),
+    makeClockSample(100_000, 250),
+    makeClockSample(100_010, 875),
+  ];
+  const estimate = estimateClockAlignment(samples);
+  assert.ok(estimate.uncertaintyMs > 6.86);
+  assert.ok(estimate.uncertaintyMs < 6.88);
+
   assert.throws(() => estimateClockAlignment([]), /samples/);
+  assert.throws(
+    () =>
+      estimateClockAlignment([
+        samples[0],
+        makeClockSample(100_000, 250, TEST_TIME_ORIGIN_MS + 1),
+      ]),
+    /alignment sample/,
+  );
+});
+
+test("clock alignment rejects origin changes, unsupported precision and unsafe brackets", () => {
+  const base = {
+    chromiumVersion: COLD_CLOCK_SUPPORTED_CHROMIUM_VERSION,
+    timestampSeconds: 100.125,
+    beforeMs: 125,
+    afterMs: 125,
+    beforeTimeOriginMs: TEST_TIME_ORIGIN_MS,
+    afterTimeOriginMs: TEST_TIME_ORIGIN_MS,
+    expectedTimeOriginMs: TEST_TIME_ORIGIN_MS,
+  };
+  assert.throws(
+    () =>
+      createColdClockSample({
+        ...base,
+        afterTimeOriginMs: TEST_TIME_ORIGIN_MS + 1,
+      }),
+    /changed document clock/,
+  );
+  assert.throws(
+    () =>
+      createColdClockSample({
+        ...base,
+        expectedTimeOriginMs: TEST_TIME_ORIGIN_MS + 1,
+      }),
+    /changed document clock/,
+  );
+  assert.throws(
+    () => createColdClockSample({ ...base, chromiumVersion: "154.0.1.2" }),
+    /precision contract/,
+  );
+  assert.throws(
+    () => createColdClockSample({ ...base, afterMs: 124 }),
+    /Invalid or changed document clock sample/,
+  );
+  assert.throws(
+    () => createColdClockSample({ ...base, afterMs: 2126 }),
+    /uncertainty bound/,
+  );
+  assert.throws(
+    () =>
+      createColdClockSample({ ...base, timestampSeconds: Number.MAX_VALUE }),
+    /Invalid or changed document clock sample/,
+  );
+  assert.throws(
+    () => createColdClockSample({ ...base, timestampSeconds: 1e13 }),
+    /clock sample|timestamp conversion/i,
+  );
+  assert.throws(
+    () =>
+      createColdClockSample({
+        ...base,
+        timestampSeconds: 0.0001,
+        beforeMs: 0.3,
+        afterMs: 0.5,
+      }),
+    /coordinate or uncertainty bound/,
+  );
+  assert.throws(
+    () => estimateClockAlignment([makeClockSample(0), makeClockSample(3000)]),
+    /uncertainty bound/,
+  );
+  assert.throws(
+    () => translateColdNetworkTimestamp(601, 0),
+    /outside the report time window/,
+  );
+  assert.throws(
+    () => translateColdTraceInterval(601_000_000, 1, 0),
+    /outside the report time window/,
+  );
+  assert.throws(
+    () => translateColdTraceInterval(1, Number.POSITIVE_INFINITY, 0),
+    /Invalid CDP trace interval/,
+  );
+});
+
+test("cold report requires a valid translated interval for the fixed work-list request", () => {
+  const resources = reportInput().resources.map((resource) => ({
+    ...resource,
+  }));
+  resources[2].timing = undefined;
+  assert.throws(
+    () => buildSanitizedColdReport(reportInput({ resources })),
+    /lacks a valid translated work-list request interval/,
+  );
+  resources[2].timing = { start: 601_000, end: 601_100 };
+  assert.throws(
+    () => buildSanitizedColdReport(reportInput({ resources })),
+    /Translated resource timing/,
+  );
+  const report = buildSanitizedColdReport(reportInput());
+  delete report.resources.find(
+    (resource) => resource.route === "/api/projects/:project/work-items",
+  ).timingMs;
+  assert.throws(
+    () => assertColdReportPrivacy(report, assetBasenames),
+    /lacks a valid translated work-list request interval/,
+  );
+});
+
+test("main-thread phases require a valid task interval overlapping the observed journey", () => {
+  assert.equal(
+    assertColdMainThreadJourneyOverlap([{ start: -2, end: 10 }], 200),
+    true,
+  );
+  for (const intervals of [
+    [],
+    [{ start: 250, end: 300 }],
+    [{ start: -60_001, end: 10 }],
+    [{ start: 10, end: 9 }],
+  ]) {
+    assert.throws(
+      () => assertColdMainThreadJourneyOverlap(intervals, 200),
+      /No valid main-thread task overlaps/,
+    );
+  }
 });
 
 test("cold report rejects incomplete journey evidence, source drift, and capture loss", () => {

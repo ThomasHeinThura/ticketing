@@ -121,8 +121,12 @@ import { writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import {
   assertColdReportPrivacy,
+  assertColdMainThreadJourneyOverlap,
   buildSanitizedColdReport,
+  createColdClockSample,
   estimateClockAlignment,
+  translateColdNetworkTimestamp,
+  translateColdTraceInterval,
 } from "./hosted-cold-recording-validation.mjs";
 
 const COLD_REPORT_PATH = __REPORT_PATH__;
@@ -200,6 +204,7 @@ async function startColdCapture(page: Page) {
   const traceEvents: SafeTraceEvent[] = [];
   const requests = new Map<string, CapturedRequest>();
   let traceOverflow = false;
+  let traceClockInvalid = false;
   let receivedTraceEventCount = 0;
   let networkOverflow = false;
   const tracingComplete = new Promise<{ dataLossOccurred: boolean }>((resolve) => {
@@ -215,6 +220,14 @@ async function startColdCapture(page: Page) {
     }
     receivedTraceEventCount += values.length;
     for (const value of values) {
+      const rawTraceEvent = asRecord(value);
+      if (
+        rawTraceEvent?.ph === "X" &&
+        (!isFiniteNumber(rawTraceEvent.ts) ||
+          !isFiniteNumber(rawTraceEvent.dur) ||
+          rawTraceEvent.ts < 0 ||
+          rawTraceEvent.dur < 0)
+      ) traceClockInvalid = true;
       const safe = keepSafeTraceFields(value);
       if (safe) traceEvents.push(safe);
     }
@@ -281,24 +294,34 @@ async function startColdCapture(page: Page) {
   });
 
   async function clockSample() {
-    const before = await page.evaluate(() => ({ now: performance.now() }));
+    const before = await page.evaluate(() => ({
+      now: performance.now(),
+      timeOrigin: performance.timeOrigin,
+    }));
     const result = asRecord(await session.send("Performance.getMetrics"));
-    const after = await page.evaluate(() => ({ now: performance.now() }));
+    const after = await page.evaluate(() => ({
+      now: performance.now(),
+      timeOrigin: performance.timeOrigin,
+    }));
     const metricRows = Array.isArray(result?.metrics) ? result.metrics : [];
-    const timestamp = metricRows
+    const timestampSeconds = metricRows
       .map(asRecord)
       .find((metric) => metric?.name === "Timestamp")?.value;
-    if (!isFiniteNumber(timestamp)) throw new Error("clock");
-    const sample = {
-      offsetMs: timestamp * 1000 - (before.now + after.now) / 2,
-      uncertaintyMs: (after.now - before.now) / 2,
-    };
+    const sample = createColdClockSample({
+      chromiumVersion: COLD_PROVENANCE.chromiumVersion,
+      timestampSeconds,
+      beforeMs: before.now,
+      afterMs: after.now,
+      beforeTimeOriginMs: before.timeOrigin,
+      afterTimeOriginMs: after.timeOrigin,
+      expectedTimeOriginMs: clockSamples[0]?.documentTimeOriginMs,
+    });
     clockSamples.push(sample);
     return sample;
   }
   return {
     align: clockSample,
-    finish: async () => {
+    finish: async (expectedTimeOriginMs: number, journeyEndMs: number) => {
     await clockSample();
     await clockSample();
     const profileResult = asRecord(await session.send("Profiler.stop"));
@@ -308,32 +331,45 @@ async function startColdCapture(page: Page) {
     const profile = asRecord(profileResult?.profile);
     const samples = Array.isArray(profile?.samples) ? profile.samples : [];
     const nodes = Array.isArray(profile?.nodes) ? profile.nodes : [];
-    if (traceOverflow || networkOverflow || samples.length === 0 || samples.length > COLD_MAX_CPU_SAMPLES || nodes.length === 0 || nodes.length > COLD_MAX_CPU_NODES || completion.dataLossOccurred !== false)
+    if (traceClockInvalid || traceOverflow || networkOverflow || samples.length === 0 || samples.length > COLD_MAX_CPU_SAMPLES || nodes.length === 0 || nodes.length > COLD_MAX_CPU_NODES || completion.dataLossOccurred !== false)
       throw new Error("capture-integrity");
     const clockAlignment = estimateClockAlignment(clockSamples);
+    if (
+      !isFiniteNumber(expectedTimeOriginMs) ||
+      clockAlignment.documentTimeOriginMs !== expectedTimeOriginMs
+    ) throw new Error("document-clock-origin");
     const offsetMs = clockAlignment.offsetMs;
-    const toBrowserMs = (timestampSeconds: number) => timestampSeconds * 1000 - offsetMs;
-    const resources = [...requests.values()].map((request) => ({
-      url: request.url,
-      method: request.method,
-      resourceType: request.resourceType,
-      initiatorType: request.initiatorType,
-      initiatorUrl: request.initiatorUrl,
-      status: request.status,
-      failed: request.failed,
-      priority: request.priority,
-      timing: isFiniteNumber(request.startTimestamp) && isFiniteNumber(request.endTimestamp)
-        ? { start: toBrowserMs(request.startTimestamp), end: toBrowserMs(request.endTimestamp) }
-        : undefined,
-    }));
+    const resources = [...requests.values()].map((request) => {
+      let timing: { start: number; end: number } | undefined;
+      if (request.startTimestamp !== undefined || request.endTimestamp !== undefined) {
+        if (!isFiniteNumber(request.startTimestamp) || !isFiniteNumber(request.endTimestamp))
+          throw new Error("network-clock-incomplete");
+        const start = translateColdNetworkTimestamp(request.startTimestamp, offsetMs);
+        const end = translateColdNetworkTimestamp(request.endTimestamp, offsetMs);
+        if (end < start) throw new Error("network-clock-reversed");
+        timing = { start, end };
+      }
+      return {
+        url: request.url,
+        method: request.method,
+        resourceType: request.resourceType,
+        initiatorType: request.initiatorType,
+        initiatorUrl: request.initiatorUrl,
+        status: request.status,
+        failed: request.failed,
+        priority: request.priority,
+        timing,
+      };
+    });
     const mainTid = traceEvents.find((event) =>
       event.name === "thread_name" && event.ph === "M" && event.args?.name === "CrRendererMain"
     )?.tid;
     if (typeof mainTid !== "number") throw new Error("main-thread");
-    const phases = deriveExclusiveMainThreadPhases(traceEvents, mainTid, offsetMs);
+    const phases = deriveExclusiveMainThreadPhases(traceEvents, mainTid, offsetMs, journeyEndMs);
     return {
       resources,
       phases,
+      documentTimeOriginMs: clockAlignment.documentTimeOriginMs,
       uncertaintyMs: clockAlignment.uncertaintyMs,
       traceEventCount: receivedTraceEventCount,
       timelineRecordCount: traceEvents.length,
@@ -357,18 +393,24 @@ function tracePhase(event: SafeTraceEvent) {
   return null;
 }
 
-function deriveExclusiveMainThreadPhases(events: SafeTraceEvent[], mainTid: number, offsetMs: number) {
+function deriveExclusiveMainThreadPhases(events: SafeTraceEvent[], mainTid: number, offsetMs: number, journeyEndMs: number) {
+  if (!isFiniteNumber(journeyEndMs) || journeyEndMs <= 0 || journeyEndMs > 600_000)
+    throw new Error("invalid-observed-journey-window");
   const intervals: TraceInterval[] = events.flatMap((event) => {
-    if (event.tid !== mainTid || event.ph !== "X" || !isFiniteNumber(event.ts) || !isFiniteNumber(event.dur) || event.dur <= 0)
-      return [];
+    if (event.tid !== mainTid || event.ph !== "X") return [];
+    if (!isFiniteNumber(event.ts) || !isFiniteNumber(event.dur) || event.dur < 0)
+      throw new Error("invalid-main-thread-trace-clock");
+    if (event.dur === 0) return [];
+    const translated = translateColdTraceInterval(event.ts, event.dur, offsetMs);
     return [{
-      start: event.ts / 1000 - offsetMs,
-      end: (event.ts + event.dur) / 1000 - offsetMs,
+      start: translated.startMs,
+      end: translated.endMs,
       name: event.name,
       phase: tracePhase(event),
     }];
   });
   const tasks = intervals.filter((event) => event.name === "RunTask").sort((a, b) => a.start - b.start);
+  assertColdMainThreadJourneyOverlap(tasks, journeyEndMs);
   const classifiedIntervals = intervals
     .filter((event) => event.phase && event.name !== "RunTask")
     .sort((a, b) => a.start - b.start);
@@ -478,7 +520,9 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
       await expect(page.getByTestId("work-item-detail")).toBeVisible({ timeout: 15_000 });
       const detailUrl = new URL(page.url());
       if (detailUrl.pathname !== "/agent/work-items/WLP-1") throw new Error("detail-url");
-      const rawCapture = await capture.finish();
+      const rawCapture = await capture.finish(lcpState.timeOriginMs, routeState.routePaintMs);
+      if (rawCapture.documentTimeOriginMs !== routeState.timeOriginMs)
+        throw new Error("document-clock-origin");
       const report = buildSanitizedColdReport({
         provenance: COLD_PROVENANCE,
         assetBasenames: COLD_ASSET_BASENAMES,

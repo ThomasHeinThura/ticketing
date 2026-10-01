@@ -3,6 +3,10 @@ import { createHash } from "node:crypto";
 export const COLD_REPORT_MAX_BYTES = 256 * 1024;
 export const COLD_MAX_RESOURCES = 2_048;
 export const COLD_MAX_PHASE_SEGMENTS = 100_000;
+// Pinned Chromium uses two 100 µs clamped page-clock reads per bracket.
+export const COLD_CLOCK_TIMER_ALLOWANCE_MS = 0.2;
+export const COLD_CLOCK_SUPPORTED_CHROMIUM_VERSION = "153.0.8010.12";
+export const COLD_CLOCK_REPORT_RESOLUTION_MS = 0.1;
 const ROUTE_PAINT_CRITERION =
   "A route-paint mark requires a positive conservative inward-bounded axis-aligned target region after viewport and ancestor overflow/paint-containment clipping. Subpixel boundary strips may fail closed; ambiguous RTL/root or top-scrollbar origins, CSS zoom other than 1, unsupported transforms, out-of-flow boxes, fragmented targets, nonrectangular clips/masks, nondefault overflow-clip margins, and rounded overflow clips fail closed. This is not pixel-level or occlusion proof.";
 
@@ -158,26 +162,214 @@ function requireAssetBasenames(value) {
   return value;
 }
 
+function clockNumericAllowanceMs(values) {
+  if (
+    !Array.isArray(values) ||
+    values.length === 0 ||
+    values.some((value) => !Number.isFinite(value))
+  )
+    throw new Error("Invalid numeric clock conversion.");
+  // Eight ULPs cover the bounded multiply, midpoint and subtraction steps.
+  const allowanceMs = 8 * Number.EPSILON * Math.max(1, ...values.map(Math.abs));
+  if (
+    !Number.isFinite(allowanceMs) ||
+    allowanceMs >= COLD_CLOCK_REPORT_RESOLUTION_MS
+  )
+    throw new Error(
+      "Clock conversion cannot preserve report coordinate resolution.",
+    );
+  return allowanceMs;
+}
+
+export function createColdClockSample({
+  chromiumVersion,
+  timestampSeconds,
+  beforeMs,
+  afterMs,
+  beforeTimeOriginMs,
+  afterTimeOriginMs,
+  expectedTimeOriginMs,
+}) {
+  if (chromiumVersion !== COLD_CLOCK_SUPPORTED_CHROMIUM_VERSION)
+    throw new Error(
+      "Clock precision contract is not verified for this Chromium version.",
+    );
+  if (
+    !finite(timestampSeconds, 0, Number.MAX_SAFE_INTEGER / 1000) ||
+    !finite(beforeMs, 0, Number.MAX_SAFE_INTEGER) ||
+    !finite(afterMs, 0, Number.MAX_SAFE_INTEGER) ||
+    afterMs < beforeMs ||
+    !finite(beforeTimeOriginMs, 1, Number.MAX_SAFE_INTEGER) ||
+    beforeTimeOriginMs !== afterTimeOriginMs ||
+    (expectedTimeOriginMs !== undefined &&
+      beforeTimeOriginMs !== expectedTimeOriginMs)
+  )
+    throw new Error("Invalid or changed document clock sample.");
+
+  const timestampMs = timestampSeconds * 1000;
+  if (!finite(timestampMs, 0, Number.MAX_SAFE_INTEGER))
+    throw new Error("CDP timestamp conversion is unsafe.");
+  const midpointMs = beforeMs / 2 + afterMs / 2;
+  const numericAllowanceMs = clockNumericAllowanceMs([
+    timestampMs,
+    beforeMs,
+    afterMs,
+    midpointMs,
+  ]);
+  const offsetMs = timestampMs - midpointMs;
+  const offsetNumericAllowanceMs = clockNumericAllowanceMs([
+    timestampMs,
+    midpointMs,
+    offsetMs,
+  ]);
+  const precisionAllowanceMs =
+    COLD_CLOCK_TIMER_ALLOWANCE_MS +
+    numericAllowanceMs +
+    offsetNumericAllowanceMs;
+  const bracketMs = afterMs - beforeMs;
+  const uncertaintyMs = bracketMs / 2 + precisionAllowanceMs;
+  if (
+    !Number.isFinite(offsetMs) ||
+    offsetMs < -precisionAllowanceMs ||
+    !finite(bracketMs, 0, Number.MAX_SAFE_INTEGER) ||
+    !finite(uncertaintyMs, 0, 1000)
+  )
+    throw new Error(
+      "Clock sample exceeds its safe coordinate or uncertainty bound.",
+    );
+  return {
+    offsetMs,
+    uncertaintyMs,
+    precisionAllowanceMs,
+    documentTimeOriginMs: beforeTimeOriginMs,
+  };
+}
+
 export function estimateClockAlignment(samples) {
   if (!Array.isArray(samples) || samples.length < 2 || samples.length > 100)
     throw new Error("Invalid bounded clock alignment samples.");
+  const documentTimeOriginMs = samples[0]?.documentTimeOriginMs;
   if (
     samples.some(
       (sample) =>
         !sample ||
-        !finite(sample.offsetMs, -60_000, 60_000) ||
-        !finite(sample.uncertaintyMs, 0, 1000),
+        !finite(
+          sample.offsetMs,
+          -Number.MAX_SAFE_INTEGER,
+          Number.MAX_SAFE_INTEGER,
+        ) ||
+        !finite(sample.uncertaintyMs, COLD_CLOCK_TIMER_ALLOWANCE_MS, 1000) ||
+        !finite(
+          sample.precisionAllowanceMs,
+          COLD_CLOCK_TIMER_ALLOWANCE_MS,
+          0.3,
+        ) ||
+        sample.offsetMs < -sample.precisionAllowanceMs ||
+        !finite(sample.documentTimeOriginMs, 1, Number.MAX_SAFE_INTEGER) ||
+        sample.documentTimeOriginMs !== documentTimeOriginMs ||
+        clockNumericAllowanceMs([sample.offsetMs]) >=
+          COLD_CLOCK_REPORT_RESOLUTION_MS,
     )
   )
     throw new Error("Invalid clock alignment sample.");
-  const offsetMs =
-    samples.reduce((sum, sample) => sum + sample.offsetMs, 0) / samples.length;
-  const uncertaintyMs = Math.max(
-    ...samples.map(
-      (sample) => Math.abs(sample.offsetMs - offsetMs) + sample.uncertaintyMs,
-    ),
+  const offsetMs = samples.reduce(
+    (sum, sample) => sum + sample.offsetMs / samples.length,
+    0,
   );
-  return { offsetMs, uncertaintyMs };
+  const alignmentNumericAllowanceMs = clockNumericAllowanceMs([
+    ...samples.map((sample) => sample.offsetMs),
+    offsetMs,
+  ]);
+  const uncertaintyMs =
+    Math.max(
+      ...samples.map(
+        (sample) => Math.abs(sample.offsetMs - offsetMs) + sample.uncertaintyMs,
+      ),
+    ) + alignmentNumericAllowanceMs;
+  if (
+    !finite(offsetMs, -Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) ||
+    !finite(uncertaintyMs, COLD_CLOCK_TIMER_ALLOWANCE_MS, 1000)
+  )
+    throw new Error(
+      "Clock alignment exceeds its safe coordinate or uncertainty bound.",
+    );
+  return { offsetMs, uncertaintyMs, documentTimeOriginMs };
+}
+
+function pageRelativeMs(valueMs, offsetMs) {
+  if (
+    !finite(valueMs, 0, Number.MAX_SAFE_INTEGER) ||
+    !finite(offsetMs, -Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
+  )
+    throw new Error("Invalid clock-domain value.");
+  const resultMs = valueMs - offsetMs;
+  if (
+    !finite(resultMs, -60_000, 600_000) ||
+    clockNumericAllowanceMs([valueMs, offsetMs, resultMs]) >=
+      COLD_CLOCK_REPORT_RESOLUTION_MS
+  )
+    throw new Error(
+      "Clock translation is outside the report time window or resolution.",
+    );
+  return resultMs;
+}
+
+export function translateColdNetworkTimestamp(timestampSeconds, offsetMs) {
+  if (!finite(timestampSeconds, 0, Number.MAX_SAFE_INTEGER / 1000))
+    throw new Error("Invalid CDP network timestamp.");
+  const timestampMs = timestampSeconds * 1000;
+  if (!finite(timestampMs, 0, Number.MAX_SAFE_INTEGER))
+    throw new Error("CDP network timestamp conversion is unsafe.");
+  return pageRelativeMs(timestampMs, offsetMs);
+}
+
+export function translateColdTraceInterval(
+  timestampMicroseconds,
+  durationMicroseconds,
+  offsetMs,
+) {
+  if (
+    !finite(timestampMicroseconds, 0, Number.MAX_SAFE_INTEGER) ||
+    !finite(durationMicroseconds, 0, Number.MAX_SAFE_INTEGER)
+  )
+    throw new Error("Invalid CDP trace interval.");
+  const timestampMs = timestampMicroseconds / 1000;
+  const durationMs = durationMicroseconds / 1000;
+  if (
+    !finite(timestampMs, 0, Number.MAX_SAFE_INTEGER) ||
+    !finite(durationMs, 0, Number.MAX_SAFE_INTEGER)
+  )
+    throw new Error("CDP trace interval conversion is unsafe.");
+  const startMs = pageRelativeMs(timestampMs, offsetMs);
+  const endMs = startMs + durationMs;
+  if (
+    !finite(endMs, startMs, 600_000) ||
+    clockNumericAllowanceMs([timestampMs, durationMs, startMs, endMs]) >=
+      COLD_CLOCK_REPORT_RESOLUTION_MS
+  )
+    throw new Error(
+      "Translated CDP trace interval is unsafe or outside the report time window.",
+    );
+  return { startMs, endMs, durationMs };
+}
+
+export function assertColdMainThreadJourneyOverlap(intervals, journeyEndMs) {
+  if (
+    !Array.isArray(intervals) ||
+    intervals.length === 0 ||
+    !finite(journeyEndMs, Number.MIN_VALUE, 600_000) ||
+    intervals.some(
+      (interval) =>
+        !interval ||
+        !finite(interval.start, -60_000, 600_000) ||
+        !finite(interval.end, interval.start, 600_000),
+    ) ||
+    !intervals.some(
+      (interval) => interval.start < journeyEndMs && interval.end > 0,
+    )
+  )
+    throw new Error("No valid main-thread task overlaps the observed journey.");
+  return true;
 }
 
 function safeAsset(value, origin, assetBasenames) {
@@ -242,13 +434,15 @@ function safeResource(resource, origin, assetBasenames) {
     output.status = resource.status;
   if (resource.failed === true) output.failed = true;
   if (PRIORITIES.has(resource.priority)) output.priority = resource.priority;
-  if (
-    resource.timing &&
-    [resource.timing.start, resource.timing.end].every((value) =>
-      finite(value, -60_000, 600_000),
-    ) &&
-    resource.timing.end >= resource.timing.start
-  ) {
+  if (resource.timing !== undefined) {
+    if (
+      !resource.timing ||
+      !finite(resource.timing.start, -60_000, 600_000) ||
+      !finite(resource.timing.end, resource.timing.start, 600_000)
+    )
+      throw new Error(
+        "Translated resource timing is invalid or outside its page-relative window.",
+      );
     output.timingMs = {
       start: Math.round(resource.timing.start * 10) / 10,
       end: Math.round(resource.timing.end * 10) / 10,
@@ -258,7 +452,11 @@ function safeResource(resource, origin, assetBasenames) {
 }
 
 function safePhaseSegments(segments) {
-  if (!Array.isArray(segments) || segments.length > COLD_MAX_PHASE_SEGMENTS)
+  if (
+    !Array.isArray(segments) ||
+    segments.length === 0 ||
+    segments.length > COLD_MAX_PHASE_SEGMENTS
+  )
     throw new Error("Invalid or oversized phase table.");
   let previousEnd = Number.NEGATIVE_INFINITY;
   return segments.map((segment) => {
@@ -484,6 +682,16 @@ export function buildSanitizedColdReport(input) {
   );
   if (safeResources.length > COLD_MAX_RESOURCES)
     throw new Error("Sanitized resource table exceeded its bound.");
+  if (
+    !safeResources.some(
+      (resource) =>
+        resource.route === "/api/projects/:project/work-items" &&
+        resource.timingMs !== undefined,
+    )
+  )
+    throw new Error(
+      "Cold journey lacks a valid translated work-list request interval.",
+    );
   const safeSegments = phaseSegments;
   const report = {
     schemaVersion: 1,
@@ -983,6 +1191,16 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     )
       throw new Error("Resource initiator is not a verified route or asset.");
   }
+  if (
+    !report.resources.some(
+      (resource) =>
+        resource.route === "/api/projects/:project/work-items" &&
+        resource.timingMs !== undefined,
+    )
+  )
+    throw new Error(
+      "Report lacks a valid translated work-list request interval.",
+    );
   for (const segment of report.mutuallyExclusiveMainThreadPhases) {
     exactKeys(segment, ["phase", "startMs", "durationMs"], "phase segment");
     if (
