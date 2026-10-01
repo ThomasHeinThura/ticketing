@@ -1370,17 +1370,26 @@ export function createNodeServer(app: Hono<AppVariables>, port = 0) {
   });
 
   let closePromise: Promise<void> | undefined;
-  const close = () => {
+  const close = (shutdownAdapter: () => Promise<void> = async () => {}) => {
     closePromise ??= new Promise((resolve) => {
+      // `server.close()` stops new HTTP requests and upgrade handshakes before
+      // any adapter operation can stall shutdown.
       server.close();
       const timeout = setTimeout(() => {
         for (const client of websocketServer.clients) {
           client.terminate();
         }
+        resolve();
       }, 5_000);
       timeout.unref();
 
-      websocketServer.close(() => {
+      const finished = Promise.allSettled([
+        new Promise<void>((closeResolve) => {
+          websocketServer.close(() => closeResolve());
+        }),
+        shutdownAdapter(),
+      ]);
+      void finished.then(() => {
         clearTimeout(timeout);
         resolve();
       });
@@ -1417,8 +1426,7 @@ export async function startServer(port = DEFAULT_PORT) {
 
     console.log("🛑 Shutting down gracefully...");
     shutdownScheduler();
-    await shutdownWebSocketAdapter();
-    await close();
+    await close(shutdownWebSocketAdapter);
     process.exit(0);
   };
 

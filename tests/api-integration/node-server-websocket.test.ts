@@ -1,6 +1,10 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import type { ClientRequest, IncomingMessage } from "node:http";
+import { request as httpRequest } from "node:http";
 import { createRequire } from "node:module";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp, createNodeServer } from "../../apps/api/src/index";
 import {
@@ -91,6 +95,26 @@ function nextMessage(socket: TestSocket) {
       }
     });
     socket.once("error", reject);
+  });
+}
+
+function rawGet(port: number, path: string) {
+  return new Promise<{ status: number; body: string }>((resolve, reject) => {
+    const request = httpRequest(
+      { host: "127.0.0.1", port, path, method: "GET" },
+      (response) => {
+        let body = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk: string) => {
+          body += chunk;
+        });
+        response.on("end", () =>
+          resolve({ status: response.statusCode ?? 0, body }),
+        );
+      },
+    );
+    request.on("error", reject);
+    request.end();
   });
 }
 
@@ -225,23 +249,31 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       `/api/ws/${project.id}?windowId=window-7`,
     );
     const socket = await openSocket(base, headers);
-
+    const observer = await openSocket(
+      websocketUrl(node.server, `/api/ws/${project.id}?windowId=window-8`),
+      headers,
+    );
     let ownEchoReceived = false;
     const onOwnEcho = () => {
       ownEchoReceived = true;
     };
     socket.once("message", onOwnEcho);
+    const observerEvent = nextMessage(observer);
     broadcastToProject(
       project.id,
-      { type: "work_item.updated", projectId: project.id, taskId: "TD-1" },
+      { type: "work_item.updated", projectId: project.id, taskId: "TD-echo" },
       `${member.user.id}:window-7`,
     );
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await expect(observerEvent).resolves.toMatchObject({
+      type: "work_item.updated",
+      taskId: "TD-echo",
+    });
     expect(ownEchoReceived).toBe(false);
     socket.off("message", onOwnEcho);
     expect(socket.readyState).toBe(WebSocket.OPEN);
 
     const delivered = nextMessage(socket);
+    const observerDelivered = nextMessage(observer);
     broadcastToProject(project.id, {
       type: "work_item.updated",
       projectId: project.id,
@@ -252,6 +284,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       projectId: project.id,
       taskId: "TD-1",
     });
+    await expect(observerDelivered).resolves.toMatchObject({ taskId: "TD-1" });
     const foreignStatus = await rejectHandshake(
       websocketUrl(node.server, `/api/ws/${foreignProject.id}`),
       headers,
@@ -263,11 +296,89 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     expect(foreignStatus).toBe(401);
     expect(missingStatus).toBe(foreignStatus);
 
-    const serverClose = node.close();
     const clientClose = new Promise<number>((resolve) => {
       socket.once("close", (code) => resolve(code));
     });
+    const observerClose = new Promise<void>((resolve) => {
+      observer.once("close", () => resolve());
+    });
+    const serverClose = node.close();
     await expect(clientClose).resolves.toBe(1001);
+    await observerClose;
     await serverClose;
+  });
+
+  it("stops accepting before a stalled adapter and bounds shutdown", async () => {
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+
+    let releaseAdapter: (() => void) | undefined;
+    const pendingAdapter = new Promise<void>((resolve) => {
+      releaseAdapter = resolve;
+    });
+    const port = (node.server.address() as AddressInfo).port;
+    const startedAt = Date.now();
+    const closing = node.close(() => pendingAdapter);
+
+    expect(node.server.listening).toBe(false);
+    await expect(
+      fetch(`http://127.0.0.1:${port}/api/public/health/live`),
+    ).rejects.toThrow();
+    await closing;
+    closeServer = undefined;
+    expect(Date.now() - startedAt).toBeLessThan(6_000);
+    releaseAdapter?.();
+  });
+
+  it("serves only public static files through raw Node HTTP paths", async () => {
+    const staticRoot = mkdtempSync(join(tmpdir(), "taskdesk-node-static-"));
+    const privateFile = join(
+      staticRoot,
+      "..",
+      `taskdesk-private-${Date.now()}.txt`,
+    );
+    mkdirSync(join(staticRoot, "assets"));
+    writeFileSync(join(staticRoot, "index.html"), "public-spa-shell");
+    writeFileSync(join(staticRoot, "assets", "app.js"), "public-asset");
+    writeFileSync(privateFile, "private-fixture-bytes");
+
+    const { app } = createApp({ staticRoot });
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const port = (node.server.address() as AddressInfo).port;
+
+    try {
+      const asset = await rawGet(port, "/assets/app.js");
+      expect(asset.status).toBe(200);
+      expect(asset.body).toBe("public-asset");
+
+      const shell = await rawGet(port, "/projects/direct-load");
+      expect(shell.status).toBe(200);
+      expect(shell.body).toBe("public-spa-shell");
+
+      for (const path of [
+        `/%2e%2e/${basename(privateFile)}`,
+        "/assets/%2Fapp.js",
+        "/static/%61dmin/secret.txt",
+      ]) {
+        const response = await rawGet(port, path);
+        expect(response.body).not.toContain("private-fixture-bytes");
+      }
+
+      const apiPath = await rawGet(
+        port,
+        `/api/%2F%2e%2e%2F${basename(privateFile)}`,
+      );
+      expect(apiPath.body).not.toContain("public-spa-shell");
+      expect(apiPath.body).not.toContain("private-fixture-bytes");
+    } finally {
+      await node.close();
+      closeServer = undefined;
+      rmSync(staticRoot, { recursive: true, force: true });
+      rmSync(privateFile, { force: true });
+    }
   });
 });
