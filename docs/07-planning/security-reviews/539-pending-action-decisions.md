@@ -214,3 +214,72 @@ Shipping image `taskdesk:pr539-1683dd16`, image ID `sha256:c7ea4422611b9e486c67b
 The current API typecheck passed. No frontend source changed, so this continuation adds no screen-verification claim. The full source security/service evidence and AU-14 operator-reporting residual remain recorded above.
 
 Every required check must be green on the final note-only candidate before protected merge. No stage completion or gate waiver is claimed.
+
+
+## Task-version main composition — 2026-10-01
+
+**Reviewed head:** `3fb1aa4c6c7ae45b7e47f1151c7405b349670de5`
+
+The following reports bind the current source. The subsequent review-note commit changes only this artifact. Prior source verdicts remain attached to their actual heads.
+
+
+# PR #539 composition review — exact head `3fb1aa4c6c7ae45b7e47f1151c7405b349670de5`
+
+**Reviewer:** fresh independent GPT-6 Luna ordinary review. I did not author, direct, or remediate either candidate. This is a bounded review of the current merge composition, not a replacement for prior full feature/security reviews.
+
+## Scope and lineage
+
+- Current checkout: `/Users/heinthura/.codex/worktrees/p4-pending-action-deny-cancel/Ticketing.v2`, clean at the exact SHA above.
+- Parents: first parent `b0bbdd497bf02e4e1ca5cd8572ad048b64a657bb` (PR #539 candidate before main import); second parent/current `origin/main` base `2242665c65faca25cc58eb070b686eb4c06d6487`.
+- `git diff b0bbdd4..HEAD`: 87 paths, the PR #529 task-version/concurrency import.
+- `git diff origin/main...HEAD`: 11 paths, the current PR #539 pending-action candidate. Do not interpret the 87-path first-parent merge delta as the PR #539 net change.
+- The pending-action implementation, its architecture doc, integration tests/auth helper, and security note are byte-identical from first parent to this head. The only PR #539 shared-file composition points are `tests/api-contract/openapi.json` and `tests/permissions/matrix.fixture.json`.
+
+## Composition checks
+
+- The API mounts task v2 at `/api/v2/task` and pending actions under `/api/me`; their route registrations do not overlap. The task update route has its distinct `PUT /api/v2/task/{id}` policy entry. Pending-action deny and cancel remain separate POST routes with their existing session-only distinction and policy keys.
+- The merged permission matrix retains both pending-action deny/cancel entries and the imported task update entry. The merged OpenAPI document retains both pending-action operations and the task-v2 update operation; I found no overwritten operation or duplicate route introduced by the import.
+- `0079_task_version.sql` adds `version` to the legacy `task` table. The pending-action decision path updates its own pending-action record/outbox and audit path; it does not use that table or migration. The import therefore does not change the deny/cancel transaction, authorization, or PA-11/AU-14 behavior.
+- Existing full reviews of the unchanged PR #539 source and imported PR #529 source remain the evidence for their feature semantics. This review only confirms the assembled route, permission, contract, and migration composition at this head.
+
+## Tests actually run
+
+Command:
+
+```sh
+DOCKER_CONTEXT=desktop-linux CI=true pnpm --filter @taskdesk/api exec vitest run --config vitest.integration.config.ts ../../tests/api-integration/pending-actions-decisions.test.ts ../../tests/api-integration/pending-action-service.test.ts
+```
+
+Result: **2 files, 26 tests passed**. The only output of note was the existing Vite `__dirname` deprecation warning in `vitest.integration.config.ts`.
+
+## Verdict
+
+**CLEAR for the bounded PR #539 composition delta at `3fb1aa4c6c7ae45b7e47f1151c7405b349670de5`.** No blocking or non-blocking findings. This does not claim a fresh full review of the imported PR #529 implementation, does not replace the already-recorded feature reviews, and does not satisfy the required current-head GPT-6 Sol security review or any other merge gate.
+
+
+# PR #539 — independent GPT-6 Sol security review of #529 main composition
+
+**Reviewed head:** `3fb1aa4c6c7ae45b7e47f1151c7405b349670de5`  
+**Current main/base:** `2242665c65faca25cc58eb070b686eb4c06d6487`  
+**Prior full security-reviewed PR #539 source:** `5db4918313609c1a6964be0211c33363901fd3c0`  
+**Reviewer and independence:** Fresh independent GPT-6 Sol context. I did not author, direct, or remediate PR #539 or merged PR #529. This is a per-PR exact-head security composition review, not a P4 phase finalizer.  
+**Verdict:** **CLEAR for the #529 current-main composition delta.** No blocking or non-blocking security finding in the integration. This does not by itself clear required merge gates.
+
+## Exact history and scope
+
+I verified the live GitHub head/base and PR file list, read the fresh independent Luna composition report, and inspected the merge parents, complete first-parent import and current-main-to-head net diff. The first parent is `b0bbdd497bf02e4e1ca5cd8572ad048b64a657bb` (PR #539 after its recorded prior security notes); the second parent and merge base are current main `2242665c`. The **first-parent import contains 87 paths**, the merged PR #529 task-version/concurrency work and its review material. The **current-main-relative PR #539 net diff contains 11 paths**: its ten previously reviewed feature/spec/contract/test paths plus its review note. There are no pending-action implementation or test resolution edits in the merge.
+
+Eight PR #539 source/spec/test paths outside the two shared generated fixtures are byte-identical from full-reviewed `5db4918` to this head (`git diff --quiet` exit 0): pending-action router, policy, DTO and service, PA-11 document, auth test helper, and service/HTTP decision tests. The two shared files, `tests/api-contract/openapi.json` and `tests/permissions/matrix.fixture.json`, gained PR #529's task-v2 entries. I inspected their combined contents: `denyOwnPendingAction` and `cancelOwnPendingAction` operations and their self/session-only policy matrix entries remain present, while `updateTaskV2` and `PUT /api/v2/task/{id}` have separate entries. The API mounts pending actions under `/api/me` and task v2 under `/api/v2/task`; neither route shadows the other. The route-policy coverage check was green at my snapshot.
+
+PR #529's `0079_task_version.sql` adds a version to the legacy `task` table, and its row locks/`If-Match` handling operate in task controllers. PR #539's deny/cancel service reads and locks `pending_action`, resolves the current requester identity, requires a session for deny but permits a current key owner to cancel, and updates that action plus its decided outbox event. Its nested audit writer still follows the documented AU-14 mutation-failure rule. I found no new path from task-v2 mount, migration, transport or permission policy into the pending-action row, target data, identity resolver, decision outbox or audit behavior. The prior full PR #529 security review and PR #539 full review cover their unchanged feature semantics; this pass checks their assembled authority and contract boundaries at the current head.
+
+## Verification and limits
+
+**No local tests, typechecks, builds or browser actions were run in this bounded composition pass.** The independent ordinary reviewer ran current-head PostgreSQL pending-action tests (**2 files, 26 passed**) and checked the merged route/contract/policy surfaces; that is their execution, not mine. My earlier full PR #539 security review independently ran the same focused suite at unchanged decision source. The orchestrator's current image build is separate evidence, not an operation I performed. `git diff --check main..head` reported no whitespace issue.
+
+At my GitHub snapshot, the exact-head `pull request template + security review` check was red pending review recording, PostgreSQL integration was in progress, G11 was listed as not enabled, and other completed required checks shown were green. Those remain separate gates. AU-14's alerting metric and administrator notifications remain tracked unfinished debt and are neither implemented nor waived by this import. Approval/execution/step-up and expiry scheduler remain outside this deny/cancel slice. A later candidate SHA or base change requires a fresh exact-head decision.
+
+
+### Combined shipping image evidence
+
+Root built `taskdesk:pr539-3fb1aa4c`, image ID `sha256:066e48be833b2ae1ffd3765a1761a353b3be2964b56cd227ad0858f87e0a188b`, with revision `3fb1aa4c6c7ae45b7e47f1151c7405b349670de5`. The isolated PostgreSQL 18/Valkey stack booted healthy and both live/ready endpoints returned HTTP200 at loopback port5532. Logs: `/private/tmp/pr539-3fb1-docker-build.log`, `/private/tmp/pr539-3fb1-smoke-boot-corrected.log`. The first attempt included the dev port overlay and collided with the existing loopback Postgres port; it did not boot and is not accepted evidence. The corrected attempt uses the fixture's base and own overlay only, preserving its database and the persistent dev stack. No frontend screen changed. Exact-candidate hosted checks remain required before protected merge; no stage completion or waiver is claimed.
