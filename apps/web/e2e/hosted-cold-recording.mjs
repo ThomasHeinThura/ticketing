@@ -1,14 +1,29 @@
 #!/usr/bin/env node
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  lstat,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 import {
+  COLD_FAILURE_RECEIPT_MAX_BYTES,
+  coldDiagnosticFailure,
+  createColdFailureReceipt,
   deriveManifestAssetBasenames,
   hashedBasename,
+  ownedColdDiagnosticFailureFields,
+  relayColdFailureAfterCleanup,
+  resolveColdFailureReceipt,
+  unknownColdFailureReceipt,
 } from "./hosted-cold-recording-validation.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -42,6 +57,7 @@ const generatedConfig = join(
 const scratchResults = join(scratch, "playwright-results");
 const reportPathForGeneration =
   outputPath ?? join(scratch, "discovery-only-report.json");
+const failureReceiptPath = join(scratch, "child-failure-receipt.json");
 const origin = "http://127.0.0.1:4179";
 const safeSha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
@@ -123,13 +139,19 @@ import {
   assertColdReportPrivacy,
   assertColdMainThreadJourneyOverlap,
   buildSanitizedColdReport,
+  coldDiagnosticFailure,
+  createColdFailureReceipt,
   createColdClockSample,
   estimateClockAlignment,
+  ownedColdDiagnosticFailureFields,
+  persistColdFailureReceipt,
   translateColdNetworkTimestamp,
   translateColdTraceInterval,
+  unknownColdFailureReceipt,
 } from "./hosted-cold-recording-validation.mjs";
 
 const COLD_REPORT_PATH = __REPORT_PATH__;
+const COLD_FAILURE_RECEIPT_PATH = __FAILURE_RECEIPT_PATH__;
 const COLD_PROVENANCE = __PROVENANCE__;
 const COLD_ASSET_BASENAMES = new Set(__ASSET_BASENAMES__);
 const COLD_MAX_EVENTS = 250_000;
@@ -147,6 +169,47 @@ const COLD_REACT_FUNCTIONS = new Set([
   "performUnitOfWork", "completeUnitOfWork", "renderWithHooks", "commitRoot",
   "commitMutationEffects", "flushPassiveEffects", "beginWork", "completeWork",
 ]);
+let coldStage = "prepare";
+const coldCounts = {
+  clockSamples: 0,
+  traceEventsReceived: 0,
+  timelineRecordsRetained: 0,
+  trackedRequests: 0,
+  incompleteTrackedRequests: 0,
+  cpuSamples: null,
+  cpuNodes: null,
+};
+const coldFlags = {
+  journeyAssertionsComplete: null,
+  traceOverflow: null,
+  networkOverflow: null,
+  traceDataLoss: null,
+  reportPrivacyPassed: null,
+};
+
+function childFailureReceipt(error) {
+  const owned = ownedColdDiagnosticFailureFields(error);
+  return createColdFailureReceipt({
+    code: owned?.code ?? "unknown",
+    stage: owned?.stage ?? coldStage,
+    counts: { ...coldCounts },
+    flags: { ...coldFlags },
+  });
+}
+
+async function writeChildFailureReceipt(error) {
+  let receipt;
+  try {
+    receipt = childFailureReceipt(error);
+  } catch {
+    receipt = unknownColdFailureReceipt(coldStage);
+  }
+  await persistColdFailureReceipt({
+    receipt,
+    removeReport: () => rm(COLD_REPORT_PATH, { force: true }),
+    writeReceipt: (encoded, options) => writeFile(COLD_FAILURE_RECEIPT_PATH, encoded, options),
+  });
+}
 type SafeTraceEvent = {
   name: string;
   ph?: string;
@@ -211,14 +274,38 @@ async function startColdCapture(page: Page) {
     session.once("Tracing.tracingComplete", resolve);
   });
   const clockSamples: Array<{ offsetMs: number; uncertaintyMs: number }> = [];
+  function requestIsIncomplete(request: CapturedRequest) {
+    return request.startTimestamp === undefined || request.endTimestamp === undefined;
+  }
+  function storeTrackedRequest(requestId: string, request: CapturedRequest) {
+    const previous = requests.get(requestId);
+    if (previous && requestIsIncomplete(previous))
+      coldCounts.incompleteTrackedRequests -= 1;
+    requests.set(requestId, request);
+    coldCounts.trackedRequests = requests.size;
+    if (requestIsIncomplete(request)) coldCounts.incompleteTrackedRequests += 1;
+  }
+  function setTrackedRequestEnd(
+    request: CapturedRequest,
+    timestamp: unknown,
+    failed: boolean,
+  ) {
+    const wasIncomplete = requestIsIncomplete(request);
+    if (failed) request.failed = true;
+    request.endTimestamp = isFiniteNumber(timestamp) ? timestamp : undefined;
+    const isIncomplete = requestIsIncomplete(request);
+    coldCounts.incompleteTrackedRequests += Number(isIncomplete) - Number(wasIncomplete);
+  }
   session.on("Tracing.dataCollected", (value: unknown) => {
     const event = asRecord(value);
     const values = Array.isArray(event?.value) ? event.value : [];
     if (receivedTraceEventCount + values.length > COLD_MAX_EVENTS) {
       traceOverflow = true;
+      coldFlags.traceOverflow = true;
       return;
     }
     receivedTraceEventCount += values.length;
+    coldCounts.traceEventsReceived = receivedTraceEventCount;
     for (const value of values) {
       const rawTraceEvent = asRecord(value);
       if (
@@ -231,10 +318,12 @@ async function startColdCapture(page: Page) {
       const safe = keepSafeTraceFields(value);
       if (safe) traceEvents.push(safe);
     }
+    coldCounts.timelineRecordsRetained = traceEvents.length;
   });
   session.on("Network.requestWillBeSent", (value: unknown) => {
     if (requests.size >= COLD_MAX_NETWORK) {
       networkOverflow = true;
+      coldFlags.networkOverflow = true;
       return;
     }
     const event = asRecord(value);
@@ -247,7 +336,7 @@ async function startColdCapture(page: Page) {
     const stackFrame = asRecord(callFrames[0]);
     const url = request?.url;
     const initiatorUrl = stackFrame?.url;
-    requests.set(requestId, {
+    storeTrackedRequest(requestId, {
       url: typeof url === "string" && url.length <= 4096 ? url : "",
       method: typeof request?.method === "string" ? request.method : undefined,
       resourceType: typeof event.type === "string" ? event.type : undefined,
@@ -274,14 +363,15 @@ async function startColdCapture(page: Page) {
     const event = asRecord(value);
     const request = typeof event?.requestId === "string" ? requests.get(event.requestId) : undefined;
     if (request) {
-      request.failed = true;
-      request.endTimestamp = isFiniteNumber(event?.timestamp) ? event.timestamp : undefined;
+      setTrackedRequestEnd(request, event?.timestamp, true);
     }
   });
   session.on("Network.loadingFinished", (value: unknown) => {
     const event = asRecord(value);
     const request = typeof event?.requestId === "string" ? requests.get(event.requestId) : undefined;
-    if (request) request.endTimestamp = isFiniteNumber(event?.timestamp) ? event.timestamp : undefined;
+    if (request) {
+      setTrackedRequestEnd(request, event?.timestamp, false);
+    }
   });
   await session.send("Network.enable");
   await session.send("Performance.enable");
@@ -294,6 +384,7 @@ async function startColdCapture(page: Page) {
   });
 
   async function clockSample() {
+    coldStage = "clock";
     const before = await page.evaluate(() => ({
       now: performance.now(),
       timeOrigin: performance.timeOrigin,
@@ -317,13 +408,16 @@ async function startColdCapture(page: Page) {
       expectedTimeOriginMs: clockSamples[0]?.documentTimeOriginMs,
     });
     clockSamples.push(sample);
+    coldCounts.clockSamples = clockSamples.length;
     return sample;
   }
   return {
     align: clockSample,
     finish: async (expectedTimeOriginMs: number, journeyEndMs: number) => {
-    await clockSample();
-    await clockSample();
+      coldStage = "capture-finish";
+      await clockSample();
+      await clockSample();
+      coldStage = "capture-finish";
     const profileResult = asRecord(await session.send("Profiler.stop"));
     await session.send("Tracing.end");
     const completion = await tracingComplete;
@@ -331,22 +425,31 @@ async function startColdCapture(page: Page) {
     const profile = asRecord(profileResult?.profile);
     const samples = Array.isArray(profile?.samples) ? profile.samples : [];
     const nodes = Array.isArray(profile?.nodes) ? profile.nodes : [];
+    coldCounts.cpuSamples = samples.length;
+    coldCounts.cpuNodes = nodes.length;
+    coldFlags.traceOverflow = traceOverflow;
+    coldFlags.networkOverflow = networkOverflow;
+    coldFlags.traceDataLoss = typeof completion.dataLossOccurred === "boolean"
+      ? completion.dataLossOccurred
+      : null;
     if (traceClockInvalid || traceOverflow || networkOverflow || samples.length === 0 || samples.length > COLD_MAX_CPU_SAMPLES || nodes.length === 0 || nodes.length > COLD_MAX_CPU_NODES || completion.dataLossOccurred !== false)
-      throw new Error("capture-integrity");
+      throw coldDiagnosticFailure("trace-integrity", "capture-finish", "Capture integrity check failed.");
+    coldStage = "clock";
     const clockAlignment = estimateClockAlignment(clockSamples);
     if (
       !isFiniteNumber(expectedTimeOriginMs) ||
       clockAlignment.documentTimeOriginMs !== expectedTimeOriginMs
-    ) throw new Error("document-clock-origin");
+    ) throw coldDiagnosticFailure("clock-alignment", "clock", "Document clock origins did not match.");
     const offsetMs = clockAlignment.offsetMs;
+    coldStage = "network";
     const resources = [...requests.values()].map((request) => {
       let timing: { start: number; end: number } | undefined;
       if (request.startTimestamp !== undefined || request.endTimestamp !== undefined) {
         if (!isFiniteNumber(request.startTimestamp) || !isFiniteNumber(request.endTimestamp))
-          throw new Error("network-clock-incomplete");
+          throw coldDiagnosticFailure("network-clock-incomplete", "network", "A tracked request has incomplete clock endpoints.");
         const start = translateColdNetworkTimestamp(request.startTimestamp, offsetMs);
         const end = translateColdNetworkTimestamp(request.endTimestamp, offsetMs);
-        if (end < start) throw new Error("network-clock-reversed");
+        if (end < start) throw coldDiagnosticFailure("network-clock", "network", "Tracked request interval is reversed.");
         timing = { start, end };
       }
       return {
@@ -364,7 +467,8 @@ async function startColdCapture(page: Page) {
     const mainTid = traceEvents.find((event) =>
       event.name === "thread_name" && event.ph === "M" && event.args?.name === "CrRendererMain"
     )?.tid;
-    if (typeof mainTid !== "number") throw new Error("main-thread");
+    if (typeof mainTid !== "number") throw coldDiagnosticFailure("phase-validation", "phase", "Main thread marker is missing.");
+    coldStage = "phase";
     const phases = deriveExclusiveMainThreadPhases(traceEvents, mainTid, offsetMs, journeyEndMs);
     return {
       resources,
@@ -469,11 +573,14 @@ function deriveExclusiveMainThreadPhases(events: SafeTraceEvent[], mainTid: numb
 
 test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
   test.setTimeout(180_000);
-  await withPerformancePage(browser, true, async (page) => {
+  try {
+    await withPerformancePage(browser, true, async (page) => {
     const capture = await startColdCapture(page);
     try {
+      coldStage = "journey";
       await page.goto(WORK_LIST_PATH);
       await capture.align();
+      coldStage = "journey";
       const rows = page.locator("[data-testid=work-item-list-populated] tbody tr");
       await page.waitForFunction(() => (window as G11Window).__g11Metrics.lcp > 0, undefined, { timeout: 30_000 });
       const lcpState = await page.evaluate(() => {
@@ -488,15 +595,15 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
           rowCountSampleAfterLcpEntryMs: Math.max(0, sampleAtMs - lcpMs),
         };
       });
-      if (lcpState.lcpElementTag !== "h1") throw new Error("unexpected-lcp-element");
+      if (lcpState.lcpElementTag !== "h1") throw coldDiagnosticFailure("journey-assertion", "journey", "The required H1 LCP predicate failed.");
       await expect(rows).toHaveCount(500, { timeout: 30_000 });
       await waitForTwoFrames(page);
       const rowCount = await rows.count();
-      if (rowCount !== 500 || lcpState.rowsAtPostObserverSample > 500) throw new Error("row-count");
+      if (rowCount !== 500 || lcpState.rowsAtPostObserverSample > 500) throw coldDiagnosticFailure("journey-assertion", "journey", "The fixed row-count predicate failed.");
       const target = page.getByRole("link", { name: WORK_ITEM_KEY, exact: true });
       await expect(target).toHaveCount(1);
       const targetHref = await target.getAttribute("href");
-      if (targetHref !== "/agent/work-items/WLP-1") throw new Error("click-target");
+      if (targetHref !== "/agent/work-items/WLP-1") throw coldDiagnosticFailure("journey-assertion", "journey", "The fixed click-target predicate failed.");
       await target.click();
       await page.waitForFunction(() => (window as G11Window).__g11Metrics.routePaint > 0, undefined, { timeout: 30_000 });
       const routeState = await page.evaluate(() => ({
@@ -511,18 +618,21 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
           (window as G11Window).__g11Metrics.routeVisibilityProbeMaxMs,
         timeOriginMs: performance.timeOrigin,
       }));
-      if (routeState.timeOriginMs !== lcpState.timeOriginMs) throw new Error("navigation-clock-reset");
+      if (routeState.timeOriginMs !== lcpState.timeOriginMs) throw coldDiagnosticFailure("clock-alignment", "clock", "Document clock origin changed during the journey.");
       if (
         routeState.routeStartMs <= 0 ||
         routeState.routePaintMs <= 0 ||
         !["loading", "detail"].includes(routeState.routePaintTarget)
-      ) throw new Error("route-paint-mark");
+      ) throw coldDiagnosticFailure("journey-assertion", "journey", "The route-paint mark predicate failed.");
       await expect(page.getByTestId("work-item-detail")).toBeVisible({ timeout: 15_000 });
       const detailUrl = new URL(page.url());
-      if (detailUrl.pathname !== "/agent/work-items/WLP-1") throw new Error("detail-url");
+      if (detailUrl.pathname !== "/agent/work-items/WLP-1") throw coldDiagnosticFailure("journey-assertion", "journey", "The fixed detail URL predicate failed.");
+      coldFlags.journeyAssertionsComplete = true;
+      coldStage = "capture-finish";
       const rawCapture = await capture.finish(lcpState.timeOriginMs, routeState.routePaintMs);
       if (rawCapture.documentTimeOriginMs !== routeState.timeOriginMs)
-        throw new Error("document-clock-origin");
+        throw coldDiagnosticFailure("clock-alignment", "clock", "Capture and journey clock origins did not match.");
+      coldStage = "report-build";
       const report = buildSanitizedColdReport({
         provenance: COLD_PROVENANCE,
         assetBasenames: COLD_ASSET_BASENAMES,
@@ -553,13 +663,25 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
         lcpWindow: { lcpMs: lcpState.lcpMs },
         clickWindow: { routeStartMs: routeState.routeStartMs, routePaintMs: routeState.routePaintMs },
       });
+      coldStage = "privacy";
       assertColdReportPrivacy(report, COLD_ASSET_BASENAMES);
-      await mkdir(dirname(COLD_REPORT_PATH), { recursive: true });
-      await writeFile(COLD_REPORT_PATH, JSON.stringify(report, null, 2) + "\n", { mode: 0o600 });
-    } catch {
+      coldFlags.reportPrivacyPassed = true;
+      coldStage = "report-write";
+      try {
+        await mkdir(dirname(COLD_REPORT_PATH), { recursive: true });
+        await writeFile(COLD_REPORT_PATH, JSON.stringify(report, null, 2) + "\n", { mode: 0o600 });
+      } catch {
+        throw coldDiagnosticFailure("report-write", "report-write", "The bounded report write failed.");
+      }
+    } catch (error) {
+      await writeChildFailureReceipt(error);
       throw new Error("Cold G11 recording failed a required journey, privacy, or capture-integrity check.");
     }
-  }, { g13Windows: true });
+    }, { g13Windows: true });
+  } catch (error) {
+    await writeChildFailureReceipt(error);
+    throw error;
+  }
 });
 
 `;
@@ -586,7 +708,13 @@ export default defineConfig({
 });
 `;
 
+let parentStage = "prepare";
+let failureReceipt = null;
+let failed = false;
+
 try {
+  await chmod(scratch, 0o700);
+  parentStage = "source-bind";
   const benchmarkPath = join(scriptDir, "performance.bench.ts");
   const perfConfigPath = join(webDir, "playwright.perf.config.ts");
   const networkHelperPath = join(
@@ -607,13 +735,18 @@ try {
     encoding: "utf8",
   }).trim();
   if (sourceSha !== candidateHeadSha)
-    throw new Error("Candidate SHA does not match the checked out source.");
+    throw coldDiagnosticFailure(
+      "source-binding",
+      "source-bind",
+      "Checked-out source did not match the requested head.",
+    );
   const playwrightPackage = JSON.parse(
     await readFile(
       join(webDir, "node_modules/@playwright/test/package.json"),
       "utf8",
     ),
   );
+  parentStage = "source-bind";
   const buildEvidence = await readBuildEvidence();
   const pnpmVersion = execFileSync("pnpm", ["--version"], {
     cwd: repoDir,
@@ -642,21 +775,32 @@ try {
   const previewOccurrences =
     benchmark.match(/http:\/\/127\.0\.0\.1:4178/g) ?? [];
   if (previewOccurrences.length !== 3)
-    throw new Error("Canonical preview binding changed unexpectedly.");
+    throw coldDiagnosticFailure(
+      "build-binding",
+      "source-bind",
+      "Canonical preview binding check failed.",
+    );
   const routePaintMarker =
     'import { installRoutePaintRecorder } from "./helpers/route-paint-recorder";';
   if (benchmark.split(routePaintMarker).length - 1 !== 1)
-    throw new Error(
-      "Canonical shared route-paint recorder binding changed unexpectedly.",
+    throw coldDiagnosticFailure(
+      "build-binding",
+      "source-bind",
+      "Canonical route-paint source binding check failed.",
     );
   const source = benchmark.replaceAll("http://127.0.0.1:4178", origin);
   if (source.includes("http://127.0.0.1:4178"))
-    throw new Error("Diagnostic preview rewrite was incomplete.");
+    throw coldDiagnosticFailure(
+      "build-binding",
+      "source-bind",
+      "Diagnostic preview binding check failed.",
+    );
   const extra = generatedRecorder
     .replace(
       "__REPORT_PATH__",
       JSON.stringify(resolve(reportPathForGeneration)),
     )
+    .replace("__FAILURE_RECEIPT_PATH__", JSON.stringify(failureReceiptPath))
     .replace("__PROVENANCE__", JSON.stringify(provenance))
     .replace(
       "__ASSET_BASENAMES__",
@@ -670,7 +814,12 @@ try {
     { cwd: webDir, stdio: "ignore" },
   );
   if (validation.status !== 0)
-    throw new Error("Privacy regression checks failed.");
+    throw coldDiagnosticFailure(
+      "preflight-validation",
+      "prepare",
+      "Cold privacy regression preflight failed.",
+    );
+  parentStage = "child-start";
   const result = spawnSync(
     "pnpm",
     [
@@ -683,25 +832,93 @@ try {
     ],
     { cwd: webDir, stdio: discoveryOnly ? "inherit" : "ignore" },
   );
-  if (result.error || result.status !== 0)
+  if (result.error)
+    throw new Error("Generated cold child process could not be started.");
+  if (result.status !== 0) {
+    if (!discoveryOnly) {
+      try {
+        const receiptStat = await lstat(failureReceiptPath);
+        if (
+          !receiptStat.isFile() ||
+          (receiptStat.mode & 0o077) !== 0 ||
+          receiptStat.size > COLD_FAILURE_RECEIPT_MAX_BYTES
+        )
+          throw new Error("Invalid private child receipt file.");
+        failureReceipt = resolveColdFailureReceipt(
+          await readFile(failureReceiptPath),
+        );
+      } catch {
+        failureReceipt = unknownColdFailureReceipt("child-start");
+      }
+    }
     throw new Error(
       discoveryOnly
         ? "Generated cold test discovery failed."
         : "Hosted cold recording journey failed.",
     );
-  if (discoveryOnly)
-    process.stdout.write("Generated cold test discovery passed.\n");
+  }
 } catch (error) {
-  if (outputPath) await rm(outputPath, { force: true });
-  if (discoveryOnly && error instanceof Error)
-    process.stderr.write(`Generated discovery error: ${error.message}\n`);
+  failed = true;
+  if (!failureReceipt) {
+    const owned = ownedColdDiagnosticFailureFields(error);
+    const empty = unknownColdFailureReceipt();
+    failureReceipt = owned
+      ? createColdFailureReceipt({
+          ...owned,
+          counts: empty.counts,
+          flags: empty.flags,
+        })
+      : unknownColdFailureReceipt(parentStage);
+  }
+}
+
+if (failed) {
+  await relayColdFailureAfterCleanup({
+    receipt: failureReceipt,
+    removeReport: () =>
+      outputPath ? rm(outputPath, { force: true }) : Promise.resolve(),
+    cleanupScratch: () =>
+      Promise.all([
+        rm(generatedSpec, { force: true }),
+        rm(generatedConfig, { force: true }),
+        rm(scratch, { recursive: true, force: true }),
+      ]),
+    emitLine: (line) => process.stdout.write(line),
+  });
+  if (discoveryOnly)
+    process.stderr.write("Generated cold test discovery failed.\n");
   throw new Error(
     "Hosted cold recording did not produce a publishable bounded report.",
   );
-} finally {
+}
+try {
   await Promise.all([
     rm(generatedSpec, { force: true }),
     rm(generatedConfig, { force: true }),
     rm(scratch, { recursive: true, force: true }),
   ]);
+} catch {
+  const cleanupReceipt = createColdFailureReceipt({
+    code: "cleanup",
+    stage: "cleanup",
+    counts: unknownColdFailureReceipt().counts,
+    flags: unknownColdFailureReceipt().flags,
+  });
+  await relayColdFailureAfterCleanup({
+    receipt: cleanupReceipt,
+    removeReport: () =>
+      outputPath ? rm(outputPath, { force: true }) : Promise.resolve(),
+    cleanupScratch: () =>
+      Promise.all([
+        rm(generatedSpec, { force: true }),
+        rm(generatedConfig, { force: true }),
+        rm(scratch, { recursive: true, force: true }),
+      ]),
+    emitLine: (line) => process.stdout.write(line),
+  });
+  throw new Error(
+    "Hosted cold recording did not produce a publishable bounded report.",
+  );
 }
+if (discoveryOnly)
+  process.stdout.write("Generated cold test discovery passed.\n");

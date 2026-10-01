@@ -6,12 +6,24 @@ import {
   buildSanitizedColdReport,
   COLD_CLOCK_SUPPORTED_CHROMIUM_VERSION,
   COLD_CLOCK_TIMER_ALLOWANCE_MS,
+  COLD_FAILURE_CODES,
+  COLD_FAILURE_RECEIPT_MAX_BYTES,
+  COLD_FAILURE_RECEIPT_PREFIX,
+  coldDiagnosticFailure,
   createColdClockSample,
+  createColdFailureReceipt,
   deriveManifestAssetBasenames,
   estimateClockAlignment,
+  formatColdFailureReceiptLine,
   hashedBasename,
+  ownedColdDiagnosticFailureFields,
+  parseColdFailureReceipt,
+  persistColdFailureReceipt,
+  relayColdFailureAfterCleanup,
+  resolveColdFailureReceipt,
   translateColdNetworkTimestamp,
   translateColdTraceInterval,
+  unknownColdFailureReceipt,
 } from "./hosted-cold-recording-validation.mjs";
 
 const hash = "a".repeat(64);
@@ -144,6 +156,227 @@ function reportInput(overrides = {}) {
     ...overrides,
   };
 }
+
+function failureReceipt(overrides = {}) {
+  const empty = unknownColdFailureReceipt("journey");
+  return createColdFailureReceipt({
+    code: "journey-assertion",
+    stage: "journey",
+    counts: {
+      ...empty.counts,
+      clockSamples: 1,
+      trackedRequests: 2,
+      incompleteTrackedRequests: 1,
+    },
+    flags: {
+      ...empty.flags,
+      journeyAssertionsComplete: false,
+    },
+    ...overrides,
+  });
+}
+
+test("failure receipts are closed, bounded, typed, and relay only validated values", () => {
+  const receipt = failureReceipt();
+  const encoded = Buffer.from(JSON.stringify(receipt), "utf8");
+  assert.deepEqual(parseColdFailureReceipt(encoded), receipt);
+  const line = formatColdFailureReceiptLine(receipt);
+  assert.equal(line.startsWith(COLD_FAILURE_RECEIPT_PREFIX), true);
+  assert.deepEqual(
+    parseColdFailureReceipt(
+      Buffer.from(line.slice(COLD_FAILURE_RECEIPT_PREFIX.length)),
+    ),
+    receipt,
+  );
+
+  const hostile =
+    "https://private.invalid/customer?token=secret <div>hidden</div>";
+  const untyped = new Error(hostile);
+  untyped.url = hostile;
+  untyped.dom = hostile;
+  untyped.stack = hostile;
+  assert.equal(ownedColdDiagnosticFailureFields(untyped), null);
+  const typed = coldDiagnosticFailure("request-completion", "network", hostile);
+  assert.deepEqual(ownedColdDiagnosticFailureFields(typed), {
+    code: "request-completion",
+    stage: "network",
+  });
+  const proxy = new Proxy(
+    {},
+    {
+      getPrototypeOf() {
+        throw new Error(hostile);
+      },
+    },
+  );
+  assert.equal(ownedColdDiagnosticFailureFields(proxy), null);
+  const forged = Object.assign(Object.create(Object.getPrototypeOf(typed)), {
+    code: "request-completion",
+    stage: "network",
+  });
+  assert.equal(ownedColdDiagnosticFailureFields(forged), null);
+  const unknownLine = formatColdFailureReceiptLine(
+    unknownColdFailureReceipt("child-start"),
+  );
+  assert.equal(unknownLine.includes(hostile), false);
+  assert.equal(unknownLine.includes("Error"), false);
+  assert.equal(unknownLine.startsWith(COLD_FAILURE_RECEIPT_PREFIX), true);
+});
+
+test("every closed failure code relays only its literal code and fixed stage", () => {
+  const hostile =
+    "https://tenant.invalid/path?auth=secret <section>private</section>";
+  for (const code of COLD_FAILURE_CODES) {
+    const error = coldDiagnosticFailure(code, "unknown", hostile);
+    assert.deepEqual(ownedColdDiagnosticFailureFields(error), {
+      code,
+      stage: "unknown",
+    });
+    const empty = unknownColdFailureReceipt("unknown");
+    const receipt = createColdFailureReceipt({
+      code,
+      stage: "unknown",
+      counts: empty.counts,
+      flags: empty.flags,
+    });
+    assert.equal(JSON.stringify(receipt).includes(hostile), false);
+    assert.deepEqual(
+      parseColdFailureReceipt(Buffer.from(JSON.stringify(receipt))),
+      receipt,
+    );
+  }
+});
+
+test("failure receipt relay rejects hostile schemas, counts, flags, and oversized payloads", () => {
+  const valid = failureReceipt();
+  const changed = (patch) => ({ ...valid, ...patch });
+  assert.throws(() =>
+    parseColdFailureReceipt(
+      Buffer.from(
+        JSON.stringify(changed({ extra: "https://private.invalid/token" })),
+      ),
+    ),
+  );
+  const bad = [
+    changed({ code: "customer-supplied" }),
+    changed({ stage: "arbitrary stage" }),
+    changed({ counts: { ...valid.counts, cpuNodes: -1 } }),
+    changed({ counts: { ...valid.counts, cpuNodes: 50_001 } }),
+    changed({ counts: { ...valid.counts, cpuNodes: Number.NaN } }),
+    changed({ counts: { ...valid.counts, incompleteTrackedRequests: 3 } }),
+    changed({ flags: { ...valid.flags, traceOverflow: "false" } }),
+  ];
+  for (const value of bad) assert.throws(() => createColdFailureReceipt(value));
+  assert.throws(() =>
+    parseColdFailureReceipt(
+      Buffer.alloc(COLD_FAILURE_RECEIPT_MAX_BYTES + 1, 32),
+    ),
+  );
+  const duplicateKey = JSON.stringify(valid).replace(
+    '"code":"journey-assertion"',
+    '"code":"unknown","code":"journey-assertion"',
+  );
+  assert.throws(() => parseColdFailureReceipt(Buffer.from(duplicateKey)));
+
+  const fallback = unknownColdFailureReceipt("child-start");
+  assert.equal(fallback.code, "unknown");
+  assert.equal(fallback.stage, "child-start");
+  assert.ok(Object.values(fallback.counts).every((value) => value === null));
+  assert.ok(Object.values(fallback.flags).every((value) => value === null));
+  for (const absentOrInvalid of [
+    null,
+    Buffer.from("{}"),
+    Buffer.alloc(COLD_FAILURE_RECEIPT_MAX_BYTES + 1),
+  ]) {
+    const resolved = resolveColdFailureReceipt(absentOrInvalid, "child-start");
+    assert.equal(resolved.code, "unknown");
+    assert.equal(resolved.stage, "child-start");
+    assert.equal(JSON.stringify(resolved).includes("private"), false);
+  }
+});
+
+test("failure relay removes report and scratch before one closed line; cleanup failure stays nonzero-safe", async () => {
+  const order = [];
+  let outputLine = "";
+  const hostile = new Error(
+    "https://private.invalid/?token=secret <body>private</body>",
+  );
+  const relayed = await relayColdFailureAfterCleanup({
+    receipt: failureReceipt(),
+    removeReport: async () => {
+      order.push("report");
+    },
+    cleanupScratch: async () => {
+      order.push("scratch");
+    },
+    emitLine: async (line) => {
+      order.push("stdout");
+      outputLine += line;
+    },
+  });
+  assert.deepEqual(order, ["report", "scratch", "stdout"]);
+  assert.deepEqual(
+    parseColdFailureReceipt(
+      Buffer.from(outputLine.slice(COLD_FAILURE_RECEIPT_PREFIX.length).trim()),
+    ),
+    relayed,
+  );
+  assert.equal(outputLine.includes(hostile.message), false);
+
+  order.length = 0;
+  outputLine = "";
+  const cleanupReceipt = await relayColdFailureAfterCleanup({
+    receipt: failureReceipt(),
+    removeReport: async () => {
+      order.push("report");
+      throw hostile;
+    },
+    cleanupScratch: async () => {
+      order.push("scratch");
+    },
+    emitLine: async (line) => {
+      order.push("stdout");
+      outputLine += line;
+    },
+  });
+  assert.deepEqual(order, ["report", "scratch", "stdout"]);
+  assert.equal(cleanupReceipt.code, "cleanup");
+  assert.equal(outputLine.includes("private"), false);
+});
+
+test("child receipt persistence deletes output first, writes mode request, and redacts cleanup failures", async () => {
+  const order = [];
+  let encoded = "";
+  let reportExists = true;
+  const result = await persistColdFailureReceipt({
+    receipt: failureReceipt(),
+    removeReport: async () => {
+      order.push("remove-report");
+      reportExists = false;
+    },
+    writeReceipt: async (value, options) => {
+      order.push("write-receipt");
+      assert.equal(reportExists, false);
+      assert.deepEqual(options, { mode: 0o600, flag: "wx" });
+      encoded = value;
+    },
+  });
+  assert.deepEqual(order, ["remove-report", "write-receipt"]);
+  assert.deepEqual(parseColdFailureReceipt(Buffer.from(encoded)), result);
+
+  let cleanupEncoded = "";
+  const cleanup = await persistColdFailureReceipt({
+    receipt: failureReceipt(),
+    removeReport: async () => {
+      throw new Error("/private/path?token=secret");
+    },
+    writeReceipt: async (value) => {
+      cleanupEncoded = value;
+    },
+  });
+  assert.equal(cleanup.code, "cleanup");
+  assert.equal(cleanupEncoded.includes("/private/path"), false);
+});
 
 test("cold report binds the exact source and emits only bounded diagnostic evidence", () => {
   const report = buildSanitizedColdReport(reportInput());

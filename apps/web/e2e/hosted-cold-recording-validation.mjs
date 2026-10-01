@@ -7,6 +7,263 @@ export const COLD_MAX_PHASE_SEGMENTS = 100_000;
 export const COLD_CLOCK_TIMER_ALLOWANCE_MS = 0.2;
 export const COLD_CLOCK_SUPPORTED_CHROMIUM_VERSION = "153.0.8010.12";
 export const COLD_CLOCK_REPORT_RESOLUTION_MS = 0.1;
+export const COLD_FAILURE_RECEIPT_MAX_BYTES = 2 * 1024;
+export const COLD_FAILURE_RECEIPT_PREFIX = "[hosted-cold-recording] failure ";
+export const COLD_FAILURE_STAGES = Object.freeze([
+  "prepare",
+  "source-bind",
+  "child-start",
+  "journey",
+  "clock",
+  "capture-finish",
+  "network",
+  "phase",
+  "report-build",
+  "privacy",
+  "report-write",
+  "cleanup",
+  "unknown",
+]);
+export const COLD_FAILURE_CODES = Object.freeze([
+  "source-binding",
+  "build-binding",
+  "preflight-validation",
+  "child-exit",
+  "journey-assertion",
+  "clock-sample",
+  "clock-alignment",
+  "trace-integrity",
+  "request-completion",
+  "network-clock-incomplete",
+  "network-clock",
+  "phase-validation",
+  "report-schema",
+  "report-privacy",
+  "report-write",
+  "cleanup",
+  "unknown",
+]);
+const COLD_FAILURE_COUNT_BOUNDS = Object.freeze({
+  clockSamples: 3,
+  traceEventsReceived: 250_000,
+  timelineRecordsRetained: 250_000,
+  trackedRequests: 2_048,
+  incompleteTrackedRequests: 2_048,
+  cpuSamples: 500_000,
+  cpuNodes: 50_000,
+});
+const COLD_FAILURE_FLAG_KEYS = Object.freeze([
+  "journeyAssertionsComplete",
+  "traceOverflow",
+  "networkOverflow",
+  "traceDataLoss",
+  "reportPrivacyPassed",
+]);
+const OWNED_COLD_FAILURES = new WeakSet();
+
+export class ColdDiagnosticFailure extends Error {
+  constructor(code, stage, message = "Cold diagnostic check failed.") {
+    if (
+      !COLD_FAILURE_CODES.includes(code) ||
+      !COLD_FAILURE_STAGES.includes(stage)
+    )
+      throw new Error("Invalid owned cold diagnostic failure.");
+    super(message);
+    this.name = "ColdDiagnosticFailure";
+    this.code = code;
+    this.stage = stage;
+    OWNED_COLD_FAILURES.add(this);
+    Object.freeze(this);
+  }
+}
+
+export function coldDiagnosticFailure(code, stage, message) {
+  return new ColdDiagnosticFailure(code, stage, message);
+}
+
+export function ownedColdDiagnosticFailureFields(error) {
+  try {
+    if (
+      !error ||
+      !OWNED_COLD_FAILURES.has(error) ||
+      Object.getPrototypeOf(error) !== ColdDiagnosticFailure.prototype
+    )
+      return null;
+    const code = Object.getOwnPropertyDescriptor(error, "code");
+    const stage = Object.getOwnPropertyDescriptor(error, "stage");
+    if (
+      !code ||
+      !("value" in code) ||
+      !COLD_FAILURE_CODES.includes(code.value) ||
+      !stage ||
+      !("value" in stage) ||
+      !COLD_FAILURE_STAGES.includes(stage.value)
+    )
+      return null;
+    return { code: code.value, stage: stage.value };
+  } catch {
+    return null;
+  }
+}
+
+export function createColdFailureReceipt({ code, stage, counts, flags }) {
+  const receipt = {
+    schemaVersion: 1,
+    kind: "cold-recorder-failure",
+    code,
+    stage,
+    counts,
+    flags,
+  };
+  validateColdFailureReceipt(receipt);
+  const encoded = JSON.stringify(receipt);
+  if (Buffer.byteLength(encoded, "utf8") > COLD_FAILURE_RECEIPT_MAX_BYTES)
+    throw new Error("Cold failure receipt exceeded its byte cap.");
+  return receipt;
+}
+
+export function unknownColdFailureReceipt(stage = "unknown") {
+  const safeStage = COLD_FAILURE_STAGES.includes(stage) ? stage : "unknown";
+  return createColdFailureReceipt({
+    code: "unknown",
+    stage: safeStage,
+    counts: Object.fromEntries(
+      Object.keys(COLD_FAILURE_COUNT_BOUNDS).map((key) => [key, null]),
+    ),
+    flags: Object.fromEntries(COLD_FAILURE_FLAG_KEYS.map((key) => [key, null])),
+  });
+}
+
+function validateColdFailureReceipt(value) {
+  exactKeys(
+    value,
+    ["schemaVersion", "kind", "code", "stage", "counts", "flags"],
+    "failure receipt",
+  );
+  if (value.schemaVersion !== 1 || value.kind !== "cold-recorder-failure")
+    throw new Error("Invalid cold failure receipt identity.");
+  if (
+    !COLD_FAILURE_CODES.includes(value.code) ||
+    !COLD_FAILURE_STAGES.includes(value.stage)
+  )
+    throw new Error("Invalid cold failure receipt enum.");
+  exactKeys(
+    value.counts,
+    Object.keys(COLD_FAILURE_COUNT_BOUNDS),
+    "failure receipt counts",
+  );
+  for (const [key, max] of Object.entries(COLD_FAILURE_COUNT_BOUNDS)) {
+    const count = value.counts[key];
+    if (
+      count !== null &&
+      (!Number.isInteger(count) || count < 0 || count > max)
+    )
+      throw new Error("Invalid cold failure receipt count.");
+  }
+  const tracked = value.counts.trackedRequests;
+  const incomplete = value.counts.incompleteTrackedRequests;
+  if (tracked !== null && incomplete !== null && incomplete > tracked)
+    throw new Error("Invalid cold failure receipt count relationship.");
+  exactKeys(value.flags, COLD_FAILURE_FLAG_KEYS, "failure receipt flags");
+  for (const key of COLD_FAILURE_FLAG_KEYS) {
+    if (value.flags[key] !== null && typeof value.flags[key] !== "boolean")
+      throw new Error("Invalid cold failure receipt flag.");
+  }
+  return value;
+}
+
+export function parseColdFailureReceipt(bytes) {
+  if (
+    !(bytes instanceof Uint8Array) ||
+    bytes.byteLength > COLD_FAILURE_RECEIPT_MAX_BYTES
+  )
+    throw new Error("Invalid cold failure receipt byte length.");
+  const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  const receipt = JSON.parse(text);
+  validateColdFailureReceipt(receipt);
+  // Child receipts use canonical compact JSON; this also rejects duplicate keys.
+  if (JSON.stringify(receipt) !== text)
+    throw new Error("Noncanonical cold failure receipt encoding.");
+  return receipt;
+}
+
+export function resolveColdFailureReceipt(bytes, stage = "child-start") {
+  try {
+    return parseColdFailureReceipt(bytes);
+  } catch {
+    return unknownColdFailureReceipt(stage);
+  }
+}
+
+export function formatColdFailureReceiptLine(receipt) {
+  const validated = parseColdFailureReceipt(
+    Buffer.from(JSON.stringify(receipt), "utf8"),
+  );
+  return `${COLD_FAILURE_RECEIPT_PREFIX}${JSON.stringify(validated)}`;
+}
+
+export async function relayColdFailureAfterCleanup({
+  receipt,
+  removeReport,
+  cleanupScratch,
+  emitLine,
+}) {
+  let cleanupFailed = false;
+  try {
+    await removeReport();
+  } catch {
+    cleanupFailed = true;
+  }
+  try {
+    await cleanupScratch();
+  } catch {
+    cleanupFailed = true;
+  }
+  const finalReceipt = cleanupFailed
+    ? createColdFailureReceipt({
+        code: "cleanup",
+        stage: "cleanup",
+        counts: unknownColdFailureReceipt().counts,
+        flags: unknownColdFailureReceipt().flags,
+      })
+    : parseColdFailureReceipt(Buffer.from(JSON.stringify(receipt), "utf8"));
+  await emitLine(`${formatColdFailureReceiptLine(finalReceipt)}\n`);
+  return finalReceipt;
+}
+
+export async function persistColdFailureReceipt({
+  receipt,
+  removeReport,
+  writeReceipt,
+}) {
+  let safeReceipt;
+  try {
+    safeReceipt = parseColdFailureReceipt(
+      Buffer.from(JSON.stringify(receipt), "utf8"),
+    );
+  } catch {
+    safeReceipt = unknownColdFailureReceipt();
+  }
+  try {
+    await removeReport();
+  } catch {
+    safeReceipt = createColdFailureReceipt({
+      code: "cleanup",
+      stage: "cleanup",
+      counts: unknownColdFailureReceipt().counts,
+      flags: unknownColdFailureReceipt().flags,
+    });
+  }
+  try {
+    await writeReceipt(JSON.stringify(safeReceipt), {
+      mode: 0o600,
+      flag: "wx",
+    });
+  } catch {
+    // Parent emits an unknown receipt if the private relay could not be written.
+  }
+  return safeReceipt;
+}
 const ROUTE_PAINT_CRITERION =
   "A route-paint mark requires a positive conservative inward-bounded axis-aligned target region after viewport and ancestor overflow/paint-containment clipping. Subpixel boundary strips may fail closed; ambiguous RTL/root or top-scrollbar origins, CSS zoom other than 1, unsupported transforms, out-of-flow boxes, fragmented targets, nonrectangular clips/masks, nondefault overflow-clip margins, and rounded overflow clips fail closed. This is not pixel-level or occlusion proof.";
 
@@ -191,7 +448,9 @@ export function createColdClockSample({
   expectedTimeOriginMs,
 }) {
   if (chromiumVersion !== COLD_CLOCK_SUPPORTED_CHROMIUM_VERSION)
-    throw new Error(
+    throw coldDiagnosticFailure(
+      "clock-sample",
+      "clock",
       "Clock precision contract is not verified for this Chromium version.",
     );
   if (
@@ -204,11 +463,19 @@ export function createColdClockSample({
     (expectedTimeOriginMs !== undefined &&
       beforeTimeOriginMs !== expectedTimeOriginMs)
   )
-    throw new Error("Invalid or changed document clock sample.");
+    throw coldDiagnosticFailure(
+      "clock-sample",
+      "clock",
+      "Invalid or changed document clock sample.",
+    );
 
   const timestampMs = timestampSeconds * 1000;
   if (!finite(timestampMs, 0, Number.MAX_SAFE_INTEGER))
-    throw new Error("CDP timestamp conversion is unsafe.");
+    throw coldDiagnosticFailure(
+      "clock-sample",
+      "clock",
+      "CDP timestamp conversion is unsafe.",
+    );
   const midpointMs = beforeMs / 2 + afterMs / 2;
   const numericAllowanceMs = clockNumericAllowanceMs([
     timestampMs,
@@ -234,7 +501,9 @@ export function createColdClockSample({
     !finite(bracketMs, 0, Number.MAX_SAFE_INTEGER) ||
     !finite(uncertaintyMs, 0, 1000)
   )
-    throw new Error(
+    throw coldDiagnosticFailure(
+      "clock-sample",
+      "clock",
       "Clock sample exceeds its safe coordinate or uncertainty bound.",
     );
   return {
@@ -247,7 +516,11 @@ export function createColdClockSample({
 
 export function estimateClockAlignment(samples) {
   if (!Array.isArray(samples) || samples.length < 2 || samples.length > 100)
-    throw new Error("Invalid bounded clock alignment samples.");
+    throw coldDiagnosticFailure(
+      "clock-alignment",
+      "clock",
+      "Invalid bounded clock alignment samples.",
+    );
   const documentTimeOriginMs = samples[0]?.documentTimeOriginMs;
   if (
     samples.some(
@@ -271,7 +544,11 @@ export function estimateClockAlignment(samples) {
           COLD_CLOCK_REPORT_RESOLUTION_MS,
     )
   )
-    throw new Error("Invalid clock alignment sample.");
+    throw coldDiagnosticFailure(
+      "clock-alignment",
+      "clock",
+      "Invalid clock alignment sample.",
+    );
   const offsetMs = samples.reduce(
     (sum, sample) => sum + sample.offsetMs / samples.length,
     0,
@@ -290,25 +567,29 @@ export function estimateClockAlignment(samples) {
     !finite(offsetMs, -Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER) ||
     !finite(uncertaintyMs, COLD_CLOCK_TIMER_ALLOWANCE_MS, 1000)
   )
-    throw new Error(
+    throw coldDiagnosticFailure(
+      "clock-alignment",
+      "clock",
       "Clock alignment exceeds its safe coordinate or uncertainty bound.",
     );
   return { offsetMs, uncertaintyMs, documentTimeOriginMs };
 }
 
-function pageRelativeMs(valueMs, offsetMs) {
+function pageRelativeMs(valueMs, offsetMs, code, stage) {
   if (
     !finite(valueMs, 0, Number.MAX_SAFE_INTEGER) ||
     !finite(offsetMs, -Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER)
   )
-    throw new Error("Invalid clock-domain value.");
+    throw coldDiagnosticFailure(code, stage, "Invalid clock-domain value.");
   const resultMs = valueMs - offsetMs;
   if (
     !finite(resultMs, -60_000, 600_000) ||
     clockNumericAllowanceMs([valueMs, offsetMs, resultMs]) >=
       COLD_CLOCK_REPORT_RESOLUTION_MS
   )
-    throw new Error(
+    throw coldDiagnosticFailure(
+      code,
+      stage,
       "Clock translation is outside the report time window or resolution.",
     );
   return resultMs;
@@ -316,11 +597,19 @@ function pageRelativeMs(valueMs, offsetMs) {
 
 export function translateColdNetworkTimestamp(timestampSeconds, offsetMs) {
   if (!finite(timestampSeconds, 0, Number.MAX_SAFE_INTEGER / 1000))
-    throw new Error("Invalid CDP network timestamp.");
+    throw coldDiagnosticFailure(
+      "network-clock",
+      "network",
+      "Invalid CDP network timestamp.",
+    );
   const timestampMs = timestampSeconds * 1000;
   if (!finite(timestampMs, 0, Number.MAX_SAFE_INTEGER))
-    throw new Error("CDP network timestamp conversion is unsafe.");
-  return pageRelativeMs(timestampMs, offsetMs);
+    throw coldDiagnosticFailure(
+      "network-clock",
+      "network",
+      "CDP network timestamp conversion is unsafe.",
+    );
+  return pageRelativeMs(timestampMs, offsetMs, "network-clock", "network");
 }
 
 export function translateColdTraceInterval(
@@ -332,22 +621,37 @@ export function translateColdTraceInterval(
     !finite(timestampMicroseconds, 0, Number.MAX_SAFE_INTEGER) ||
     !finite(durationMicroseconds, 0, Number.MAX_SAFE_INTEGER)
   )
-    throw new Error("Invalid CDP trace interval.");
+    throw coldDiagnosticFailure(
+      "phase-validation",
+      "phase",
+      "Invalid CDP trace interval.",
+    );
   const timestampMs = timestampMicroseconds / 1000;
   const durationMs = durationMicroseconds / 1000;
   if (
     !finite(timestampMs, 0, Number.MAX_SAFE_INTEGER) ||
     !finite(durationMs, 0, Number.MAX_SAFE_INTEGER)
   )
-    throw new Error("CDP trace interval conversion is unsafe.");
-  const startMs = pageRelativeMs(timestampMs, offsetMs);
+    throw coldDiagnosticFailure(
+      "phase-validation",
+      "phase",
+      "CDP trace interval conversion is unsafe.",
+    );
+  const startMs = pageRelativeMs(
+    timestampMs,
+    offsetMs,
+    "phase-validation",
+    "phase",
+  );
   const endMs = startMs + durationMs;
   if (
     !finite(endMs, startMs, 600_000) ||
     clockNumericAllowanceMs([timestampMs, durationMs, startMs, endMs]) >=
       COLD_CLOCK_REPORT_RESOLUTION_MS
   )
-    throw new Error(
+    throw coldDiagnosticFailure(
+      "phase-validation",
+      "phase",
       "Translated CDP trace interval is unsafe or outside the report time window.",
     );
   return { startMs, endMs, durationMs };
@@ -368,7 +672,11 @@ export function assertColdMainThreadJourneyOverlap(intervals, journeyEndMs) {
       (interval) => interval.start < journeyEndMs && interval.end > 0,
     )
   )
-    throw new Error("No valid main-thread task overlaps the observed journey.");
+    throw coldDiagnosticFailure(
+      "phase-validation",
+      "phase",
+      "No valid main-thread task overlaps the observed journey.",
+    );
   return true;
 }
 
@@ -689,7 +997,9 @@ export function buildSanitizedColdReport(input) {
         resource.timingMs !== undefined,
     )
   )
-    throw new Error(
+    throw coldDiagnosticFailure(
+      "request-completion",
+      "report-build",
       "Cold journey lacks a valid translated work-list request interval.",
     );
   const safeSegments = phaseSegments;
@@ -843,21 +1153,37 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     report.kind !== "hosted-cold-work-list-to-detail-diagnostic" ||
     report.acceptance !== "diagnostic-only"
   )
-    throw new Error("Cold report identity is invalid.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Cold report identity is invalid.",
+    );
   if (
     !Array.isArray(report.resources) ||
     report.resources.length > COLD_MAX_RESOURCES
   )
-    throw new Error("Resource table is missing or oversized.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Resource table is missing or oversized.",
+    );
   if (
     !Array.isArray(report.mutuallyExclusiveMainThreadPhases) ||
     report.mutuallyExclusiveMainThreadPhases.length === 0 ||
     report.mutuallyExclusiveMainThreadPhases.length > COLD_MAX_PHASE_SEGMENTS
   )
-    throw new Error("Phase table is missing or oversized.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Phase table is missing or oversized.",
+    );
   const encoded = JSON.stringify(report);
   if (Buffer.byteLength(encoded, "utf8") > COLD_REPORT_MAX_BYTES)
-    throw new Error("Sanitized report exceeded its byte bound.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Sanitized report exceeded its byte bound.",
+    );
   for (const forbidden of [
     "http://",
     "https://",
@@ -875,7 +1201,9 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     "rawurl",
   ]) {
     if (encoded.toLowerCase().includes(forbidden.toLowerCase()))
-      throw new Error(
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
         `Sanitized report contains forbidden field content: ${forbidden}`,
       );
   }
@@ -900,7 +1228,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     report.environment.cpuSlowdown !== 4 ||
     report.environment.rows !== 500
   )
-    throw new Error("Cold recording environment is outside its fixed profile.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Cold recording environment is outside its fixed profile.",
+    );
   exactKeys(
     report.journey,
     [
@@ -927,7 +1259,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     report.journey.directRoute !== "/agent/projects/:project/work" ||
     report.journey.clickRoute !== "/agent/work-items/:workItem"
   )
-    throw new Error("Journey route is not a fixed route template.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Journey route is not a fixed route template.",
+    );
   exactKeys(
     report.journey.visibilityProbeOverhead,
     [
@@ -955,7 +1291,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     report.journey.visibilityProbeOverhead.maxMs >
       report.journey.visibilityProbeOverhead.totalMs
   )
-    throw new Error("Invalid visibility probe overhead evidence.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Invalid visibility probe overhead evidence.",
+    );
   if (
     !["loading", "detail"].includes(report.journey.routePaintTarget) ||
     report.journey.lcpElementTag !== "h1" ||
@@ -964,7 +1304,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     report.journey.detailVisible !== true ||
     report.journey.detailUrlVerified !== true
   )
-    throw new Error("Journey evidence does not match the bounded recording.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Journey evidence does not match the bounded recording.",
+    );
   for (const key of [
     "lcpMs",
     "rowCountSampleAtMs",
@@ -973,7 +1317,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     "routePaintMs",
   ])
     if (!finite(report.journey[key], 0, 600_000))
-      throw new Error("Invalid journey timing value.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Invalid journey timing value.",
+      );
   if (
     report.journey.lcpMs <= 0 ||
     report.journey.routeStartMs <= 0 ||
@@ -984,13 +1332,21 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
         report.journey.rowCountSampleAfterLcpEntryMs,
     ) > 0.11
   )
-    throw new Error("Journey timing correlation is invalid.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Journey timing correlation is invalid.",
+    );
   if (
     !Number.isInteger(report.journey.rowsAtPostObserverSample) ||
     !finite(report.journey.rowsAtPostObserverSample, 0, 500) ||
     report.journey.rowCountSampleTimebase !== "document-performance-timeline-ms"
   )
-    throw new Error("Invalid post-observer row sample.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Invalid post-observer row sample.",
+    );
   exactKeys(
     report.clocks,
     [
@@ -1011,7 +1367,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     report.clocks.driftBetweenSamples !== "unmeasured" ||
     report.clocks.pairwiseCoordinateRoundingMs !== 0.1
   )
-    throw new Error("Clock report overstates unmeasured alignment precision.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Clock report overstates unmeasured alignment precision.",
+    );
   if (
     !finite(report.clocks.alignmentUncertaintyMs, 0, 1000) ||
     report.clocks.dataLoss !== false ||
@@ -1022,13 +1382,19 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     !Number.isInteger(report.clocks.cpuSamples) ||
     !finite(report.clocks.cpuSamples, 0, 500_000)
   )
-    throw new Error("Invalid clock or capture integrity report.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Invalid clock or capture integrity report.",
+    );
   const metadata = { ...report };
   delete metadata.resources;
   const encodedMetadata = JSON.stringify(metadata);
   for (const basename of assetBasenames) {
     if (encodedMetadata.includes(basename))
-      throw new Error(
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
         "Verified asset basename leaked outside resource labels.",
       );
   }
@@ -1059,9 +1425,17 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     report.provenance.candidateHeadSha,
   ])
     if (!/^[a-f0-9]{40}$/.test(value))
-      throw new Error("Invalid source binding.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Invalid source binding.",
+      );
   if (report.provenance.sourceSha !== report.provenance.candidateHeadSha)
-    throw new Error("Source hashes do not match the candidate head.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Source hashes do not match the candidate head.",
+    );
   for (const key of [
     "benchmarkSha256",
     "routePaintRecorderSha256",
@@ -1075,7 +1449,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
         report.provenance[key] ?? report.provenance.build[key],
       )
     )
-      throw new Error("Invalid source or build hash binding.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Invalid source or build hash binding.",
+      );
   for (const key of ["dist", "javascript", "sourceMaps"]) {
     exactKeys(
       report.provenance.build[key],
@@ -1087,7 +1465,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
       !finite(report.provenance.build[key].count, 0, 20_000) ||
       !/^[a-f0-9]{64}$/.test(report.provenance.build[key].sha256)
     )
-      throw new Error("Invalid build aggregate.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Invalid build aggregate.",
+      );
   }
   for (const key of [
     "nodeVersion",
@@ -1099,7 +1481,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
       typeof report.provenance[key] !== "string" ||
       !/^\d+(?:\.\d+){2,3}(?:[-+][A-Za-z0-9.-]+)?$/.test(report.provenance[key])
     )
-      throw new Error("Invalid tool-version provenance.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Invalid tool-version provenance.",
+      );
   if (
     Object.keys(report.nonCausalOverlays).sort().join(",") !==
       "idleRequestTemporalOverlap,note" ||
@@ -1108,7 +1494,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     !Array.isArray(report.nonCausalOverlays.idleRequestTemporalOverlap) ||
     report.nonCausalOverlays.idleRequestTemporalOverlap.length > 2
   )
-    throw new Error("Invalid non-causal request overlap overlay.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Invalid non-causal request overlap overlay.",
+    );
   const overlayRoutes = new Set([
     "/api/auth/get-session",
     "/api/projects/:project/work-items",
@@ -1121,7 +1511,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
       seenOverlayRoutes.has(overlay.route) ||
       !finite(overlay.overlapMs, 0, 1_000_000)
     )
-      throw new Error("Invalid non-causal request overlap row.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Invalid non-causal request overlap row.",
+      );
     seenOverlayRoutes.add(overlay.route);
   }
   const routeLabels = new Set(
@@ -1146,7 +1540,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
       Array.isArray(resource) ||
       Object.keys(resource).some((key) => !allowedResourceKeys.includes(key))
     )
-      throw new Error("Resource report contains an unknown field.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Resource report contains an unknown field.",
+      );
     for (const key of [
       "method",
       "route",
@@ -1156,41 +1554,85 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
       "initiatorSource",
     ])
       if (typeof resource[key] !== "string")
-        throw new Error("Resource string field has an invalid type.");
+        throw coldDiagnosticFailure(
+          "report-privacy",
+          "privacy",
+          "Resource string field has an invalid type.",
+        );
     if (!METHODS.has(resource.method) && resource.method !== "OTHER")
-      throw new Error("Resource method is invalid.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Resource method is invalid.",
+      );
     if (!RESOURCE_TYPES.has(resource.resourceType))
-      throw new Error("Resource type is invalid.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Resource type is invalid.",
+      );
     if (!INITIATOR_TYPES.has(resource.initiatorType))
-      throw new Error("Resource initiator type is invalid.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Resource initiator type is invalid.",
+      );
     if ("status" in resource && !finite(resource.status, 100, 599))
-      throw new Error("Resource status is invalid.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Resource status is invalid.",
+      );
     if ("failed" in resource && typeof resource.failed !== "boolean")
-      throw new Error("Resource failure flag is invalid.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Resource failure flag is invalid.",
+      );
     if ("priority" in resource && !PRIORITIES.has(resource.priority))
-      throw new Error("Resource priority is invalid.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Resource priority is invalid.",
+      );
     if ("timingMs" in resource) {
       exactKeys(resource.timingMs, ["start", "end"], "resource timing");
       if (
         !finite(resource.timingMs.start, -60_000, 600_000) ||
         !finite(resource.timingMs.end, resource.timingMs.start, 600_000)
       )
-        throw new Error("Resource timing is invalid.");
+        throw coldDiagnosticFailure(
+          "report-privacy",
+          "privacy",
+          "Resource timing is invalid.",
+        );
     }
     if (resource.route !== "unrecognized" && !routeLabels.has(resource.route))
-      throw new Error("Resource route is not a known fixed template.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Resource route is not a known fixed template.",
+      );
     if (
       resource.source !== "unrecognized" &&
       resource.source !== resource.route &&
       !assetBasenames.has(resource.source)
     )
-      throw new Error("Resource source is not a verified asset or route.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Resource source is not a verified asset or route.",
+      );
     if (
       resource.initiatorSource !== "unrecognized" &&
       !routeLabels.has(resource.initiatorSource) &&
       !assetBasenames.has(resource.initiatorSource)
     )
-      throw new Error("Resource initiator is not a verified route or asset.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Resource initiator is not a verified route or asset.",
+      );
   }
   if (
     !report.resources.some(
@@ -1199,7 +1641,9 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
         resource.timingMs !== undefined,
     )
   )
-    throw new Error(
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
       "Report lacks a valid translated work-list request interval.",
     );
   for (const segment of report.mutuallyExclusiveMainThreadPhases) {
@@ -1209,12 +1653,20 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
       !finite(segment.startMs, -60_000, 600_000) ||
       !finite(segment.durationMs, 0, 600_000)
     )
-      throw new Error("Phase segment is invalid.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Phase segment is invalid.",
+      );
   }
   exactKeys(report.phaseTotalsMs, [...PHASES], "phase totals");
   for (const duration of Object.values(report.phaseTotalsMs))
     if (!finite(duration, 0, 600_000))
-      throw new Error("Phase total is invalid.");
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Phase total is invalid.",
+      );
   exactKeys(
     report.windowAccounting,
     ["lcpWindow", "clickToPaintWindow", "phaseTotalsByWindow", "note"],
@@ -1238,20 +1690,32 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     report.windowAccounting.clickToPaintWindow.routePaintMs !==
       report.journey.routePaintMs
   )
-    throw new Error("Window boundaries do not match the journey marks.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Window boundaries do not match the journey marks.",
+    );
   for (const windowTotals of Object.values(
     report.windowAccounting.phaseTotalsByWindow,
   )) {
     exactKeys(windowTotals, [...PHASES], "window phase total");
     for (const duration of Object.values(windowTotals))
       if (!finite(duration, 0, 600_000))
-        throw new Error("Window phase duration is invalid.");
+        throw coldDiagnosticFailure(
+          "report-privacy",
+          "privacy",
+          "Window phase duration is invalid.",
+        );
   }
   if (
     report.windowAccounting.note !==
     "Main-thread phases are exclusive; resource intervals are a correlated overlay and are not added to phase totals."
   )
-    throw new Error("Window accounting note is invalid.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Window accounting note is invalid.",
+    );
   exactKeys(
     report.interpretation,
     ["causalEdges", "routePaintCriterion", "rule"],
@@ -1263,7 +1727,11 @@ export function assertColdReportPrivacy(report, verifiedAssetBasenames) {
     report.interpretation.rule !==
       "A proposed edge is unresolved when its clock uncertainty intervals overlap; temporal proximity alone is not causal evidence."
   )
-    throw new Error("Interpretation overstates causal evidence.");
+    throw coldDiagnosticFailure(
+      "report-privacy",
+      "privacy",
+      "Interpretation overstates causal evidence.",
+    );
   return true;
 }
 
