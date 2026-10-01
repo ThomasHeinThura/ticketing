@@ -1,4 +1,4 @@
-import { and, count, eq, like, sql } from "drizzle-orm";
+import { and, asc, count, eq, like, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { resetTestDatabase } from "../../../tests/api-integration/helpers/database";
 import {
@@ -91,11 +91,13 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
     const typesBefore = await db
       .select()
       .from(schema.workItemTypeTable)
-      .where(eq(schema.workItemTypeTable.workspaceId, workspaceId));
+      .where(eq(schema.workItemTypeTable.workspaceId, workspaceId))
+      .orderBy(asc(schema.workItemTypeTable.id));
     const templatesBefore = await db
       .select()
       .from(schema.stateTemplateTable)
-      .where(eq(schema.stateTemplateTable.workspaceId, workspaceId));
+      .where(eq(schema.stateTemplateTable.workspaceId, workspaceId))
+      .orderBy(asc(schema.stateTemplateTable.id));
 
     try {
       await expect(seed("minimal")).rejects.toThrow(
@@ -105,11 +107,13 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
       const remainingTypes = await db
         .select()
         .from(schema.workItemTypeTable)
-        .where(eq(schema.workItemTypeTable.workspaceId, workspaceId));
+        .where(eq(schema.workItemTypeTable.workspaceId, workspaceId))
+        .orderBy(asc(schema.workItemTypeTable.id));
       const remainingTemplates = await db
         .select()
         .from(schema.stateTemplateTable)
-        .where(eq(schema.stateTemplateTable.workspaceId, workspaceId));
+        .where(eq(schema.stateTemplateTable.workspaceId, workspaceId))
+        .orderBy(asc(schema.stateTemplateTable.id));
       const remainingProjects = await db
         .select()
         .from(schema.projectTable)
@@ -195,11 +199,13 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
     const typesBefore = await db
       .select()
       .from(schema.workItemTypeTable)
-      .where(eq(schema.workItemTypeTable.workspaceId, workspaceId));
+      .where(eq(schema.workItemTypeTable.workspaceId, workspaceId))
+      .orderBy(asc(schema.workItemTypeTable.id));
     const templatesBefore = await db
       .select()
       .from(schema.stateTemplateTable)
-      .where(eq(schema.stateTemplateTable.workspaceId, workspaceId));
+      .where(eq(schema.stateTemplateTable.workspaceId, workspaceId))
+      .orderBy(asc(schema.stateTemplateTable.id));
     await db.insert(schema.projectTable).values(projectValues);
 
     try {
@@ -220,11 +226,13 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
       const typesAfter = await db
         .select()
         .from(schema.workItemTypeTable)
-        .where(eq(schema.workItemTypeTable.workspaceId, workspaceId));
+        .where(eq(schema.workItemTypeTable.workspaceId, workspaceId))
+        .orderBy(asc(schema.workItemTypeTable.id));
       const templatesAfter = await db
         .select()
         .from(schema.stateTemplateTable)
-        .where(eq(schema.stateTemplateTable.workspaceId, workspaceId));
+        .where(eq(schema.stateTemplateTable.workspaceId, workspaceId))
+        .orderBy(asc(schema.stateTemplateTable.id));
       expect(typesAfter).toEqual(typesBefore);
       expect(templatesAfter).toEqual(templatesBefore);
       await expectNoProfileRows(namespace);
@@ -271,11 +279,13 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
       const typesBefore = await db
         .select()
         .from(schema.workItemTypeTable)
-        .where(eq(schema.workItemTypeTable.workspaceId, workspaceId));
+        .where(eq(schema.workItemTypeTable.workspaceId, workspaceId))
+        .orderBy(asc(schema.workItemTypeTable.id));
       const templatesBefore = await db
         .select()
         .from(schema.stateTemplateTable)
-        .where(eq(schema.stateTemplateTable.workspaceId, workspaceId));
+        .where(eq(schema.stateTemplateTable.workspaceId, workspaceId))
+        .orderBy(asc(schema.stateTemplateTable.id));
 
       try {
         await expect(seed("minimal")).rejects.toThrow(
@@ -284,11 +294,13 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
         const typesAfter = await db
           .select()
           .from(schema.workItemTypeTable)
-          .where(eq(schema.workItemTypeTable.workspaceId, workspaceId));
+          .where(eq(schema.workItemTypeTable.workspaceId, workspaceId))
+          .orderBy(asc(schema.workItemTypeTable.id));
         const templatesAfter = await db
           .select()
           .from(schema.stateTemplateTable)
-          .where(eq(schema.stateTemplateTable.workspaceId, workspaceId));
+          .where(eq(schema.stateTemplateTable.workspaceId, workspaceId))
+          .orderBy(asc(schema.stateTemplateTable.id));
         expect(typesAfter).toEqual(typesBefore);
         expect(templatesAfter).toEqual(templatesBefore);
         await expectNoProfileRows(namespace);
@@ -365,19 +377,23 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
       const columnsBefore = await db
         .select()
         .from(schema.columnTable)
-        .where(eq(schema.columnTable.projectId, projectId));
+        .where(eq(schema.columnTable.projectId, projectId))
+        .orderBy(asc(schema.columnTable.id));
       const statesBefore = await db
         .select()
         .from(schema.stateTable)
-        .where(eq(schema.stateTable.projectId, projectId));
+        .where(eq(schema.stateTable.projectId, projectId))
+        .orderBy(asc(schema.stateTable.id));
       const typesBefore = await db
         .select()
         .from(schema.workItemTypeTable)
-        .where(eq(schema.workItemTypeTable.workspaceId, workspaceId));
+        .where(eq(schema.workItemTypeTable.workspaceId, workspaceId))
+        .orderBy(asc(schema.workItemTypeTable.id));
       const templatesBefore = await db
         .select()
         .from(schema.stateTemplateTable)
-        .where(eq(schema.stateTemplateTable.workspaceId, workspaceId));
+        .where(eq(schema.stateTemplateTable.workspaceId, workspaceId))
+        .orderBy(asc(schema.stateTemplateTable.id));
       const [projectBefore] = await db
         .select()
         .from(schema.projectTable)
@@ -394,19 +410,23 @@ describe("P0 seed CLI profiles use disposable PostgreSQL and are additive", () =
         const columnsAfter = await db
           .select()
           .from(schema.columnTable)
-          .where(eq(schema.columnTable.projectId, projectId));
+          .where(eq(schema.columnTable.projectId, projectId))
+          .orderBy(asc(schema.columnTable.id));
         const statesAfter = await db
           .select()
           .from(schema.stateTable)
-          .where(eq(schema.stateTable.projectId, projectId));
+          .where(eq(schema.stateTable.projectId, projectId))
+          .orderBy(asc(schema.stateTable.id));
         const typesAfter = await db
           .select()
           .from(schema.workItemTypeTable)
-          .where(eq(schema.workItemTypeTable.workspaceId, workspaceId));
+          .where(eq(schema.workItemTypeTable.workspaceId, workspaceId))
+          .orderBy(asc(schema.workItemTypeTable.id));
         const templatesAfter = await db
           .select()
           .from(schema.stateTemplateTable)
-          .where(eq(schema.stateTemplateTable.workspaceId, workspaceId));
+          .where(eq(schema.stateTemplateTable.workspaceId, workspaceId))
+          .orderBy(asc(schema.stateTemplateTable.id));
         const [projectAfter] = await db
           .select()
           .from(schema.projectTable)
