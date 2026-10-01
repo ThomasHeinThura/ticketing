@@ -13,6 +13,7 @@ type ColumnDropzoneProps = {
   onIsOverChange?: (isOver: boolean) => void;
   workspaceId?: string;
   workspaceUsers: TaskCardProps["workspaceUsers"];
+  onContextMenuTask: TaskCardProps["onContextMenuTask"];
 };
 
 export function ColumnDropzone({
@@ -21,6 +22,7 @@ export function ColumnDropzone({
   onIsOverChange,
   workspaceId,
   workspaceUsers,
+  onContextMenuTask,
 }: ColumnDropzoneProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -48,6 +50,7 @@ export function ColumnDropzone({
               disableDragDrop={disableDragDrop}
               workspaceId={workspaceId}
               workspaceUsers={workspaceUsers}
+              onContextMenuTask={onContextMenuTask}
             />
           ))}
         </div>

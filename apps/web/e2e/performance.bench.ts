@@ -1,6 +1,30 @@
 import { mkdir } from "node:fs/promises";
 import { type Browser, expect, type Page, test } from "@playwright/test";
-import { medianOfThreeWithRetry } from "../../../scripts/ci/lib/performance-budget.mjs";
+import {
+  median,
+  medianOfThreeWithRetry,
+} from "../../../scripts/ci/lib/performance-budget.mjs";
+
+const G13_TRANSITIONS = [
+  "work-list",
+  "detail",
+  "board",
+  "legacy-task",
+  "projects",
+  "sign-in",
+  "red-probe",
+] as const;
+
+type G13Transition = (typeof G13_TRANSITIONS)[number];
+
+type G13WindowMetric = {
+  skeletonMark: number;
+  contentMark: number;
+  cls: number;
+  skeletonPending: boolean;
+  contentPending: boolean;
+  inputShiftCount: number;
+};
 
 type BrowserMetrics = {
   lcp: number;
@@ -25,6 +49,7 @@ type BrowserMetrics = {
   assignmentPaint: number;
   commentStart: number;
   commentPaint: number;
+  g13: Record<G13Transition, G13WindowMetric>;
   lcpElement: string;
   lcpText: string;
   lcpUrl: string;
@@ -193,7 +218,15 @@ const SEEDED_ITEMS = Array.from({ length: 500 }, (_, index) =>
 
 async function installPerformanceApiFixture(
   page: Page,
-  { authenticated = true }: { authenticated?: boolean } = {},
+  {
+    authenticated = true,
+    dataDelayMs = 0,
+    g13Windows = false,
+  }: {
+    authenticated?: boolean;
+    dataDelayMs?: number;
+    g13Windows?: boolean;
+  } = {},
 ) {
   let isAuthenticated = authenticated;
   let createdItem: ReturnType<typeof makeWorkItem> | undefined;
@@ -252,6 +285,13 @@ async function installPerformanceApiFixture(
             "GET, POST, PUT, PATCH, DELETE, OPTIONS",
         },
       });
+
+    if (
+      dataDelayMs > 0 &&
+      request.method() === "GET" &&
+      !path.endsWith("/get-session")
+    )
+      await new Promise((resolve) => setTimeout(resolve, dataDelayMs));
 
     if (path.endsWith("/auth/get-session"))
       return json(isAuthenticated ? SESSION : null);
@@ -432,7 +472,7 @@ async function installPerformanceApiFixture(
     return json({ message: "Not found in the G11 browser fixture" }, 404);
   });
 
-  await page.addInitScript(() => {
+  await page.addInitScript((observeG13Windows: boolean) => {
     const metrics: BrowserMetrics = {
       lcp: 0,
       cls: 0,
@@ -456,6 +496,64 @@ async function installPerformanceApiFixture(
       assignmentPaint: 0,
       commentStart: 0,
       commentPaint: 0,
+      g13: {
+        "work-list": {
+          skeletonMark: 0,
+          contentMark: 0,
+          cls: 0,
+          skeletonPending: false,
+          contentPending: false,
+          inputShiftCount: 0,
+        },
+        detail: {
+          skeletonMark: 0,
+          contentMark: 0,
+          cls: 0,
+          skeletonPending: false,
+          contentPending: false,
+          inputShiftCount: 0,
+        },
+        board: {
+          skeletonMark: 0,
+          contentMark: 0,
+          cls: 0,
+          skeletonPending: false,
+          contentPending: false,
+          inputShiftCount: 0,
+        },
+        "legacy-task": {
+          skeletonMark: 0,
+          contentMark: 0,
+          cls: 0,
+          skeletonPending: false,
+          contentPending: false,
+          inputShiftCount: 0,
+        },
+        projects: {
+          skeletonMark: 0,
+          contentMark: 0,
+          cls: 0,
+          skeletonPending: false,
+          contentPending: false,
+          inputShiftCount: 0,
+        },
+        "sign-in": {
+          skeletonMark: 0,
+          contentMark: 0,
+          cls: 0,
+          skeletonPending: false,
+          contentPending: false,
+          inputShiftCount: 0,
+        },
+        "red-probe": {
+          skeletonMark: 0,
+          contentMark: 0,
+          cls: 0,
+          skeletonPending: false,
+          contentPending: false,
+          inputShiftCount: 0,
+        },
+      },
       lcpElement: "",
       lcpText: "",
       lcpUrl: "",
@@ -480,15 +578,149 @@ async function installPerformanceApiFixture(
       }
     }).observe({ type: "largest-contentful-paint", buffered: true });
 
-    new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        if (
-          !(entry as PerformanceEntry & { hadRecentInput?: boolean })
-            .hadRecentInput
-        )
-          metrics.cls += (entry as PerformanceEntry & { value: number }).value;
+    const layoutShiftEntries: Array<{
+      startTime: number;
+      value: number;
+      hadRecentInput: boolean;
+    }> = [];
+    const collectLayoutShiftEntries = (entries: PerformanceEntry[]) => {
+      for (const entry of entries) {
+        const shift = entry as PerformanceEntry & {
+          hadRecentInput?: boolean;
+          value: number;
+        };
+        const hadRecentInput = shift.hadRecentInput ?? false;
+        if (!hadRecentInput) metrics.cls += shift.value;
+        layoutShiftEntries.push({
+          startTime: shift.startTime,
+          value: shift.value,
+          hadRecentInput,
+        });
       }
-    }).observe({ type: "layout-shift", buffered: true });
+    };
+    const layoutShiftObserver = new PerformanceObserver((list) =>
+      collectLayoutShiftEntries(list.getEntries()),
+    );
+    layoutShiftObserver.observe({ type: "layout-shift", buffered: true });
+
+    const transitions = [
+      {
+        name: "work-list",
+        skeleton: '[data-testid="work-item-list-loading"]',
+        content: '[data-testid="work-item-list-populated"]',
+      },
+      {
+        name: "detail",
+        skeleton: '[data-testid="work-item-detail-loading"]',
+        content: '[data-testid="work-item-detail"]',
+      },
+      {
+        name: "board",
+        skeleton: '[data-testid="g13-board-loading"]',
+        content: '[data-testid="g13-board-content"]',
+      },
+      {
+        name: "legacy-task",
+        skeleton: '[data-testid="g13-legacy-task-loading"]',
+        content: '[data-testid="g13-legacy-task-content"]',
+      },
+      {
+        name: "projects",
+        skeleton: '[data-testid="workspace-projects-route-pending"]',
+        content: '[data-testid="g13-projects-content"]',
+      },
+      {
+        name: "sign-in",
+        skeleton: '[data-testid="g13-sign-in-loading"]',
+        content: '[data-testid="g13-sign-in-content"]',
+      },
+      {
+        name: "red-probe",
+        skeleton: '[data-testid="g13-red-probe-loading"]',
+        content: '[data-testid="g13-red-probe-content"]',
+      },
+    ] as const;
+    const isVisible = (selector: string) => {
+      const element = document.querySelector(selector);
+      return Boolean(element?.isConnected && element.getClientRects().length);
+    };
+    const recordTransitions = () => {
+      for (const transition of transitions) {
+        const measurement = metrics.g13[transition.name];
+        if (
+          measurement.skeletonMark === 0 &&
+          !measurement.skeletonPending &&
+          isVisible(transition.skeleton)
+        ) {
+          measurement.skeletonPending = true;
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              if (!isVisible(transition.skeleton)) {
+                measurement.skeletonPending = false;
+                return;
+              }
+              measurement.skeletonMark = performance.now();
+              performance.mark(
+                `taskdesk:g13:${transition.name}:skeleton-mounted`,
+              );
+              recordTransitions();
+            }),
+          );
+        }
+        if (
+          measurement.skeletonMark === 0 ||
+          measurement.contentMark > 0 ||
+          measurement.contentPending ||
+          !isVisible(transition.content)
+        )
+          continue;
+
+        measurement.contentPending = true;
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            if (!isVisible(transition.content)) {
+              measurement.contentPending = false;
+              return;
+            }
+            measurement.contentMark = performance.now();
+            performance.mark(`taskdesk:g13:${transition.name}:content-mounted`);
+            const { skeletonMark, contentMark } = measurement;
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() => {
+                collectLayoutShiftEntries(layoutShiftObserver.takeRecords());
+                const windowEntries = layoutShiftEntries.filter(
+                  (entry) =>
+                    entry.startTime >= skeletonMark &&
+                    entry.startTime <= contentMark,
+                );
+                measurement.cls = windowEntries.reduce(
+                  (total, entry) => total + entry.value,
+                  0,
+                );
+                measurement.inputShiftCount = windowEntries.filter(
+                  (entry) => entry.hadRecentInput,
+                ).length;
+              }),
+            );
+          }),
+        );
+      }
+    };
+    const attachG13Observer = () => {
+      if (!document.documentElement) {
+        document.addEventListener("DOMContentLoaded", attachG13Observer, {
+          once: true,
+        });
+        return;
+      }
+      const g13Observer = new MutationObserver(recordTransitions);
+      g13Observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+      recordTransitions();
+    };
+    if (observeG13Windows) attachG13Observer();
 
     const responseIsVisible = (kind: "interaction" | "route") => {
       if (kind === "interaction") {
@@ -712,7 +944,7 @@ async function installPerformanceApiFixture(
       },
       { capture: true },
     );
-  });
+  }, g13Windows);
 
   return () => {
     createdItem = undefined;
@@ -741,7 +973,11 @@ async function withPerformancePage(
   browser: Browser,
   throttled: boolean,
   sample: (page: Page, resetFixture: () => void) => Promise<number>,
-  fixtureOptions?: { authenticated?: boolean },
+  fixtureOptions?: {
+    authenticated?: boolean;
+    dataDelayMs?: number;
+    g13Windows?: boolean;
+  },
 ) {
   const context = await browser.newContext({
     baseURL: PERFORMANCE_BASE_URL,
@@ -1163,6 +1399,44 @@ async function collectRouteTransition(page: Page) {
   return clickToPaint;
 }
 
+async function collectG13WindowCls(page: Page, transition: G13Transition) {
+  await page.waitForFunction(
+    (requested) =>
+      (window as G11Window).__g11Metrics.g13[requested].contentMark > 0,
+    transition,
+    { timeout: 15_000 },
+  );
+  await waitForTwoFrames(page);
+  const measurement = await page.evaluate(
+    (requested) => (window as G11Window).__g11Metrics.g13[requested],
+    transition,
+  );
+  expect(
+    measurement.skeletonMark,
+    `G13 requires the ${transition} loading skeleton to be observed before content`,
+  ).toBeGreaterThan(0);
+  expect(measurement.contentMark).toBeGreaterThan(measurement.skeletonMark);
+  console.info(`G13 ${transition} skeleton-to-content CLS`, measurement);
+  return measurement.cls;
+}
+
+async function collectG13WindowMeasurement(
+  page: Page,
+  transition: G13Transition,
+) {
+  await page.waitForFunction(
+    (requested) =>
+      (window as G11Window).__g11Metrics.g13[requested].contentMark > 0,
+    transition,
+    { timeout: 15_000 },
+  );
+  await waitForTwoFrames(page);
+  return page.evaluate(
+    (requested) => (window as G11Window).__g11Metrics.g13[requested],
+    transition,
+  );
+}
+
 async function collectListRender(page: Page) {
   const rowSelector = "[data-testid=work-item-list-populated] tbody tr";
   await installLastItemPaintRecorder(page, rowSelector, 500, "listPaint");
@@ -1319,18 +1593,18 @@ async function verifyBoardCardMenu(page: Page) {
   await page.keyboard.press("Escape");
   await expect(copyLink).toHaveCount(0);
 
-  const trigger = page
-    .locator('[data-slot="context-menu-trigger"]')
-    .filter({ has: card });
-  await expect(trigger).toHaveCount(1);
-  await trigger.focus();
-  await expect(trigger).toBeFocused();
+  const keyboardCard = page.locator(
+    '[data-task-id="legacy-task-1"] > [role="button"]',
+  );
+  await expect(keyboardCard).toHaveCount(1);
+  await keyboardCard.focus();
+  await expect(keyboardCard).toBeFocused();
   await page.keyboard.press("Shift+F10");
   await expect(copyLink).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(copyLink).toHaveCount(0);
 
-  await trigger.focus();
+  await keyboardCard.focus();
   await page.keyboard.press("ContextMenu");
   await expect(copyLink).toBeVisible();
   await page.keyboard.press("Escape");
@@ -1344,7 +1618,7 @@ async function verifyBoardCardMenu(page: Page) {
   await confirmation.getByRole("button", { name: "Cancel" }).click();
   await expect(confirmation).toHaveCount(0);
 
-  await trigger.focus();
+  await keyboardCard.focus();
   await page.keyboard.press("Shift+F10");
   const deleteItem = page.getByRole("menuitem", { name: "Delete..." });
   await expect(deleteItem).toBeVisible();
@@ -1373,7 +1647,7 @@ async function threeSamplesWithOneRetry(metric: BudgetMetric) {
     metric.budget,
   );
   console.log(
-    "G11 " +
+    "Performance " +
       metric.name +
       ": median " +
       result.toFixed(1) +
@@ -1387,6 +1661,39 @@ async function threeSamplesWithOneRetry(metric: BudgetMetric) {
     result,
     `${metric.name} must be strictly below ${metric.budget} (got ${result.toFixed(1)})`,
   ).toBeLessThan(metric.budget);
+  return { ...metric, result, values };
+}
+
+async function threeSamplesWithInclusiveRetry(metric: BudgetMetric) {
+  const sampleSet = async () => {
+    const values = [];
+    for (let index = 0; index < 3; index += 1)
+      values.push(await metric.sample());
+    return values;
+  };
+  let values = await sampleSet();
+  let result = median(values);
+  let retried = false;
+  if (result > metric.budget) {
+    values = await sampleSet();
+    result = median(values);
+    retried = true;
+  }
+  console.log(
+    "Performance " +
+      metric.name +
+      ": median " +
+      result.toFixed(4) +
+      " (" +
+      values.map((value) => value.toFixed(4)).join(", ") +
+      "); budget ≤ " +
+      metric.budget +
+      (retried ? "; one retry set used" : ""),
+  );
+  expect(
+    result,
+    `${metric.name} must be at most ${metric.budget} (got ${result.toFixed(4)})`,
+  ).toBeLessThanOrEqual(metric.budget);
   return { ...metric, result, values };
 }
 
@@ -1434,6 +1741,177 @@ test("G11: work-list to detail route first paint", async ({ browser }) => {
         collectRouteTransition(page),
       ),
   });
+});
+
+test("G13: detail layout shift from skeleton to content", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithInclusiveRetry({
+    name: "detail skeleton-to-content CLS",
+    budget: 0.1,
+    sample: () =>
+      withPerformancePage(
+        browser,
+        true,
+        async (page) => {
+          await openWorkList(page);
+          await page
+            .getByRole("link", { name: WORK_ITEM_KEY, exact: true })
+            .click();
+          await expect(page.getByTestId("work-item-detail")).toBeVisible({
+            timeout: 15_000,
+          });
+          return collectG13WindowCls(page, "detail");
+        },
+        { dataDelayMs: 250, g13Windows: true },
+      ),
+  });
+});
+
+test("G13: work-list layout shift from skeleton to content", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithInclusiveRetry({
+    name: "work-list skeleton-to-content CLS",
+    budget: 0.1,
+    sample: () =>
+      withPerformancePage(
+        browser,
+        true,
+        async (page) => {
+          await openWorkList(page);
+          return collectG13WindowCls(page, "work-list");
+        },
+        { dataDelayMs: 250, g13Windows: true },
+      ),
+  });
+});
+
+test("G13: board layout shift from skeleton to content", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithInclusiveRetry({
+    name: "board skeleton-to-content CLS",
+    budget: 0.1,
+    sample: () =>
+      withPerformancePage(
+        browser,
+        false,
+        async (page) => {
+          await openLegacyBoard(page);
+          return collectG13WindowCls(page, "board");
+        },
+        { dataDelayMs: 250, g13Windows: true },
+      ),
+  });
+});
+
+test("G13: legacy task layout shift from skeleton to content", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithInclusiveRetry({
+    name: "legacy-task skeleton-to-content CLS",
+    budget: 0.1,
+    sample: () =>
+      withPerformancePage(
+        browser,
+        true,
+        async (page) => {
+          await openLegacyTaskDetails(page);
+          return collectG13WindowCls(page, "legacy-task");
+        },
+        { dataDelayMs: 250, g13Windows: true },
+      ),
+  });
+});
+
+test("G13: Projects layout shift from skeleton to content", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithInclusiveRetry({
+    name: "Projects skeleton-to-content CLS",
+    budget: 0.1,
+    sample: () =>
+      withPerformancePage(
+        browser,
+        true,
+        async (page) => {
+          await collectCommandPaletteInteraction(page, "navigate");
+          return collectG13WindowCls(page, "projects");
+        },
+        { dataDelayMs: 250, g13Windows: true },
+      ),
+  });
+});
+
+test("G13: sign-in layout shift from skeleton to content", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  await threeSamplesWithInclusiveRetry({
+    name: "sign-in skeleton-to-content CLS",
+    budget: 0.1,
+    sample: () =>
+      withPerformancePage(
+        browser,
+        true,
+        async (page) => {
+          await page.goto("/auth/sign-in");
+          await expect(
+            page.locator('form button[type="submit"]'),
+          ).toBeVisible();
+          return collectG13WindowCls(page, "sign-in");
+        },
+        { authenticated: false, dataDelayMs: 250, g13Windows: true },
+      ),
+  });
+});
+
+test("G13 observer detects a click-initiated skeleton-to-content shift", async ({
+  browser,
+}) => {
+  await withPerformancePage(
+    browser,
+    false,
+    async (page) => {
+      await page.goto("/");
+      await page.evaluate(() => {
+        document.body.innerHTML = `
+        <button type="button" data-testid="g13-probe-action">Load content</button>
+        <div data-testid="g13-red-probe-loading" style="height:40px">Loading</div>
+        <main style="height:700px">
+          <p>Visible content below the skeleton</p>
+        </main>
+      `;
+      });
+      await page.waitForFunction(
+        () =>
+          (window as G11Window).__g11Metrics.g13["red-probe"].skeletonMark > 0,
+      );
+      await page.getByTestId("g13-probe-action").click();
+      await page.evaluate(() => {
+        const skeleton = document.querySelector(
+          '[data-testid="g13-red-probe-loading"]',
+        );
+        const content = document.createElement("div");
+        content.dataset.testid = "g13-red-probe-content";
+        content.style.height = "800px";
+        content.textContent = "Loaded content";
+        skeleton?.replaceWith(content);
+      });
+
+      const measurement = await collectG13WindowMeasurement(page, "red-probe");
+      expect(measurement.contentMark).toBeGreaterThan(measurement.skeletonMark);
+      expect(measurement.cls).toBeGreaterThan(0.1);
+      expect(measurement.inputShiftCount).toBeGreaterThan(0);
+    },
+    { g13Windows: true },
+  );
 });
 
 test("G11: create-work-item click-to-paint", async ({ browser }) => {

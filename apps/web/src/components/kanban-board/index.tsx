@@ -15,8 +15,9 @@ import {
 } from "@dnd-kit/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { produce } from "immer";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
@@ -26,7 +27,8 @@ import useProjectStore from "@/store/project";
 import type { ProjectWithTasks } from "@/types/project";
 import BulkToolbar from "../bulk-selection/bulk-toolbar";
 import Column from "./column";
-import TaskCard from "./task-card";
+import TaskCard, { TaskCardDeleteConfirmation } from "./task-card";
+import TaskCardContextMenuContent from "./task-card-context-menu/task-card-context-menu-content";
 
 type KanbanBoardProps = {
   project: ProjectWithTasks;
@@ -44,12 +46,43 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
     clearFocus,
   } = useBulkSelectionStore();
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  const [contextMenuTaskId, setContextMenuTaskId] = useState<string | null>(
+    null,
+  );
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
+  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
   const { data: workspace } = useActiveWorkspace();
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
     workspace?.id ?? "",
   );
   const { mutate: updateTask } = useUpdateTask();
   const navigate = useNavigate();
+  const allTasks = useMemo(
+    () => project.columns?.flatMap((column) => column.tasks) ?? [],
+    [project.columns],
+  );
+  const contextMenuTask = contextMenuTaskId
+    ? allTasks.find((task) => task.id === contextMenuTaskId)
+    : undefined;
+
+  const setContextTaskFromEvent = (event: React.SyntheticEvent) => {
+    const target = event.target;
+    const element = target instanceof Element ? target : null;
+    const taskCard = element?.closest<HTMLElement>("[data-task-id]");
+    if (
+      !taskCard ||
+      !allTasks.some((task) => task.id === taskCard.dataset.taskId)
+    ) {
+      event.stopPropagation();
+      return;
+    }
+    setContextMenuTaskId(taskCard.dataset.taskId ?? null);
+  };
+
+  const openContextMenuForTask = (taskId: string) => {
+    setContextMenuTaskId(taskId);
+    setIsContextMenuOpen(true);
+  };
 
   useEffect(() => {
     if (project?.columns) {
@@ -254,25 +287,52 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-full w-full flex-col bg-linear-to-b from-muted/20 to-background">
-        <div className="min-h-0 flex-1 overflow-x-auto [-webkit-overflow-scrolling:touch]">
-          <div className="flex h-full min-w-max gap-4 px-4 py-4 md:px-5">
-            {project.columns?.map((column) => (
-              <div
-                key={column.id}
-                className="h-full max-w-96 min-w-80 shrink-0 flex-1"
-              >
-                <Column
-                  column={column}
-                  disableDragDrop={disableDragDrop}
-                  workspaceId={workspace?.id}
-                  workspaceUsers={workspaceUsers}
-                />
+      <ContextMenu
+        open={isContextMenuOpen}
+        onOpenChange={(open) => {
+          setIsContextMenuOpen(open);
+          if (!open) setContextMenuTaskId(null);
+        }}
+      >
+        <ContextMenuTrigger asChild>
+          <div
+            className="flex h-full w-full flex-col bg-linear-to-b from-muted/20 to-background"
+            onContextMenuCapture={setContextTaskFromEvent}
+          >
+            <div className="min-h-0 flex-1 overflow-x-auto [-webkit-overflow-scrolling:touch]">
+              <div className="flex h-full min-w-max gap-4 px-4 py-4 md:px-5">
+                {project.columns?.map((column) => (
+                  <div
+                    key={column.id}
+                    className="h-full max-w-96 min-w-80 shrink-0 flex-1"
+                  >
+                    <Column
+                      column={column}
+                      disableDragDrop={disableDragDrop}
+                      workspaceId={workspace?.id}
+                      workspaceUsers={workspaceUsers}
+                      onContextMenuTask={openContextMenuForTask}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      </div>
+        </ContextMenuTrigger>
+        {contextMenuTask && workspace?.id ? (
+          <TaskCardContextMenuContent
+            task={contextMenuTask}
+            taskCardContext={{
+              projectId: project.id,
+              worskpaceId: workspace.id,
+            }}
+            onDeleteClick={() => {
+              setDeleteTaskId(contextMenuTask.id);
+              setIsContextMenuOpen(false);
+            }}
+          />
+        ) : null}
+      </ContextMenu>
       <DragOverlay dropAnimation={dropAnimation}>
         {activeTask ? (
           <div className="transform rotate-1 scale-[1.03] shadow-lg">
@@ -281,6 +341,7 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                 task={activeTask}
                 workspaceId={workspace?.id}
                 workspaceUsers={workspaceUsers}
+                onContextMenuTask={openContextMenuForTask}
               />
             </div>
           </div>
@@ -288,6 +349,14 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
       </DragOverlay>
 
       <BulkToolbar />
+      {deleteTaskId ? (
+        <TaskCardDeleteConfirmation
+          taskId={deleteTaskId}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTaskId(null);
+          }}
+        />
+      ) : null}
     </DndContext>
   );
 }

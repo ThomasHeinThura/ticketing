@@ -234,7 +234,7 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
             ) : null
           }
         >
-          <Table>
+          <Table data-testid="workspace-projects-loading">
             <TableHeader>
               <TableRow>
                 <TableHead className="text-foreground font-medium">
@@ -356,7 +356,7 @@ export default function ProjectsPage({ workspaceId }: { workspaceId: string }) {
             document.body.classList.remove("taskdesk-dragging")
           }
         >
-          <Table>
+          <Table data-testid="g13-projects-content">
             <TableHeader className="p-4">
               <TableRow>
                 <TableHead className="text-foreground font-medium">

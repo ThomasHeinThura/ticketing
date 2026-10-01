@@ -10,8 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
-  ContextMenu,
-  ContextMenuTrigger,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
@@ -25,7 +23,7 @@ import {
   GitPullRequest,
   SquareCheck,
 } from "lucide-react";
-import { type CSSProperties, useMemo, useState } from "react";
+import { type CSSProperties, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
@@ -44,7 +42,6 @@ import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 import type Task from "@/types/task";
-import TaskCardContextMenuContent from "./task-card-context-menu/task-card-context-menu-content";
 import { TaskLabels } from "./task-labels";
 
 export type TaskCardProps = {
@@ -52,6 +49,7 @@ export type TaskCardProps = {
   disableDragDrop?: boolean;
   workspaceId?: string;
   workspaceUsers: ReturnType<typeof useGetActiveWorkspaceUsers>["data"];
+  onContextMenuTask: (taskId: string) => void;
 };
 
 function TaskCard({
@@ -59,6 +57,7 @@ function TaskCard({
   disableDragDrop = false,
   workspaceId,
   workspaceUsers,
+  onContextMenuTask,
 }: TaskCardProps) {
   const { t } = useTranslation();
   const {
@@ -80,8 +79,6 @@ function TaskCard({
     showTaskNumbers,
     showTaskItemCounts,
   } = useUserPreferencesStore();
-  const [isDeleteTaskModalOpen, setIsDeleteTaskModalOpen] = useState(false);
-  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
   const toggleSelection = useBulkSelectionStore(
     (state) => state.toggleSelection,
   );
@@ -178,262 +175,236 @@ function TaskCard({
 
   return (
     <div data-task-id={task.id} ref={setNodeRef} style={style} {...listeners}>
-      <ContextMenu open={isContextMenuOpen} onOpenChange={setIsContextMenuOpen}>
-        <ContextMenuTrigger asChild>
-          {/** biome-ignore lint/a11y/noStaticElementInteractions: false positive for onClick and onKeyDown */}
+      {/** biome-ignore lint/a11y/noStaticElementInteractions: false positive for onClick and onKeyDown */}
+      <div
+        onClick={handleTaskCardClick}
+        className={`group relative rounded-lg border bg-background p-3 shadow-xs/5 transition-[background-color,border-color,box-shadow,scale] duration-150 ease-out active:scale-[0.98] ${
+          disableDragDrop ? "cursor-default" : "cursor-move"
+        } ${
+          isDragging
+            ? "border-ring/40 bg-card shadow-lg"
+            : "hover:border-border/90 hover:bg-background hover:shadow-sm"
+        } ${
+          isTaskSelected
+            ? "border-ring/40 bg-accent/50 shadow-sm ring-1 ring-inset ring-ring/30"
+            : "border-border"
+        } ${isTaskFocused ? "ring-2 ring-inset ring-ring/50" : ""}`}
+        {...attributes}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleTaskCardClick(e);
+          } else if (e.key === "Escape") {
+            handleKeyDown(e);
+          } else if (
+            e.key === "ContextMenu" ||
+            (e.shiftKey && e.key === "F10")
+          ) {
+            e.preventDefault();
+            onContextMenuTask(task.id);
+          }
+        }}
+      >
+        {showTaskNumbers && (
+          <div className="mb-2 text-[10px] font-mono text-muted-foreground/90">
+            {project?.slug}-{task.number}
+          </div>
+        )}
+
+        {showAssignees && (
+          <div className="absolute top-3 right-3">
+            {task.userId ? (
+              <Avatar className="h-5 w-5">
+                <AvatarImage
+                  src={assignee?.user?.image ?? ""}
+                  alt={assignee?.user?.name || ""}
+                />
+                <AvatarFallback className="text-xs font-medium border border-border/30">
+                  {getInitials(assignee?.user?.name)}
+                </AvatarFallback>
+              </Avatar>
+            ) : (
+              <div
+                className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-muted"
+                title={t("tasks:assignee.unassigned")}
+              >
+                <span className="text-[10px] font-medium text-muted-foreground">
+                  ?
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="mb-2.5 pr-6">
           <div
-            onClick={handleTaskCardClick}
-            className={`group relative rounded-lg border bg-background p-3 shadow-xs/5 transition-[background-color,border-color,box-shadow,scale] duration-150 ease-out active:scale-[0.98] ${
-              disableDragDrop ? "cursor-default" : "cursor-move"
-            } ${
-              isDragging
-                ? "border-ring/40 bg-card shadow-lg"
-                : "hover:border-border/90 hover:bg-background hover:shadow-sm"
-            } ${
-              isTaskSelected
-                ? "border-ring/40 bg-accent/50 shadow-sm ring-1 ring-inset ring-ring/30"
-                : "border-border"
-            } ${isTaskFocused ? "ring-2 ring-inset ring-ring/50" : ""}`}
-            {...attributes}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleTaskCardClick(e);
-              } else if (e.key === "Escape") {
-                handleKeyDown(e);
-              } else if (
-                e.key === "ContextMenu" ||
-                (e.shiftKey && e.key === "F10")
-              ) {
-                e.preventDefault();
-                setIsContextMenuOpen(true);
-              }
+            className="overflow-hidden break-words leading-5 font-medium text-foreground/95 text-[15px]"
+            style={{
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              wordBreak: "break-word",
+              hyphens: "auto",
             }}
           >
-            {showTaskNumbers && (
-              <div className="mb-2 text-[10px] font-mono text-muted-foreground/90">
-                {project?.slug}-{task.number}
-              </div>
-            )}
+            {task.title}
+          </div>
+        </div>
 
-            {showAssignees && (
-              <div className="absolute top-3 right-3">
-                {task.userId ? (
-                  <Avatar className="h-5 w-5">
-                    <AvatarImage
-                      src={assignee?.user?.image ?? ""}
-                      alt={assignee?.user?.name || ""}
-                    />
-                    <AvatarFallback className="text-xs font-medium border border-border/30">
-                      {getInitials(assignee?.user?.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                ) : (
-                  <div
-                    className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-muted"
-                    title={t("tasks:assignee.unassigned")}
-                  >
-                    <span className="text-[10px] font-medium text-muted-foreground">
-                      ?
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
+        {showLabels && (
+          <div className="mb-2.5">
+            <TaskLabels labels={task.labels ?? []} />
+          </div>
+        )}
 
-            <div className="mb-2.5 pr-6">
-              <div
-                className="overflow-hidden break-words leading-5 font-medium text-foreground/95 text-[15px]"
-                style={{
-                  display: "-webkit-box",
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: "vertical",
-                  wordBreak: "break-word",
-                  hyphens: "auto",
-                }}
-              >
-                {task.title}
-              </div>
+        <div className="flex items-center gap-1.5">
+          {showPriority && (
+            <span className="inline-flex items-center gap-1 rounded border border-border/70 bg-muted/55 px-2 py-1 text-[10px] font-medium text-muted-foreground h-5.5">
+              {getPriorityIcon(task.priority ?? "")}
+            </span>
+          )}
+
+          {showTaskItemCounts && taskItemStats.total > 0 && (
+            <span
+              className={cn(
+                "flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted/50 text-muted-foreground h-5.5",
+                {
+                  "bg-success/10 text-success-foreground":
+                    taskItemStats.completed === taskItemStats.total,
+                },
+              )}
+            >
+              <SquareCheck className="h-[12px] w-[12px]" />
+              {taskItemStats.completed}/{taskItemStats.total}
+            </span>
+          )}
+
+          {showDueDates && task.dueDate && (
+            <div
+              className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded h-5.5 ${dueDateStatusColors[getDueDateStatus(task.dueDate, taskIsCompleted)]}`}
+            >
+              {getDueDateStatus(task.dueDate, taskIsCompleted) ===
+                "overdue" && <CalendarX className="w-3 h-3" />}
+              {getDueDateStatus(task.dueDate, taskIsCompleted) ===
+                "due-soon" && <CalendarClock className="w-3 h-3" />}
+              {(getDueDateStatus(task.dueDate, taskIsCompleted) ===
+                "far-future" ||
+                getDueDateStatus(task.dueDate, taskIsCompleted) ===
+                  "no-due-date") && <Calendar className="w-3 h-3" />}
+              <span>{format(new Date(task.dueDate), "MMM d")}</span>
             </div>
+          )}
 
-            {showLabels && (
-              <div className="mb-2.5">
-                <TaskLabels labels={task.labels ?? []} />
-              </div>
-            )}
-
-            <div className="flex items-center gap-1.5">
-              {showPriority && (
-                <span className="inline-flex items-center gap-1 rounded border border-border/70 bg-muted/55 px-2 py-1 text-[10px] font-medium text-muted-foreground h-5.5">
-                  {getPriorityIcon(task.priority ?? "")}
-                </span>
-              )}
-
-              {showTaskItemCounts && taskItemStats.total > 0 && (
-                <span
-                  className={cn(
-                    "flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted/50 text-muted-foreground h-5.5",
-                    {
-                      "bg-success/10 text-success-foreground":
-                        taskItemStats.completed === taskItemStats.total,
-                    },
-                  )}
+          {pullRequests.length === 1 && (
+            <HoverCard openDelay={200} closeDelay={100}>
+              <HoverCardTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(pullRequests[0].url, "_blank");
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded border border-border/70 bg-muted/55 px-2 py-1 text-[10px] font-medium text-muted-foreground"
                 >
-                  <SquareCheck className="h-[12px] w-[12px]" />
-                  {taskItemStats.completed}/{taskItemStats.total}
-                </span>
-              )}
-
-              {showDueDates && task.dueDate && (
-                <div
-                  className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded h-5.5 ${dueDateStatusColors[getDueDateStatus(task.dueDate, taskIsCompleted)]}`}
-                >
-                  {getDueDateStatus(task.dueDate, taskIsCompleted) ===
-                    "overdue" && <CalendarX className="w-3 h-3" />}
-                  {getDueDateStatus(task.dueDate, taskIsCompleted) ===
-                    "due-soon" && <CalendarClock className="w-3 h-3" />}
-                  {(getDueDateStatus(task.dueDate, taskIsCompleted) ===
-                    "far-future" ||
-                    getDueDateStatus(task.dueDate, taskIsCompleted) ===
-                      "no-due-date") && <Calendar className="w-3 h-3" />}
-                  <span>{format(new Date(task.dueDate), "MMM d")}</span>
+                  {getPRInfo(pullRequests[0]).icon}
+                  <span>#{pullRequests[0].externalId}</span>
+                </button>
+              </HoverCardTrigger>
+              <HoverCardContent
+                className="w-72 p-3"
+                side="bottom"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {getPRInfo(pullRequests[0]).icon}
+                    <span>{getPRInfo(pullRequests[0]).status}</span>
+                    <span className="text-muted-foreground/50">•</span>
+                    <span>#{pullRequests[0].externalId}</span>
+                  </div>
+                  <p className="text-sm font-medium leading-snug">
+                    {pullRequests[0].title || t("tasks:pr.label")}
+                  </p>
                 </div>
-              )}
+              </HoverCardContent>
+            </HoverCard>
+          )}
 
-              {pullRequests.length === 1 && (
+          {pullRequests.length > 1 &&
+            (() => {
+              const hasOpen = pullRequests.some(
+                (pr) => !pr.metadata?.merged && !pr.metadata?.draft,
+              );
+              const allMerged = pullRequests.every((pr) => pr.metadata?.merged);
+              const iconColor = allMerged
+                ? "text-info-foreground"
+                : hasOpen
+                  ? "text-success-foreground"
+                  : "text-muted-foreground";
+
+              return (
                 <HoverCard openDelay={200} closeDelay={100}>
                   <HoverCardTrigger asChild>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(pullRequests[0].url, "_blank");
-                      }}
+                      onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-1.5 rounded border border-border/70 bg-muted/55 px-2 py-1 text-[10px] font-medium text-muted-foreground"
                     >
-                      {getPRInfo(pullRequests[0]).icon}
-                      <span>#{pullRequests[0].externalId}</span>
+                      <GitPullRequest className={`h-3 w-3 ${iconColor}`} />
+                      <span>
+                        {t("tasks:pr.count", {
+                          count: pullRequests.length,
+                        })}
+                      </span>
                     </button>
                   </HoverCardTrigger>
                   <HoverCardContent
-                    className="w-72 p-3"
+                    className="w-auto min-w-56 max-w-96 p-1"
                     side="bottom"
                     onClick={(e) => e.stopPropagation()}
                     onPointerDown={(e) => e.stopPropagation()}
                   >
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {getPRInfo(pullRequests[0]).icon}
-                        <span>{getPRInfo(pullRequests[0]).status}</span>
-                        <span className="text-muted-foreground/50">•</span>
-                        <span>#{pullRequests[0].externalId}</span>
-                      </div>
-                      <p className="text-sm font-medium leading-snug">
-                        {pullRequests[0].title || t("tasks:pr.label")}
-                      </p>
-                    </div>
+                    {pullRequests.map((pr, index) => {
+                      const prInfo = getPRInfo(pr);
+                      const repoMatch = pr.url.match(
+                        /github\.com\/([^/]+\/[^/]+)\/pull/,
+                      );
+                      const repoName = repoMatch ? repoMatch[1] : null;
+                      return (
+                        <div key={pr.id}>
+                          {index > 0 && <hr className="border-border my-1" />}
+                          <button
+                            type="button"
+                            onClick={() => window.open(pr.url, "_blank")}
+                            className="w-full px-2 py-1.5 text-left hover:bg-muted/50 rounded transition-colors"
+                          >
+                            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                              {prInfo.icon}
+                              <span>
+                                {repoName}#{pr.externalId}
+                              </span>
+                            </div>
+                            <p className="text-xs leading-tight line-clamp-2 mt-0.5">
+                              {pr.title || t("tasks:pr.label")}
+                            </p>
+                            <span className="text-[10px] text-muted-foreground">
+                              {prInfo.status}
+                            </span>
+                          </button>
+                        </div>
+                      );
+                    })}
                   </HoverCardContent>
                 </HoverCard>
-              )}
-
-              {pullRequests.length > 1 &&
-                (() => {
-                  const hasOpen = pullRequests.some(
-                    (pr) => !pr.metadata?.merged && !pr.metadata?.draft,
-                  );
-                  const allMerged = pullRequests.every(
-                    (pr) => pr.metadata?.merged,
-                  );
-                  const iconColor = allMerged
-                    ? "text-info-foreground"
-                    : hasOpen
-                      ? "text-success-foreground"
-                      : "text-muted-foreground";
-
-                  return (
-                    <HoverCard openDelay={200} closeDelay={100}>
-                      <HoverCardTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1.5 rounded border border-border/70 bg-muted/55 px-2 py-1 text-[10px] font-medium text-muted-foreground"
-                        >
-                          <GitPullRequest className={`h-3 w-3 ${iconColor}`} />
-                          <span>
-                            {t("tasks:pr.count", {
-                              count: pullRequests.length,
-                            })}
-                          </span>
-                        </button>
-                      </HoverCardTrigger>
-                      <HoverCardContent
-                        className="w-auto min-w-56 max-w-96 p-1"
-                        side="bottom"
-                        onClick={(e) => e.stopPropagation()}
-                        onPointerDown={(e) => e.stopPropagation()}
-                      >
-                        {pullRequests.map((pr, index) => {
-                          const prInfo = getPRInfo(pr);
-                          const repoMatch = pr.url.match(
-                            /github\.com\/([^/]+\/[^/]+)\/pull/,
-                          );
-                          const repoName = repoMatch ? repoMatch[1] : null;
-                          return (
-                            <div key={pr.id}>
-                              {index > 0 && (
-                                <hr className="border-border my-1" />
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => window.open(pr.url, "_blank")}
-                                className="w-full px-2 py-1.5 text-left hover:bg-muted/50 rounded transition-colors"
-                              >
-                                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                                  {prInfo.icon}
-                                  <span>
-                                    {repoName}#{pr.externalId}
-                                  </span>
-                                </div>
-                                <p className="text-xs leading-tight line-clamp-2 mt-0.5">
-                                  {pr.title || t("tasks:pr.label")}
-                                </p>
-                                <span className="text-[10px] text-muted-foreground">
-                                  {prInfo.status}
-                                </span>
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </HoverCardContent>
-                    </HoverCard>
-                  );
-                })()}
-            </div>
-          </div>
-        </ContextMenuTrigger>
-
-        {isContextMenuOpen && project && workspaceId ? (
-          <TaskCardContextMenuContent
-            task={task}
-            taskCardContext={{
-              projectId: project.id,
-              worskpaceId: workspaceId,
-            }}
-            onDeleteClick={() => setIsDeleteTaskModalOpen(true)}
-          />
-        ) : null}
-      </ContextMenu>
-
-      {isDeleteTaskModalOpen ? (
-        <TaskCardDeleteConfirmation
-          taskId={task.id}
-          onOpenChange={setIsDeleteTaskModalOpen}
-        />
-      ) : null}
+              );
+            })()}
+        </div>
+      </div>
     </div>
   );
 }
 
-function TaskCardDeleteConfirmation({
+export function TaskCardDeleteConfirmation({
   taskId,
   onOpenChange,
 }: {

@@ -99,12 +99,50 @@ function CommandPalette() {
     // Opening the palette makes Projects a likely next destination. Warm only its
     // authorized route module while the user chooses a command; route navigation
     // still runs the normal auth guard, and project data remains demand-loaded.
-    void router
-      .preloadRoute({
-        to: "/dashboard/workspace/$workspaceId",
-        params: { workspaceId: workspace.id },
-      })
-      .catch(() => {});
+    // Defer the import until after the opening paint so route work cannot delay
+    // the palette's first visible response.
+    let idleCallbackId: number | undefined;
+    let deferTimeoutId: number | undefined;
+    let fallbackTimeoutId: number | undefined;
+    const frameId = requestAnimationFrame(() => {
+      const preload = () => {
+        void router
+          .preloadRoute({
+            to: "/dashboard/workspace/$workspaceId",
+            params: { workspaceId: workspace.id },
+          })
+          .catch(() => {});
+      };
+      const requestIdleCallback = (
+        window as Window & {
+          requestIdleCallback?: typeof window.requestIdleCallback;
+        }
+      ).requestIdleCallback;
+
+      deferTimeoutId = window.setTimeout(() => {
+        if (typeof requestIdleCallback === "function") {
+          idleCallbackId = requestIdleCallback.call(window, preload, {
+            timeout: 1500,
+          });
+        } else {
+          fallbackTimeoutId = window.setTimeout(preload, 0);
+        }
+      }, 250);
+    });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      if (deferTimeoutId !== undefined) window.clearTimeout(deferTimeoutId);
+      const cancelIdleCallback = (
+        window as Window & {
+          cancelIdleCallback?: typeof window.cancelIdleCallback;
+        }
+      ).cancelIdleCallback;
+      if (idleCallbackId !== undefined && cancelIdleCallback)
+        cancelIdleCallback.call(window, idleCallbackId);
+      if (fallbackTimeoutId !== undefined)
+        window.clearTimeout(fallbackTimeoutId);
+    };
   }, [open, router, workspace?.id]);
 
   useRegisterShortcuts({

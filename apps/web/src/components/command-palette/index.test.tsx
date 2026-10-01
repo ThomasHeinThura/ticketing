@@ -19,6 +19,7 @@ import CommandPalette from "./index";
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
   useLocation: () => ({ pathname: "/dashboard/workspace/w1" }),
+  useRouter: () => ({ preloadRoute: vi.fn().mockResolvedValue(undefined) }),
 }));
 
 vi.mock("react-i18next", () => ({

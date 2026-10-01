@@ -43,7 +43,10 @@ const skeletonColumns = [
 
 function BoardSkeleton() {
   return (
-    <div className="flex h-full w-full gap-4 p-4 overflow-hidden">
+    <div
+      className="flex h-full w-full gap-4 p-4 overflow-hidden"
+      data-testid="g13-board-loading"
+    >
       {skeletonColumns.map((col) => (
         <div key={col.key} className="flex w-72 shrink-0 flex-col gap-3">
           <div className="flex items-center gap-2 px-1">
@@ -237,7 +240,10 @@ function RouteComponent() {
           onSortChange={setSort}
         />
 
-        <div className="flex h-full flex-1 overflow-hidden bg-background">
+        <div
+          className="flex h-full flex-1 overflow-hidden bg-background"
+          data-testid={sortedProject ? "g13-board-content" : undefined}
+        >
           {sortedProject ? (
             viewMode === "board" ? (
               <KanbanBoard

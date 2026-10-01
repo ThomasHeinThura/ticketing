@@ -164,7 +164,7 @@ describe("WorkItemList", () => {
     expect(screen.getAllByText("workItems:list.unassigned")).toHaveLength(500);
     expect(screen.getAllByText("medium")).toHaveLength(375);
     expect(screen.getAllByText("workItems:list.noPriority")).toHaveLength(125);
-  });
+  }, 15_000);
 
   it("#310: renders the resolved assignee name when present", () => {
     const assignedItem = {

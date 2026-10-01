@@ -9,6 +9,7 @@ type ColumnProps = {
   disableDragDrop?: boolean;
   workspaceId?: string;
   workspaceUsers: TaskCardProps["workspaceUsers"];
+  onContextMenuTask: TaskCardProps["onContextMenuTask"];
 };
 
 function Column({
@@ -16,6 +17,7 @@ function Column({
   disableDragDrop = false,
   workspaceId,
   workspaceUsers,
+  onContextMenuTask,
 }: ColumnProps) {
   const [isDropzoneOver, setIsDropzoneOver] = useState(false);
 
@@ -38,6 +40,7 @@ function Column({
           onIsOverChange={setIsDropzoneOver}
           workspaceId={workspaceId}
           workspaceUsers={workspaceUsers}
+          onContextMenuTask={onContextMenuTask}
         />
       </div>
     </div>
