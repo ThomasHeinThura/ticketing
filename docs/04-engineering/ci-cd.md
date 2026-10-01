@@ -191,6 +191,10 @@ CI checks it non-empty, naming GPT-6 Sol, whenever the diff touches **any** of â
 authoritative scope; [sdlc.md](sdlc.md) and [security-model.md](../01-architecture/security-model.md)
 cite it and do not restate it:
 
+Opus 5.5's optional sampled big review is outside this per-PR status-check gate. It does not
+satisfy or delay the required GPT-6 Sol review; when a sample is selected, follow the packet
+process in [agent-workflow.md](agent-workflow.md#model-policy).
+
 ```
 apps/api/src/**/policy.ts            packages/permissions/**
 apps/api/src/plugins/**              apps/api/src/storage/**
