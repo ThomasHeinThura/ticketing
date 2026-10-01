@@ -7,7 +7,9 @@ import {
 } from "../openapi";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
-import createActivity from "./controllers/create-activity";
+import createActivity, {
+  recordTaskEventActivity,
+} from "./controllers/create-activity";
 import createComment from "./controllers/create-comment";
 import deleteComment from "./controllers/delete-comment";
 import getActivities from "./controllers/get-activities";
@@ -174,7 +176,13 @@ subscribeToEvent<{
   if (!data.currentUserId || !data.taskId || !data.type) {
     return;
   }
-  await createActivity(data.taskId, data.type, data.currentUserId, null, {});
+  await recordTaskEventActivity(
+    data.taskId,
+    data.type,
+    data.currentUserId,
+    null,
+    {},
+  );
 });
 
 subscribeToEvent<{
@@ -198,7 +206,7 @@ subscribeToEvent<{
     newStatus,
   } = data;
 
-  await createActivity(data.taskId, data.type, data.userId, null, {
+  await recordTaskEventActivity(data.taskId, data.type, data.userId, null, {
     fromProjectId,
     fromProjectName,
     toProjectId,
@@ -217,7 +225,7 @@ subscribeToEvent<{
   assigneeId?: string;
   type: string;
 }>("task.status_changed", async (data) => {
-  await createActivity(data.taskId, data.type, data.userId, null, {
+  await recordTaskEventActivity(data.taskId, data.type, data.userId, null, {
     oldStatus: data.oldStatus,
     newStatus: data.newStatus,
   });
@@ -231,7 +239,7 @@ subscribeToEvent<{
   title: string;
   type: string;
 }>("task.priority_changed", async (data) => {
-  await createActivity(data.taskId, data.type, data.userId, null, {
+  await recordTaskEventActivity(data.taskId, data.type, data.userId, null, {
     oldPriority: data.oldPriority,
     newPriority: data.newPriority,
   });
@@ -243,7 +251,7 @@ subscribeToEvent<{
   title: string;
   type: string;
 }>("task.unassigned", async (data) => {
-  await createActivity(data.taskId, data.type, data.userId, null, {});
+  await recordTaskEventActivity(data.taskId, data.type, data.userId, null, {});
 });
 
 subscribeToEvent<{
@@ -255,7 +263,7 @@ subscribeToEvent<{
   title: string;
   type: string;
 }>("task.assignee_changed", async (data) => {
-  await createActivity(data.taskId, data.type, data.userId, null, {
+  await recordTaskEventActivity(data.taskId, data.type, data.userId, null, {
     newAssigneeId: data.newAssigneeId,
     newAssignee: data.newAssignee,
     isSelfAssigned: data.userId === data.newAssigneeId,
@@ -270,7 +278,7 @@ subscribeToEvent<{
   title: string;
   type: string;
 }>("task.due_date_changed", async (data) => {
-  await createActivity(data.taskId, data.type, data.userId, null, {
+  await recordTaskEventActivity(data.taskId, data.type, data.userId, null, {
     oldDueDate:
       data.oldDueDate instanceof Date
         ? data.oldDueDate.toISOString()

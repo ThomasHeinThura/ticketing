@@ -67,7 +67,6 @@ exact context appears in the ruleset.
 │ pnpm check:skips     no .skip / .only            │
 │ pnpm test:ci-scripts  gate checkers + red probes │
 │ pr-template check    sections filled, tiers named│
-│ no-inherited-routes  removals stay removed       │
 ├─ Test ───────────────────────────────────────────┤
 │ pnpm test                unit + component        │
 │ pnpm test:coverage       90 % statements, lines,  │
@@ -75,6 +74,9 @@ exact context appears in the ruleset.
 │ pnpm test:permissions    route coverage (Hono    │
 │                          router), role × route   │
 │                          matrix ×2, custom roles │
+│ pnpm test:no-inherited-routes  fork removals stay │
+│                          absent from the router,  │
+│                          auth plugins and lockfile│
 │ pnpm test:contract       OpenAPI lint, drift,    │
 │                          and breaking changes   │
 │ pnpm test:mcp            tool → route parity     │
@@ -149,7 +151,8 @@ sharded four ways:**
 ├─ Integration ────────────────────────────────────┤
 │ pnpm test:integration    Testcontainers Postgres,│
 │                          lifecycle/, migrations  │
-│                          from empty, anonymiser  │
+│                          from empty, anonymiser, │
+│                          additive seed profiles  │
 ├─ Browser ────────────────────────────────────────┤
 │ pnpm test:e2e            protected-route redirect│
 │                          browser smoke today;    │
@@ -162,13 +165,23 @@ sharded four ways:**
 └──────────────────────────────────────────────────┘
 ```
 
-The current Playwright suite is a real-browser smoke for the already-specified logged-out
-protected-route redirect and its preserved destination. The `security`, `reduced-motion`,
-and `mobile-320` project commands above document future suites; none are enabled yet. The
-current smoke does not yet satisfy authenticated agent/portal journeys; these still need
-deterministic application fixtures and acceptance flows. The `e2e - protected-route
-redirect` smoke and G4's `a11y - accessibility (G4, axe)` scan are required branch-protection
-status checks.
+The Playwright suite includes the logged-out protected-route redirect and G8 visual
+snapshots for every exported `packages/ui` Storybook story and each implemented inventory
+route. G8 uses deterministic in-browser fixtures, in-repository Chromium baselines, and a
+scope check that requires every inventory route marked in progress or complete to be
+registered in the generated route tree and to have a screenshot case and baseline. A
+registered inventory route group with no in-progress or complete row also fails, so adding
+a screen requires its route, status, fixture and baseline together. The current inventory
+has 122 route rows: two are in progress and have G8 cases; the other 120 are not started.
+The old inherited `/dashboard` routes are not counted as TaskDesk v2 inventory routes
+because they do not match the inventory's canonical URLs. The inventory's future-stage
+screens become required as they move to in progress. The current `/auth/sign-in` screen is
+also snapshotted as a documented legacy route while the inventory's `/agent/sign-in` route
+is not started. The `security`,
+`reduced-motion`, and `mobile-320` project
+commands above document future suites; none are enabled yet. The `e2e - protected-route
+redirect` smoke, G4's `a11y - accessibility (G4, axe)` scan, and G8's `visual regression
+(G8)` are required branch-protection status checks.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.
@@ -446,11 +459,13 @@ trail and is excluded). **`check:env`** fails on a `process.env` read outside
 [configuration-reference.md](../05-operations/configuration-reference.md)'s list;
 **`check:vocabulary`** on a table, capability, event key or job name absent from its
 authority document; **`check:skips`** on `.skip(`, `.only(` or `describe.skip`.
-**`tests/permissions/no-inherited-integration-routes.test.ts`** asserts no route matches
-`public-project|github|gitea|slack|discord|telegram|generic-webhook`, that `octokit` and
-`@octokit/webhooks` are absent from the lockfile, and that the better-auth plugin list equals
-the approved list (no `anonymous`, `deviceAuthorization` or `bearer`) — the fork-time removal
-list made executable ([decision log](../07-planning/decision-log.md)).
+**`pnpm test:no-inherited-routes`** runs
+`tests/permissions/no-inherited-integration-routes.test.ts` as a separately reconciled fast
+gate inside the existing required route-policy context. The test inspects the constructed
+Hono router, constructed better-auth plugins, and exact `octokit` / `@octokit/webhooks`
+lockfile package names. The full `pnpm test:permissions` suite also runs this test. This makes
+the fork-time removal list executable without broadening the existing route-policy status
+context ([decision log](../07-planning/decision-log.md)).
 `pnpm test:a11y` runs axe against every exported `packages/ui` Storybook story and the
 screens exercised by the current Playwright E2E suite. It uses the existing `axe-core`
 dependency declared by `packages/ui` and scans the logged-out protected-route redirect's
@@ -479,7 +494,27 @@ On merge:
 8. Package and publish the Helm chart (`helm package`, pushed as an OCI artefact next to the
    image).
 9. Publish `@taskdesk/mcp` to npm if it changed.
-10. Deploy the documentation site.
+
+### Planned docs-site build and publication (not implemented)
+
+When the separate static docs site is implemented, run its build and static-site smoke tests
+on pull requests. Place those checks inside an existing required context with visible failure,
+or add a new exact context and verify it is registered in the protected-main ruleset before
+relying on it. A standalone green job that branch protection does not require is not a gate.
+
+On protected-main updates, the release workflow may build the separate docs image, scan it,
+generate an SBOM, sign it and publish `edge`/source-SHA digests. It does not deploy. A change
+to the docs-image digest must independently trigger a UAT pull that verifies the published
+digest's cosign signature and expected workflow identity, then updates only the docs service;
+the current app-image updater does not watch or deploy this second image. Test the docs
+service independently in UAT for container health, HTTPS on its verified proxy route, search
+over a published page, and a real unknown-path 404. Retain the previous known-good docs
+digest for docs-only rollback, leaving the app image untouched. Production promotion is a
+manual pin to the independently verified immutable docs digest after UAT verification, not a
+tag selection. Do not give PR or main-build workflows production credentials or automatic
+production deployment authority. This is a target contract, not evidence that the site build,
+job, image, router or deployment exists. The implementation contract is in
+[docs-site plan](../08-docs-site/plan.md).
 
 **No version-bump commit on merge or release.** The Release workflow runs after each `main`
 update to publish the signed `edge`/SHA images. A maintainer may also dispatch it from

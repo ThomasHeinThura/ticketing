@@ -6,6 +6,7 @@ const relationTypeDescription =
 const relatedTaskSchema = z
   .object({
     id: z.string(),
+    version: z.number().int().min(1),
     title: z.string(),
     status: z.string(),
     priority: z.string().nullable(),

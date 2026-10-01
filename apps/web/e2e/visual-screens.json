@@ -1,0 +1,24 @@
+[
+	{
+		"name": "sign-in",
+		"inventoryRoute": null,
+		"applicationRoute": "/auth/sign-in",
+		"test": "sign-in screen @visual",
+		"screenshot": "sign-in.png",
+		"reason": "The implemented sign-in route predates the inventory route /agent/sign-in; this mismatch is reported as a remaining inventory gap."
+	},
+	{
+		"name": "work-item-list",
+		"inventoryRoute": "/agent/projects/{key}/work?layout=list",
+		"applicationRoute": "/agent/projects/$projectKey/work",
+		"test": "work-item list screen @visual",
+		"screenshot": "work-item-list.png"
+	},
+	{
+		"name": "work-item-detail",
+		"inventoryRoute": "/agent/work-items/{key}",
+		"applicationRoute": "/agent/work-items/$key",
+		"test": "work-item detail screen @visual",
+		"screenshot": "work-item-detail.png"
+	}
+]

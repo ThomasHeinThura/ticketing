@@ -31,8 +31,8 @@ Ticketing.v2/
 │   │       ├── hooks/          queries/ mutations/ and plain hooks
 │   │       ├── store/          zustand, UI state only
 │   │       └── lib/            routes.ts registry, formatters, guards
-│   └── site/                   the documentation website — stack is an OPEN decision (08-docs-site/plan.md);
-│                               kaneo's apps/site is a marketing site and its apps/docs is Mintlify, so neither is copied
+│   └── site/                   planned self-hosted headless Fumadocs + Next static export; not implemented;
+│                               fresh TaskDesk site, not copied from kaneo (08-docs-site/plan.md)
 │
 ├── packages/
 │   ├── ui/                     THE design system. Only source of primitives.

@@ -1,10 +1,14 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable, projectTable, taskTable } from "../../database/schema";
 import { publishEvent } from "../../events";
-import { filterAssignableUsers } from "../../utils/assert-assignable-user";
+import {
+  assertAssignableUserAndLockMembership,
+  filterAssignableUsers,
+} from "../../utils/assert-assignable-user";
 import { rejectNulByte } from "../../utils/reject-nul-byte";
+import { lockProjectAndAssertLiveForTaskNumber } from "../assert-task-project-live";
 import {
   coercePriority,
   coerceStatus,
@@ -27,18 +31,24 @@ async function importTasks(
   tasksToImport: ImportTask[],
   currentUserId?: string,
 ) {
-  const project = await db.query.projectTable.findFirst({
-    // #202: a soft-deleted project is gone for ordinary use during its 30-day
-    // recovery window (#187, PR-16), so it cannot receive an import either. Same
-    // exclusion `get-project.ts` applies.
-    where: and(eq(projectTable.id, projectId), isNull(projectTable.deletedAt)),
-  });
+  const project = await db.transaction(async (tx) => {
+    await lockProjectAndAssertLiveForTaskNumber(
+      tx,
+      projectId,
+      "Project not found",
+    );
+    const [liveProject] = await tx
+      .select()
+      .from(projectTable)
+      .where(eq(projectTable.id, projectId))
+      .limit(1);
 
-  if (!project) {
-    throw new HTTPException(404, {
-      message: "Project not found",
-    });
-  }
+    if (!liveProject) {
+      throw new HTTPException(404, { message: "Project not found" });
+    }
+
+    return liveProject;
+  });
 
   const assigneeIds = [
     ...new Set(
@@ -47,13 +57,21 @@ async function importTasks(
         .filter((id): id is string => Boolean(id)),
     ),
   ];
+  if (assigneeIds.some((assigneeId) => assigneeId.includes("\u0000"))) {
+    await db.transaction(async (tx) => {
+      await lockProjectAndAssertLiveForTaskNumber(
+        tx,
+        projectId,
+        "Project not found",
+      );
+      for (const assigneeId of assigneeIds) {
+        rejectNulByte(assigneeId, "Assignee id");
+      }
+    });
+  }
   // S5 (Opus review of PR #307, delta round): reaches `filterAssignableUsers`'s
   // `inArray(workspaceUserTable.userId, ...)` query below unvalidated -- a NUL
   // byte would otherwise 500 instead of a clean 400.
-  for (const assigneeId of assigneeIds) {
-    rejectNulByte(assigneeId, "Assignee id");
-  }
-
   const assignableIds = await filterAssignableUsers(
     assigneeIds,
     project.workspaceId,
@@ -93,6 +111,18 @@ async function importTasks(
       });
 
       const createdTask = await db.transaction(async (tx) => {
+        await lockProjectAndAssertLiveForTaskNumber(
+          tx,
+          projectId,
+          "Project not found",
+        );
+        if (assigneeId) {
+          await assertAssignableUserAndLockMembership(
+            assigneeId,
+            project.workspaceId,
+            tx,
+          );
+        }
         const taskNumber = await claimTaskNumber(projectId, tx);
 
         const [task] = await tx
@@ -137,9 +167,31 @@ async function importTasks(
         });
       }
     } catch (error) {
-      if (error instanceof HTTPException) {
-        throw error;
+      if (
+        error instanceof HTTPException &&
+        error.status === 404 &&
+        error.message === "Project not found"
+      ) {
+        results.push({
+          success: false,
+          error: "Project is no longer available",
+          task: taskData,
+        });
+        continue;
       }
+      if (
+        error instanceof HTTPException &&
+        error.status === 403 &&
+        error.message === "Assignee is not a member of this workspace"
+      ) {
+        results.push({
+          success: false,
+          error: error.message,
+          task: taskData,
+        });
+        continue;
+      }
+      if (error instanceof HTTPException) throw error;
       results.push({
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",

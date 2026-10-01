@@ -1,10 +1,10 @@
 # TaskDesk MCP server
 
-[`@taskdesk/mcp`](https://www.npmjs.com/package/@taskdesk/mcp) is the official MCP (Model Context Protocol) server for [TaskDesk](https://taskdesk.app), the open source project management platform. It is maintained in the [usetaskdesk/taskdesk](https://github.com/usetaskdesk/taskdesk) monorepo and published to npm by the TaskDesk team.
+[`@taskdesk/mcp`](https://www.npmjs.com/package/@taskdesk/mcp) is the official MCP (Model Context Protocol) server for [TaskDesk](https://taskdesk.bimats.com), the open source project management platform. It is maintained in the [usetaskdesk/taskdesk](https://github.com/usetaskdesk/taskdesk) monorepo and published to npm by the TaskDesk team.
 
 It runs over stdio, signs in with TaskDesk's device flow, and then calls the TaskDesk API with a bearer token. The package lives in `packages/mcp` in this monorepo and exposes the `taskdesk-mcp` CLI.
 
-> **Tip:** Every TaskDesk instance also ships a built-in HTTP MCP endpoint at `/api/mcp`. If your MCP client supports Streamable HTTP transport (e.g. Claude Code), you can connect directly without this package. See the [MCP docs](https://taskdesk.app/docs/core/integrations/mcp) for details.
+> **Tip:** Every TaskDesk instance also ships a built-in HTTP MCP endpoint at `/api/mcp`. If your MCP client supports Streamable HTTP transport (e.g. Claude Code), you can connect directly without this package. See the [MCP docs](https://taskdesk.bimats.com/docs/core/integrations/mcp) for details.
 
 ## Prerequisites
 

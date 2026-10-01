@@ -9,6 +9,7 @@ const createTask = vi.fn(async (input: Record<string, unknown>) => ({
   status: input.status,
   projectId: input.projectId,
   createdAt: "2026-08-05T00:00:00.000Z",
+  version: 1,
 }));
 
 afterEach(() => {

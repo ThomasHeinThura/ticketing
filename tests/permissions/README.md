@@ -70,11 +70,20 @@ holds.
 | An ambiguous `ALL`+wildcard router entry not on the declared middleware list | `route-coverage.test.ts` (via `isMiddlewareEntry`) |
 | A shrinking-list baseline (`inherited-uncovered.json`, `better-auth-plugins-pending-removal.json`) with an entry appended since the merge base with `main` | `route-coverage.test.ts`, `better-auth-plugin-list.test.ts` (via `git-baseline.ts`) |
 
-## The enumeration is Hono's router, not the OpenAPI document
+## Enumerate Hono routes and non-Hono listener manifests
 
-The document cannot see the routes registered inline in `index.ts`, the `/auth/*` mount, the
-websocket upgrades or `/metrics` — and `createRoute({ security: [] })` is documentation-only,
-so the document and the enforcement can disagree silently. Position is untrusted as well:
+`route-coverage.test.ts` enumerates Hono `app.routes` and every non-Hono listener manifest
+exported by its runtime constructor. `/auth/*` and `/ws` are Hono/delegated surfaces;
+`GET /metrics` is a separate Node listener on port 9464 and is absent from `app.routes`.
+The metrics constructor must export its method, path, port and delegated-policy key, and the
+test compares the constructed listener with that manifest. It fails for an unclassified
+listener route, orphaned delegated policy, or changed/extra method/path. OpenAPI alone proves
+none of these surfaces. Before the listener is implemented, its manifest and policy are
+planned, not current coverage.
+
+The OpenAPI document cannot see routes registered inline in `index.ts` or all listener
+surfaces — and `createRoute({ security: [] })` is documentation-only, so the document and
+enforcement can disagree silently. Position is untrusted as well:
 `api.use("*")` gates only what is registered below it, and sixteen inherited routes sit above
 it. A policy is a property of the route, never of where it happens to be declared.
 

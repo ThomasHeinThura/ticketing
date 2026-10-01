@@ -36,4 +36,10 @@ export type BroadcastAdapter = {
 
   /** Cleanup on shutdown */
   shutdown(): Promise<void>;
+
+  /** Stop incoming delivery as soon as the server begins draining. */
+  beginShutdown?(): void;
+
+  /** Disconnect backing resources when the shared shutdown deadline expires. */
+  forceShutdown?(): void;
 };

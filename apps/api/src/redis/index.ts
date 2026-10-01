@@ -4,6 +4,8 @@ export type RedisClient = Redis | Cluster;
 
 let _redisPub: RedisClient | null = null;
 let _redisSub: RedisClient | null = null;
+const redisClients = new Set<RedisClient>();
+let redisForceClosed = false;
 
 function isRedisConfigured(): boolean {
   return !!(
@@ -151,9 +153,15 @@ function createRedisClient(): RedisClient {
 
 export { isRedisConfigured };
 
-export function getRedisPub(): RedisClient {
+export function getRedisPub(
+  clientFactory: () => RedisClient = createRedisClient,
+): RedisClient {
+  if (redisForceClosed) {
+    throw new Error("Redis clients were force-closed during shutdown");
+  }
   if (!_redisPub) {
-    _redisPub = createRedisClient();
+    _redisPub = clientFactory();
+    redisClients.add(_redisPub);
     (_redisPub as Redis).on("error", (err: Error) =>
       console.error("Redis pub client error:", err),
     );
@@ -161,9 +169,15 @@ export function getRedisPub(): RedisClient {
   return _redisPub;
 }
 
-export function getRedisSub(): RedisClient {
+export function getRedisSub(
+  clientFactory: () => RedisClient = createRedisClient,
+): RedisClient {
+  if (redisForceClosed) {
+    throw new Error("Redis clients were force-closed during shutdown");
+  }
   if (!_redisSub) {
-    _redisSub = createRedisClient();
+    _redisSub = clientFactory();
+    redisClients.add(_redisSub);
     (_redisSub as Redis).on("error", (err: Error) =>
       console.error("Redis sub client error:", err),
     );
@@ -172,12 +186,40 @@ export function getRedisSub(): RedisClient {
 }
 
 export async function closeRedis(): Promise<void> {
-  if (_redisPub) {
-    await _redisPub.quit();
-    _redisPub = null;
+  const clients = [...new Set([_redisPub, _redisSub])].filter(
+    (client): client is RedisClient => client !== null,
+  );
+  _redisPub = null;
+  _redisSub = null;
+
+  const results = await Promise.allSettled(
+    clients.map((client) => Promise.resolve().then(() => client.quit())),
+  );
+  for (const client of clients) {
+    redisClients.delete(client);
   }
-  if (_redisSub) {
-    await _redisSub.quit();
-    _redisSub = null;
+
+  const failures = results.flatMap((result) =>
+    result.status === "rejected" ? [result.reason] : [],
+  );
+  if (failures.length > 0) {
+    throw new AggregateError(failures, "Redis client shutdown failed");
+  }
+}
+
+export function forceCloseRedis(): void {
+  redisForceClosed = true;
+  const clients = new Set([...redisClients, _redisPub, _redisSub]);
+  _redisPub = null;
+  _redisSub = null;
+  redisClients.clear();
+
+  for (const client of clients) {
+    if (!client) continue;
+    try {
+      client.disconnect();
+    } catch (error) {
+      console.error("Failed to force-close a Redis client:", error);
+    }
   }
 }

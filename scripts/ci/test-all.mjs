@@ -162,10 +162,9 @@ const manifest = [
     note: "needs a pull-request body; locally it does nothing useful.",
   },
   {
-    gate: "no-inherited-routes",
+    gate: "pnpm test:no-inherited-routes",
     stage: "fast",
-    run: null,
-    why: "tests/permissions/no-inherited-integration-routes.test.ts is #6's and #7's to write (docs/04-engineering/testing-strategy.md § Permission tests). It runs under `pnpm test:permissions` once it exists.",
+    run: ["pnpm", "test:no-inherited-routes"],
   },
   { gate: "pnpm test", stage: "fast", run: ["pnpm", "test"] },
   {
@@ -204,7 +203,7 @@ const manifest = [
     gate: "check:bundle-size",
     stage: "fast",
     run: null,
-    why: "G11's budgets are not written down anywhere yet, and there is no portal bundle to measure.",
+    why: "G11's performance thresholds are defined, but the app still has one combined web bundle and no seeded work-list/detail journeys to measure.",
   },
   {
     gate: "helm lint + helm template",
@@ -251,14 +250,14 @@ const manifest = [
   {
     gate: "pnpm test:visual",
     stage: "full",
-    run: null,
-    why: "Playwright screenshots are selected for G8, but deterministic screen/data fixtures and snapshot acceptance scope are not yet defined.",
+    run: ["pnpm", "test:visual"],
+    note: "checks in-repo Playwright baselines for every exported UI Storybook story and deterministic fixtures for each inventory route marked in progress or complete; new stories and active route rows require baselines in the same change.",
   },
   {
     gate: "pnpm test:perf",
     stage: "full",
     run: null,
-    why: "no Playwright suite and no performance budgets (G11).",
+    why: "the G11 thresholds exist, but a deterministic performance journey and separate agent/portal bundles are still prerequisites.",
   },
 ];
 

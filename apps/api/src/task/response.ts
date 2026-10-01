@@ -25,8 +25,17 @@ export const taskSchema = z
     startDate: nullableResponseTimestamp,
     dueDate: nullableResponseTimestamp,
     createdAt: responseTimestamp,
+    version: z.number().int().min(1),
   })
   .openapi("Task");
+
+export const taskVersionConflictSchema = z
+  .object({
+    message: z.string(),
+    assertedVersion: z.number().int(),
+    currentVersion: z.number().int(),
+  })
+  .openapi("TaskVersionConflict");
 
 export const taskWithAssigneeSchema = taskSchema
   .extend({
@@ -68,6 +77,7 @@ export const boardTaskSchema = z
     dueDate: nullableResponseTimestamp,
     position: z.number().nullable(),
     createdAt: responseTimestamp,
+    version: z.number().int().min(1),
     userId: z.string().nullable(),
     assigneeName: z.string().nullable(),
     assigneeId: z.string().nullable(),
@@ -120,7 +130,17 @@ export const boardSchema = z
   .openapi("BoardResponse");
 
 export const bulkResultSchema = z
-  .object({ success: z.boolean(), updatedCount: z.number() })
+  .object({
+    success: z.boolean(),
+    updatedCount: z.number(),
+    results: z.array(
+      z.object({
+        taskId: z.string().optional(),
+        success: z.boolean(),
+        error: z.string().optional(),
+      }),
+    ),
+  })
   .openapi("BulkTaskResult");
 
 export const moveTaskResultSchema = z
@@ -144,6 +164,7 @@ export const taskExportSchema = z
     tasks: z.array(
       z
         .object({
+          version: z.number().int().min(1),
           title: z.string(),
           description: z.string(),
           status: z.string(),
