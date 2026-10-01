@@ -91,12 +91,18 @@ describe("resolveStaticRoot", () => {
 
 describe("static file serving", () => {
   let staticRoot: string;
+  let privateFile: string;
 
   beforeAll(() => {
     // A throwaway fixture standing in for `apps/web/dist`, so these tests
     // are deterministic regardless of whether the real web app has been
     // built in this environment.
     staticRoot = mkdtempSync(join(tmpdir(), "taskdesk-static-serving-"));
+    privateFile = join(
+      staticRoot,
+      "..",
+      "taskdesk-private-outside-static-root.txt",
+    );
     mkdirSync(join(staticRoot, "assets"), { recursive: true });
     writeFileSync(
       join(staticRoot, "index.html"),
@@ -106,10 +112,12 @@ describe("static file serving", () => {
       join(staticRoot, "assets", "app.js"),
       "console.log('asset-marker');",
     );
+    writeFileSync(privateFile, "private-marker");
   });
 
   afterAll(() => {
     rmSync(staticRoot, { recursive: true, force: true });
+    rmSync(privateFile, { force: true });
   });
 
   it("serves a real static asset with a reasonable content-type", async () => {
@@ -155,6 +163,32 @@ describe("static file serving", () => {
 
     expect(response.status).toBe(404);
     await expect(response.text()).resolves.not.toContain("index-marker");
+  });
+
+  it("does not serve private bytes through encoded traversal or obfuscated asset paths", async () => {
+    const { app } = createApp({ staticRoot });
+
+    for (const path of [
+      "/%2e%2e/taskdesk-private-outside-static-root.txt",
+      "/assets/%2Fapp.js",
+      "/static/%61dmin/private.js",
+    ]) {
+      const response = await app.request(path);
+      const body = await response.text();
+      expect(body).not.toContain("private-marker");
+      expect(body).not.toContain("asset-marker");
+    }
+  });
+
+  it("keeps malformed API asset paths behind the authenticated API router", async () => {
+    const { app } = createApp({ staticRoot });
+
+    for (const path of ["/api/%2Fapp.js", "/api/%61dmin/private.js"]) {
+      const response = await app.request(path);
+      expect(response.status).toBe(401);
+      expect(response.headers.get("content-type")).not.toContain("text/html");
+      await expect(response.text()).resolves.not.toContain("index-marker");
+    }
   });
 
   it("skips static serving gracefully when no build is found, without crashing", async () => {
