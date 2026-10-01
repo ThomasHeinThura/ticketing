@@ -176,7 +176,12 @@ organisation FK and the SCIM link cannot live in `config jsonb`; non-OIDC auth p
 | `provisioning_event` | `identity_connection_id`, `scim_connection_id` null, `external_identity_id` null, `kind` (`user.created`\|`user.updated`\|`user.deactivated`\|`user.reactivated`\|`group.mapping_changed`\|`group.member_added`\|`group.member_removed`\|`request.denied`\|`auth.failed`\|`token.rotated`\|`token.revoked`\|`connection.changed`\|`sync.failed`), `outcome`, `detail jsonb` (structured, **never secrets, never raw tokens**), `actor_type`, `trace_id`, `created_at`. The provisioning ledger; events that change authority, reach or configuration also write `audit_log` |
 
 The proposed grant ledger makes provenance explicit without changing the single-role RBAC
-contract. For each `(person_id, scope, scope_id)`, a valid active direct grant alone wins;
+contract. The current-source validity and all-write commit/projection invariant, reconciliation
+matrix, and total lock/retry protocol are owned by [IP-22](../03-features/identity-provisioning.md);
+this table defines the storage shape, not a second writer algorithm. Any IP-22 retirement of a
+SCIM grant also revokes its linked group-member history and repairs that row's effective
+membership pointer in the same transaction. For each
+`(person_id, scope, scope_id)`, a valid active direct grant alone wins;
 otherwise the external grant with greatest role rank wins. At an equal rank,
 `scim_group > oidc_group > jit_default` only when `role_id` is the same. Two different
 role ids tied at the highest rank suppress the external effective membership and produce an

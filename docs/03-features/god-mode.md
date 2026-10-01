@@ -154,7 +154,10 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
   and forbidden capabilities. Every OIDC mapping create/edit/enable/disable is elevated,
   session-only and audited; its separate connection-scoped API uses a five-minute,
   single-use PA-15 operation binding. OIDC mapping selection/open state is represented in
-  the screen URL. SCIM mapping elevation continues to follow IP-6. Disabling/changing an
+  the screen URL. Every SCIM administration PATCH is proposed as route-wide elevated and
+  session-only, but is not usable until issue [#561](https://github.com/ThomasHeinThura/ticketing/issues/561)
+  defines its strict DTO, parent-version CAS and dedicated PA-15 binding; a mounted write
+  fails closed with `403 step_up_unavailable` meanwhile. Disabling/changing an
   OIDC mapping retires only its grants and invalidates authority after
   commit. Re-enabling an OIDC mapping requires a later validated OIDC login through that
   connection with complete matching groups and current admission; SCIM cannot restore OIDC
@@ -162,6 +165,9 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
   lower enabled agent-connection role ceiling follows the source-scoped transaction in
   [IP-3/IP-22](identity-provisioning.md), retiring only this connection's above-ceiling
   JIT/OIDC/SCIM grants and recomputing effective authority.
+  JIT policy/default changes, mapping eligibility, role edits and other affected lifecycle
+  changes follow IP-22's shared validity invariant and lock/retry protocol; this screen does
+  not define a separate grant writer.
   Existing sessions remain valid and use recomputed stored authority after cache invalidation
   (30-second bound if lost); this does not revoke sessions. Neither source can grant
   `instance:admin` or `sees_all`. Show the lifecycle
@@ -408,7 +414,7 @@ POST   /api/instance/identity-connections/{id}/oidc-group-mappings instance:admi
 PATCH  /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId} instance:admin E (session-only; PA-15 operation-bound step-up)
 POST   /api/instance/identity-connections/{id}/test               instance:admin      (audited even unsaved)
 POST   /api/instance/identity-connections/{id}/scim               instance:admin  E
-PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E*  (*E when a mapping grants staff access, a role above member, or reach — IP-6)
+PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E  (route-wide; unusable until strict DTO/CAS/dedicated PA-15 contract in issue #561)
 POST   /api/instance/identity-connections/{id}/scim/rotate-token  instance:admin  E
 POST   /api/instance/identity-connections/{id}/scim/revoke-token  instance:admin  E
 POST   /api/instance/identity-connections/{id}/scim/test          instance:admin

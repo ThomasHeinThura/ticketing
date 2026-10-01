@@ -429,7 +429,11 @@ The proposed provenance ledger and effective-membership projection are specified
 [data-model.md](data-model.md) §2 and [RBAC](rbac.md). They require
 [ADR 0015](adr/0015-membership-grant-provenance.md), which remains Proposed pending Thomas's
 approval. In the target, each source adds/retires only its own grants; the projection chooses
-one role without capability union. OIDC reevaluation on connection A is not evidence about
+one role without capability union. Every connection/mapping/JIT/role-policy write must also
+preserve the shared IP-22 current-source validity and projection invariant, including
+role-priority changes with no grant retirement; see
+[identity-provisioning.md](../03-features/identity-provisioning.md) `IP-22`. OIDC reevaluation
+on connection A is not evidence about
 an explicitly linked connection B, so upstream removal on B is observed only at B's next
 validated login, SCIM update, or administrative disable/change. Global SCIM deactivation is
 the defined exception: all external grants for that inactive person retire. The 30-second

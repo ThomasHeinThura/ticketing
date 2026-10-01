@@ -108,16 +108,26 @@ method cannot be verified, return `403 step_up_unavailable` and do not rotate. S
 ### Identity-connection configuration compare-and-set
 
 `PATCH /api/instance/identity-connections/{id}` carries the connection's expected positive
-safe-integer `configVersion` with the configured fields. Under the `IP-22` connection-first
-lock order, compare it with `identity_connection.config_version`; a stale version returns
+safe-integer `configVersion` with the configured fields. Under the `IP-22` total lock order,
+compare it with `identity_connection.config_version`; a stale version returns
 `409 version_conflict` with only the current safe version and changes nothing. Every
 committed connection-configuration mutation advances the version exactly once. In
-particular, lowering an enabled agent connection's `max_role_rank` applies the `IP-3`/`IP-22`
-grant retirement, projection, audit/provisioning and event/outbox changes in the same CAS
-transaction. It cannot race a mapping write, OIDC login, SCIM synchronization or connection
-disable into recreating above-ceiling authority. This ordinary connection update is not a
-new PA-15 operation; the two OIDC mapping routes below retain their separate operation-bound
-proof.
+particular, changing JIT enabled/default-role/target policy and lowering an enabled agent
+connection's `max_role_rank` apply the `IP-22` source-scoped retirement, projection,
+audit/provisioning and existing event/outbox changes in the same CAS transaction. The
+shared lock/retry protocol prevents racing a mapping write, OIDC login, SCIM synchronization,
+role edit or connection disable into committing stale authority. This ordinary connection
+update is not a new PA-15 operation; the two OIDC mapping routes below retain their separate
+operation-bound proof.
+
+The separate administration route `PATCH /api/instance/identity-connections/{id}/scim` has
+a proposed route-wide `instance:admin`, `elevated: true`, `sessionOnly: true` policy. Its
+strict request/response DTO, edit/omission semantics, parent `config_version` CAS, and
+dedicated PA-15 route/body/version binding are not specified by this contract. They are an
+open owner obligation tracked in [issue #561](https://github.com/ThomasHeinThura/ticketing/issues/561).
+Do not infer an operation key or reuse an OIDC/metrics proof. Until that contract is
+specified, a mounted SCIM administration write fails closed with the existing
+`403 step_up_unavailable` response and makes no configuration or grant mutation.
 
 ### OIDC group-mapping administration
 
@@ -228,9 +238,8 @@ a new challenge for the current version and exact request. An unavailable requir
 or SSO verifier returns `403 step_up_unavailable` without mutation. This proof is not the
 metrics rotation operation and does not create a session-wide freshness window.
 
-In one write transaction, use the `IP-22` lock order: lock the connection first, then
-mapping and role rows, affected external identities, and person/scope keys in stable order;
-revalidate mapping, role and rank under those locks.
+In one write transaction, use the shared `IP-22` total lock order and closure
+rediscovery/retry; revalidate caller authority, mapping, role and rank under those locks.
 Create makes no grant; a later validated OIDC login must observe the group claim. Disable,
 role change or target change retires only active OIDC grants from that mapping, recomputes
 each affected one-role effective membership, writes the existing

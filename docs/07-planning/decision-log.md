@@ -5,6 +5,42 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · Identity grant validity is commit-time; SCIM administration PATCH is route-wide elevated
+
+**Decision:** use `IP-22` as the single proposed source-validity and effective-projection
+invariant for every TaskDesk-controlled connection-policy, mapping-eligibility, role-eligibility
+or role-priority write. At commit, each affected active external grant must satisfy current
+source, connection, mapping, scope, role and ceiling rules; the stored effective membership
+must be recomputed from all remaining valid sources, including priority-only changes with no
+retirements. Retire source history append-preservingly; a retired external grant returns only
+after fresh evidence from that same source. Role/config/provider writers use the shared total
+lock order, closure re-read and full-transaction retry in IP-22. Preserve direct-grant
+independence, source isolation, the existing one-role projection, and the distinction between
+authority-cache invalidation and session revocation. No new schema, capability or event key is
+introduced by this proposed contract. ADR-0015 remains Proposed.
+
+The existing `PATCH /api/instance/identity-connections/{id}/scim` administration route is
+proposed as unconditionally `instance:admin`, elevated and session-only for every write.
+It is not usable until its owner defines the strict DTO/edit semantics, parent
+`identity_connection.config_version` compare-and-set and dedicated PA-15 operation binding.
+Until that contract exists, any mounted write must fail closed with `403 step_up_unavailable`
+and make no mutation. [Issue #561](https://github.com/ThomasHeinThura/ticketing/issues/561)
+tracks the owner obligation. Do not infer an operation key or reuse OIDC/metrics proof.
+
+**Why:** the current contract left materialized JIT grants or role winners stale after policy
+and rank changes, while conditional elevation on one PATCH route depended on request-body
+semantics that were not specified. One commit-time invariant closes the repeated lifecycle
+class; route-wide elevation removes a body-selected policy branch. The missing SCIM proof
+contract remains explicit rather than being guessed.
+
+**Authorization and status:** selected under Thomas's standing recommended-decisions
+authorization. This entry does not approve ADR-0015, close owning review rows 81–82, satisfy
+Thomas's finished-spec read, waive a gate, or claim implementation, runtime tests, Entra or
+browser evidence, independent reviews, H1–H6 or P3 acceptance. See [IP-22](../03-features/identity-provisioning.md)
+and [ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md).
+
+**Recorded by:** orchestrator, 2026-10-02.
+
 ### 2026-10-02 · Entra app-role admission applies to every Entra login
 
 **Decision:** extend `IP-27`'s exact Entra app-role and signed `acct=0` admission predicate

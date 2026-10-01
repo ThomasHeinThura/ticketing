@@ -125,10 +125,15 @@ is required and has not been granted. These are target contracts, not implemente
   **elevated, audited** actions. Every OIDC group-mapping create, edit, enable or disable
   is also elevated and audited, using the fixed route policies and operation-bound step-up
   in [api-design.md](../01-architecture/api-design.md#oidc-group-mapping-administration).
-  SCIM group-mapping changes remain elevated when they create staff access, grant above
-  `member`, change reach, or would grant instance authority
-  ([rbac.md](../01-architecture/rbac.md#elevated-and-audited-actions--the-single-list)).
-  This OIDC rule is unconditional; the SCIM thresholds do not relax it.
+  Every write through the existing `PATCH /api/instance/identity-connections/{id}/scim`
+  administration route is unconditionally `instance:admin`, elevated and `sessionOnly`,
+  including settings, lifecycle, mapping, display-only and customer changes. This route-wide
+  policy covers the prior conditional triggers without body-selected elevation. The route is
+  not yet a usable elevated operation: its strict DTO, parent-version CAS and dedicated
+  PA-15 binding are undefined. Issue [#561](https://github.com/ThomasHeinThura/ticketing/issues/561)
+  owns that separate API/proof contract; until completed, any mounted write fails closed
+  with `403 step_up_unavailable` and makes no mutation. OIDC mapping writes remain
+  unconditionally elevated and use their already-defined operation bindings.
   Mapping to `instance:admin` or `sees_all` is not elevated — it is **impossible**: the
   mapping editor does not offer it and the server refuses it.
 
@@ -342,55 +347,80 @@ protocol code; only the credential check reuses the platform.
   staff roles at or below `max_role_rank`. No group can grant `instance:admin` or
   `sees_all`; no group can create roles or capabilities; no group can add anyone to another
   organisation.
-- `IP-22` Group membership changes are symmetric and source-isolated. Each SCIM group
-  contribution has a `membership_grant` linked from `scim_group_member`; removal retires
-  only that mapping's grant, then recomputes the effective membership. Direct, OIDC, other
-  SCIM-group, and other-connection grants are untouched. A source removal never deletes an
-  effective row still justified by another valid grant.
+- `IP-22` Owns the shared source-validity and projection invariant for **every
+  TaskDesk-controlled write** to connection grant policy, mapping eligibility, role
+  eligibility or role priority: at commit, every affected active grant is valid under the
+  new committed configuration and every affected effective membership is the one-role
+  projection of all remaining valid grants. A policy or role write cannot commit while
+  leaving an affected grant or winner stale. Invalid source rows retire append-preservingly;
+  priority-only changes still recompute the winner when no source retires. Retired external
+  grants return only after fresh matching evidence from their own source. Authorization
+  reads use the stored effective projection and current role rows, never token claims or an
+  unprojected grant union.
 
-  All authority-changing writers use this lock order: the `identity_connection` row first;
-  affected mapping and role rows in stable id order; affected `external_identity` rows in
-  stable id order; then affected `(person_id, scope, scope_id)` effective-membership keys in
-  stable order. This applies to OIDC login reconciliation (`IP-28`), SCIM synchronization,
-  mapping edits (`IP-34`), connection disable, and the `max_role_rank` decrease below.
-  Revalidate the connection, source, mapping, role and current rank under those locks. A
-  competing login or SCIM update therefore cannot recreate a grant that became ineligible
-  before the configuration transaction commits.
+  For external grants, the locked writer's single `valid_now(grant, locked_rows)` predicate
+  requires an active person and source; an enabled, scope-eligible connection; a current
+  matching JIT default or enabled same-source mapping; and an existing role on the correct
+  side/scope that is still the configured/mapped role, has no externally forbidden
+  capability, and (for staff) is within the connection's current `max_role_rank`. External
+  authority always has
+  `sees_all = false` and never includes `instance:admin`. Direct grants follow their own
+  role rules and are independent of external connection, JIT and mapping state. IP-15's
+  global SCIM deactivation remains the explicit person-wide lifecycle exception: under
+  `keep_memberships`, retained direct grants/effective rows are dormant and not authorization
+  inputs while the person is inactive; under `end_memberships`, direct grants also retire.
+  Admission is validated-login evidence, not a claim re-read by an administrative writer;
+  IP-27 observes upstream Entra app-role removal at the next validated login. Missing or
+  invalid stored role/config/source state fails closed and is not projected.
 
-  A committed decrease to an enabled agent connection's `max_role_rank` retires, in that
-  same `PATCH /api/instance/identity-connections/{id}` `configVersion` compare-and-set
-  transaction, every
-  active `jit_default`, `oidc_group`, and `scim_group` grant owned by the connection whose
-  current role rank exceeds the new ceiling. It does not retire direct grants, other
-  connections' grants, or grants at/below the new ceiling. Retire append-preservingly with
-  the existing `mapping_changed` reason, which here also means a connection grant-policy or
-  target-eligibility change. For each retired SCIM grant, mark its `scim_group_member`
-  history revoked and clear its effective-membership pointer. Keep now-ineligible mappings
-  and the JIT default visible to administrators with an ineligibility warning; every grant
-  writer refuses them until corrected. A later ceiling increase never un-retires history:
-  OIDC/JIT needs a later validated login through that connection and SCIM needs fresh
-  authenticated evidence.
+  Every writer uses one total lock protocol: discover candidate ids without acting on them;
+  lock role rows by id, identity-connection rows by id, mapping/SCIM-connection rows by id,
+  external identities by id, then `(person_id, scope, scope_id)` projection keys in stable
+  order. Include old and proposed role ids and all connections referencing an edited role.
+  Under those locks, re-read the role→connection→mapping/grant closure and current versions;
+  if an affected id/version was absent from the lock set, roll back and retry the whole
+  transaction with the expanded set rather than acquiring a lower-order row out of order.
+  Revalidate caller authority/rank and the final source/role predicate under lock. This
+  applies to role edits, connection configuration/lifecycle, OIDC login, SCIM sync, mapping
+  edits and eligible-scope lifecycle. The unique effective key remains the final race
+  backstop; failed CAS/transactions produce no partial grant, projection or session issue.
 
-  Recompute every affected effective membership in the same transaction from all remaining
-  currently valid grants using the one-role selection in ADR 0015; update surviving SCIM
-  membership pointers and clear pointers for retired history. Advance `config_version`,
-  write the existing `connection.changed` provisioning event with bounded changed keys and
-  grant-delta counts/reasons, and write safe `audit_log` evidence under AU-14. Write the
-  existing `identity_connection.changed` domain event/outbox row atomically under EV-1; no
-  new event key or sensitive role-claim detail is introduced. An outbox failure rolls back;
-  audit failure follows AU-14's nested-savepoint/reporting rule. Publish authority-cache
-  invalidation only after commit. Existing sessions on the still-enabled connection remain
-  valid and resolve the newly stored effective authority on the next request after
-  invalidation; if it is lost, the 30-second authority-cache bound applies. A rank decrease
-  does not revoke sessions; disabling the connection remains the separate immediate
-  session-revocation transition.
+  In that transaction, retire invalid grants with existing reasons, repair/revoke linked
+  `scim_group_member` history and pointers, and recompute every affected projection from
+  all valid sources—even with zero retirements. JIT disable or default-role/target change
+  retires this connection's old `jit_default` grants with `mapping_changed`; re-enable or a
+  changed default creates none until a later validated same-connection OIDC login with
+  current IP-27 admission. A proposed JIT target outside the connection/role/scope rules is
+  refused. Keep now-ineligible defaults and mappings visible with an ineligibility warning;
+  every writer refuses them until corrected. A lowered `max_role_rank` retires only this
+  connection's above-ceiling JIT/OIDC/SCIM grants; increasing it revives none. Mapping
+  disable/target/role change and scope ineligibility retire only that same mapping/source.
+  For permitted role
+  rank edits, sweep all referencing connections, retire newly above-ceiling/otherwise
+  invalid external grants, and reproject all direct/external holders; rank priority changes
+  reproject even without retirement. A resulting capability set must pass RL-3/4/6/7/14
+  and external forbidden-capability guards; refuse an edit that makes an externally mapped
+  role grant `instance:admin`, `sees_all`, or an impermissible side/scope. A valid capability
+  edit changes current authority for all direct and external holders through the current role
+  row and invalidates each affected authority cache; it does not need fresh IdP evidence.
+  Display-only name/description edits do not change authority. Role scope, side, workspace
+  and immutable identity keys remain uneditable under RL-14. Role deletion retains RL-8
+  reassignment and existing `ON DELETE RESTRICT` behavior. Connection disable and global
+  SCIM deactivation keep their separate session-revocation rules; ordinary role/policy
+  changes leave sessions valid.
 
-  For every authority-changing write, commit the grant delta, projection and existing
-  provisioning/audit rows together under the AU-14 audit-failure exception; then publish
-  cache invalidation after commit. A failed transaction leaves prior committed authority
-  intact. The ledger/projection contract is proposed in
-  [ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md), pending Thomas's
-  approval.
+  Commit source deltas, projection, safe bounded existing provisioning/audit evidence, and
+  already-required domain-event/outbox rows atomically under EV-1/AU-14. Reuse existing
+  provisioning events `group.mapping_changed` / `connection.changed` as applicable and
+  existing audit actions `role.updated` / `identity_connection.changed`; the
+  `identity_connection.changed` outbox remains only where its existing contract requires it.
+  Add no table, capability, reason or event key. Outbox
+  failure rolls back; audit append follows AU-14's nested-savepoint/reporting exception.
+  Invalidate authority cache after commit; if invalidation is lost, the documented 30-second
+  authority-cache bound applies. This changes current effective authority after invalidation,
+  not the validity of a still-live session. The proposed ledger/projection storage choice is
+  in [ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md); this
+  transition invariant and matrix are owned here, pending Thomas's ADR approval.
 - `IP-23` Nested-group resolution beyond what Entra sends directly is out of scope.
 - `IP-28` **OIDC group grants are re-derived on every validated login through that
   connection.** After `IP-7`/`IP-26` token validation and `IP-27` admission, resolve the
@@ -483,7 +513,7 @@ protocol code; only the credential check reuses the platform.
 | Create, edit, enable, disable, delete a connection | `instance:admin` + elevated; positive `configVersion` CAS on configuration writes |
 | Create, rotate, revoke a SCIM token | `instance:admin` + elevated |
 | Create, edit, enable or disable an OIDC group mapping | `instance:admin`; always elevated, session-only and operation-bound for POST/PATCH under `IP-34`, including customer, display-snapshot-only and non-authority changes |
-| Edit SCIM group mappings | `instance:admin`; elevated when a mapping change grants staff access, changes role/scope, exceeds `member`, or changes reach (`IP-6`); otherwise follows the existing conditional SCIM policy |
+| Edit SCIM administration settings or group mappings | `instance:admin`; every PATCH is elevated and session-only; not usable until strict DTO, shared version CAS and dedicated PA-15 proof contract in issue [#561](https://github.com/ThomasHeinThura/ticketing/issues/561) are specified; fail closed with `403 step_up_unavailable` meanwhile (`IP-6`) |
 | Call `/scim/v2/*` | The SCIM bearer token — `delegated: scim`, organisation and portal from the token |
 | Sign in through a connection | Anyone the connection's portal and organisation admit |
 
@@ -509,7 +539,7 @@ POST   /api/instance/identity-connections/{id}/test               instance:admin
 POST   /api/instance/identity-connections/{id}/scim               instance:admin  E  (create SCIM connection + first token)
 POST   /api/instance/identity-connections/{id}/scim/rotate-token  instance:admin  E
 POST   /api/instance/identity-connections/{id}/scim/revoke-token  instance:admin  E
-PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E*  (mappings, lifecycle policy, enabled — *E when a mapping grants staff access, a role above member, or reach; IP-6)
+PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E  (route-wide; not usable until strict DTO/CAS/dedicated PA-15 contract in issue #561; otherwise fail closed)
 POST   /api/instance/identity-connections/{id}/scim/test          instance:admin
 GET    /api/instance/identity-connections/{id}/events             instance:admin      (provisioning events, paged)
 
@@ -536,7 +566,7 @@ filtered to `organisation_id`; there is one implementation.
 | OIDC groups absent, malformed, or overage on a valid token | Retire only that identity's previous OIDC group grants; retain only permitted JIT default and independent valid grants; warn on overage; no Graph query |
 | Entra admission fails for an existing JIT-disabled identity | A valid protocol token missing the exact configured app role or signed `acct=0` denies a new session and retires only that identity's OIDC/JIT grants; invalid/unverified tokens or invalid server configuration mutate no grants; direct/SCIM/other-connection grants remain |
 | Enabled agent connection lowers `max_role_rank` below active grants | Retire only that connection's JIT/OIDC/SCIM grants above the new ceiling and recompute effective authority in the config-version transaction; direct/other-connection grants survive; sessions remain valid, with the 30-second cache fallback |
-| Concurrent OIDC login and SCIM group removal affect one person/scope | Use the `IP-22` connection→mapping/role→identity→membership-key lock order; commit source-specific grant deltas and one recomputed effective row atomically |
+| Concurrent OIDC login and SCIM group removal affect one person/scope | Use the total role→connection→mapping/SCIM-connection→identity→membership-key order, rediscover/re-read closure under lock and retry the full transaction if it expands; commit source-specific grant deltas and one recomputed effective row atomically (`IP-22`) |
 
 ## Out of scope (first release)
 One more rule belongs with these, because it is the reason several of them can be simple:
@@ -606,12 +636,15 @@ listed in [testing-strategy.md](../04-engineering/testing-strategy.md).
    history or duplicate a person/membership
 12-group-maps-only-to-permitted-role-and-scope.test.ts — OIDC object-id and SCIM mappings obey
    scope/rank/forbidden-role guards; two group sources project one role; equal-rank distinct-role conflict fails
-   closed; includes PostgreSQL concurrent OIDC login and SCIM removal for one person/scope, asserting one effective
-   membership and source-specific final grants; rejects re-enable by the opposite source; and proves an enabled
-   connection ceiling decrease retires only its above-ceiling JIT/OIDC/SCIM grants, recomputes projection, and
-   cannot be raced by login or SCIM reconciliation
+   closed; includes PostgreSQL concurrent OIDC login, SCIM removal, connection edits and role edits for one
+   person/scope, asserting one effective membership and source-specific final grants; rejects re-enable by the
+   opposite source; proves JIT disable/default-role or target change retires only that connection's old JIT grant
+   without revoking the session and re-enable waits for fresh same-connection evidence; and proves an enabled
+   connection ceiling decrease and role-rank increase/swap across multiple referencing connections retire only
+   invalid external grants and recompute the winner even when nothing retires
 13-nothing-grants-instance-admin-automatically.test.ts — direct admin/`sees_all` survives group removal; external
-   mappings cannot grant either or overwrite a direct role
+   mappings cannot grant either or overwrite a direct role; allowed role-capability edits affect direct and
+   external holders after cache invalidation, while forbidden resulting external capabilities are rejected
 14-token-rotation-invalidates-old-and-never-leaks.test.ts — token rotation is unchanged and SCIM credentials cannot
    prove OIDC identity
 15-oidc-protocol-failures-block-sign-in.test.ts — negative subcases include PKCE mismatch,
@@ -622,8 +655,9 @@ listed in [testing-strategy.md](../04-engineering/testing-strategy.md).
    admitted token retire only OIDC group grants, leaving permitted JIT and independent grants
 16-same-email-second-idp-does-not-autolink.test.ts — explicitly linked connections reconcile and retire only their
    own grants; opposite-source evidence cannot re-enable or reconcile another grant source
-17-every-identity-event-is-audited.test.ts — grant add/retire, mapping and denial evidence is safe and contains no
-   raw claim list
+17-every-identity-event-is-audited.test.ts — grant add/retire, mapping, role/config transition and denial evidence
+   is safe and contains no raw claim list; provisioning/audit/outbox writes share the transaction under AU-14/EV-1,
+   with outbox failure rolling back grants/projection and audit failure following its nested-savepoint exception
 18-placeholder-claim-requires-local-verification.test.ts — placeholder claim cannot acquire an OIDC grant or bypass
    subject binding
 19-scim-discovery-documents.test.ts — discovery behavior is unchanged
@@ -633,12 +667,12 @@ listed in [testing-strategy.md](../04-engineering/testing-strategy.md).
    input
 23-connection-disable-revokes-sessions.test.ts — immediately retire only that connection's external grants and
    sessions, preserving direct/other-source grants; also covers the distinct enabled-connection rank-decrease
-   transaction, source-scoped retirement, effective-role recomputation, cache invalidation, and non-revocation of
-   still-valid sessions
+   transaction, JIT disable/default-role/target transitions, source-scoped retirement, effective-role
+   recomputation after zero or more retirements, cache invalidation, and non-revocation of still-valid sessions
 24-oidc-no-autolink-config-read.test.ts — constructed config has no auto-link
 25-session-revocation-immediate.test.ts — authority-cache invalidation and session revocation follow their distinct
-   documented SLAs; a rank decrease changes stored authority without revoking the session, and lost invalidation
-   remains bounded by 30 seconds
+   documented SLAs; rank/role-priority/capability and JIT policy changes update stored authority without revoking
+   the session, outbox rollback leaves prior authority intact, and lost invalidation remains bounded by 30 seconds
 ```
 
 **All 25 acceptance tests are P3 gate criteria and must pass against a real Microsoft Entra
@@ -684,6 +718,22 @@ verifier fail-closed behavior, atomic
    mapping-derived grant is retired source-specifically. These remain planned
 subcases under tests 04, 09, 12, 13, 15, 16, 17 and 23; the 25 test names are unchanged and
 none of this evidence is claimed implemented or run.
+
+After issue #561 specifies the SCIM administration DTO and PA-15 operation, tests 09/12
+also retain planned negatives for API-key/MCP/impersonation `403 session_required`, missing
+or unavailable proof, wrong OIDC/metrics operation, wrong connection, changed canonical
+body, stale parent version, expiry, replay and concurrent edit; failures make no mutation or
+grant change, and stale CAS rolls proof consumption back. No operation key or DTO is defined
+by this proposal.
+
+The shared IP-22 invariant adds planned subcases to the same named tests: 12 covers JIT
+disable/default-role change and re-enable evidence, stale/expanded lock-set retry, simultaneous
+mapping/provider/config edits, role rank above one of two connection ceilings, rank swap/tie
+and no-retirement reprojection, and SCIM pointer/history repair; 13 covers direct precedence
+and role-capability edits; 17 covers transactional existing event/audit/outbox behavior; and
+23/25 cover source-only retirement, recomputation, cache timing and the still-live session.
+The roles spec RL-9 carries matching planned role-PATCH coverage. These are requirements only;
+they add no acceptance-test name and are not implemented or run.
 
 The planned `tests/e2e/security/` negative E2E suite must cover state-changing GET,
 cookie-authenticated unsafe requests with a missing or mismatched `Origin`/`Referer`, and

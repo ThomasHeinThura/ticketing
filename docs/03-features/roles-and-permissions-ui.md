@@ -82,8 +82,16 @@ See [RBAC](../01-architecture/rbac.md) for the capability list and the built-in 
   click-level) and requires reassigning every holder first. The dialog lists them
   and offers a bulk reassignment.
 - `RL-9` Changing a role takes effect **immediately** for every holder, because authority
-  is resolved from the database on every request. The save dialog says so, with the
-  number of people affected: "This will change permissions for 14 people immediately."
+  is resolved from the current role row on every request. Role PATCH must use the shared
+  [IP-22 source-validity/projection invariant](identity-provisioning.md): lock and revalidate
+  the caller, role, every referencing connection, affected grants and holders; reject
+  forbidden resulting capabilities; retire external grants that no longer satisfy their
+  source/ceiling; and recompute every affected effective membership, including rank-priority
+  changes that retire no grant. Direct grants remain independent and retain precedence.
+  Immutable scope/side keys remain governed by RL-14, and role deletion keeps RL-8's
+  reassignment flow. Invalidate authority cache after commit; do not revoke sessions for
+  ordinary role edits. The save dialog says so, with the number of people affected: "This
+  will change permissions for 14 people immediately."
 - `RL-10` Every change writes an audit row recording which capabilities were added and
   removed.
 

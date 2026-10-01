@@ -55,10 +55,9 @@ evidence.
   enforces this exact discriminator shape. `system_backfill` is available only to the
   forward migration, never to an API request.
 - The writer validates current connection, mapping, person side, role scope, actual
-  resource-owning organisation, forbidden capabilities, and `max_role_rank` while holding
-  the `IP-22` connection-first lock order: connection, mapping and role rows in stable id
-  order, external identity, then effective membership keys in stable order. Cross-row rules
-  are not represented as if a SQL `CHECK` could enforce them.
+  resource-owning organisation, forbidden capabilities, and `max_role_rank` using the
+  shared [IP-22 source-validity invariant and total lock/retry protocol](../../03-features/identity-provisioning.md).
+  Cross-row rules are not represented as if a SQL `CHECK` could enforce them.
 - Every source addition or retirement preserves a grant row. A role or mapping change
   retires the old grant and inserts a new one; no in-place role escalation changes its
   provenance.
@@ -75,11 +74,14 @@ no external effective membership and show an operator-visible conflict for an
 administrator to resolve. Role-id sorting and capability union are forbidden. `sees_all`
 is true only when the selected direct grant explicitly carries it.
 
-The configuration-ceiling transition, source isolation, atomic projection/cache update,
-event/audit behavior and existing-session distinction are defined once in
-[IP-3 and IP-22](../../03-features/identity-provisioning.md); this proposal uses that rule
-for effective grant selection. A ceiling increase never restores retired grant history
-without fresh evidence from the source that owns it.
+The shared validity predicate, configuration/mapping/role transition matrix, lock-and-retry
+protocol, source isolation, atomic projection/cache update, event/audit behavior and
+existing-session distinction are defined once in
+[IP-22](../../03-features/identity-provisioning.md); this proposal uses that invariant for
+effective grant selection. Role-priority edits reproject all affected holders even when no
+grant retires, and a ceiling increase never restores retired grant history without fresh
+evidence from the source that owns it. ADR-0015 remains proposed and does not authorize
+implementation.
 
 The effective row has a unique `(person_id, scope, scope_id)` key. Before adding that
 constraint, migration work audits duplicates and requires a deterministic,
@@ -150,13 +152,15 @@ effective row. Removing one source never removes another source's valid grant.
   only from current SCIM groups or a later validated OIDC login; revoked history is never
   restored automatically.
 
-For every authority-changing write, lock affected external identities and effective
-membership keys; validate current source/mapping/role under those locks; commit grant deltas,
-the materialized projection, and safe provisioning/audit records together under the existing
-AU-14 audit-failure exception; then publish cache invalidation after commit. If invalidation
-is lost, the documented 30-second authority-cache bound remains. Session-table revocation is
-checked on the next request. A failed transaction issues no new OIDC session and publishes
-no partial grant state.
+For every authority-changing write, use IP-22's total lock order and closure rediscovery/
+retry; validate current caller, source/mapping/role and new configuration under those locks;
+commit grant deltas, the materialized projection, and safe provisioning/audit records
+together under the existing AU-14 audit-failure exception; then publish cache invalidation
+after commit. If invalidation is lost, the documented 30-second authority-cache bound
+remains. Ordinary role/policy edits change effective authority after invalidation but do not
+revoke a live session. Session-table revocation is checked on the next request for lifecycle
+transitions that explicitly revoke sessions. A failed transaction issues no new OIDC session
+and publishes no partial grant state.
 
 Use existing provisioning event keys `group.member_added`, `group.member_removed`,
 `group.mapping_changed`, `connection.changed`, `request.denied`, and `auth.failed`.
