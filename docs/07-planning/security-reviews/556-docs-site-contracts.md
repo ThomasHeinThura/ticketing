@@ -51,3 +51,32 @@ promotion, docs browser evidence, P0 completion and its separate Sol finalizer r
 The pre-existing CI prose route-count discrepancy (122 versus the checker's 123) is not changed
 or treated as a coverage exemption. Final note-only CI must pass all required contexts.
 No deployment, human approval, stage completion or quality-gate waiver is claimed.
+
+## Accepted-main composition confirmation
+
+**Reviewed head:** `e3420ce6ce0057b0c2da6cf560f6f7576df753b4`
+**Comparison base:** `6581f750dfc2121da6bd300ad1f05d6c02f0e55a`
+
+The normal composition has parents the original genuine-review note commit `28307908`
+and protected accepted main above. It imports only the accepted #542 dependency metadata
+and review note. All twelve previously reviewed docs-contract files remain byte-identical
+to source `4434ad78`; the net candidate diff against current main is thirteen documentation
+paths including this note, with no active application, workflow, dependency, image or
+deployment change attributable to #556.
+
+- **Independent ordinary GPT-6 Luna composition delta**, same reviewer A context:
+  [review 5382470066](https://github.com/ThomasHeinThura/ticketing/pull/556#pullrequestreview-5382470066),
+  **PASS**, no finding. It checked the landed delta, current base, unchanged full contract
+  files and accurate historical review note; the original two full ordinary reviews remain
+  recorded on their actual source.
+- **Independent GPT-6 Sol composition confirmation**, same independent reviewer context:
+  [review 5382518586](https://github.com/ThomasHeinThura/ticketing/pull/556#pullrequestreview-5382518586),
+  **CLEAR**, no composition finding. It verified exact head/base, both merge parents,
+  byte-identical contract files and the thirteen-path documentation-only current diff.
+  No existing authority or gate pass/fail semantics changed.
+
+Reports: `/private/tmp/pr556-e342-luna-delta-review.md` and
+`/private/tmp/pr556-e342-sol-delta-confirmation.md`. At the latter review snapshot, fourteen
+required contexts passed, G4/PostgreSQL were pending and the template check still needed
+this actual current-source binding. Final note-only CI remains a separate gate. The
+implementation, human-read, owning-closure and stage residuals above remain open.
