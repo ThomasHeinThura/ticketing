@@ -4,11 +4,14 @@ import {
   assertColdMainThreadJourneyOverlap,
   assertColdReportPrivacy,
   buildSanitizedColdReport,
+  COLD_CLEANUP_OPERATIONS,
+  COLD_CLEANUP_STATES,
   COLD_CLOCK_SUPPORTED_CHROMIUM_VERSION,
   COLD_CLOCK_TIMER_ALLOWANCE_MS,
   COLD_FAILURE_CODES,
   COLD_FAILURE_RECEIPT_MAX_BYTES,
   COLD_FAILURE_RECEIPT_PREFIX,
+  coldCleanupStatuses,
   coldDiagnosticFailure,
   createColdClockSample,
   createColdFailureReceipt,
@@ -18,8 +21,6 @@ import {
   hashedBasename,
   ownedColdDiagnosticFailureFields,
   parseColdFailureReceipt,
-  persistColdFailureReceipt,
-  relayColdFailureAfterCleanup,
   resolveColdFailureReceipt,
   translateColdNetworkTimestamp,
   translateColdTraceInterval,
@@ -160,8 +161,8 @@ function reportInput(overrides = {}) {
 function failureReceipt(overrides = {}) {
   const empty = unknownColdFailureReceipt("journey");
   return createColdFailureReceipt({
-    code: "journey-assertion",
-    stage: "journey",
+    childOutcome: "failed",
+    primary: { code: "journey-assertion", stage: "journey" },
     counts: {
       ...empty.counts,
       clockSamples: 1,
@@ -172,6 +173,7 @@ function failureReceipt(overrides = {}) {
       ...empty.flags,
       journeyAssertionsComplete: false,
     },
+    cleanup: { ...coldCleanupStatuses(), childReport: "ok" },
     ...overrides,
   });
 }
@@ -234,10 +236,11 @@ test("every closed failure code relays only its literal code and fixed stage", (
     });
     const empty = unknownColdFailureReceipt("unknown");
     const receipt = createColdFailureReceipt({
-      code,
-      stage: "unknown",
+      childOutcome: "failed",
+      primary: { code, stage: "unknown" },
       counts: empty.counts,
       flags: empty.flags,
+      cleanup: { ...coldCleanupStatuses(), childReport: "not-attempted" },
     });
     assert.equal(JSON.stringify(receipt).includes(hostile), false);
     assert.deepEqual(
@@ -258,13 +261,29 @@ test("failure receipt relay rejects hostile schemas, counts, flags, and oversize
     ),
   );
   const bad = [
-    changed({ code: "customer-supplied" }),
-    changed({ stage: "arbitrary stage" }),
+    changed({ primary: { code: "customer-supplied", stage: "journey" } }),
+    changed({
+      primary: { code: "journey-assertion", stage: "arbitrary stage" },
+    }),
     changed({ counts: { ...valid.counts, cpuNodes: -1 } }),
     changed({ counts: { ...valid.counts, cpuNodes: 50_001 } }),
     changed({ counts: { ...valid.counts, cpuNodes: Number.NaN } }),
     changed({ counts: { ...valid.counts, incompleteTrackedRequests: 3 } }),
     changed({ flags: { ...valid.flags, traceOverflow: "false" } }),
+    changed({ cleanup: { ...valid.cleanup, generatedSpec: "customer-label" } }),
+    changed({ cleanup: { ...valid.cleanup, scratch: "unknown" } }),
+    changed({ childOutcome: "customer-label" }),
+    changed({ primary: null }),
+    changed({
+      childOutcome: "passed",
+      primary: null,
+      flags: {
+        ...valid.flags,
+        journeyAssertionsComplete: true,
+        reportPrivacyPassed: true,
+      },
+      cleanup: { ...valid.cleanup, childReport: "unknown" },
+    }),
   ];
   for (const value of bad) assert.throws(() => createColdFailureReceipt(value));
   assert.throws(() =>
@@ -279,8 +298,8 @@ test("failure receipt relay rejects hostile schemas, counts, flags, and oversize
   assert.throws(() => parseColdFailureReceipt(Buffer.from(duplicateKey)));
 
   const fallback = unknownColdFailureReceipt("child-start");
-  assert.equal(fallback.code, "unknown");
-  assert.equal(fallback.stage, "child-start");
+  assert.equal(fallback.primary.code, "unknown");
+  assert.equal(fallback.primary.stage, "child-start");
   assert.ok(Object.values(fallback.counts).every((value) => value === null));
   assert.ok(Object.values(fallback.flags).every((value) => value === null));
   for (const absentOrInvalid of [
@@ -289,93 +308,37 @@ test("failure receipt relay rejects hostile schemas, counts, flags, and oversize
     Buffer.alloc(COLD_FAILURE_RECEIPT_MAX_BYTES + 1),
   ]) {
     const resolved = resolveColdFailureReceipt(absentOrInvalid, "child-start");
-    assert.equal(resolved.code, "unknown");
-    assert.equal(resolved.stage, "child-start");
+    assert.equal(resolved.primary.code, "unknown");
+    assert.equal(resolved.primary.stage, "child-start");
     assert.equal(JSON.stringify(resolved).includes("private"), false);
   }
 });
 
-test("failure relay removes report and scratch before one closed line; cleanup failure stays nonzero-safe", async () => {
-  const order = [];
-  let outputLine = "";
-  const hostile = new Error(
-    "https://private.invalid/?token=secret <body>private</body>",
+test("passed child cleanup failure is represented separately from a null primary", () => {
+  const cleanup = coldCleanupStatuses();
+  cleanup.generatedConfig = "failed";
+  const receipt = createColdFailureReceipt({
+    childOutcome: "passed",
+    primary: null,
+    counts: failureReceipt().counts,
+    flags: {
+      ...failureReceipt().flags,
+      journeyAssertionsComplete: true,
+      reportPrivacyPassed: true,
+    },
+    cleanup,
+  });
+  assert.equal(receipt.schemaVersion, 2);
+  assert.equal(receipt.primary, null);
+  assert.equal(receipt.cleanup.generatedConfig, "failed");
+  assert.throws(() =>
+    createColdFailureReceipt({ ...receipt, cleanup: coldCleanupStatuses() }),
   );
-  const relayed = await relayColdFailureAfterCleanup({
-    receipt: failureReceipt(),
-    removeReport: async () => {
-      order.push("report");
-    },
-    cleanupScratch: async () => {
-      order.push("scratch");
-    },
-    emitLine: async (line) => {
-      order.push("stdout");
-      outputLine += line;
-    },
-  });
-  assert.deepEqual(order, ["report", "scratch", "stdout"]);
-  assert.deepEqual(
-    parseColdFailureReceipt(
-      Buffer.from(outputLine.slice(COLD_FAILURE_RECEIPT_PREFIX.length).trim()),
-    ),
-    relayed,
-  );
-  assert.equal(outputLine.includes(hostile.message), false);
-
-  order.length = 0;
-  outputLine = "";
-  const cleanupReceipt = await relayColdFailureAfterCleanup({
-    receipt: failureReceipt(),
-    removeReport: async () => {
-      order.push("report");
-      throw hostile;
-    },
-    cleanupScratch: async () => {
-      order.push("scratch");
-    },
-    emitLine: async (line) => {
-      order.push("stdout");
-      outputLine += line;
-    },
-  });
-  assert.deepEqual(order, ["report", "scratch", "stdout"]);
-  assert.equal(cleanupReceipt.code, "cleanup");
-  assert.equal(outputLine.includes("private"), false);
-});
-
-test("child receipt persistence deletes output first, writes mode request, and redacts cleanup failures", async () => {
-  const order = [];
-  let encoded = "";
-  let reportExists = true;
-  const result = await persistColdFailureReceipt({
-    receipt: failureReceipt(),
-    removeReport: async () => {
-      order.push("remove-report");
-      reportExists = false;
-    },
-    writeReceipt: async (value, options) => {
-      order.push("write-receipt");
-      assert.equal(reportExists, false);
-      assert.deepEqual(options, { mode: 0o600, flag: "wx" });
-      encoded = value;
-    },
-  });
-  assert.deepEqual(order, ["remove-report", "write-receipt"]);
-  assert.deepEqual(parseColdFailureReceipt(Buffer.from(encoded)), result);
-
-  let cleanupEncoded = "";
-  const cleanup = await persistColdFailureReceipt({
-    receipt: failureReceipt(),
-    removeReport: async () => {
-      throw new Error("/private/path?token=secret");
-    },
-    writeReceipt: async (value) => {
-      cleanupEncoded = value;
-    },
-  });
-  assert.equal(cleanup.code, "cleanup");
-  assert.equal(cleanupEncoded.includes("/private/path"), false);
+  assert.equal(COLD_CLEANUP_OPERATIONS.length, 5);
+  assert.ok(COLD_CLEANUP_STATES.includes(receipt.cleanup.scratch));
+  const line = formatColdFailureReceiptLine(receipt);
+  assert.equal(line.startsWith(COLD_FAILURE_RECEIPT_PREFIX), true);
+  assert.ok(Buffer.byteLength(line, "utf8") < COLD_FAILURE_RECEIPT_MAX_BYTES);
 });
 
 test("cold report binds the exact source and emits only bounded diagnostic evidence", () => {

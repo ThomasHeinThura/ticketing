@@ -9,6 +9,19 @@ export const COLD_CLOCK_SUPPORTED_CHROMIUM_VERSION = "153.0.8010.12";
 export const COLD_CLOCK_REPORT_RESOLUTION_MS = 0.1;
 export const COLD_FAILURE_RECEIPT_MAX_BYTES = 2 * 1024;
 export const COLD_FAILURE_RECEIPT_PREFIX = "[hosted-cold-recording] failure ";
+export const COLD_CLEANUP_STATES = Object.freeze([
+  "not-attempted",
+  "ok",
+  "failed",
+  "unknown",
+]);
+export const COLD_CLEANUP_OPERATIONS = Object.freeze([
+  "childReport",
+  "parentReport",
+  "generatedSpec",
+  "generatedConfig",
+  "scratch",
+]);
 export const COLD_FAILURE_STAGES = Object.freeze([
   "prepare",
   "source-bind",
@@ -106,14 +119,39 @@ export function ownedColdDiagnosticFailureFields(error) {
   }
 }
 
-export function createColdFailureReceipt({ code, stage, counts, flags }) {
+function emptyColdCounts() {
+  return Object.fromEntries(
+    Object.keys(COLD_FAILURE_COUNT_BOUNDS).map((key) => [key, null]),
+  );
+}
+
+function emptyColdFlags() {
+  return Object.fromEntries(COLD_FAILURE_FLAG_KEYS.map((key) => [key, null]));
+}
+
+export function coldCleanupStatuses(defaultStatus = "not-attempted") {
+  if (!COLD_CLEANUP_STATES.includes(defaultStatus))
+    throw new Error("Invalid cleanup state.");
+  return Object.fromEntries(
+    COLD_CLEANUP_OPERATIONS.map((operation) => [operation, defaultStatus]),
+  );
+}
+
+export function createColdFailureReceipt({
+  childOutcome,
+  primary,
+  counts,
+  flags,
+  cleanup,
+}) {
   const receipt = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: "cold-recorder-failure",
-    code,
-    stage,
+    childOutcome,
+    primary,
     counts,
     flags,
+    cleanup,
   };
   validateColdFailureReceipt(receipt);
   const encoded = JSON.stringify(receipt);
@@ -125,28 +163,58 @@ export function createColdFailureReceipt({ code, stage, counts, flags }) {
 export function unknownColdFailureReceipt(stage = "unknown") {
   const safeStage = COLD_FAILURE_STAGES.includes(stage) ? stage : "unknown";
   return createColdFailureReceipt({
-    code: "unknown",
-    stage: safeStage,
-    counts: Object.fromEntries(
-      Object.keys(COLD_FAILURE_COUNT_BOUNDS).map((key) => [key, null]),
-    ),
-    flags: Object.fromEntries(COLD_FAILURE_FLAG_KEYS.map((key) => [key, null])),
+    childOutcome: "unknown",
+    primary: { code: "unknown", stage: safeStage },
+    counts: emptyColdCounts(),
+    flags: emptyColdFlags(),
+    cleanup: {
+      ...coldCleanupStatuses(),
+      childReport: "unknown",
+    },
   });
 }
 
 function validateColdFailureReceipt(value) {
   exactKeys(
     value,
-    ["schemaVersion", "kind", "code", "stage", "counts", "flags"],
+    [
+      "schemaVersion",
+      "kind",
+      "childOutcome",
+      "primary",
+      "counts",
+      "flags",
+      "cleanup",
+    ],
     "failure receipt",
   );
-  if (value.schemaVersion !== 1 || value.kind !== "cold-recorder-failure")
+  if (value.schemaVersion !== 2 || value.kind !== "cold-recorder-failure")
     throw new Error("Invalid cold failure receipt identity.");
   if (
-    !COLD_FAILURE_CODES.includes(value.code) ||
-    !COLD_FAILURE_STAGES.includes(value.stage)
+    !["not-started", "passed", "failed", "unknown"].includes(value.childOutcome)
   )
-    throw new Error("Invalid cold failure receipt enum.");
+    throw new Error("Invalid child outcome.");
+  if (value.primary === null) {
+    if (
+      value.childOutcome !== "passed" ||
+      !COLD_CLEANUP_OPERATIONS.some(
+        (operation) => value.cleanup?.[operation] === "failed",
+      )
+    )
+      throw new Error("Missing primary failure.");
+    if (
+      value.flags?.journeyAssertionsComplete !== true ||
+      value.flags?.reportPrivacyPassed !== true
+    )
+      throw new Error("Passed child lacks validated report flags.");
+  } else {
+    exactKeys(value.primary, ["code", "stage"], "primary failure");
+    if (
+      !COLD_FAILURE_CODES.includes(value.primary.code) ||
+      !COLD_FAILURE_STAGES.includes(value.primary.stage)
+    )
+      throw new Error("Invalid primary failure enum.");
+  }
   exactKeys(
     value.counts,
     Object.keys(COLD_FAILURE_COUNT_BOUNDS),
@@ -168,6 +236,18 @@ function validateColdFailureReceipt(value) {
   for (const key of COLD_FAILURE_FLAG_KEYS) {
     if (value.flags[key] !== null && typeof value.flags[key] !== "boolean")
       throw new Error("Invalid cold failure receipt flag.");
+  }
+  exactKeys(value.cleanup, COLD_CLEANUP_OPERATIONS, "cleanup statuses");
+  for (const [operation, status] of Object.entries(value.cleanup)) {
+    if (!COLD_CLEANUP_STATES.includes(status))
+      throw new Error("Invalid cleanup status.");
+    if (
+      status === "unknown" &&
+      (operation !== "childReport" || value.childOutcome === "passed")
+    )
+      throw new Error(
+        "Unknown cleanup status is only valid for inaccessible child evidence.",
+      );
   }
   return value;
 }
@@ -202,68 +282,22 @@ export function formatColdFailureReceiptLine(receipt) {
   return `${COLD_FAILURE_RECEIPT_PREFIX}${JSON.stringify(validated)}`;
 }
 
-export async function relayColdFailureAfterCleanup({
-  receipt,
-  removeReport,
-  cleanupScratch,
-  emitLine,
-}) {
-  let cleanupFailed = false;
-  try {
-    await removeReport();
-  } catch {
-    cleanupFailed = true;
-  }
-  try {
-    await cleanupScratch();
-  } catch {
-    cleanupFailed = true;
-  }
-  const finalReceipt = cleanupFailed
-    ? createColdFailureReceipt({
-        code: "cleanup",
-        stage: "cleanup",
-        counts: unknownColdFailureReceipt().counts,
-        flags: unknownColdFailureReceipt().flags,
-      })
-    : parseColdFailureReceipt(Buffer.from(JSON.stringify(receipt), "utf8"));
-  await emitLine(`${formatColdFailureReceiptLine(finalReceipt)}\n`);
-  return finalReceipt;
+export function parentChildExitReceipt({
+  childOutcome = "failed",
+  cleanup,
+} = {}) {
+  const status = coldCleanupStatuses("not-attempted");
+  if (cleanup) Object.assign(status, cleanup);
+  if (status.childReport === "not-attempted") status.childReport = "unknown";
+  return createColdFailureReceipt({
+    childOutcome,
+    primary: { code: "child-exit", stage: "child-start" },
+    counts: emptyColdCounts(),
+    flags: emptyColdFlags(),
+    cleanup: status,
+  });
 }
 
-export async function persistColdFailureReceipt({
-  receipt,
-  removeReport,
-  writeReceipt,
-}) {
-  let safeReceipt;
-  try {
-    safeReceipt = parseColdFailureReceipt(
-      Buffer.from(JSON.stringify(receipt), "utf8"),
-    );
-  } catch {
-    safeReceipt = unknownColdFailureReceipt();
-  }
-  try {
-    await removeReport();
-  } catch {
-    safeReceipt = createColdFailureReceipt({
-      code: "cleanup",
-      stage: "cleanup",
-      counts: unknownColdFailureReceipt().counts,
-      flags: unknownColdFailureReceipt().flags,
-    });
-  }
-  try {
-    await writeReceipt(JSON.stringify(safeReceipt), {
-      mode: 0o600,
-      flag: "wx",
-    });
-  } catch {
-    // Parent emits an unknown receipt if the private relay could not be written.
-  }
-  return safeReceipt;
-}
 const ROUTE_PAINT_CRITERION =
   "A route-paint mark requires a positive conservative inward-bounded axis-aligned target region after viewport and ancestor overflow/paint-containment clipping. Subpixel boundary strips may fail closed; ambiguous RTL/root or top-scrollbar origins, CSS zoom other than 1, unsupported transforms, out-of-flow boxes, fragmented targets, nonrectangular clips/masks, nondefault overflow-clip margins, and rounded overflow clips fail closed. This is not pixel-level or occlusion proof.";
 

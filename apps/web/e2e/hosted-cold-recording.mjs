@@ -1,28 +1,29 @@
 #!/usr/bin/env node
 import { execFileSync, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import {
-  chmod,
-  lstat,
-  mkdtemp,
-  readdir,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { lstat, readdir, readFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 import {
-  COLD_FAILURE_RECEIPT_MAX_BYTES,
+  cleanupHasFailure,
+  createOwnedFile,
+  createOwnedTempDirectory,
+  createReportParent,
+  finalizeParentOutcome,
+  outputTargetIsAbsent,
+  readChildFailureReceipt,
+  runParentCleanup,
+} from "./hosted-cold-recording-io.mjs";
+import {
+  assertColdReportPrivacy,
   coldDiagnosticFailure,
   createColdFailureReceipt,
   deriveManifestAssetBasenames,
+  formatColdFailureReceiptLine,
   hashedBasename,
   ownedColdDiagnosticFailureFields,
-  relayColdFailureAfterCleanup,
-  resolveColdFailureReceipt,
+  parentChildExitReceipt,
   unknownColdFailureReceipt,
 } from "./hosted-cold-recording-validation.mjs";
 
@@ -35,6 +36,7 @@ const candidateArg = process.argv.find((arg) =>
 );
 const discoveryOnly = process.argv.includes("--list");
 const outputPath = outputArg?.slice("--output=".length);
+const resolvedOutputPath = outputPath ? resolve(outputPath) : null;
 if ((!outputPath && !discoveryOnly) || !candidateArg)
   throw new Error(
     "Usage: hosted-cold-recording.mjs --candidate-sha=<exact-head> --output=<report.json> [--list]",
@@ -45,19 +47,21 @@ if (
 )
   throw new Error("Invalid candidate SHA argument.");
 const candidateHeadSha = candidateArg?.slice("--candidate-sha=".length) || null;
-const scratch = await mkdtemp(join(tmpdir(), "taskdesk-g11-cold-"));
-const generatedSpec = join(
-  scriptDir,
-  "performance.hosted-cold-recording.generated.ts",
-);
-const generatedConfig = join(
-  webDir,
-  "playwright.hosted-cold-recording.generated.config.ts",
-);
-const scratchResults = join(scratch, "playwright-results");
-const reportPathForGeneration =
-  outputPath ?? join(scratch, "discovery-only-report.json");
-const failureReceiptPath = join(scratch, "child-failure-receipt.json");
+let scratch = null;
+let scratchOwned = null;
+let scratchResults = null;
+let generatedSpec = null;
+let generatedConfig = null;
+let generatedSpecOwned = null;
+let generatedConfigOwned = null;
+let reportPathForGeneration = null;
+let failureReceiptPath = null;
+let parentReportOwned = null;
+let childReceipt = null;
+let childOutcome = "not-started";
+let primaryFailure = null;
+let childReportCleanup = "not-attempted";
+let discoverySucceeded = false;
 const origin = "http://127.0.0.1:4179";
 const safeSha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
@@ -132,22 +136,18 @@ async function readBuildEvidence() {
   };
 }
 
-const generatedRecorder = String.raw`
-import { writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+const generatedRecorder = `
+import { createOwnedFile, writeChildFailureReceipt as persistChildFailureReceipt } from "./hosted-cold-recording-io.mjs";
 import {
   assertColdReportPrivacy,
   assertColdMainThreadJourneyOverlap,
   buildSanitizedColdReport,
   coldDiagnosticFailure,
-  createColdFailureReceipt,
   createColdClockSample,
   estimateClockAlignment,
   ownedColdDiagnosticFailureFields,
-  persistColdFailureReceipt,
   translateColdNetworkTimestamp,
   translateColdTraceInterval,
-  unknownColdFailureReceipt,
 } from "./hosted-cold-recording-validation.mjs";
 
 const COLD_REPORT_PATH = __REPORT_PATH__;
@@ -170,6 +170,8 @@ const COLD_REACT_FUNCTIONS = new Set([
   "commitMutationEffects", "flushPassiveEffects", "beginWork", "completeWork",
 ]);
 let coldStage = "prepare";
+let coldOwnedReport = null;
+let childReceiptAttempted = false;
 const coldCounts = {
   clockSamples: 0,
   traceEventsReceived: 0,
@@ -187,27 +189,16 @@ const coldFlags = {
   reportPrivacyPassed: null,
 };
 
-function childFailureReceipt(error) {
+async function writeChildFailureReceipt(error) {
+  if (childReceiptAttempted) return;
+  childReceiptAttempted = true;
   const owned = ownedColdDiagnosticFailureFields(error);
-  return createColdFailureReceipt({
-    code: owned?.code ?? "unknown",
-    stage: owned?.stage ?? coldStage,
+  await persistChildFailureReceipt({
+    path: COLD_FAILURE_RECEIPT_PATH,
+    childReportOwned: coldOwnedReport,
+    primary: { code: owned?.code ?? "unknown", stage: owned?.stage ?? coldStage },
     counts: { ...coldCounts },
     flags: { ...coldFlags },
-  });
-}
-
-async function writeChildFailureReceipt(error) {
-  let receipt;
-  try {
-    receipt = childFailureReceipt(error);
-  } catch {
-    receipt = unknownColdFailureReceipt(coldStage);
-  }
-  await persistColdFailureReceipt({
-    receipt,
-    removeReport: () => rm(COLD_REPORT_PATH, { force: true }),
-    writeReceipt: (encoded, options) => writeFile(COLD_FAILURE_RECEIPT_PATH, encoded, options),
   });
 }
 type SafeTraceEvent = {
@@ -667,26 +658,25 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
       assertColdReportPrivacy(report, COLD_ASSET_BASENAMES);
       coldFlags.reportPrivacyPassed = true;
       coldStage = "report-write";
-      try {
-        await mkdir(dirname(COLD_REPORT_PATH), { recursive: true });
-        await writeFile(COLD_REPORT_PATH, JSON.stringify(report, null, 2) + "\n", { mode: 0o600 });
-      } catch {
+      const reportWrite = await createOwnedFile(
+        COLD_REPORT_PATH,
+        JSON.stringify(report),
+      );
+      coldOwnedReport = reportWrite.owned;
+      if (!reportWrite.complete) {
         throw coldDiagnosticFailure("report-write", "report-write", "The bounded report write failed.");
       }
-    } catch (error) {
-      await writeChildFailureReceipt(error);
-      throw new Error("Cold G11 recording failed a required journey, privacy, or capture-integrity check.");
-    }
     }, { g13Windows: true });
   } catch (error) {
     await writeChildFailureReceipt(error);
-    throw error;
+    throw new Error("Cold G11 recording failed a required journey, privacy, or capture-integrity check.");
   }
 });
 
 `;
 
-const generatedConfigTemplate = `import { defineConfig, devices } from "@playwright/test";
+function generatedConfigTemplate(scratchResults) {
+  return `import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "performance.hosted-cold-recording.generated.ts",
@@ -707,13 +697,73 @@ export default defineConfig({
   },
 });
 `;
+}
 
 let parentStage = "prepare";
-let failureReceipt = null;
-let failed = false;
+let counts = null;
+let flags = null;
+let discoveryPrimary = null;
+
+function emptyEvidence() {
+  const empty = unknownColdFailureReceipt();
+  return { counts: empty.counts, flags: empty.flags };
+}
+
+function setParentFailure(error) {
+  if (primaryFailure) return;
+  const owned = ownedColdDiagnosticFailureFields(error);
+  primaryFailure = owned ?? { code: "unknown", stage: parentStage };
+}
+
+function validatedReportMatches(report, provenance, assetBasenames) {
+  try {
+    assertColdReportPrivacy(report, assetBasenames);
+  } catch {
+    return false;
+  }
+  const bound = report?.provenance;
+  return Boolean(
+    bound?.sourceSha === provenance.sourceSha &&
+      bound?.candidateHeadSha === provenance.candidateHeadSha &&
+      bound?.benchmarkSha256 === provenance.benchmarkSha256 &&
+      bound?.routePaintRecorderSha256 === provenance.routePaintRecorderSha256 &&
+      bound?.perfConfigSha256 === provenance.perfConfigSha256 &&
+      bound?.networkHelperSha256 === provenance.networkHelperSha256 &&
+      bound?.nodeVersion === provenance.nodeVersion &&
+      bound?.pnpmVersion === provenance.pnpmVersion &&
+      bound?.playwrightVersion === provenance.playwrightVersion &&
+      bound?.chromiumVersion === provenance.chromiumVersion &&
+      JSON.stringify(bound.build) === JSON.stringify(provenance.build),
+  );
+}
 
 try {
-  await chmod(scratch, 0o700);
+  if (resolvedOutputPath && !(await outputTargetIsAbsent(resolvedOutputPath)))
+    throw coldDiagnosticFailure(
+      "report-write",
+      "prepare",
+      "The requested output target is not absent.",
+    );
+  scratchOwned = await createOwnedTempDirectory();
+  if (!scratchOwned?.owned || !scratchOwned.identity)
+    throw coldDiagnosticFailure(
+      "report-write",
+      "prepare",
+      "Private scratch setup failed.",
+    );
+  scratch = scratchOwned.path;
+  scratchResults = join(scratch, "playwright-results");
+  generatedSpec = join(
+    scriptDir,
+    "performance.hosted-cold-recording.generated.ts",
+  );
+  generatedConfig = join(
+    webDir,
+    "playwright.hosted-cold-recording.generated.config.ts",
+  );
+  reportPathForGeneration = join(scratch, "captured-report.json");
+  failureReceiptPath = join(scratch, "child-failure-receipt.json");
+
   parentStage = "source-bind";
   const benchmarkPath = join(scriptDir, "performance.bench.ts");
   const perfConfigPath = join(webDir, "playwright.perf.config.ts");
@@ -746,7 +796,6 @@ try {
       "utf8",
     ),
   );
-  parentStage = "source-bind";
   const buildEvidence = await readBuildEvidence();
   const pnpmVersion = execFileSync("pnpm", ["--version"], {
     cwd: repoDir,
@@ -796,21 +845,40 @@ try {
       "Diagnostic preview binding check failed.",
     );
   const extra = generatedRecorder
-    .replace(
-      "__REPORT_PATH__",
-      JSON.stringify(resolve(reportPathForGeneration)),
-    )
+    .replace("__REPORT_PATH__", JSON.stringify(reportPathForGeneration))
     .replace("__FAILURE_RECEIPT_PATH__", JSON.stringify(failureReceiptPath))
     .replace("__PROVENANCE__", JSON.stringify(provenance))
     .replace(
       "__ASSET_BASENAMES__",
       JSON.stringify(buildEvidence.assetBasenames),
     );
-  await writeFile(generatedSpec, `${source}\n${extra}`, { mode: 0o600 });
-  await writeFile(generatedConfig, generatedConfigTemplate, { mode: 0o600 });
+  const generated = await createOwnedFile(generatedSpec, `${source}\n${extra}`);
+  generatedSpecOwned = generated.owned;
+  if (!generated.complete)
+    throw coldDiagnosticFailure(
+      "source-binding",
+      "prepare",
+      "Generated test creation failed.",
+    );
+  const generatedConfigResult = await createOwnedFile(
+    generatedConfig,
+    generatedConfigTemplate(scratchResults),
+  );
+  generatedConfigOwned = generatedConfigResult.owned;
+  if (!generatedConfigResult.complete)
+    throw coldDiagnosticFailure(
+      "source-binding",
+      "prepare",
+      "Generated config creation failed.",
+    );
+
   const validation = spawnSync(
     process.execPath,
-    ["--test", join(scriptDir, "hosted-cold-recording-validation.test.mjs")],
+    [
+      "--test",
+      join(scriptDir, "hosted-cold-recording-validation.test.mjs"),
+      join(scriptDir, "hosted-cold-recording-io.test.mjs"),
+    ],
     { cwd: webDir, stdio: "ignore" },
   );
   if (validation.status !== 0)
@@ -819,6 +887,7 @@ try {
       "prepare",
       "Cold privacy regression preflight failed.",
     );
+
   parentStage = "child-start";
   const result = spawnSync(
     "pnpm",
@@ -832,93 +901,138 @@ try {
     ],
     { cwd: webDir, stdio: discoveryOnly ? "inherit" : "ignore" },
   );
-  if (result.error)
-    throw new Error("Generated cold child process could not be started.");
-  if (result.status !== 0) {
-    if (!discoveryOnly) {
-      try {
-        const receiptStat = await lstat(failureReceiptPath);
-        if (
-          !receiptStat.isFile() ||
-          (receiptStat.mode & 0o077) !== 0 ||
-          receiptStat.size > COLD_FAILURE_RECEIPT_MAX_BYTES
-        )
-          throw new Error("Invalid private child receipt file.");
-        failureReceipt = resolveColdFailureReceipt(
-          await readFile(failureReceiptPath),
-        );
-      } catch {
-        failureReceipt = unknownColdFailureReceipt("child-start");
-      }
+  if (result.error) {
+    childOutcome = "not-started";
+    primaryFailure = { code: "child-exit", stage: "child-start" };
+  } else if (result.status !== 0) {
+    childOutcome = "failed";
+    if (!discoveryOnly)
+      childReceipt = await readChildFailureReceipt(failureReceiptPath);
+    if (childReceipt?.childOutcome === "failed" && childReceipt.primary) {
+      primaryFailure = childReceipt.primary;
+      counts = childReceipt.counts;
+      flags = childReceipt.flags;
+      childReportCleanup = childReceipt.cleanup.childReport;
+    } else {
+      const fallback = parentChildExitReceipt({ childOutcome: "failed" });
+      primaryFailure = fallback.primary;
+      counts = fallback.counts;
+      flags = fallback.flags;
+      childReportCleanup = fallback.cleanup.childReport;
     }
-    throw new Error(
-      discoveryOnly
-        ? "Generated cold test discovery failed."
-        : "Hosted cold recording journey failed.",
-    );
+    if (discoveryOnly) discoveryPrimary = primaryFailure;
+  } else if (discoveryOnly) {
+    discoverySucceeded = true;
+  } else {
+    childOutcome = "unknown";
+    parentStage = "report-build";
+    const reportStat = await lstat(reportPathForGeneration).catch(() => null);
+    if (
+      !reportStat?.isFile() ||
+      reportStat.isSymbolicLink() ||
+      (reportStat.mode & 0o777) !== 0o600 ||
+      reportStat.size > 256 * 1024
+    )
+      throw coldDiagnosticFailure(
+        "report-schema",
+        "report-build",
+        "Completed child report is missing or invalid.",
+      );
+    let report;
+    let reportBytes;
+    try {
+      reportBytes = await readFile(reportPathForGeneration);
+      report = JSON.parse(reportBytes.toString("utf8"));
+    } catch {
+      throw coldDiagnosticFailure(
+        "report-schema",
+        "report-build",
+        "Completed child report is invalid.",
+      );
+    }
+    parentStage = "privacy";
+    if (
+      !validatedReportMatches(report, provenance, buildEvidence.assetBasenames)
+    )
+      throw coldDiagnosticFailure(
+        "report-privacy",
+        "privacy",
+        "Completed child report failed parent validation.",
+      );
+    childOutcome = "passed";
+    flags = {
+      ...emptyEvidence().flags,
+      journeyAssertionsComplete: true,
+      traceDataLoss: report.clocks.dataLoss,
+      reportPrivacyPassed: true,
+    };
+    counts = {
+      ...emptyEvidence().counts,
+      traceEventsReceived: report.clocks.traceEventCount,
+      timelineRecordsRetained: report.clocks.timelineRecordCount,
+      cpuSamples: report.clocks.cpuSamples,
+    };
+    parentStage = "report-write";
+    if (!(await createReportParent(resolvedOutputPath)))
+      throw coldDiagnosticFailure(
+        "report-write",
+        "report-write",
+        "Report output setup failed.",
+      );
+    const outputWrite = await createOwnedFile(resolvedOutputPath, reportBytes);
+    parentReportOwned = outputWrite.owned;
+    if (!outputWrite.complete)
+      throw coldDiagnosticFailure(
+        "report-write",
+        "report-write",
+        "Validated report output failed.",
+      );
   }
 } catch (error) {
-  failed = true;
-  if (!failureReceipt) {
-    const owned = ownedColdDiagnosticFailureFields(error);
-    const empty = unknownColdFailureReceipt();
-    failureReceipt = owned
-      ? createColdFailureReceipt({
-          ...owned,
-          counts: empty.counts,
-          flags: empty.flags,
-        })
-      : unknownColdFailureReceipt(parentStage);
-  }
+  setParentFailure(error);
+  if (childOutcome === "not-started" && parentStage === "child-start")
+    primaryFailure = { code: "child-exit", stage: "child-start" };
+  if (discoveryOnly) discoveryPrimary ??= primaryFailure;
 }
 
-if (failed) {
-  await relayColdFailureAfterCleanup({
-    receipt: failureReceipt,
-    removeReport: () =>
-      outputPath ? rm(outputPath, { force: true }) : Promise.resolve(),
-    cleanupScratch: () =>
-      Promise.all([
-        rm(generatedSpec, { force: true }),
-        rm(generatedConfig, { force: true }),
-        rm(scratch, { recursive: true, force: true }),
-      ]),
+const empty = emptyEvidence();
+counts ??= empty.counts;
+flags ??= empty.flags;
+
+if (discoveryOnly) {
+  const cleanup = await runParentCleanup({
+    childReport: childReportCleanup,
+    childOutcome: discoverySucceeded ? "not-started" : childOutcome,
+    primary: discoveryPrimary,
+    generatedSpec: generatedSpecOwned,
+    generatedConfig: generatedConfigOwned,
+    scratch: scratchOwned,
+  });
+  if (!discoverySucceeded || cleanupHasFailure(cleanup)) {
+    const receipt = createColdFailureReceipt({
+      childOutcome: "failed",
+      primary: discoveryPrimary ?? { code: "child-exit", stage: "child-start" },
+      counts,
+      flags,
+      cleanup,
+    });
+    process.stdout.write(`${formatColdFailureReceiptLine(receipt)}\n`);
+    process.exitCode = 1;
+  } else {
+    process.stdout.write("Generated cold test discovery passed.\n");
+  }
+} else {
+  const finalized = await finalizeParentOutcome({
+    childOutcome,
+    primary: primaryFailure,
+    counts,
+    flags,
+    childReport: childReportCleanup,
+    parentReport: parentReportOwned,
+    generatedSpec: generatedSpecOwned,
+    generatedConfig: generatedConfigOwned,
+    scratch: scratchOwned,
     emitLine: (line) => process.stdout.write(line),
   });
-  if (discoveryOnly)
-    process.stderr.write("Generated cold test discovery failed.\n");
-  throw new Error(
-    "Hosted cold recording did not produce a publishable bounded report.",
-  );
+  if (!finalized.succeeded) process.exitCode = 1;
 }
-try {
-  await Promise.all([
-    rm(generatedSpec, { force: true }),
-    rm(generatedConfig, { force: true }),
-    rm(scratch, { recursive: true, force: true }),
-  ]);
-} catch {
-  const cleanupReceipt = createColdFailureReceipt({
-    code: "cleanup",
-    stage: "cleanup",
-    counts: unknownColdFailureReceipt().counts,
-    flags: unknownColdFailureReceipt().flags,
-  });
-  await relayColdFailureAfterCleanup({
-    receipt: cleanupReceipt,
-    removeReport: () =>
-      outputPath ? rm(outputPath, { force: true }) : Promise.resolve(),
-    cleanupScratch: () =>
-      Promise.all([
-        rm(generatedSpec, { force: true }),
-        rm(generatedConfig, { force: true }),
-        rm(scratch, { recursive: true, force: true }),
-      ]),
-    emitLine: (line) => process.stdout.write(line),
-  });
-  throw new Error(
-    "Hosted cold recording did not produce a publishable bounded report.",
-  );
-}
-if (discoveryOnly)
-  process.stdout.write("Generated cold test discovery passed.\n");
