@@ -105,11 +105,15 @@ This layer exists specifically because of v1's eleven authorization holes, and i
 one layer that tests the API surface itself rather than a feature behind it — see
 [RBAC](../01-architecture/rbac.md) and [Security model](../01-architecture/security-model.md).
 
-**`route-coverage.test.ts`** — enumerates every route in **Hono's router** (`app.routes`),
-not the OpenAPI document — so `/auth/*`, `/ws` and `/metrics` are covered too — and fails
-if any lacks a policy entry of one of the five kinds in [RBAC](../01-architecture/rbac.md).
+**`route-coverage.test.ts`** — enumerates Hono `app.routes` and every non-Hono listener
+manifest exported by its runtime constructor, not the OpenAPI document. `/auth/*` and `/ws`
+are Hono/delegated surfaces; `GET /metrics` is a separate Node listener on port 9464 and is
+absent from `app.routes`. Its constructor must export the method/path/port/delegated-policy
+key, and coverage compares the constructed listener to that manifest. It fails for an
+unclassified listener route, orphaned delegated policy, or changed/extra method/path. Before
+the listener is implemented, its manifest and policy are planned, not current coverage.
 A public route must declare `public: true` *with a reason*; a delegated mount must say what
-it delegates to and why.
+it delegates to and why. OpenAPI alone proves none of these surfaces.
 
 **`matrix.test.ts`** — every built-in role against every route, asserted against a
 checked-in fixture. Changing access changes the fixture, which appears in the pull request

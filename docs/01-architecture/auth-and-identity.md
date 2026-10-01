@@ -3,13 +3,30 @@
 > **Design goal:** works out of the box with zero configuration, and scales to any
 > enterprise identity setup without a code change.
 
+## Current source status
+
+This table describes current API support separately from the target behavior specified
+below. Current source does not enable the better-auth MFA or passkey plugins.
+
+| Capability | Current API source | Target status and required behavior |
+| --- | --- | --- |
+| TOTP and backup codes | No enabled `twoFactor` plugin or factor verifier; not usable for sign-in enforcement or step-up | Planned P0; implement and test before enabling a required policy |
+| Passkeys | No enabled plugin or verifier; unavailable | Planned after P0 |
+| Upstream MFA | No verifier for signed `amr` / `acr` or fresh SSO context; static setting is not proof | Verify mapped, signed per-login claims; fail closed when a required method cannot be verified |
+| Enrollment and factor recovery | No current MFA enrollment or reset flow | Planned; required users must enroll before protected use, and unsupported enrollment/verification must fail closed |
+
+Everything else in this document describes the target architecture unless it explicitly
+states current API source status. A configured setting or target UI is not evidence that the
+corresponding control is available.
+
 ## Layers
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
 │ 1. AUTHENTICATION — "who is this?"                            │
 │    better-auth. Sessions, MFA, providers.                      │
-│    Pluggable: password · magic link · OTP · TOTP · passkey ·   │
+│    Pluggable: password · magic link · OTP · TOTP (planned) ·   │
+│    passkey (planned) ·                                         │
 │    any number of OIDC providers · social.                      │
 └───────────────────────────────────────────────────────────────┘
                               ↓ userId
@@ -35,10 +52,10 @@ layer never knows or cares how someone logged in.
 | --- | --- |
 | Works with zero config | ✅ email + password out of the box |
 | Multi-organisation | **Not used.** better-auth's organisation plugin is removed at the fork — our own `organisation` / `membership` / `team` / `invitation` tables are the directory, because identity is always resolved from *our* database. better-auth does authentication only |
-| MFA | ✅ two-factor plugin — TOTP, backup codes. **Added by us**; kaneo does not enable it |
+| MFA | better-auth provides a two-factor plugin; TaskDesk integration is **planned for P0 and not enabled in current API source**. TOTP and backup-code support require an implemented and tested adapter |
 | Magic link | ✅ inherited |
 | Email OTP | ✅ inherited |
-| Passkeys | ✅ passkey plugin. **Added by us**, after P0 |
+| Passkeys | **Planned after P0; not enabled in current API source**; integration and verification remain future work |
 | Arbitrary OIDC | ✅ genericOAuth — **configurable at runtime** |
 | API keys | ✅ apiKey plugin |
 | Impersonation | ✅ admin plugin — kept **only as a session primitive**; the authority check is ours (see the plugin table) |
@@ -72,8 +89,8 @@ registered in [inherited-features.md](inherited-features.md).
 | `deviceAuthorization` | **removed at fork** | a device-code grant no v2 spec asks for |
 | `bearer` | **removed at fork** | a second token-bearing authentication surface |
 | `organization` | **removed at fork — P0 step 1b** | see below |
-| `twoFactor` | **added — P0** | TOTP and backup codes |
-| `passkey` | **added — later stage** | |
+| `twoFactor` | **planned P0 addition; not enabled in current API source** | TOTP and backup codes require implementation and verification before they can satisfy sign-in or step-up policy |
+| `passkey` | **planned later; not enabled in current API source** | Integration and verification remain future work |
 
 **The organization plugin is kaneo's workspace model, not a dormant feature.** In kaneo it
 maps `organizationId → workspaceId` and owns `workspace`, `workspace_member`, `invitation`,
@@ -118,6 +135,10 @@ the most delicate code in the system; it is not left to a paragraph.
 
 ### The God Mode flow
 
+The flow below is a target design example, not evidence that these screens or authentication
+controls are available. In particular, the upstream-MFA choices are not wired to a current
+runtime verifier.
+
 ```
 God Mode → Authentication → [ Add connection ]          (agent connections)
 God Mode → Organisations → Contoso → Identity → [ Add connection ]   (customer — same form)
@@ -150,7 +171,7 @@ God Mode → Organisations → Contoso → Identity → [ Add connection ]   (cu
     Group → role mapping  1f9a…-c3d2 "TaskDesk-Leads" → Lead   [+ add rule]
                           ← keyed on the group OBJECT ID; the name is a snapshot (IP-28)
     Domain bindings       contoso.com                     ← each domain bound to one connection
-    MFA upstream          (•) honour amr/acr claim  ( ) static  ( ) off
+    MFA upstream          (planned target setting; not currently enforced)
     SCIM provisioning     [ ] enable → token, resources, mappings (IP-11…IP-23)
     Enabled               [x]
 
@@ -434,20 +455,28 @@ no account.
 
 ## Multi-factor authentication
 
-- TOTP and backup codes via better-auth's two-factor plugin. Passkeys as a second option.
-- Configurable in God Mode: **optional**, **required for staff**, **required for a
-  specific role**, or **required for everyone**.
-- When an external IdP already enforces MFA, TaskDesk prefers the token's `amr` / `acr`
-  claim **per login** and challenges locally when it is absent. A static "MFA satisfied
-  upstream" flag exists only for providers that emit neither claim; setting it is an
-  elevated, audited change and is shown in the God Mode Health security-posture panel.
-- **Resetting someone's second factor** (`POST /api/instance/users/{id}/reset-mfa`) is the
-  most socially-engineered path into an MFA-protected account. The screen requires the
+- **Target local factors:** TOTP and backup codes via better-auth's two-factor plugin;
+  passkeys are planned for a later stage. None is enabled or verified by current API source,
+  so none is currently usable for sign-in enforcement or step-up.
+- **Target policy options:** optional, required for staff, required for a specific role, or
+  required for everyone. Current API source does not expose or enforce these factor policies.
+  When a required policy is introduced, a user without a factor the server can verify must
+  not receive an authenticated session or protected access. Enrollment may be offered before
+  access, but unsupported enrollment or verification must fail closed rather than bypass
+  the requirement.
+- **Target upstream contract:** a configured IdP's signed, verified `amr` / `acr` evidence
+  may satisfy login MFA only when it meets that connection's mapping. A static "MFA satisfied
+  upstream" setting is not proof that a particular login used MFA and never establishes
+  fresh step-up proof. Current source has no SSO MFA or step-up verifier; unsupported
+  upstream-MFA policy therefore cannot be treated as satisfied.
+- **Planned second-factor reset** (`POST /api/instance/users/{id}/reset-mfa`) is the
+  most socially-engineered path into an MFA-protected account. The target screen requires the
   administrator to record *how the requester's identity was verified* (a free-text reason
   is mandatory, stored in the audit row); the affected person is emailed on every address
   on file; and the reset revokes all of their sessions and API keys.
-- Enrolment is enforced at login: a user who must have MFA and does not is routed to
-  enrolment before anything else.
+- **Planned enrollment behavior:** before protected use, a user who must have MFA and has no
+  enrolled factor is routed to enrollment. This flow is not implemented in current source;
+  until the enrollment and verification adapter exists, a required-MFA policy fails closed.
 
 ## API keys and machine access
 
@@ -484,10 +513,13 @@ Invitations never grant instance-admin. That is deliberate and hard-coded.
 
 ## Break-glass
 
-**First run needs no environment variable.** On an empty database the application serves a
-one-time **setup page** at the agent origin, unlocked by a 32-byte token printed once in
-the container log (the pattern Jenkins and Portainer use). It creates the first instance
-administrator, enrols MFA, and records completion in `instance_setting.setup_completed_at`
+**Target first-run flow** needs no environment variable. On an empty database the application
+serves a one-time **setup page** at the agent origin, unlocked by a 32-byte token printed
+once in the container log (the pattern Jenkins and Portainer use). The target flow creates
+the first instance administrator and requires verified MFA enrollment before recording
+completion in `instance_setting.setup_completed_at`. Current API source has no setup or
+factor-enrollment implementation; it must not claim enrollment or complete a required-MFA
+setup without a supported verifier.
 — a durable marker, so the page can never be re-opened by deleting user rows. The setup
 token expires after one hour or one use, and **while `setup_completed_at` is null every
 container start prints a fresh token and invalidates the previous one** — so an operator who

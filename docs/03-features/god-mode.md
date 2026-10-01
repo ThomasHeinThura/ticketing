@@ -120,20 +120,26 @@ signs in.
 
 ### Authentication — identity connections
 
+This section describes the target God Mode contract. The MFA, TOTP, passkey, and upstream
+MFA controls below are planned and are not currently enabled or enforced by API source.
+Required-MFA settings must fail closed until a verifier for the configured factor exists.
+
 The most important screen. See [auth and identity](../01-architecture/auth-and-identity.md),
 [identity provisioning](identity-provisioning.md) and
 [auth runtime reconfiguration](../01-architecture/auth-runtime-reconfiguration.md).
 
 - Add, edit, enable, disable and delete **identity connections** (OIDC — Microsoft Entra
-  first) and the non-OIDC auth plugins (password, OTP, magic link, TOTP, passkey).
+  first) and the non-OIDC auth plugins (password, OTP, magic link; TOTP planned for P0,
+  passkey planned later).
 - Each connection: provider type, display name, **which portal it serves — agent or
   customer, never both**, issuer/tenant, client id and encrypted secret, redirect URI,
-  claim mapping, domain bindings, just-in-time provisioning policy, MFA-upstream mode.
+  claim mapping, domain bindings, just-in-time provisioning policy, and the planned
+  MFA-upstream mode.
   For Entra JIT, configure the exact nonempty `required_entra_app_role` admission value
   separately from the TaskDesk default role; JIT cannot be enabled without it. Setup help
   directs administrators to define and assign that app role and request the optional `acct`
   claim in the Entra app registration. This role claim admits a member subject only; it does
-  not grant TaskDesk roles, capabilities or reach, and it is checked at every login. Domain
+  not grant TaskDesk roles, capabilities or reach, and is checked at every login. Domain
   bindings support discovery and deny-only collision checks. Customer connections are edited
   from the organisation's Identity tab (below) — same routes, filtered.
 - **Provisioning panel** per connection: OIDC group mappings use immutable group object ids
@@ -149,8 +155,9 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
   without exposing raw claims.
 - **Test connection** (OIDC discovery + dry run) and **Test SCIM** before going live; both
   audited even when nothing is saved.
-- MFA policy: off, optional, required for staff, required for a role, required for
-  everyone.
+- Planned MFA policy: off, optional, required for staff, required for a role, or required
+  for everyone. Current source does not enforce these settings; an unsupported required
+  factor must fail closed.
 - Session policy: idle timeout, absolute lifetime, concurrent session limit.
 - Password policy, when password auth is enabled.
 
@@ -241,8 +248,11 @@ as plugins; they have no separate section.
 
 ### Observability
 
-Sentry DSN, OTLP endpoint and headers, trace sample rate, the `/metrics` bearer token, log
-level per module. Runtime settings, not environment variables
+The P0 administrator API configures log levels and rotates the `/metrics` bearer token;
+these are database-backed runtime settings, never environment variables. Token rotation is
+an elevated, session-only operation and requires a one-use operation-bound step-up token.
+Sentry DSN, OTLP endpoint and headers, trace sample rate, and the full God Mode screen remain
+deferred; this API contract does not claim the P4 screen is implemented
 ([observability.md](../01-architecture/observability.md)).
 
 ### MCP usage
@@ -253,8 +263,9 @@ Which keys, how many calls, which tools, error rates, auto-disabled keys
 ### Users
 
 Every account on the instance, across organisations. Search, view, suspend, unsuspend,
-force sign-out, reset MFA, delete (deactivate — people are never hard-deleted), export a
-person's data, anonymise a person, and **impersonate**.
+force sign-out, reset MFA (planned; unavailable until a factor adapter exists), delete
+(deactivate — people are never hard-deleted), export a person's data, anonymise a person,
+and **impersonate**.
 
 ### Audit
 
@@ -390,7 +401,7 @@ GET    /api/instance/users                            instance:admin
 POST   /api/instance/users/{id}/suspend               instance:admin
 POST   /api/instance/users/{id}/unsuspend             instance:admin
 POST   /api/instance/users/{id}/sign-out              instance:admin
-POST   /api/instance/users/{id}/reset-mfa             instance:admin  E
+POST   /api/instance/users/{id}/reset-mfa             instance:admin  E  (planned; unavailable until the factor adapter exists)
 POST   /api/instance/users/{id}/grant-admin           instance:admin  E
 POST   /api/instance/users/{id}/deactivate            instance:admin
 GET    /api/instance/users/{id}/export                instance:admin  E

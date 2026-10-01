@@ -531,10 +531,11 @@ document contradicted itself in each place:
   counterpart of kind 2's `(self)`, needed because kind 2 is defined for `/api/me/*` on the
   agent origin only).
 - **Kind 4** requires a `reason`, so "public" is a deliberate, reviewable act.
-- **Kind 5** exists because the route-coverage test enumerates **Hono's router**
-  (`app.routes`), not the OpenAPI document — the OpenAPI document does not know about
-  `/auth/*`, `/ws` or `/metrics`, and those are precisely the surfaces v1 leaked through.
-  The `delegated` union is **closed**: adding a member is a decision-log entry, not an edit.
+- **Kind 5** exists because the route-coverage test must enumerate actual runtime surfaces,
+  not only the OpenAPI document. For Hono, it enumerates `app.routes`; `/metrics` is a
+  separate Node listener and is absent from that list. The OpenAPI document also cannot
+  describe all delegated `/auth/*` and websocket behavior. The `delegated` union is
+  **closed**: adding a member is a decision-log entry, not an edit.
 
   A delegated mount is **explicitly allowlisted, with the surface behind it unenumerated** —
   not "covered". `/auth/*` is one mounted handler whose endpoint set is defined by the
@@ -545,6 +546,16 @@ document contradicted itself in each place:
   approved list** — no `anonymous`, no `deviceAuthorization`, no `bearer`
   ([decision log](../07-planning/decision-log.md), fork-time removal list) — and the same
   assertion re-runs on every runtime rebuild, logging and alerting on a diff.
+
+  For every non-Hono HTTP listener, route coverage also enumerates a manifest exported by
+  the runtime constructor that starts that listener and compares the manifest with the
+  constructed listener. `/metrics` is the first planned example: exact method, path, port,
+  and delegated policy key `GET /metrics` are registered together. Coverage must fail for a
+  listener route absent from its manifest, a changed/extra method or path, a missing policy,
+  or an orphaned delegated policy. OpenAPI alone proves none of this. The current Hono
+  `/metrics` route entry and synthetic test fixture are placeholders, not evidence that the
+  separate Node listener or its manifest exists. See
+  [api-design.md](api-design.md#metrics-listener-and-permission-coverage).
 
   kaneo's inherited `mcp` and `oauth` routers are **deleted at fork**, not retrofitted: v2's
   MCP is a separate `apps/mcp/` process with no HTTP API of its own, and better-auth is the
@@ -617,8 +628,13 @@ takes its number from there.
 
 Three CI tests make this load-bearing:
 
-1. **Route coverage test** — enumerates every route in Hono's router and fails if any
-   lacks an entry in a policy map, or has an entry of an unknown shape.
+1. **Route coverage test** — enumerates every Hono route in `app.routes` and every
+   non-Hono HTTP listener manifest exported by its runtime constructor. For `/metrics`,
+   the manifest is compared with the constructed Node listener and its delegated policy.
+   The test fails for an unclassified listener route, an orphaned policy, or a changed/extra
+   method/path; OpenAPI alone proves none of these. Until the metrics listener is built,
+   its manifest and policy are planned, not current coverage. Any route without a policy
+   entry or with an unknown policy shape fails.
 2. **Permission matrix test** — for every built-in role × every route, asserts the
    expected allow/deny, twice: once for **capability** and once for **reach** (does the
    same call 404 when the resource is outside the identity's memberships). The fixture is
@@ -660,13 +676,14 @@ information leak.
 
 Some actions require a fresh authentication regardless of capability — **the second
 factor when the account has one** (never "password *or* MFA"), an IdP re-authentication
-with `prompt=login` for SSO-only accounts. Re-authenticating mints a single-use confirmation
-token **bound to the pending action's id**, valid five minutes, from
-`POST /api/me/step-up` ([pending-actions.md](pending-actions.md) `PA-15`,
-[security model](security-model.md#sessions-csrf-and-step-up)) — one step-up can never
-approve two things, and a token that expires while the approver reads the summary can be
-re-minted for as long as the pending action itself lives. **This is the only list**; God
-Mode, the security model and the feature specs cite it rather than restating it.
+with `prompt=login` for SSO-only accounts. These are target requirements, not current
+factor availability: current API source enables neither `twoFactor` nor a verified fresh-SSO
+step-up adapter, so unsupported required methods fail closed. A single-use confirmation can
+bind to one pending action or to one explicitly registered operation; it is never a
+session-wide window. **This is the only list**; God Mode, the security model and the feature
+specs cite it rather than restating it. Binding, freshness and failure behavior are specified in
+[pending-actions.md](pending-actions.md) `PA-15` and
+[security-model.md](security-model.md#sessions-csrf-and-step-up).
 
 **This table is generated by `pnpm test:permissions` from the `elevated: true` entries in the
 `policy.ts` files.** Edit the registry, not this table; a hand-added row here that no policy
@@ -685,7 +702,7 @@ the first day.
 | Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `…/scim/rotate-token`, `…/scim/revoke-token` |
 | An OIDC or SCIM group→role mapping that grants staff access, changes role/scope, exceeds `member`, or changes reach — mapping changes are elevated and audited; forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-20`–`IP-28`) | OIDC mapping editor and `PATCH /api/instance/identity-connections/{id}/scim` |
 | Granting `instance:admin` | `POST /api/instance/users/{id}/grant-admin` |
-| Resetting another person's second factor | `POST /api/instance/users/{id}/reset-mfa` — with a mandatory verification note |
+| Resetting another person's second factor | Planned `POST /api/instance/users/{id}/reset-mfa` — with a mandatory verification note; unavailable until the factor adapter exists |
 | Creating a workspace **service** API key | `POST /api/workspaces/{id}/api-keys` — bounded by the creator's authority |
 | Granting `sees_all` on a membership | `PATCH /api/workspaces/{id}/members/{personId}` with `sees_all: true` — never self-grantable; audited as a reach change |
 | Marking a provider "MFA satisfied upstream", or a JIT rule that provisions `side = staff` or a role above `member` | `PATCH /api/instance/identity-connections/{id}` |
@@ -698,6 +715,18 @@ the first day.
 | Creating a webhook, or changing an existing webhook's `url` — a standing outbound data channel carrying every event in the owner's reach to an arbitrary endpoint, indefinitely | `POST /api/webhooks`, and `PATCH /api/webhooks/{id}` when the body changes `url` ([webhooks-and-api-keys.md](../03-features/webhooks-and-api-keys.md) `WH-14`) |
 | Overriding a change freeze | `POST /api/work-items/{key}/change/override-freeze` |
 | Creating, editing or deleting a workspace role — a role editor can mint authority up to their own rank | `POST /api/workspace/{workspaceId}/roles`, `PATCH /api/workspace/{workspaceId}/roles/{roleId}`, `DELETE /api/workspace/{workspaceId}/roles/{roleId}` |
+
+**Planned observability policy expectation (not a generated row yet):** when the rotation
+route is implemented, `POST
+/api/instance/observability/metrics-token/rotate` declares `instance:admin`, instance
+scope, `elevated: true`, and `sessionOnly: true`; its policy declaration must cause the
+generated elevated list above to include the metrics-token rotation action. Do not hand-edit
+that generated table in the documentation-only contract. The companion GET and PATCH
+policies are `instance:admin`, instance scope, `elevated: false`, each with a documented
+`elevationExemptionReason`: GET is read-only safe configuration; PATCH changes bounded log
+verbosity and mints no authority. GET/PATCH may use any credential for which the permission
+evaluator genuinely resolves `instance:admin`; rotation is session-only and rejects API,
+MCP, and impersonation credentials.
 
 ### Session-only routes
 

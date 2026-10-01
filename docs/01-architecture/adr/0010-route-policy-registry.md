@@ -74,6 +74,16 @@ absence.
 > disagree silently. Those are precisely the surfaces v1 leaked through. The decision — every
 > route declares its policy, CI proves it — is unchanged; only the thing being enumerated is.
 
+> **Addendum, 2026-10-01 — separate listener coverage.** Hono `app.routes` remains the
+> enumeration source for Hono routes, including delegated `/auth/*` and `/ws` mounts. The
+> internal `GET /metrics` surface is a separate Node listener on port 9464 and is absent
+> from `app.routes`. Its runtime constructor must export a manifest containing its exact
+> method, path, port and delegated-policy key. Permission coverage compares the constructed
+> listener against that manifest and fails on an unclassified listener route, orphaned
+> policy, or changed/extra method/path. The manifest and test extension are planned until the
+> listener is implemented; the existing Hono `/metrics` fixture is not evidence that it
+> exists. OpenAPI remains insufficient for either surface.
+
 ### 3. Permission matrix test
 
 `tests/permissions/matrix.test.ts` executes every built-in role against every route and
