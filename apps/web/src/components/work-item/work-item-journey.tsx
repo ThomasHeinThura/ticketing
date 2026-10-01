@@ -31,6 +31,7 @@ import getWorkItemActivity from "@/fetchers/work-item/get-work-item-activity";
 import unassignWorkItem from "@/fetchers/work-item/unassign-work-item";
 import updateWorkItem from "@/fetchers/work-item/update-work-item";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
 import type { WorkItemActivityFilter } from "@/lib/routes";
 import { WorkItemVersionConflictError } from "@/lib/work-item-errors";
@@ -672,7 +673,7 @@ function WorkItemJourneyForItem({
                       : row.verb}
                   </strong>
                   <time dateTime={row.createdAt}>
-                    {new Date(row.createdAt).toLocaleString()}
+                    {formatDateTime(row.createdAt)}
                   </time>
                 </div>
                 <p className="text-muted-foreground">
