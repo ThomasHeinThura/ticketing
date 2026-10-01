@@ -108,6 +108,13 @@ export default defineConfig(({ mode }) => {
 
   return {
     root,
+    // The visual suite starts agent and portal Vite servers in the same workspace.
+    // Keep their optimizer manifests isolated so one server cannot invalidate the
+    // other's optimized-dependency URLs during startup.
+    cacheDir: path.resolve(
+      __dirname,
+      isPortal ? "node_modules/.vite-portal" : "node_modules/.vite-agent",
+    ),
     publicDir: path.resolve(__dirname, "public"),
     define: {
       __APP_VERSION__: JSON.stringify(packageJson.version),

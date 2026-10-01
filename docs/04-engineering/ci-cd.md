@@ -180,9 +180,9 @@ registered in generated route metadata and to have a screenshot case and baselin
 generated route is also parsed and built through the route helpers, including inherited
 routes that are outside the active v2 inventory. A registered inventory route group with no
 in-progress or complete row also fails, so adding a screen requires its route, status,
-fixture and baseline together. The current inventory has 138 screen rows, including 123
-route rows: three are in progress and have G8 cases; the other 120 route rows remain
-planned. The generated agent and portal trees contain 38 canonical routes; 35 are inherited
+fixture and baseline together. The current inventory has 139 screen rows, including 124
+route rows: three are in progress and have G8 cases; the other 121 route rows remain
+planned (113 distinct canonical planned URLs after query variants are collapsed). The generated agent and portal trees contain 38 canonical routes; 35 are inherited
 or otherwise outside the active v2 inventory. Future-stage screens become required as they
 move to in progress. The current
 `/auth/sign-in` screen is also snapshotted as a documented legacy route while the inventory's
