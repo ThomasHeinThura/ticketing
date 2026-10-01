@@ -5,6 +5,7 @@ import {
   medianOfThreeWithRetry,
 } from "../../../scripts/ci/lib/performance-budget.mjs";
 import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
+import { createVersionedTaskFixture } from "./helpers/versioned-task-fixture";
 
 const G13_TRANSITIONS = [
   "work-list",
@@ -159,7 +160,10 @@ function makeDetailItem() {
   };
 }
 
-function makeBoardProject(deletedTaskIds: Set<string> = new Set()) {
+function makeBoardProject(
+  deletedTaskIds: Set<string> = new Set(),
+  taskStore?: ReturnType<typeof createVersionedTaskFixture>,
+) {
   const columns = [
     { id: "backlog", name: "Backlog", slug: "backlog", isFinal: false },
     {
@@ -175,29 +179,40 @@ function makeBoardProject(deletedTaskIds: Set<string> = new Set()) {
     icon: null,
     color: null,
     position: columnIndex,
-    tasks: Array.from({ length: 50 }, (_, index) => {
-      const number = columnIndex * 50 + index + 1;
-      return {
+    tasks: Array.from({ length: 200 }, (_, index) => {
+      const number = index + 1;
+      const originalColumnIndex = Math.floor(index / 50);
+      const originalColumn = ["backlog", "in-progress", "review", "done"][
+        originalColumnIndex
+      ];
+      const seededTask = {
         id: `legacy-task-${number}`,
         title: `Seeded legacy task ${number}`,
         number,
         description: null,
-        status: column.slug,
+        status: originalColumn,
         priority: null,
         startDate: null,
         dueDate: null,
-        position: index,
+        position: index % 50,
         createdAt: "2026-09-30T00:00:00.000Z",
         updatedAt: "2026-09-30T00:00:00.000Z",
         userId: null,
         assigneeId: null,
         assigneeName: null,
         projectId: PROJECT_ID,
-        columnId: column.id,
+        columnId: originalColumn,
+        version: 1,
         labels: [],
         externalLinks: [],
       };
-    }).filter((task) => !deletedTaskIds.has(task.id)),
+      return taskStore?.getTask(seededTask.id) ?? seededTask;
+    })
+      .filter(
+        (task) => task.status === column.slug && !deletedTaskIds.has(task.id),
+      )
+      .map((task) => ({ ...task, columnId: column.id }))
+      .sort((left, right) => (left.position ?? 0) - (right.position ?? 0)),
   }));
 
   return {
@@ -235,9 +250,16 @@ async function installPerformanceApiFixture(
   let legacyTaskStatus = "backlog";
   let legacyTaskAssignee: string | null = null;
   const legacyComments: Array<Record<string, unknown>> = [];
+  const initialBoardTasks = makeBoardProject().columns.flatMap(
+    (column) => column.tasks,
+  );
+  const taskStore = createVersionedTaskFixture(initialBoardTasks, {
+    assignableUserIds: [SESSION.user.id],
+  });
 
   const legacyTask = () => ({
-    ...makeBoardProject().columns[0].tasks[0],
+    ...(taskStore.getTask("legacy-task-1") ??
+      makeBoardProject().columns[0].tasks[0]),
     status: legacyTaskStatus,
     columnId:
       makeBoardProject().columns.find(
@@ -286,6 +308,10 @@ async function installPerformanceApiFixture(
             "GET, POST, PUT, PATCH, DELETE, OPTIONS",
         },
       });
+
+    const versionedTaskReply = taskStore.handle(request);
+    if (versionedTaskReply)
+      return json(versionedTaskReply.body, versionedTaskReply.status);
 
     if (
       dataDelayMs > 0 &&
@@ -375,7 +401,7 @@ async function installPerformanceApiFixture(
       return json([]);
     if (path === `/api/task/tasks/${PROJECT_ID}` && request.method() === "GET")
       return json({
-        data: makeBoardProject(deletedLegacyTaskIds),
+        data: makeBoardProject(deletedLegacyTaskIds, taskStore),
         pagination: {
           total: 200,
           page: 1,
@@ -387,7 +413,7 @@ async function installPerformanceApiFixture(
       return json(legacyTask());
     if (path === `/api/column/${PROJECT_ID}` && request.method() === "GET")
       return json(
-        makeBoardProject().columns.map(
+        makeBoardProject(new Set(), taskStore).columns.map(
           ({ id, name, slug, isFinal, icon, color, position }) => ({
             id,
             name,
@@ -1471,6 +1497,35 @@ async function collectBoardDragFrameP95(page: Page) {
   await openLegacyBoard(page);
   await page.waitForTimeout(400);
 
+  let versionedWriteRequests = 0;
+  const versionedWriteResults: Array<{
+    taskId: string;
+    ifMatch: string | undefined;
+    status: number;
+  }> = [];
+  page.on("request", (request) => {
+    if (
+      request.method() === "PUT" &&
+      new URL(request.url()).pathname.match(/^\/api\/v2\/task\/[^/]+$/)
+    ) {
+      versionedWriteRequests += 1;
+    }
+  });
+  page.on("response", (response) => {
+    const request = response.request();
+    if (
+      request.method() === "PUT" &&
+      new URL(response.url()).pathname.match(/^\/api\/v2\/task\/[^/]+$/)
+    ) {
+      const path = new URL(response.url()).pathname;
+      versionedWriteResults.push({
+        taskId: decodeURIComponent(path.slice("/api/v2/task/".length)),
+        ifMatch: request.headers()["if-match"],
+        status: response.status(),
+      });
+    }
+  });
+
   const source = await page
     .getByText("Seeded legacy task 1", { exact: true })
     .boundingBox();
@@ -1530,7 +1585,30 @@ async function collectBoardDragFrameP95(page: Page) {
         frameTimes.length,
     );
   const ordered = [...frameTimes].sort((left, right) => left - right);
-  return ordered[Math.ceil(ordered.length * 0.95) - 1];
+  const frameP95 = ordered[Math.ceil(ordered.length * 0.95) - 1];
+
+  expect(versionedWriteRequests).toBeGreaterThan(0);
+  expect(versionedWriteResults).toHaveLength(versionedWriteRequests);
+  expect(versionedWriteResults.every(({ status }) => status === 200)).toBe(
+    true,
+  );
+  await page.reload();
+  await expect(
+    page.getByText("Seeded legacy task 1", { exact: true }),
+  ).toHaveCount(1);
+  const persistedTaskColumn = await page
+    .locator('[data-task-id="legacy-task-1"]')
+    .locator("xpath=ancestor::*[@data-column-id]")
+    .getAttribute("data-column-id");
+  expect(persistedTaskColumn).toBe("in-progress");
+  console.info(
+    "G11 board drag persisted versioned-write evidence",
+    JSON.stringify({
+      writes: versionedWriteResults,
+      persistedTaskColumn,
+    }),
+  );
+  return frameP95;
 }
 
 async function verifyBoardCardMenu(page: Page) {
