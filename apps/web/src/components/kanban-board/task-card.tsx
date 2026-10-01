@@ -23,24 +23,19 @@ import {
   GitPullRequest,
   SquareCheck,
 } from "lucide-react";
-import { type CSSProperties, useMemo } from "react";
+import { type CSSProperties, memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
 import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { cn } from "@/lib/cn";
-import {
-  dueDateStatusColors,
-  getDueDateStatus,
-  isTaskCompleted,
-} from "@/lib/due-date-status";
+import { dueDateStatusColors, getDueDateStatus } from "@/lib/due-date-status";
 import { getInitials } from "@/lib/get-initials";
 import { getTaskItemStats } from "@/lib/get-task-item-stats";
 import { getPriorityIcon } from "@/lib/priority";
 import { toast } from "@/lib/toast";
 import useBulkSelectionStore from "@/store/bulk-selection";
-import useProjectStore from "@/store/project";
-import { useUserPreferencesStore } from "@/store/user-preferences";
+import type { ProjectWithTasks } from "@/types/project";
 import type Task from "@/types/task";
 import { TaskLabels } from "./task-labels";
 
@@ -50,7 +45,24 @@ export type TaskCardProps = {
   workspaceId?: string;
   workspaceUsers: ReturnType<typeof useGetActiveWorkspaceUsers>["data"];
   onContextMenuTask: (taskId: string) => void;
+  projectSlug: string;
+  taskIsCompleted: boolean;
+  displayPreferences: TaskCardDisplayPreferences;
 };
+
+export type TaskCardDisplayPreferences = {
+  showAssignees: boolean;
+  showPriority: boolean;
+  showDueDates: boolean;
+  showLabels: boolean;
+  showTaskNumbers: boolean;
+  showTaskItemCounts: boolean;
+};
+
+export type TaskCompletionColumn = Pick<
+  ProjectWithTasks["columns"][number],
+  "slug" | "isFinal"
+>;
 
 function TaskCard({
   task,
@@ -58,6 +70,9 @@ function TaskCard({
   workspaceId,
   workspaceUsers,
   onContextMenuTask,
+  projectSlug,
+  taskIsCompleted,
+  displayPreferences,
 }: TaskCardProps) {
   const { t } = useTranslation();
   const {
@@ -68,8 +83,6 @@ function TaskCard({
     transition,
     isDragging,
   } = useSortable({ id: task.id, disabled: disableDragDrop });
-  const { project } = useProjectStore();
-  const taskIsCompleted = isTaskCompleted(task.status, project?.columns);
   const navigate = useNavigate();
   const {
     showAssignees,
@@ -78,7 +91,7 @@ function TaskCard({
     showLabels,
     showTaskNumbers,
     showTaskItemCounts,
-  } = useUserPreferencesStore();
+  } = displayPreferences;
   const toggleSelection = useBulkSelectionStore(
     (state) => state.toggleSelection,
   );
@@ -144,7 +157,7 @@ function TaskCard({
   function handleTaskCardClick(
     e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>,
   ) {
-    if (!project || !task || !workspaceId) return;
+    if (!projectSlug || !task || !workspaceId) return;
 
     if ((e as React.MouseEvent).metaKey || (e as React.KeyboardEvent).ctrlKey) {
       toggleSelection(task.id);
@@ -206,7 +219,7 @@ function TaskCard({
       >
         {showTaskNumbers && (
           <div className="mb-2 text-[10px] font-mono text-muted-foreground/90">
-            {project?.slug}-{task.number}
+            {projectSlug}-{task.number}
           </div>
         )}
 
@@ -455,4 +468,4 @@ export function TaskCardDeleteConfirmation({
   );
 }
 
-export default TaskCard;
+export default memo(TaskCard);

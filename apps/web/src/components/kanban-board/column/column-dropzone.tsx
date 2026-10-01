@@ -4,8 +4,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useEffect } from "react";
+import { isTaskCompleted } from "@/lib/due-date-status";
 import type { ProjectWithTasks } from "@/types/project";
-import TaskCard, { type TaskCardProps } from "../task-card";
+import TaskCard, {
+  type TaskCardDisplayPreferences,
+  type TaskCardProps,
+  type TaskCompletionColumn,
+} from "../task-card";
 
 type ColumnDropzoneProps = {
   column: ProjectWithTasks["columns"][number];
@@ -14,6 +19,9 @@ type ColumnDropzoneProps = {
   workspaceId?: string;
   workspaceUsers: TaskCardProps["workspaceUsers"];
   onContextMenuTask: TaskCardProps["onContextMenuTask"];
+  projectSlug: string;
+  completionColumns: TaskCompletionColumn[];
+  displayPreferences: TaskCardDisplayPreferences;
 };
 
 export function ColumnDropzone({
@@ -23,6 +31,9 @@ export function ColumnDropzone({
   workspaceId,
   workspaceUsers,
   onContextMenuTask,
+  projectSlug,
+  completionColumns,
+  displayPreferences,
 }: ColumnDropzoneProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -51,6 +62,9 @@ export function ColumnDropzone({
               workspaceId={workspaceId}
               workspaceUsers={workspaceUsers}
               onContextMenuTask={onContextMenuTask}
+              projectSlug={projectSlug}
+              taskIsCompleted={isTaskCompleted(task.status, completionColumns)}
+              displayPreferences={displayPreferences}
             />
           ))}
         </div>
