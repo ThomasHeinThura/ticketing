@@ -1,6 +1,6 @@
 # PR #531 — independent full GPT-6 Sol security review
 
-**Candidate:** `fe278d571463b4ff698d7c3b9679a38a8c97f49b`  
+**Reviewed head:** `fe278d571463b4ff698d7c3b9679a38a8c97f49b`  
 **Base:** `c891e9bcd4abf9b77b4916561d9bc5ca367065e5`  
 **Reviewer:** fresh GPT-6 Sol context. I did not author, direct, or remediate this candidate. This is the per-PR security review, not the P0 phase finalizer.  
 **Verdict:** **CLEAR for the reviewed code; no blocking security finding.** This does not authorize merge while the PR-template/security-review check is red or any other required gate is unresolved.
