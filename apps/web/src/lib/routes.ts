@@ -1,18 +1,63 @@
-// Canonical route registry (AGENTS.md rule 4): every v2 ("agent") screen has a URL, and
+// Canonical route helpers (AGENTS.md rule 4): every screen has a URL, and
 // any filter/sort state it carries lives in the query string so a reload reproduces it
-// exactly. This is the FIRST entry in this registry -- v2 has exactly one screen so far,
-// the work-item list (issue #23, decision log "2026-09-23 · P1's UI path").
-//
-// `docs/02-design/ux-quality-gates.md` G5 describes a FUTURE state where this file is
-// generated from the router's own route trees (`routeTree.agent.gen.ts` /
-// `routeTree.portal.gen.ts`) and diffed against the screen inventory by `check:inventory`.
-// Neither exists yet: there is no agent/portal router split (G12's own two-router-tree
-// requirement is still open, tracked as P0 infrastructure), so today there is one router
-// tree (`routeTree.gen.ts`) and no generator/checker script. This file is hand-authored
-// until that lands, and kept honest in the meantime by the round-trip test in
-// `routes.test.ts`: every URL this file can build, `parseWorkItemListSearch` can parse
-// back to the exact params/search that built it, and malformed input recovers to a
-// default rather than throwing.
+// exactly. `generatedRouteMetadata` is produced from both TanStack trees and checked
+// against in-progress/complete screen inventory rows by `pnpm check:inventory`; not-started
+// rows remain planned URLs. Builders below define URL state contracts exercised by tests.
+
+export { generatedRouteMetadata } from "./generated-route-metadata";
+
+import { generatedRouteMetadata } from "./generated-route-metadata";
+
+export type RouteSurface = keyof typeof generatedRouteMetadata;
+
+function assertGeneratedRoute(surface: RouteSurface, template: string) {
+  if (
+    !(generatedRouteMetadata[surface] as readonly string[]).includes(template)
+  )
+    throw new Error(`Unknown generated ${surface} route: ${template}`);
+}
+
+/** Builds a path from a generated route template, requiring every dynamic segment. */
+export function buildGeneratedRouteUrl(
+  surface: RouteSurface,
+  template: string,
+  params: Record<string, string> = {},
+): string {
+  assertGeneratedRoute(surface, template);
+  return template.replace(/\$([A-Za-z0-9_]+)/gu, (_match, name: string) => {
+    const value = params[name];
+    if (typeof value !== "string" || value.length === 0)
+      throw new Error(`Route ${template} requires parameter ${name}.`);
+    return encodeURIComponent(value);
+  });
+}
+
+/** Parses a generated route URL and returns decoded dynamic segments, if it matches. */
+export function parseGeneratedRouteUrl(
+  surface: RouteSurface,
+  template: string,
+  input: string,
+): { pathname: string; params: Record<string, string> } | undefined {
+  assertGeneratedRoute(surface, template);
+  const url = new URL(input, "https://route.invalid");
+  const names: string[] = [];
+  const pattern = template
+    .split(/(\$[A-Za-z0-9_]+)/gu)
+    .map((part) => {
+      if (part.startsWith("$")) {
+        names.push(part.slice(1));
+        return "([^/]+)";
+      }
+      return part.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+    })
+    .join("");
+  const match = new RegExp(`^${pattern}$`, "u").exec(url.pathname);
+  if (!match) return undefined;
+  const params = Object.fromEntries(
+    names.map((name, index) => [name, decodeURIComponent(match[index + 1])]),
+  );
+  return { pathname: url.pathname, params };
+}
 
 export const WORK_ITEM_SORT_FIELDS = [
   "key",
@@ -97,6 +142,12 @@ export function toggleWorkItemSortDirection(
 }
 
 export const routes = {
+  /** Customer portal's P0 disabled landing page, rooted on its separate origin. */
+  portalHome: {
+    path: "/" as const,
+    build: () => "/",
+    parse: (pathname: string) => (pathname === "/" ? "/" : undefined),
+  },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {
     path: "/agent/projects/$projectKey/work" as const,

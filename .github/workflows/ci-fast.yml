@@ -5,9 +5,8 @@
 # the document does not declare: scripts/ci/test-all.mjs reconciles the two on every run,
 # and the `gates-declared` job below fails if they drift apart.
 #
-# Gates that cannot exist yet — check:queries, check:inventory, test:mcp,
-# check:bundle-purity, check:bundle-size — have no job here on purpose. `pnpm test:all
-# --list` prints each one with the reason and the issue that unblocks it. A job that passed
+# Gates that cannot exist yet — check:queries, test:mcp — have no job here
+# on purpose. `pnpm test:all --list` prints each one with the reason and the issue that unblocks it. A job that passed
 # because it found nothing to check would look like coverage and be worth less than
 # nothing. (`check:ui` is enabled, in the `registers` job below — #9's Radix-tracking
 # slice, only; its "no bespoke primitives" / "no Radix/Base UI import outside packages/ui"
@@ -181,6 +180,8 @@ jobs:
         # KNOWN-RADIX.md — currently zero rows, since both real Radix imports
         # (form.tsx, timeline.tsx) were replaced by a local `Slot` in the same change.
         run: pnpm check:ui
+      - name: pnpm check:inventory
+        run: pnpm check:inventory
 
   pull-request:
     name: pull request template + security review
@@ -272,6 +273,10 @@ jobs:
       - uses: ./.github/actions/setup
       - name: pnpm build
         run: pnpm build
+      - name: pnpm check:bundle-purity
+        run: pnpm check:bundle-purity
+      - name: pnpm check:bundle-size
+        run: pnpm check:bundle-size
 
   # Deliberately two jobs, not one. As a single "supply chain" job the first failing step
   # stopped the second, so a red dependency audit hid whether the repository had a secret in

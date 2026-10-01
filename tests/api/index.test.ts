@@ -91,6 +91,9 @@ describe("resolveStaticRoot", () => {
 
 describe("static file serving", () => {
   let staticRoot: string;
+
+  const requestAsAgent = (app: ReturnType<typeof createApp>["app"], path: string) =>
+    app.request(path, { headers: { host: "localhost:5173" } });
   let privateFile: string;
 
   beforeAll(() => {
@@ -123,7 +126,7 @@ describe("static file serving", () => {
   it("serves a real static asset with a reasonable content-type", async () => {
     const { app } = createApp({ staticRoot });
 
-    const response = await app.request("/assets/app.js");
+    const response = await requestAsAgent(app, "/assets/app.js");
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("javascript");
@@ -133,7 +136,7 @@ describe("static file serving", () => {
   it("falls back to index.html for an unmatched non-API route", async () => {
     const { app } = createApp({ staticRoot });
 
-    const response = await app.request("/projects/some-project-id");
+    const response = await requestAsAgent(app, "/projects/some-project-id");
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/html");
@@ -143,7 +146,7 @@ describe("static file serving", () => {
   it("never falls back to index.html for an unmatched API-prefixed route", async () => {
     const { app } = createApp({ staticRoot });
 
-    const response = await app.request("/api/this-route-does-not-exist");
+    const response = await requestAsAgent(app, "/api/this-route-does-not-exist");
 
     // The app-wide `/api/*` guard (apps/api/src/index.ts's `api.use("*", ...)`)
     // authenticates before routing can even decide "not found", so an
@@ -159,7 +162,7 @@ describe("static file serving", () => {
   it("404s a genuinely missing asset instead of serving index.html", async () => {
     const { app } = createApp({ staticRoot });
 
-    const response = await app.request("/assets/does-not-exist.js");
+    const response = await requestAsAgent(app, "/assets/does-not-exist.js");
 
     expect(response.status).toBe(404);
     await expect(response.text()).resolves.not.toContain("index-marker");
@@ -173,7 +176,7 @@ describe("static file serving", () => {
       "/assets/%2Fapp.js",
       "/static/%61dmin/private.js",
     ]) {
-      const response = await app.request(path);
+      const response = await requestAsAgent(app, path);
       const body = await response.text();
       expect(body).not.toContain("private-marker");
       expect(body).not.toContain("asset-marker");
@@ -184,7 +187,7 @@ describe("static file serving", () => {
     const { app } = createApp({ staticRoot });
 
     for (const path of ["/api/%2Fapp.js", "/api/%61dmin/private.js"]) {
-      const response = await app.request(path);
+      const response = await requestAsAgent(app, path);
       expect(response.status).toBe(401);
       expect(response.headers.get("content-type")).not.toContain("text/html");
       await expect(response.text()).resolves.not.toContain("index-marker");
@@ -196,10 +199,8 @@ describe("static file serving", () => {
 
     const { app } = createApp({ staticRoot: missingRoot });
 
-    const response = await app.request("/projects/some-project-id");
+    const response = await requestAsAgent(app, "/projects/some-project-id");
 
-    // No build found -> no SPA fallback was ever wired -> ordinary 404,
-    // exactly the pre-existing behavior for an unmatched route.
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(503);
   });
 });

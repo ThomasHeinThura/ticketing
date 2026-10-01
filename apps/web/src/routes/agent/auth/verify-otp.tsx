@@ -23,7 +23,7 @@ import { z } from "zod/v4";
 import PageTitle from "@/components/page-title";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "@/lib/toast";
-import { AuthLayout } from "../../components/auth/layout";
+import { AuthLayout } from "../../../components/auth/layout";
 
 export const Route = createFileRoute("/auth/verify-otp")({
   component: VerifyOtp,

@@ -2,7 +2,7 @@ import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { Button } from "@taskdesk/ui";
 import { Trans, useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import { AuthLayout } from "../../components/auth/layout";
+import { AuthLayout } from "../../../components/auth/layout";
 
 export const Route = createFileRoute("/auth/check-email")({
   component: CheckEmail,

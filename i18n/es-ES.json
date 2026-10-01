@@ -2256,5 +2256,19 @@
 			"typesRetry": "Retry",
 			"close": "Close"
 		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Portal de clientes no disponible",
+			"description": "El acceso para clientes aún no está disponible. Contacta con el administrador del servicio de asistencia."
+		},
+		"notFound": {
+			"title": "Página no encontrada",
+			"description": "Esta página no está disponible. Comprueba la dirección e inténtalo de nuevo."
+		},
+		"error": {
+			"title": "Algo salió mal",
+			"description": "No se pudo cargar la página. Inténtalo de nuevo."
+		}
 	}
 }

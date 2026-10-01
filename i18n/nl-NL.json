@@ -2249,5 +2249,19 @@
 			"typesRetry": "Retry",
 			"close": "Close"
 		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Klantenportaal niet beschikbaar",
+			"description": "Toegang voor klanten is nog niet beschikbaar. Neem contact op met de beheerder van de servicedesk."
+		},
+		"notFound": {
+			"title": "Pagina niet gevonden",
+			"description": "Deze pagina is niet beschikbaar. Controleer het adres en probeer het opnieuw."
+		},
+		"error": {
+			"title": "Er is iets misgegaan",
+			"description": "De pagina kon niet worden geladen. Probeer het opnieuw."
+		}
 	}
 }

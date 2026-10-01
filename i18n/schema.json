@@ -9276,6 +9276,52 @@
 				}
 			},
 			"required": ["list", "create", "detail"]
+		},
+		"portal": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"unavailable": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						}
+					},
+					"required": ["title", "description"]
+				},
+				"notFound": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						}
+					},
+					"required": ["title", "description"]
+				},
+				"error": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						}
+					},
+					"required": ["title", "description"]
+				}
+			},
+			"required": ["unavailable", "notFound", "error"]
 		}
 	},
 	"required": [
@@ -9290,6 +9336,7 @@
 		"workspace",
 		"team",
 		"publicProject",
-		"workItems"
+		"workItems",
+		"portal"
 	]
 }

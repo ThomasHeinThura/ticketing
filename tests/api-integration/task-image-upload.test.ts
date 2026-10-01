@@ -10,6 +10,13 @@ import {
   requireRow,
 } from "./helpers/fixtures";
 
+const originalAgentUrl = process.env.TASKDESK_AGENT_URL;
+
+function restoreAgentUrl() {
+  if (originalAgentUrl === undefined) delete process.env.TASKDESK_AGENT_URL;
+  else process.env.TASKDESK_AGENT_URL = originalAgentUrl;
+}
+
 describe("API integration: task image upload finalize", () => {
   beforeEach(async () => {
     await resetTestDatabase();
@@ -23,6 +30,7 @@ describe("API integration: task image upload finalize", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    restoreAgentUrl();
   });
 
   it("returns a URL using KANEO_API_URL", async () => {
@@ -135,6 +143,7 @@ describe("API integration: task image upload finalize", () => {
 
   it("falls back to deriving URL from the request when KANEO_API_URL is not set", async () => {
     delete process.env.KANEO_API_URL;
+    process.env.TASKDESK_AGENT_URL = "https://app.taskdesk.test";
 
     const member = await createWorkspaceMember();
     const { project, columns } = await createProjectFixture({
@@ -167,7 +176,10 @@ describe("API integration: task image upload finalize", () => {
       `https://app.taskdesk.test/api/task/image-upload/${task.id}/finalize`,
       {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          host: "app.taskdesk.test",
+          "content-type": "application/json",
+        },
         body: JSON.stringify({
           key,
           filename: "fallback-image.png",

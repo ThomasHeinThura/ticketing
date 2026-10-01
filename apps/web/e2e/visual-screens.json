@@ -8,6 +8,14 @@
 		"reason": "The implemented sign-in route predates the inventory route /agent/sign-in; this mismatch is reported as a remaining inventory gap."
 	},
 	{
+		"name": "portal-disabled",
+		"inventoryRoute": "/",
+		"applicationRoute": "/",
+		"origin": "portal",
+		"test": "portal disabled notice @visual",
+		"screenshot": "portal-disabled.png"
+	},
+	{
 		"name": "work-item-list",
 		"inventoryRoute": "/agent/projects/{key}/work?layout=list",
 		"applicationRoute": "/agent/projects/$projectKey/work",

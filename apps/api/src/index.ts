@@ -1,5 +1,5 @@
 import { statSync } from "node:fs";
-import type { Server as HttpServer } from "node:http";
+import type { IncomingMessage, Server as HttpServer } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { serve, upgradeWebSocket } from "@hono/node-server";
@@ -17,7 +17,11 @@ import { WebSocketServer } from "ws";
 import activity from "./activity";
 import attachment from "./attachment";
 import audit from "./audit";
-import { authForHost, portalForHost } from "./auth";
+import {
+  assertCookieDomainIsNotConfiguredForHostIsolation,
+  authForHost,
+  portalForHost,
+} from "./auth";
 import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
 import column from "./column";
@@ -88,6 +92,10 @@ import { migrateNotificationPreferencesSchema } from "./utils/migrate-notificati
 import { migrateSessionColumn } from "./utils/migrate-session-column";
 import { migrateWorkspaceUserEmail } from "./utils/migrate-workspace-user-email";
 import { normalizeApiServerUrl } from "./utils/openapi-spec";
+import {
+  parseConfiguredOrigins,
+  selectOriginFromContext,
+} from "./utils/request-origin";
 import { rejectNulByte } from "./utils/reject-nul-byte";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
@@ -115,11 +123,13 @@ type ApiKey = {
 };
 
 type AppVariables = {
+  Bindings: { incoming?: IncomingMessage & { authority?: string } };
   Variables: {
     user: User | null;
     session: Session | null;
     userId: string;
     apiKey?: ApiKey;
+    appOrigin: "agent" | "portal" | "unknown";
   };
 };
 
@@ -186,11 +196,11 @@ function buildContentDisposition(filename: string, inline: boolean) {
  * Both candidates are checked in order; the first that looks like a real
  * build (a directory containing `index.html`) wins.
  */
-function defaultStaticRootCandidates(): string[] {
+function defaultStaticRootCandidates(surface: "agent" | "portal"): string[] {
   const currentDir = dirname(fileURLToPath(import.meta.url));
   return [
-    join(currentDir, "../../../public"),
-    join(currentDir, "../../web/dist"),
+    join(currentDir, "../../../public", surface),
+    join(currentDir, `../../web/dist/${surface}`),
   ];
 }
 
@@ -202,7 +212,7 @@ function defaultStaticRootCandidates(): string[] {
  * having been built.
  */
 export function resolveStaticRoot(
-  candidates: string[] = defaultStaticRootCandidates(),
+  candidates: string[] = defaultStaticRootCandidates("agent"),
 ): string | undefined {
   return candidates.find((candidate) => {
     try {
@@ -272,35 +282,47 @@ async function handleAuthRequest(c: Context, headers?: Headers) {
  * `apps/web/dist` present, or this registration voids that declaration for CORS/compress too
  * (issue #165 — see `tests/permissions/README.md` and `docs/04-engineering/ci-cd.md`).
  */
+function resolveStaticRoots(options: {
+  agent?: string;
+  portal?: string;
+}): Record<"agent" | "portal", string | undefined> {
+  return {
+    agent: resolveStaticRoot(
+      options.agent ? [options.agent] : defaultStaticRootCandidates("agent"),
+    ),
+    portal: resolveStaticRoot(
+      options.portal ? [options.portal] : defaultStaticRootCandidates("portal"),
+    ),
+  };
+}
+
+function denyByHost(c: Context<AppVariables>) {
+  if (isApiRequestPath(c.req.path)) {
+    return c.req.method === "HEAD"
+      ? c.body(null, 404, { "content-type": "application/json" })
+      : c.json({ message: "Not Found" }, 404);
+  }
+  return c.body(null, 404);
+}
+
+/**
+ * Serves the separate built app selected by the validated request authority.
+ * A missing selected root returns 503; it never falls back across origins.
+ */
 function registerStaticServing(
   app: Hono<AppVariables>,
-  staticRootOverride?: string,
+  staticRoots: Record<"agent" | "portal", string | undefined>,
 ) {
-  // An override still goes through the same "is this actually a build"
-  // check as the real candidates, rather than being trusted blindly — a
-  // test (or a future caller) that passes a directory with no `index.html`
-  // gets the same graceful skip as the no-override, nothing-found case.
-  const staticRoot = staticRootOverride
-    ? resolveStaticRoot([staticRootOverride])
-    : resolveStaticRoot();
-
-  if (!staticRoot) {
+  if (!staticRoots.agent && !staticRoots.portal) {
     console.warn(
-      "[static] No built web app found (checked the production /app/public location and apps/web/dist) — the API will not serve the web UI. Expected whenever only the API is running, e.g. before `pnpm --filter @taskdesk/web build` in local development.",
+      "[static] No built web apps found; both origin roots return 503 for document requests until their builds exist.",
     );
-    return;
+  }
+  for (const [surface, staticRoot] of Object.entries(staticRoots)) {
+    if (staticRoot)
+      console.log(`[static] Serving the ${surface} app from ${staticRoot}`);
   }
 
-  console.log(`[static] Serving the built web app from ${staticRoot}`);
-
-  const serveAsset = serveStatic({ root: staticRoot });
-  const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
-
-  // Named (not inline in `.use()`) so its exact function reference can be declared to
-  // `permissions/shadow-middleware.ts` (Opus delta F5) as reviewed catch-all
-  // infrastructure -- the classification guard runs from inside a DIFFERENT catch-all
-  // (the auth guard, below) and would otherwise have no way to tell this middleware's own
-  // matched entry apart from a real, unclassified feature route sharing the same key.
   const serveStaticOrSpaShell = async (
     c: Context<AppVariables>,
     next: Next,
@@ -312,36 +334,36 @@ function registerStaticServing(
       return next();
     }
 
-    // `serveStatic`'s own "not found" signal is calling its `next` argument
-    // (typed to return `void`, not a `Response`), so the decision below
-    // can't be made from inside that callback's return value — it just
-    // flags that no file matched, and the real branching happens after.
+    const surface = c.get("appOrigin");
+    if (surface !== "agent" && surface !== "portal") return next();
+    const staticRoot = staticRoots[surface];
+    if (!staticRoot) {
+      return c.req.method === "HEAD"
+        ? c.body(null, 503, { "content-type": "application/json" })
+        : c.json({ message: "Service Unavailable" }, 503);
+    }
+
+    const serveAsset = serveStatic({ root: staticRoot });
+    const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
     let assetMissing = false;
     const result = await serveAsset(c, async () => {
       assetMissing = true;
     });
+    if (!assetMissing) return result;
 
-    if (!assetMissing) {
-      return result;
-    }
-
-    // No matching file. A request whose last path segment has an extension
-    // (".js", ".png", a stray ".env", ...) is a genuinely missing asset and
-    // must stay a 404 — silently returning the SPA shell for it would turn
-    // a broken or typo'd asset URL into a "successful" HTML response
-    // instead of a loud failure. Anything else is a client-side route and
-    // gets the SPA shell.
     const lastSegment = c.req.path.split("/").pop() ?? "";
-    if (lastSegment.includes(".")) {
-      return next();
-    }
+    if (lastSegment.includes(".")) return next();
+    if (surface === "portal") return c.notFound();
     return serveIndex(c, next);
   };
   declareCatchAllMiddleware(serveStaticOrSpaShell);
   app.use("*", serveStaticOrSpaShell);
 }
 
-export function createApp(options: { staticRoot?: string } = {}) {
+export function createApp(
+  options: { staticRoot?: string; portalStaticRoot?: string } = {},
+) {
+  assertCookieDomainIsNotConfiguredForHostIsolation();
   const app = new Hono<AppVariables>();
 
   app.onError((err, c) => {
@@ -353,6 +375,52 @@ export function createApp(options: { staticRoot?: string } = {}) {
     }
     return c.json({ message: "Internal Server Error" }, 500);
   });
+  const staticRoots = resolveStaticRoots({
+    agent: options.staticRoot,
+    portal: options.portalStaticRoot,
+  });
+  const origins = parseConfiguredOrigins(
+    process.env.TASKDESK_AGENT_URL,
+    process.env.TASKDESK_PORTAL_URL,
+  );
+  const hostRoutingGuard = async (c: Context<AppVariables>, next: Next) => {
+    const selected = selectOriginFromContext(c, origins);
+    const isHealthPath =
+      c.req.path === "/api/health" ||
+      c.req.path === "/api/public/health/live" ||
+      c.req.path === "/api/public/health/ready";
+    const isHealthRequest =
+      isHealthPath && (c.req.method === "GET" || c.req.method === "HEAD");
+    const upgrade = c.req.header("upgrade")?.toLowerCase();
+    const connection = c.req.header("connection")?.toLowerCase() ?? "";
+    const isWebSocketUpgrade =
+      upgrade === "websocket" && connection.includes("upgrade");
+
+    if (selected === "invalid") return denyByHost(c);
+    if (isWebSocketUpgrade && (selected !== "agent" || isHealthPath))
+      return denyByHost(c);
+    if (isHealthRequest) {
+      c.set("appOrigin", selected === "unknown" ? "unknown" : selected);
+      await next();
+      if (c.req.method === "HEAD")
+        return new Response(null, {
+          status: c.res.status,
+          statusText: c.res.statusText,
+          headers: c.res.headers,
+        });
+      return;
+    }
+    if (selected === "unknown") return denyByHost(c);
+    c.set("appOrigin", selected);
+    if (selected === "portal") {
+      if (isApiRequestPath(c.req.path)) return denyByHost(c);
+      if (c.req.method !== "GET" && c.req.method !== "HEAD")
+        return denyByHost(c);
+    }
+    return next();
+  };
+  declareCatchAllMiddleware(hostRoutingGuard);
+  app.use("*", hostRoutingGuard);
   const corsOriginSource = [
     process.env.CORS_ORIGINS,
     process.env.TASKDESK_AGENT_URL,
@@ -1235,7 +1303,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
   );
 
   app.route("/api", api);
-  registerStaticServing(app, options.staticRoot);
+  registerStaticServing(app, staticRoots);
 
   return {
     app,

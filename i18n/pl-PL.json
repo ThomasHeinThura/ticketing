@@ -2263,5 +2263,19 @@
 			"typesRetry": "Retry",
 			"close": "Close"
 		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Portal klienta jest niedostępny",
+			"description": "Dostęp dla klientów nie jest jeszcze dostępny. Skontaktuj się z administratorem service desk."
+		},
+		"notFound": {
+			"title": "Nie znaleziono strony",
+			"description": "Ta strona jest niedostępna. Sprawdź adres i spróbuj ponownie."
+		},
+		"error": {
+			"title": "Coś poszło nie tak",
+			"description": "Nie udało się wczytać strony. Spróbuj ponownie."
+		}
 	}
 }

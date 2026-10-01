@@ -77,13 +77,19 @@ suite, and on any Storybook story.
 
 ### G5 · Every screen has a URL
 
-**Fails on:** a route present in the generated route trees (`routeTree.agent.gen.ts`,
-`routeTree.portal.gen.ts`) but missing from `lib/routes.ts` — which is **generated from
-those trees, never hand-maintained** — or a declared route that fails the build/parse
-round-trip test. `check:inventory` compares the screen inventory's canonical routes (query
-strings stripped) against the same generated list, so there is one source of truth.
+**Fails on:** a route present in either generated tree (`routeTree.agent.gen.ts`,
+`routeTree.portal.gen.ts`) but missing from `generatedRouteMetadata`, re-exported by
+`lib/routes.ts` and generated from those trees, or a generated route template that fails
+the build/parse round-trip test. `check:inventory` compares canonical URLs for inventory
+routes marked in progress or complete with the generated trees. Not-started inventory URLs
+remain planned; the checker reports their count without treating them as working routes.
+Generated inherited and documented legacy routes stay in the registry and round-trip tests,
+but do not become TaskDesk v2 inventory screens. This active-prerequisite scope follows the
+[2026-09-28 applicable-now gate decision](../07-planning/decision-log.md#2026-09-28--10s-gate-scope-semantics-decided-applicable-now-gates-required-future-stage-gates-activate-with-their-prerequisite)
+and the [G8 route-activation decision](../07-planning/decision-log.md#2026-10-01--g8-requires-implemented-screens-now-and-activates-future-routes-with-implementation).
 
-**Also fails on:** for every list surface (a `route`-kind screen with filters, a layout
+**Also fails on:** for every implemented list surface (a `route`-kind screen marked in
+progress or complete with filters, a layout
 switch or a saved-view lens — the `Work`, `Backlog`, `Triage`, `Views` and `My work`
 inventory rows), an E2E assertion that applying a filter changes the URL to encode it, and
 that reloading that exact URL restores the same filter and layout state. Route registration
@@ -196,7 +202,7 @@ portal bundle's module graph (walked from the bundler's own metadata).
 
 Achievable only with **two router trees**: two `tanstackRouter()` plugin instances
 (`routes/agent`, `routes/portal`) generating two route trees, two Rollup inputs
-(`entry.agent.tsx`, `entry.portal.tsx`) and two HTML files. kaneo's single generated
+(`src/main.tsx`, `src/main.portal.tsx`) and two HTML roots. kaneo's single generated
 `routeTree.gen.ts` (49 static route imports) cannot satisfy this; the split is P0 work
 ([ui-extraction-plan.md](ui-extraction-plan.md)).
 

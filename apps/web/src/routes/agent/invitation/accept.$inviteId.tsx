@@ -23,7 +23,7 @@ import useAcceptInvitation from "@/hooks/mutations/workspace-user/use-accept-inv
 import { useGetInvitationDetails } from "@/hooks/queries/invitation/use-get-invitation-details";
 import { authClient } from "@/lib/auth-client";
 import { toast } from "@/lib/toast";
-import { AuthLayout } from "../../components/auth/layout";
+import { AuthLayout } from "../../../components/auth/layout";
 
 export const Route = createFileRoute("/invitation/accept/$inviteId")({
   component: AcceptInvitation,
