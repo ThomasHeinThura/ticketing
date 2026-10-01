@@ -141,7 +141,7 @@ export function ServiceCalendarEditorView({
                   {t("editor.discardReload")}
                 </Button>
                 <Button type="button" onClick={state.keepDraft}>
-                  Keep my draft
+                  {t("editor.keepDraft")}
                 </Button>
               </div>
             </AlertDescription>
@@ -212,8 +212,7 @@ export function ServiceCalendarEditorView({
             <AlertDialogHeader>
               <AlertDialogTitle>{t("editor.timezoneTitle")}</AlertDialogTitle>
               <AlertDialogDescription className="text-foreground">
-                Changing the calendar timezone immediately changes how SLA
-                deadlines are calculated for work items using this calendar.
+                {t("editor.timezoneDescription")}
               </AlertDialogDescription>
               <p className="text-sm text-foreground">
                 {t("editor.timezoneCount")}
@@ -223,7 +222,7 @@ export function ServiceCalendarEditorView({
               <AlertDialogClose
                 render={
                   <Button type="button" variant="outline">
-                    Cancel
+                    {t("editor.cancel")}
                   </Button>
                 }
               />

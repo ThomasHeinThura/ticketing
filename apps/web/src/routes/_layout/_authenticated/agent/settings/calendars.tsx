@@ -75,7 +75,7 @@ function ServiceCalendarsRoute() {
               disabled={!workspace}
             >
               <Plus aria-hidden="true" />
-              New calendar
+              {t("list.new")}
             </Button>
           ) : null}
         </div>
