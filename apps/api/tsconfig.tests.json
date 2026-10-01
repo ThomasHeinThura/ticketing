@@ -38,6 +38,11 @@
 		}
 	},
 	"include": [
+		"scripts/seed-profile.ts",
+		"scripts/seed-postgres.test.ts",
+		"scripts/seed-test-global-setup.ts",
+		"scripts/seed-test-setup.ts",
+		"vitest.seed.config.ts",
 		"../../tests/api/**/*.ts",
 		"../../tests/api-integration/**/*.ts"
 	]
