@@ -32,9 +32,10 @@ Schema lives in `apps/api/src/database/schema.ts`.
   plausibly edit at once — see [api-design.md](api-design.md). Marked **v** below.
 - The active legacy `task` table also carries `version integer not null default 1` while
   `/api/task` remains available. Every persisted task-row update advances it, including
-  status, assignee, move, bulk and runtime column migration writes; the full-task PUT
-  checks it under the task row lock. This compatibility column is removed only with the
-  legacy task table.
+  status, assignee, move, bulk and runtime column migration writes. The required
+  `/api/v2/task/{id}` full-task PUT checks it under the task row lock; the compatible
+  `/api/task/{id}` PUT checks it when `If-Match` is supplied and preserves legacy behavior
+  when omitted. This compatibility column is removed only with the legacy task table.
 - Money as `numeric(14,4)`. Durations as integer **minutes**. Never floats for either.
 - JSONB for genuinely open shapes (plugin config, custom field values, event payloads).
   Never as a way to avoid designing a schema. Every JSONB column below names the document

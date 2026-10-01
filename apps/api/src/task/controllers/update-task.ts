@@ -30,7 +30,7 @@ export class TaskVersionConflictError extends Error {
 
 async function updateTask(
   id: string,
-  assertedVersion: number,
+  assertedVersion: number | undefined,
   title: string,
   status: string,
   startDate: string | undefined,
@@ -47,7 +47,10 @@ async function updateTask(
   const { existingTask: lockedTask, updatedTask } = await db.transaction(
     async (tx) => {
       const lockedTask = await lockTaskAndAssertProjectLive(tx, id);
-      if (lockedTask.version !== assertedVersion) {
+      if (
+        assertedVersion !== undefined &&
+        lockedTask.version !== assertedVersion
+      ) {
         throw new TaskVersionConflictError(assertedVersion, lockedTask.version);
       }
       if (projectId !== lockedTask.projectId) {

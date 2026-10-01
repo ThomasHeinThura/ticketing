@@ -39,6 +39,33 @@ directly would expose fields that the UI and polling contract do not need.
 
 **Decided by:** task orchestrator, 2026-10-01.
 
+### 2026-10-01 · Versioned task writes use a successor route; legacy PUT stays compatible (#526)
+
+**Decision:** first-party full-task writes use required-precondition `PUT
+/api/v2/task/{id}` with the existing authorization chain and locked task-version comparison.
+The released `PUT /api/task/{id}` remains supported as a deprecated compatibility operation:
+omitting `If-Match` preserves its prior request behavior, while a supplied header is strictly
+parsed and enforced under the same lock. Both operations, and every other persisted task-row
+writer, atomically advance `task.version`. First-party web and MCP full-task writers use the
+versioned route. The legacy route emits `Deprecation: @1790812800`, `Sunset: Thu, 01 Apr 2027
+00:00:00 GMT`, and a `successor-version` Link to the v2 operation. Deprecation starts
+2026-10-01; removal is allowed only after both the sunset date and two subsequent minor
+releases, with no automatic removal. Unversioned third-party legacy clients retain their
+existing overwrite risk during migration; #526 protects first-party writers and version-aware
+requests, not every legacy client.
+
+**Why:** the stable 2.0 API cannot gain a required request header without a breaking change.
+The versioned operation enforces the concurrency contract while the legacy operation remains
+compatible and gives clients a dated successor path.
+
+**Alternatives:** make the old header optional only in OpenAPI (rejected because runtime and
+contract would disagree); exempt the break in the closed allowlist (rejected because stable
+API breaks require a successor version); remove legacy compatibility immediately (rejected
+because existing clients need a migration window).
+
+**Decided by:** Thomas under the standing all-recommended-decisions instruction, recorded by
+the orchestrating session on 2026-10-01.
+
 ### 2026-10-01 · Legacy full-task PUT uses the work-item optimistic-concurrency contract (#526)
 
 **Decision:** while legacy task screens and `/api/task` remain active, full-task

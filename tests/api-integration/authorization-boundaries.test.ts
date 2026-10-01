@@ -333,7 +333,7 @@ describe("every assignee write path is workspace scoped", () => {
     mockAuthenticatedSession(user);
     const { app } = createApp();
 
-    const response = await app.request(`/api/task/${task.id}`, {
+    const request = {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -348,9 +348,12 @@ describe("every assignee write path is workspace scoped", () => {
         position: 1,
         userId: outsider.user.id,
       }),
-    });
+    };
 
-    expect(response.status).toBe(403);
+    const legacy = await app.request(`/api/task/${task.id}`, request);
+    const versioned = await app.request(`/api/v2/task/${task.id}`, request);
+    expect(legacy.status).toBe(403);
+    expect(versioned.status).toBe(403);
   });
 
   it("imports the valid tasks and fails only the one with a bad assignee", async () => {

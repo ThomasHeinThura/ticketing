@@ -84,6 +84,10 @@ export const taskIfMatchHeader = z.object({
     ),
 });
 
+export const optionalTaskIfMatchHeader = z.object({
+  "if-match": taskIfMatchHeader.shape["if-match"].optional(),
+});
+
 export const moveTaskBody = z.object({
   destinationProjectId: z.string(),
   destinationStatus: z.string().optional().openapi({

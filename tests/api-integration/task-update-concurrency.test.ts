@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { Client } from "pg";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -14,6 +14,16 @@ import {
 } from "./helpers/fixtures";
 
 const TASK_UPDATE_BARRIER_NAMESPACE = 4_009;
+
+function hashApiKeyForTest(key: string): string {
+  return createHash("sha256")
+    .update(key)
+    .digest()
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
 
 async function waitForBlockedPid(client: Client, blockerPid: number) {
   const deadline = Date.now() + 5_000;
@@ -140,7 +150,7 @@ describe("API integration: task update concurrency", () => {
     const snapshot = (await read.json()) as { version: number };
     expect(snapshot.version).toBe(1);
 
-    const missingRevision = await app.request(`/api/task/${task.id}`, {
+    const missingRevision = await app.request(`/api/v2/task/${task.id}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -153,6 +163,22 @@ describe("API integration: task update concurrency", () => {
       }),
     });
     expect(missingRevision.status).toBe(400);
+    const malformedRevision = await app.request(`/api/v2/task/${task.id}`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "if-match": "1",
+      },
+      body: JSON.stringify({
+        title: "Must not save",
+        description: "",
+        priority: "low",
+        status: "to-do",
+        projectId: project.id,
+        position: 1,
+      }),
+    });
+    expect(malformedRevision.status).toBe(400);
 
     const [narrowUpdate, staleUpdate] = await raceTaskRequestsInLockOrder(
       task.id,
@@ -163,7 +189,7 @@ describe("API integration: task update concurrency", () => {
           body: JSON.stringify({ status: "done" }),
         }),
       () =>
-        app.request(`/api/task/${task.id}`, {
+        app.request(`/api/v2/task/${task.id}`, {
           method: "PUT",
           headers: {
             "content-type": "application/json",
@@ -244,7 +270,7 @@ describe("API integration: task update concurrency", () => {
           body: JSON.stringify({ userId: null }),
         }),
       () =>
-        app.request(`/api/task/${task.id}`, {
+        app.request(`/api/v2/task/${task.id}`, {
           method: "PUT",
           headers: {
             "content-type": "application/json",
@@ -278,5 +304,195 @@ describe("API integration: task update concurrency", () => {
       version: 2,
     });
     expect(fullUpdateEvents).toBe(0);
+  });
+
+  it("WI-7a: keeps legacy PUT compatible while enforcing supplied revisions", async () => {
+    const member = await createWorkspaceMember({ role: "owner" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Original title",
+          description: "Original description",
+          priority: "medium",
+          status: "to-do",
+          columnId: columns.todo.id,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "legacy task PUT fixture",
+    );
+
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const snapshotResponse = await app.request(`/api/task/${task.id}`);
+    const snapshot = (await snapshotResponse.json()) as { version: number };
+    const body = {
+      title: "Legacy compatible update",
+      description: "Updated through the released route",
+      priority: "low",
+      status: "to-do",
+      projectId: project.id,
+      position: 1,
+    };
+    const legacyUpdate = await app.request(`/api/task/${task.id}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    expect(legacyUpdate.status).toBe(200);
+    expect(legacyUpdate.headers.get("deprecation")).toBe("@1790812800");
+    expect(legacyUpdate.headers.get("sunset")).toBe(
+      "Thu, 01 Apr 2027 00:00:00 GMT",
+    );
+    expect(legacyUpdate.headers.get("link")).toBe(
+      `</api/v2/task/${task.id}>; rel="successor-version"`,
+    );
+
+    const malformedLegacyUpdate = await app.request(`/api/task/${task.id}`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "if-match": "2",
+      },
+      body: JSON.stringify(body),
+    });
+    expect(malformedLegacyUpdate.status).toBe(400);
+    expect(malformedLegacyUpdate.headers.get("deprecation")).toBe(
+      "@1790812800",
+    );
+
+    const staleLegacyUpdate = await app.request(`/api/task/${task.id}`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "if-match": `"${snapshot.version}"`,
+      },
+      body: JSON.stringify({ ...body, title: "Must remain stale" }),
+    });
+    expect(staleLegacyUpdate.status).toBe(409);
+    expect(staleLegacyUpdate.headers.get("deprecation")).toBe("@1790812800");
+    await expect(staleLegacyUpdate.json()).resolves.toMatchObject({
+      assertedVersion: 1,
+      currentVersion: 2,
+    });
+    const persisted = await db.query.taskTable.findFirst({
+      where: eq(schema.taskTable.id, task.id),
+    });
+    expect(persisted).toMatchObject({
+      title: "Legacy compatible update",
+      version: 2,
+    });
+  });
+
+  it("WI-7a: keeps the same update permission boundary on both full-task routes", async () => {
+    const member = await createWorkspaceMember({ role: "viewer" });
+    const { project, columns } = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const task = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: project.id,
+          title: "Permission boundary",
+          description: "Original",
+          priority: "medium",
+          status: "to-do",
+          columnId: columns.todo.id,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "task update permission fixture",
+    );
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const request = {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "if-match": '"1"',
+      },
+      body: JSON.stringify({
+        title: "Denied update",
+        description: "Denied",
+        priority: "low",
+        status: "to-do",
+        projectId: project.id,
+        position: 1,
+      }),
+    };
+
+    const legacy = await app.request(`/api/task/${task.id}`, request);
+    const versioned = await app.request(`/api/v2/task/${task.id}`, request);
+    expect(legacy.status).toBe(403);
+    expect(versioned.status).toBe(403);
+    expect(versioned.headers.get("deprecation")).toBeNull();
+
+    const foreignMember = await createWorkspaceMember({ role: "owner" });
+    const foreignProject = await createProjectFixture({
+      workspaceId: foreignMember.workspace.id,
+    });
+    const foreignTask = requireRow(
+      await db
+        .insert(schema.taskTable)
+        .values({
+          projectId: foreignProject.project.id,
+          title: "Foreign task",
+          description: "Not in caller workspace",
+          priority: "medium",
+          status: "to-do",
+          columnId: foreignProject.columns.todo.id,
+          number: 1,
+          position: 1,
+        })
+        .returning(),
+      "foreign task update permission fixture",
+    );
+    const foreign = await app.request(`/api/v2/task/${foreignTask.id}`, {
+      ...request,
+      headers: { ...request.headers, "If-Match": '"1"' },
+    });
+    expect(foreign.status).toBe(404);
+
+    const rawKey = `taskdesk_test_${randomUUID()}`;
+    const now = new Date();
+    await db.insert(schema.apikeyTable).values({
+      referenceId: member.user.id,
+      userId: member.user.id,
+      key: hashApiKeyForTest(rawKey),
+      name: "Task update scope regression",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ work_item: ["read"] }),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const scopedKey = await app.request(`/api/v2/task/${task.id}`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/json",
+        "if-match": '"1"',
+        "x-api-key": rawKey,
+      },
+      body: JSON.stringify({
+        title: "Denied by key scope",
+        description: "Denied",
+        priority: "low",
+        status: "to-do",
+        projectId: project.id,
+        position: 1,
+      }),
+    });
+    expect(scopedKey.status).toBe(403);
+    await expect(scopedKey.text()).resolves.toContain(
+      "Insufficient API key scope",
+    );
   });
 });

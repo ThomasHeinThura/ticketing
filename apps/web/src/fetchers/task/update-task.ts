@@ -3,11 +3,11 @@ import type { InferRequestType } from "hono/client";
 import type Task from "@/types/task";
 
 type UpdateTaskPriority = InferRequestType<
-  (typeof client)["task"][":id"]["$put"]
+  (typeof client)["v2"]["task"][":id"]["$put"]
 >["json"]["priority"];
 
 async function updateTask(taskId: string, task: Task) {
-  const response = await client.task[":id"].$put({
+  const response = await client.v2.task[":id"].$put({
     param: { id: taskId },
     header: { "if-match": `"${task.version}"` },
     json: {

@@ -107,7 +107,7 @@ describe("registerTools", () => {
       method: "GET",
     });
     const putCall = client.json.mock.calls[1];
-    expect(putCall?.[0]).toBe("/api/task/task-1");
+    expect(putCall?.[0]).toBe("/api/v2/task/task-1");
     expect(putCall?.[1]).toMatchObject({
       method: "PUT",
       headers: { "If-Match": '"3"' },

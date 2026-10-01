@@ -4,7 +4,7 @@ import updateTask from "./update-task";
 const mocks = vi.hoisted(() => ({ put: vi.fn() }));
 
 vi.mock("@taskdesk/libs", () => ({
-  client: { task: { ":id": { $put: mocks.put } } },
+  client: { v2: { task: { ":id": { $put: mocks.put } } } },
 }));
 
 const staleTask = {

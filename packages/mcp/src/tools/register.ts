@@ -297,7 +297,7 @@ export function registerTools(
         )) as Record<string, unknown>;
         const body = buildFullTaskUpdateBody(existing, patch);
         const { version, ...requestBody } = body;
-        return client.json(`/api/task/${encodeURIComponent(taskId)}`, {
+        return client.json(`/api/v2/task/${encodeURIComponent(taskId)}`, {
           method: "PUT",
           headers: { "If-Match": `"${version}"` },
           body: JSON.stringify(requestBody),
