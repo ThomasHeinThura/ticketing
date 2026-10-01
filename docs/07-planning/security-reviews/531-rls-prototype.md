@@ -113,3 +113,64 @@ I inspected all three imported files. They install JSDOM's browser `localStorage
 ## Tests and residuals
 
 **No local tests or builds were run for this source-identical integration delta.** Earlier focused RLS and typecheck runs remain recorded in the prior full Sol review; I do not claim to have rerun them. At my GitHub snapshot, integration was still in progress and `pull request template + security review` was red; other completed required checks shown were green, while G11 was reported not enabled. All required gates remain the orchestrator's responsibility. The original prototype's limited actor/sampling scope and lack of production RLS enforcement remain unchanged residuals. A later head or base change requires a fresh exact-head decision.
+
+
+# PR #531 exact-head main-import confirmation
+
+- **Reviewer:** independent GPT-6 Luna context; I did not author, direct, or remediate the RLS prototype.
+- **Exact candidate:** `869ac469e91a64d220a825ee4cc37927002aec2e`.
+- **First parent:** `dc8fc213a847de2ad9898c8eda182e146e5296bf` (prior reviewed candidate `77793a70c59fd8a319d85e69c11a9869d2d1a47d`).
+- **Second parent/base:** `bb881f5e622b7a165b4cbeaa961379ade0bf2078` (current main supplied by orchestration; the merge commit's second parent).
+- **Verdict:** **CLEAR for the #538 main-import delta only.** No finding in the imported probes or their interaction with the unchanged RLS prototype. This is not a full RLS re-review or merge-readiness decision.
+
+## Actual changes inspected
+
+`git show --raw --format=fuller HEAD` confirms a two-parent merge commit with the parents above. The complete first-parent diff contains exactly three paths:
+
+1. `scripts/ci/probes/repo-root-cwd.test.mjs`: canonicalizes expected repository roots with `realpathSync`; adds a symlink-parent caller-root case and adjusts expected canonical paths.
+2. `scripts/ci/probes/test-contract-root.test.mjs`: canonicalizes the expected caller root and script-root comparison for the approved-breaks path.
+3. `docs/07-planning/security-reviews/538-canonical-probe-roots.md`: records #538 review evidence.
+
+I inspected the complete diffs and the imported review note. These are CI probe test changes; they exercise canonical caller-root resolution, symlink aliases, and the approved-breaks path. They do not modify checker implementation, allowlist contents, exception policy, or thresholds.
+
+The candidate-to-main net diff is exactly the eight PR #531 paths: `apps/api/package.json`, the dedicated RLS Vitest and TypeScript configs, the RLS results and review documents, and the three `tests/rls-prototype` files. No #538 probe file is in that net diff.
+
+## RLS identity and interaction
+
+`git diff --quiet fe278d571463b4ff698d7c3b9679a38a8c97f49b HEAD -- <seven RLS source/config/result paths>` returned 0. The same comparison from `77793a70c59fd8a319d85e69c11a9869d2d1a47d` returned 0. The seven paths were the API package script/typecheck entry, dedicated Vitest config, dedicated TypeScript config, results report, and the three prototype test/support files. The review note itself is naturally excluded from source identity. Thus the imported main delta does not change reviewed RLS source bytes.
+
+I inspected the dedicated Vitest configuration: it uses Node, explicitly includes only `../../tests/rls-prototype/**/*.test.ts`, has its own global setup, serializes execution, and disables coverage. The imported `scripts/ci/probes/*.test.mjs` files are outside that include and use Node's `node:test` APIs. The API typecheck change is unchanged from the reviewed source. Root `pnpm test:contract` invokes `scripts/ci/test-contract.mjs`; the imported probe files are separate security probes, and do not alter that checker or its allowlist. Search results show no RLS references in the root CI checker/probe system and no root-checker wiring of the dedicated RLS Vitest config.
+
+The prior committed #531 evidence records two independent ordinary reviews and the full Sol security review of source head `fe278d5`, plus prior exact-head integration reviews through `77793a7`. This pass checked the new exact-head composition rather than treating those records as a substitute.
+
+## Execution and gates
+
+**No tests or builds were run for this source-identical import delta.** The byte-identity and path/config inspection show no interaction that would make rerunning the dedicated RLS suite informative for this delta; I make no new execution claim. The previous review note's recorded test results remain attributed to those prior reviewers. This report does not update GitHub review metadata, clear CI checks, or claim that required gates are green.
+
+No source changes were made. The worktree remained clean at inspection.
+
+
+# PR #531 — independent GPT-6 Sol security confirmation of #538 main import
+
+**Reviewed head:** `869ac469e91a64d220a825ee4cc37927002aec2e`
+**Current main/base:** `bb881f5e622b7a165b4cbeaa961379ade0bf2078`
+**Reviewer and independence:** Fresh independent GPT-6 Sol context. I did not author, direct, or remediate this candidate or the imported #538 work. This is an exact-head per-PR integration confirmation, not a P0 phase finalizer.
+**Verdict:** **CLEAR for the #538 main-import delta.** No blocking or non-blocking security finding in its composition with the unchanged RLS prototype. This is not a merge-readiness verdict.
+
+## Exact history and composition
+
+I verified GitHub's exact PR head/base and files, and inspected the complete commit path and both parents of the current merge. First parent `dc8fc213a847de2ad9898c8eda182e146e5296bf` is the PR #531 branch after a review-note-only commit on previously reviewed `77793a70c59fd8a319d85e69c11a9869d2d1a47d`; second parent is current main `bb881f5e622b7a165b4cbeaa961379ade0bf2078`, also the merge base. The first-parent import is exactly three paths: `scripts/ci/probes/repo-root-cwd.test.mjs`, `scripts/ci/probes/test-contract-root.test.mjs`, and `docs/07-planning/security-reviews/538-canonical-probe-roots.md`. The extra branch-only change since `77793a7` is to PR #531's review note, not the RLS source. The current-main-to-head net diff remains exactly the eight PR #531 paths; no #538 probe is reintroduced by this PR.
+
+I inspected the imported probe diff and the fresh independent Luna delta report. The probes canonicalize expected temporary checkout roots with `realpathSync` and add a real symlink-parent caller-root case. They still demand that `repoRoot` and the approved-breaks path follow the caller checkout, not the script checkout. They alter no checker implementation, allowlist, route/permission policy, exception, or threshold. The probe files are in the repository's security-review scope and received their own full per-PR reviews before #538 merged; this pass independently checks their composition with #531.
+
+`git diff --quiet fe278d571463b4ff698d7c3b9679a38a8c97f49b 869ac469e91a64d220a825ee4cc37927002aec2e --` across all seven original RLS source/config/results/support paths returned 0. The same comparison from `77793a7` across those paths returned 0. The API package typecheck entry, dedicated TypeScript/Vitest configs, PostgreSQL setup, prototype SQL, application-read comparisons and report are byte-identical to the earlier fully reviewed source. The dedicated Vitest config uses `environment: "node"`, includes only `tests/rls-prototype/**/*.test.ts`, has its own global setup, and runs one worker; it cannot discover the imported `.mjs` CI probes. The root `test:ci-scripts` command runs those probes separately, while `test:contract` calls unchanged checker implementation. I found no new RLS policy, tenant, credential, test-runner or gate interaction from this import.
+
+## Verification and limits
+
+**No local tests or builds were run in this bounded delta pass.** Source identity, disjoint paths and explicit runner includes make a redundant full RLS rerun unnecessary for assessing the import. The prior full security review recorded its own focused RLS test and API typecheck; those are prior evidence, not this reviewer's executions. Root separately reports an API package image build and isolated boot/live/ready HTTP 200 for `dc8fc213` source; I did not run or independently verify those operations here, and the newly imported probes do not ship in that image.
+
+`git diff --check` on the current base-to-head diff reports only the pre-existing intentional Markdown hard-line-break whitespace in the RLS results report. At my GitHub snapshot for this exact head, `pull request template + security review` and G8 were red; integration, gate probes and unit/component were in progress; other completed checks shown were green, and G11 was listed as not enabled. These remain separate required gates. The prototype's prior bounded actor/sampling coverage and absence of production RLS enforcement remain its documented limitations. A later head/base change needs a fresh exact-head decision.
+
+## Shipping package image verification
+
+Root built `taskdesk:pr531-dc8f` from reviewed source plus recorded notes at `dc8fc213a847de2ad9898c8eda182e146e5296bf`; image ID `sha256:e5ca1d9e38298601fa78a167f4fa3d387ee4af3745d2db43ed411584f95f09ba`. The API package manifest is copied into the runtime image, so this build/boot evidence is required even though the added RLS runner is test-only. The disposable PostgreSQL 18/Valkey fixture booted healthy at loopback port 5532; `/api/public/health/live` and `/api/public/health/ready` both returned HTTP 200 with `status: ok`. Logs are `/private/tmp/pr531-dc8f-docker-build.log` and `/private/tmp/pr531-dc8f-smoke-boot.log`. The later main import contains only the independently reviewed CI probes and their note; it changes no shipping source. No production RLS adoption or phase completion is claimed.
