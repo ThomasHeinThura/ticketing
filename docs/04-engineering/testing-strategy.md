@@ -79,9 +79,14 @@ concurrency, cross-tenant isolation, migration application, job leasing, outbox 
 ## Permission tests — RBAC and its API, the structural layer
 Added 2026-09-06, from the fork-time removal list ([decision log](../07-planning/decision-log.md)):
 
-- `no-inherited-integration-routes.test.ts` — no route in Hono's router matches
-  `public-project|github|gitea|slack|discord|telegram|generic-webhook`; `octokit` and
-  `@octokit/webhooks` are absent from the lockfile.
+- `no-inherited-integration-routes.test.ts` — the constructed Hono router has no
+  `public-project`, GitHub, Gitea, Slack, Discord, Telegram or generic-webhook route; the
+  exact `octokit` and `@octokit/webhooks` package names are absent from lockfile package and
+  snapshot mappings and importer aliases. The constructed better-auth instance contains no
+  `anonymous`, `device-authorization` or `bearer` plugin. The independently reconciled
+  `pnpm test:no-inherited-routes` fast gate runs this test; `pnpm test:permissions` includes it
+  as well. The existing `better-auth-plugin-list.test.ts` remains the authoritative exact
+  approved-list assertion.
 - `no-anonymous-plugin.test.ts` — the constructed better-auth configuration contains no
   `anonymous`, `deviceAuthorization` or `bearer` plugin, `accountLinking.enabled` is `false`
   and `session.cookieCache` is disabled (reads the config, not the HTTP behaviour).
@@ -363,9 +368,10 @@ Results recorded per release so regression is visible.
 idempotent within a stable TaskDesk fixture namespace: it may create or reuse its own
 fixture rows, but never truncates, deletes, resets, or overwrites existing rows. A conflicting
 fixture identifier fails with an actionable error. The CLI does not run migrations; the
-database must already have the current schema. Integration coverage uses a fresh disposable
-PostgreSQL database and verifies profile counts, a repeated run, and preservation of an
-unrelated row. The command does not create login credentials or grant memberships/roles.
+database must already have the current schema. The fast API suite covers the CLI's database
+configuration preflight without connecting to PostgreSQL. The disposable PostgreSQL
+integration suite verifies profile counts, a repeated run, and preservation of an unrelated
+row. The command does not create login credentials or grant memberships/roles.
 The CLI verifies the complete fixture-owned default type/template sets and each project's
 default columns and concrete states against the existing code defaults, including state
 order, default selection, and template references. It retains database-generated row IDs;
@@ -389,8 +395,8 @@ choices exercise the named cases without introducing identity or authorization b
 ## Running
 
 ```bash
-pnpm test                  # unit + component
-pnpm test:integration      # Testcontainers, incl. lifecycle/
+pnpm test                  # unit + component, including seed CLI preflight
+pnpm test:integration      # Testcontainers, incl. lifecycle/ and additive seed profiles
 pnpm test:permissions      # route coverage + matrix + tenant isolation + portal router
 pnpm test:contract         # OpenAPI spec validity + breaking-change diff
 pnpm test:mcp              # tool-to-route parity + idempotency + capability clamping
