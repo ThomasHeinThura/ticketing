@@ -14,6 +14,54 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
+`bd615cb4c42b975053180616dc7be6dbebff3f7c` (verified 2026-10-01 07:20 UTC).**
+
+Protected PR #539 merged at 07:16:37 UTC. Its final candidate
+`bf45df60cd03ddadda0f409c229d3d6dc32181e0` passed all 17 required checks, including
+125 PostgreSQL files / 1,567 tests and all 12 unit/component tasks. Independent Luna and
+Sol composition reviews cleared source `3fb1aa4c6c7ae45b7e47f1151c7405b349670de5`;
+the final commits only recorded their evidence. Its image booted healthy and live/ready
+returned 200 in a disposable stack. Deny/cancel HTTP transitions are accepted; full approval,
+execution, step-up, workers, DELETE retrofits, UI and AU-14 operator alerts remain open.
+P4 is not complete. The persistent Traefik dev stack still runs the previously verified
+#529 concurrency image; it has not yet been refreshed to this merge.
+
+**P0 remains the priority.** Seed PR #545 now has source
+`1a549fbf5321a1a13fd822bd1f4fe6e3945b4a12`. The fresh Sol review of the prior source
+found that reruns repaired missing defaults before verification. The structural fix runs
+population helpers only for newly created workspace/project fixtures, verifies reused
+manifests before dependent writes, and adds four missing-type/template/column/state
+preservation regressions. Fresh independent Luna and full Sol reviews both pass at this
+source; both independently ran the disposable PostgreSQL seed suite (2 files / 18 tests).
+The current image builds and boots healthy. Actual CLI profiles/reruns in a separate
+fixture and final current-main integration/gates are in progress. No persistent dev data
+was seeded. Fixture people remain placeholders, with no login users or authority grants;
+the 10k legacy-UI journey remains unproven.
+
+G11 PR #525 remains at `a4592f521ca5046044242a7701b2574cc12bd7bb`, with nine strict
+budgets failing in the hosted exact-head run. The ownership chunking experiment found an
+empty Projects-only SCC set and failed before output generation or timing. It was reverted;
+baseline source and dist are restored. Earlier recursive grouping and page prewarm attempts
+also failed and remain rejected. No G11 optimization, budget waiver or P0 completion is
+claimed. Representative runtime soak, remaining exit criteria and the Sol finalizer stay open.
+
+**Parallel implementation:** fresh ordinary review of calendar PR #513 at
+`83dcc8a3a6c4bf188eccfd024e2615f054c4c41d` requires changes: shared calendars lack
+version/If-Match stale-write protection and required lifecycle timestamps. Its focused
+PostgreSQL suite passes 15 tests; those tests did not establish the missing behavior.
+The owning Luna lane is correcting schema, API and UI under the sole schema/migration lease.
+Main task-version migration `0079` stays intact; calendars use `0080`. P1 #512 and P3
+schema work wait for that serialized acceptance. Independent review, image/browser evidence
+and final gates remain required on the corrected calendar head; P2 is open.
+
+P3 draft #544 still specifies the Entra-only JIT trust clarification at
+`92438d9357d75b4979be6b2b7af879e6c46b7cec`. Independent owning-design review is pending;
+identity runtime/schema and real-Entra acceptance are not delivered. P0–P4 remain open.
+Check live GitHub heads and gates before acting.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
 `2242665c65faca25cc58eb070b686eb4c06d6487` (verified 2026-10-01 07:05 UTC).**
 
 PR #529 merged through the protected flow at 06:52:25 UTC; its exact final candidate
