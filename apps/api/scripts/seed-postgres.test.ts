@@ -9,6 +9,7 @@ import {
   type SeedProfile,
 } from "../../../tests/fixtures/seed-profiles";
 import db, { getDatabasePool, schema } from "../src/database";
+import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisation";
 import { seed } from "./seed-profile";
 
 const unrelatedUser = {
@@ -58,6 +59,72 @@ describe("P0 seed CLI profiles use isolated PostgreSQL and are additive", () => 
 
   afterAll(async () => {
     await getDatabasePool().end();
+  });
+
+  it("rejects conflicting workspace defaults and rolls back inserted defaults", async () => {
+    const namespace = "taskdesk-seed-minimal";
+    const organisation = await ensureInternalOrganisation();
+    const workspaceId = `${namespace}-workspace`;
+    await db.insert(schema.workspaceTable).values({
+      id: workspaceId,
+      organisationId: organisation.id,
+      name: "TaskDesk minimal seed",
+      slug: `${namespace}-workspace`,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    });
+    await db.insert(schema.workItemTypeTable).values({
+      id: `${namespace}-conflicting-task-type`,
+      workspaceId,
+      key: "task",
+      name: "Unexpected task label",
+      category: "delivery",
+      isEpic: false,
+      isChange: false,
+    });
+
+    try {
+      await expect(seed("minimal")).rejects.toThrow(
+        `Fixture default conflict: ${namespace}/work-item-type/task`,
+      );
+
+      const remainingTypes = await db
+        .select()
+        .from(schema.workItemTypeTable)
+        .where(eq(schema.workItemTypeTable.workspaceId, workspaceId));
+      const remainingTemplates = await db
+        .select()
+        .from(schema.stateTemplateTable)
+        .where(eq(schema.stateTemplateTable.workspaceId, workspaceId));
+      const remainingProjects = await db
+        .select()
+        .from(schema.projectTable)
+        .where(eq(schema.projectTable.workspaceId, workspaceId));
+      const remainingPeople = await db
+        .select()
+        .from(schema.personTable)
+        .where(like(schema.personTable.id, `${namespace}-person-%`));
+      const remainingItems = await db
+        .select()
+        .from(schema.workItemTable)
+        .where(like(schema.workItemTable.key, `${namespace}-project-%-%`));
+
+      expect(remainingTypes).toHaveLength(1);
+      expect(remainingTypes[0]).toMatchObject({
+        id: `${namespace}-conflicting-task-type`,
+        key: "task",
+        name: "Unexpected task label",
+      });
+      expect(remainingTemplates).toHaveLength(0);
+      expect(remainingProjects).toHaveLength(0);
+      expect(remainingPeople).toHaveLength(0);
+      expect(remainingItems).toHaveLength(0);
+    } finally {
+      // This test's deliberately created conflict exists only in the disposable
+      // Testcontainers database; remove that test-owned workspace for later tests.
+      await db
+        .delete(schema.workspaceTable)
+        .where(eq(schema.workspaceTable.id, workspaceId));
+    }
   });
 
   for (const profile of ["minimal", "realistic", "hostile"] as const) {

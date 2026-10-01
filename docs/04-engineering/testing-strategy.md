@@ -366,6 +366,10 @@ fixture identifier fails with an actionable error. The CLI does not run migratio
 database must already have the current schema. Integration coverage uses a fresh disposable
 PostgreSQL database and verifies profile counts, a repeated run, and preservation of an
 unrelated row. The command does not create login credentials or grant memberships/roles.
+The CLI verifies the complete fixture-owned default type/template sets and each project's
+default columns and concrete states against the existing code defaults, including state
+order, default selection, and template references. It retains database-generated row IDs;
+any conflicting or incomplete default set fails the seed transaction without rewriting it.
 
 Three sizes: **minimal** (one org, one project, ten items — for fast tests),
 **realistic** (as above, for manual and performance), **hostile** (empty strings, 500-

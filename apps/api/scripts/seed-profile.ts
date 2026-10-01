@@ -8,11 +8,156 @@ import {
 } from "../../../tests/fixtures/seed-profiles";
 import db, { getDatabasePool, schema } from "../src/database";
 import { DEFAULT_PROJECT_COLUMNS } from "../src/project/controllers/create-project";
+import {
+  DEFAULT_STATE_GROUP,
+  DEFAULT_STATE_TEMPLATES,
+} from "../src/utils/default-state-templates";
+import { DEFAULT_WORK_ITEM_TYPES } from "../src/utils/default-work-item-types";
 import { ensureInternalOrganisation } from "../src/utils/seed-internal-organisation";
 import { seedProjectStates } from "../src/utils/seed-project-states";
 import { seedWorkspaceDefaults } from "../src/utils/seed-workspace-defaults";
 
 const FIXTURE_PREFIX = "taskdesk-seed";
+const STATE_GROUP_ORDER = [
+  "backlog",
+  "unstarted",
+  "started",
+  "completed",
+  "cancelled",
+] as const;
+
+function fixtureConflict(namespace: string, kind: string, key: string): never {
+  throw new Error(`Fixture default conflict: ${namespace}/${kind}/${key}`);
+}
+
+function assertUniqueIds(
+  rows: readonly { id: string }[],
+  namespace: string,
+  kind: string,
+) {
+  const ids = new Set(rows.map((row) => row.id));
+  if (ids.size !== rows.length || rows.some((row) => !row.id)) {
+    fixtureConflict(namespace, kind, "row-ids");
+  }
+}
+
+async function verifyWorkspaceDefaults(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  workspaceId: string,
+  namespace: string,
+) {
+  const types = await tx
+    .select()
+    .from(schema.workItemTypeTable)
+    .where(eq(schema.workItemTypeTable.workspaceId, workspaceId));
+  assertUniqueIds(types, namespace, "work-item-types");
+  if (types.length !== DEFAULT_WORK_ITEM_TYPES.length) {
+    fixtureConflict(namespace, "work-item-types", "set");
+  }
+  for (const expected of DEFAULT_WORK_ITEM_TYPES) {
+    const actual = types.find((row) => row.key === expected.key);
+    if (
+      !actual ||
+      actual.workspaceId !== workspaceId ||
+      actual.name !== expected.name ||
+      actual.category !== expected.category ||
+      actual.icon !== null ||
+      actual.workflowId !== null ||
+      actual.slaPolicyId !== null ||
+      actual.isEpic !== (expected.isEpic ?? false) ||
+      actual.isChange !== (expected.isChange ?? false)
+    ) {
+      fixtureConflict(namespace, "work-item-type", expected.key);
+    }
+  }
+
+  const templates = await tx
+    .select()
+    .from(schema.stateTemplateTable)
+    .where(eq(schema.stateTemplateTable.workspaceId, workspaceId));
+  assertUniqueIds(templates, namespace, "state-templates");
+  if (templates.length !== DEFAULT_STATE_TEMPLATES.length) {
+    fixtureConflict(namespace, "state-templates", "set");
+  }
+  for (const expected of DEFAULT_STATE_TEMPLATES) {
+    const actual = templates.find((row) => row.key === expected.key);
+    if (
+      !actual ||
+      actual.workspaceId !== workspaceId ||
+      actual.name !== expected.name ||
+      actual.group !== expected.group ||
+      actual.colour !== null ||
+      actual.archivedAt !== null
+    ) {
+      fixtureConflict(namespace, "state-template", expected.key);
+    }
+  }
+  return { types, templates };
+}
+
+async function verifyProjectDefaults(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  projectId: string,
+  namespace: string,
+  templates: Awaited<ReturnType<typeof verifyWorkspaceDefaults>>["templates"],
+) {
+  const columns = await tx
+    .select()
+    .from(schema.columnTable)
+    .where(eq(schema.columnTable.projectId, projectId));
+  assertUniqueIds(columns, namespace, `columns-${projectId}`);
+  if (columns.length !== DEFAULT_PROJECT_COLUMNS.length) {
+    fixtureConflict(namespace, "columns", projectId);
+  }
+  for (const expected of DEFAULT_PROJECT_COLUMNS) {
+    const actual = columns.find((row) => row.slug === expected.slug);
+    if (
+      !actual ||
+      actual.projectId !== projectId ||
+      actual.name !== expected.name ||
+      actual.position !== expected.position ||
+      actual.isFinal !== expected.isFinal ||
+      actual.icon !== null ||
+      actual.color !== null
+    ) {
+      fixtureConflict(namespace, "column", `${projectId}/${expected.slug}`);
+    }
+  }
+
+  const states = await tx
+    .select()
+    .from(schema.stateTable)
+    .where(eq(schema.stateTable.projectId, projectId));
+  assertUniqueIds(states, namespace, `states-${projectId}`);
+  if (states.length !== DEFAULT_STATE_TEMPLATES.length) {
+    fixtureConflict(namespace, "states", projectId);
+  }
+  const templateByKey = new Map(templates.map((row) => [row.key, row]));
+  const ordered = [...DEFAULT_STATE_TEMPLATES].sort((left, right) => {
+    const groupDelta =
+      STATE_GROUP_ORDER.indexOf(left.group) -
+      STATE_GROUP_ORDER.indexOf(right.group);
+    return groupDelta || left.key.localeCompare(right.key);
+  });
+  for (const [position, expected] of ordered.entries()) {
+    const template = templateByKey.get(expected.key);
+    const actual = states.find(
+      (state) => state.stateTemplateId === template?.id,
+    );
+    if (
+      !template ||
+      !actual ||
+      actual.projectId !== projectId ||
+      actual.position !== position ||
+      actual.isDefault !== (expected.group === DEFAULT_STATE_GROUP) ||
+      actual.archivedAt !== null
+    ) {
+      fixtureConflict(namespace, "state", `${projectId}/${expected.key}`);
+    }
+  }
+  return states.find((state) => state.isDefault)?.id;
+}
+
 function assertProfile(
   value: string | undefined,
 ): asserts value is SeedProfile {
@@ -56,16 +201,13 @@ async function seedProfile(profile: SeedProfile) {
     }
     await seedWorkspaceDefaults(workspace.id, tx);
 
-    const types = await tx
-      .select()
-      .from(schema.workItemTypeTable)
-      .where(eq(schema.workItemTypeTable.workspaceId, workspace.id));
+    const { types, templates } = await verifyWorkspaceDefaults(
+      tx,
+      workspace.id,
+      namespace,
+    );
     const defaultType = types.find((type) => type.key === "task");
-    if (defaultType?.name !== "Task" || defaultType?.category !== "delivery") {
-      throw new Error(
-        `Default task type conflicts with fixture contract: ${namespace}`,
-      );
-    }
+    if (!defaultType) fixtureConflict(namespace, "work-item-type", "task");
 
     const personIds: string[] = [];
     for (let index = 0; index < counts.people; index += 1) {
@@ -180,14 +322,16 @@ async function seedProfile(profile: SeedProfile) {
     }
     const stateByProject = new Map<string, string>();
     for (const projectId of projectIds) {
-      const states = await tx
-        .select()
-        .from(schema.stateTable)
-        .where(eq(schema.stateTable.projectId, projectId));
-      const defaultState = states.find((state) => state.isDefault);
-      if (!defaultState)
-        throw new Error(`Missing default state for ${projectId}`);
-      stateByProject.set(projectId, defaultState.id);
+      const defaultStateId = await verifyProjectDefaults(
+        tx,
+        projectId,
+        namespace,
+        templates,
+      );
+      if (!defaultStateId) {
+        fixtureConflict(namespace, "default-state", projectId);
+      }
+      stateByProject.set(projectId, defaultStateId);
     }
 
     const existingItems = await tx
