@@ -14,6 +14,66 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
+`2242665c65faca25cc58eb070b686eb4c06d6487` (verified 2026-10-01 07:05 UTC).**
+
+PR #529 merged through the protected flow at 06:52:25 UTC; its exact final candidate
+`859c948aef872b2e2aef4755358152b7e6f483f9` passed all 17 required checks, including
+124 PostgreSQL files/1,561 tests and all 12 unit/component package tasks. The independent
+ordinary panel, recovery/transport continuations and Sol confirmations bind their actual
+source heads in the committed review note. Actual Chrome reproduced a stale-write 409,
+one error message and authoritative task restoration; image boot/health and reload passed.
+Issue #526 is closed for that bounded first-party contract. The deprecated legacy route
+retains its explicitly documented unversioned third-party compatibility window. P1 is open.
+
+**Local development:** normal deployment now runs the reviewed concurrency image,
+`sha256:bd93ebe2789ff737ff148ba5595faf25cf026589027206a1cb4494b712645d02`.
+Both HTTPS readiness endpoints returned200. Chrome reload preserved DV-1's title,
+In Progress status, self-assignment and three activity entries; portal sign-in opens.
+Evidence: `/private/tmp/taskdesk-224-dev-task.png` and
+`/private/tmp/taskdesk-224-portal-sign-in.png` (1800×947). Distinct customer entry and
+customer journeys remain unimplemented. Credentials remain private outside the repository.
+
+**P0 remains open.** PR #525 is still at `a4592f521ca5046044242a7701b2574cc12bd7bb`.
+Its exact hosted run failed nine G11 budgets: list685.4/500ms, LCP2704/2500ms,
+detail527.2/300ms, create258.7/200ms, palette-open655.4/200ms,
+palette-navigation611.4/200ms, state283/200ms, assignment290.1/200ms and
+board797.5/500ms. G13's six measurements and deliberate red probe passed. A recursive
+Projects chunk group failed manifest invariants and was reverted before timing. A full
+Projects-graph idle prewarm preserved manifest boundaries but worsened canonical navigation
+from273.1ms to1,308.8ms; it too was reverted. The baseline source/dist are restored. A
+module-ownership experiment is being prepared; no optimization or stage completion is claimed.
+G11 still must become a required context after its strict budgets pass.
+
+Seed PR #541 was superseded by clean-history draft #545 at
+`f480420d5f4f2be3a84fedf333bb6ed8c1b25bca`. Its additive fixtures now reject noncanonical
+workspace/project IDs and have collision/rollback regressions. Historical implicit-database,
+dotenv and fixture-ownership findings were fixed. The replacement changes only the CLI test
+from #541's latest source: runtime-generated synthetic credentials and Vitest environment
+stubs remove the scanner/environment findings without a suppression, baseline growth or
+history rewrite. Fourteen focused tests and check:env pass. Current ordinary test-delta
+review is clear; the fresh full Sol pass, current image boot and final gates remain pending.
+This does not prove the 10k legacy-UI journey or create login users/memberships. The #8
+representative soak, other P0 exit criteria and separate Sol finalizer remain incomplete.
+
+**Parallel work:** P4 #539 is at note-only candidate
+`bf45df60cd03ddadda0f409c229d3d6dc32181e0`, with current source
+`3fb1aa4c6c7ae45b7e47f1151c7405b349670de5`. Independent Luna/Sol composition reviews
+clear the task-version main import; current focused PostgreSQL26, permissions83,
+API four-config typecheck and OpenAPI163 pass. Its combined image built, booted healthy
+and answered live/ready200. Final exact-candidate checks are still pending. Full approval,
+step-up, expiry/invalidation, DELETE retrofits, UI and AU-14 operator alerting remain open.
+
+P2 #513's current-main/migration integration is assigned after #529 established task-version
+migration0079; calendar acceptance must preserve it and use the next migration. P1 #512 and
+P3 schema work wait for that serialized handoff. P3 draft #544 at
+`92438d9357d75b4979be6b2b7af879e6c46b7cec` specifies Entra-only first-release JIT trust and
+a callback domain bound to that same connection. Independent design review and closure of
+the active owning security findings remain pending; there is no identity runtime/schema or
+real-Entra acceptance evidence. P0–P4 remain open. Check live heads/gates before acting.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
 `c27b2ee771eba19f193a0d20cfc1048e9c6d21a9` (verified 2026-10-01 06:14 UTC).**
 
 Since the 03:15 snapshot, protected PRs #532 (TaskDesk public branding), #535 (canonical
