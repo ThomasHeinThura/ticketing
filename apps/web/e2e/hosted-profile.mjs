@@ -213,6 +213,8 @@ test("Hosted G11 attribution profile: list, LCP, detail, palette, and board", as
   const provenance = {
     sourceSha: "__SOURCE_SHA__",
     canonicalBenchmarkSha256: "__CANONICAL_BENCH_SHA256__",
+    canonicalPreviewPort: 4178,
+    diagnosticPreviewPort: 4179,
     buildCommand: "pnpm build (completed by CI before diagnostic)",
     node: process.version,
     pnpm: "__PNPM_VERSION__",
@@ -366,12 +368,12 @@ export default defineConfig({
   reporter: "list",
   timeout: 600_000,
   outputDir: ${JSON.stringify(join(outputDir, "playwright-results"))},
-  use: { baseURL: "http://127.0.0.1:4178", trace: "retain-on-failure", ...devices["Desktop Chrome"] },
+  use: { baseURL: "http://127.0.0.1:4179", trace: "retain-on-failure", ...devices["Desktop Chrome"] },
   webServer: {
-    command: "pnpm --filter @taskdesk/web preview --host 127.0.0.1 --port 4178 --strictPort",
-    url: "http://127.0.0.1:4178/auth/sign-in",
+    command: "pnpm --filter @taskdesk/web preview --host 127.0.0.1 --port 4179 --strictPort",
+    url: "http://127.0.0.1:4179/auth/sign-in",
     reuseExistingServer: false,
-    env: { VITE_API_URL: "http://127.0.0.1:4178" },
+    env: { VITE_API_URL: "http://127.0.0.1:4179" },
   },
 });
 `;
@@ -407,7 +409,16 @@ try {
     .replace("__CANONICAL_BENCH_SHA256__", canonicalBenchmarkSha256)
     .replace("__PNPM_VERSION__", pnpmVersion)
     .replace("__BUILD_EVIDENCE__", buildProvenance);
-  await writeFile(generatedSpec, source + extra);
+  const generatedBenchmarkSource = source.replace(
+    'const PERFORMANCE_BASE_URL = "http://127.0.0.1:4178";',
+    'const PERFORMANCE_BASE_URL = "http://127.0.0.1:4179";',
+  );
+  if (generatedBenchmarkSource === source) {
+    throw new Error(
+      "Could not isolate the diagnostic preview port from the canonical benchmark",
+    );
+  }
+  await writeFile(generatedSpec, generatedBenchmarkSource + extra);
   await writeFile(generatedConfig, configText);
   await mkdir(outputDir, { recursive: true });
   const playwrightArgs = [
