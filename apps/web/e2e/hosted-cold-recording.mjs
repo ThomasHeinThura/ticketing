@@ -1,0 +1,635 @@
+#!/usr/bin/env node
+import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { chromium } from "@playwright/test";
+import { hashedBasename } from "./hosted-cold-recording-validation.mjs";
+
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const webDir = resolve(scriptDir, "..");
+const repoDir = resolve(webDir, "../..");
+const outputArg = process.argv.find((arg) => arg.startsWith("--output="));
+const candidateArg = process.argv.find((arg) =>
+  arg.startsWith("--candidate-sha="),
+);
+const outputPath = outputArg?.slice("--output=".length);
+if (!outputPath || !candidateArg)
+  throw new Error(
+    "Usage: hosted-cold-recording.mjs --candidate-sha=<exact-head> --output=<report.json>",
+  );
+if (
+  candidateArg?.slice("--candidate-sha=".length) &&
+  !/^[a-f0-9]{40}$/i.test(candidateArg.slice("--candidate-sha=".length))
+)
+  throw new Error("Invalid candidate SHA argument.");
+const candidateHeadSha = candidateArg?.slice("--candidate-sha=".length) || null;
+const scratch = await mkdtemp(join(tmpdir(), "taskdesk-g11-cold-"));
+const generatedSpec = join(
+  scriptDir,
+  "performance.hosted-cold-recording.generated.ts",
+);
+const generatedConfig = join(
+  webDir,
+  "playwright.hosted-cold-recording.generated.config.ts",
+);
+const scratchResults = join(scratch, "playwright-results");
+const origin = "http://127.0.0.1:4179";
+const safeSha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+
+async function listFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const nested = await Promise.all(
+    entries.map(async (entry) => {
+      const path = join(directory, entry.name);
+      return entry.isDirectory() ? listFiles(path) : [path];
+    }),
+  );
+  return nested.flat().sort();
+}
+
+async function readBuildEvidence() {
+  const distDir = join(webDir, "dist");
+  const files = await listFiles(distDir);
+  const indexPath = join(distDir, "index.html");
+  const manifestPath = join(distDir, ".vite", "manifest.json");
+  const mapFiles = files.filter((path) => path.endsWith(".js.map"));
+  const jsFiles = files.filter(
+    (path) => path.endsWith(".js") && !path.endsWith(".js.map"),
+  );
+  if (mapFiles.length === 0 || jsFiles.length === 0)
+    throw new Error("Missing built JavaScript or source maps.");
+  const hashFiles = async (paths) =>
+    Promise.all(
+      paths.map(async (path) => {
+        const bytes = await readFile(path);
+        const hashed = hashedBasename(basename(path), bytes);
+        if (!hashed)
+          throw new Error("Build file has an unrecognized hashed basename.");
+        return hashed;
+      }),
+    );
+  const aggregateFiles = async (paths) => {
+    const rows = await Promise.all(
+      paths.map(
+        async (path) =>
+          `${basename(path)}\0${safeSha256(await readFile(path))}`,
+      ),
+    );
+    rows.sort();
+    return { count: rows.length, sha256: safeSha256(rows.join("\n")) };
+  };
+  const manifest = await readFile(manifestPath);
+  const indexHtml = await readFile(indexPath);
+  await hashFiles(jsFiles);
+  await hashFiles(mapFiles);
+  const distRows = await Promise.all(
+    files.map(
+      async (path) =>
+        `${path.slice(distDir.length + 1)}\0${safeSha256(await readFile(path))}`,
+    ),
+  );
+  distRows.sort();
+  return {
+    indexHtmlSha256: safeSha256(indexHtml),
+    manifestSha256: safeSha256(manifest),
+    dist: { count: files.length, sha256: safeSha256(distRows.join("\n")) },
+    javascript: await aggregateFiles(jsFiles),
+    sourceMaps: await aggregateFiles(mapFiles),
+  };
+}
+
+const generatedRecorder = String.raw`
+import { writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
+import {
+  assertColdReportPrivacy,
+  buildSanitizedColdReport,
+} from "./hosted-cold-recording-validation.mjs";
+
+const COLD_REPORT_PATH = __REPORT_PATH__;
+const COLD_PROVENANCE = __PROVENANCE__;
+const COLD_MAX_EVENTS = 250_000;
+const COLD_MAX_NETWORK = 2_048;
+const COLD_MAX_CPU_SAMPLES = 500_000;
+const COLD_MAX_CPU_NODES = 50_000;
+const COLD_TRACE_NAMES = new Set([
+  "thread_name", "RunTask", "EvaluateScript", "CompileScript", "ParseHTML",
+  "V8.CompileCode", "V8.ParseOnBackground", "RemoveChild", "Remove",
+  "DOM.removeChild", "UpdateLayoutTree", "RecalculateStyles", "Layout",
+  "PrePaint", "Paint", "CompositeLayers", "FunctionCall", "RunMicrotasks",
+  "EventDispatch",
+]);
+const COLD_REACT_FUNCTIONS = new Set([
+  "performUnitOfWork", "completeUnitOfWork", "renderWithHooks", "commitRoot",
+  "commitMutationEffects", "flushPassiveEffects", "beginWork", "completeWork",
+]);
+type SafeTraceEvent = {
+  name: string;
+  ph?: string;
+  tid?: number;
+  ts?: number;
+  dur?: number;
+  args?: { name?: string; data?: { functionName?: string } };
+};
+type CapturedRequest = {
+  url: string;
+  method?: string;
+  resourceType?: string;
+  initiatorType?: string;
+  initiatorUrl: string;
+  startTimestamp?: number;
+  endTimestamp?: number;
+  status?: number;
+  failed?: boolean;
+  priority?: string;
+};
+type TraceInterval = { start: number; end: number; name: string; phase: string | null };
+type RequestTiming = { start: number; end: number };
+type RawRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): RawRecord | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as RawRecord
+    : undefined;
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function keepSafeTraceFields(value: unknown): SafeTraceEvent | null {
+  const event = asRecord(value);
+  if (!event || typeof event.name !== "string" || !COLD_TRACE_NAMES.has(event.name)) return null;
+  const safe: SafeTraceEvent = { name: event.name };
+  if (typeof event.ph === "string") safe.ph = event.ph;
+  if (Number.isInteger(event.tid)) safe.tid = event.tid as number;
+  if (isFiniteNumber(event.ts)) safe.ts = event.ts;
+  if (isFiniteNumber(event.dur)) safe.dur = event.dur;
+  const args = asRecord(event.args);
+  if (event.name === "thread_name" && args?.name === "CrRendererMain") {
+    safe.args = { name: "CrRendererMain" };
+  }
+  const functionName = asRecord(args?.data)?.functionName;
+  if (typeof functionName === "string" && COLD_REACT_FUNCTIONS.has(functionName)) {
+    safe.args = { data: { functionName } };
+  }
+  return safe;
+}
+
+async function startColdCapture(page: Page) {
+  const session = await page.context().newCDPSession(page);
+  const traceEvents: SafeTraceEvent[] = [];
+  const requests = new Map<string, CapturedRequest>();
+  let traceOverflow = false;
+  let receivedTraceEventCount = 0;
+  let networkOverflow = false;
+  const tracingComplete = new Promise<{ dataLossOccurred: boolean }>((resolve) => {
+    session.once("Tracing.tracingComplete", resolve);
+  });
+  const clockSamples: Array<{ offsetMs: number; uncertaintyMs: number }> = [];
+  session.on("Tracing.dataCollected", (value: unknown) => {
+    const event = asRecord(value);
+    const values = Array.isArray(event?.value) ? event.value : [];
+    if (receivedTraceEventCount + values.length > COLD_MAX_EVENTS) {
+      traceOverflow = true;
+      return;
+    }
+    receivedTraceEventCount += values.length;
+    for (const value of values) {
+      const safe = keepSafeTraceFields(value);
+      if (safe) traceEvents.push(safe);
+    }
+  });
+  session.on("Network.requestWillBeSent", (value: unknown) => {
+    if (requests.size >= COLD_MAX_NETWORK) {
+      networkOverflow = true;
+      return;
+    }
+    const event = asRecord(value);
+    const requestId = event?.requestId;
+    if (typeof requestId !== "string") return;
+    const request = asRecord(event.request);
+    const initiator = asRecord(event.initiator);
+    const stack = asRecord(initiator?.stack);
+    const callFrames = Array.isArray(stack?.callFrames) ? stack.callFrames : [];
+    const stackFrame = asRecord(callFrames[0]);
+    const url = request?.url;
+    const initiatorUrl = stackFrame?.url;
+    requests.set(requestId, {
+      url: typeof url === "string" && url.length <= 4096 ? url : "",
+      method: typeof request?.method === "string" ? request.method : undefined,
+      resourceType: typeof event.type === "string" ? event.type : undefined,
+      initiatorType: typeof initiator?.type === "string" ? initiator.type : undefined,
+      initiatorUrl: typeof initiatorUrl === "string" && initiatorUrl.length <= 4096 ? initiatorUrl : "",
+      startTimestamp: isFiniteNumber(event.timestamp) ? event.timestamp : undefined,
+      priority: typeof request?.initialPriority === "string" ? request.initialPriority : undefined,
+    });
+  });
+  session.on("Network.responseReceived", (value: unknown) => {
+    const event = asRecord(value);
+    const request = typeof event?.requestId === "string" ? requests.get(event.requestId) : undefined;
+    if (!request) return;
+    const response = asRecord(event?.response);
+    request.status = isFiniteNumber(response?.status) ? response.status : undefined;
+    request.resourceType = typeof event?.type === "string" ? event.type : undefined;
+  });
+  session.on("Network.resourceChangedPriority", (value: unknown) => {
+    const event = asRecord(value);
+    const request = typeof event?.requestId === "string" ? requests.get(event.requestId) : undefined;
+    if (request && typeof event?.newPriority === "string") request.priority = event.newPriority;
+  });
+  session.on("Network.loadingFailed", (value: unknown) => {
+    const event = asRecord(value);
+    const request = typeof event?.requestId === "string" ? requests.get(event.requestId) : undefined;
+    if (request) {
+      request.failed = true;
+      request.endTimestamp = isFiniteNumber(event?.timestamp) ? event.timestamp : undefined;
+    }
+  });
+  session.on("Network.loadingFinished", (value: unknown) => {
+    const event = asRecord(value);
+    const request = typeof event?.requestId === "string" ? requests.get(event.requestId) : undefined;
+    if (request) request.endTimestamp = isFiniteNumber(event?.timestamp) ? event.timestamp : undefined;
+  });
+  await session.send("Network.enable");
+  await session.send("Performance.enable");
+  await session.send("Profiler.enable");
+  await session.send("Profiler.setSamplingInterval", { interval: 1000 });
+  await session.send("Profiler.start");
+  await session.send("Tracing.start", {
+    transferMode: "ReportEvents",
+    categories: "devtools.timeline,v8.cpu_profiler,blink.user_timing,disabled-by-default-devtools.timeline",
+  });
+
+  async function clockSample() {
+    const before = await page.evaluate(() => ({ now: performance.now() }));
+    const result = asRecord(await session.send("Performance.getMetrics"));
+    const after = await page.evaluate(() => ({ now: performance.now() }));
+    const metricRows = Array.isArray(result?.metrics) ? result.metrics : [];
+    const timestamp = metricRows
+      .map(asRecord)
+      .find((metric) => metric?.name === "Timestamp")?.value;
+    if (!isFiniteNumber(timestamp)) throw new Error("clock");
+    const sample = {
+      offsetMs: timestamp * 1000 - (before.now + after.now) / 2,
+      uncertaintyMs: (after.now - before.now) / 2,
+    };
+    clockSamples.push(sample);
+    return sample;
+  }
+  return {
+    align: clockSample,
+    finish: async () => {
+    await clockSample();
+    await clockSample();
+    const profileResult = asRecord(await session.send("Profiler.stop"));
+    await session.send("Tracing.end");
+    const completion = await tracingComplete;
+    await session.detach();
+    const profile = asRecord(profileResult?.profile);
+    const samples = Array.isArray(profile?.samples) ? profile.samples : [];
+    const nodes = Array.isArray(profile?.nodes) ? profile.nodes : [];
+    if (traceOverflow || networkOverflow || samples.length === 0 || samples.length > COLD_MAX_CPU_SAMPLES || nodes.length === 0 || nodes.length > COLD_MAX_CPU_NODES || completion.dataLossOccurred !== false)
+      throw new Error("capture-integrity");
+    const offsets = clockSamples.map((sample) => sample.offsetMs);
+    const offsetMs = offsets.reduce((sum, value) => sum + value, 0) / offsets.length;
+    const clockRangeMs = (Math.max(...offsets) - Math.min(...offsets)) / 2;
+    const toBrowserMs = (timestampSeconds: number) => timestampSeconds * 1000 - offsetMs;
+    const resources = [...requests.values()].map((request) => ({
+      url: request.url,
+      method: request.method,
+      resourceType: request.resourceType,
+      initiatorType: request.initiatorType,
+      initiatorUrl: request.initiatorUrl,
+      status: request.status,
+      failed: request.failed,
+      priority: request.priority,
+      timing: isFiniteNumber(request.startTimestamp) && isFiniteNumber(request.endTimestamp)
+        ? { start: toBrowserMs(request.startTimestamp), end: toBrowserMs(request.endTimestamp) }
+        : undefined,
+    }));
+    const mainTid = traceEvents.find((event) =>
+      event.name === "thread_name" && event.ph === "M" && event.args?.name === "CrRendererMain"
+    )?.tid;
+    if (typeof mainTid !== "number") throw new Error("main-thread");
+    const phases = deriveExclusiveMainThreadPhases(traceEvents, mainTid, offsetMs);
+    return {
+      resources,
+      phases,
+      uncertaintyMs: Math.max(...clockSamples.map((sample) => sample.uncertaintyMs)) + clockRangeMs,
+      traceEventCount: receivedTraceEventCount,
+      timelineRecordCount: traceEvents.length,
+      cpuSampleCount: samples.length,
+      traceDataLoss: completion.dataLossOccurred,
+      traceTruncated: traceOverflow,
+      networkTruncated: networkOverflow,
+    };
+    },
+  };
+}
+
+function tracePhase(event: SafeTraceEvent) {
+  const name = event.name;
+  const functionName = event.args?.data?.functionName ?? "";
+  if (["EvaluateScript", "CompileScript", "ParseHTML", "V8.CompileCode", "V8.ParseOnBackground"].includes(name)) return "parse-evaluate";
+  if (["RemoveChild", "Remove", "DOM.removeChild"].includes(name)) return "dom-removal";
+  if (["UpdateLayoutTree", "RecalculateStyles", "Layout", "PrePaint", "Paint", "CompositeLayers"].includes(name)) return "paint-layout";
+  if (/^(performUnitOfWork|completeUnitOfWork|renderWithHooks|commitRoot|commitMutationEffects|flushPassiveEffects|beginWork|completeWork)$/.test(functionName)) return "react-render-commit";
+  if (name === "FunctionCall" || name === "RunMicrotasks" || name === "EventDispatch") return "main-thread-other";
+  return null;
+}
+
+function deriveExclusiveMainThreadPhases(events: SafeTraceEvent[], mainTid: number, offsetMs: number) {
+  const intervals: TraceInterval[] = events.flatMap((event) => {
+    if (event.tid !== mainTid || event.ph !== "X" || !isFiniteNumber(event.ts) || !isFiniteNumber(event.dur) || event.dur <= 0)
+      return [];
+    return [{
+      start: event.ts / 1000 - offsetMs,
+      end: (event.ts + event.dur) / 1000 - offsetMs,
+      name: event.name,
+      phase: tracePhase(event),
+    }];
+  });
+  const tasks = intervals.filter((event) => event.name === "RunTask").sort((a, b) => a.start - b.start);
+  const classifiedIntervals = intervals
+    .filter((event) => event.phase && event.name !== "RunTask")
+    .sort((a, b) => a.start - b.start);
+  const candidatesByTask: TraceInterval[][] = tasks.map(() => []);
+  let candidateAssignments = 0;
+  for (const candidate of classifiedIntervals) {
+    let low = 0;
+    let high = tasks.length;
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (tasks[middle].end <= candidate.start) low = middle + 1;
+      else high = middle;
+    }
+    for (let taskIndex = low; taskIndex < tasks.length && tasks[taskIndex].start < candidate.end; taskIndex += 1) {
+      if (tasks[taskIndex].end > candidate.start) {
+        candidatesByTask[taskIndex].push(candidate);
+        candidateAssignments += 1;
+        if (candidateAssignments > 500_000) throw new Error("phase-overflow");
+      }
+    }
+  }
+  const segments: Array<{ phase: string; start: number; end: number }> = [];
+  let cursor = 0;
+  for (const [taskIndex, task] of tasks.entries()) {
+    const taskStart = Math.max(0, task.start);
+    const taskEnd = Math.min(600_000, task.end);
+    if (taskEnd <= taskStart || taskStart < cursor) continue;
+    if (taskStart > cursor) segments.push({ phase: "main-thread-idle", start: cursor, end: taskStart });
+    const candidates = candidatesByTask[taskIndex].filter((candidate) => candidate.start < taskEnd && candidate.end > taskStart);
+    const boundaries = new Set([taskStart, taskEnd]);
+    for (const candidate of candidates) {
+      boundaries.add(Math.max(taskStart, candidate.start));
+      boundaries.add(Math.min(taskEnd, candidate.end));
+    }
+    const points = [...boundaries].sort((a, b) => a - b);
+    for (let index = 0; index < points.length - 1; index++) {
+      const start = points[index];
+      const end = points[index + 1];
+      if (end <= start) continue;
+      const midpoint = (start + end) / 2;
+      const active = candidates.filter((candidate) => candidate.start <= midpoint && candidate.end >= midpoint);
+      const phase = ["dom-removal", "paint-layout", "react-render-commit", "parse-evaluate", "main-thread-other"].find((item) => active.some((candidate) => candidate.phase === item)) ?? "main-thread-other";
+      segments.push({ phase, start, end });
+      if (segments.length > 100_000) throw new Error("phase-overflow");
+    }
+    cursor = taskEnd;
+  }
+  const end = tasks.length ? Math.min(600_000, Math.max(0, ...tasks.map((task) => task.end))) : 0;
+  if (end > cursor) segments.push({ phase: "main-thread-idle", start: cursor, end });
+  return segments.map((segment) => ({
+    phase: segment.phase,
+    start: Math.round(segment.start * 10) / 10,
+    end: Math.round(segment.end * 10) / 10,
+  }));
+}
+
+test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
+  test.setTimeout(180_000);
+  await withPerformancePage(browser, true, async (page) => {
+    const capture = await startColdCapture(page);
+    try {
+      await page.goto(WORK_LIST_PATH);
+      const startAlignment = await capture.align();
+      const rows = page.locator("[data-testid=work-item-list-populated] tbody tr");
+      await page.waitForFunction(() => (window as G11Window).__g11Metrics.lcp > 0, undefined, { timeout: 30_000 });
+      const lcpState = await page.evaluate(() => ({
+        lcpMs: (window as G11Window).__g11Metrics.lcp,
+        lcpElementTag: (window as G11Window).__g11Metrics.lcpElement.split(/[.#]/, 1)[0].toLowerCase(),
+        timeOriginMs: performance.timeOrigin,
+        rowCount: document.querySelectorAll("[data-testid=work-item-list-populated] tbody tr").length,
+      }));
+      if (lcpState.lcpElementTag !== "h1") throw new Error("unexpected-lcp-element");
+      await expect(rows).toHaveCount(500, { timeout: 30_000 });
+      await waitForTwoFrames(page);
+      const rowCount = await rows.count();
+      if (rowCount !== 500 || lcpState.rowCount > 500) throw new Error("row-count");
+      const target = page.getByRole("link", { name: WORK_ITEM_KEY, exact: true });
+      await expect(target).toHaveCount(1);
+      const targetHref = await target.getAttribute("href");
+      if (targetHref !== "/agent/work-items/WLP-1") throw new Error("click-target");
+      await target.click();
+      await page.waitForFunction(() => (window as G11Window).__g11Metrics.routePaint > 0, undefined, { timeout: 30_000 });
+      const routeState = await page.evaluate(() => ({
+        routeStartMs: (window as G11Window).__g11Metrics.routeStart,
+        routePaintMs: (window as G11Window).__g11Metrics.routePaint,
+        routePaintState: (window as Window & { __coldRoutePaintState?: string }).__coldRoutePaintState ?? "none",
+        timeOriginMs: performance.timeOrigin,
+      }));
+      if (routeState.timeOriginMs !== lcpState.timeOriginMs) throw new Error("navigation-clock-reset");
+      if (routeState.routeStartMs <= 0 || routeState.routePaintMs <= 0) throw new Error("route-paint-mark");
+      if (!["loading", "content", "loading-and-content"].includes(routeState.routePaintState)) throw new Error("route-paint-state");
+      await expect(page.getByTestId("work-item-detail")).toBeVisible({ timeout: 15_000 });
+      const detailUrl = new URL(page.url());
+      if (detailUrl.pathname !== "/agent/work-items/WLP-1") throw new Error("detail-url");
+      const rawCapture = await capture.finish();
+      rawCapture.uncertaintyMs = Math.max(rawCapture.uncertaintyMs, startAlignment.uncertaintyMs);
+      const phases = labelRouterAuthWaits(rawCapture.phases, rawCapture.resources);
+      const report = buildSanitizedColdReport({
+        provenance: COLD_PROVENANCE,
+        resources: rawCapture.resources,
+        phaseSegments: phases,
+        lcpMs: lcpState.lcpMs,
+        lcpElementTag: lcpState.lcpElementTag,
+        rowsAtLcp: lcpState.rowCount,
+        rowCount,
+        clickTarget: WORK_ITEM_KEY,
+        routeStartMs: routeState.routeStartMs,
+        routePaintMs: routeState.routePaintMs,
+        routePaintState: routeState.routePaintState,
+        detailVisible: true,
+        urlVerified: true,
+        clockUncertaintyMs: rawCapture.uncertaintyMs,
+        traceDataLoss: rawCapture.traceDataLoss,
+        traceTruncated: rawCapture.traceTruncated,
+        networkTruncated: rawCapture.networkTruncated,
+        traceEventCount: rawCapture.traceEventCount,
+        timelineRecordCount: rawCapture.timelineRecordCount,
+        cpuSampleCount: rawCapture.cpuSampleCount,
+        lcpWindow: { lcpMs: lcpState.lcpMs },
+        clickWindow: { routeStartMs: routeState.routeStartMs, routePaintMs: routeState.routePaintMs },
+      });
+      assertColdReportPrivacy(report);
+      await mkdir(dirname(COLD_REPORT_PATH), { recursive: true });
+      await writeFile(COLD_REPORT_PATH, JSON.stringify(report, null, 2) + "\n", { mode: 0o600 });
+    } catch {
+      throw new Error("Cold G11 recording failed a required journey, privacy, or capture-integrity check.");
+    }
+  }, { g13Windows: true });
+});
+
+function labelRouterAuthWaits(
+  segments: Array<{ phase: string; start: number; end: number }>,
+  resources: Array<{ url: string; timing?: RequestTiming }>,
+) {
+  const waitResources = resources.filter((resource) =>
+    resource.url === "http://127.0.0.1:4179/api/auth/get-session" ||
+    resource.url === "http://127.0.0.1:4179/api/projects/project-g11/work-items"
+  ).map((resource) => resource.timing).filter((timing): timing is RequestTiming => Boolean(timing));
+  return segments.flatMap((segment) => {
+    if (segment.phase !== "main-thread-idle") return [segment];
+    const boundaries = new Set([segment.start, segment.end]);
+    for (const wait of waitResources) {
+      if (wait.start < segment.end && wait.end > segment.start) {
+        boundaries.add(Math.max(segment.start, wait.start));
+        boundaries.add(Math.min(segment.end, wait.end));
+      }
+    }
+    const points = [...boundaries].sort((left, right) => left - right);
+    return points.slice(0, -1).map((start, index) => {
+      const end = points[index + 1];
+      const overlapsWait = waitResources.some((wait) => wait.start <= start && wait.end >= end);
+      return { phase: overlapsWait ? "router-auth-wait" : segment.phase, start, end };
+    });
+  });
+}
+`;
+
+const generatedConfigTemplate = `import { defineConfig, devices } from "@playwright/test";
+export default defineConfig({
+  testDir: "./e2e",
+  testMatch: "performance.hosted-cold-recording.generated.ts",
+  grep: /Hosted G11 cold work-list to detail recording/,
+  fullyParallel: false,
+  forbidOnly: true,
+  retries: 0,
+  workers: 1,
+  reporter: "list",
+  timeout: 180_000,
+  outputDir: ${JSON.stringify(scratchResults)},
+  use: { baseURL: "${origin}", trace: "off", ...devices["Desktop Chrome"], viewport: { width: 1280, height: 720 } },
+  webServer: {
+    command: "pnpm --filter @taskdesk/web preview --host 127.0.0.1 --port 4179 --strictPort",
+    url: "${origin}/auth/sign-in",
+    reuseExistingServer: false,
+    env: { VITE_API_URL: "${origin}" },
+  },
+});
+`;
+
+try {
+  const benchmarkPath = join(scriptDir, "performance.bench.ts");
+  const perfConfigPath = join(webDir, "playwright.perf.config.ts");
+  const networkHelperPath = join(
+    scriptDir,
+    "helpers/performance-network-summary.ts",
+  );
+  const [benchmark, perfConfig, networkHelper] = await Promise.all([
+    readFile(benchmarkPath, "utf8"),
+    readFile(perfConfigPath),
+    readFile(networkHelperPath),
+  ]);
+  const canonicalBenchmarkSha256 = safeSha256(benchmark);
+  const sourceSha = execFileSync("git", ["rev-parse", "HEAD"], {
+    cwd: repoDir,
+    encoding: "utf8",
+  }).trim();
+  if (sourceSha !== candidateHeadSha)
+    throw new Error("Candidate SHA does not match the checked out source.");
+  const playwrightPackage = JSON.parse(
+    await readFile(
+      join(webDir, "node_modules/@playwright/test/package.json"),
+      "utf8",
+    ),
+  );
+  const build = await readBuildEvidence();
+  const pnpmVersion = execFileSync("pnpm", ["--version"], {
+    cwd: repoDir,
+    encoding: "utf8",
+  }).trim();
+  const versionBrowser = await chromium.launch();
+  const chromiumVersion = versionBrowser.version();
+  await versionBrowser.close();
+  const provenance = {
+    sourceSha,
+    candidateHeadSha,
+    benchmarkSha256: canonicalBenchmarkSha256,
+    perfConfigSha256: safeSha256(perfConfig),
+    networkHelperSha256: safeSha256(networkHelper),
+    expectedSourceSha: candidateHeadSha,
+    nodeVersion: process.versions.node,
+    pnpmVersion,
+    playwrightVersion: playwrightPackage.version,
+    chromiumVersion,
+    build,
+  };
+  const previewOccurrences =
+    benchmark.match(/http:\/\/127\.0\.0\.1:4178/g) ?? [];
+  if (previewOccurrences.length !== 3)
+    throw new Error("Canonical preview binding changed unexpectedly.");
+  const routePaintMarker = "else metrics.routePaint = elapsed;";
+  if (benchmark.split(routePaintMarker).length - 1 !== 1)
+    throw new Error(
+      "Canonical route-paint correlation point changed unexpectedly.",
+    );
+  const source = benchmark
+    .replaceAll("http://127.0.0.1:4178", origin)
+    .replace(
+      routePaintMarker,
+      `${routePaintMarker}\n          if (kind === "route") {\n            const coldWindow = window as Window & { __coldRoutePaintState?: string };\n            const loadingVisible = Boolean(document.querySelector('[data-testid="work-item-detail-loading"]')?.getClientRects().length);\n            const contentVisible = Boolean(document.querySelector('[data-testid="work-item-detail"]')?.getClientRects().length);\n            coldWindow.__coldRoutePaintState = loadingVisible ? (contentVisible ? "loading-and-content" : "loading") : contentVisible ? "content" : "none";\n          }`,
+    );
+  if (source.includes("http://127.0.0.1:4178"))
+    throw new Error("Diagnostic preview rewrite was incomplete.");
+  const extra = generatedRecorder
+    .replace("__REPORT_PATH__", JSON.stringify(resolve(outputPath)))
+    .replace("__PROVENANCE__", JSON.stringify(provenance));
+  await writeFile(generatedSpec, `${source}\n${extra}`, { mode: 0o600 });
+  await writeFile(generatedConfig, generatedConfigTemplate, { mode: 0o600 });
+  const validation = spawnSync(
+    process.execPath,
+    ["--test", join(scriptDir, "hosted-cold-recording-validation.test.mjs")],
+    { cwd: webDir, stdio: "ignore" },
+  );
+  if (validation.status !== 0)
+    throw new Error("Privacy regression checks failed.");
+  const result = spawnSync(
+    "pnpm",
+    [
+      "exec",
+      "playwright",
+      "test",
+      "--config=playwright.hosted-cold-recording.generated.config.ts",
+      "--workers=1",
+    ],
+    { cwd: webDir, stdio: "ignore" },
+  );
+  if (result.error || result.status !== 0)
+    throw new Error("Hosted cold recording journey failed.");
+} catch {
+  await rm(outputPath, { force: true });
+  throw new Error(
+    "Hosted cold recording did not produce a publishable bounded report.",
+  );
+} finally {
+  await Promise.all([
+    rm(generatedSpec, { force: true }),
+    rm(generatedConfig, { force: true }),
+    rm(scratch, { recursive: true, force: true }),
+  ]);
+}

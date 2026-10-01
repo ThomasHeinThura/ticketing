@@ -16,6 +16,16 @@ on:
   pull_request:
     types: [opened, reopened, labeled, synchronize, ready_for_review]
   workflow_dispatch:
+    inputs:
+      run_hosted_cold_recording:
+        description: Run the separate one-journey G11 diagnostic after its required reviews
+        required: true
+        type: boolean
+        default: false
+      candidate_sha:
+        description: Exact reviewed source SHA checked out for this diagnostic
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -156,3 +166,30 @@ jobs:
           path: apps/web/test-results/
           if-no-files-found: warn
           retention-days: 7
+
+  cold-recording:
+    name: diagnostic - hosted cold work-list to detail
+    if: github.event_name == 'workflow_dispatch' && inputs.run_hosted_cold_recording
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      EXPECTED_CANDIDATE_SHA: ${{ inputs.candidate_sha }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: Require the reviewed commit selected for this run
+        run: test "$EXPECTED_CANDIDATE_SHA" = "$GITHUB_SHA"
+      - name: Build the web app and workspace dependencies
+        run: pnpm build
+      - name: Install Chromium
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Record one hosted cold work-list to detail journey
+        run: node apps/web/e2e/hosted-cold-recording.mjs --candidate-sha="$GITHUB_SHA" --output=apps/web/test-results/hosted-cold-recording/report.json
+      - name: Upload the sanitized derived report
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hosted-cold-recording-${{ github.sha }}
+          path: apps/web/test-results/hosted-cold-recording/report.json
+          if-no-files-found: error
+          retention-days: 1
