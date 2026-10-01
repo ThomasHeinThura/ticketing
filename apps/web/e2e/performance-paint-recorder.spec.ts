@@ -215,6 +215,72 @@ test.describe("G11 last-item paint recorder in Chromium", () => {
     await expectNoMark(page, "boardPaint");
   });
 
+  test("waits for an opacity-hidden ancestor to become visible", async ({
+    page,
+  }) => {
+    await mountFixture(
+      page,
+      `<div id="paint-ancestor" style="opacity:0">${boardMarkup()}</div>`,
+    );
+    await install(page, BOARD_OPTIONS);
+    await expectNoMark(page, "boardPaint");
+
+    await page.evaluate(() => {
+      const ancestor = document.querySelector<HTMLElement>("#paint-ancestor");
+      if (!ancestor) throw new Error("Expected the paint ancestor.");
+      ancestor.style.opacity = "1";
+      ancestor.append(document.createElement("span"));
+    });
+    await waitForMark(page, "boardPaint");
+  });
+
+  test("revalidates ancestor opacity at the second animation frame", async ({
+    page,
+  }) => {
+    await mountFixture(page, `<div id="paint-ancestor">${boardMarkup()}</div>`);
+    await page.evaluate(() => {
+      const nativeRequestAnimationFrame =
+        window.requestAnimationFrame.bind(window);
+      let callbackCount = 0;
+      const state = window as Window & {
+        __markWhileAncestorHidden?: number;
+      };
+      window.requestAnimationFrame = (callback) =>
+        nativeRequestAnimationFrame((timestamp) => {
+          callbackCount += 1;
+          const ancestor =
+            document.querySelector<HTMLElement>("#paint-ancestor");
+          if (!ancestor) throw new Error("Expected the paint ancestor.");
+          if (callbackCount === 2) ancestor.style.opacity = "0";
+          callback(timestamp);
+          if (callbackCount === 2) {
+            state.__markWhileAncestorHidden =
+              (window as Window & { __g11Metrics?: Record<string, number> })
+                .__g11Metrics?.boardPaint ?? 0;
+            window.setTimeout(() => {
+              ancestor.style.opacity = "1";
+              ancestor.append(document.createElement("span"));
+            }, 0);
+          }
+        });
+    });
+    await install(page, BOARD_OPTIONS);
+    await waitForMark(page, "boardPaint");
+
+    const evidence = await page.evaluate(() => ({
+      markWhileAncestorHidden: (
+        window as Window & { __markWhileAncestorHidden?: number }
+      ).__markWhileAncestorHidden,
+      revalidatedAttempts: (
+        window as Window & {
+          __g11PaintDebug?: { revalidatedAttempts: number };
+        }
+      ).__g11PaintDebug?.revalidatedAttempts,
+    }));
+    expect(evidence.markWhileAncestorHidden).toBe(0);
+    expect(evidence.revalidatedAttempts).toBeGreaterThan(0);
+  });
+
   test("does not mark until an incomplete list reaches 500 actual rows", async ({
     page,
   }) => {
