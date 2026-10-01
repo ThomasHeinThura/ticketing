@@ -138,97 +138,146 @@ unique key, digest values, and per-person quiet-hours fields are defined in
 
 ## Digests
 
-- `NO-5` Low-priority notifications may be batched into an hourly or daily digest, per
-  user preference.
-- `NO-6` A digest is one message summarising several events, linked, not a wall of
-  forwarded notifications.
-- `NO-7` Urgent events — SLA breach, approval expiring, direct mention — bypass digests.
+- `NO-5` Low-priority external notification candidates may be assigned to an hourly or daily
+  digest from the recipient's effective event-time preference. A candidate is assigned once
+  when its event transaction commits; later preference, timezone, or scope changes apply to
+  future events and do not move existing candidates.
+- `NO-6` A digest is one bounded summary message for one recipient, channel, tenant scope
+  and closed time window. It links to authenticated in-app resources; it is not a wall of
+  forwarded notifications. The group seals after its window closes, and its membership and
+  canonical provider payload are fixed for that attempt.
+- `NO-7` Urgent events — SLA breach, approval expiring, direct mention — bypass digests and
+  have no `digest_id`.
+
+Hourly windows span one local top-of-hour to the next; daily windows span one local midnight
+to the next. Resolve the zone from `person.quiet_hours_timezone`, falling back to
+`instance_setting.timezone`; store the resolved zone and UTC boundaries so DST changes are
+unambiguous. A notification mutation creates the parent event, one inbox row per distinct
+eligible person, and each external child candidate in the same transaction. Digest children
+also attach to the matching collecting `notification_digest` group in that transaction.
+The partition is recipient, channel, workspace, optional organisation, cadence and exact
+window; it cannot mix recipients, providers or tenant scopes. The database wall clock decides
+whether a target window is still open. If the window ended or the group was sealed while the
+writer waited, it attaches the child to the next eligible window. A row lock serializes
+membership insertion against sealing.
+
+After the window ends, `outbox-drain` seals the group from `collecting` to `pending` and
+freezes membership before any provider call. Before sending it rechecks current recipient
+reach, enabled channel preference, and quiet hours. Lost reach or a disabled channel
+suppresses that child. Quiet hours defer the whole group to the next allowed time. If no
+eligible members remain, suppress the children and group without a provider call. The
+summary is deterministic and bounded (for example, finite event-kind counts plus an
+authenticated inbox link); it contains only a projection safe for that recipient. Unknown
+resource mappings fail closed. For each dedupe tuple, order members by
+`(created_at, id)`: suppress a later member within five minutes of an earlier included
+candidate, while retaining distinct events outside that interval.
+
+One group lease fences its provider call. Acquire reservations for the remaining dedupe
+tuple keys in canonical key order, one per key, owned by a deterministic representative
+child id. If any key is owned by another live reservation, release reservations acquired
+for this call and the group lease, defer until that lease expires, and do not increment
+attempts. Keep and renew the group lease and every member reservation through the provider
+call; use a 30-second absolute deadline, renew every 15 seconds, and expire leases 60 seconds
+after each post-lock PostgreSQL wall-clock sample. Store the canonical payload hash for the
+attempt before calling the adapter. Providers that support idempotency receive
+`(digest id, payload_hash)`. A retry with the same content reuses that identity. If reach or
+eligible content changes, rebuild the safe summary and hash; an ambiguous earlier aggregate
+may therefore be sent again, which is part of the at-least-once boundary.
+
+Success is one transaction conditional on the current, unexpired group token and every held
+reservation token. It marks only included children delivered with one completion clock
+sample, marks members failing current checks suppressed, marks the group delivered, and
+releases reservations. A definite failure increments the group attempt count, leaves included
+children pending, and releases reservations and the group lease. A deadline or crash is
+ambiguous: count a group attempt, stop renewal, keep reservations until expiry, and retry the
+same group no earlier than both group and member lease expiry. The group's attempt count is
+authoritative; child attempts remain zero because children are not sent independently. After
+six group attempts, mark the group and remaining pending children dead in one transaction.
+A stale group or reservation token cannot commit success after takeover.
 
 ## Delivery
 
-- `NO-8` A notification is written to `notification` (in-app) and, per preference, to
-  `outbox` for external delivery, **in the same transaction as the change**.
-- `NO-9` `outbox-drain` delivers with retry and exponential backoff. Dead letters after
-  six attempts and are visible in God Mode.
-- `NO-10` Delivery failure never fails the originating request.
-- `NO-11` Duplicate suppression: for notifications, compute `outbox.dedupe_key` as
-  `notification:v1:` plus lowercase hex SHA-256 over the domain tag
+- `NO-8` In the originating mutation transaction, write the business change, its single
+  `outbox` event envelope, one `notification` inbox row for each distinct eligible person,
+  and one `notification_delivery` child per eligible person and enabled external channel.
+  Event-derived inbox and delivery uniqueness makes retries/replays idempotent. Digest
+  preference candidates attach to their group in that same transaction. All these rows
+  commit together or none do. Build recipients from the event's declared recipient rules,
+  deduplicate overlaps (such as watcher, assignee and requester), exclude the actor, and
+  apply customer-side visibility plus current resource reach before creating any inbox or
+  delivery row. A persistence failure rolls back the business change.
+- `NO-9` `outbox-drain` processes event consumers and external notification children with
+  retry and exponential backoff. A notification child dead-letters after six attempts and is
+  visible in God Mode; a digest uses its group's six-attempt limit. One child's state never
+  stands in for another's.
+- `NO-10` Provider delivery failure never fails the originating request. Failure to persist
+  the event, inbox, child or digest membership in the mutation transaction does roll back
+  the business mutation, so the system cannot silently lose the notification candidate.
+- `NO-11` For each external candidate, compute `notification_delivery.dedupe_key` as
+  `notification:v1:` plus lowercase hex SHA-256 over domain tag
   `taskdesk:notification-dedupe:v1`, a zero byte, then `event_kind`, `resource_type`,
-  `resource_id`, `person_id`, and `channel` in that order. Encode each value as its exact
-  UTF-8 bytes prefixed by its byte length as an unsigned 32-bit big-endian integer; do not
-  trim, case-fold, or Unicode-normalize values. Store the notification
-  recipient in `outbox.recipient_person_id` and the external plugin id in `outbox.channel`.
-  Before the recent-success lookup, atomically acquire the unique
-  `outbox_dedupe_reservation` keyed by `(recipient_person_id, channel, dedupe_key)`. A
-  worker may insert a free key or atomically take over an expired reservation; every such
-  acquisition sets a fresh random token and `lease_expires_at` to 60 seconds after that
-  acquire/takeover operation's post-lock PostgreSQL wall-clock sample. A live reservation
-  may be renewed only when the same candidate row and current token still own it; renewal
-  preserves that token. Even a second
-  worker presenting the same outbox row id cannot reacquire the live lease with a fresh
-  token. A different row's active reservation means leave this candidate `pending`, set
-  `next_attempt_at` to the lease expiry, and do not increment its delivery attempts.
-  Row-level `FOR UPDATE SKIP LOCKED` is not sufficient to serialize different outbox rows
-  with the same key.
+  `resource_id`, `person_id`, and `channel` in that order. Encode each value as exact
+  UTF-8 bytes prefixed by its byte length as an unsigned 32-bit big-endian integer. Do not
+  trim, case-fold, or Unicode-normalize. The stable delivery identity is the child `id`;
+  `event_id` remains the source `DomainEvent.id`. One event can therefore create many
+  independently leased recipient/channel children.
 
-  The reservation key is the 32-byte SHA-256 digest of the exact tuple
-  `(recipient_person_id, channel, dedupe_key)`: hash the domain tag
-  `taskdesk:outbox-dedupe-reservation:v1`, a zero byte, then each tuple value encoded as
-  exact UTF-8 bytes prefixed by its byte length as an unsigned 32-bit big-endian integer.
-  Do not trim, case-fold, or Unicode-normalize. Store the tuple alongside the digest and
-  enforce tuple uniqueness; if a digest conflict contains different tuple values, fail
-  closed without sending.
+  Before recent-success lookup, atomically acquire the unique `outbox_dedupe_reservation`
+  for `(recipient_person_id, channel, dedupe_key)`. Its 32-byte `reservation_key` is SHA-256
+  over domain tag `taskdesk:outbox-dedupe-reservation:v1`, a zero byte, then the tuple values
+  encoded with the same exact UTF-8 and unsigned 32-bit big-endian length-prefix rule. Store
+  the tuple and enforce its uniqueness; a digest conflict whose tuple differs fails closed.
+  Acquire a missing or expired key with a fresh random token and expiry 60 seconds after that
+  operation's post-lock PostgreSQL wall-clock sample. A live key may only be renewed by the
+  same `owner_delivery_id` and current token, preserving the token. Even a second worker
+  presenting the same child id cannot rotate a live token. A different delivery's live key
+  defers this child until lease expiry without incrementing attempts. Row-level
+  `FOR UPDATE SKIP LOCKED` alone does not serialize different rows with the same tuple.
 
-  All lease and five-minute-window comparisons use one authoritative PostgreSQL wall-clock
-  sample per atomic operation. After any reservation-row lock wait, sample
-  `clock_timestamp() AT TIME ZONE 'UTC'` exactly once and reuse it for acquire/takeover,
-  renewal, completion predicates and their timestamp writes. The recent-success lookup is a
-  separate post-acquisition statement with its own one-time sample and cutoff
-  `delivered_at >= sample - interval '5 minutes'`. Do not use transaction-start `now()` or
-  a statement timestamp sampled before a lock wait. This follows the `dbNowUtc()` convention;
-  its current transaction-start implementation must be updated or replaced with the
-  statement-local wall-clock expression during implementation.
+  Lease comparisons and writes use one PostgreSQL wall-clock sample after every reservation
+  row-lock wait. The recent-success query is a separate post-acquisition statement with its
+  own sample and cutoff `delivered_at >= sample - interval '5 minutes'`; never use
+  transaction-start `now()` or a timestamp sampled before a lock wait. This is the required
+  wall-clock behaviour; the current `dbNowUtc()` implementation uses transaction-start time
+  and must be changed or bypassed for this protocol.
 
-  After acquiring the reservation, query for a **different** outbox row with the same three
-  fields, `delivered_at >= sample - interval '5 minutes'`, and
-  `event_id <> candidate.event_id`. The stable outbox row identifier is its `event_id`
-  primary key; reservation `owner_outbox_id` refers to that value, not a separate `id`
-  column. The
-  partial index on `(recipient_person_id, channel, dedupe_key, delivered_at desc)` where
-  `delivered_at is not null` supports those equality and time-range predicates. If a match
-  exists, set the candidate `state = 'suppressed'` without sending or setting its
-  `delivered_at`, then release the reservation. Otherwise call the channel adapter with a
-  **30-second absolute send deadline** covering connection setup and response wait; retries
-  do not reset it. Pass an abort signal at the deadline and stop awaiting the adapter even if
-  it ignores cancellation. While the call is active, renew the reservation every **15
-  seconds** to an expiry **60 seconds from the renewal's PostgreSQL wall-clock sample**. A
-  renewal requires the same owner row and current token and preserves that token. Adapter
-  acceptance is considered success only when the worker commits `state = 'delivered'`,
-  `delivered_at`, and reservation release in one transaction that still matches its current
-  `owner_outbox_id` and unexpired random `lease_token`.
+  After acquisition, suppress only when a **different delivery id** with the same recipient,
+  channel and dedupe key has a committed `delivered_at` within five minutes. The retry of
+  the same delivery id is excluded. Recheck current preference and resource reach immediately
+  before sending; lost reach or a disabled channel suppresses the candidate without calling
+  a provider, while quiet hours defer it to the next allowed time under `NO-3`. Newly
+  enabled channels do not receive old events without an explicit replay contract. The
+  Do not send the event envelope or internal resource content verbatim. Build a projection
+  safe for the recipient only after the reach check; missing or unknown resource mappings
+  fail closed. The candidate's event-time snapshot determines who and which channels were
+  materialized; send time determines whether that candidate is still eligible. Never infer current authority
+  from the stored recipient id, and fail closed for an unknown or missing resource mapping.
 
-  A definite failed attempt leaves `delivered_at` null, updates the same row's retry state,
-  and releases the reservation. A call that reaches its 30-second deadline is **ambiguous**,
-  even if cancellation is requested: count the attempt and apply the six-attempt limit. If
-  retries remain, leave the row pending with its next attempt no earlier than the current
-  lease expiry; on the sixth attempt, mark it dead. Stop renewing in either case and do not
-  release the reservation early, because a plugin may have accepted the request before
-  hanging or ignoring cancellation. A healthy call completes
-  or times out before the 60-second lease expires; a worker crash or hung call stops renewal,
-  and another worker may reclaim only after expiry, with a fresh token. The old worker cannot commit success after reclaim. If a
-  provider accepted a request but the process crashed, hung, or lost the response before the
-  database commit, that external effect cannot be rolled back and a later retry may send
-  again. This is at-least-once delivery across that window, not an exactly-once guarantee.
-  Provider idempotency may use the stable outbox row id where available, but is not assumed.
-  A retry of the same outbox row is still a retry; only a distinct row with a prior committed
-  success is suppressed. The channel is part of the key, so the same event may still reach
-  the person over two different channels. Fields, index,
-  reservation, and drain behavior are defined in
-  [data-model.md](../01-architecture/data-model.md#11-automations-notifications-integrations-audit)
-  and [background-jobs.md](../01-architecture/background-jobs.md).
+  The adapter has a 30-second absolute deadline including connection setup and response wait;
+  retries do not reset it. Request cancellation and stop awaiting at the deadline even if
+  the adapter ignores cancellation. Renew the reservation every 15 seconds to 60 seconds
+  from the renewal's post-lock database wall-clock sample. Success means the worker atomically
+  marks this child delivered, sets `delivered_at` from the completion sample, and releases
+  its reservation while the same delivery id/token still own an unexpired lease. A definite
+  failure increments only this child, schedules the standard backoff and releases its lease.
+  Deadline/crash/unknown response is ambiguous: count the attempt, keep the reservation until
+  expiry, stop renewal, and do not retry before expiry. After six attempts mark this child
+  dead. A stale token cannot complete or release a new owner's lease.
 
-v1's notifications were fire-and-forget, so failures were invisible. The outbox is the
-correction.
+  If a provider accepted before the process crashed, hung, or lost the response before the
+  database commit, that external effect cannot be rolled back; a later retry can send again.
+  Delivery is at-least-once, not exactly-once. A provider idempotency header may use the
+  stable child id where supported, but correctness does not depend on provider support. Keep
+  the one parent `outbox.event_id = DomainEvent.id`; child `id` is the per-delivery identity.
+
+The event envelope's processing state never means that a particular notification provider
+succeeded. Notification children and digest groups own provider status and retention
+independently. A parent replay must not create another inbox row or delivery child, and its
+worker completion must be separate from child provider success. Webhook attempts remain
+recorded per target in `webhook_delivery`.
+
+v1's notifications were fire-and-forget, so failures were invisible. The event envelope plus
+durable delivery children make candidate creation and provider outcomes inspectable.
 
 ## In-app inbox
 
@@ -375,11 +424,11 @@ cannot add a customer as a recipient or broaden notification visibility.
 The canonical fields and constraints are in
 [data-model.md §11](../01-architecture/data-model.md#11-automations-notifications-integrations-audit):
 `notification`, scoped `notification_preference`, short-lived
-`notification_preference_handoff`, and `outbox` with `dedupe_key`, recipient/channel, and
-successful-delivery timestamp. Event keys and
-notification fan-out flags are in [events.md](../01-architecture/events.md). Delivery,
-handoff cleanup and digest scheduling are in
-[background-jobs.md](../01-architecture/background-jobs.md).
+`notification_preference_handoff`, the one-row-per-event `outbox` envelope,
+`notification_delivery` children, `notification_digest` groups, and
+`outbox_dedupe_reservation`. Event keys and notification fan-out flags are in
+[events.md](../01-architecture/events.md). Delivery, sealing, retention and handoff cleanup
+are in [background-jobs.md](../01-architecture/background-jobs.md).
 
 ## Edge cases
 
@@ -388,10 +437,10 @@ handoff cleanup and digest scheduling are in
 | Recipient loses reach before delivery | Suppressed at delivery time, not just at creation |
 | Task is unreachable, deleted, or in a deleted project | Omitted from inbox; read-all leaves it unread; individual mark-read returns not found |
 | Another notification email link is opened before the handoff completes | The newest valid handoff replaces the browser's pending handoff cookie; reopening the earlier email starts its handoff again |
-| Recipient's account is deleted | Outbox rows for them are dropped |
-| Channel disabled after queueing | Queued messages are dropped with a log line |
+| Recipient's account is deleted | Their notification delivery children, digest groups and recipient-keyed reservations are deleted with the person; the event parent is eligible only after no retained child references it |
+| Channel disabled after queueing | Queued children are marked suppressed when the channel is disabled |
 | SMTP down for hours | Retries with backoff; God Mode shows the backlog |
-| 500 watchers on one work item | Fan-out is chunked; digests are strongly encouraged |
+| 500 watchers on one work item | The originating transaction atomically materializes all candidate children and digest membership; digest groups bound provider sends |
 | Mentioned person cannot see the work item | Not notified; the mentioner is warned at composition |
 | Same event, two channels | Delivered to both. Not deduplicated across channels |
 
@@ -403,9 +452,13 @@ guards only. It does not cover preference resolution, notification reach, delive
 transactionality, retries, deduplication, quiet hours, or customer privacy. Those remain
 acceptance work. Add `tests/api-integration/notification-task-reach.test.ts` for hidden-task
 list/read/read-all/create/delivery reach; `tests/api-integration/notification-preferences.test.ts`
-for scoped preference resolution, outbox transactionality/retries, deduplication and quiet
-hours; and `tests/api-integration/customer-notification-privacy.test.ts` for `NO-19` and
-`NO-20`. The preferences integration suite must include a concurrent two-replica case: two
+for scoped preference resolution, event/inbox/child transactionality, retries, deduplication,
+digest sealing, reach and quiet hours; and
+`tests/api-integration/customer-notification-privacy.test.ts` for `NO-19` and `NO-20`. The
+preferences integration suite proves one event for two recipients and two external channels
+creates exactly one parent, two inbox rows and four distinct children; replay creates no
+duplicates, and one child result does not alter another. It must also include a concurrent
+two-replica case: two
 different pending rows share one recipient/channel/key and are claimed with `SKIP LOCKED`;
 only one worker acquires the reservation and calls the provider, then commits
 `delivered_at`; the other defers, acquires after release, observes that committed success,
@@ -432,8 +485,7 @@ the deadline, a hung adapter that ignores abort and is no longer awaited at 30 s
 periodic lease renewal while active, no early release on timeout, initial acquire and expired
 takeover both set expiry to 60 seconds after their operation's post-lock PostgreSQL
 wall-clock sample, reclaim only after expiry, a fresh takeover token, and stale-token success
-rejection. A second worker presenting the **same** outbox row id while
-its reservation is live
+rejection. A second worker presenting the **same** delivery id while its reservation is live
 must fail acquisition when presenting a fresh token and leave the first worker's token valid
 for renewal and completion. A lock-delayed timing case must hold the reservation lock across
 the lease expiry and across the five-minute success cutoff: after the lock is released, the

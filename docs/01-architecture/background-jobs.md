@@ -95,12 +95,12 @@ finally { clearInterval(heartbeat); await lease.release(); }
 | --- | --- | --- | --- |
 | `sla-scan` | 5 min | 5 min | Recomputes SLA state for **open** work items from `sla_started_at`; emits `sla.at_risk` / `sla.breached` on edges via `work_item_sla_cache`. It does **not** emit `sla.met` / `sla.missed` — a just-completed item has `resolved_at` set and is outside the candidate set below, so those two are emitted by the `WF-17` transition into a `completed`-group state ([events.md](events.md)) |
 | `reminder-scan` | 15 min | 5 min | `work_item.due_soon` / `overdue`, `prerequisite.overdue`, `approval.expiring` / `expired` (writes `reminder_50_sent_at` / `reminder_90_sent_at` so nothing repeats), walks escalation paths (`NO-22`), auto-declines submissions in `clarifying` past the window (`IQ-15`), flags `sla_pause` rows open > 30 days, flags KB articles past `review_due_at`, fires due `scheduled_transition` rows (`state = 'pending'` and `due_at <= now()`; a row whose work item has left `from_state_id` is marked `cancelled` instead) |
-| `outbox-drain` | 30 s | **none — `SKIP LOCKED`** | Delivers webhooks and external notifications with retry/backoff; auto-disables a webhook failing for 24 h and emits `webhook.auto_disabled`. Runs on every replica concurrently by design |
-| `notification-digest` | hourly | 5 min | Batches digest-preference notifications into one email per person |
+| `outbox-drain` | 30 s | **none — `SKIP LOCKED`** | Processes parent event envelopes and independently claims immediate notification children or sealed digest groups; applies retry/backoff and current reach checks; handles webhook deliveries and auto-disables a webhook failing for 24 h, emitting `webhook.auto_disabled`. Runs on every replica concurrently by design |
+| `notification-digest` | hourly | 5 min | Seals collecting digest groups whose stored UTC windows have ended; it does not call a provider. `outbox-drain` also seals a due group atomically when claiming it, so a delayed sweep cannot block delivery |
 | `metrics-snapshot` | hourly | 15 min | Writes `metric_snapshot` (hourly grain; daily rollup at 00:15) and, daily, `cycle_snapshot` |
 | `search-reindex` | 10 min | 10 min | Catches up rows whose search vector is stale |
 | `audit-purge` | daily 03:00 | 30 min | Deletes `audit_log` rows past retention as `taskdesk_maint`; **skips rows whose `organisation_id` or actor is under an open `legal_hold`** (join `legal_hold` on `lifted_at is null`); writes an `audit_chain_anchor` row **before** deleting, and does not delete if the anchor cannot be written; writes its own audit row |
-| `session-cleanup` | daily 03:15 | 5 min | Physically deletes expired sessions, invitations, idempotency keys, expired `notification_preference_handoff` rows, and expired `outbox_dedupe_reservation` rows; purges eligible read notifications and terminal outbox rows per the retention and legal-hold rules below; and purges soft-deleted rows past their window — **the soft-delete purge skips any row whose organisation or person is under an open `legal_hold`**, and leaves it soft-deleted until the hold lifts. Reservation lease validity and takeover are enforced at `lease_expires_at`; they do not wait for this daily physical cleanup. |
+| `session-cleanup` | daily 03:15 | 5 min | Physically deletes expired sessions, invitations, idempotency keys, expired `notification_preference_handoff` rows, and expired `outbox_dedupe_reservation` rows; purges eligible read notifications, terminal notification children, empty terminal digest groups, and parent event envelopes in child-before-parent order under the retention and legal-hold rules below; and purges soft-deleted rows past their window — **the soft-delete purge skips any row whose organisation or person is under an open `legal_hold`**, and leaves it soft-deleted until the hold lifts. Reservation lease validity and takeover are enforced at `lease_expires_at`; they do not wait for this daily physical cleanup. |
 | `attachment-gc` | daily 03:30 | 30 min | Removes objects for `attachment.state = 'deleted'` rows and orphans; **skips attachments whose `organisation_id` is under an open `legal_hold`** — which is why `attachment.workspace_id` / `organisation_id` are stored on the row ([data-model.md](data-model.md)) |
 | `attachment-pending-cleanup` | hourly | 5 min | Deletes `attachment` rows still `pending` after an hour (presign never completed) |
 | `timer-sweeper` | 15 min | 5 min | Stops `running_timer` rows older than 12 h, writing a capped `time_entry` |
@@ -116,35 +116,44 @@ finally { clearInterval(heartbeat); await lease.release(); }
 `session-cleanup`'s read-notification retention purge skips a row when an open person hold
 matches `notification.person_id`, or an open organisation hold matches either that
 recipient's organisation or the organisation that owns the referenced resource (resolved
-using `notification.resource_type` in
-[notifications.md](../03-features/notifications.md#permissions)). If a resource's owning
-organisation cannot be resolved, retain the row while any organisation hold is open rather
-than risk deleting held data. Unread notifications remain ineligible regardless of holds.
+using [notifications.md](../03-features/notifications.md#permissions)). If resource ownership cannot be resolved, retain the
+row while any organisation hold is open. Unread notifications remain ineligible regardless
+of holds.
 
-The outbox retention purge deletes only rows in terminal states `delivered`, `dead`, or
-`suppressed` whose `updated_at` is at least 30 days old; `pending` rows are never purged by
-retention, regardless of age. It skips terminal rows whose recipient person or owning
-organisation is under an open hold. Held-scope resolution uses `outbox.recipient_person_id`,
-`outbox.organisation_id`, and the organisation owning `outbox.workspace_id`.
+Notification retention is separate from event and delivery retention. A terminal
+`notification_delivery` child (`delivered`, `dead`, `suppressed`) is eligible 30 days after
+terminal `updated_at`, only without a matching recipient-person, source-organisation or
+recipient-organisation hold. Pending children are never purged. Any retained child keeps its
+parent `outbox` envelope; delete eligible children before considering the parent. A terminal
+parent (`delivered`, `dead`) is eligible after 30 days only if no child must remain and no
+matching organisation hold applies. A person hold on one child retains that child and parent
+and may conservatively retain sibling history attached to the parent.
 
-Expired `outbox_dedupe_reservation` cleanup is explicitly exempt from legal holds. Lease
-authority ends at `lease_expires_at` and takeover may proceed immediately; daily cleanup
-physically removes expired rows even for held people or organisations. These rows contain
-only short-lived delivery-coordination identifiers, not the outbox payload or notification
-history. Credential, session, invitation, idempotency-key, and preference-handoff expiry
-cleanup also continues during holds; hard delete and the history-retention purges remain
-subject to their listed hold rules.
+A `notification_digest` group stays pending while any child awaits delivery. Terminal groups
+are eligible 30 days after terminal `updated_at` under the same person and source/recipient
+organisation hold checks. Do not delete a group while any child references it. Purge eligible
+terminal children first, then an eligible terminal group only when empty. One held child
+conservatively keeps shared group history. Hard deletion removes scoped children, then empty
+groups and applicable parent events; reservation rows cascade from their delivery owner.
+Read inbox retention never deletes a delivery child or its event envelope.
 
-**Acceptance for `session-cleanup` retention:** a terminal outbox row at 29 days after its
-terminal `updated_at` remains; once it passes 30 days it is purged on the next daily run if
-no matching hold exists. A pending row remains regardless of age, and requeueing a terminal
-row changes it back to pending so retention cannot drop work awaiting delivery. An open
-recipient-person or owning-organisation hold preserves an otherwise eligible terminal row
-until the hold lifts; the next eligible cleanup then purges it. A read notification past its
-configured cutoff is likewise retained under a matching person/resource organisation hold,
-while an unheld row is purged and unread rows remain. An expired reservation under the same
-hold is nevertheless physically removed by cleanup, and takeover remains possible before
-that deletion.
+Expired `outbox_dedupe_reservation` cleanup is exempt from legal holds. Lease authority ends
+at `lease_expires_at` and takeover may proceed immediately; daily cleanup physically removes
+expired rows even for held people or organisations. These rows contain only short-lived
+delivery-coordination identifiers, not event payload or notification history. Credential,
+session, invitation, idempotency-key, and preference-handoff expiry cleanup continues during
+holds; hard delete and history-retention purges remain subject to their hold rules.
+
+Acceptance for session-cleanup retention: a terminal child at 29 days remains; after 30
+days, cleanup purges it only if no matching hold exists. A pending child remains regardless
+of age. A parent with any retained child remains; after all eligible children are purged, a
+terminal parent is purgeable only after its own 30-day window and absent a matching hold. A
+digest group with child members remains; after eligible children are removed, an empty
+terminal group is purgeable after its 30-day window if unheld. Person or organisation holds
+preserve matching children, groups and parent event history; unheld rows become eligible
+after the hold lifts. Inbox read-purge remains independent; unread rows remain. Expired
+reservations under the same hold are still physically removed, and takeover remains possible
+before cleanup.
 
 All cadences are configurable in God Mode → Jobs (`instance:manage_jobs`). A job can be
 disabled, and a job can be triggered manually for debugging; both are audited.
@@ -192,70 +201,80 @@ always recomputes; where the two disagree the computed value wins
 
 ## Outbox delivery
 
-Webhooks and external notifications are **not** fire-and-forget. v1's were, and failures
-were invisible.
+The parent outbox is one durable envelope per domain event. The originating transaction
+writes the business change, activity/audit where applicable, one parent, one inbox row per
+distinct eligible person, one notification_delivery child per eligible person and enabled
+external channel, and any event-time digest membership. These commit together or roll back
+together. Provider calls stay outside the transaction. outbox.event_id remains
+DomainEvent.id and the event-consumer idempotency key; notification_delivery.id is the stable
+identity for one external recipient/channel attempt. Parent processing state completes
+event-consumer materialization and never follows a single child's provider result. Replays
+cannot duplicate inbox rows or children because their event-derived uniqueness is enforced.
 
-```
-mutation transaction
-  ├── write the domain change
-  ├── write activity (+ audit_log when security-relevant)
-  └── write outbox row (pending)        ← same transaction, so never lost
-                    ↓  commit hook: WebSocket broadcast, in-app notification
-outbox-drain (every 30 s, every replica)
-  ├── claim a batch: SELECT … FOR UPDATE SKIP LOCKED
-  ├── notification: acquire reservation for recipient + channel + dedupe_key
-  │   ├── active reservation by another row → defer candidate; do not increment attempts
-  │   ├── acquire only when free/expired; same owner renews with current token, never rotates
-  │   └── acquired → query a different delivered row from the previous 5 min
-  │       └── match → mark candidate suppressed and release reservation
-  ├── send otherwise while renewing reservation; success → atomically mark delivered,
-  │   set outbox.delivered_at, and release reservation with its current token
-  ├── webhook attempts → record duration + attempt + bodies in webhook_delivery
-  └── definite failure → attempts++, next_attempt_at = now + backoff, release reservation
-                after 6 attempts → dead, surfaced in God Mode → Deliveries
-```
+outbox-drain runs on every replica without a global job lease. It claims parent envelopes,
+immediate children and due digest groups with row-level SKIP LOCKED; recipient/channel/key
+reservations serialize competing deliveries. One child success cannot complete, suppress or
+dead-letter another. A parent is not complete merely because one recipient/channel
+succeeded. Webhook attempts remain per-target records in webhook_delivery.
 
-Notification success lookup uses the partial outbox index on
-`(recipient_person_id, channel, dedupe_key, delivered_at desc)` where `delivered_at is not
-null`. After any reservation lock wait, each acquire/takeover, renewal, success lookup,
-completion, and expiry-cleanup operation samples the PostgreSQL wall clock once as
-`clock_timestamp() AT TIME ZONE 'UTC'` and reuses it for every lease predicate and timestamp
-write in that operation. This follows the `dbNowUtc()` UTC convention but must not use its
-current transaction-start `now()` source on this lock-delayed path. The lookup compares only
-a distinct row with a successful timestamp in the prior five minutes using its own fresh
-post-lock sample;
-failed retries keep the same pending row and do not count as duplicate deliveries. The
-notification field and query contract are specified in [data-model.md](data-model.md) and
-[notifications.md](../03-features/notifications.md#delivery).
+For an immediate child, recheck current resource reach, channel preference and quiet hours.
+Suppress it without a provider call if reach is lost or its channel is disabled; quiet hours
+defer it to the next allowed time except for urgent events exempted by NO-3. Acquire its
+outbox_dedupe_reservation;
+a live reservation owned by another child defers this work without incrementing attempts.
+After acquisition, suppress only when a different delivery id with the same tuple has a
+committed success in the prior five minutes. The reservation owner is the child id, never
+the event id.
 
-The reservation is a durable per-key lease, independent of the row-level `SKIP LOCKED`
-claim. The adapter invocation has a 30-second absolute deadline. While it runs, a healthy
-worker renews its lease every 15 seconds to 60 seconds from the renewal's database wall-clock
-sample. At deadline, request cancellation and stop awaiting even if the plugin ignores the
-signal; count the attempt and apply the six-attempt limit. If retries remain, leave the row
-pending and schedule it no earlier than the current lease expiry; after the sixth timed-out
-attempt mark it dead. Stop renewing without releasing because provider acceptance is
-ambiguous; the expired reservation row remains physically present until `session-cleanup`,
-but it no longer holds a live lease. A crashed worker also stops renewing. As soon as
-`lease_expires_at` passes, another worker may take over with a fresh token; takeover does not
-wait for daily row deletion. The
-old token cannot commit database success after takeover. If the provider accepted a request
-before the worker crashed, hung, or lost its response, that external effect cannot be rolled
-back; after lease expiry, retry may send again. Delivery is at-least-once across that failure
-window, not exactly-once. An adapter may use the stable outbox row id as an idempotency key
-when its provider supports one, but correctness does not assume provider idempotency. This is
-the target contract; the current runtime does not yet implement notification reservation or
-adapter timeout/renewal behavior.
+Digest candidates attach to a collecting notification_digest group in the event transaction.
+Groups partition by recipient, channel, workspace, optional organisation, cadence and UTC
+window. Resolve the time zone from the person's quiet-hours zone, falling back to the
+instance zone; persist the zone and UTC boundaries. The writer samples database wall time.
+If the target window ended or the group sealed, attach to the next eligible window. A group
+row lock serializes attachment and sealing. After window end the drain seals the group and
+freezes membership, rechecks each child's current reach and preference, defers the entire
+group for quiet hours, and renders a deterministic bounded safe summary. A group with no
+eligible member and its children become suppressed.
 
-Reservation acquisition and renewal rules, including the canonical tuple digest, are defined
-in [data-model.md](data-model.md#11-automations-notifications-integrations-audit) and
-[notifications.md](../03-features/notifications.md#delivery). A worker presenting the same
-outbox row id with a fresh token cannot reacquire a live reservation; only the current owner
-and token can renew it.
+Within a sealed group, order members by (created_at, id); for each dedupe tuple suppress
+later candidates within five minutes of an included candidate. Acquire remaining tuple
+reservations in canonical key order, each owned by a deterministic representative child.
+If any key is live under another owner, release this call's acquired reservations and group
+lease, defer until expiry, and do not increment attempts. The group lease fences one provider
+call while member reservations preserve dedupe serialization.
 
-Backoff: 30 s, 2 m, 10 m, 1 h, 6 h, 24 h. `SKIP LOCKED` lets `outbox-drain` claim different
-rows on every replica without a global job lease. Notification-key serialization is handled
-separately by `outbox_dedupe_reservation`.
+Each lease acquire, renewal, recent-success lookup and completion samples
+clock_timestamp() AT TIME ZONE 'UTC' once after relevant lock waits, reusing that sample
+for predicates and writes. Never use transaction-start now() for this protocol. Renew the
+group lease and all member reservations every 15 seconds to 60 seconds from the renewal
+sample. The adapter has a 30-second absolute deadline including connection setup and response
+wait; request cancellation and stop awaiting when it expires, even if the adapter ignores
+cancellation.
+
+For immediate success, atomically mark the child delivered, set delivered_at from the
+completion sample, and release its reservation conditional on the current unexpired child
+id/token. For digest success, persist the canonical payload hash before the call, then in one
+transaction conditional on current unexpired group token and each held member reservation
+token, mark included children delivered with one completion sample, suppress currently
+ineligible children, mark the group delivered and release reservations. Provider idempotency
+may use the child id or (digest id, payload_hash) where supported; correctness does not rely
+on provider support.
+
+A definite immediate failure increments that child's attempts, schedules backoff (30 s, 2
+m, 10 m, 1 h, 6 h, 24 h), and releases its reservation; the sixth attempt marks it dead.
+A definite group failure increments group attempts, leaves included children pending, and
+releases group/member leases. Child attempts remain zero for group members. After six group
+attempts, atomically dead-letter the group and its remaining pending children. Timeout,
+crash or unknown response is ambiguous: count the child or group attempt, stop renewal, keep
+leases until expiry and retry no earlier than all applicable expiries. A stale token cannot
+commit success or release a new owner's lease. A provider-accepted but uncommitted request
+may be sent again after retry. Delivery is at-least-once, not exactly-once.
+
+This is a target contract. Runtime fan-out, reservations, lock-delayed wall-clock sampling,
+digest grouping/sealing, deadlines, send-time reach checks and child/group retention are not
+implemented. Acceptance cases are specified in notifications.md#delivery. The existing
+database clock helper uses transaction-start time and is insufficient for this protocol; it
+must be changed or bypassed.
 
 ## Metrics snapshots
 
