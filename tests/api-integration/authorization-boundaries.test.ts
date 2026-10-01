@@ -335,7 +335,10 @@ describe("every assignee write path is workspace scoped", () => {
 
     const response = await app.request(`/api/task/${task.id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "If-Match": `"${task.version}"`,
+      },
       body: JSON.stringify({
         title: "Seeded",
         status: "to-do",
@@ -815,7 +818,10 @@ describe("every assignee write path is workspace scoped", () => {
       assignmentRequest: async () =>
         app.request(`/api/task/${task.id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "If-Match": `"${task.version}"`,
+          },
           body: JSON.stringify({
             title: task.title,
             description: task.description,

@@ -25,8 +25,17 @@ export const taskSchema = z
     startDate: nullableResponseTimestamp,
     dueDate: nullableResponseTimestamp,
     createdAt: responseTimestamp,
+    version: z.number().int().min(1),
   })
   .openapi("Task");
+
+export const taskVersionConflictSchema = z
+  .object({
+    message: z.string(),
+    assertedVersion: z.number().int(),
+    currentVersion: z.number().int(),
+  })
+  .openapi("TaskVersionConflict");
 
 export const taskWithAssigneeSchema = taskSchema
   .extend({
@@ -68,6 +77,7 @@ export const boardTaskSchema = z
     dueDate: nullableResponseTimestamp,
     position: z.number().nullable(),
     createdAt: responseTimestamp,
+    version: z.number().int().min(1),
     userId: z.string().nullable(),
     assigneeName: z.string().nullable(),
     assigneeId: z.string().nullable(),

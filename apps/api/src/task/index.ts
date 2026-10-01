@@ -36,7 +36,9 @@ import {
   requireBulkTaskPermission,
   requireTaskAssigneePermission,
 } from "./controllers/require-task-permission";
-import updateTask from "./controllers/update-task";
+import updateTask, {
+  TaskVersionConflictError,
+} from "./controllers/update-task";
 import updateTaskAssignee from "./controllers/update-task-assignee";
 import updateTaskDescription from "./controllers/update-task-description";
 import updateTaskDueDate from "./controllers/update-task-due-date";
@@ -52,6 +54,7 @@ import {
   taskExportSchema,
   taskImportResultSchema,
   taskSchema,
+  taskVersionConflictSchema,
   taskWithAssigneeSchema,
 } from "./response";
 import {
@@ -63,6 +66,7 @@ import {
   listTasksQuery,
   moveTaskBody,
   projectIdParam,
+  taskIfMatchHeader,
   taskParam,
   updateAssigneeBody,
   updateDescriptionBody,
@@ -217,7 +221,9 @@ const updateTaskRoute = createRoute({
   tags: ["Tasks"],
   summary: "Update task",
   description:
-    "Replace every field of a task. Use the single-field routes for narrower edits.",
+    "Replace every field of a task. Requires the current quoted If-Match version; a " +
+    "mismatch returns 409 with asserted/current versions. Use the single-field routes " +
+    "for narrower edits.",
   middleware: [
     workspaceAccess.fromTask(),
     requireWorkspacePermission({ work_item: ["update"] }),
@@ -225,6 +231,7 @@ const updateTaskRoute = createRoute({
   ] as const,
   request: {
     params: taskParam,
+    headers: taskIfMatchHeader,
     body: {
       required: true,
       content: { "application/json": { schema: updateTaskBody } },
@@ -232,11 +239,12 @@ const updateTaskRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The updated task", taskSchema),
-    400: errorResponse("Invalid body"),
+    400: errorResponse("Invalid body or missing/malformed If-Match header"),
     403: errorResponse(
       "Missing work_item:update or work_item:assign permission",
     ),
     404: errorResponse("Task not found"),
+    409: jsonResponse("Task version conflict", taskVersionConflictSchema),
   },
 });
 
@@ -604,6 +612,7 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(updateTaskRoute, async (c) => {
     const { id } = c.req.valid("param");
+    const { "if-match": ifMatch } = c.req.valid("header");
     const {
       title,
       description,
@@ -618,21 +627,35 @@ const task = apiRouter<BaseVariables & { workspaceId: string }>()
 
     const currentUserId = c.get("userId");
 
-    const task = await updateTask(
-      id,
-      title,
-      status,
-      startDate,
-      dueDate,
-      projectId,
-      description,
-      priority,
-      position,
-      userId,
-      currentUserId,
-    );
-
-    return c.json(task, 200);
+    try {
+      const task = await updateTask(
+        id,
+        Number(ifMatch.slice(1, -1)),
+        title,
+        status,
+        startDate,
+        dueDate,
+        projectId,
+        description,
+        priority,
+        position,
+        userId,
+        currentUserId,
+      );
+      return c.json(task, 200);
+    } catch (error) {
+      if (error instanceof TaskVersionConflictError) {
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      }
+      throw error;
+    }
   })
   .openapi(exportTasksRoute, async (c) => {
     const { projectId } = c.req.valid("param");

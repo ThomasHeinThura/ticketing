@@ -92,7 +92,10 @@ type PopoverStep = "select" | "color";
 
 function normalizeTask(
   task: Partial<Task> &
-    Pick<Task, "id" | "title" | "status" | "projectId" | "createdAt">,
+    Pick<
+      Task,
+      "id" | "title" | "status" | "projectId" | "createdAt" | "version"
+    >,
 ): Task {
   return {
     ...task,

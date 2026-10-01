@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { taskReminderSentTable, taskTable } from "../../database/schema";
@@ -26,7 +26,10 @@ async function updateTaskDueDate({
         .where(eq(taskReminderSentTable.taskId, id));
       const [updatedTask] = await tx
         .update(taskTable)
-        .set({ dueDate: dueDate || null })
+        .set({
+          dueDate: dueDate || null,
+          version: sql`${taskTable.version} + 1`,
+        })
         .where(eq(taskTable.id, id))
         .returning();
       return { existingTask, updatedTask, dueDate };

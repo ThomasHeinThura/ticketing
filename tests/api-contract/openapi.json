@@ -328,6 +328,10 @@
             "type": "string",
             "format": "date-time"
           },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
           "userId": {
             "type": [
               "string",
@@ -379,6 +383,7 @@
           "dueDate",
           "position",
           "createdAt",
+          "version",
           "userId",
           "assigneeName",
           "assigneeId",
@@ -948,6 +953,10 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
           }
         },
         "required": [
@@ -962,7 +971,8 @@
           "priority",
           "startDate",
           "dueDate",
-          "createdAt"
+          "createdAt",
+          "version"
         ]
       },
       "TaskWithAssignee": {
@@ -1010,6 +1020,25 @@
           "task",
           "sourceProjectId",
           "destinationProjectId"
+        ]
+      },
+      "TaskVersionConflict": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "assertedVersion": {
+            "type": "integer"
+          },
+          "currentVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "message",
+          "assertedVersion",
+          "currentVersion"
         ]
       },
       "TaskExport": {
@@ -2154,6 +2183,10 @@
           "id": {
             "type": "string"
           },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
           "title": {
             "type": "string"
           },
@@ -2190,6 +2223,7 @@
         },
         "required": [
           "id",
+          "version",
           "title",
           "status",
           "priority",
@@ -7129,7 +7163,7 @@
           "Tasks"
         ],
         "summary": "Update task",
-        "description": "Replace every field of a task. Use the single-field routes for narrower edits.",
+        "description": "Replace every field of a task. Requires the current quoted If-Match version; a mismatch returns 409 with asserted/current versions. Use the single-field routes for narrower edits.",
         "parameters": [
           {
             "schema": {
@@ -7138,6 +7172,15 @@
             "required": true,
             "name": "id",
             "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9]\\d*\"$"
+            },
+            "required": true,
+            "name": "if-match",
+            "in": "header"
           }
         ],
         "requestBody": {
@@ -7206,7 +7249,7 @@
             }
           },
           "400": {
-            "description": "Invalid body",
+            "description": "Invalid body or missing/malformed If-Match header",
             "content": {
               "text/plain": {
                 "schema": {
@@ -7234,6 +7277,16 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Task version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskVersionConflict"
                 }
               }
             }

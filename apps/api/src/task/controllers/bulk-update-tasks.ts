@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import {
@@ -217,7 +217,11 @@ async function bulkUpdateTasks({
             });
             const [updated] = await tx
               .update(taskTable)
-              .set({ status, columnId: column?.id ?? null })
+              .set({
+                status,
+                columnId: column?.id ?? null,
+                version: sql`${taskTable.version} + 1`,
+              })
               .where(eq(taskTable.id, taskId))
               .returning({ id: taskTable.id });
             itemEvents.push(() =>
@@ -236,7 +240,7 @@ async function bulkUpdateTasks({
             const priority = value as string;
             const [updated] = await tx
               .update(taskTable)
-              .set({ priority })
+              .set({ priority, version: sql`${taskTable.version} + 1` })
               .where(eq(taskTable.id, taskId))
               .returning({ id: taskTable.id });
             itemEvents.push(() =>
@@ -274,7 +278,10 @@ async function bulkUpdateTasks({
               : undefined;
             const [updated] = await tx
               .update(taskTable)
-              .set({ userId: assigneeId })
+              .set({
+                userId: assigneeId,
+                version: sql`${taskTable.version} + 1`,
+              })
               .where(eq(taskTable.id, taskId))
               .returning({ id: taskTable.id });
             const eventData = {
@@ -381,7 +388,10 @@ async function bulkUpdateTasks({
           case "updateDueDate": {
             const [updated] = await tx
               .update(taskTable)
-              .set({ dueDate: parsedDate })
+              .set({
+                dueDate: parsedDate,
+                version: sql`${taskTable.version} + 1`,
+              })
               .where(eq(taskTable.id, taskId))
               .returning({ id: taskTable.id });
             itemEvents.push(() =>
