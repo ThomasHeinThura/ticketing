@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { taskTable, userTable } from "../../database/schema";
@@ -21,7 +21,7 @@ async function updateTaskDescription({
     const existingTask = await lockTaskAndAssertProjectLive(tx, id);
     const [updatedTask] = await tx
       .update(taskTable)
-      .set({ description })
+      .set({ description, version: sql`${taskTable.version} + 1` })
       .where(eq(taskTable.id, id))
       .returning();
     return { existingTask, updatedTask };

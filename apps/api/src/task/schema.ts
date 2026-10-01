@@ -69,6 +69,25 @@ export const updateTaskBody = z.object({
   userId: z.string().optional(),
 });
 
+const POSTGRES_INTEGER_MAX = 2147483647;
+
+export const taskIfMatchHeader = z.object({
+  "if-match": z
+    .string()
+    .regex(
+      /^"[1-9]\d*"$/,
+      'If-Match must be a positive quoted task version, e.g. "3"',
+    )
+    .refine(
+      (value) => Number(value.slice(1, -1)) <= POSTGRES_INTEGER_MAX,
+      `If-Match must not exceed ${POSTGRES_INTEGER_MAX}`,
+    ),
+});
+
+export const optionalTaskIfMatchHeader = z.object({
+  "if-match": taskIfMatchHeader.shape["if-match"].optional(),
+});
+
 export const moveTaskBody = z.object({
   destinationProjectId: z.string(),
   destinationStatus: z.string().optional().openapi({

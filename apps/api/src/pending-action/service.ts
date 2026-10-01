@@ -356,6 +356,23 @@ export async function getOwnPendingAction(
   return data;
 }
 
+export async function requirePendingActionRequesterIdentity(
+  userId: string,
+  apiKey: { id: string; userId: string; enabled: boolean } | undefined,
+) {
+  const identity = await resolveIdentity({
+    userId,
+    credential: apiKey ? "api_key" : "session",
+    apiKey: apiKey
+      ? { enabled: apiKey.enabled, ownerUserId: apiKey.userId }
+      : undefined,
+  });
+  if (!identity) {
+    throw new HTTPException(401, { message: "Authentication required" });
+  }
+  return identity.personId;
+}
+
 export async function decideOwnPendingAction(input: {
   id: string;
   requesterPersonId: string;

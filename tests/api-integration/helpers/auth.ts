@@ -2,7 +2,10 @@ import type { Session, User } from "better-auth/types";
 import { vi } from "vitest";
 import { auth } from "../../../apps/api/src/auth";
 
-function createSession(userId: string): Session {
+function createSession(
+  userId: string,
+  overrides: { impersonatedBy?: string } = {},
+): Session & { impersonatedBy?: string } {
   const now = new Date();
 
   return {
@@ -14,6 +17,7 @@ function createSession(userId: string): Session {
     updatedAt: now,
     ipAddress: null,
     userAgent: null,
+    ...overrides,
   };
 }
 
@@ -28,9 +32,12 @@ function createSession(userId: string): Session {
  */
 type MockSessionUser = User & { role?: string | null };
 
-export function mockAuthenticatedSession(user: MockSessionUser) {
+export function mockAuthenticatedSession(
+  user: MockSessionUser,
+  sessionOverrides: { impersonatedBy?: string } = {},
+) {
   return vi.spyOn(auth.api, "getSession").mockResolvedValue({
-    session: createSession(user.id),
+    session: createSession(user.id, sessionOverrides),
     user,
   });
 }

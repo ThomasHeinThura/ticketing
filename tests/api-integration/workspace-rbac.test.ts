@@ -895,7 +895,10 @@ describe("API integration: workspace RBAC enforcement", () => {
 
       const response = await app.request(`/api/task/${task.id}`, {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "if-match": `"${task.version}"`,
+        },
         body: JSON.stringify({
           title: "Updated by member",
           description: "edit",
@@ -920,7 +923,10 @@ describe("API integration: workspace RBAC enforcement", () => {
 
       const response = await app.request(`/api/task/${task.id}`, {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "if-match": `"${task.version}"`,
+        },
         body: JSON.stringify({
           title: "Updated by member",
           description: "edit",
@@ -952,7 +958,10 @@ describe("API integration: workspace RBAC enforcement", () => {
 
       const response = await app.request(`/api/task/${task.id}`, {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "if-match": `"${task.version}"`,
+        },
         body: JSON.stringify({
           title: "Member attempt",
           description: "nope",
@@ -983,7 +992,10 @@ describe("API integration: workspace RBAC enforcement", () => {
 
       const response = await app.request(`/api/task/${task.id}`, {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "if-match": `"${task.version}"`,
+        },
         body: JSON.stringify({
           title: "Member attempt",
           description: "nope",
@@ -1014,7 +1026,10 @@ describe("API integration: workspace RBAC enforcement", () => {
 
       const response = await app.request(`/api/task/${task.id}`, {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "if-match": `"${task.version}"`,
+        },
         body: JSON.stringify({
           title: "Assigned by admin",
           description: "",
@@ -1045,7 +1060,10 @@ describe("API integration: workspace RBAC enforcement", () => {
 
       const response = await app.request(`/api/task/${task.id}`, {
         method: "PUT",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          "if-match": `"${task.version}"`,
+        },
         body: JSON.stringify({
           title: "Viewer attempt",
           description: "nope",

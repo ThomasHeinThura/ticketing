@@ -62,6 +62,7 @@ import { formatDateMedium } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
 import { resolveLabelColor } from "@/lib/label-color";
 import { getPriorityIcon } from "@/lib/priority";
+import { TaskUpdateError } from "@/lib/task-update-error";
 import { toast } from "@/lib/toast";
 import useProjectStore from "@/store/project";
 import { useUserPreferencesStore } from "@/store/user-preferences";
@@ -104,7 +105,10 @@ type PopoverStep = "select" | "color";
 
 function normalizeTask(
   task: Partial<Task> &
-    Pick<Task, "id" | "title" | "status" | "projectId" | "createdAt">,
+    Pick<
+      Task,
+      "id" | "title" | "status" | "projectId" | "createdAt" | "version"
+    >,
 ): Task {
   return {
     ...task,
@@ -499,11 +503,13 @@ function CreateTaskModal({
       }
     } catch (error) {
       didSubmitRef.current = false;
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t("common:modals.createTask.createError"),
-      );
+      if (!(error instanceof TaskUpdateError)) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t("common:modals.createTask.createError"),
+        );
+      }
     }
   };
 

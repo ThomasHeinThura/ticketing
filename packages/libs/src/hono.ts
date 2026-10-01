@@ -9,15 +9,15 @@ const apiUrl = resolveApiBaseUrl(import.meta.env.VITE_API_URL);
 // Generate once per tab load
 export const windowId = Math.random().toString(36).substring(2, 11);
 
-export const client = hc<AppType>(apiUrl, {
-  fetch: (input: RequestInfo | URL, init?: RequestInit) => {
-    return fetch(input, {
+export function createApiFetch(fetchImpl: typeof fetch = fetch) {
+  return (input: RequestInfo | URL, init?: RequestInit) => {
+    const headers = new Headers(init?.headers);
+    headers.set("Content-Type", "application/json");
+    headers.set("X-TaskDesk-Window-Id", windowId);
+
+    return fetchImpl(input, {
       ...init,
-      headers: {
-        ...init?.headers,
-        "Content-Type": "application/json",
-        "X-TaskDesk-Window-Id": windowId,
-      },
+      headers,
       credentials: "include",
     }).catch((error) => {
       if (error instanceof TypeError && error.message.includes("fetch")) {
@@ -27,5 +27,9 @@ export const client = hc<AppType>(apiUrl, {
       }
       throw error;
     });
-  },
+  };
+}
+
+export const client = hc<AppType>(apiUrl, {
+  fetch: createApiFetch(),
 });
