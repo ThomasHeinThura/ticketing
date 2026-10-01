@@ -217,3 +217,71 @@ I verified byte identity with `git diff --quiet`: migration, schema, API task/se
 The released legacy `PUT /api/task/{id}` still permits an omitted `If-Match` for the dated compatibility window. Such unversioned third-party requests can overwrite newer task state; this is the documented WI-7a decision and is **not** fixed by v2. The inherited priority capability behavior and shared search result's optional-version typing remain the earlier recorded nonblocking residuals. The non-English conflict-message values remain English source text pending translation; the ordinary review reports that the required i18n shape gate passes.
 
 At the live snapshot for this exact head, hosted PostgreSQL integration was still in progress and `pull request template + security review` was red; other completed checks shown were green, with G11 reported not enabled. No check is waived here. The orchestrator must record this actual review and independently verify all exact-head required gates, image/boot/health and browser evidence before merge. A later candidate SHA needs a fresh exact-head review decision.
+
+
+## Current-main continuation — 2026-10-01
+
+**Reviewed head:** `295185a60862bf321e1c3c6d5607313fe684c6b8`
+
+The following independent reports bind this source candidate. The subsequent commit records only this note; no reviewer is represented as having inspected a later SHA. Corrected ordinary comparison scopes supersede the earlier report wording.
+
+
+
+### pr529-2951-luna-main-delta-corrected
+
+# PR 529 exact-head main-import delta — GPT-6 Luna
+
+> **Supersedes** `/private/tmp/pr529-2951-luna-main-delta.md` to correct comparison scopes and path counts. The verdict and byte-identity result are unchanged.
+
+- **Reviewed head:** `295185a60862bf321e1c3c6d5607313fe684c6b8`
+- **Previously reviewed source head:** `f8750d27a834b1e3522e185005d6f5cfc5e0a6c2`; prior full Sol report read at `/private/tmp/pr529-f875-sol-security.md`.
+- **Reviewer:** GPT-6 Luna, independent exact-head delta context; no authorship, direction, or remediation.
+- **Verdict:** **CLEAR for the main-import delta only.** This is not a new full panel review, phase finalizer, or merge-readiness decision.
+
+## History and source identity
+
+The candidate merge has first parent `918a939ede71efa0730fbfe8aa9169f03a7118cd` and second parent/current main `c27b2ee771eba19f193a0d20cfc1048e9c6d21a9`.
+
+Comparison scopes are distinct:
+
+- First-parent import (`918a...2951`): **11 paths**, comprising PR #531's 8 RLS prototype/config/evidence paths and PR #538's 2 CI probes plus review note.
+- Prior reviewed candidate to integrated candidate (`f875...2951`): **12 paths**, the above 11 imports plus PR #529's updated review note.
+- Current-main-relative candidate (`origin/main...HEAD`): **87 paths**, the full PR #529 feature/source/test diff and its review note. It is inaccurate to describe this as 12 paths or as having no production changes.
+
+`git diff --quiet f8750d27 295185a --` over API task/versioning source, Drizzle schema/migrations, web, shared libs, and MCP returned **0**. This establishes that the previously reviewed PR #529 implementation is byte-identical through the main import. The feature's production changes remain part of the current-main-relative candidate; the import delta itself adds none.
+
+The #531 API package change appends `tsconfig.rls-prototype.json` to the API `typecheck` script. Its dedicated config includes only the isolated `tests/rls-prototype` files. The dedicated Vitest global setup starts PostgreSQL Testcontainers, and the prototype applies temporary RLS policies only to that disposable migrated database. No production RLS setting, migration, schema, API route, task-version writer, browser client, MCP behavior, or shared contract was introduced by the import. The #538 probes test canonical repository-root selection and approved-breaks path resolution; they do not overlap task-update source or alter the API contract.
+
+## Verification and limits
+
+No tests, builds, or image checks were run for this source-identical import, consistent with the active quiet window. Existing source-head reviews and their exact test evidence remain applicable to unchanged PR #529 code. The orchestrator separately reports the combined hosted PostgreSQL run passed 124 files/1,561 tests and the current image is live/ready; those are not my executions. Review-note publication and current exact-candidate gates remain separate requirements.
+
+
+### pr529-2951-sol-main-delta
+
+# PR #529 — independent GPT-6 Sol security confirmation of current-main import
+
+**Reviewed head:** `295185a60862bf321e1c3c6d5607313fe684c6b8`
+**Current main/base:** `c27b2ee771eba19f193a0d20cfc1048e9c6d21a9`
+**Prior full security-reviewed source:** `f8750d27a834b1e3522e185005d6f5cfc5e0a6c2`
+**Reviewer and independence:** Fresh independent GPT-6 Sol context. I did not author, direct, or remediate this candidate or the imported main changes. This is a per-PR exact-head delta confirmation, not a P1 phase finalizer.
+**Verdict:** **CLEAR for the current-main integration delta.** No blocking or non-blocking security finding in the import. This is not overall merge clearance.
+
+## Exact history and scope
+
+I verified the live GitHub head/base and PR file list, the prior full Sol report, the fresh independent Luna delta report, both parents of the current merge and its full first-parent/current-main diffs. The merge's first parent is `918a939ede71efa0730fbfe8aa9169f03a7118cd`, which differs from the full-reviewed `f8750d27` only by PR #529's review-note commit. The second parent and merge base are current main `c27b2ee7`. The **first-parent import has 11 paths**: PR #531's eight RLS prototype/config/results/review paths and PR #538's two CI probe files plus review note. The current-main-to-head **net PR diff has 87 paths**, all PR #529's own previously reviewed candidate/review material; imported RLS/probe files are part of main and do not appear in that net diff.
+
+`git diff --quiet f8750d27 295185a --` over the migration/schema, API task/router/policy/search/relation and version-writer code, Hono transport, MCP code, web task fetcher/recovery, and focused concurrency test paths returned 0. I also inspected the imported API package change: it appends `tsconfig.rls-prototype.json` to the normal API typecheck command. The dedicated RLS Vitest config includes only `tests/rls-prototype/**/*.test.ts`, has a separate disposable PostgreSQL Testcontainer setup, and changes no runtime API policy, migration, auth, task version, HTTP header, or web recovery semantics. PR #538's Node CI probes assert canonical caller-root/approved-breaks paths; they do not change checker implementation or authority. I found no combined path by which either test-only import changes task-update authorization, `If-Match` enforcement, database version increments, no-409-retry behavior, or cache recovery.
+
+## Verification and limits
+
+**No local tests or builds were run for this source-identical import delta.** The prior full Sol review's current-source focused runs (API 2 files/25, web 3 files/7, libs 2 files/5) remain prior evidence, not my execution in this pass. The orchestrator separately reports current-head API typecheck and RLS 1/1, hosted PostgreSQL 124 files/1,561 tests, and image boot/live/ready HTTP 200; I did not perform or independently verify those operations. The previous legacy unversioned PUT overwrite risk, inherited priority authority behavior, and optional task-search version typing remain the documented residuals. Required exact-head checks and PR evidence remain the orchestrator's separate gate; no gate is waived here. A later head or base change needs another exact-head decision.
+
+
+### Orchestrator image and integration evidence
+
+Shipping image `taskdesk:pr529-295185a6`, image ID `sha256:bd93ebe2789ff737ff148ba5595faf25cf026589027206a1cb4494b712645d02`, built with revision `295185a60862bf321e1c3c6d5607313fe684c6b8`. The isolated PostgreSQL 18/Valkey stack booted healthy and both `/api/public/health/live` and `/api/public/health/ready` returned 200. Full hosted PostgreSQL integration at this source passed 124 files/1,561 tests. Build/boot logs: `/private/tmp/pr529-2951-docker-build.log` and `/private/tmp/pr529-2951-smoke-boot.log`; hosted log `/private/tmp/pr529-2951-pg-hosted.log`.
+
+The current API typecheck and isolated RLS prototype (1 file/1 test) passed. Chrome reload at 1440×758 preserved CV-1 in In Review with the concurrent title and October 8 due date; screenshot `/private/tmp/pr529-2951-current-image.png`. Earlier source-identical conflict, panel, date, backlog/create, Gantt and list browser evidence remains separately recorded.
+
+Every required check must be green on the final note-only candidate before protected merge. No stage completion or gate waiver is claimed.
