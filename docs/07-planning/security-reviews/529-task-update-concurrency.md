@@ -41,3 +41,45 @@ Every commit after reviewed source head `2c0bd18684d4e05fefdab751ae346409fb8ba3a
 is restricted to this security review artifact. Source or test changes require a fresh
 exact-head review at the applicable tier. CI and image build/boot/health are checked
 separately on the final merge candidate; this note does not waive any gate.
+
+
+# PR #529 — independent GPT-6 Sol security delta review
+
+**Reviewed head:** `0b91f7871780632218f93e627554670e91a58f2d`
+
+- **Prior full security-reviewed code head:** `2c0bd18684d4e05fefdab751ae346409fb8ba3a9` (full review at `/private/tmp/pr529-2c0b-sol-security.md`).
+- **Base:** `c891e9bcd4abf9b77b4916561d9bc5ca367065e5`.
+- **Reviewer and independence:** Fresh independent GPT-6 Sol security delta context. I did not author, direct, or remediate the transport fix; I made no source edits, commits, pushes, or merges.
+- **Verdict:** **CLEAR — no blocking security finding in the delta at this exact source head.** The prior full-review verdict applies to unchanged source. This delta verdict is not final merge clearance or a phase finalizer.
+
+## Exact delta and security effect
+
+Between the prior reviewed code head and this head, `efe8f67c` committed the earlier security-review note only. The implementation commit changes `packages/libs/src/hono.ts` and adds `packages/libs/src/hono.test.ts`; no API router, policy, controller, schema, web fetcher, or MCP tool changed. The existing committed note still declares only the prior reviewed head and must receive a note-only exact-head continuation before its CI gate can clear.
+
+The old transport spread `init.headers` into an object. When Hono supplied a `Headers` instance, that spread yielded no header entries and dropped the web fetcher's quoted `If-Match`, causing the required v2 endpoint to answer 400. The new adapter constructs `new Headers(init?.headers)`, sets its existing JSON content type and window-id defaults, and passes that `Headers` object to `fetchImpl`. This preserves the standard `HeadersInit` forms, including the Hono instance, and also preserves caller-supplied authorization or API-key headers rather than silently removing them. `Headers` normalizes names and rejects invalid header syntax; the adapter does not synthesize or elevate a credential. Existing `credentials: "include"` and fetch-error translation remain in place. The client → adapter → actual `Request` regression asserts URL, quoted `if-match`, JSON content type, and window id. I found no new trust-boundary bypass or header injection path from this change.
+
+The v2 server still requires the strictly parsed positive quoted version and checks it under the task row lock; a stale version still returns 409 without a write or event. The web fetcher still sends the snapshot version and has no silent conflict retry. The transport fix makes that existing precondition reach the server; it does not weaken it. MCP's separate transport is unchanged.
+
+## Verification actually performed
+
+- Verified the clean worktree and GitHub PR #529 both pointed at exact head `0b91f7871780632218f93e627554670e91a58f2d`, and inspected the complete delta plus the prior full security report and current independent Luna delta report (`/private/tmp/pr529-0b91-luna-transport-delta.md`, clear).
+- Ran `pnpm --filter @taskdesk/libs test`: **2 files, 5 tests passed**, including the new Hono → production adapter → constructed `Request` regression.
+- Ran `pnpm --filter @taskdesk/libs typecheck`: passed. Ran `git diff --check 2c0bd18684d4e05fefdab751ae346409fb8ba3a9..0b91f7871780632218f93e627554670e91a58f2d`: clean.
+- Confirmed the API task update, route policy, web fetcher, and MCP tool have no source delta from the prior full-reviewed head. The earlier real-PostgreSQL security/concurrency run (2 files, 25 tests) belongs to that unchanged head; I did not rerun it here.
+
+## Residuals and gates
+
+- The new test uses an injected fetch and standards `Request` construction. It does not prove a browser/server round trip. The orchestrator's rebuilt-image browser verification is a separate pending gate.
+- The prior review's documented unversioned third-party legacy overwrite risk, inherited task priority authority behavior, and shared search schema typing precision remain unchanged.
+- At the last live GitHub inspection, the PR-template/security-review check was red because the committed note lacked this new reviewed head; other checks were pending at this SHA. Recheck exact-head CI and record this delta in a note-only commit before considering merge.
+
+**No blocking findings in the transport delta.**
+
+
+## Transport delta ordinary review and browser evidence
+
+Fresh independent GPT-6 Luna `/root/p1_529_luna_clients_review` cleared exact source `0b91f7871780632218f93e627554670e91a58f2d`, independently running libs 2 files/5 tests and typecheck. The preceding three-reviewer panel and full Sol pass at `2c0bd18684d4e05fefdab751ae346409fb8ba3a9` cover unchanged code.
+
+Root built `taskdesk:pr529-0b91` image `sha256:db96023085aa8b45c2deb38744dc2f74a85c7648cbcd83e8e1e10df9d8119647`, booted the disposable fixture, and verified root/live/ready HTTP 200. Actual Chrome board drag To Do to In Progress changed the persisted task from revision 1 to 2 and survived reload. Evidence: `/private/tmp/pr529-chrome-board-persisted.jpg`, 1440×758 CSS pixels at original 125% zoom. The previously observed missing-header blocker is resolved; no legacy universal protection or phase completion is claimed.
+
+This follow-on commit records only this review note.
