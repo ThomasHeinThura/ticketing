@@ -23,7 +23,10 @@ SCIM evidence changes when an authenticated synchronization request arrives. The
 upstream callback that makes every provider's removal instantly observable. A person can
 have explicitly linked identities from more than one connection, so one connection's
 claims cannot stand in for another's evidence. The current 30-second authority-cache bound
-and immediate next-request session-table check remain distinct controls.
+and immediate next-request session-table check remain distinct controls. A connection's
+`max_role_rank` is its current ceiling: a committed decrease must retire that connection's
+now-ineligible external grants and recompute stored authority atomically, while leaving
+sessions valid and distinct from authority-cache invalidation.
 
 This changes the authoritative RBAC storage contract and is expensive to reverse, so it
 needs an ADR before implementation.
@@ -53,8 +56,9 @@ evidence.
   forward migration, never to an API request.
 - The writer validates current connection, mapping, person side, role scope, actual
   resource-owning organisation, forbidden capabilities, and `max_role_rank` while holding
-  the affected identity and person/scope locks. Cross-row rules are not represented as if a
-  SQL `CHECK` could enforce them.
+  the `IP-22` connection-first lock order: connection, mapping and role rows in stable id
+  order, external identity, then effective membership keys in stable order. Cross-row rules
+  are not represented as if a SQL `CHECK` could enforce them.
 - Every source addition or retirement preserves a grant row. A role or mapping change
   retires the old grant and inserts a new one; no in-place role escalation changes its
   provenance.
@@ -70,6 +74,12 @@ the valid external grant with greatest role rank wins. At equal rank,
 no external effective membership and show an operator-visible conflict for an
 administrator to resolve. Role-id sorting and capability union are forbidden. `sees_all`
 is true only when the selected direct grant explicitly carries it.
+
+The configuration-ceiling transition, source isolation, atomic projection/cache update,
+event/audit behavior and existing-session distinction are defined once in
+[IP-3 and IP-22](../../03-features/identity-provisioning.md); this proposal uses that rule
+for effective grant selection. A ceiling increase never restores retired grant history
+without fresh evidence from the source that owns it.
 
 The effective row has a unique `(person_id, scope, scope_id)` key. Before adding that
 constraint, migration work audits duplicates and requires a deterministic,
@@ -101,8 +111,14 @@ effective row. Removing one source never removes another source's valid grant.
 
 ### Reconciliation and revocation
 
-- Every validated OIDC login checks the selected connection's configured app-role/`acct=0`
-  admission rule, then reconciles only that external identity's OIDC groups from a complete,
+- Every Entra login, whether or not JIT is enabled, checks the selected connection's exact
+  configured app-role/`acct=0` admission rule before issuing a session; this also applies to
+  existing invite- and SCIM-provisioned identities. A valid negative admission denies a new
+  session and retires only that identity's OIDC/JIT grants; invalid/unverified tokens and
+  invalid persisted configuration do not mutate grants. JIT remains a separate
+  person/default-grant creation switch. This rule is IP-27 and the app role is never TaskDesk
+  authority.
+- Every validated OIDC login then reconciles only that external identity's OIDC groups from a complete,
   well-formed object-id `groups` array and refreshes its permitted JIT-default grant. It
   writes the grant delta, effective projection, provisioning event and audit rows in one
   transaction, commits, publishes cache invalidation, and only then issues the session.
@@ -119,8 +135,11 @@ effective row. Removing one source never removes another source's valid grant.
   administrative disable/change. Same email does not link identities; explicit linking
   remains the separately audited `IP-18` process.
 - Mapping disable/change or mapped-role deletion immediately retires grants from that
-  mapping and invalidates authority after commit. Re-enable never revives historical grants
-  before fresh matching evidence.
+  mapping and invalidates authority after commit. OIDC re-enable waits for later validated
+  same-connection OIDC login with complete matching groups and current IP-27 admission;
+  SCIM updates cannot restore OIDC grants. SCIM re-enable waits for later authenticated
+  same-connection SCIM evidence; OIDC login cannot restore SCIM grants. Neither source
+  revives historical rows merely because an administrator enables a mapping.
 - Connection disable/delete revokes sessions issued through it and retires that connection's
   external grants, while preserving direct grants and grants from other connections.
 - Global SCIM `active=false` marks the person inactive, revokes sessions and keys, and retires
@@ -139,8 +158,11 @@ is lost, the documented 30-second authority-cache bound remains. Session-table r
 checked on the next request. A failed transaction issues no new OIDC session and publishes
 no partial grant state.
 
-Use existing event keys `group.member_added`, `group.member_removed`,
-`group.mapping_changed`, `request.denied`, and `auth.failed`. Bounded event detail may carry
+Use existing provisioning event keys `group.member_added`, `group.member_removed`,
+`group.mapping_changed`, `connection.changed`, `request.denied`, and `auth.failed`.
+Ceiling-policy retirement uses `group.mapping_changed`; connection configuration uses
+`connection.changed`. The configuration mutation also writes the existing
+`identity_connection.changed` event envelope/outbox row under EV-1. Bounded event detail may carry
 source kind, connection id, external identity id, mapping id, affected scope/role ids and a
 reason; it never stores raw claims or tokens. Grant rows and audit history keep the evidence
 needed to explain changes without exposing provider payloads.

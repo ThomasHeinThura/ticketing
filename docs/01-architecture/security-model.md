@@ -155,11 +155,14 @@ the trust boundary is constrained hard:
 - **The durable identity key is `(connection, issuer, subject)` plus the SCIM `externalId`**
   — never the email address, which is a changeable attribute. Organisation and portal are
   properties of the connection, resolved server-side.
-- **First-release new-person JIT uses Entra subject admission.** After exact selected-
-  connection `iss`, `tid` and `aud` validation, the signed ID token must contain the
-  connection's configured, exact `required_entra_app_role` and `acct=0` before a new person
-  or membership is created (`IP-27`). Missing/malformed account type or role, and guests,
-  fail closed. Other provider JIT remains disabled until its own admission rule is approved.
+- **Entra subject admission is distinct from new-person JIT.** After exact selected-
+  connection `iss`, `tid` and `aud` validation, every Entra connection requires its exact
+  configured `required_entra_app_role` and signed `acct=0` before any login session is
+  issued or person/membership is created (`IP-27`), including existing identities with JIT
+  disabled. Missing/malformed account type or role, and guests, fail closed. A valid
+  negative token retires only that identity's OIDC/JIT grants; invalid/unverified tokens and
+  invalid persisted configuration are not revocation evidence. Other provider JIT remains
+  disabled until its own admission rule is approved.
 - **Identity routing and admission follow `IP-9`.** A typed customer-login domain may route
   an unauthenticated login initiation to a configured connection; the selected connection's
   persisted organisation, portal and id are then bound in single-use state. Callback claims

@@ -229,9 +229,13 @@ they exist.
 - **The issuer must be a specific tenant** — `IP-26`. `/common` and `/organizations` are
   refused at save; the connection stores the resolved tenant-specific issuer; every ID token
   must match both `iss` and `tid`. `05-no-user-controlled-tenant-selection.test.ts`.
-- **New-person admission and profile metadata are separate** — `IP-27`. Entra JIT requires
-  the selected connection's exact configured app role and `acct=0` after exact token
-  validation. The durable identifier is `oid` + `tid`; `email` → `preferred_username` →
+- **Entra subject admission is separate from JIT creation and profile metadata** — `IP-27`.
+  Every Entra connection requires an exact configured app role and signed `acct=0` after
+  exact token validation, for every login including existing invite/SCIM identities when
+  JIT is disabled. JIT controls only creation/default-grant behavior. A valid negative
+  admission retires only that identity's OIDC/JIT grants and denies a new session; an
+  invalid/unverified token or invalid server configuration mutates no grants. The durable
+  identifier is `oid` + `tid`; `email` → `preferred_username` →
   `upn` supplies contact/display metadata only. An absent usable address may fail a profile
   data requirement, never the admission decision by proving or disproving domain ownership.
 - **The `groups` claim carries object ids, and can go missing** — `IP-28`. Mapping is keyed

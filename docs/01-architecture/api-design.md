@@ -105,6 +105,20 @@ method cannot be verified, return `403 step_up_unavailable` and do not rotate. S
 [security-model.md](security-model.md#sessions-csrf-and-step-up) and
 [pending-actions.md](pending-actions.md) `PA-15`.
 
+### Identity-connection configuration compare-and-set
+
+`PATCH /api/instance/identity-connections/{id}` carries the connection's expected positive
+safe-integer `configVersion` with the configured fields. Under the `IP-22` connection-first
+lock order, compare it with `identity_connection.config_version`; a stale version returns
+`409 version_conflict` with only the current safe version and changes nothing. Every
+committed connection-configuration mutation advances the version exactly once. In
+particular, lowering an enabled agent connection's `max_role_rank` applies the `IP-3`/`IP-22`
+grant retirement, projection, audit/provisioning and event/outbox changes in the same CAS
+transaction. It cannot race a mapping write, OIDC login, SCIM synchronization or connection
+disable into recreating above-ceiling authority. This ordinary connection update is not a
+new PA-15 operation; the two OIDC mapping routes below retain their separate operation-bound
+proof.
+
 ### OIDC group-mapping administration
 
 The existing agent connection editor and organisation Identity tab use this single route
@@ -184,7 +198,10 @@ grant/audit history.
 
 Every create, edit and enable revalidates the current Entra connection, portal and
 organisation, target ownership, role existence and side/scope, current rank against
-`max_role_rank`, administrator authority/rank guardrails and forbidden capabilities. The
+`max_role_rank`, administrator authority/rank guardrails and forbidden capabilities. All
+mapping writes are unconditionally elevated even for customer, display-only or otherwise
+non-authority changes; the SCIM mapping elevation thresholds do not apply to these OIDC
+routes (IP-6). The
 same validation runs for disabled rows. A mapping can never mint a role or capability,
 `instance:admin`, `sees_all`, customer-to-staff access or cross-organisation/workspace reach.
 Invalid persisted mappings fail closed at read and reconciliation boundaries. The write
@@ -211,14 +228,17 @@ a new challenge for the current version and exact request. An unavailable requir
 or SSO verifier returns `403 step_up_unavailable` without mutation. This proof is not the
 metrics rotation operation and does not create a session-wide freshness window.
 
-In one write transaction, lock the connection, mapping if present, affected external
-identities and person/scope keys in stable order, then revalidate mapping, role and rank.
+In one write transaction, use the `IP-22` lock order: lock the connection first, then
+mapping and role rows, affected external identities, and person/scope keys in stable order;
+revalidate mapping, role and rank under those locks.
 Create makes no grant; a later validated OIDC login must observe the group claim. Disable,
 role change or target change retires only active OIDC grants from that mapping, recomputes
 each affected one-role effective membership, writes the existing
 `provisioning_event` kind `group.mapping_changed` and safe `audit_log` evidence under
 AU-14, and publishes authority-cache invalidation after commit. Re-enable never resurrects
-retired grants before a later validated login. A write for connection A cannot change
+retired grants before a later validated OIDC login through this connection with complete
+matching groups and current admission. A SCIM update cannot restore an OIDC grant; SCIM
+grants require fresh authenticated SCIM evidence. A write for connection A cannot change
 connection B, SCIM, direct or another mapping's grants. No Graph lookup or new event key is
 introduced. The existing identity-connection DELETE remains the PA-5/GM-6 pending-action
 operation.

@@ -5,6 +5,34 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · Entra app-role admission applies to every Entra login
+
+**Decision:** extend `IP-27`'s exact Entra app-role and signed `acct=0` admission predicate
+from new JIT creation to every Entra connection and login, including existing invite- or
+SCIM-provisioned identities when JIT is disabled. Every Entra connection must store one
+exact nonempty `required_entra_app_role` in the existing
+`identity_connection.jit_policy` at creation/configuration save and before enable; toggling
+JIT cannot waive it. A valid protocol-validated token that lacks the configured role or
+`acct=0` denies a new session and atomically retires only that external identity's OIDC/JIT
+grants. Invalid/unverified tokens or invalid persisted server configuration are not
+revocation evidence and mutate no grants. Direct, SCIM and other-connection grants remain
+untouched. An already-issued session is not revoked solely by upstream app-role removal;
+the admission change takes effect at the next validated login. The app role and `acct=0`
+remain IdP admission signals and cannot grant TaskDesk roles, capabilities, scope,
+`instance:admin` or `sees_all`. JIT remains a separate person/default-grant creation switch.
+
+**Why:** a login-time admission requirement cannot depend on whether the existing identity
+was originally created by JIT; otherwise the same Entra connection has no coherent
+admission contract after SCIM or invitation provisioning.
+
+**Authorization and status:** recorded under Thomas's standing recommended-decisions
+authorization after the cross-contract source check. This does not approve ADR-0015, close
+owning review rows 81–82, establish finished-spec read, waive a gate, or claim
+implementation, tests, Entra/browser evidence, H1–H6 or P3 acceptance. See
+[IP-27](../03-features/identity-provisioning.md) for the normative rule.
+
+**Recorded by:** orchestrator, 2026-10-02.
+
 ### 2026-10-01 · P0 public docs site uses headless Fumadocs and static export
 
 **Decision:** recommend a fresh self-hosted documentation site at `apps/site`, using Next.js static export with headless Fumadocs. `fumadocs-core` supplies source/navigation/search data and `fumadocs-mdx` compiles local MDX; compose interactive controls from `@taskdesk/ui` and existing tokens. Do not import `fumadocs-ui`, copy kaneo's marketing app, or copy Mintlify content. The site is separate from the Vite agent/portal app and does not change its shared route registry.

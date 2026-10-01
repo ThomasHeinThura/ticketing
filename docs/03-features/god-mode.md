@@ -135,11 +135,15 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
   customer, never both**, issuer/tenant, client id and encrypted secret, redirect URI,
   claim mapping, domain bindings, just-in-time provisioning policy, and the planned
   MFA-upstream mode.
-  For Entra JIT, configure the exact nonempty `required_entra_app_role` admission value
-  separately from the TaskDesk default role; JIT cannot be enabled without it. Setup help
-  directs administrators to define and assign that app role and request the optional `acct`
-  claim in the Entra app registration. This role claim admits a member subject only; it does
-  not grant TaskDesk roles, capabilities or reach, and is checked at every login. Domain
+  For every Entra connection, configure the exact nonempty `required_entra_app_role`
+  admission value separately from the TaskDesk default role, whether JIT is enabled or not.
+  JIT cannot be enabled without it, and turning JIT off does not waive admission for existing
+  invite- or SCIM-provisioned identities. Setup help directs administrators to define and
+  assign that app role and request the signed optional `acct` claim in the Entra app
+  registration. Both are checked at every login; missing/malformed persisted configuration
+  fails authentication closed and is surfaced as invalid connection health. These values
+  admit a member subject only; they never grant TaskDesk roles, capabilities or reach.
+  Domain
   bindings support discovery and deny-only collision checks. Customer connections are edited
   from the organisation's Identity tab (below) — same routes, filtered.
 - **Provisioning panel** per connection: OIDC group mappings use immutable group object ids
@@ -152,8 +156,15 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
   single-use PA-15 operation binding. OIDC mapping selection/open state is represented in
   the screen URL. SCIM mapping elevation continues to follow IP-6. Disabling/changing an
   OIDC mapping retires only its grants and invalidates authority after
-  commit. Re-enabling does not revive historical grants before a fresh validated OIDC login
-  or SCIM update. Neither source can grant `instance:admin` or `sees_all`. Show the lifecycle
+  commit. Re-enabling an OIDC mapping requires a later validated OIDC login through that
+  connection with complete matching groups and current admission; SCIM cannot restore OIDC
+  grants. SCIM mappings require later authenticated SCIM evidence, not an OIDC login. A
+  lower enabled agent-connection role ceiling follows the source-scoped transaction in
+  [IP-3/IP-22](identity-provisioning.md), retiring only this connection's above-ceiling
+  JIT/OIDC/SCIM grants and recomputing effective authority.
+  Existing sessions remain valid and use recomputed stored authority after cache invalidation
+  (30-second bound if lost); this does not revoke sessions. Neither source can grant
+  `instance:admin` or `sees_all`. Show the lifecycle
   policy, last sync, last failure without secrets, provisioning event log, and overage warning
   without exposing raw claims.
 - **Test connection** (OIDC discovery + dry run) and **Test SCIM** before going live; both
