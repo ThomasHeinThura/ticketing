@@ -144,7 +144,12 @@ thing that is hashed or executed.
   `executed`, `failed` — each an `audit_log` row; all but `viewed` also emit one of the
   three `pending_action.*` events in [events.md](events.md) (`requested`; `decided` with
   its `outcome`; `executed` with `executed|failed`). `viewed` is audit-only — it is not a
-  state change.
+  state change. Decision transitions are mutations and follow `AU-14` in
+  [audit-trail.md](../03-features/audit-trail.md): if the decision audit insert fails, the
+  state transition and decided event still commit while the audit failure is reported under
+  AU-14. This is the documented audit-failure exception to the normal state/event/audit
+  pairing; it does not apply to rendering a summary, whose read fails if its `viewed` audit
+  cannot be written.
 - `PA-12` **What does *not* need a second approval:** the retention purge that completes an
   already-approved soft deletion — `session-cleanup`'s soft-delete purge and
   `attachment-gc` ([background-jobs.md](background-jobs.md)), completing `WI-21`'s 30-day
