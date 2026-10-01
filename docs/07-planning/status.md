@@ -14,6 +14,56 @@ substitute. Reviews below retain the exact heads and model tiers they actually c
 ---
 
 **2026-10-01 orchestrator snapshot — remote `main` at
+`2d67c47f6877671e6e00b662aa9734a9ff244d94` (verified 2026-10-01 07:54 UTC).**
+PR #545's deterministic, additive P0 seed profiles merged through the protected flow at
+07:49:05 UTC. Final candidate `559482887305604bf1294545576620b09061e378` passed all
+17 required checks, with hosted PostgreSQL integration at 125 files/1,567 tests and
+unit/component at 12/12 tasks. Independent Luna and full Sol source reviews and separate
+current-main composition reviews cover actual source `81445b4c`; the final commit only
+records their evidence. The separate seed suite passed 2 files/18 tests. Its execution is
+not attributed to the general hosted integration job; a distinct follow-up is wiring that
+coverage into the existing fast/integration runners. Minimal, realistic and hostile CLI
+profiles and reruns passed in a private disposable database, with 52 projects, 10,020
+items and 200 placeholder people, and zero login users or memberships. No persistent
+user database was seeded or reset. [Protected merge evidence](https://github.com/ThomasHeinThura/ticketing/pull/545#issuecomment-5927155772).
+
+The normal local deployment completed with reviewed source image
+`sha256:eb81c27c009854d6c2d8200a864e484624dcafaf19f36e008e0c7bddd71f5b1b`.
+Both Traefik hosts, `ticketing.localhost` and `portal.localhost`, returned 200 for `/`,
+liveness and readiness with certificate validation. Chrome reload verified the preserved
+DV-1 task, In Progress status, administrator assignee and three activity entries; the
+portal sign-in entry also opened normally. Private deployment/health/browser artifacts
+are `/private/tmp/taskdesk-local-deploy-20261001-2d67.log`,
+`/private/tmp/taskdesk-2d67-traefik-health.json`, and
+`/private/tmp/taskdesk-2d67-{dev-task,portal-sign-in}.png`.
+
+**P0 remains open.** The 500-row native-anchor routing experiment was rejected and
+reverted to clean #525 source `a4592f52`: final keyboard navigation medians were
+243.3 ms baseline and 238.6 ms candidate, both above 200 ms, while palette opening
+changed from 62.8 to 70.5 ms. The baseline half overlapped nine focused calendar tests;
+these are diagnostic observations, not acceptance evidence. Original fixtures, auth,
+marks, budgets and retained trace mode were preserved. A single CPU-attribution capture
+is being prepared/run under a brief local quiet window; no optimization is accepted.
+The seed CI follow-up's full disposable integration run exercised 126 files/1,579 total
+tests but failed one concurrency assertion in `work-item-update.test.ts`; diagnosis and
+its required independent review/gates remain pending. Representative authorization soak,
+other P0 exit criteria and the additional Sol phase finalizer remain incomplete.
+
+**Parallel acceptance:** calendar #513 is at `0911590d`, based on this main. Its API/schema
+review passed at preceding source `726cc9eb`, including 16 PostgreSQL tests, 83 permission
+tests and the CAL-15 non-UTC timestamp round trip. A UI review found four remaining
+English literals, now replaced using existing translation keys; current-head UI confirmation,
+third ordinary review, full Sol security review, image/browser/G8 and protected gates remain
+pending. Calendar migration 0080 follows accepted task-version 0079; #512 regenerates after
+calendar acceptance, and shared-schema writes remain serialized. Identity trust #544 is
+at `27b254e8`, synchronized with prior main `bd615cb4`, and still needs current-main
+composition and independent design/security clearance. Full pending-action approval,
+execution, step-up, workers, DELETE retrofit, UI and AU-14 alerting remain unfinished.
+Check live GitHub before dispatch or merge; no stage completion or waiver is claimed.
+
+---
+
+**2026-10-01 orchestrator snapshot — remote `main` at
 `bd615cb4c42b975053180616dc7be6dbebff3f7c` (verified 2026-10-01 07:20 UTC).**
 
 Protected PR #539 merged at 07:16:37 UTC. Its final candidate
