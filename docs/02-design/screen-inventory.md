@@ -209,10 +209,12 @@ These public-origin screens use the future site-local `apps/site/lib/routes.ts`,
 
 ## Counts
 
-These counts are manually maintained inventory targets. `check:inventory` is still staged:
-its implementation depends on route registries that do not yet exist, and it is not a CI
-gate today. When implemented, it must compare app-origin routes with `apps/web` and Docs
-Site routes with `apps/site` independently, including canonical query-route handling.
+These counts are manually maintained inventory targets. The app has a partial typed route
+registry at `apps/web/src/lib/routes.ts` with round-trip tests; it does not yet cover this
+entire planned inventory. The planned Docs Site registry at `apps/site/lib/routes.ts` is not
+implemented. `check:inventory` is still staged and is not a CI gate today. When implemented,
+it must compare app-origin routes with `apps/web` and Docs Site routes with `apps/site`
+independently, including canonical query-route handling.
 
 | Stage | Screens |
 | --- | --- |
@@ -231,10 +233,11 @@ more screens at 100%, delivered a stage at a time — see
 
 ## Rules
 
-- Every route belongs in the typed registry for its surface: app-origin screens use
-  `apps/web` `lib/routes.ts`; Docs Site rows use the planned `apps/site/lib/routes.ts`.
-  Route registries and `check:inventory` are not implemented yet. When built, each surface
-  needs a round-trip check against its own registry.
+- Every route belongs in the typed registry for its surface: app-origin screens use the
+  existing, partial `apps/web/src/lib/routes.ts`; Docs Site rows use the planned
+  `apps/site/lib/routes.ts`. The existing app registry and its round-trip tests do not yet
+  cover every planned app screen. The Docs Site registry and `check:inventory` are not
+  implemented. Each surface needs its own round-trip and inventory check when completed.
 - Rows whose route differs only by a query string (`?layout=`, `?tab=`, `?lens=`) share one
   **canonical route**. The future inventory check compares canonicalized app routes against
   the generated app registry and docs routes against the separate site registry; many screen
