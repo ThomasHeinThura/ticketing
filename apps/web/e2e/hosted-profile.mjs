@@ -24,7 +24,6 @@ const generatedConfig = join(
   webDir,
   "playwright.hosted-profile.generated.config.ts",
 );
-const generatedResults = join(webDir, "test-results-hosted-profile-run");
 
 async function listMapFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -366,7 +365,7 @@ export default defineConfig({
   workers: 1,
   reporter: "list",
   timeout: 600_000,
-  outputDir: "./test-results-hosted-profile-run",
+  outputDir: ${JSON.stringify(join(outputDir, "playwright-results"))},
   use: { baseURL: "http://127.0.0.1:4178", trace: "retain-on-failure", ...devices["Desktop Chrome"] },
   webServer: {
     command: "pnpm --filter @taskdesk/web preview --host 127.0.0.1 --port 4178 --strictPort",
@@ -429,6 +428,5 @@ try {
   await Promise.all([
     rm(generatedSpec, { force: true }),
     rm(generatedConfig, { force: true }),
-    rm(generatedResults, { recursive: true, force: true }),
   ]);
 }
