@@ -118,7 +118,8 @@ are written in full so a script can check them against `lib/routes.ts`.
 | Workflow editor | `/agent/settings/workflows/{id}` | route | P2 | ⬜ |
 | Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | ⬜ |
 | SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | ⬜ |
-| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | ⬜ |
+| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | 🟡 |
+| Service calendar editor | `/agent/settings/calendars/{id}` | route | P2 | 🟡 |
 | Workspace — request types | `/agent/settings/request-types` | route | P2 | ⬜ |
 | Request type editor / form builder | `/agent/settings/request-types/{id}` | route | P2 | ⬜ |
 | Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | ⬜ |
@@ -225,12 +226,12 @@ independently, including canonical query-route handling.
 | --- | --- |
 | P0 Foundation | 10 |
 | P1 Core work | 34 |
-| P2 Service desk | 18 |
+| P2 Service desk | 19 |
 | P3 Portal & identity | 21 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **142** |
+| **Total** | **143** |
 
 The P0 and total counts include the four planned docs-origin routes above; these are inventory targets, not implemented screens. The `/docs` concept section is content at the existing route, not a fifth route. For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see

@@ -63,6 +63,7 @@ import { policyRegistry } from "./policy-registry";
 import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
+import serviceCalendar from "./service-calendar";
 import { getPrivateObject, getStorageDriver } from "./storage";
 import {
   readAttachmentDownloadObject,
@@ -1030,6 +1031,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
   );
   const pendingActionApi = api.route("/me", pendingAction);
   const searchApi = api.route("/search", search);
+  const serviceCalendarApi = api.route("/service-calendars", serviceCalendar);
   const taskRelationApi = api.route("/task-relation", taskRelation);
   const externalLinkApi = api.route("/external-link", externalLink);
   const workflowRuleApi = api.route("/workflow-rule", workflowRule);
@@ -1208,6 +1210,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     pendingActionApi,
     projectApi,
     searchApi,
+    serviceCalendarApi,
     taskApi,
     taskV2Api,
     taskRelationApi,
@@ -1568,6 +1571,7 @@ const {
   pendingActionApi,
   projectApi,
   searchApi,
+  serviceCalendarApi,
   taskApi,
   taskV2Api,
   taskRelationApi,
@@ -1631,6 +1635,7 @@ export type AppType =
   | typeof notificationPreferencesApi
   | typeof pendingActionApi
   | typeof searchApi
+  | typeof serviceCalendarApi
   | typeof taskRelationApi
   | typeof externalLinkApi
   | typeof workflowApi

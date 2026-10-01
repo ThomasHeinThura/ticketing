@@ -171,6 +171,9 @@
           },
           "createInternalComments": {
             "type": "boolean"
+          },
+          "manageServiceCalendars": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -192,7 +195,8 @@
           "manageTeam",
           "removeMembers",
           "createPublicComments",
-          "createInternalComments"
+          "createInternalComments",
+          "manageServiceCalendars"
         ]
       },
       "MalformedMembershipRole": {
@@ -2256,6 +2260,25 @@
           "title",
           "createdAt",
           "relevanceScore"
+        ]
+      },
+      "ServiceCalendarVersionConflict": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "assertedVersion": {
+            "type": "integer"
+          },
+          "currentVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "message",
+          "assertedVersion",
+          "currentVersion"
         ]
       },
       "TaskRelationWithTasks": {
@@ -4999,7 +5022,7 @@
           "Capabilities"
         ],
         "summary": "Get the caller's capabilities in a workspace",
-        "description": "One call replacing the has-permission fan-out the client made against the organization() plugin's /organization/has-permission (apps/web/src/hooks/use-workspace-permission.ts). Computed over hasWorkspacePermission -- the same TaskDesk-native authorization check every other route already uses.",
+        "description": "One call replacing the organization() plugin permission fan-out. It includes TaskDesk-native checks, canonical comment and project-settings capabilities, and the exact sla_policy:manage check used to gate service-calendar authoring.",
         "parameters": [
           {
             "schema": {
@@ -12153,6 +12176,1908 @@
           },
           "403": {
             "description": "No access to the workspace",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/service-calendars": {
+      "get": {
+        "operationId": "listServiceCalendars",
+        "tags": [
+          "Service calendars"
+        ],
+        "summary": "List service calendars",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Calendars in the workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "timezone": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "windows": {
+                        "type": "object",
+                        "properties": {
+                          "sun": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 1439
+                                },
+                                "to": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 1440
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ]
+                            }
+                          },
+                          "mon": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 1439
+                                },
+                                "to": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 1440
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ]
+                            }
+                          },
+                          "tue": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 1439
+                                },
+                                "to": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 1440
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ]
+                            }
+                          },
+                          "wed": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 1439
+                                },
+                                "to": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 1440
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ]
+                            }
+                          },
+                          "thu": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 1439
+                                },
+                                "to": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 1440
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ]
+                            }
+                          },
+                          "fri": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 1439
+                                },
+                                "to": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 1440
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ]
+                            }
+                          },
+                          "sat": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 1439
+                                },
+                                "to": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 1440
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ]
+                            }
+                          }
+                        }
+                      },
+                      "holidays": {
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "date": {
+                                  "type": "string",
+                                  "format": "date"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "date"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string",
+                                  "format": "date"
+                                },
+                                "to": {
+                                  "type": "string",
+                                  "format": "date"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "recurs": {
+                                  "type": "string",
+                                  "enum": [
+                                    "annually"
+                                  ]
+                                },
+                                "month": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 12
+                                },
+                                "day": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 31
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "recurs",
+                                "month",
+                                "day"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "workspaceId": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    },
+                    "required": [
+                      "timezone",
+                      "windows",
+                      "holidays",
+                      "id",
+                      "workspaceId",
+                      "name",
+                      "createdAt",
+                      "updatedAt",
+                      "version"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createServiceCalendar",
+        "tags": [
+          "Service calendars"
+        ],
+        "summary": "Create service calendar",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "timezone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "windows": {
+                    "type": "object",
+                    "properties": {
+                      "sun": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "mon": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "tue": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "wed": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "thu": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "fri": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "sat": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "holidays": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "date": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "date"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "to": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "recurs": {
+                              "type": "string",
+                              "enum": [
+                                "annually"
+                              ]
+                            },
+                            "month": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 12
+                            },
+                            "day": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 31
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "recurs",
+                            "month",
+                            "day"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "timezone",
+                  "windows",
+                  "holidays",
+                  "workspaceId",
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created calendar",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "timezone": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "windows": {
+                      "type": "object",
+                      "properties": {
+                        "sun": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "mon": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "tue": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "wed": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "thu": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "fri": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "sat": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "holidays": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "date"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "to": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "recurs": {
+                                "type": "string",
+                                "enum": [
+                                  "annually"
+                                ]
+                              },
+                              "month": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 12
+                              },
+                              "day": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 31
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "recurs",
+                              "month",
+                              "day"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "required": [
+                    "timezone",
+                    "windows",
+                    "holidays",
+                    "id",
+                    "workspaceId",
+                    "name",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid calendar data",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/service-calendars/{id}": {
+      "get": {
+        "operationId": "getServiceCalendar",
+        "tags": [
+          "Service calendars"
+        ],
+        "summary": "Get service calendar",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Calendar details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "timezone": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "windows": {
+                      "type": "object",
+                      "properties": {
+                        "sun": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "mon": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "tue": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "wed": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "thu": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "fri": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "sat": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "holidays": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "date"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "to": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "recurs": {
+                                "type": "string",
+                                "enum": [
+                                  "annually"
+                                ]
+                              },
+                              "month": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 12
+                              },
+                              "day": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 31
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "recurs",
+                              "month",
+                              "day"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "required": [
+                    "timezone",
+                    "windows",
+                    "holidays",
+                    "id",
+                    "workspaceId",
+                    "name",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service calendar not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateServiceCalendar",
+        "tags": [
+          "Service calendars"
+        ],
+        "summary": "Update service calendar",
+        "description": "If-Match may contain the current quoted version. A mismatch returns 409 with asserted/current versions.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9]\\d*\"$"
+            },
+            "required": false,
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "timezone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "windows": {
+                    "type": "object",
+                    "properties": {
+                      "sun": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "mon": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "tue": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "wed": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "thu": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "fri": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "sat": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "holidays": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "date": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "date"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "to": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "recurs": {
+                              "type": "string",
+                              "enum": [
+                                "annually"
+                              ]
+                            },
+                            "month": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 12
+                            },
+                            "day": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 31
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "recurs",
+                            "month",
+                            "day"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated calendar",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "timezone": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "windows": {
+                      "type": "object",
+                      "properties": {
+                        "sun": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "mon": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "tue": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "wed": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "thu": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "fri": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "sat": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "holidays": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "date"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "to": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "recurs": {
+                                "type": "string",
+                                "enum": [
+                                  "annually"
+                                ]
+                              },
+                              "month": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 12
+                              },
+                              "day": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 31
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "recurs",
+                              "month",
+                              "day"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "required": [
+                    "timezone",
+                    "windows",
+                    "holidays",
+                    "id",
+                    "workspaceId",
+                    "name",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid calendar data",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service calendar not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Calendar version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceCalendarVersionConflict"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/service-calendars/{id}/preview": {
+      "get": {
+        "operationId": "previewServiceCalendar",
+        "tags": [
+          "Service calendars"
+        ],
+        "summary": "Preview calendar cover",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9998
+            },
+            "required": true,
+            "name": "year",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Calendar cover totals",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendarId": {
+                      "type": "string"
+                    },
+                    "year": {
+                      "type": "integer"
+                    },
+                    "weeklyCoverMinutes": {
+                      "type": "integer"
+                    },
+                    "annualCoverMinutes": {
+                      "type": "integer"
+                    },
+                    "hasCover": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "calendarId",
+                    "year",
+                    "weeklyCoverMinutes",
+                    "annualCoverMinutes",
+                    "hasCover"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service calendar not found",
             "content": {
               "text/plain": {
                 "schema": {

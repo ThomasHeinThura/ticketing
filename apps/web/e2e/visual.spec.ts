@@ -77,6 +77,23 @@ const workItem = {
   updatedAt: "2026-09-15T00:00:00.000Z",
 };
 
+const serviceCalendar = {
+  id: "visual-calendar",
+  workspaceId: workspace.id,
+  name: "Support coverage",
+  timezone: "Europe/London",
+  windows: {
+    mon: [{ from: 540, to: 1020 }],
+    tue: [{ from: 540, to: 1020 }],
+    wed: [{ from: 540, to: 1020 }],
+    thu: [{ from: 540, to: 1020 }],
+    fri: [{ from: 540, to: 1020 }],
+    sat: [],
+    sun: [],
+  },
+  holidays: [{ date: "2026-12-25", name: "Winter closure" }],
+};
+
 async function installAuthenticatedFixture(page: Page) {
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
@@ -114,7 +131,21 @@ async function installAuthenticatedFixture(page: Page) {
         },
       ];
     } else if (path.endsWith("/api/capabilities")) {
-      body = { createTasks: true };
+      body = { createTasks: true, manageServiceCalendars: true };
+    } else if (
+      path.endsWith("/api/service-calendars/visual-calendar/preview")
+    ) {
+      body = {
+        calendarId: serviceCalendar.id,
+        year: 2026,
+        weeklyCoverMinutes: 2400,
+        annualCoverMinutes: 104160,
+        hasCover: true,
+      };
+    } else if (path.endsWith("/api/service-calendars/visual-calendar")) {
+      body = serviceCalendar;
+    } else if (path.endsWith("/api/service-calendars")) {
+      body = [serviceCalendar];
     } else if (path.endsWith("/api/projects/visual-project/work-items")) {
       body = {
         data: [workItem],
@@ -193,6 +224,44 @@ test("work-item detail screen @visual", async ({ page }) => {
     page.getByText("Customer cannot reset their password", { exact: true }),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("work-item-detail.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("service calendar list screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/calendars");
+  await expect(
+    page.getByRole("heading", { name: "Service calendars" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Support coverage" }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("service-calendar-list.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("service calendar editor screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/calendars/visual-calendar");
+  await expect(
+    page.getByRole("heading", { name: "Support coverage" }),
+  ).toBeVisible();
+  await expect(page.getByText("40 hours of cover per week")).toBeVisible();
+  await expect(page).toHaveScreenshot("service-calendar-editor.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

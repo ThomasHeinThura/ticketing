@@ -270,6 +270,27 @@ redelivery remains the explicit per-target action in WH-8.
 **Decided by:** Thomas, under the standing recommended-decisions authorization; recorded by
 the orchestrator on 2026-10-01.
 
+### 2026-10-01 · Calendar lifecycle delivery wording and optimistic concurrency
+
+**Clarification:** the 2026-09-29 decision saying the calendar slice “emits no
+service-calendar events” refers to the post-commit in-memory `publishEvent` emitter.
+Create and update now persist their event envelopes to the durable outbox in the same
+transaction as the calendar mutation, as required by EV-1; this does not claim that outbox
+delivery or AU-14 alerting/administrator notification is complete. The older decision is
+preserved as historical context.
+
+**Decision:** service calendars follow the shared mutable-resource model: required lifecycle
+timestamps, an integer `version`, and optional quoted `If-Match` on PATCH. A stale version
+returns 409 with asserted/current versions and commits no calendar, audit or event changes.
+The editor retains the draft and requires an explicit reload or resubmission against the
+latest version.
+
+**Why:** the shared data-model and API-design contracts already define lifecycle columns
+and optimistic concurrency. Aligning this new resource with those conventions prevents
+concurrent calendar edits from silently overwriting each other.
+
+**Recorded by:** implementation lane, 2026-10-01.
+
 ### 2026-10-01 · Pending-action decisions follow the existing AU-14 mutation contract
 
 **Reconciliation:** denial/cancellation mutations preserve the already-decided AU-14

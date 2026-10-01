@@ -68,6 +68,7 @@ function fullCapabilityMap(overrides: Partial<Record<string, boolean>> = {}) {
     removeMembers: false,
     createPublicComments: false,
     createInternalComments: false,
+    manageServiceCalendars: false,
     ...overrides,
   };
 }
@@ -140,6 +141,7 @@ describe("useWorkspacePermission", () => {
           removeMembers: true,
           createPublicComments: true,
           createInternalComments: false,
+          manageServiceCalendars: true,
         }),
     });
 
@@ -164,6 +166,7 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canRemoveMembers()).toBe(true);
     expect(result.current.canCreatePublicComments()).toBe(true);
     expect(result.current.canCreateInternalComments()).toBe(false);
+    expect(result.current.canManageServiceCalendars()).toBe(true);
   });
 
   it("defaults every capability to false while the request is pending, never undefined", () => {
@@ -179,6 +182,7 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canRemoveMembers()).toBe(false);
     expect(result.current.canCreatePublicComments()).toBe(false);
     expect(result.current.canCreateInternalComments()).toBe(false);
+    expect(result.current.canManageServiceCalendars()).toBe(false);
   });
 
   it("surfaces isOwner/isAdmin from the resolved active member's role", async () => {

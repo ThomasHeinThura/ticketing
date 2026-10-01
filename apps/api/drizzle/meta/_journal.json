@@ -561,6 +561,20 @@
 			"when": 1790821787590,
 			"tag": "0079_task_version",
 			"breakpoints": true
+		},
+		{
+			"idx": 80,
+			"version": "7",
+			"when": 1790839834854,
+			"tag": "0080_service_calendar",
+			"breakpoints": true
+		},
+		{
+			"idx": 81,
+			"version": "7",
+			"when": 1790895278293,
+			"tag": "0081_project_default_comment_visibility",
+			"breakpoints": true
 		}
 	]
 }

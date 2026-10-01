@@ -9,6 +9,7 @@ import {
   WORK_ITEM_SORT_DIRECTIONS,
   WORK_ITEM_SORT_FIELDS,
 } from "./routes";
+import { parseCalendarEditorSearch } from "./service-calendar-form";
 
 describe("routes.workItemList", () => {
   it("round-trips every sort field and direction through build -> parse", () => {
@@ -126,5 +127,27 @@ describe("routes.workItemDetail", () => {
 
   it("falls back to all for malformed activity filters", () => {
     expect(parseWorkItemActivityFilter("internal-only")).toBe("all");
+  });
+});
+
+describe("routes.serviceCalendars", () => {
+  it("builds the list route named by the screen inventory", () => {
+    expect(routes.serviceCalendars.build()).toBe("/agent/settings/calendars");
+  });
+
+  it("preserves the editor id and preview year in its URL", () => {
+    const url = routes.serviceCalendarEditor.build({ id: "cal/one" }, 2026);
+    expect(url).toBe("/agent/settings/calendars/cal%2Fone?year=2026");
+    expect(
+      parseCalendarEditorSearch({
+        year: new URL(url, "https://taskdesk.invalid").searchParams.get("year"),
+      }),
+    ).toEqual({ year: 2026 });
+  });
+
+  it("does not add search state when the year is not supplied", () => {
+    expect(routes.serviceCalendarEditor.build({ id: "new" })).toBe(
+      "/agent/settings/calendars/new",
+    );
   });
 });
