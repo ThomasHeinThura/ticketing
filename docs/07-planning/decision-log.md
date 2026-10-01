@@ -15,7 +15,7 @@ viewed audit cannot be written. This introduces no waiver or new exception.
 
 **Why:** the initial decision-route reviews inferred a conflicting fail-closed mutation
 rule from PA-11. The authoritative audit/security documents and Thomas's existing AU-14
-decision explicitly require mutation success with operator reporting. PA-11 now points to
+decision explicitly require mutation success with operator reporting. PR #539's candidate PA-11 text points to
 that contract, and real PostgreSQL service/HTTP tests exercise both audit failure and
 outbox failure independently. Metric/administrator alerting remains unfinished work.
 
