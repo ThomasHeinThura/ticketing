@@ -23,7 +23,10 @@ import CreateTaskModal from "@/components/shared/modals/create-task-modal";
 import TaskDetailsSheet from "@/components/task/task-details-sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { shortcuts } from "@/constants/shortcuts";
-import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
+import {
+  hasPendingTaskUpdate,
+  useUpdateTask,
+} from "@/hooks/mutations/task/use-update-task";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
@@ -149,10 +152,10 @@ function RouteComponent() {
   );
 
   useEffect(() => {
-    if (data) {
+    if (data && !hasPendingTaskUpdate(queryClient, projectId)) {
       setProject(data);
     }
-  }, [data, setProject]);
+  }, [data, projectId, queryClient, setProject]);
 
   const getAssigneeDisplayName = (userId: string) => {
     const member = users?.members?.find((m) => m.userId === userId);

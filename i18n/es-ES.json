@@ -1908,7 +1908,8 @@
 		},
 		"update": {
 			"success": "Tarea actualizada correctamente",
-			"error": "Error al actualizar tarea"
+			"error": "Error al actualizar tarea",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "Copiar enlace",

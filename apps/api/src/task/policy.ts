@@ -217,6 +217,12 @@ export const taskPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  "PUT /api/v2/task/{id}": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
 
   // Move a task to another column in the same project (`controllers/update-task-status.ts`).
   // Runtime gate is `requireWorkspacePermission({ work_item: ["update"] })`.
