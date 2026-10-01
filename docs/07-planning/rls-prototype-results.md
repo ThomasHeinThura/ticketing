@@ -9,9 +9,12 @@ connection wrapper changed.
 ## Recommendation
 
 Keep this as a measured test-only prototype and retain RLS as a candidate tenant backstop.
-The fixture shows customer tenant agreement for valid rows, internal multi-organisation
-reach, and no material sub-millisecond absolute hot-read cost at this small local scale.
-It does **not** justify a production policy rollout by itself: the GUC is writable by the
+The fixture shows customer tenant agreement for valid rows and internal multi-organisation
+reach. In this one small warmed local run, the RLS-on median increased by 0.205 ms (16.5%)
+for the work-item list, 0.516 ms (63%) for comments, and 0.824 ms (105%) for attachments.
+Those values quantify this fixture only; they do not establish whether the cost is material
+for production workloads. It does **not** justify a production policy rollout by itself:
+the GUC is writable by the
 database role, tenant scope must be derived by trusted application code, a real PgBouncer
 path was not exercised, and the fixture exposed an attachment attribution mismatch.
 Project/actor reach is intentionally broader than the tenant policy. Keep the application
@@ -123,8 +126,10 @@ stability and production costs.
 * `pnpm --filter @taskdesk/api exec vitest run --silent=false --reporter=verbose --config vitest.rls-prototype.config.ts` — **1 test passed**, on this base and current test-only worktree.
 * `pnpm --filter @taskdesk/api exec tsc --noEmit -p tsconfig.rls-prototype.json` — **passed** after building the workspace `@taskdesk/email` type declarations required by the API test project.
 * `pnpm check:env` — **passed**; the test harness lives under `tests/`, which the check
-  does not scan as application runtime. The application scan reported all 29 environment
-  reads attributable to the configuration reference.
+  does not scan as application runtime. Within its 29 application environment-read
+  occurrences, the checker attributed every occurrence to the configuration reference.
+  This does not clear the separate existing environment ratchet findings: the repository
+  audit still records 49 active unapproved names and two unattributable files (issue #10).
 * `pnpm exec biome check ...` — completed with exit 0; reports three expected warnings
   about the isolated test-only `RLS_PROTOTYPE_DATABASE_URL` not being declared in Turbo
   task environment metadata, plus style suggestions. The suite is run directly with
