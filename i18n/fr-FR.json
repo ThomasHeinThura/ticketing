@@ -2256,5 +2256,19 @@
 			"typesRetry": "Retry",
 			"close": "Close"
 		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Portail client indisponible",
+			"description": "L’accès client n’est pas encore disponible. Contactez l’administrateur du service d’assistance."
+		},
+		"notFound": {
+			"title": "Page introuvable",
+			"description": "Cette page n’est pas disponible. Vérifiez l’adresse et réessayez."
+		},
+		"error": {
+			"title": "Une erreur est survenue",
+			"description": "La page n’a pas pu être chargée. Réessayez."
+		}
 	}
 }

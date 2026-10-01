@@ -12,6 +12,7 @@
 			"!**/coverage",
 			"!**/tsconfig*.json",
 			"!**/routeTree.gen.ts",
+			"!**/routeTree.*.gen.ts",
 			"!**/dist",
 			"!**/storybook-static",
 			"!**/cache",

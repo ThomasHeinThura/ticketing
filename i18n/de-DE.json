@@ -2249,5 +2249,19 @@
 			"typesRetry": "Retry",
 			"close": "Close"
 		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Kundenportal nicht verfügbar",
+			"description": "Der Kundenzugang ist noch nicht verfügbar. Wenden Sie sich an Ihre Service-Desk-Administration."
+		},
+		"notFound": {
+			"title": "Seite nicht gefunden",
+			"description": "Diese Seite ist nicht verfügbar. Prüfen Sie die Adresse und versuchen Sie es erneut."
+		},
+		"error": {
+			"title": "Ein Fehler ist aufgetreten",
+			"description": "Die Seite konnte nicht geladen werden. Versuchen Sie es erneut."
+		}
 	}
 }

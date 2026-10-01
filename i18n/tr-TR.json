@@ -2249,5 +2249,19 @@
 			"typesRetry": "Retry",
 			"close": "Close"
 		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Müşteri portalı kullanılamıyor",
+			"description": "Müşteri erişimi henüz kullanılamıyor. Yardım için servis masası yöneticinizle iletişime geçin."
+		},
+		"notFound": {
+			"title": "Sayfa bulunamadı",
+			"description": "Bu sayfa kullanılamıyor. Adresi kontrol edip tekrar deneyin."
+		},
+		"error": {
+			"title": "Bir şeyler ters gitti",
+			"description": "Sayfa yüklenemedi. Tekrar deneyin."
+		}
 	}
 }

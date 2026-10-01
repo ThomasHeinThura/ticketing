@@ -125,8 +125,8 @@ const manifest = [
   {
     gate: "pnpm check:inventory",
     stage: "fast",
-    run: null,
-    why: "needs generated routes to compare the screen inventory against; apps/web has no lib/routes.ts registry yet (AGENTS.md rule 4, #9 and P1).",
+    run: ["pnpm", "check:inventory"],
+    note: "G5 verifies deterministic metadata against both TanStack trees and checks route coverage/counts against the screen inventory.",
   },
   { gate: "pnpm check:reviews", stage: "fast", run: ["pnpm", "check:reviews"] },
   { gate: "pnpm check:env", stage: "fast", run: ["pnpm", "check:env"] },
@@ -194,10 +194,10 @@ const manifest = [
   },
   { gate: "pnpm build", stage: "fast", run: ["pnpm", "build"] },
   {
-    gate: "check:bundle-purity",
+    gate: "pnpm check:bundle-purity",
     stage: "fast",
-    run: null,
-    why: "apps/web builds one bundle. G12 is 'no agent module in the portal bundle', and the agent/portal split is #9.",
+    run: ["pnpm", "check:bundle-purity"],
+    note: "G12 checks every static and dynamic chunk reachable from the portal entry against bundler-emitted module graph metadata.",
   },
   {
     gate: "pnpm check:bundle-size",

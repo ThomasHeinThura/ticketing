@@ -2242,5 +2242,19 @@
 			"typesRetry": "Retry",
 			"close": "Close"
 		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Portal pelanggan tidak tersedia",
+			"description": "Akses pelanggan belum tersedia. Hubungi administrator service desk Anda untuk bantuan."
+		},
+		"notFound": {
+			"title": "Halaman tidak ditemukan",
+			"description": "Halaman ini tidak tersedia. Periksa alamat lalu coba lagi."
+		},
+		"error": {
+			"title": "Terjadi kesalahan",
+			"description": "Halaman tidak dapat dimuat. Coba lagi."
+		}
 	}
 }

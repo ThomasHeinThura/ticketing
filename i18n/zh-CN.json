@@ -2242,5 +2242,19 @@
 			"typesRetry": "Retry",
 			"close": "Close"
 		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "客户门户暂不可用",
+			"description": "客户访问目前尚不可用。如需帮助，请联系服务台管理员。"
+		},
+		"notFound": {
+			"title": "未找到页面",
+			"description": "此页面不可用。请检查地址后重试。"
+		},
+		"error": {
+			"title": "出现问题",
+			"description": "无法加载此页面。请重试。"
+		}
 	}
 }

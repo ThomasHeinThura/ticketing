@@ -63,7 +63,7 @@ function SignUp() {
     }
   }, []);
 
-  const baseUrl = import.meta.env.VITE_CLIENT_URL ?? window.location.origin;
+  const baseUrl = window.location.origin;
   const callbackURL = invitationId
     ? `${baseUrl}/invitation/accept/${invitationId}`
     : `${baseUrl}/dashboard`;

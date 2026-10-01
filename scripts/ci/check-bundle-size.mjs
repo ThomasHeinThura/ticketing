@@ -8,7 +8,14 @@ const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "../..",
 );
-const MANIFEST_PATH = path.join(ROOT, "apps/web/dist/.vite/manifest.json");
+const AGENT_MANIFEST_PATH = path.join(
+  ROOT,
+  "apps/web/dist/agent/.vite/manifest.json",
+);
+const PORTAL_MANIFEST_PATH = path.join(
+  ROOT,
+  "apps/web/dist/portal/.vite/manifest.json",
+);
 export const BUDGETS_KB = Object.freeze({
   agent: 350,
   "agent-work-list": 350,
@@ -16,7 +23,7 @@ export const BUDGETS_KB = Object.freeze({
 });
 export const KB_BYTES = 1000;
 export const WORK_LIST_COMPONENT_SUFFIX =
-  "/routes/_layout/_authenticated/agent/projects/$projectKey/work.tsx?tsr-split=component";
+  "/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx?tsr-split=component";
 
 export function isWithinBudget(role, bytes) {
   return bytes < BUDGETS_KB[role] * KB_BYTES;
@@ -30,7 +37,7 @@ function sourceRole(key, entry) {
   return undefined;
 }
 
-export function resolveEntries(manifest) {
+export function resolveEntries(manifest, { defaultRole = "agent" } = {}) {
   const entries = Object.entries(manifest).filter(
     ([, item]) => item.isEntry && /\.m?js$/.test(item.file),
   );
@@ -50,18 +57,18 @@ export function resolveEntries(manifest) {
   const unclassified = entries.filter(([key, item]) => !sourceRole(key, item));
   if (
     unclassified.length === 1 &&
-    !roles.has("agent") &&
-    (entries.length === 1 || roles.has("portal"))
+    !roles.has(defaultRole) &&
+    (entries.length === 1 ||
+      roles.has(defaultRole === "agent" ? "portal" : "agent"))
   ) {
-    // The current single app entry predates the split and stays agent when portal appears.
-    roles.set("agent", unclassified[0]);
+    roles.set(defaultRole, unclassified[0]);
   } else if (unclassified.length > 0) {
     throw new Error(
       `Unclassified JavaScript entry bundle(s): ${unclassified.map(([key]) => key).join(", ")}. Name entries agent or portal so each budget is enforced.`,
     );
   }
-  if (!roles.has("agent"))
-    throw new Error("Vite manifest has no agent entry bundle.");
+  if (!roles.has(defaultRole))
+    throw new Error(`Vite manifest has no ${defaultRole} entry bundle.`);
   return new Map(
     [...roles].sort(([left], [right]) => left.localeCompare(right)),
   );
@@ -104,69 +111,93 @@ export async function measureEntry(manifest, entryKey, outputDir) {
 }
 
 export async function checkBundleSizes({
-  manifestPath = MANIFEST_PATH,
+  manifestPath = AGENT_MANIFEST_PATH,
+  portalManifestPath = manifestPath === AGENT_MANIFEST_PATH
+    ? PORTAL_MANIFEST_PATH
+    : undefined,
   outputDir = path.dirname(path.dirname(manifestPath)),
 } = {}) {
-  try {
-    await stat(manifestPath);
-  } catch {
-    throw new Error(
-      `Built web output is missing (${manifestPath}); run pnpm build before check:bundle-size.`,
-    );
-  }
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
-  const entries = resolveEntries(manifest);
-  const results = [];
-  for (const [role, [key]] of entries) {
-    const measurement = await measureEntry(manifest, key, outputDir);
-    const limit = BUDGETS_KB[role] * KB_BYTES;
-    results.push({
-      role,
-      bytes: measurement.bytes,
-      limit,
-      assets: measurement.assets,
+  const manifests = [
+    { role: "agent", path: manifestPath, defaultRole: "agent", outputDir },
+  ];
+  if (portalManifestPath)
+    manifests.push({
+      role: "portal",
+      path: portalManifestPath,
+      defaultRole: "portal",
+      outputDir: path.dirname(path.dirname(portalManifestPath)),
     });
-
-    if (role === "agent") {
-      const workRouteKey = Object.keys(manifest).find((candidate) =>
-        candidate.endsWith(WORK_LIST_COMPONENT_SUFFIX),
+  const results = [];
+  for (const {
+    role: expectedRole,
+    path: currentManifestPath,
+    defaultRole,
+    outputDir: currentOutputDir,
+  } of manifests) {
+    try {
+      await stat(currentManifestPath);
+    } catch {
+      throw new Error(
+        `Built ${expectedRole} web output is missing (${currentManifestPath}); run pnpm build before check:bundle-size.`,
       );
-      if (!workRouteKey)
-        throw new Error(
-          `G11 work-list route bundle is missing from the Vite manifest (expected a key ending in ${WORK_LIST_COMPONENT_SUFFIX}).`,
-        );
-      const workListAssets = new Set([
-        ...measurement.assets,
-        ...collectInitialAssets(manifest, workRouteKey),
-      ]);
-      const localeEntries = Object.keys(manifest).filter(
-        (candidate) =>
-          candidate.startsWith("../../i18n/") && candidate.endsWith(".json"),
+    }
+    const manifest = JSON.parse(await readFile(currentManifestPath, "utf8"));
+    const entries = resolveEntries(manifest, { defaultRole });
+    if (entries.size !== 1 || !entries.has(expectedRole))
+      throw new Error(
+        `${expectedRole} output must contain exactly one ${expectedRole} JavaScript entry.`,
       );
-      const localeMeasurements = await Promise.all(
-        localeEntries.map(async (localeKey) => ({
-          assets: collectInitialAssets(manifest, localeKey),
-          measurement: await measureAssets(
-            collectInitialAssets(manifest, localeKey),
-            outputDir,
-          ),
-        })),
-      );
-      const largestLocale = localeMeasurements.sort(
-        (left, right) => right.measurement.bytes - left.measurement.bytes,
-      )[0];
-      for (const asset of largestLocale?.assets ?? [])
-        workListAssets.add(asset);
-      const workListMeasurement = await measureAssets(
-        [...workListAssets],
-        outputDir,
-      );
+    for (const [role, [key]] of entries) {
+      const measurement = await measureEntry(manifest, key, currentOutputDir);
+      const limit = BUDGETS_KB[role] * KB_BYTES;
       results.push({
-        role: "agent-work-list",
-        bytes: workListMeasurement.bytes,
-        limit: BUDGETS_KB["agent-work-list"] * KB_BYTES,
-        assets: workListMeasurement.assets,
+        role,
+        bytes: measurement.bytes,
+        limit,
+        assets: measurement.assets,
       });
+
+      if (role === "agent") {
+        const workRouteKey = Object.keys(manifest).find((candidate) =>
+          candidate.endsWith(WORK_LIST_COMPONENT_SUFFIX),
+        );
+        if (!workRouteKey)
+          throw new Error(
+            `G11 work-list route bundle is missing from the Vite manifest (expected a key ending in ${WORK_LIST_COMPONENT_SUFFIX}).`,
+          );
+        const workListAssets = new Set([
+          ...measurement.assets,
+          ...collectInitialAssets(manifest, workRouteKey),
+        ]);
+        const localeEntries = Object.keys(manifest).filter(
+          (candidate) =>
+            candidate.includes("/i18n/") && candidate.endsWith(".json"),
+        );
+        const localeMeasurements = await Promise.all(
+          localeEntries.map(async (localeKey) => ({
+            assets: collectInitialAssets(manifest, localeKey),
+            measurement: await measureAssets(
+              collectInitialAssets(manifest, localeKey),
+              currentOutputDir,
+            ),
+          })),
+        );
+        const largestLocale = localeMeasurements.sort(
+          (left, right) => right.measurement.bytes - left.measurement.bytes,
+        )[0];
+        for (const asset of largestLocale?.assets ?? [])
+          workListAssets.add(asset);
+        const workListMeasurement = await measureAssets(
+          [...workListAssets],
+          currentOutputDir,
+        );
+        results.push({
+          role: "agent-work-list",
+          bytes: workListMeasurement.bytes,
+          limit: BUDGETS_KB["agent-work-list"] * KB_BYTES,
+          assets: workListMeasurement.assets,
+        });
+      }
     }
   }
   return results;

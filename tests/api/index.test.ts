@@ -157,15 +157,13 @@ describe("static file serving", () => {
     await expect(response.text()).resolves.not.toContain("index-marker");
   });
 
-  it("skips static serving gracefully when no build is found, without crashing", async () => {
+  it("returns service unavailable when the selected output root is missing", async () => {
     const missingRoot = join(tmpdir(), "taskdesk-static-missing-build");
 
     const { app } = createApp({ staticRoot: missingRoot });
 
     const response = await app.request("/projects/some-project-id");
 
-    // No build found -> no SPA fallback was ever wired -> ordinary 404,
-    // exactly the pre-existing behavior for an unmatched route.
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(503);
   });
 });

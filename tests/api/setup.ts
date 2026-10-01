@@ -12,4 +12,5 @@
 process.env.NODE_ENV ??= "test";
 process.env.TASKDESK_AUTH_SECRET ??= "test-secret-with-at-least-32-chars";
 process.env.TASKDESK_AGENT_URL ??= "http://localhost:5173";
+process.env.TASKDESK_PORTAL_URL ??= "http://portal.localhost:5174";
 process.env.KANEO_API_URL ??= "http://localhost:1337";

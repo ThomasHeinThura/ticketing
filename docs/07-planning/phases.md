@@ -92,6 +92,10 @@ happens; building on top of them is easy.
   `.github/pull_request_template.md`
 - Extract `packages/ui` from kaneo's `components/ui`; Tailwind preset; a **Storybook spike** first, to prove it against kaneo's actual primitives before full adoption
 - Split `apps/web` into two entries — `entry.agent.tsx`, `entry.portal.tsx` — as **two separate `tanstackRouter()` instances**, the two-entry routing split
+- The exact interim host, health, API-denial and static-root contract for this split is
+  specified in [CP-19](../03-features/customer-portal.md) and the
+  [P0 two-entry acceptance matrix](#p0-two-entry-host-and-static-acceptance). It keeps
+  the portal origin disabled until the separately reviewed P3 identity boundary exists.
 - `packages/domain`, `packages/permissions`, `packages/plugins-contracts` scaffolded
 - Route registry `lib/routes.ts` with the round-trip test
 - Policy registry + **route coverage test** + **permission matrix test**
@@ -110,6 +114,44 @@ happens; building on top of them is easy.
 - Observability: Pino, Prometheus, health endpoints
 - `apps/site` docs skeleton (Fumadocs)
 - ADRs 0001–0013 committed
+
+### P0 two-entry host and static acceptance
+
+The Node server selects an app only from one validated raw request authority matched
+against the configured agent and portal public origins. Normalize DNS with case and IDNA
+rules, and normalize ports using each configured public scheme (`:443` for HTTPS and
+`:80` for HTTP). Require distinct hostnames. Reject malformed or duplicate authorities;
+for HTTP/2, require one `:authority`, at most one Host, and equality when Host is present.
+Do not select an app from forwarded headers, Origin, Referer, SNI, or the backend
+transport scheme. The top-level guard runs before CORS, compression, auth/session/API-key
+resolution, API handlers, websocket upgrades, static files and SPA fallback.
+
+| Request | Agent host | Portal host while identity is disabled | Unknown host |
+| --- | --- | --- | --- |
+| Exact `GET`/`HEAD` health route with valid Host | Existing handler | Existing handler | Existing handler |
+| Other `/api` request | Existing agent policy | Generic 404 before effects | Generic 404 before effects |
+| Websocket upgrade | Existing agent auth and policy | 404 before handshake | 404 before handshake |
+| `GET`/`HEAD /` | Agent root | Localized disabled notice | 404 with no app bytes |
+| Existing static file | Agent root only | Portal root only | 404 |
+| Missing extension-bearing asset | 404 | 404 | 404 |
+| Other client route | Existing agent SPA | 404 | 404 |
+| Non-GET/HEAD static request | Existing 404 behavior | 404 | 404 |
+| Selected output root or `index.html` missing | 503; no cross-root fallback | 503; no cross-root fallback | n/a |
+
+Health is limited to plain `GET` and `HEAD` for exactly `/api/health`,
+`/api/public/health/live` and `/api/public/health/ready`; `HEAD` returns no body. A
+malformed or missing Host may be rejected by Node before Hono. Health remains independent
+of which configured origin received the request. A syntactically valid unknown Host is allowed
+only for these exact `GET`/`HEAD` health requests, preserving loopback container and deploy
+readiness probes; malformed, missing, duplicate, or upgraded requests remain rejected. The portal denial returns
+generic JSON on `/api` paths, no body for `HEAD`, and no redirect, cookie, credentialed
+CORS, auth, database, audit, event or websocket side effect. The two outputs use
+independent TanStack Router generators and roots. Route metadata and URL round trips cover
+both trees; G12 checks the portal's full static and dynamic module graph and includes a
+deliberate red probe. G11 retains strict gzip ceilings of 350 KB for agent/worklist and
+200 KB for portal, with the existing direct-work preload behavior tied to the agent
+manifest. Production image acceptance requires both roots, successful boot and hostless
+live/readiness probes.
 - Sign-in, MFA, not-found, error boundary
 - **Identity and deletion models fixed in the documents, not yet built** (decided
   2026-09-05): the authoritative `identity_connection` / `scim_connection` /
