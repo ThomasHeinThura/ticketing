@@ -25,7 +25,7 @@ UTC and passed 22/22; all strict local G11 metrics and G13 checks passed. Drag e
 records 100 versioned PUTs with quoted `If-Match: "1"`; `legacy-task-1` persisted
 `in-progress` after reload, and measured frame p95 was 16.7 ms against the <20 ms budget.
 This is local run evidence only; there was no separate focused preflight or rerun. At 10:54
-UTC the hosted G11 job (`36851102379`, job `110332688884`) was still in progress, and the
+UTC the hosted G11 job (`36851102379`, job `110333098884`) was still in progress, and the
 fast PR-template/security-review check was failing. The canonical evidence archive is
 `/private/tmp/p0-g11-canonical-3f49f616-104833`. Do not treat G11 as accepted or #525 as
 merge-ready: current exact-head reviews and green required CI remain pending, and G11 must be
