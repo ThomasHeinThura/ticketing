@@ -8,12 +8,15 @@ import { chromium } from "@playwright/test";
 import {
   cleanupHasFailure,
   createOwnedFile,
+  createOwnedScratchDirectory,
   createOwnedTempDirectory,
   createReportParent,
   finalizeParentOutcome,
   outputTargetIsAbsent,
   readChildFailureReceipt,
   runParentCleanup,
+  runWithVerifiedScratch,
+  verifyPrivateTempDirectory,
 } from "./hosted-cold-recording-io.mjs";
 import {
   assertColdReportPrivacy,
@@ -49,6 +52,7 @@ if (
 const candidateHeadSha = candidateArg?.slice("--candidate-sha=".length) || null;
 let scratch = null;
 let scratchOwned = null;
+let scratchResultsOwned = null;
 let scratchResults = null;
 let generatedSpec = null;
 let generatedConfig = null;
@@ -137,7 +141,7 @@ async function readBuildEvidence() {
 }
 
 const generatedRecorder = `
-import { createOwnedFile, writeChildFailureReceipt as persistChildFailureReceipt } from "./hosted-cold-recording-io.mjs";
+import { createOwnedScratchFile, verifyPrivateTempDirectory, writeChildFailureReceipt as persistChildFailureReceipt } from "./hosted-cold-recording-io.mjs";
 import {
   assertColdReportPrivacy,
   assertColdMainThreadJourneyOverlap,
@@ -152,6 +156,7 @@ import {
 
 const COLD_REPORT_PATH = __REPORT_PATH__;
 const COLD_FAILURE_RECEIPT_PATH = __FAILURE_RECEIPT_PATH__;
+const COLD_SCRATCH = __SCRATCH__;
 const COLD_PROVENANCE = __PROVENANCE__;
 const COLD_ASSET_BASENAMES = new Set(__ASSET_BASENAMES__);
 const COLD_MAX_EVENTS = 250_000;
@@ -194,6 +199,7 @@ async function writeChildFailureReceipt(error) {
   childReceiptAttempted = true;
   const owned = ownedColdDiagnosticFailureFields(error);
   await persistChildFailureReceipt({
+    scratch: COLD_SCRATCH,
     path: COLD_FAILURE_RECEIPT_PATH,
     childReportOwned: coldOwnedReport,
     primary: { code: owned?.code ?? "unknown", stage: owned?.stage ?? coldStage },
@@ -565,6 +571,9 @@ function deriveExclusiveMainThreadPhases(events: SafeTraceEvent[], mainTid: numb
 test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
   test.setTimeout(180_000);
   try {
+    if (!(await verifyPrivateTempDirectory(COLD_SCRATCH))) {
+      throw coldDiagnosticFailure("report-write", "prepare", "Private scratch verification failed.");
+    }
     await withPerformancePage(browser, true, async (page) => {
     const capture = await startColdCapture(page);
       coldStage = "journey";
@@ -657,12 +666,13 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
       assertColdReportPrivacy(report, COLD_ASSET_BASENAMES);
       coldFlags.reportPrivacyPassed = true;
       coldStage = "report-write";
-      const reportWrite = await createOwnedFile(
+      const reportWrite = await createOwnedScratchFile(
+        COLD_SCRATCH,
         COLD_REPORT_PATH,
         JSON.stringify(report),
       );
       coldOwnedReport = reportWrite.owned;
-      if (!reportWrite.complete) {
+      if (!reportWrite.complete || !reportWrite.verifiedPrivate) {
         throw coldDiagnosticFailure("report-write", "report-write", "The bounded report write failed.");
       }
     }, { g13Windows: true });
@@ -750,8 +760,26 @@ try {
       "prepare",
       "Private scratch setup failed.",
     );
+  if (!scratchOwned.verifiedPrivate)
+    throw coldDiagnosticFailure(
+      "report-write",
+      "prepare",
+      "Private scratch verification failed.",
+    );
   scratch = scratchOwned.path;
-  scratchResults = join(scratch, "playwright-results");
+  const scratchResultsPath = join(scratch, "playwright-results");
+  const scratchResultsResult = await createOwnedScratchDirectory(
+    scratchOwned,
+    scratchResultsPath,
+  );
+  scratchResultsOwned = scratchResultsResult.owned;
+  if (!scratchResultsResult.verifiedPrivate || !scratchResultsOwned)
+    throw coldDiagnosticFailure(
+      "report-write",
+      "prepare",
+      "Private browser output directory verification failed.",
+    );
+  scratchResults = scratchResultsPath;
   generatedSpec = join(
     scriptDir,
     "performance.hosted-cold-recording.generated.ts",
@@ -846,10 +874,25 @@ try {
   const extra = generatedRecorder
     .replace("__REPORT_PATH__", JSON.stringify(reportPathForGeneration))
     .replace("__FAILURE_RECEIPT_PATH__", JSON.stringify(failureReceiptPath))
+    .replace(
+      "__SCRATCH__",
+      JSON.stringify({
+        path: scratchOwned.path,
+        identity: scratchOwned.identity,
+        owned: scratchOwned.owned,
+        verifiedPrivate: scratchOwned.verifiedPrivate,
+      }),
+    )
     .replace("__PROVENANCE__", JSON.stringify(provenance))
     .replace(
       "__ASSET_BASENAMES__",
       JSON.stringify(buildEvidence.assetBasenames),
+    );
+  if (!(await verifyPrivateTempDirectory(scratchOwned)))
+    throw coldDiagnosticFailure(
+      "report-write",
+      "prepare",
+      "Private scratch changed before generated test creation.",
     );
   const generated = await createOwnedFile(generatedSpec, `${source}\n${extra}`);
   generatedSpecOwned = generated.owned;
@@ -858,6 +901,15 @@ try {
       "source-binding",
       "prepare",
       "Generated test creation failed.",
+    );
+  if (
+    !(await verifyPrivateTempDirectory(scratchOwned)) ||
+    !(await verifyPrivateTempDirectory(scratchResultsOwned))
+  )
+    throw coldDiagnosticFailure(
+      "report-write",
+      "prepare",
+      "Private scratch changed before generated config creation.",
     );
   const generatedConfigResult = await createOwnedFile(
     generatedConfig,
@@ -888,25 +940,40 @@ try {
     );
 
   parentStage = "child-start";
-  const result = spawnSync(
-    "pnpm",
-    [
-      "exec",
-      "playwright",
-      "test",
-      "--config=playwright.hosted-cold-recording.generated.config.ts",
-      "--workers=1",
-      ...(discoveryOnly ? ["--list"] : []),
-    ],
-    { cwd: webDir, stdio: discoveryOnly ? "inherit" : "ignore" },
+  const childRun = await runWithVerifiedScratch(
+    scratchOwned,
+    scratchResultsOwned,
+    () =>
+      spawnSync(
+        "pnpm",
+        [
+          "exec",
+          "playwright",
+          "test",
+          "--config=playwright.hosted-cold-recording.generated.config.ts",
+          "--workers=1",
+          ...(discoveryOnly ? ["--list"] : []),
+        ],
+        { cwd: webDir, stdio: discoveryOnly ? "inherit" : "ignore" },
+      ),
   );
+  if (!childRun.verifiedPrivate || !childRun.started)
+    throw coldDiagnosticFailure(
+      "report-write",
+      "child-start",
+      "Private scratch changed before child start.",
+    );
+  const result = childRun.result;
   if (result.error) {
     childOutcome = "not-started";
     primaryFailure = { code: "child-exit", stage: "child-start" };
   } else if (result.status !== 0) {
     childOutcome = "failed";
     if (!discoveryOnly)
-      childReceipt = await readChildFailureReceipt(failureReceiptPath);
+      childReceipt = await readChildFailureReceipt(
+        failureReceiptPath,
+        scratchOwned,
+      );
     if (childReceipt?.childOutcome === "failed" && childReceipt.primary) {
       primaryFailure = childReceipt.primary;
       counts = childReceipt.counts;
@@ -925,6 +992,12 @@ try {
   } else {
     childOutcome = "unknown";
     parentStage = "report-build";
+    if (!(await verifyPrivateTempDirectory(scratchOwned)))
+      throw coldDiagnosticFailure(
+        "report-schema",
+        "report-build",
+        "Private scratch changed before report validation.",
+      );
     const reportStat = await lstat(reportPathForGeneration).catch(() => null);
     if (
       !reportStat?.isFile() ||

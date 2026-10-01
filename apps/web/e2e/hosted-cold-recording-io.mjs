@@ -9,7 +9,7 @@ import {
   unlink,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import {
   COLD_CLEANUP_OPERATIONS,
   COLD_FAILURE_RECEIPT_MAX_BYTES,
@@ -30,27 +30,104 @@ export async function createOwnedTempDirectory(prefix = "taskdesk-g11-cold-") {
   let owned;
   try {
     const path = await mkdtemp(join(tmpdir(), prefix));
-    owned = { path, identity: null, owned: true };
+    owned = {
+      path,
+      identity: null,
+      owned: true,
+      verifiedPrivate: false,
+    };
     const created = await lstat(path);
     if (!created.isDirectory() || created.isSymbolicLink()) return owned;
     owned.identity = { dev: created.dev, ino: created.ino };
-    await chmodDirectoryPrivate(path);
-    const stat = await lstat(path);
-    if (
-      !stat.isDirectory() ||
-      stat.isSymbolicLink() ||
-      !sameIdentity(stat, owned.identity) ||
-      (stat.mode & 0o777) !== 0o700
-    )
-      return owned;
+    await chmod(path, 0o700);
+    await verifyPrivateTempDirectory(owned);
     return owned;
   } catch {
     return owned ?? null;
   }
 }
 
-async function chmodDirectoryPrivate(path) {
-  await chmod(path, 0o700);
+export async function verifyPrivateTempDirectory(owned) {
+  if (!owned?.owned || !owned.identity) {
+    if (owned) owned.verifiedPrivate = false;
+    return false;
+  }
+  owned.verifiedPrivate = false;
+  try {
+    const stat = await lstat(owned.path);
+    owned.verifiedPrivate = Boolean(
+      stat.isDirectory() &&
+        !stat.isSymbolicLink() &&
+        sameIdentity(stat, owned.identity) &&
+        (stat.mode & 0o777) === 0o700,
+    );
+  } catch {
+    owned.verifiedPrivate = false;
+  }
+  return owned.verifiedPrivate;
+}
+
+function isDirectChild(parent, child) {
+  if (typeof parent !== "string" || typeof child !== "string") return false;
+  const relativePath = relative(resolve(parent), resolve(child));
+  return Boolean(
+    relativePath &&
+      relativePath !== ".." &&
+      !relativePath.startsWith(`..${sep}`) &&
+      !relativePath.includes(sep),
+  );
+}
+
+export async function createOwnedScratchDirectory(scratch, path) {
+  if (!isDirectChild(scratch?.path, path))
+    return { owned: null, verifiedPrivate: false };
+  if (!(await verifyPrivateTempDirectory(scratch)))
+    return { owned: null, verifiedPrivate: false };
+  try {
+    await mkdir(path, { mode: 0o700 });
+    const stat = await lstat(path);
+    const owned = stat.isDirectory()
+      ? {
+          path,
+          identity: { dev: stat.dev, ino: stat.ino },
+          owned: true,
+          verifiedPrivate: false,
+        }
+      : null;
+    const verifiedPrivate = Boolean(
+      owned &&
+        (await verifyPrivateTempDirectory(scratch)) &&
+        (await verifyPrivateTempDirectory(owned)),
+    );
+    return {
+      owned,
+      verifiedPrivate,
+    };
+  } catch {
+    return { owned: null, verifiedPrivate: false };
+  }
+}
+
+export async function runWithVerifiedScratch(scratch, scratchOutput, run) {
+  if (
+    !(await verifyPrivateTempDirectory(scratch)) ||
+    !(await verifyPrivateTempDirectory(scratchOutput))
+  )
+    return { verifiedPrivate: false, started: false, result: undefined };
+  const result = await run();
+  return { verifiedPrivate: true, started: true, result };
+}
+
+export async function createOwnedScratchFile(scratch, path, contents) {
+  if (!isDirectChild(scratch?.path, path))
+    return { owned: null, complete: false, verifiedPrivate: false };
+  if (!(await verifyPrivateTempDirectory(scratch)))
+    return { owned: null, complete: false, verifiedPrivate: false };
+  const result = await createOwnedFile(path, contents);
+  return {
+    ...result,
+    verifiedPrivate: await verifyPrivateTempDirectory(scratch),
+  };
 }
 
 export async function createOwnedFile(path, contents) {
@@ -145,12 +222,17 @@ export async function outputTargetIsAbsent(path) {
 }
 
 export async function writeChildFailureReceipt({
+  scratch,
   path,
   childReportOwned,
   primary,
   counts,
   flags,
 }) {
+  if (!isDirectChild(scratch?.path, path))
+    return { receipt: null, persisted: false };
+  if (!(await verifyPrivateTempDirectory(scratch)))
+    return { receipt: null, persisted: false };
   const cleanup = coldCleanupStatuses();
   cleanup.childReport = await removeOwnedFile(childReportOwned);
   const receipt = createColdFailureReceipt({
@@ -160,11 +242,17 @@ export async function writeChildFailureReceipt({
     flags,
     cleanup,
   });
-  const result = await createOwnedFile(path, JSON.stringify(receipt));
-  return { receipt, persisted: result.complete };
+  const result = await createOwnedScratchFile(
+    scratch,
+    path,
+    JSON.stringify(receipt),
+  );
+  return { receipt, persisted: result.complete && result.verifiedPrivate };
 }
 
-export async function readChildFailureReceipt(path) {
+export async function readChildFailureReceipt(path, scratch) {
+  if (!isDirectChild(scratch?.path, path)) return null;
+  if (!(await verifyPrivateTempDirectory(scratch))) return null;
   try {
     const stat = await lstat(path);
     if (
