@@ -109,11 +109,16 @@ how one human can be both a staff member and a customer contact without the two 
 linked (`IP-18`, [multi-tenancy.md](multi-tenancy.md#identity-across-tenants)). Anything
 that needs "this human, everywhere" does not exist by design.
 
-better-auth owns `user`, `session`, `account`, `verification`, `two_factor`, `passkey`,
-`apikey`. better-auth is used for **authentication only** — its organisation plugin is
+In the target schema better-auth owns `user`, `session`, `account`, `verification`,
+`two_factor`, `passkey`, and `apikey`. The `two_factor` and `passkey` tables are planned and
+are not enabled by the current API plugin configuration. The `identity_connection.mfa_upstream_mode`
+field below is also a target setting; current source does not enforce it. better-auth is
+used for **authentication only** — its organisation plugin is
 **not** used; the directory below is ours. We add, via better-auth's `additionalFields`,
 `session.portal` (`agent`\|`customer`), set at issue time and compared to the request host
 by the portal-boundary middleware ([auth-and-identity.md](auth-and-identity.md)).
+Step-up `auth_method` values `totp`, `backup_code`, and `sso_prompt_login` are planned
+adapter values; they do not mean those proof methods are available in current source.
 
 | Table | Key columns |
 | --- | --- |
@@ -158,7 +163,7 @@ organisation FK and the SCIM link cannot live in `config jsonb`; non-OIDC auth p
 
 | Table | Key columns |
 | --- | --- |
-| `identity_connection` | `provider_type` (`entra` now; `okta`\|`keycloak`\|`generic_oidc` reserved), `portal_scope` (`agent`\|`customer` — **never both**), `organisation_id` null (**`CHECK` set iff `portal_scope = 'customer'`**), `display_name`, `issuer`, `tenant_id` null, `client_id`, `client_secret bytea` (same envelope as plugin secrets), `redirect_uri`, `scopes text[]`, `claim_mapping jsonb`, `domain_bindings text[]` (each domain bound to exactly one connection — unique across rows), `jit_policy jsonb` (`enabled`, default role), **`max_role_rank`** (the one ceiling for everything this connection may grant — JIT default role, group mappings; null on customer connections, whose only role is `customer`), `mfa_upstream_mode` (`claim`\|`static`\|`off`), `enabled`, `config_version`, `health_state`, `health_checked_at`, `created_by`, `updated_by`. **v.** Unique `(organisation_id)` where not null — one active customer connection per organisation in the first release |
+| `identity_connection` | `provider_type` (`entra` now; `okta`\|`keycloak`\|`generic_oidc` reserved), `portal_scope` (`agent`\|`customer` — **never both**), `organisation_id` null (**`CHECK` set iff `portal_scope = 'customer'`**), `display_name`, `issuer`, `tenant_id` null, `client_id`, `client_secret bytea` (same envelope as plugin secrets), `redirect_uri`, `scopes text[]`, `claim_mapping jsonb`, `domain_bindings text[]` (each domain bound to exactly one connection — unique across rows), `jit_policy jsonb` (`enabled`, default role), **`max_role_rank`** (the one ceiling for everything this connection may grant — JIT default role, group mappings; null on customer connections, whose only role is `customer`), `mfa_upstream_mode` (`claim`\|`static`\|`off`; planned target setting, not enforced by current source), `enabled`, `config_version`, `health_state`, `health_checked_at`, `created_by`, `updated_by`. **v.** Unique `(organisation_id)` where not null — one active customer connection per organisation in the first release |
 | `scim_connection` | `identity_connection_id` **unique**, `token_hash`, `token_prefix`, `token_created_at`, `token_rotated_at`, `allowed_resources text[]` (`users`, `groups`), `attribute_mapping jsonb`, `lifecycle_policy` (`end_memberships`\|`keep_memberships`, default `end_memberships`), `enabled`, `last_sync_at`, `last_sync_outcome`, `last_failure jsonb` (never secrets). Rotation replaces `token_hash` — **no previous-token grace column, by decision** |
 | `external_identity` | `identity_connection_id`, `person_id`, `user_id` null (null until first login), `issuer`, `subject` (immutable — Entra `oid`), `scim_external_id` null, `user_name_snapshot`, `email_snapshot`, `active`, `provisioned_via` (`jit`\|`scim`\|`invite`), `first_seen_at`, `last_login_at`, `deactivated_at`. Unique `(identity_connection_id, subject)`; unique `(identity_connection_id, scim_external_id)` where not null. **Email is an attribute, never the key** |
 | `scim_group_mapping` | `scim_connection_id`, `external_group_id`, `external_group_name_snapshot`, `role_id` (an **existing** role; never a role granting `instance:*`, never `sees_all`), `scope` (`organisation`\|`workspace`), `scope_id`, `enabled`, `created_by`. Unique `(scim_connection_id, external_group_id)`. `CHECK`: a customer connection's mapping targets a customer role only |

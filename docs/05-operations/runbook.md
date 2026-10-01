@@ -110,7 +110,7 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 | Provider certificate expired | The test reports it |
 | Session secret rotated | Everyone signed out at once — expected, communicate it |
 | Account suspended | God Mode → Users |
-| MFA required, not enrolled | The user is routed to enrolment; confirm they see it |
+| MFA required, not enrolled | **Planned behavior:** after MFA enforcement is implemented, route the user to enrollment before protected use. Current API source has no factor enrollment/verifier; a required policy must fail closed until that support exists. |
 | Portal boundary | A customer on the agent origin — this is correct behaviour |
 | **All administrators locked out** | See break-glass below |
 

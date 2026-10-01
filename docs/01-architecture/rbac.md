@@ -648,10 +648,12 @@ information leak.
 
 Some actions require a fresh authentication regardless of capability — **the second
 factor when the account has one** (never "password *or* MFA"), an IdP re-authentication
-with `prompt=login` for SSO-only accounts. A single-use confirmation can bind to one
-pending action or to one explicitly registered operation; it is never a session-wide
-window. **This is the only list**; God Mode, the security model and the feature specs cite
-it rather than restating it. Binding, freshness and failure behavior are specified in
+with `prompt=login` for SSO-only accounts. These are target requirements, not current
+factor availability: current API source enables neither `twoFactor` nor a verified fresh-SSO
+step-up adapter, so unsupported required methods fail closed. A single-use confirmation can
+bind to one pending action or to one explicitly registered operation; it is never a
+session-wide window. **This is the only list**; God Mode, the security model and the feature
+specs cite it rather than restating it. Binding, freshness and failure behavior are specified in
 [pending-actions.md](pending-actions.md) `PA-15` and
 [security-model.md](security-model.md#sessions-csrf-and-step-up).
 
@@ -672,7 +674,7 @@ the first day.
 | Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `…/scim/rotate-token`, `…/scim/revoke-token` |
 | A group→role mapping that grants staff access, a role above `member`, or changes reach — **conditionally**: `PATCH …/scim` is elevated only when the change does one of those ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`) | `PATCH /api/instance/identity-connections/{id}/scim` |
 | Granting `instance:admin` | `POST /api/instance/users/{id}/grant-admin` |
-| Resetting another person's second factor | `POST /api/instance/users/{id}/reset-mfa` — with a mandatory verification note |
+| Resetting another person's second factor | Planned `POST /api/instance/users/{id}/reset-mfa` — with a mandatory verification note; unavailable until the factor adapter exists |
 | Creating a workspace **service** API key | `POST /api/workspaces/{id}/api-keys` — bounded by the creator's authority |
 | Granting `sees_all` on a membership | `PATCH /api/workspaces/{id}/members/{personId}` with `sees_all: true` — never self-grantable; audited as a reach change |
 | Marking a provider "MFA satisfied upstream", or a JIT rule that provisions `side = staff` or a role above `member` | `PATCH /api/instance/identity-connections/{id}` |

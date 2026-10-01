@@ -153,10 +153,10 @@ before save.
 Per provider: type · display name · **portal scope** (agent / customer / both) ·
 discovery or endpoint URLs · client id · client secret · scopes · claim mapping ·
 JIT provisioning (side, organisation, role) · group-to-role mapping · domain restriction ·
-MFA-satisfied-upstream flag · enabled
+MFA-satisfied-upstream setting (planned; not verified or enforced by current API source) · enabled
 
-Instance-wide: MFA policy · session idle timeout · session absolute lifetime ·
-concurrent session limit · password policy
+Instance-wide: MFA policy (planned; no current factor enforcement) · session idle timeout ·
+session absolute lifetime · concurrent session limit · password policy
 
 ### Organisations
 

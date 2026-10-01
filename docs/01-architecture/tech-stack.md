@@ -25,7 +25,7 @@ Inherited from kaneo unless noted. Versions are the floor, not a ceiling — kee
 | Validation | **Zod 4** | Single source for request/response schemas and OpenAPI |
 | ORM | **Drizzle 0.45** | `drizzle-kit` migrations, forward-only |
 | Database | **PostgreSQL 18** | Only store for primary data. See below — bumped from 16 |
-| Auth | **better-auth 1.6** | Magic link, email OTP, API keys, generic OAuth/OIDC inherited; `twoFactor` is specified for P0 but is not enabled in the current source, and no verified step-up factor adapter is yet available; `anonymous`, `deviceAuthorization`, `bearer` and the `organization` plugin **removed at fork**; `admin` kept as a session primitive only — the per-plugin table is in [auth-and-identity.md](auth-and-identity.md) |
+| Auth | **better-auth 1.6** | Magic link, email OTP, API keys, generic OAuth/OIDC inherited; `twoFactor` is specified for P0 and `passkey` for a later stage, but neither is enabled in current source and no verified MFA/step-up factor adapter is available; `anonymous`, `deviceAuthorization`, `bearer` and the `organization` plugin **removed at fork**; `admin` kept as a session primitive only — the per-plugin table is in [auth-and-identity.md](auth-and-identity.md) |
 | IDs | **CUID2** | Sortable-ish, URL-safe, non-enumerable |
 | WebSocket | **@hono/node-ws** | In-memory or Valkey pub/sub adapter |
 | Cache / pub-sub | **Valkey 9** (Redis-compatible) via **ioredis** | Optional; degrades to in-memory |

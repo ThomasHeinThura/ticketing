@@ -29,7 +29,7 @@ audit trail; session and API-key material; the image and release artefacts.
 | **Malicious MCP client / runaway agent / typosquatted `@taskdesk/mcp`** | Exfiltrate via a key; amplify writes; harvest `TASKDESK_API_KEY` | Key capability subset ∩ owner authority; `is_mcp` keys read-only by default; `is_mcp` ceiling; burst auto-disable; idempotency; no MCP-only data path; `@taskdesk` scope reserved, provenance + 2FA on publish, internal packages `private` |
 | **Hostile content read by a model** (prompt injection through ticket text) | Make a staff agent or an AI feature act with staff authority | Tool output marked untrusted (`MC-15`); destructive/bulk tools need out-of-band human approval (`MC-7`); AI retrieval scoped to the triggering identity; model output sanitised as user input — [AI and MCP surfaces](#ai-and-mcp-surfaces) |
 | **Rogue automation / job** | Act beyond the rule author's authority | Automations run as their `effective_role_id` (clamped, `AM-3`); placeholder expansion checked against the destination's visibility (`AM-11`); jobs carry `actor_type = 'system'` and still write through scoped repositories; manual job triggers are `instance:manage_jobs`, audited, rate-limited; per-organisation job workload caps |
-| **Account-recovery social engineering** ("please reset my MFA") | Get an administrator to remove a second factor | `reset-mfa` is elevated, requires a recorded verification note, emails every address on file, revokes all sessions and keys ([auth-and-identity.md](auth-and-identity.md#multi-factor-authentication)) |
+| **Account-recovery social engineering** ("please reset my MFA") | Get an administrator to remove a second factor | The planned `reset-mfa` operation is elevated, requires a recorded verification note, emails every address on file, and revokes all sessions and keys; current source does not provide an MFA adapter or reset route ([auth-and-identity.md](auth-and-identity.md#multi-factor-authentication)) |
 | **Compromised SCIM token, or a hostile customer's own IdP** | Create staff, reach another organisation, grant authority, enumerate users | Organisation and portal are fixed by the connection the token belongs to, never by the request (`IP-4`); a customer connection can create only customer-side people in its own organisation with the customer role (`IP-2`); no connection can grant `instance:admin` or `sees_all`; token hashed, rotatable with immediate invalidation, rate-limited; every denial is a provisioning event — [SCIM](#scim--an-inbound-privileged-management-api) |
 | **A deletion nobody meant** (mis-click, scripted key, injected agent) | Destroy data faster than anyone can stop it | Every user-initiated deletion is a `pending_action` approved by the requesting human in a browser session; bound to exact targets and payload; single-use; 15-minute expiry; re-authorised at execution; no model, key or automation can approve — [Deletion approval](#deletion-approval) |
 | **Anonymous internet** | Enumerate users/providers; bomb mail; DoS; distinguish "not found" from "not yours" | Anonymous rate-limit class; constant-time auth responses; **constant-shape 404** (same body, same lookup path, same bucket); minimal `/api/public/*`; `health/deep` authenticated; quotas with real defaults; event-loop lag alerting |
@@ -168,9 +168,11 @@ constrained hard:
 - **No automatic account linking on email.** A sign-in through provider B for an email that
   exists via provider A is refused with an explanation; linking requires an authenticated
   session on A plus an explicit confirmation. better-auth's auto-link defaults are off.
-- "MFA satisfied upstream" prefers the token's `amr`/`acr` claim (challenge when absent);
-  the static per-provider flag remains for providers that emit neither, and setting it is
-  elevated and shown in a security-posture panel.
+- **Planned upstream-MFA contract:** verified per-login `amr`/`acr` evidence may satisfy a
+  configured provider mapping; absent or unsupported evidence must not satisfy a required
+  policy. A static per-provider flag is configuration only, never proof that a particular
+  sign-in used MFA or fresh step-up proof. Current API source has no upstream-MFA verifier,
+  so this configuration does not establish MFA availability.
 
 ## SCIM — an inbound privileged management API
 
@@ -346,7 +348,8 @@ action, entity, before, after. **`audit_log` is for security-relevant events; `a
 is the user-visible journal** — not every mutation writes both. Always audited, regardless
 of outcome:
 
-- Sign-in success and failure; MFA enrolment and reset; session revocation
+- Sign-in success and failure; planned MFA enrolment and reset when their adapters are
+  implemented; session revocation
 - Impersonation start and end, and every action during it
 - Role, membership and rank changes; invitations sent and redeemed
 - Plugin configuration changes and **tests** (keys changed, never values); secret rotation

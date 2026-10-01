@@ -219,7 +219,7 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | Audit-only action | Written when |
 | --- | --- |
 | `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
-| `auth.mfa_enrolled` · `auth.mfa_reset` | Second factor enrolled; reset by an administrator (with the verification note) |
+| `auth.mfa_enrolled` · `auth.mfa_reset` | Planned audit events for second-factor enrollment and administrator reset (with verification note); current source has no MFA factor adapter and does not emit these events |
 | `auth.step_up_issued` · `auth.step_up_consumed` · `auth.step_up_denied` | A single-use step-up confirmation is issued, consumed, or denied; record binding kind and fixed operation key/route where applicable, never proof, nonce, token, hash or request body |
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
