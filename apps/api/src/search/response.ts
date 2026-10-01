@@ -23,6 +23,9 @@ export const searchResultSchema = z
         "Higher is a better match. Results are sorted by score, then by createdAt descending.",
     }),
     taskNumber: z.number().optional(),
+    version: z.number().int().min(1).optional().openapi({
+      description: "The current row version, present only for task results.",
+    }),
     priority: z.string().optional(),
     status: z.string().optional(),
   })

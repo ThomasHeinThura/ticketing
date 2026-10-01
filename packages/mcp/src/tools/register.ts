@@ -296,9 +296,11 @@ export function registerTools(
           { method: "GET" },
         )) as Record<string, unknown>;
         const body = buildFullTaskUpdateBody(existing, patch);
-        return client.json(`/api/task/${encodeURIComponent(taskId)}`, {
+        const { version, ...requestBody } = body;
+        return client.json(`/api/v2/task/${encodeURIComponent(taskId)}`, {
           method: "PUT",
-          body: JSON.stringify(body),
+          headers: { "If-Match": `"${version}"` },
+          body: JSON.stringify(requestBody),
         });
       });
     },

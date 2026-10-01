@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { columnTable, taskTable } from "../../database/schema";
@@ -16,8 +16,21 @@ import {
 import { lockTaskAndAssertProjectLive } from "../assert-task-project-live";
 import { assertValidTaskStatus } from "../validate-task-fields";
 
+export class TaskVersionConflictError extends Error {
+  constructor(
+    public readonly assertedVersion: number,
+    public readonly currentVersion: number,
+  ) {
+    super(
+      `Version mismatch: expected version ${assertedVersion}, but the task is now at version ${currentVersion}`,
+    );
+    this.name = "TaskVersionConflictError";
+  }
+}
+
 async function updateTask(
   id: string,
+  assertedVersion: number | undefined,
   title: string,
   status: string,
   startDate: string | undefined,
@@ -29,27 +42,17 @@ async function updateTask(
   userId?: string,
   currentUserId?: string,
 ) {
-  const [existingTask] = await db
-    .select({
-      id: taskTable.id,
-      description: taskTable.description,
-      status: taskTable.status,
-    })
-    .from(taskTable)
-    .where(eq(taskTable.id, id))
-    .limit(1);
-
-  if (!existingTask) {
-    throw new HTTPException(404, {
-      message: "Task not found",
-    });
-  }
-
   const normalizedUserId = userId?.trim() || undefined;
 
   const { existingTask: lockedTask, updatedTask } = await db.transaction(
     async (tx) => {
       const lockedTask = await lockTaskAndAssertProjectLive(tx, id);
+      if (
+        assertedVersion !== undefined &&
+        lockedTask.version !== assertedVersion
+      ) {
+        throw new TaskVersionConflictError(assertedVersion, lockedTask.version);
+      }
       if (projectId !== lockedTask.projectId) {
         throw new HTTPException(400, {
           message: "Use the task move endpoint to move tasks between projects",
@@ -96,6 +99,7 @@ async function updateTask(
           priority,
           position,
           userId: normalizedUserId ?? null,
+          version: sql`${taskTable.version} + 1`,
         })
         .where(eq(taskTable.id, id))
         .returning();

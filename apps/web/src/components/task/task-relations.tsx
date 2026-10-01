@@ -236,6 +236,7 @@ export default function TaskRelations({
     task: NonNullable<(typeof nonSubtaskRelations)[number]["sourceTask"]>;
   }): Task => ({
     id: item.task.id,
+    version: item.task.version,
     title: item.task.title,
     number: item.task.number,
     description: null,

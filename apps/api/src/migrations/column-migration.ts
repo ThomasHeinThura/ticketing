@@ -92,7 +92,7 @@ export async function migrateColumns() {
     for (const [slug, columnId] of columnMap) {
       await db
         .update(taskTable)
-        .set({ columnId })
+        .set({ columnId, version: sql`${taskTable.version} + 1` })
         .where(
           sql`${taskTable.projectId} = ${project.id}
               AND ${taskTable.status} = ${slug}

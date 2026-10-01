@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Input } from "@taskdesk/ui";
 import { Search } from "lucide-react";
@@ -11,6 +12,7 @@ import PageTitle from "@/components/page-title";
 import CreateTaskModal from "@/components/shared/modals/create-task-modal";
 import TaskDetailsSheet from "@/components/task/task-details-sheet";
 import { shortcuts } from "@/constants/shortcuts";
+import { hasPendingTaskUpdate } from "@/hooks/mutations/task/use-update-task";
 import useGetLabelsByWorkspace from "@/hooks/queries/label/use-get-labels-by-workspace";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
@@ -80,6 +82,7 @@ function RouteComponent() {
   const { taskId } = Route.useSearch();
   const navigate = useNavigate();
   const { data } = useGetTasks(projectId);
+  const queryClient = useQueryClient();
   const { project, setProject } = useProjectStore();
   const { viewMode, setViewMode } = useUserPreferencesStore();
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -126,10 +129,10 @@ function RouteComponent() {
   });
 
   useEffect(() => {
-    if (data) {
+    if (data && !hasPendingTaskUpdate(queryClient, projectId)) {
       setProject(data);
     }
-  }, [data, setProject]);
+  }, [data, projectId, queryClient, setProject]);
 
   const openBoardSearch = useCallback(() => {
     setIsBoardSearchMounted(true);

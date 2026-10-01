@@ -1907,7 +1907,8 @@
 		},
 		"update": {
 			"success": "Cập nhật công việc thành công",
-			"error": "Không thể cập nhật công việc"
+			"error": "Không thể cập nhật công việc",
+			"conflict": "This task changed after you loaded it. Your update was not saved."
 		},
 		"contextMenu": {
 			"copyLink": "Sao chép liên kết",

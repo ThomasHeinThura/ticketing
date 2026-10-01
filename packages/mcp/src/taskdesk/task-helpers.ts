@@ -25,6 +25,7 @@ export function buildFullTaskUpdateBody(
   existing: Record<string, unknown>,
   patch: TaskUpdatePatch,
 ): Record<string, string | number | undefined> {
+  const version = readTaskVersion(existing);
   const positionRaw = patch.position ?? existing.position;
   const position =
     typeof positionRaw === "number"
@@ -95,6 +96,7 @@ export function buildFullTaskUpdateBody(
   );
 
   const body: Record<string, string | number | undefined> = {
+    version,
     title,
     description,
     status,
@@ -114,6 +116,20 @@ export function buildFullTaskUpdateBody(
   }
 
   return body;
+}
+
+function readTaskVersion(existing: Record<string, unknown>): number {
+  const version = existing.version;
+  if (
+    typeof version !== "number" ||
+    !Number.isInteger(version) ||
+    version < 1
+  ) {
+    throw new Error(
+      "Cannot update task: missing integer `version` on existing task.",
+    );
+  }
+  return version;
 }
 
 function formatOptionalIso(value: unknown): string | undefined {

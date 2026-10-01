@@ -91,6 +91,7 @@ describe("registerTools", () => {
           priority: "medium",
           projectId: "project-1",
           position: 4,
+          version: 3,
         })
         .mockResolvedValueOnce({ id: "task-1", status: "done" }),
     };
@@ -106,7 +107,11 @@ describe("registerTools", () => {
       method: "GET",
     });
     const putCall = client.json.mock.calls[1];
-    expect(putCall?.[0]).toBe("/api/task/task-1");
+    expect(putCall?.[0]).toBe("/api/v2/task/task-1");
+    expect(putCall?.[1]).toMatchObject({
+      method: "PUT",
+      headers: { "If-Match": '"3"' },
+    });
     const putBody = JSON.parse(
       String((putCall?.[1] as { body?: string })?.body ?? "{}"),
     );
@@ -120,6 +125,7 @@ describe("registerTools", () => {
         position: 4,
       }),
     );
+    expect(putBody).not.toHaveProperty("version");
     expect(result?.isError).toBe(false);
   });
 

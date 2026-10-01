@@ -117,6 +117,7 @@ export default function TaskSubtasks({
 
   const buildTaskObject = (subtask: (typeof subtasks)[number]): Task => ({
     id: subtask.task.id,
+    version: subtask.task.version,
     title: subtask.task.title,
     number: subtask.task.number,
     description: null,

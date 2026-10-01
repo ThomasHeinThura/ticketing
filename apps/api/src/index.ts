@@ -69,7 +69,7 @@ import {
   writeAttachmentUploadedObject,
   writeUploadedObject,
 } from "./storage/filesystem";
-import task from "./task";
+import task, { taskV2 } from "./task";
 import taskRelation from "./task-relation";
 import timeEntry from "./time-entry";
 import user from "./user";
@@ -1013,6 +1013,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
   const capabilitiesApi = api.route("/capabilities", capabilities);
   const projectApi = api.route("/project", project);
   const taskApi = api.route("/task", task);
+  const taskV2Api = api.route("/v2/task", taskV2);
   const columnApi = api.route("/column", column);
   const activityApi = api.route("/activity", activity);
   const cannedResponseApi = api.route("/canned-responses", cannedResponse);
@@ -1209,6 +1210,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
     projectApi,
     searchApi,
     taskApi,
+    taskV2Api,
     taskRelationApi,
     timeEntryApi,
     userApi,
@@ -1432,6 +1434,7 @@ const {
   projectApi,
   searchApi,
   taskApi,
+  taskV2Api,
   taskRelationApi,
   timeEntryApi,
   userApi,
@@ -1480,6 +1483,7 @@ export type AppType =
   | typeof configApi
   | typeof projectApi
   | typeof taskApi
+  | typeof taskV2Api
   | typeof columnApi
   | typeof activityApi
   | typeof attachmentApi
