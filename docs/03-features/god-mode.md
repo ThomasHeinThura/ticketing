@@ -133,13 +133,20 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
   separately from the TaskDesk default role; JIT cannot be enabled without it. Setup help
   directs administrators to define and assign that app role and request the optional `acct`
   claim in the Entra app registration. This role claim admits a member subject only; it does
-  not grant TaskDesk roles, capabilities or reach. Domain bindings support discovery and
-  deny-only collision checks. Customer connections are edited from the organisation's
-  Identity tab (below) — same routes, filtered.
-- **SCIM panel** per connection: endpoint URL, bearer token create / rotate / revoke
-  (shown once; rotation invalidates the old token at once), allowed resources, attribute
-  mapping, allowlisted group → role mappings (never `instance:admin`, never `sees_all`),
-  lifecycle policy, last sync, last failure without secrets, provisioning event log.
+  not grant TaskDesk roles, capabilities or reach, and it is checked at every login. Domain
+  bindings support discovery and deny-only collision checks. Customer connections are edited
+  from the organisation's Identity tab (below) — same routes, filtered.
+- **Provisioning panel** per connection: OIDC group mappings use immutable group object ids
+  with display-name snapshots; the separate SCIM panel holds endpoint URL, bearer token
+  create / rotate / revoke (shown once; rotation invalidates the old token at once), allowed
+  resources, attribute mapping and SCIM group mappings. Every create/edit/enable validates
+  the connection portal and persisted organisation, target scope ownership, role side/rank,
+  and forbidden capabilities. A mapping change to role or scope is elevated and audited;
+  disabling/changing a mapping retires only its grants and invalidates authority after
+  commit. Re-enabling does not revive historical grants before a fresh validated OIDC login
+  or SCIM update. Neither source can grant `instance:admin` or `sees_all`. Show the lifecycle
+  policy, last sync, last failure without secrets, provisioning event log, and overage warning
+  without exposing raw claims.
 - **Test connection** (OIDC discovery + dry run) and **Test SCIM** before going live; both
   audited even when nothing is saved.
 - MFA policy: off, optional, required for staff, required for a role, required for

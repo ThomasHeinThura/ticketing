@@ -207,6 +207,34 @@ role: it grants only what it itself declares, never the built-in's set.
 
 Detail and screens: [Roles and permissions UI](../03-features/roles-and-permissions-ui.md).
 
+### Target membership projection from provenance grants — Proposed ADR 0015
+
+The target `membership` row remains the one effective role for a person and scope. The
+proposed `membership_grant` ledger records independent direct, JIT-default, OIDC-group and
+SCIM-group sources; it is provenance, not a list of roles to authorize. This contract is
+proposed in [ADR 0015](adr/0015-membership-grant-provenance.md), pending Thomas's approval,
+and is not implemented.
+
+Projection reads only active grants whose person, role, scope, owning organisation, source
+connection, mapping, portal/side and current rank ceiling still validate. An active direct
+grant alone selects the role when one exists. Otherwise the valid external grant with the
+highest role rank selects the effective role. Equal-rank source precedence is
+`scim_group > oidc_group > jit_default` only if the tied grants name the **same** `role_id`.
+Different role ids tied at the greatest rank suppress the external effective membership and
+raise an operator-visible conflict; an id sort or capability union cannot resolve it. The
+projection never unions capabilities. `sees_all` is true only if the selected direct grant
+explicitly carries it; external grants cannot set or inherit it.
+
+Each source writer locks the affected external identity and person/scope key, commits grant
+deltas, the one effective membership projection, and provisioning/audit rows atomically, then
+publishes authority-cache invalidation after commit. OIDC login on one connection only
+reconciles that identity's OIDC grants; SCIM group removal only retires its matching SCIM
+grant. Neither deletes another source's grant or an effective row still justified by another
+valid grant. If the final grant is retired, the internal projection writer removes the
+membership and preserves provenance history; this is not a user-requested DELETE/pending
+action. Global SCIM deactivation is the explicit lifecycle exception and retires all
+external grants for the inactive person.
+
 ### One membership = exactly one role
 
 **Canonical rule (Thomas, 2026-09-09; issue #82).** A workspace membership holds **exactly
@@ -655,7 +683,7 @@ the first day.
 | --- | --- |
 | Creating or changing an identity connection (OIDC) or a non-OIDC auth plugin | `POST /api/instance/identity-connections`, `PATCH /api/instance/identity-connections/{id}`; `POST/PATCH /api/instance/plugins/{id}` for `auth.*` |
 | Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `…/scim/rotate-token`, `…/scim/revoke-token` |
-| A group→role mapping that grants staff access, a role above `member`, or changes reach — **conditionally**: `PATCH …/scim` is elevated only when the change does one of those ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`) | `PATCH /api/instance/identity-connections/{id}/scim` |
+| An OIDC or SCIM group→role mapping that grants staff access, changes role/scope, exceeds `member`, or changes reach — mapping changes are elevated and audited; forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-20`–`IP-28`) | OIDC mapping editor and `PATCH /api/instance/identity-connections/{id}/scim` |
 | Granting `instance:admin` | `POST /api/instance/users/{id}/grant-admin` |
 | Resetting another person's second factor | `POST /api/instance/users/{id}/reset-mfa` — with a mandatory verification note |
 | Creating a workspace **service** API key | `POST /api/workspaces/{id}/api-keys` — bounded by the creator's authority |

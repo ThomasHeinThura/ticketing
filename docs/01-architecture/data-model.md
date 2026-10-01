@@ -121,7 +121,7 @@ by the portal-boundary middleware ([auth-and-identity.md](auth-and-identity.md))
 | `person` | `user_id` **nullable**, `organisation_id`, `side` (`staff`\|`customer`), `job_title`, `active`, `is_placeholder` (import-created, no login; can author history, can never be assigned or hold a membership; claimed — not duplicated — when that email later signs in), `locale`, `quiet_hours_start`, `quiet_hours_end`, `quiet_hours_timezone` |
 | `workspace` | `organisation_id` **not null** (issue #192, decision log 2026-09-22 "#192's tenant-attribution decision: Option A+D" — every workspace this codebase creates today is internal, so existing rows backfill to the single internal organisation the migration's own SQL seeds if the boot seed has not run yet), `slug`, `name`, `logo`, `description`, `default_sla_policy_id` null, `time_entry_backdate_limit_days` (default 30), `kb_review_step_enabled`, `deleted_at`, `purge_after` — the same 30-day recovery window as `organisation`, so a workspace delete does not bypass the windows its `project` and `work_item` children carry |
 | `workspace_feature_flag` | `workspace_id`, `feature_key`, `enabled`. Unique `(workspace_id, feature_key)`. The middle level of the flag resolution `project → workspace → instance → default` |
-| `membership` | `person_id`, `scope` (`organisation`\|`workspace`\|`project`), `scope_id`, `role_id`, `sees_all`, `inherited_from`, `derived_from` null (`scim_group_member.id` when SCIM group sync created it). An `organisation`-scoped membership is how a **customer-side** person holds the `customer` role on their organisation — created by invitation, JIT or SCIM; a staff person never holds one |
+| `membership` | The **materialized effective membership** for one `(person_id, scope, scope_id)`; target unique key `(person_id, scope, scope_id)`. Carries exactly one `role_id`, `sees_all` projected only from an active explicit direct grant, and `inherited_from` for ancestor-project reach. `derived_from` is transitional: stop writing it and keep it null once the grant ledger is authoritative; remove only through a documented forward migration. An organisation-scoped membership is how a customer-side person holds the `customer` role on their organisation — created by invitation, JIT or SCIM; a staff person never holds one |
 | `role` | `scope` (`instance`\|`organisation`\|`workspace`\|`project` — `organisation` exists for exactly one system role, `customer`), `workspace_id`, `key` (server-generated kebab slug, unique per `(scope, workspace_id)`, immutable), `name`, `description`, `rank`, `capabilities jsonb` (string[]), `is_system`, `is_editable`. **v** |
 | `team` | `workspace_id`, `name`, `capacity_days_per_week`, `is_cab` (exactly this team's members may decide CAB approvals) |
 | `team_member` | `team_id`, `person_id`, `allocation_pct`, `is_lead` |
@@ -130,8 +130,11 @@ by the portal-boundary middleware ([auth-and-identity.md](auth-and-identity.md))
 | `user_preference` | `person_id`, `scope` (`global`\|`workspace`\|`project`), `scope_id` null, `key`, `value jsonb`. The per-user UI store: layout per project, density, chosen columns, column widths, collapsed groups, pinned views, drafts. Unique `(person_id, scope, scope_id, key)` |
 | `legal_hold` | `scope` (`organisation`\|`person`), `scope_id`, `placed_by`, `placed_at`, `reason`, `lifted_by` null, `lifted_at` null. An **open** row (`lifted_at is null`) suspends `audit-purge`, `attachment-gc`, soft-delete purge, read-notification retention purge, terminal notification-child/digest/event-envelope retention purge, and hard delete of held business/history data in the matching scope. It does not suspend physical cleanup of an expired `outbox_dedupe_reservation`; see [background-jobs.md](background-jobs.md) and [data-protection.md](../05-operations/data-protection.md). Placing and lifting write `legal_hold.placed` / `legal_hold.lifted` audit rows. Partial unique index `(scope, scope_id) where lifted_at is null` — at most one open hold per scope |
 
-`sees_all` on a membership is the explicit reach grant. `inherited_from` records that a
-membership came from an ancestor project, per OpenProject's model.
+`sees_all` on a membership is projected only from the selected active direct grant; an OIDC or
+SCIM grant can never set or inherit it. `inherited_from` records that a membership came from
+an ancestor project, per OpenProject's model. The one-role materialization, source grant
+ledger and migration constraints below are a **proposed target** pending approval of
+[ADR 0015](adr/0015-membership-grant-provenance.md); they are not implemented schema.
 
 **`workspace_role`** (`id`, `workspace_id`, `role` a name, `permission` a JSON
 `{resource: action[]}` map, `is_system boolean not null default false` (issue #318,
@@ -161,8 +164,43 @@ organisation FK and the SCIM link cannot live in `config jsonb`; non-OIDC auth p
 | `scim_connection` | `identity_connection_id` **unique**, `token_hash`, `token_prefix`, `token_created_at`, `token_rotated_at`, `allowed_resources text[]` (`users`, `groups`), `attribute_mapping jsonb`, `lifecycle_policy` (`end_memberships`\|`keep_memberships`, default `end_memberships`), `enabled`, `last_sync_at`, `last_sync_outcome`, `last_failure jsonb` (never secrets). Rotation replaces `token_hash` — **no previous-token grace column, by decision** |
 | `external_identity` | `identity_connection_id`, `person_id`, `user_id` null (null until first login), `issuer`, `subject` (immutable — Entra `oid`), `scim_external_id` null, `user_name_snapshot`, `email_snapshot`, `active`, `provisioned_via` (`jit`\|`scim`\|`invite`), `first_seen_at`, `last_login_at`, `deactivated_at`. Unique `(identity_connection_id, subject)`; unique `(identity_connection_id, scim_external_id)` where not null. **Email is an attribute, never the key** |
 | `scim_group_mapping` | `scim_connection_id`, `external_group_id`, `external_group_name_snapshot`, `role_id` (an **existing** role; never a role granting `instance:*`, never `sees_all`), `scope` (`organisation`\|`workspace`), `scope_id`, `enabled`, `created_by`. Unique `(scim_connection_id, external_group_id)`. `CHECK`: a customer connection's mapping targets a customer role only |
-| `scim_group_member` | `scim_group_mapping_id`, `external_identity_id`, `membership_id` (the membership this mapping derived — removed symmetrically when the group membership goes) |
+| `oidc_group_mapping` (proposed) | `id` CUID2 PK; `identity_connection_id` FK `ON DELETE RESTRICT`; nonempty immutable `external_group_id` (Entra object id), nullable display-only `external_group_name_snapshot`; existing `role_id` FK `ON DELETE RESTRICT`; `scope` (`organisation`\|`workspace`), `scope_id`; `enabled` not null default true; `created_by`, timestamps. Unique `(identity_connection_id, external_group_id)`, one role/scope per group. Every create, edit, or enable validates connection portal/organisation, resource ownership, role side/scope/rank and forbidden capabilities. Role/scope changes are elevated and audited |
+| `membership_grant` (proposed) | Authoritative source-provenance ledger, not an RBAC role list: CUID2 `id`; nullable `membership_id` FK to effective `membership` `ON DELETE SET NULL`; `person_id`; `scope`, `scope_id`, `role_id`; `source_kind` CHECK `direct`\|`jit_default`\|`oidc_group`\|`scim_group`; nullable `external_identity_id`, `identity_connection_id`, `oidc_group_mapping_id`, `scim_group_mapping_id` FKs; `sees_all` not null default false; nullable `direct_origin` CHECK `admin`\|`system_backfill`; nullable `granted_by_person_id`; `created_at`, `updated_at`, nullable `last_confirmed_at`, nullable `revoked_at`, and nullable `revocation_reason` CHECK `claim_removed`\|`claim_missing`\|`claim_overage`\|`admission_failed`\|`mapping_disabled`\|`mapping_changed`\|`role_deleted`\|`connection_disabled`\|`scim_group_removed`\|`scim_deactivated`\|`direct_removed`. Source CHECKs are exact: `direct` requires direct origin and no external source (with `granted_by_person_id` required only for `admin`, null for `system_backfill`); external sources have no direct fields and force `sees_all=false`; `jit_default` requires external identity/connection and no mapping; `oidc_group` and `scim_group` each require external identity/connection plus exactly their matching mapping FK. `system_backfill` is migration-only, never API input. Cross-table same-connection, ownership, side and rank validation is done by the locked writer, not claimed as a SQL CHECK |
+| `scim_group_member` | `scim_group_mapping_id`, `external_identity_id`, nullable `membership_id` FK to the effective membership, unique `membership_grant_id` FK to the corresponding SCIM grant, and nullable `revoked_at`. An active row links an active SCIM grant and, when materialized, the same effective membership; both membership pointers are null for a fail-closed role conflict. `membership_id` may also become null when no effective membership remains; the historical grant id remains. Removal retires the linked grant and marks history revoked before recomputing the effective row |
 | `provisioning_event` | `identity_connection_id`, `scim_connection_id` null, `external_identity_id` null, `kind` (`user.created`\|`user.updated`\|`user.deactivated`\|`user.reactivated`\|`group.mapping_changed`\|`group.member_added`\|`group.member_removed`\|`request.denied`\|`auth.failed`\|`token.rotated`\|`token.revoked`\|`connection.changed`\|`sync.failed`), `outcome`, `detail jsonb` (structured, **never secrets, never raw tokens**), `actor_type`, `trace_id`, `created_at`. The provisioning ledger; events that change authority, reach or configuration also write `audit_log` |
+
+The proposed grant ledger makes provenance explicit without changing the single-role RBAC
+contract. For each `(person_id, scope, scope_id)`, a valid active direct grant alone wins;
+otherwise the external grant with greatest role rank wins. At an equal rank,
+`scim_group > oidc_group > jit_default` only when `role_id` is the same. Two different
+role ids tied at the highest rank suppress the external effective membership and produce an
+operator-visible conflict; never choose by id or union capabilities. The effective unique
+key and the locked writer prevent concurrent OIDC/SCIM updates from producing duplicate
+rows or losing another source. Retiring the last valid grant removes the effective row via
+the internal projection writer and preserves grant/audit history; it is not a user DELETE.
+
+The direct membership lookup index remains. The target adds partial indexes for active grants:
+`(person_id, scope, scope_id) WHERE revoked_at IS NULL`; unique active direct grant on
+`(person_id, scope, scope_id)`; unique active JIT grant on
+`(external_identity_id, scope, scope_id)`; and unique active OIDC/SCIM group grants on
+`(external_identity_id, oidc_group_mapping_id)` and
+`(external_identity_id, scim_group_mapping_id)`. Effective membership uniqueness requires a
+duplicate-row audit and deterministic owner-approved repair before migration. Backfill only
+rows whose direct provenance is established; an ambiguous non-null `derived_from` stops the
+migration for explicit reconciliation and is never guessed to be direct. A role/mapping
+change retires the old grant and inserts a new row; it does not edit a grant into a different
+authority source or role. `claim_missing` records an absent or malformed OIDC groups claim
+that yields no usable current set; `claim_removed` records an omitted group from an otherwise
+complete valid set; `claim_overage` records the Entra overage form.
+
+Provisioning/audit detail contains source kind, connection, external identity, mapping,
+affected scope/role ids and a bounded reason, never raw claims or tokens. `audit_log` records
+before/after ids, not raw claim arrays. Reconciliation uses existing `group.member_added`,
+`group.member_removed`, `group.mapping_changed`, `request.denied`, and `auth.failed` event
+kinds. Grant delta, effective projection and provisioning/audit rows commit in the same
+transaction under the existing AU-14 audit-failure exception; publish cache invalidation to
+all replicas only after commit. An invalidation loss remains within the existing 30-second
+authority-cache bound.
 
 ## 3. Projects and states
 
@@ -655,6 +693,12 @@ create index on activity (work_item_id, created_at desc, seq desc);  -- seq: sam
 create index on activity (workspace_id);                             -- reach filtering, #192's shape
 create index on comment (work_item_id, created_at);
 create index on membership (person_id, scope, scope_id);
+create unique index on membership (person_id, scope, scope_id); -- proposed effective-row invariant after duplicate audit/repair
+create index on membership_grant (person_id, scope, scope_id) where revoked_at is null;
+create unique index on membership_grant (person_id, scope, scope_id) where revoked_at is null and source_kind = 'direct';
+create unique index on membership_grant (external_identity_id, scope, scope_id) where revoked_at is null and source_kind = 'jit_default';
+create unique index on membership_grant (external_identity_id, oidc_group_mapping_id) where revoked_at is null and source_kind = 'oidc_group';
+create unique index on membership_grant (external_identity_id, scim_group_mapping_id) where revoked_at is null and source_kind = 'scim_group';
 create index on custom_field_value (entity_type, entity_id);
 create index on custom_field_value (project_id) where project_id is not null;
 create index on outbox (state, next_attempt_at) where state = 'pending';

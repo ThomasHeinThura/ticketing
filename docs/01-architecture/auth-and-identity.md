@@ -385,8 +385,10 @@ Everything about *what a person is allowed to do* comes from the database, keyed
 id, on every request. Consequences:
 
 - Revoking access takes effect on the next request, not when a token expires.
-- An IdP compromise cannot mint privilege — group claims are only ever inputs to a
-  *provisioning* decision, and only at the moment of provisioning.
+- A validated OIDC groups claim is an input to a transactional, source-isolated grant
+  reconciliation on every login. Stored `membership_grant` provenance and the single
+  effective membership projection—not claims—authorize requests. Overage or absent/malformed
+  groups retire that identity's stale OIDC group grants; invalid tokens do not mutate grants.
 - RBAC changes are safe to deploy; there are no in-flight tokens carrying stale rules.
 
 Resolution is cached in Valkey for **30 seconds** (the revocation-latency budget, stated
@@ -395,6 +397,17 @@ invalidated explicitly on every membership, role, deactivation and connection ch
 practice an authority change is immediate and 30 s is only the worst case when the
 invalidation message is lost. This is the *authority* cache; the *session* SLA is the one
 stated under [Sessions](#sessions), and they are different budgets.
+
+The proposed provenance ledger and effective-membership projection are specified in
+[data-model.md](data-model.md) §2 and [RBAC](rbac.md). They require
+[ADR 0015](adr/0015-membership-grant-provenance.md), which remains Proposed pending Thomas's
+approval. In the target, each source adds/retires only its own grants; the projection chooses
+one role without capability union. OIDC reevaluation on connection A is not evidence about
+an explicitly linked connection B, so upstream removal on B is observed only at B's next
+validated login, SCIM update, or administrative disable/change. Global SCIM deactivation is
+the defined exception: all external grants for that inactive person retire. The 30-second
+authority-cache bound applies after committed grant/projection changes; no upstream
+instantaneous-revocation guarantee is implied.
 
 **Accounts are never linked automatically.** kaneo ships better-auth with
 `account.accountLinking: { enabled: true, trustedProviders: ["github","google","discord",
