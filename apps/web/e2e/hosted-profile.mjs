@@ -4,13 +4,17 @@ import { createHash } from "node:crypto";
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { rewriteHostedProfileOrigin } from "./hosted-profile-validation.mjs";
+import {
+  parseCandidateSha,
+  rewriteHostedProfileOrigin,
+} from "./hosted-profile-validation.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const webDir = resolve(scriptDir, "..");
 const repoDir = resolve(webDir, "../..");
 const outputArg = process.argv.find((arg) => arg.startsWith("--output="));
 const listOnly = process.argv.includes("--list-only");
+const candidateHeadSha = parseCandidateSha(process.argv);
 if (!outputArg?.slice("--output=".length)) {
   throw new Error(
     "Usage: node e2e/hosted-profile.mjs --output=<unique-directory>",
@@ -45,13 +49,6 @@ async function sha256(path) {
   return createHash("sha256")
     .update(await readFile(path))
     .digest("hex");
-}
-
-async function pullRequestHeadSha() {
-  const eventPath = process.env.GITHUB_EVENT_PATH;
-  if (!eventPath) return null;
-  const event = JSON.parse(await readFile(eventPath, "utf8"));
-  return event.pull_request?.head?.sha ?? null;
 }
 
 async function collectBuildEvidence() {
@@ -233,8 +230,8 @@ async function beginHostedProfile(
 test("Hosted G11 attribution profile: list, LCP, detail, palette, and board", async ({ browser }) => {
   test.setTimeout(600_000);
   const provenance = {
-    sourceSha: "__SOURCE_SHA__",
-    candidateHeadSha: "__CANDIDATE_HEAD_SHA__",
+    sourceSha: __SOURCE_SHA_JSON__,
+    candidateHeadSha: __CANDIDATE_HEAD_SHA_JSON__,
     canonicalBenchmarkSha256: "__CANONICAL_BENCH_SHA256__",
     canonicalPreviewPort: 4178,
     diagnosticPreviewPort: 4179,
@@ -428,11 +425,8 @@ try {
   const extra = generatedSource
     .replace("__HOSTED_PROFILE_OUTPUT__", JSON.stringify(outputDir))
     .replace("__PLAYWRIGHT_VERSION__", playwrightPackage.version)
-    .replace("__SOURCE_SHA__", sourceSha)
-    .replace(
-      "__CANDIDATE_HEAD_SHA__",
-      JSON.stringify(await pullRequestHeadSha()),
-    )
+    .replace("__SOURCE_SHA_JSON__", JSON.stringify(sourceSha))
+    .replace("__CANDIDATE_HEAD_SHA_JSON__", JSON.stringify(candidateHeadSha))
     .replace("__CANONICAL_BENCH_SHA256__", canonicalBenchmarkSha256)
     .replace("__PNPM_VERSION__", pnpmVersion)
     .replace("__BUILD_EVIDENCE__", buildProvenance);

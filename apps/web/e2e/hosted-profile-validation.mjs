@@ -73,3 +73,16 @@ export function rewriteHostedProfileOrigin(source) {
   }
   return rewritten;
 }
+
+export function parseCandidateSha(args) {
+  const arg = args.find((value) => value.startsWith("--candidate-sha="));
+  if (!arg) return null;
+  const value = arg.slice("--candidate-sha=".length);
+  if (value === "") return null;
+  if (!/^[0-9a-f]{40}$/i.test(value)) {
+    throw new Error(
+      "--candidate-sha must be an empty value or a 40-character Git SHA",
+    );
+  }
+  return value;
+}

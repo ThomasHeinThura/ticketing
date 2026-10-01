@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assertHostedCaptureComplete,
+  parseCandidateSha,
   rewriteHostedProfileOrigin,
 } from "./hosted-profile-validation.mjs";
 
@@ -94,5 +95,20 @@ test("fails closed if the temporary benchmark origin count changes", () => {
   assert.throws(
     () => rewriteHostedProfileOrigin("http://127.0.0.1:4178"),
     /Expected exactly 3 canonical preview origins/,
+  );
+});
+
+test("parses optional candidate SHA values for provenance", () => {
+  assert.equal(parseCandidateSha([]), null);
+  assert.equal(parseCandidateSha(["--candidate-sha="]), null);
+  assert.equal(
+    parseCandidateSha([
+      "--candidate-sha=0123456789abcdef0123456789abcdef01234567",
+    ]),
+    "0123456789abcdef0123456789abcdef01234567",
+  );
+  assert.throws(
+    () => parseCandidateSha(["--candidate-sha=not-a-sha"]),
+    /40-character Git SHA/,
   );
 });
