@@ -52,6 +52,42 @@ async function openRawClient(): Promise<Client> {
   return client;
 }
 
+async function backendPid(client: Client): Promise<number> {
+  const result = await client.query<{ pid: number }>(
+    "SELECT pg_backend_pid() AS pid",
+  );
+  const pid = result.rows[0]?.pid;
+  if (pid === undefined)
+    throw new Error("Could not read PostgreSQL backend PID");
+  return pid;
+}
+
+async function waitForBackendLockWait(
+  observer: Client,
+  waitingPid: number,
+  blockingPid: number,
+): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
+    await observer.query("SELECT pg_stat_clear_snapshot()");
+    const result = await observer.query<{ waiting: boolean }>(
+      `
+        SELECT EXISTS (
+          SELECT 1
+          FROM pg_stat_activity
+          WHERE pid = $1
+            AND wait_event_type = 'Lock'
+            AND $2 = ANY(pg_blocking_pids(pid))
+        ) AS waiting
+      `,
+      [waitingPid, blockingPid],
+    );
+    if (result.rows[0]?.waiting === true) return;
+    await sleep(25);
+  }
+  throw new Error("Timed out waiting for the expected PostgreSQL lock wait");
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -197,8 +233,11 @@ describe("issue #295 -- runWithParentWriteDeadlockRetry against a REAL cross-tri
 
     const t1Client = await openRawClient();
     const t2Client = await openRawClient();
+    const observer = await openRawClient();
     const t1Db = drizzle(t1Client, { schema });
     const t2Db = drizzle(t2Client, { schema });
+    const t1Pid = await backendPid(t1Client);
+    const t2Pid = await backendPid(t2Client);
 
     const t1ClaimedKey = deferred();
     const t2LockedRoot = deferred();
@@ -256,10 +295,10 @@ describe("issue #295 -- runWithParentWriteDeadlockRetry against a REAL cross-tri
 
         if (t2Attempts === 1) {
           // Wait for T1 to actually hold the key claim, then give T1's own reparent
-          // time to reach Postgres and start waiting on root -- only needed to
-          // construct the FIRST attempt's race; a retry has nothing left to wait for.
+          // to reach Postgres and start waiting on root. Observe the real lock wait
+          // rather than relying on scheduler timing; only needed on the FIRST attempt.
           await t1ClaimedKey.promise;
-          await sleep(300);
+          await waitForBackendLockWait(observer, t1Pid, t2Pid);
           // Genuine collision: same key, different work_item_id.
           await t2Db.insert(schema.workItemTable).values({
             projectId: fixture.project.id,
@@ -302,6 +341,7 @@ describe("issue #295 -- runWithParentWriteDeadlockRetry against a REAL cross-tri
     } finally {
       await t1Client.end();
       await t2Client.end();
+      await observer.end();
     }
 
     // Final state: both reparents actually landed.
@@ -339,10 +379,14 @@ describe("issue #295 -- runWithParentWriteDeadlockRetry against a REAL cross-tri
 
     const t1Client = await openRawClient();
     const t2Client = await openRawClient();
+    const observer = await openRawClient();
     const t1Db = drizzle(t1Client, { schema });
     const t2Db = drizzle(t2Client, { schema });
+    const t1Pid = await backendPid(t1Client);
+    const t2Pid = await backendPid(t2Client);
 
     const t1ClaimedKey = deferred();
+    const t2LockedRoot = deferred();
 
     async function runT1Once(): Promise<void> {
       await t1Client.query("BEGIN");
@@ -358,6 +402,7 @@ describe("issue #295 -- runWithParentWriteDeadlockRetry against a REAL cross-tri
         updatedAt: new Date(),
       });
       t1ClaimedKey.resolve();
+      await t2LockedRoot.promise;
       await t1Db
         .update(schema.workItemTable)
         .set({ parentId: root.id })
@@ -371,8 +416,9 @@ describe("issue #295 -- runWithParentWriteDeadlockRetry against a REAL cross-tri
         .update(schema.workItemTable)
         .set({ parentId: root.id })
         .where(eq(schema.workItemTable.id, itemA.id));
+      t2LockedRoot.resolve();
       await t1ClaimedKey.promise;
-      await sleep(300);
+      await waitForBackendLockWait(observer, t1Pid, t2Pid);
       await t2Db.insert(schema.workItemTable).values({
         projectId: fixture.project.id,
         workspaceId: fixture.workspace.id,
@@ -395,12 +441,19 @@ describe("issue #295 -- runWithParentWriteDeadlockRetry against a REAL cross-tri
       );
 
       expect(rejected).toHaveLength(1);
-      expect(isPostgresDeadlockError(rejected[0]?.reason)).toBe(true);
+      const deadlockError = rejected[0]?.reason as
+        | { code?: unknown; name?: unknown }
+        | undefined;
+      expect(
+        isPostgresDeadlockError(rejected[0]?.reason),
+        `Expected PostgreSQL 40P01; received name=${String(deadlockError?.name)} code=${String(deadlockError?.code)}`,
+      ).toBe(true);
     } finally {
       await t1Client.query("ROLLBACK").catch(() => {});
       await t2Client.query("ROLLBACK").catch(() => {});
       await t1Client.end();
       await t2Client.end();
+      await observer.end();
     }
   }, 20_000);
 });

@@ -374,9 +374,10 @@ Results recorded per release so regression is visible.
 idempotent within a stable TaskDesk fixture namespace: it may create or reuse its own
 fixture rows, but never truncates, deletes, resets, or overwrites existing rows. A conflicting
 fixture identifier fails with an actionable error. The CLI does not run migrations; the
-database must already have the current schema. Integration coverage uses a fresh disposable
-PostgreSQL database and verifies profile counts, a repeated run, and preservation of an
-unrelated row. The command does not create login credentials or grant memberships/roles.
+database must already have the current schema. The fast API suite covers the CLI's database
+configuration preflight without connecting to PostgreSQL. The disposable PostgreSQL
+integration suite verifies profile counts, a repeated run, and preservation of an unrelated
+row. The command does not create login credentials or grant memberships/roles.
 The CLI verifies the complete fixture-owned default type/template sets and each project's
 default columns and concrete states against the existing code defaults, including state
 order, default selection, and template references. It retains database-generated row IDs;
@@ -400,8 +401,8 @@ choices exercise the named cases without introducing identity or authorization b
 ## Running
 
 ```bash
-pnpm test                  # unit + component
-pnpm test:integration      # Testcontainers, incl. lifecycle/
+pnpm test                  # unit + component, including seed CLI preflight
+pnpm test:integration      # Testcontainers, incl. lifecycle/ and additive seed profiles
 pnpm test:permissions      # route coverage + matrix + tenant isolation + portal router
 pnpm test:contract         # OpenAPI spec validity + breaking-change diff
 pnpm test:mcp              # tool-to-route parity + idempotency + capability clamping

@@ -19,6 +19,10 @@ import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+import {
+  observesLockBlocker,
+  waitForLockBlocker,
+} from "./helpers/race-soft-delete";
 
 const publishEventMock = vi.hoisted(() => vi.fn());
 
@@ -466,46 +470,37 @@ describe("API integration: work item update (#23 second slice)", () => {
       }
 
       publishEventMock.mockReset();
+      // Deliberately establish an initial false activity snapshot before the
+      // liveness request starts. The following polling helper must refresh that
+      // snapshot each time to observe the request once it waits on FOR SHARE.
+      expect(await observesLockBlocker(raw, lockOwnerPid)).toBe(false);
       let livenessError: unknown;
+      let livenessSettled = false;
       const livenessCheck = db
         .transaction((tx) => assertProjectStillLive(tx, project.id))
         .then(
-          () => undefined,
+          () => {
+            livenessSettled = true;
+          },
           (error: unknown) => {
             livenessError = error;
+            livenessSettled = true;
           },
         );
 
       // Confirm the liveness check is blocked specifically on its `FOR SHARE` project check
       // before committing the delete. A plain SELECT would pass while this UPDATE is
       // uncommitted, allowing the work-item write to race through.
-      let waitingOnProjectShare = false;
-      const deadline = Date.now() + 5_000;
-      while (Date.now() < deadline && !waitingOnProjectShare) {
-        const result = await raw.query<{ waiting: boolean }>(
-          `
-          SELECT EXISTS (
-            SELECT 1
-            FROM pg_stat_activity
-            WHERE datname = current_database()
-              AND pid <> pg_backend_pid()
-              AND state = 'active'
-              AND wait_event_type = 'Lock'
-              AND $1 = ANY(pg_blocking_pids(pid))
-          ) AS waiting
-        `,
-          [lockOwnerPid],
-        );
-        waitingOnProjectShare = result.rows[0]?.waiting === true;
-        if (!waitingOnProjectShare) {
-          await new Promise((resolve) => setTimeout(resolve, 25));
-        }
-      }
+      const waitingOnProjectShare = await waitForLockBlocker(
+        raw,
+        lockOwnerPid,
+        () => livenessSettled,
+      );
+      expect(waitingOnProjectShare).toBe(true);
 
       await raw.query("COMMIT");
       transactionOpen = false;
       await livenessCheck;
-      expect(waitingOnProjectShare).toBe(true);
       expect(livenessError).toBeInstanceOf(HTTPException);
       expect((livenessError as HTTPException).status).toBe(404);
 
