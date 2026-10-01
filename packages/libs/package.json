@@ -15,7 +15,7 @@
 		"@types/react": "^19.2.18",
 		"@types/react-dom": "^19.2.4",
 		"@taskdesk/api": "workspace:*",
-		"hono": "^4.13.0",
+		"hono": "^4.13.7",
 		"react": "^19.2.8",
 		"@taskdesk/typescript-config": "workspace:*",
 		"typescript": "^7.0.2",
