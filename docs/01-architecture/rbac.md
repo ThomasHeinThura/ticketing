@@ -700,7 +700,8 @@ the first day.
 | --- | --- |
 | Creating or changing an identity connection (OIDC) or a non-OIDC auth plugin | `POST /api/instance/identity-connections`, `PATCH /api/instance/identity-connections/{id}`; `POST/PATCH /api/instance/plugins/{id}` for `auth.*` |
 | Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `…/scim/rotate-token`, `…/scim/revoke-token` |
-| An OIDC or SCIM group→role mapping that grants staff access, changes role/scope, exceeds `member`, or changes reach — mapping changes are elevated and audited; forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-20`–`IP-28`) | OIDC mapping editor and `PATCH /api/instance/identity-connections/{id}/scim` |
+| OIDC mapping administration — every create, edit, enable and disable is elevated, session-only and audited; forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-34`) | `POST /api/instance/identity-connections/{id}/oidc-group-mappings`, `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` |
+| SCIM group→role mapping changes that grant staff access, exceed `member`, change role/scope/reach, or would grant instance authority are elevated and audited; forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-20`–`IP-22`) | `PATCH /api/instance/identity-connections/{id}/scim` |
 | Granting `instance:admin` | `POST /api/instance/users/{id}/grant-admin` |
 | Resetting another person's second factor | Planned `POST /api/instance/users/{id}/reset-mfa` — with a mandatory verification note; unavailable until the factor adapter exists |
 | Creating a workspace **service** API key | `POST /api/workspaces/{id}/api-keys` — bounded by the creator's authority |

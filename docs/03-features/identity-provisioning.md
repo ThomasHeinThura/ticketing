@@ -88,8 +88,18 @@ is required and has not been granted. These are target contracts, not implemente
   `sees_all`; add anyone to another organisation; grant arbitrary capabilities; touch agent
   routes or God Mode; create API keys, MCP keys, webhooks, automations or integrations.
 - `IP-3` An `agent` connection may create, update and deactivate **staff-side** people,
-  create or update **permitted** workspace memberships, and apply only **approved
-  staff-side roles** up to the connection's configured `max_role_rank`. It can never grant
+  create or update workspace memberships, and apply only **approved staff-side roles** up
+  to the connection's configured `max_role_rank`. A group mapping may target only an
+  existing workspace with `deleted_at IS NULL` whose `organisation_id` names the unique
+  active, non-deleted `organisation.is_internal = true`. The instance administrator
+  explicitly selects this workspace in God Mode. On mapping create, target change, enable,
+  and grant reconciliation, the server resolves and rechecks the workspace and owning
+  organisation, current staff role, rank and capabilities under the connection ceiling;
+  missing/deleted/customer-owned workspaces and an inactive/deleted internal organisation
+  are refused. An agent connection has `organisation_id = NULL`; its `portal_scope` and the
+  validated mapping provide the scope. IdP claims, email and other provider data never
+  select a workspace. Admin selection configures one target; it grants no reach by itself
+  and is not a provider-controlled connection allowlist. It can never grant
   `instance:admin`, grant `sees_all`, grant a role above `max_role_rank`, or let a group
   *name* alone create capabilities. Rank guardrails and elevated-action rules in
   [RBAC](../01-architecture/rbac.md) apply to what a connection is configured to grant.
@@ -102,9 +112,12 @@ is required and has not been granted. These are target contracts, not implemente
   their own issuer, SCIM token, role mapping, integration credentials, staff access or
   cross-organisation access. Customer self-service IdP setup is a later feature with its own
   spec, security review, validation workflow and approval model.
-- `IP-6` Creating or changing a connection, rotating or revoking a SCIM token, and any
-  group mapping that creates staff access, grants above `member`, changes reach, or grants
-  instance authority are **elevated, audited** actions
+- `IP-6` Creating or changing a connection and rotating or revoking a SCIM token are
+  **elevated, audited** actions. Every OIDC group-mapping create, edit, enable or disable
+  is also elevated and audited, using the fixed route policies and operation-bound step-up
+  in [api-design.md](../01-architecture/api-design.md#oidc-group-mapping-administration).
+  SCIM group-mapping changes remain elevated when they create staff access, grant above
+  `member`, change reach, or would grant instance authority
   ([rbac.md](../01-architecture/rbac.md#elevated-and-audited-actions--the-single-list)).
   Mapping to `instance:admin` or `sees_all` is not elevated — it is **impossible**: the
   mapping editor does not offer it and the server refuses it.
@@ -298,8 +311,11 @@ protocol code; only the credential check reuses the platform.
 
 - `IP-20` SCIM `/Groups` is supported **only for allowlisted group → role mapping**. A
   `scim_group_mapping` row names one external group and **one existing TaskDesk role**
-  inside the connection's organisation (customer) or an approved workspace (agent).
-  Unmapped groups are stored as opaque names and grant nothing.
+  inside the connection's organisation (customer) or a workspace eligible under `IP-3`
+  (agent). The instance administrator selects the agent workspace; each create, target
+  change, enable and reconciliation revalidates that it is a non-deleted workspace owned
+  by the unique active, non-deleted internal organisation. Unmapped groups are stored as
+  opaque names and grant nothing.
 - `IP-21` Customer groups map only to customer roles; agent groups map only to approved
   staff roles at or below `max_role_rank`. No group can grant `instance:admin` or
   `sees_all`; no group can create roles or capabilities; no group can add anyone to another
@@ -320,12 +336,15 @@ protocol code; only the credential check reuses the platform.
 - `IP-28` **OIDC group grants are re-derived on every validated login through that
   connection.** After `IP-7`/`IP-26` token validation and `IP-27` admission, resolve the
   immutable `(identity_connection_id, subject)` to one `external_identity`. Interpret only
-  a complete, well-formed ID-token `groups` array of object ids from that same validated
-  connection. Match each id only to an enabled `oidc_group_mapping` owned by that connection,
-  in its fixed portal/organisation and approved scope, and within its current `max_role_rank`.
+  a complete, well-formed ID-token `groups` array of Entra object-id UUIDs from that same
+  validated connection. The editor and login reconciler use one canonicalizer that validates
+  and stores/matches the lower-case, hyphenated UUID form. Match each id only to an enabled
+  `oidc_group_mapping` owned by that connection, in its fixed portal/organisation and scope
+  eligible under `IP-3`, and within its current `max_role_rank`.
   Names are display snapshots; email-like claims and group names never grant access. In one
   transaction, replace only this identity's active OIDC group grants: add newly justified
-  grants; retire missing, disabled, or changed grants; refresh the permitted JIT default
+  grants; retire missing, disabled, changed, or no-longer-eligible mapping grants (using
+  the existing `mapping_changed` reason); refresh the permitted JIT default
   grant; recompute affected effective memberships; and write safe provisioning/audit
   evidence. Publish authority-cache invalidation after commit. Issue the new session only
   after commit; failure issues no session and exposes no partial grant set. This login does
@@ -355,6 +374,28 @@ protocol code; only the credential check reuses the platform.
   memberships, never token claims. Global SCIM `active=false` is the distinct lifecycle
   exception in `IP-15` and retires all external grants for the inactive person.
 
+- `IP-34` God Mode OIDC group mappings use the connection-scoped GET/POST/PATCH contract
+  in [api-design.md](../01-architecture/api-design.md#oidc-group-mapping-administration).
+  The collection read and both writes require `instance:admin` at instance scope; the read
+  is explicitly elevation-exempt and each write is elevated, session-only and bound to
+  its own PA-15 operation. All bodies are strict. Customer organisation scope resolves
+  from the persisted connection. Agent scope is its `portal_scope = 'agent'` plus the
+  instance-admin-selected, server-validated workspace mapping: an existing workspace with
+  `deleted_at IS NULL` owned by the unique active, non-deleted
+  `organisation.is_internal = true`. The server revalidates it on create, target change,
+  enable and reconciliation. An agent connection keeps `organisation_id = NULL`; provider
+  data never selects workspace scope. The role must already exist on the correct side and
+  satisfy the connection's current `max_role_rank` and
+  administrator authority guardrails. No request can grant `instance:admin`, `sees_all`,
+  arbitrary capabilities, or cross-scope reach. Every mapping mutation compares and
+  advances that connection's `config_version` atomically. Disable, role change or target
+  change immediately retires only the changed mapping's active OIDC grants and recomputes
+  affected effective memberships; re-enable waits for a later validated login. The first
+  release has no mapping DELETE, bulk replacement or claim/SCIM write path. Missing
+  connections and missing or foreign mapping ids are indistinguishable `404`s. Details of
+  the strict DTO, version conflict, proof binding, lock order and error contract are
+  specified in the linked API contract.
+
 ### Audit and health
 
 - `IP-24` Every configuration change, provisioning event, de-provisioning event, group
@@ -383,8 +424,8 @@ protocol code; only the credential check reuses the platform.
 | Screen | Route | Notes |
 | --- | --- | --- |
 | God Mode → Authentication (identity connections, agent scope) | `/agent/god-mode/authentication` | Existing rows; the list becomes "identity connections" |
-| Connection editor | `/agent/god-mode/authentication/{id}` | OIDC settings, JIT policy, domain bindings, OIDC object-id group mappings, **SCIM panel** (endpoint URL, token create/rotate/revoke, allowed resources and distinct SCIM mappings, last sync), Test OIDC, Test SCIM |
-| God Mode → Organisations → detail → **Identity** | `/agent/god-mode/organisations/{id}/identity` | The customer-organisation connection: enable/disable portal SSO; provider type (Entra first); organisation-bound OIDC settings; SCIM endpoint info; token create/rotate; Test OIDC; Test SCIM; provisioning status and last sync; errors without secrets; attribute mapping; group mapping; audit history; **unmissable organisation-scope and portal-scope warnings** |
+| Connection editor | `/agent/god-mode/authentication/{id}` | OIDC settings, JIT policy, domain bindings, OIDC object-id group mappings (selection/open state in URL), **SCIM panel** (endpoint URL, token create/rotate/revoke, allowed resources and distinct SCIM mappings, last sync), Test OIDC, Test SCIM |
+| God Mode → Organisations → detail → **Identity** | `/agent/god-mode/organisations/{id}/identity` | The customer-organisation connection: enable/disable portal SSO; provider type (Entra first); organisation-bound OIDC settings; SCIM endpoint info; token create/rotate; Test OIDC; Test SCIM; provisioning status and last sync; errors without secrets; attribute mapping; group mapping (selection/open state in URL); audit history; **unmissable organisation-scope and portal-scope warnings** |
 
 ## API
 
@@ -393,6 +434,9 @@ GET    /api/instance/identity-connections                         instance:admin
 POST   /api/instance/identity-connections                         instance:admin  E
 PATCH  /api/instance/identity-connections/{id}                    instance:admin  E
 DELETE /api/instance/identity-connections/{id}                    instance:admin  E  (pending action — typed name + step-up)
+GET    /api/instance/identity-connections/{id}/oidc-group-mappings instance:admin (read-only; explicit elevation exemption)
+POST   /api/instance/identity-connections/{id}/oidc-group-mappings instance:admin E (session-only; PA-15 operation-bound step-up)
+PATCH  /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId} instance:admin E (session-only; PA-15 operation-bound step-up)
 POST   /api/instance/identity-connections/{id}/test               instance:admin      (audited even unsaved)
 POST   /api/instance/identity-connections/{id}/scim               instance:admin  E  (create SCIM connection + first token)
 POST   /api/instance/identity-connections/{id}/scim/rotate-token  instance:admin  E
@@ -533,6 +577,25 @@ without partial change. Prove owner-approved reconciliation, full transaction ro
 failure, and successful backfill only after all rows are classified. Duplicate-row migration
 rejection and provenance backfill evidence are required when the schema is implemented. This
 is planned coverage only; none of these subcases is implemented or claimed as run here.
+
+The OIDC mapping editor contract adds planned subcases to these existing names only: 04
+checks same-connection ownership and masked 404 for foreign/missing mapping ids; 09 checks
+strict DTO rejection, customer/staff scope and role guards, rank/authority ceilings, and
+duplicate/stale `configVersion` conflicts; 12 checks mapping create without a grant,
+source-only disable/change retirement, re-enable waiting for validated login, direct-role
+and equal-rank tie preservation, and login/SCIM concurrency; 13 checks that mappings cannot
+mint roles, capabilities, `instance:admin` or `sees_all`; 15 checks that only complete
+validated OIDC group evidence writes grants, malformed/absent/overage claims retire only
+the selected identity's OIDC grants, and no Graph fallback or claim-driven write exists; 16
+checks cross-connection isolation; 17 checks safe `group.mapping_changed` and audit
+evidence; and 23 checks connection/mapping disable isolation. Tests 09/12 also cover required
+route-specific single-use step-up, unsupported verifier fail-closed behavior, atomic
+   version-and-proof consumption, and authority-cache invalidation. Test 12 also rejects a
+   customer-owned or deleted workspace before grant creation and proves that a workspace
+   that becomes ineligible cannot create a fresh grant at reconciliation; any prior
+   mapping-derived grant is retired source-specifically. These remain planned
+subcases under tests 04, 09, 12, 13, 15, 16, 17 and 23; the 25 test names are unchanged and
+none of this evidence is claimed implemented or run.
 
 The planned `tests/e2e/security/` negative E2E suite must cover state-changing GET,
 cookie-authenticated unsafe requests with a missing or mismatched `Origin`/`Referer`, and

@@ -147,8 +147,11 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
   create / rotate / revoke (shown once; rotation invalidates the old token at once), allowed
   resources, attribute mapping and SCIM group mappings. Every create/edit/enable validates
   the connection portal and persisted organisation, target scope ownership, role side/rank,
-  and forbidden capabilities. A mapping change to role or scope is elevated and audited;
-  disabling/changing a mapping retires only its grants and invalidates authority after
+  and forbidden capabilities. Every OIDC mapping create/edit/enable/disable is elevated,
+  session-only and audited; its separate connection-scoped API uses a five-minute,
+  single-use PA-15 operation binding. OIDC mapping selection/open state is represented in
+  the screen URL. SCIM mapping elevation continues to follow IP-6. Disabling/changing an
+  OIDC mapping retires only its grants and invalidates authority after
   commit. Re-enabling does not revive historical grants before a fresh validated OIDC login
   or SCIM update. Neither source can grant `instance:admin` or `sees_all`. Show the lifecycle
   policy, last sync, last failure without secrets, provisioning event log, and overage warning
@@ -389,6 +392,9 @@ GET    /api/instance/identity-connections                         instance:admin
 POST   /api/instance/identity-connections                         instance:admin  E
 PATCH  /api/instance/identity-connections/{id}                    instance:admin  E
 DELETE /api/instance/identity-connections/{id}                    instance:admin  E  (pending action — typed name + step-up)
+GET    /api/instance/identity-connections/{id}/oidc-group-mappings instance:admin (read-only; explicit elevation exemption)
+POST   /api/instance/identity-connections/{id}/oidc-group-mappings instance:admin E (session-only; PA-15 operation-bound step-up)
+PATCH  /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId} instance:admin E (session-only; PA-15 operation-bound step-up)
 POST   /api/instance/identity-connections/{id}/test               instance:admin      (audited even unsaved)
 POST   /api/instance/identity-connections/{id}/scim               instance:admin  E
 PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E*  (*E when a mapping grants staff access, a role above member, or reach — IP-6)

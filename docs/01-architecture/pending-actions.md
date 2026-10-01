@@ -171,11 +171,12 @@ thing that is hashed or executed.
   registered operation.** `step_up_confirmation` in [data-model.md](data-model.md) owns a
   session/person-bound challenge and confirmation. `POST /api/me/step-up/challenges`
   (`authenticated + self`, session-only) creates a five-minute challenge for either the
-  current requester's pending action or the first registered operation,
-  `metrics_token_rotate`. Pending-action binding uses its existing `pending_action.id` and
-  `payload_hash`; operation binding uses the exact fixed route key, operation key, expected
-  singleton version and server-computed canonical request-body hash. The client cannot
-  choose a route or submit a hash. The response contains an opaque challenge id and a
+  current requester's pending action or an explicitly registered operation. The operation
+  allowlist is `metrics_token_rotate`, `oidc_group_mapping_create`, and
+  `oidc_group_mapping_update`. Pending-action binding uses its existing `pending_action.id`
+  and `payload_hash`; operation binding uses the exact fixed route key, operation key,
+  expected resource version and server-computed canonical request-binding hash. The client
+  cannot choose a route or submit a hash. The response contains an opaque challenge id and a
   one-time 32-byte random nonce encoded as 43-character unpadded base64url; only its SHA-256
   digest is stored.
 
@@ -194,19 +195,37 @@ thing that is hashed or executed.
   ```json
   { "kind": "pending_action", "pendingActionId": "..." }
   { "kind": "operation", "operation": "metrics_token_rotate", "version": 7 }
+  { "kind": "operation", "operation": "oidc_group_mapping_create",
+    "connectionId": "...", "request": { "configVersion": 7, "externalGroupId": "...", "roleId": "...", "scope": "workspace", "scopeId": "..." } }
+  { "kind": "operation", "operation": "oidc_group_mapping_update",
+    "connectionId": "...", "mappingId": "...",
+    "request": { "configVersion": 7, "enabled": false } }
   ```
 
-  For an operation, the server requires current `instance:admin` and a matching current
-  `observability_config_version`, then hashes the canonical body bytes defined in
-  [api-design.md](api-design.md#observability-administration-and-step-up). For a pending
-  action, it verifies current requester ownership and pending state and takes the existing
-  payload hash itself. The no-store response is `{challengeId, challengeNonce, expiresAt,
+  For `metrics_token_rotate`, the server requires current `instance:admin` and a matching
+  current `observability_config_version`, then hashes the canonical body bytes defined in
+  [api-design.md](api-design.md#observability-administration-and-step-up). For either OIDC
+  mapping operation, it requires current `instance:admin`, session-only authentication, the
+  exact allowlisted route and a connection/mapping pair that resolves to that route; it
+  checks the current `identity_connection.config_version` against `request.configVersion`
+  (stored as `expected_version`) and validates the strict request against the persisted
+  connection and mapping before issuing a challenge. The canonical request-binding hash
+  covers the fixed route key, the
+  path `connectionId` and (for update) `mappingId`, and the server-canonical serialization
+  of the complete validated request body. The client supplies neither a route key nor a
+  hash. For a pending action, it verifies current requester ownership and pending state and
+  takes the existing payload hash itself. The no-store response is `{challengeId, challengeNonce, expiresAt,
   reauthenticationMethods}`; the nonce is 32 random bytes as unpadded 43-character
   base64url. The step-up request repeats the binding to prevent completing a different
   challenge target:
 
   ```json
   { "kind": "operation", "operation": "metrics_token_rotate", "version": 7,
+    "challengeId": "...", "challengeNonce": "...",
+    "proof": { "method": "password", "value": "..." } }
+  { "kind": "operation", "operation": "oidc_group_mapping_update",
+    "connectionId": "...", "mappingId": "...",
+    "request": { "configVersion": 7, "enabled": false },
     "challengeId": "...", "challengeNonce": "...",
     "proof": { "method": "password", "value": "..." } }
   ```
@@ -217,9 +236,35 @@ thing that is hashed or executed.
   stores a server-verifiable receipt and accepts no client claim of success. The mint
   response is the no-store `{stepUpToken, expiresAt}`; no proof is logged or persisted.
 
-  The first operation binding is only the exact `POST
-  /api/instance/observability/metrics-token/rotate` with `{version}`. Its execution uses the
-  `X-TaskDesk-Step-Up-Token` header and recomputes the canonical request hash server-side.
+  The operation bindings are only these exact routes and request contracts:
+
+  | Operation key | Route | Version source |
+  | --- | --- | --- |
+  | `metrics_token_rotate` | `POST /api/instance/observability/metrics-token/rotate` | `observability_config_version` |
+  | `oidc_group_mapping_create` | `POST /api/instance/identity-connections/{id}/oidc-group-mappings` | `identity_connection.config_version` |
+  | `oidc_group_mapping_update` | `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` | `identity_connection.config_version` |
+
+  OIDC mapping challenge and completion requests carry the exact connection id, mapping id
+  where applicable, and strict operation body; the service re-resolves them and checks that
+  the mapping belongs to the named connection. The step-up request repeats the binding.
+  Each protected route uses `X-TaskDesk-Step-Up-Token` and recomputes the request-binding
+  hash from the loaded path parameters and server-validated canonical body. In one database
+  transaction, re-read the current active person and session, re-evaluate the exact
+  `instance:admin` route policy, lock the confirmation row found by token digest, compare its
+  fixed-length hash and exact route/body/version/session/person binding, mark it consumed
+  conditionally, compare-and-set the resource version and perform the protected mutation.
+  A stale version or failed validation rolls back token consumption and the mutation; the
+  retry needs a new challenge bound to the current version and request. The mutation's
+  existing audit-failure exception still follows AU-14.
+
+  For metrics rotation, the route/body canonicalization remains as specified in
+  [api-design.md](api-design.md#observability-administration-and-step-up). For OIDC mapping
+  writes, the canonical request envelope and field ordering are specified in
+  [api-design.md](api-design.md#oidc-group-mapping-administration). No operation may reuse
+  another operation's proof, and no session-wide freshness window is introduced.
+
+  The metrics operation uses `X-TaskDesk-Step-Up-Token` and recomputes the canonical
+  request hash server-side.
   In one database transaction, re-read the current active person and session, re-evaluate
   the exact `instance:admin` route policy, lock the confirmation row found by token digest,
   compare its fixed-length hash and exact route/body/version/session/person binding, mark it
