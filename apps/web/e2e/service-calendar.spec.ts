@@ -678,7 +678,9 @@ test("calendar list and editor expose loading, empty, error, and partial states"
 
   fixture.editorRequestFailure = false;
   fixture.previewRequestFailure = true;
-  await page.goto(`/agent/settings/calendars/${calendarId}`);
+  // Use a distinct year so the earlier successful preview cannot be reused from
+  // TanStack Query's cache before the failure fixture receives a request.
+  await page.goto(`/agent/settings/calendars/${calendarId}?year=2027`);
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
     "Support coverage",
   );
