@@ -48,6 +48,7 @@ const apiRequire = createRequire(
   new URL("../../apps/api/package.json", import.meta.url),
 );
 const WebSocket = apiRequire("ws") as TestWebSocketConstructor;
+const heldHttpStaticRoots = new Set<string>();
 
 function listening(server: ReturnType<typeof createNodeServer>["server"]) {
   return new Promise<void>((resolve, reject) => {
@@ -198,7 +199,10 @@ function openUnresponsiveWebSocket(port: number, cookie: string) {
 }
 
 function createHeldHttpApp() {
-  const { app } = createApp();
+  // Keep the SPA catch-all from a built web app from intercepting this held route.
+  const staticRoot = mkdtempSync(join(tmpdir(), "taskdesk-held-http-static-"));
+  heldHttpStaticRoots.add(staticRoot);
+  const { app } = createApp({ staticRoot });
   const releaseResponse = deferred<void>();
   const responseStarted = deferred<void>();
   app.get("/__shutdown/hold", () => {
@@ -231,6 +235,10 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
   afterEach(async () => {
     await closeServer?.();
     closeServer = undefined;
+    for (const staticRoot of heldHttpStaticRoots) {
+      rmSync(staticRoot, { recursive: true, force: true });
+      heldHttpStaticRoots.delete(staticRoot);
+    }
     await shutdownWebSocketAdapter();
     vi.restoreAllMocks();
     if (originalAgentUrl === undefined) {
