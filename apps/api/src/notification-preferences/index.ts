@@ -4,6 +4,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { notificationPreferenceSchema } from "./response";
 import {
   updatePreferencesBody,
@@ -92,15 +93,16 @@ const deleteWorkspaceRuleRoute = createRoute({
 });
 
 const notificationPreferences = apiRouter()
-  .openapi(getPreferencesRoute, async (c) =>
-    c.json(
-      await getNotificationPreferences(
-        c.get("userId"),
-        c.get("userEmail") || null,
-      ),
-      200,
-    ),
-  )
+  .openapi(getPreferencesRoute, async (c) => {
+    const preferences = await getNotificationPreferences(
+      c.get("userId"),
+      c.get("userEmail") || null,
+    );
+    // The service reads only rows keyed by the authenticated caller. Mark the
+    // comparison after that read succeeds so handler failures remain unknown.
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.json(preferences, 200);
+  })
   .openapi(updatePreferencesRoute, async (c) =>
     c.json(
       await updateNotificationPreferences(
