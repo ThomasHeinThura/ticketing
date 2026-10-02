@@ -28,7 +28,7 @@ export function assertHostedCaptureComplete(payload, path) {
     Array.isArray(deltas) &&
     deltas.length === samples.length &&
     samples.every((sample) => nodeIds.has(sample)) &&
-    deltas.every((delta) => Number.isFinite(delta));
+    deltas.every((delta) => Number.isFinite(delta) && delta >= 0);
   const validProfileTiming =
     Number.isFinite(profile?.startTime) &&
     Number.isFinite(profile?.endTime) &&
@@ -48,6 +48,10 @@ export function assertHostedCaptureComplete(payload, path) {
         Number.isFinite(timestamp) &&
         timestamp >= profile.startTime &&
         timestamp <= profile.endTime,
+    ) &&
+    reconstructedSampleTimes.every(
+      (timestamp, index) =>
+        index === 0 || timestamp >= reconstructedSampleTimes[index - 1],
     );
   const timelineEvents = payload.traceEvents;
   const hasTimelineData =

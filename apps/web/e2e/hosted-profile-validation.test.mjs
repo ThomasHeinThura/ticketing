@@ -31,7 +31,34 @@ test("accepts structurally consistent CPU and timeline capture", () => {
   );
 });
 
-test("accepts signed deltas that reconstruct out-of-order in-range samples", () => {
+test("rejects negative CPU time deltas", () => {
+  const payload = validPayload();
+  payload.cpuProfile.startTime = 100;
+  payload.cpuProfile.endTime = 500;
+  payload.cpuProfile.samples = [1, 1, 1];
+  payload.cpuProfile.timeDeltas = [200, -1, 200];
+  payload.counts.cpuSamples = 3;
+  payload.counts.timeDeltas = 3;
+  assert.throws(
+    () => assertHostedCaptureComplete(payload, "negative-delta-profile.json"),
+    /Incomplete or malformed hosted profile/,
+  );
+});
+
+test("accepts equal reconstructed timestamps when a delta is zero", () => {
+  const payload = validPayload();
+  payload.cpuProfile.startTime = 100;
+  payload.cpuProfile.endTime = 300;
+  payload.cpuProfile.samples = [1, 1, 1];
+  payload.cpuProfile.timeDeltas = [100, 0, 100];
+  payload.counts.cpuSamples = 3;
+  payload.counts.timeDeltas = 3;
+  assert.doesNotThrow(() =>
+    assertHostedCaptureComplete(payload, "equal-sample-times.json"),
+  );
+});
+
+test("rejects structurally decreasing reconstructed sample timestamps", () => {
   const payload = validPayload();
   payload.cpuProfile.startTime = 100;
   payload.cpuProfile.endTime = 500;
@@ -39,8 +66,9 @@ test("accepts signed deltas that reconstruct out-of-order in-range samples", () 
   payload.cpuProfile.timeDeltas = [200, -100, 200];
   payload.counts.cpuSamples = 3;
   payload.counts.timeDeltas = 3;
-  assert.doesNotThrow(() =>
-    assertHostedCaptureComplete(payload, "signed-delta-profile.json"),
+  assert.throws(
+    () => assertHostedCaptureComplete(payload, "decreasing-sample-times.json"),
+    /Incomplete or malformed hosted profile/,
   );
 });
 
