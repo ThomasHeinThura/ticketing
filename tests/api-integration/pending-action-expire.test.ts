@@ -133,6 +133,153 @@ async function waitForBlockedBy(blockerPid: number) {
 }
 
 describe("PA-8 pending-action expiry", () => {
+  it("uses the measured expiry indexes and one-shot database cutoff on the full schema", async () => {
+    await db.execute(
+      sql.raw(`
+      INSERT INTO pending_action (
+        id, requested_by_person_id, credential_type, origin, action, target_type,
+        target_ids, payload, route_key, payload_hash, payload_summary,
+        workspace_id, confirmation_required, state, expires_at, trace_id
+      )
+      SELECT
+        'plan-pa-' || n::text,
+        'plan-person',
+        'session',
+        'web',
+        'delete',
+        'work_item',
+        ARRAY['WI-plan-' || n::text],
+        '{}'::jsonb,
+        'DELETE /api/work-items/{key}',
+        repeat('a', 64),
+        '{}'::jsonb,
+        CASE WHEN n BETWEEN 100001 AND 201000 THEN 'plan-workspace' ELSE NULL END,
+        'click',
+        CASE WHEN n <= 100000 THEN 'expired' ELSE 'pending' END,
+        CASE
+          WHEN n BETWEEN 200001 AND 201000 OR n BETWEEN 301001 AND 302000
+            THEN clock_timestamp() - interval '1 day'
+          ELSE clock_timestamp() + interval '1 day'
+        END,
+        'trace-plan-' || n::text
+      FROM generate_series(1, 302000) AS rows(n)
+    `),
+    );
+    await db.execute(sql.raw("ANALYZE pending_action"));
+
+    async function candidatePlan(
+      name: string,
+      mode: "force_custom_plan" | "force_generic_plan",
+      cursor: boolean,
+      args: string,
+    ) {
+      return db.transaction(async (tx) => {
+        await tx.execute(sql.raw(`SET LOCAL plan_cache_mode = '${mode}'`));
+        const cursorPredicate = cursor
+          ? "AND (expires_at, id) > ($1::timestamptz, $2::text)"
+          : "";
+        const limitParameter = cursor ? "$3" : "$1";
+        await tx.execute(
+          sql.raw(`
+          PREPARE ${name} AS
+          SELECT id, expires_at
+          FROM pending_action
+          WHERE state = 'pending'
+            AND workspace_id IS NOT NULL
+            AND expires_at <= (SELECT clock_timestamp())
+            ${cursorPredicate}
+          ORDER BY expires_at, id
+          FOR UPDATE SKIP LOCKED
+          LIMIT ${limitParameter}
+        `),
+        );
+        const result = await tx.execute<{ "QUERY PLAN": string }>(
+          sql.raw(`
+          EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SUMMARY)
+          EXECUTE ${name}(${args})
+        `),
+        );
+        return result.rows.map((row) => row["QUERY PLAN"]).join("\n");
+      });
+    }
+
+    for (const mode of ["force_custom_plan", "force_generic_plan"] as const) {
+      const plan = await candidatePlan(
+        `pending_action_due_${mode}`,
+        mode,
+        false,
+        "100",
+      );
+      expect(plan).toContain("pending_action_expiry_scoped_idx");
+      expect(plan).toContain("InitPlan");
+      expect(plan).toContain("expires_at <=");
+      expect(plan).not.toContain("Sort");
+    }
+
+    for (const mode of ["force_custom_plan", "force_generic_plan"] as const) {
+      const plan = await candidatePlan(
+        `pending_action_cursor_${mode}`,
+        mode,
+        true,
+        "'2000-01-01T00:00:00Z', '', 100",
+      );
+      expect(plan).toContain("pending_action_expiry_scoped_idx");
+      expect(plan).toContain("InitPlan");
+      expect(plan).toContain(
+        "ROW(pending_action.expires_at, pending_action.id)",
+      );
+      expect(plan).not.toContain("Sort");
+    }
+
+    await db.execute(
+      sql.raw(`
+      UPDATE pending_action
+      SET state = 'expired'
+      WHERE id BETWEEN 'plan-pa-301001' AND 'plan-pa-302000'
+    `),
+    );
+    await db.execute(sql.raw("ANALYZE pending_action"));
+    const unsupported = await db.execute<{ "QUERY PLAN": string }>(
+      sql.raw(`
+      EXPLAIN (ANALYZE, BUFFERS, VERBOSE, SUMMARY)
+      SELECT COALESCE((
+        SELECT true
+        FROM pending_action
+        WHERE state = 'pending'
+          AND workspace_id IS NULL
+          AND expires_at <= (SELECT clock_timestamp())
+        ORDER BY expires_at
+        LIMIT 1
+      ), false)
+    `),
+    );
+    const unsupportedPlan = unsupported.rows
+      .map((row) => row["QUERY PLAN"])
+      .join("\n");
+    expect(unsupportedPlan).toContain(
+      "pending_action_expiry_unscoped_probe_idx",
+    );
+    expect(unsupportedPlan).toContain("InitPlan");
+
+    await db.execute(
+      sql.raw(`
+      UPDATE pending_action
+      SET state = 'expired'
+      WHERE id BETWEEN 'plan-pa-200001' AND 'plan-pa-201000'
+    `),
+    );
+    await db.execute(sql.raw("ANALYZE pending_action"));
+    const zeroDuePlan = await candidatePlan(
+      "pending_action_zero_due",
+      "force_generic_plan",
+      false,
+      "100",
+    );
+    expect(zeroDuePlan).toContain("pending_action_expiry_scoped_idx");
+    expect(zeroDuePlan).toContain("InitPlan");
+    expect(zeroDuePlan).not.toContain("Sort");
+  }, 60_000);
+
   it("expires due and just-due rows, leaves future and terminal rows unchanged, and is repeat-safe", async () => {
     const due = await makePendingAction(new Date(Date.now() - 60_000));
     const boundary = await makePendingAction(new Date());

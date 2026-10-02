@@ -710,6 +710,14 @@ see [runbook.md § Policy shadow summary](../05-operations/runbook.md#policy-sha
 
 Non-obvious indexes that matter:
 
+`pending_action` global expiry uses two partial indexes: `pending_action_expiry_scoped_idx` on
+`(expires_at, id)` where `state = 'pending' AND workspace_id IS NOT NULL`, for the
+workspace-scoped worker candidate scan in due-time/keyset order; and
+`pending_action_expiry_unscoped_probe_idx` on `(expires_at)` where
+`state = 'pending' AND workspace_id IS NULL`, for the worker's unsupported-scope due probe.
+The probe index keeps the no-due check bounded at larger nullable-scope volume; null-scope
+actions remain pending and are not included in the worker's selected-action cap.
+
 ```sql
 create extension if not exists pg_trgm;
 

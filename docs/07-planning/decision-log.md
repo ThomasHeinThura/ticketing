@@ -5,6 +5,39 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · #565 uses partial ordered expiry indexes and statement cutoffs
+
+**Decision:** Add `pending_action_expiry_scoped_idx` on `(expires_at, id)` for pending
+workspace-scoped actions, and `pending_action_expiry_unscoped_probe_idx` on `(expires_at)`
+for pending null-workspace diagnostic probes. The worker samples PostgreSQL wall-clock time
+once per candidate/probe statement with `(SELECT clock_timestamp())`. The null-scope probe
+uses a one-row scalar `SELECT true` ordered by `expires_at`, coalesced to `false`; PostgreSQL
+had flattened the original `EXISTS`/`ORDER BY`/`LIMIT 1` form and chose a full-table scan on
+the full application schema. A row becoming due after a candidate statement cutoff is
+eligible in a later batch/run; after candidate locks, the worker still resamples database
+time and conditionally updates the pending row in its existing transaction. Migration
+`0082_pending_action_expiry_indexes` uses normal transactional `CREATE INDEX`, which can
+block writes while the indexes build on an existing table; `CREATE INDEX CONCURRENTLY` is
+not used because migrations run transactionally.
+
+**Why:** The disposable PostgreSQL 18.6 plan probe and the full-schema PostgreSQL 18
+integration regression showed the scalar cutoff as a one-loop InitPlan and an `expires_at`
+runtime index bound for custom and generic candidate plans, including tuple-cursor
+continuation. With 100,000 future scoped rows and zero due rows, the candidate query stopped
+at the cutoff instead of reading the future tail. The high-cardinality null-scope no-due
+probe used the optional index in both the disposable plan probe and the full-schema
+integration fixture after the scalar ordered lookup preserved its indexable shape. These
+are synthetic plan observations, not a production latency budget or a physical tuple cap.
+The worker's 100-row transaction batches, 1,000 selected-eligible-row run cap, lock/cursor
+behavior, post-lock clock/CAS, and outbox/audit semantics remain the controlling contract.
+Null-scope rows remain pending and excluded from the cap pending #564's scope contract.
+
+**Authorization and status:** Thomas's standing recommended-routine-decision authorization
+covers this bounded maintenance direction. This decision is not independent review, deployment
+acceptance, #564 resolution, or P4 completion.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
 ### 2026-10-02 · CAL-16 uses server-issued bidirectional tuple cursors (#513 review remediation)
 
 **Decision:** CAL-16's paginated `GET /api/service-calendars` includes
