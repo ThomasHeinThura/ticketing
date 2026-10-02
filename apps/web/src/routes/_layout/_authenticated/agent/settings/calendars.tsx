@@ -62,6 +62,11 @@ function ServiceCalendarsRoute() {
   }
 
   const loading = isWorkspaceLoading || isLoading;
+  const resetToFirstPage = () =>
+    void navigate({
+      to: routes.serviceCalendars.path,
+      search: { cursor: undefined },
+    });
 
   return (
     <>
@@ -124,6 +129,15 @@ function ServiceCalendarsRoute() {
                 <RefreshCw aria-hidden="true" />
                 {t("list.retry")}
               </Button>
+              {cursor ? (
+                <Button
+                  className="w-fit"
+                  variant="outline"
+                  onClick={resetToFirstPage}
+                >
+                  {t("common:actions.reset")}
+                </Button>
+              ) : null}
             </AlertDescription>
           </Alert>
         ) : calendars?.data.length ? (
@@ -156,15 +170,7 @@ function ServiceCalendarsRoute() {
                   </Button>
                 ) : null}
                 {cursor ? (
-                  <Button
-                    variant="outline"
-                    onClick={() =>
-                      void navigate({
-                        to: routes.serviceCalendars.path,
-                        search: { cursor: undefined },
-                      })
-                    }
-                  >
+                  <Button variant="outline" onClick={resetToFirstPage}>
                     {t("common:actions.reset")}
                   </Button>
                 ) : null}

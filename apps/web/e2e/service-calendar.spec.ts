@@ -81,6 +81,7 @@ type CalendarPageFixture = {
   set listIsEmpty(value: boolean);
   get listRequestFailure(): boolean;
   set listRequestFailure(value: boolean);
+  get rejectedCursorRequestCount(): number;
   get paginationEnabled(): boolean;
   set paginationEnabled(value: boolean);
   get editorRequestFailure(): boolean;
@@ -105,6 +106,7 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
   let savedCalendar = { ...calendar };
   let listIsEmpty = false;
   let listRequestFailure = false;
+  let rejectedCursorRequestCount = 0;
   let paginationEnabled = false;
   let editorRequestFailure = false;
   let previewRequestFailure = false;
@@ -234,6 +236,16 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
           releaseListResponse = resolve;
         });
       }
+      const requestedCursor = url.searchParams.get("cursor");
+      if (requestedCursor === "unsupported-cursor") {
+        rejectedCursorRequestCount += 1;
+        await route.fulfill({
+          status: 400,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Invalid calendar cursor" }),
+        });
+        return;
+      }
       if (listRequestFailure) {
         await route.fulfill({
           status: 503,
@@ -241,7 +253,6 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
         });
         return;
       }
-      const requestedCursor = url.searchParams.get("cursor");
       const firstPage =
         !requestedCursor || requestedCursor === "previous-page-cursor";
       const secondPage =
@@ -382,6 +393,9 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
     set listRequestFailure(value) {
       listRequestFailure = value;
     },
+    get rejectedCursorRequestCount() {
+      return rejectedCursorRequestCount;
+    },
     get paginationEnabled() {
       return paginationEnabled;
     },
@@ -464,6 +478,31 @@ test("calendar list server cursors support Previous, deep links, and browser Bac
   await expect(page).toHaveURL(/cursor=previous-to-second/);
   await expect(
     page.getByRole("link", { name: "Second page calendar" }),
+  ).toBeVisible();
+});
+
+test("calendar list resets a rejected cursor after Retry repeats the 400", async ({
+  page,
+}) => {
+  const fixture = await setupCalendarPage(page);
+  await page.goto("/agent/settings/calendars?cursor=unsupported-cursor");
+
+  await expect(page.getByText("Calendars could not be loaded")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Reset" })).toBeVisible();
+  const initialRejectedRequestCount = fixture.rejectedCursorRequestCount;
+  expect(initialRejectedRequestCount).toBeGreaterThan(0);
+
+  await page.getByRole("button", { name: "Retry" }).click();
+  await expect
+    .poll(() => fixture.rejectedCursorRequestCount)
+    .toBeGreaterThan(initialRejectedRequestCount);
+  await expect(page).toHaveURL(/cursor=unsupported-cursor/);
+
+  await page.getByRole("button", { name: "Reset" }).click();
+  await expect(page).not.toHaveURL(/cursor=/);
+  await expect(
+    page.getByRole("link", { name: "Support coverage" }),
   ).toBeVisible();
 });
 
@@ -596,11 +635,11 @@ test("calendar creation supports keyboard input and read-only access", async ({
   ).toBeDisabled();
 });
 
-test("calendar list and editor expose loading, empty, error, and partial states", async ({
+test("calendar list and editor expose loading states and meet the G13 shift budget", async ({
   page,
 }) => {
   const fixture = await setupCalendarPage(page);
-  // G6: loading, empty, error, and partial states are all reachable in-browser.
+  // G6 loading states and G13 skeleton-to-content layout shift are reachable in-browser.
   fixture.canManageServiceCalendars = true;
   fixture.savedCalendar = { ...calendar };
   fixture.holdListResponse = true;
@@ -650,33 +689,46 @@ test("calendar list and editor expose loading, empty, error, and partial states"
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
     "Support coverage",
   );
+});
 
-  await page.goto("/agent/settings/calendars");
+test("calendar list exposes empty state and stale-cursor reset", async ({
+  page,
+}) => {
+  const fixture = await setupCalendarPage(page);
   fixture.listIsEmpty = true;
-  await page.reload();
+  await page.goto("/agent/settings/calendars");
   await expect(page.getByText("No service calendars yet")).toBeVisible();
   await page.goto("/agent/settings/calendars?cursor=stale-boundary");
   await expect(page.getByRole("button", { name: "Reset" })).toBeVisible();
   await page.getByRole("button", { name: "Reset" }).click();
   await expect(page).not.toHaveURL(/cursor=/);
+});
 
-  fixture.listIsEmpty = false;
+test("calendar list error state recovers after Retry", async ({ page }) => {
+  const fixture = await setupCalendarPage(page);
   fixture.listRequestFailure = true;
-  await page.reload();
+  await page.goto("/agent/settings/calendars");
   await expect(page.getByText("Calendars could not be loaded")).toBeVisible();
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
   fixture.listRequestFailure = false;
   await page.getByRole("button", { name: "Retry" }).click();
   await expect(page.getByText("40 h/week")).toBeVisible();
+});
 
+test("calendar editor error state links back to the calendar list", async ({
+  page,
+}) => {
+  const fixture = await setupCalendarPage(page);
   fixture.editorRequestFailure = true;
   await page.goto(`/agent/settings/calendars/${calendarId}`);
   await expect(page.getByText("Calendar could not be loaded")).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Back to calendars" }),
   ).toBeVisible();
+});
 
-  fixture.editorRequestFailure = false;
+test("calendar preview error state offers Retry", async ({ page }) => {
+  const fixture = await setupCalendarPage(page);
   fixture.previewRequestFailure = true;
   // Use a distinct year so the earlier successful preview cannot be reused from
   // TanStack Query's cache before the failure fixture receives a request.

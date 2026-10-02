@@ -126,7 +126,10 @@ repeats every year (`CAL-12`).
   non-null. A malformed, unsupported-version, or cross-workspace cursor returns `400`.
   Every page reports the exact workspace total. The list screen keeps one opaque cursor in
   its URL for Next, Previous, deep links, and browser Back. Pages are not a snapshot: rows
-  created, renamed, or deleted while paging may change subsequent pages.
+  created, renamed, or deleted while paging may change subsequent pages. If the server
+  rejects a cursor with `400`, the error state keeps Retry and, when the URL has a cursor,
+  offers the existing Reset action to clear it through registered URL navigation and load
+  the first page. This also recovers from a cursor bookmarked in a different workspace.
 - A `service_calendar.*` event must be recorded in the durable outbox in the same
   transaction as its calendar mutation (`EV-1`). Create and update now write their
   catalogue event envelopes transactionally. They do not use the post-commit in-memory
@@ -184,7 +187,8 @@ The list response follows the generic collection envelope with calendar navigati
 Each cursor is opaque, workspace-bound, direction-bound, and encodes a `(name, id)` tuple.
 Forward and backward requests both return rows in ascending `(name, id)` order. If a stale
 cursor produces an empty page, both cursors are null and the UI offers a return to the first
-page.
+page. If a cursor is rejected, the error state preserves Retry and offers Reset when a
+cursor remains in the URL; Reset clears that URL state and requests the first page.
 This operation is new relative to accepted main; there is no previously published GET
 response shape to replace in the main-to-PR OpenAPI comparison.
 
