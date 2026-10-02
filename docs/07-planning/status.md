@@ -1,5 +1,14 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## Blocked — 2026-10-02 15:29 UTC
+
+- **Isolated UAT restore rehearsal:** preliminary restore/migrate and accepted-image plus
+  signed-fallback boot passed against the same clone at schema 80. Both ran as UID 10001;
+  health and safe public status returned 200, and no internal ports were published. Receipts:
+  `/private/tmp/uat-restore-rehearsal/run-20261002t152937z-c011d8f0ebdd`. Cleanup is finishing;
+  the runner has not exited. This is not a live-UAT replacement, domain-authenticated read,
+  or point-consistent snapshot; no source-bound soak has started.
+
 ## Blocked — 2026-10-02 15:25 UTC
 
 - **Human review timing:** user direction removes early Thomas spec-read/design/H1–H6
