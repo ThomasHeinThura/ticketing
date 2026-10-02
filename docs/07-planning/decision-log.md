@@ -5,6 +5,25 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · Bulk implementation and review cadence
+
+**Decision:** implement related approved slices and known-finding fixes in coherent,
+substantial batches. Do not start a standalone review pass for small or mechanical edits or
+speculative trials. Run meaningful tests while implementation proceeds, freeze the final bulk
+candidate SHA, then perform the applicable independent review panel and required GPT-6 Sol
+security review before protected merge. Fix review findings together and review the resulting
+delta at its required tier; do not add automatic extra rounds for comfort. Tiny urgent fixes
+may join the next batch unless the user explicitly requests isolated delivery.
+
+**Guardrails:** existing risk-based reviewer counts, exact-head discipline, security review,
+required checks, stage finalizers, self-review prohibition, no-waiver rule and main protection
+remain unchanged. This decision does not authorize unreviewed merges or a downgraded review
+tier.
+
+**Recorded:** explicit user direction, 2026-10-02 Asia/Yangon (UTC+06:30).
+Canonical rule: [AGENTS.md § Bulk implementation and review cadence](../../AGENTS.md#bulk-implementation-and-review-cadence);
+workflow and OpenAI operating guide cross-reference it.
+
 ### 2026-10-02 · P0 production advisory floors for ip-address and fast-uri (#557)
 
 **Decision:** raise only the existing pnpm override floors for `ip-address` to `^10.7.1`

@@ -131,6 +131,17 @@ notes, or old decision-log entries merely because the current model policy chang
 Every model/context used for a review is named explicitly in the PR or review note. Never rely
 on an inherited/default model label.
 
+## Bulk implementation and review cadence
+
+Follow the canonical rule in [`AGENTS.md`](AGENTS.md#bulk-implementation-and-review-cadence):
+implement related approved slices and known-finding fixes in substantial batches, run
+meaningful tests during implementation, then freeze and review the bulk candidate at its
+required independent Luna/Sol tiers before merge. Do not open standalone review passes for
+small/mechanical edits or speculative trials. Fix findings as a batch and review the changed
+candidate at the applicable tier, with no automatic comfort rounds. This changes cadence only;
+reviewer counts, exact-head discipline, security scope, stage finalizers, required checks, and
+protected-merge rules remain in force.
+
 ---
 
 ## GPT-6 Luna — implementation and ordinary review

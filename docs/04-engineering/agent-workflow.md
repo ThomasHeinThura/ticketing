@@ -80,6 +80,14 @@ agent or tool orchestrates the work:
 | Phase finalizer for P0–P7 | **GPT-6 Sol** | Required as an additional fresh independent pass before a stage is claimed complete. Cover everything merged for that stage since the prior finalizer. |
 | Sampled big review | **Opus 5.5** | Runs only when Thomas or the orchestrator selects a sample. GPT-6 Luna or GPT-6 Sol first prepares a structured packet; Opus samples that evidence and may inspect additional files, tests, or claims. This is additive and never replaces a required review. |
 
+Implement related approved slices and known-finding fixes in substantial batches; do not start
+standalone reviews for small/mechanical edits or speculative trials. Run meaningful tests as
+implementation proceeds, then freeze the bulk candidate SHA and apply the independent review
+panel and any required Sol review before merge. Fix findings together and review the resulting
+delta at its required tier without automatic comfort rounds. Tiny urgent fixes may join the
+next batch unless the user explicitly requests isolated delivery. The detailed canonical rule
+is in [AGENTS.md § Bulk implementation and review cadence](../../AGENTS.md#bulk-implementation-and-review-cadence).
+
 The ordinary reviewer count is sized by semantic risk and coupling, not merely by a path's
 location. Keep the exact-head rule: a changed candidate requires review of its current SHA.
 The security review remains mandatory for every candidate in the scope listed in
@@ -250,7 +258,7 @@ Prefer a skill over freehand work — it encodes decisions already made.
 
 ## Review
 
-Every pull request gets:
+Every frozen bulk candidate gets:
 
 1. **Independent ordinary review** — a fresh GPT-6 Luna context, not the one that wrote it.
    Use the required reviewer count for the change's risk and coupling

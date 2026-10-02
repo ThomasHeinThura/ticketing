@@ -229,6 +229,22 @@ Never:
 
 ## Review tiers
 
+### Bulk implementation and review cadence
+
+Implement multiple related, approved slices and collect/fix known findings in coherent,
+substantial batches. Do not open standalone review passes for small or mechanical edits or
+speculative trials. Run meaningful tests during implementation so the batch is ready to review
+when its scope is complete. Then freeze the final bulk candidate SHA and run its applicable
+independent review panel, plus the required GPT-6 Sol security review where applicable,
+before the protected merge.
+
+When a review finds issues, fix the findings as a coherent batch, freeze the new candidate,
+and review that delta at the tier it requires. Do not add automatic extra rounds for comfort;
+the existing risk-based review tiers and exact-head requirements still govern. Tiny urgent
+fixes may join the next batch unless the user explicitly asks for isolated delivery. This
+cadence never permits an unreviewed merge, self-review, a waived gate, a security-tier
+downgrade, or bypassing main's protection.
+
 **Tier by what the change actually risks, not by which directory it sits in.** A security path
 makes a change a candidate for heavier review; the actual semantic risk determines the depth.
 
@@ -277,7 +293,8 @@ assertions enforce.
 At each stage's completion P0–P7, before it is claimed done, run one broader **fresh independent
 GPT-6 Sol** red-team pass across everything merged for that stage since the previous finalizer.
 
-The finalizer is additive. It never substitutes for, delays, or batches per-PR Sol review.
+The finalizer is additive. It never substitutes for or delays the required GPT-6 Sol review
+of a bulk candidate before that candidate merges.
 If GPT-6 Sol is unavailable for the finalizer, the stage is not claimed complete.
 
 ### Sampled big review — Opus 5.5
