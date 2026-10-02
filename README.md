@@ -7,12 +7,15 @@ approvals, a customer portal — with the project-management depth of Plane and 
 — cycles, custom fields, time and cost, project hierarchy — delivered with the UI/UX
 quality of [kaneo](https://github.com/usekaneo/kaneo), whose codebase is our foundation.
 
-**One image. Any customer.** Identity providers, storage, notifications, branding,
-features and roles are configured at runtime through a God Mode administration surface —
-never compiled in, never in an environment variable.
+**Target deployment model:** one image for every customer, with identity providers,
+storage, notifications, branding, features and roles supplied through runtime configuration.
+The planned God Mode surface is not a claim that every setting or feature is implemented;
+see the [current development status](docs/07-planning/status.md).
 
-> **Status: planning complete, implementation not started.**
-> See [docs/07-planning/status.md](docs/07-planning/status.md).
+> **Development status:** TaskDesk has substantial application code and is under active
+> implementation, integration and acceptance. P0–P7 remain open; this repository does not
+> claim that every planned feature is complete or accepted. See the dated
+> [development status](docs/07-planning/status.md) and [stage plan](docs/07-planning/phases.md).
 
 ---
 
@@ -30,7 +33,7 @@ never compiled in, never in an environment variable.
 
 ---
 
-## Architecture at a glance
+## Target architecture
 
 ```
 Traefik  ──►  ticket.<domain>   agent workspace
@@ -44,31 +47,27 @@ SeaweedFS / S3       attachment bytes                     (pluggable)
 Microsoft Entra      OIDC + SCIM — or any OIDC issuer     (plugin-configured)
 ```
 
-**One backend**, TypeScript end to end — replacing v1's .NET + Node + Go trio.
-Background work runs in-process, leased so it is safe across replicas.
+The target uses one TypeScript backend in place of v1's .NET + Node + Go services.
+Background work is designed to run in-process with leases for replica safety. See the
+[development status](docs/07-planning/status.md) for implementation and acceptance evidence.
 
 Full picture: [docs/01-architecture/overview.md](docs/01-architecture/overview.md)
 
 ---
 
-## Install
+## Development and deployment
 
-> **Planned — not available until P0 completes.** There is no application code in this
-> repository yet, `get.taskdesk.dev` does not resolve, and `scripts/deploy.sh` does not
-> exist. Everything in this section, and every command elsewhere in this README, describes
-> what P0 builds. Live progress: [docs/07-planning/status.md](docs/07-planning/status.md).
+For source setup and development commands, follow [AGENTS.md](AGENTS.md) and the
+[engineering workflow](docs/04-engineering/agent-workflow.md). The documented local
+deployment path is in [deployment.md](docs/05-operations/deployment.md). A local deployment
+or a healthy runtime proves only the setup and behavior actually exercised; it does not
+mean that every feature or stage is accepted.
 
-```bash
-curl -fsSL https://get.taskdesk.dev | bash
-```
-
-One command, on a machine with nothing but a shell and outbound HTTPS. It wraps the same
-idempotent `scripts/deploy.sh` documented in
-[docs/05-operations/deployment.md](docs/05-operations/deployment.md) — see
-[docs/05-operations/one-line-install.md](docs/05-operations/one-line-install.md) for what
-it does, its trust model, and the offline alternative. Runs anywhere: a laptop, a bare
-host, Kubernetes via the Helm chart, or — deferred, P7 at the earliest —
-[AWS Marketplace](docs/05-operations/aws-marketplace.md).
+The public one-line installer is planned but is not available. Its intended trust model and
+offline alternative are documented in
+[one-line-install.md](docs/05-operations/one-line-install.md). Kubernetes and marketplace
+readiness remain subject to their stage and deployment gates; see the
+[stage plan](docs/07-planning/phases.md).
 
 ## Stack
 
@@ -87,7 +86,8 @@ host, Kubernetes via the Helm chart, or — deferred, P7 at the earliest —
 2. **Nothing is hardcoded per customer.** If it varies by deployment, it is God Mode.
 3. **Every route declares its permission.** No policy, no build.
 4. **Every screen has a URL.** No state reachable only by clicking.
-5. **Ship narrow and finished.** A stage completes before the next begins.
+5. **Ship narrow and finished.** A stage is claimed complete only after its gates pass;
+   independent work may proceed in parallel.
 
 These exist because v1 was feature-rich and unusable, and because it shipped eleven
 authorization holes past a green test suite. Both failures were structural, and these are

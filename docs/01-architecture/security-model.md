@@ -32,7 +32,7 @@ audit trail; session and API-key material; the image and release artefacts.
 | **Account-recovery social engineering** ("please reset my MFA") | Get an administrator to remove a second factor | The planned `reset-mfa` operation is elevated, requires a recorded verification note, emails every address on file, and revokes all sessions and keys; current source does not provide an MFA adapter or reset route ([auth-and-identity.md](auth-and-identity.md#multi-factor-authentication)) |
 | **Compromised SCIM token, or a hostile customer's own IdP** | Create staff, reach another organisation, grant authority, enumerate users | Organisation and portal are fixed by the connection the token belongs to, never by the request (`IP-4`); a customer connection can create only customer-side people in its own organisation with the customer role (`IP-2`); no connection can grant `instance:admin` or `sees_all`; token hashed, rotatable with immediate invalidation, rate-limited; every denial is a provisioning event — [SCIM](#scim--an-inbound-privileged-management-api) |
 | **A deletion nobody meant** (mis-click, scripted key, injected agent) | Destroy data faster than anyone can stop it | Every user-initiated deletion is a `pending_action` approved by the requesting human in a browser session; bound to exact targets and payload; single-use; 15-minute expiry; re-authorised at execution; no model, key or automation can approve — [Deletion approval](#deletion-approval) |
-| **Anonymous internet** | Enumerate users/providers; bomb mail; DoS; distinguish "not found" from "not yours" | Anonymous rate-limit class; constant-time auth responses; **constant-shape 404** (same body, same lookup path, same bucket); minimal `/api/public/*`; `health/deep` authenticated; quotas with real defaults; event-loop lag alerting |
+| **Anonymous internet** | Enumerate TaskDesk user accounts or provider inventory; bomb mail; DoS; distinguish "not found" from "not yours" | Anonymous rate-limit class; constant-time auth responses; **constant-shape 404** (same body, same lookup path, same bucket); minimal `/api/public/*`; `health/deep` authenticated; quotas with real defaults; event-loop lag alerting. A visitor may infer whether a submitted domain has customer SSO and see its public IdP redirect destination through home-realm routing; this limited disclosure is accepted and defined in `IP-29`, not a TaskDesk account-existence or inventory disclosure. |
 | **Legal hold / e-discovery** (not an adversary — an obligation) | Delete what must be retained; fail to produce what must be produced | A per-organisation or per-person **legal hold** suspends `audit-purge`, matching read-notification, notification-child, digest-group and event-envelope retention purges, soft-delete purge in `session-cleanup`, `attachment-gc`, and hard delete for that scope. Credential/ephemeral expiry cleanup, including expired `outbox_dedupe_reservation` rows, continues; see the per-table matching and exception rules in [background-jobs.md](background-jobs.md) and [data-protection.md](../05-operations/data-protection.md) |
 
 Residual risks accepted, and where they are recorded: no malware scanning by default
@@ -143,8 +143,9 @@ Covered fully in [RBAC](rbac.md). The security-relevant summary:
 
 ## Identity provisioning and account linking
 
-The one place an IdP claim influences authority is just-in-time provisioning, so it is
-constrained hard:
+IdP claims can influence stored grants only through validated, connection-bound
+provisioning or reconciliation. Stored TaskDesk grants, not claims, authorize requests, so
+the trust boundary is constrained hard:
 
 - **Protocol floor first:** every `auth.oidc` plugin uses PKCE (`S256`), a single-use
   `state` bound to the session and portal, and a validated `nonce`; the ID token's
@@ -154,17 +155,36 @@ constrained hard:
 - **The durable identity key is `(connection, issuer, subject)` plus the SCIM `externalId`**
   — never the email address, which is a changeable attribute. Organisation and portal are
   properties of the connection, resolved server-side.
-- Where a provider emits `email_verified`, it must be `true` for a domain mapping to be
-  honoured. Microsoft Entra emits no such claim; its mapped address is accepted only after
-  the connection's tenant-specific issuer and `tid` checks in IP-26 succeed. Domain
-  bindings still reject an address owned by another connection.
-- **Each email domain is bound to exactly one provider.** A token asserting `@contoso.com`
-  from any other enabled provider is refused, so no second provider can be used to walk into
-  Contoso's tenant.
+- **Entra subject admission is distinct from new-person JIT.** After exact selected-
+  connection `iss`, `tid` and `aud` validation, every Entra connection requires its exact
+  configured `required_entra_app_role` and signed `acct=0` before any login session is
+  issued or person/membership is created (`IP-27`), including existing identities with JIT
+  disabled. Missing/malformed account type or role, and guests, fail closed. A valid
+  negative token retires only that identity's OIDC/JIT grants; invalid/unverified tokens and
+  invalid persisted configuration are not revocation evidence. Other provider JIT remains
+  disabled until its own admission rule is approved.
+- **Identity routing and admission follow `IP-9`.** A typed customer-login domain may route
+  an unauthenticated login initiation to a configured connection; the selected connection's
+  persisted organisation, portal and id are then bound in single-use state. Callback claims
+  cannot reselect scope. Email-like claims are contact/display metadata only, and a
+  post-validation domain collision can deny but never admit. Upstream app-role deassignment
+  alone does not promise immediate revocation of an already issued TaskDesk session; existing
+  TaskDesk lifecycle controls apply.
 - Provisioning `side = staff`, or a group→role rule that grants above `member`, is an
   elevated configuration change.
-- Group→role mapping is applied **at provisioning only**. It is never re-evaluated at login
-  — so de-provisioning is a directory action, symmetric and audited, not an IdP side effect.
+- OIDC group mappings are re-evaluated on every validated login through the same identity
+  connection. A complete, well-formed groups array replaces only that external identity's
+  OIDC group grants; absent, malformed, or overage groups retire only that identity's prior
+  OIDC group grants. A permitted JIT-default grant and independent direct, SCIM, and other-
+  connection grants remain governed by their own current evidence. Overage raises the
+  existing provisioning event and operator warning; there is no Graph lookup in the first
+  release. Invalid or unverified tokens cause no grant mutation. One connection's login
+  never re-evaluates or retires another connection's grants.
+- SCIM group mappings change only when an authenticated SCIM synchronization or an
+  administrative mapping/connection change supplies that source's evidence. SCIM group
+  removal retires only its linked SCIM grant; it does not retire OIDC, direct, or other
+  SCIM grants. Upstream removal between validated logins or SCIM updates is not observable
+  immediately; the documented cache and session revocation controls still apply.
 - **No automatic account linking on email.** A sign-in through provider B for an email that
   exists via provider A is refused with an explanation; linking requires an authenticated
   session on A plus an explicit confirmation. better-auth's auto-link defaults are off.
@@ -235,7 +255,7 @@ The server is.
 | CSRF | **No state-changing GET, ever** (a lint rule). The CSRF controls apply **only to cookie-authenticated requests**, because the cookie is the only ambient-authority credential: an unsafe method presented with a session cookie requires `Origin` (or `Referer`) to equal the request host's own origin **and** a matching double-submit token; either failing is a 403. `SameSite` alone is not the control — the agent and portal are sibling subdomains. Requests authenticated by a **bearer token, a personal or service API key, or a SCIM token** are exempt from both checks: they are not sent automatically by a browser, so there is nothing for a cross-site page to forge, and non-browser clients (curl, CI, Microsoft Entra's SCIM client, the MCP server) send no `Origin` at all. This is the single statement of the rule; [api-design.md](api-design.md) cites it |
 | Session rotation | The session id is regenerated on authentication, on impersonation start/end, and on MFA enrolment (fixation) |
 | Defaults | Idle 12 h, absolute 30 days, concurrent 5 — configurable in God Mode within maxima of 7 days idle / 90 days absolute |
-| Step-up for elevated actions | Re-authentication means the **second factor** when the account has one — never "password *or* MFA". The initial supported account class is a current local-password session with no enrolled or required second factor, after rechecking the current identity and verifying that password. SSO-only accounts require a validated IdP response with exact configured issuer/audience and single-use `state`/`nonce` bound to challenge/session/subject/connection, a `prompt=login` request, and signed `auth_time` satisfying `challenge.created_at - 60s <= auth_time <= callback_received_at + 60s` and `callback_received_at - auth_time <= 5min`; callback must precede challenge expiry. If policy requires MFA, fresh `amr`/`acr` evidence must satisfy the configured provider mapping or a real local factor; a static upstream-MFA flag is insufficient. Missing/untrustworthy evidence, changed subject/connection/session, or unavailable required verifier fails closed (`403 step_up_unavailable` or authentication failure), with no password/email-OTP fallback. `POST /api/me/step-up/challenges` and `POST /api/me/step-up` mint a single-use confirmation only after actual proof verification. It binds either to one existing pending-action id/payload hash or to the first explicitly registered operation (`metrics_token_rotate`) with its exact route, version and server-computed body hash; no session-wide window exists. The token is valid five minutes after issuance, hash-only at rest, and consumed atomically with its protected action. Existing pending-action tokens remain re-mintable while the action is pending. Missing required verification support fails closed with `403 step_up_unavailable`. Current source enables neither better-auth `twoFactor` nor a verified fresh-SSO step-up callback, so affected methods cannot be claimed usable until their adapters are implemented and tested. Details: [pending-actions.md](pending-actions.md) `PA-15` |
+| Step-up for elevated actions | Re-authentication means the **second factor** when the account has one — never "password *or* MFA". The initial supported account class is a current local-password session with no enrolled or required second factor, after rechecking the current identity and verifying that password. SSO-only accounts require a validated IdP response with exact configured issuer/audience and single-use `state`/`nonce` bound to challenge/session/subject/connection, a `prompt=login` request, and signed `auth_time` satisfying `challenge.created_at - 60s <= auth_time <= callback_received_at + 60s` and `callback_received_at - auth_time <= 5min`; callback must precede challenge expiry. If policy requires MFA, fresh `amr`/`acr` evidence must satisfy the configured provider mapping or a real local factor; a static upstream-MFA flag is insufficient. Missing/untrustworthy evidence, changed subject/connection/session, or unavailable required verifier fails closed (`403 step_up_unavailable` or authentication failure), with no password/email-OTP fallback. `POST /api/me/step-up/challenges` and `POST /api/me/step-up` mint a single-use confirmation only after actual proof verification. It binds either to one existing pending-action id/payload hash or to one PA-15-registered operation (`metrics_token_rotate`, `oidc_group_mapping_create`, or `oidc_group_mapping_update`) with its exact route, resource version and server-computed canonical request-binding hash; OIDC mapping bindings include the connection and mapping path ids as well as the validated request body. No session-wide window exists. The token is valid five minutes after issuance, hash-only at rest, and consumed atomically with its protected action. Existing pending-action tokens remain re-mintable while the action is pending. The SCIM administration PATCH is proposed elevated/session-only but has no PA-15 operation binding yet; its strict DTO, version and exact proof contract remain with [issue #561](https://github.com/ThomasHeinThura/ticketing/issues/561). Until defined, fail closed with `403 step_up_unavailable` and no mutation; do not infer or reuse an operation key. Missing required verification support fails closed with `403 step_up_unavailable`. Current source enables neither better-auth `twoFactor` nor a verified fresh-SSO step-up callback, so affected methods cannot be claimed usable until their adapters are implemented and tested. Details: [pending-actions.md](pending-actions.md) `PA-15` |
 | Elevated list | The single list in [RBAC](rbac.md) |
 
 ## Impersonation
@@ -402,7 +422,10 @@ AU-14 is unfinished. Rows contain PII deliberately; the erasure position is in
 ## Public and operational endpoints
 
 - `/api/public/auth-providers` returns **only** what the login page needs — a button label
-  and provider id — never discovery URLs, tenant ids or domain restrictions.
+  and provider id — never discovery URLs, tenant ids or domain restrictions in that API
+  response. The later redirect to a selected IdP may reveal its public destination, including
+  host or tenant path, under the limited domain-specific disclosure in `IP-29`; that redirect
+  is not a secrecy boundary.
 - `/api/public/health/live` and `/ready` are anonymous. A dependency-enumerating deep check
   is planned at `GET /api/instance/health/deep`, policy kind 1 with `instance:admin`; the
   current API does not serve it. If implemented, it must not live behind a per-route
@@ -479,7 +502,7 @@ Quotas ship with **real defaults** (storage 20 GB, portal users 500, webhooks 10
 | Permission matrix — capability and reach; custom-role property tests | `tests/permissions/` | Every PR |
 | IDOR fuzz — other-tenant ids on every scoped route | `tests/permissions/` | Every PR |
 | Tenant isolation | `tests/api-integration/` | Every PR |
-| Negative E2E (incl. CSRF, forged `X-Forwarded-For`, cross-origin WS, re-auth on revoke) | `tests/e2e/security/` | Every PR |
+| Negative E2E (incl. state-changing GET refusal; cookie-authenticated unsafe requests with missing/mismatched `Origin` or `Referer`, or missing/mismatched double-submit token; forged `X-Forwarded-For`; cross-origin WS; re-auth on revoke) | `tests/e2e/security/` | Every PR |
 | Auth reconfiguration suite | `tests/api-integration/auth/` | Every PR |
 | Dependency audit | CI | Every PR |
 | Container scan, SBOM, signing | CI | Every release |

@@ -664,9 +664,8 @@ function visibleH2HeadingName(raw, survived, lineStart, lineEnd) {
  * once, with no comment involved at all. No caller of `sections()` has a legitimate
  * reason for two — the pull-request template declares each fixed section exactly once —
  * and the Map this function returns can only ever hand a caller ONE of the two, silently
- * keeping whichever was written last. That silent "last one wins" is exactly the shape
- * CLAUDE.md's own stated culture warns against ("if you find yourself explaining why a
- * gate does not apply, that is the failure happening again"), so it is refused outright —
+ * keeping whichever was written last. That silent "last one wins" violates AGENTS.md's
+ * requirement to keep gates explicit and reviewable, so it is refused outright —
  * `DuplicateSectionError` — rather than resolved by document order.
  *
  * @param {string} markdown
@@ -1100,12 +1099,10 @@ function itemMarkedNotApplicable(line) {
  * - A block **with** checkboxes is judged line by line. An unticked box must
  *   carry its own `n/a` **and its own reason**, on that line. A neighbour's
  *   `n/a` is worth nothing to it.
- * - The **independent-review** item cannot be dismissed with `n/a` at all. That
- *   is not a new policy: CLAUDE.md's third absolute already forbids downgrading
- *   an unavailable reviewer — "a review recorded at the wrong tier is worse than
- *   no review, because it closes the field that would otherwise stay visibly
- *   open". `n/a` on that item is exactly that closure. It must be ticked, or the
- *   check fails and says why.
+ * - The **independent-review** item cannot be dismissed with `n/a` at all. AGENTS.md's
+ *   review tiers require the applicable independent review, and an unavailable reviewer
+ *   does not lower that tier. `n/a` on that item would hide an unsatisfied gate. It must be
+ *   ticked, or the check fails and says why.
  */
 /**
  * F2 — PRESENCE, not just state.
@@ -1541,7 +1538,7 @@ export function checklistPresenceProblems(raw, declared) {
     problems.push(
       "there is NO independent-review checkbox anywhere in `## Checklists`. The " +
         "mandatory independent security review is a BLOCKER that a completed review at " +
-        "the required tier closes (CLAUDE.md, third absolute) — it is not closed by " +
+        "the required tier closes (AGENTS.md § Review tiers) — it is not closed by " +
         "deleting the line, and not by rewording it so this check stops recognising it. " +
         "Restore a checkbox whose text names the independent/security review.",
     );
@@ -1678,7 +1675,7 @@ export function checklistProblems(raw) {
       if (REVIEW_ITEM.test(itemSubject(line))) {
         problems.push(
           `"${block.name}": ${line.trim()}\n      An unticked independent-review item is a BLOCKER, not a note, and it cannot be ` +
-            "marked n/a — only a completed review at the required tier closes it (CLAUDE.md, third absolute).",
+            "marked n/a — only a completed review at the required tier closes it (AGENTS.md § Review tiers).",
         );
         continue;
       }

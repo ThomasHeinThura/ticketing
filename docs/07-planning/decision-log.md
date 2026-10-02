@@ -5,6 +5,138 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · P0 production advisory floors for ip-address and fast-uri (#557)
+
+**Decision:** raise only the existing pnpm override floors for `ip-address` to `^10.7.1`
+and `fast-uri` to `^3.1.8`, and regenerate the lockfile. Registry metadata was reverified
+on 2026-10-02: `ip-address@10.7.1` is MIT and requires Node >=12; `fast-uri@3.1.8` is
+BSD-3-Clause. The final compatible lock graph resolves `ip-address@10.7.2` and
+`fast-uri@3.1.8`. The accepted `main@917c93ad` production audit contained four moderate
+`ip-address` advisories and one moderate `fast-uri` advisory; it was not five advisories
+from `ip-address` alone. `pnpm audit --prod` reports zero advisories after these floors.
+
+No audit threshold, ignore list, or unrelated override was changed. This is limited to
+the two existing transitive packages and does not assert an application-level exploit.
+The Hono/WebSocket migration's separate Origin/session-portal limitation remains open
+under [#560](https://github.com/ThomasHeinThura/ticketing/issues/560); these dependency
+floors do not fix or waive that finding.
+
+**Authorization and status:** Thomas's standing recommended-decision authorization covers
+these bounded patched-version floors. Registry metadata, lock consumers, and the direct
+production audit were checked; this entry is not independent review or acceptance evidence.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
+### 2026-10-02 · P0 API upgrades use the patched Node adapter WebSocket helper (#557)
+
+**Decision:** `apps/api` owns direct exact runtime dependencies `hono@4.13.12` (MIT),
+`@hono/node-server@2.1.3` (MIT), and `ws@8.22.0` (MIT), plus development-only
+`@types/ws@8.18.2` (MIT). Remove `@hono/node-ws@1.3.1`: its peer range requires
+`@hono/node-server@^1.19.11` and excludes adapter 2.x. Raise the single pnpm override floors
+to Hono `^4.13.12` and Node adapter `^2.1.3`. Use `upgradeWebSocket` from
+`@hono/node-server`, with one `ws` `WebSocketServer({ noServer: true })` passed to the
+existing HTTP `serve()` listener.
+
+The migration preserves authentication before upgrade, user-route precedence, project
+reach checks and indistinguishable foreign/missing rejection, `windowId`, JSON events,
+ping handling, fan-out, close cleanup and bounded server shutdown. Public static files stay
+under the existing public build root, attachments stay private, and the adapter's default
+`allowPercentInPath: false` remains in force. The integration coverage exercises the real
+Node listener, including auth/reach handshakes and HTTP JSON/CORS/static/health behavior.
+
+**Security limitation:** `session.portal` is absent from the current session schema; runtime
+identity currently infers portal from identity side. This change does not add an Origin or
+session-portal binding and does not claim that the existing realtime contract is satisfied.
+The concrete owner follow-up is tracked in [#560](https://github.com/ThomasHeinThura/ticketing/issues/560),
+linked to #38 and #8; the existing High realtime finding remains open.
+
+**Authorization and status:** Thomas's standing recommended-decision authorization covers
+these direct dependencies and adapter choice. Registry metadata and licences were
+reverified on 2026-10-02. This decision records the implementation direction; it does not
+establish runtime acceptance, close the Origin/session-portal gap, waive review gates, or
+claim P0 completion.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
+### 2026-10-02 · Identity grant validity is commit-time; SCIM administration PATCH is route-wide elevated
+
+**Decision:** use `IP-22` as the single proposed source-validity and effective-projection
+invariant for every TaskDesk-controlled connection-policy, mapping-eligibility, role-eligibility
+or role-priority write. At commit, each affected active external grant must satisfy current
+source, connection, mapping, scope, role and ceiling rules; the stored effective membership
+must be recomputed from all remaining valid sources, including priority-only changes with no
+retirements. Retire source history append-preservingly; a retired external grant returns only
+after fresh evidence from that same source. Role/config/provider writers use the shared total
+lock order, closure re-read and full-transaction retry in IP-22. Preserve direct-grant
+independence, source isolation, the existing one-role projection, and the distinction between
+authority-cache invalidation and session revocation. No new schema, capability or event key is
+introduced by this proposed contract. ADR-0015 remains Proposed.
+
+The existing `PATCH /api/instance/identity-connections/{id}/scim` administration route is
+proposed as unconditionally `instance:admin`, elevated and session-only for every write.
+It is not usable until its owner defines the strict DTO/edit semantics, parent
+`identity_connection.config_version` compare-and-set and dedicated PA-15 operation binding.
+Until that contract exists, any mounted write must fail closed with `403 step_up_unavailable`
+and make no mutation. [Issue #561](https://github.com/ThomasHeinThura/ticketing/issues/561)
+tracks the owner obligation. Do not infer an operation key or reuse OIDC/metrics proof.
+
+**Why:** the current contract left materialized JIT grants or role winners stale after policy
+and rank changes, while conditional elevation on one PATCH route depended on request-body
+semantics that were not specified. One commit-time invariant closes the repeated lifecycle
+class; route-wide elevation removes a body-selected policy branch. The missing SCIM proof
+contract remains explicit rather than being guessed.
+
+**Authorization and status:** selected under Thomas's standing recommended-decisions
+authorization. This entry does not approve ADR-0015, close owning review rows 81–82, satisfy
+Thomas's finished-spec read, waive a gate, or claim implementation, runtime tests, Entra or
+browser evidence, independent reviews, H1–H6 or P3 acceptance. See [IP-22](../03-features/identity-provisioning.md)
+and [ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md).
+
+**Recorded by:** orchestrator, 2026-10-02.
+
+### 2026-10-02 · Entra app-role admission applies to every Entra login
+
+**Decision:** extend `IP-27`'s exact Entra app-role and signed `acct=0` admission predicate
+from new JIT creation to every Entra connection and login, including existing invite- or
+SCIM-provisioned identities when JIT is disabled. Every Entra connection must store one
+exact nonempty `required_entra_app_role` in the existing
+`identity_connection.jit_policy` at creation/configuration save and before enable; toggling
+JIT cannot waive it. A valid protocol-validated token that lacks the configured role or
+`acct=0` denies a new session and atomically retires only that external identity's OIDC/JIT
+grants. Invalid/unverified tokens or invalid persisted server configuration are not
+revocation evidence and mutate no grants. Direct, SCIM and other-connection grants remain
+untouched. An already-issued session is not revoked solely by upstream app-role removal;
+the admission change takes effect at the next validated login. The app role and `acct=0`
+remain IdP admission signals and cannot grant TaskDesk roles, capabilities, scope,
+`instance:admin` or `sees_all`. JIT remains a separate person/default-grant creation switch.
+
+**Why:** a login-time admission requirement cannot depend on whether the existing identity
+was originally created by JIT; otherwise the same Entra connection has no coherent
+admission contract after SCIM or invitation provisioning.
+
+**Authorization and status:** recorded under Thomas's standing recommended-decisions
+authorization after the cross-contract source check. This does not approve ADR-0015, close
+owning review rows 81–82, establish finished-spec read, waive a gate, or claim
+implementation, tests, Entra/browser evidence, H1–H6 or P3 acceptance. See
+[IP-27](../03-features/identity-provisioning.md) for the normative rule.
+
+**Recorded by:** orchestrator, 2026-10-02.
+
+### 2026-10-01 · P0 public docs site uses headless Fumadocs and static export
+
+**Decision:** recommend a fresh self-hosted documentation site at `apps/site`, using Next.js static export with headless Fumadocs. `fumadocs-core` supplies source/navigation/search data and `fumadocs-mdx` compiles local MDX; compose interactive controls from `@taskdesk/ui` and existing tokens. Do not import `fumadocs-ui`, copy kaneo's marketing app, or copy Mintlify content. The site is separate from the Vite agent/portal app and does not change its shared route registry.
+
+The proposed exact direct npm dependencies are `next@16.3.8` (MIT), `fumadocs-core@16.15.17` (MIT), `fumadocs-mdx@15.4.5` (MIT) and development-only `@types/mdx@2.0.14` (MIT). Reuse React `19.2.8`, `react-dom`, TypeScript, Tailwind/tokens and `@taskdesk/ui`. Zod `^4.6.5` and MDX tooling are transitive and require resolved-license/advisory inspection at implementation. These are recommendations for a future implementation, not installed dependencies or an authorization to change a manifest or lockfile.
+
+P0's public routes are `/`, `/docs`, `/search` backed by a generated static search index, and a true static 404. If the pinned Fumadocs build cannot produce working static search, remove `/search` from P0 and amend the site contract before implementation; do not ship a nonfunctional search control. Content is limited to verified existing behavior and stays separate from internal `docs/`. The site has no API proxy, auth, personalization, analytics or feedback endpoint.
+
+The separate image is proposed to use `nginxinc/nginx-unprivileged:1.30.5-alpine3.24@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e`, subject to digest/platform verification and image SBOM/license review at implementation. Its static site origin is planned as `docs.<domain>`, separate from both app origins and the conditional `files.<domain>`. Build, scan, SBOM, sign and publish on protected `main`; do not deploy from CI. Deliver to UAT through the existing pull process and promote to production manually by immutable digest. The docs plan records static serving, proxy and health-check behavior.
+
+**Why:** static export avoids a public runtime service and request-dependent behavior. Headless Fumadocs allows TaskDesk to use its own shared design system without importing a second UI library; an independently hosted docs origin keeps public documentation content away from authenticated application origins.
+
+**Authorization and status:** recorded under Thomas's standing recommended-decisions authorization. This entry does not assert that Thomas read the completed specification, grant H1–H6 approval, waive dependency/review gates, or establish implementation, deployment or stage completion. The proposed dependencies remain uninstalled.
+
+**Recorded by:** docs-site specification author, 2026-10-01.
 ### 2026-10-01 · G11 failure evidence avoids timed DOM snapshots and raw network secrets
 
 **Decision:** G11's Playwright run retains failure traces with actions, screencast, source,
@@ -74,6 +206,61 @@ implementation, runtime acceptance, or H1–H6 completion.
 
 **Decided by:** Thomas, under the standing recommended-decisions authorization; recorded by
 the orchestrator on 2026-10-01.
+### 2026-10-01 · Entra JIT admission and home-realm routing are connection-bound
+
+**Decision:** before creating a new person or membership through first-release Entra JIT,
+validate the selected connection's exact `iss`, `tid` and `aud`, resolve immutable `oid`
+under that connection, require the exact nonempty `required_entra_app_role` configured in
+that connection's existing `identity_connection.jit_policy`, and require signed `acct=0`.
+Missing, malformed or nonmatching role, missing/malformed `acct`, and guest `acct=1` fail
+closed before creation. The Entra app registration must assign the app role and request the
+optional `acct` claim. This app role is only an IdP admission signal; it grants no TaskDesk
+role, capability, organisation, portal scope, or reach. Other provider JIT remains disabled
+until its own subject-admission rule is approved. For unauthenticated customer login
+initiation, a typed email domain may route to a configured connection; its server-side
+single-use state context binds that connection id, customer portal and persisted
+`organisation_id`. Callback claims cannot select or change connection or scope. This routing
+is not identity or admission proof. After token validation, a cross-connection domain
+collision may deny sign-in; a matching domain never admits. `email`, `preferred_username`,
+`upn` and their domains are not address-ownership proof, JIT authority, organisation
+selection or identity-linking signals. An unbound typed domain may fall through to existing
+non-SSO methods without guessing or creating an organisation. Existing SCIM scope/lifecycle
+and no-email-account-linking rules are unchanged. Upstream Entra app-role deassignment alone
+does not promise immediate revocation of an already issued TaskDesk session.
+
+The portal does not publish a customer provider or organisation list, but its complete
+unauthenticated bound and unbound flows are intentionally distinguishable. A person
+submitting a domain may infer that it has a customer SSO binding and see the selected IdP's
+public redirect destination, including its host or tenant path. TaskDesk's discovery
+surface does not return an organisation or connection inventory, names, ids, domain
+inventory, discovery configuration, claim mappings or secrets, or disclose whether a
+TaskDesk user account exists; anonymous rate limits reduce bulk probing but do not hide this
+domain-specific disclosure. The former assertion that equal initial body, status, or timing
+made the full flow non-enumerating is withdrawn. A private preflight that verifies control
+of an address before domain routing would change the sign-in
+journey and needs a separate design decision; it is not implied here.
+
+Add planned trust negatives as subcases of acceptance test 05, including browser coverage of
+complete bound/unbound flows and the permitted and prohibited disclosures, and protocol
+negatives under existing test 15. The planned `tests/e2e/security/` suite must cover the CSRF
+cases before its applicable security gate is claimed; it is not implemented at this
+candidate. Preserve all 25 named P3 acceptance tests and the real-Entra completion gate.
+Historical owning-review
+rows 81–82 remain active until an independent owner reviewer re-checks and closes them. No
+gate is waived and no tests are claimed to have run by this design decision.
+
+**Why:** exact token binding plus a connection-specific assigned app role and explicit
+member account type establishes a subject-admission predicate without treating mutable
+address claims as proof. `jit_policy` already stores per-connection JIT configuration, so the
+additional key is documented in the authoritative data model without a new table or TaskDesk
+authority. Domain bindings remain useful for login routing and conservative collision
+refusal; accepting the limited domain-to-SSO/IdP-destination disclosure preserves the
+specified home-realm flow without claiming equal initial response properties hide the
+follow-up redirect. This is an explicit threat-model decision, not a waiver of review or
+testing gates.
+
+**Decision-maker:** the orchestrator, adopting its recommended reconciliation under Thomas's
+standing authorization, 2026-10-01.
 
 ### 2026-10-01 · Notification fan-out uses event parents, delivery children and digest groups
 
