@@ -635,11 +635,11 @@ test("calendar creation supports keyboard input and read-only access", async ({
   ).toBeDisabled();
 });
 
-test("calendar list and editor expose loading, empty, error, and partial states", async ({
+test("calendar list and editor expose loading states and meet the G13 shift budget", async ({
   page,
 }) => {
   const fixture = await setupCalendarPage(page);
-  // G6: loading, empty, error, and partial states are all reachable in-browser.
+  // G6 loading states and G13 skeleton-to-content layout shift are reachable in-browser.
   fixture.canManageServiceCalendars = true;
   fixture.savedCalendar = { ...calendar };
   fixture.holdListResponse = true;
@@ -689,33 +689,46 @@ test("calendar list and editor expose loading, empty, error, and partial states"
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
     "Support coverage",
   );
+});
 
-  await page.goto("/agent/settings/calendars");
+test("calendar list exposes empty state and stale-cursor reset", async ({
+  page,
+}) => {
+  const fixture = await setupCalendarPage(page);
   fixture.listIsEmpty = true;
-  await page.reload();
+  await page.goto("/agent/settings/calendars");
   await expect(page.getByText("No service calendars yet")).toBeVisible();
   await page.goto("/agent/settings/calendars?cursor=stale-boundary");
   await expect(page.getByRole("button", { name: "Reset" })).toBeVisible();
   await page.getByRole("button", { name: "Reset" }).click();
   await expect(page).not.toHaveURL(/cursor=/);
+});
 
-  fixture.listIsEmpty = false;
+test("calendar list error state recovers after Retry", async ({ page }) => {
+  const fixture = await setupCalendarPage(page);
   fixture.listRequestFailure = true;
-  await page.reload();
+  await page.goto("/agent/settings/calendars");
   await expect(page.getByText("Calendars could not be loaded")).toBeVisible();
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
   fixture.listRequestFailure = false;
   await page.getByRole("button", { name: "Retry" }).click();
   await expect(page.getByText("40 h/week")).toBeVisible();
+});
 
+test("calendar editor error state links back to the calendar list", async ({
+  page,
+}) => {
+  const fixture = await setupCalendarPage(page);
   fixture.editorRequestFailure = true;
   await page.goto(`/agent/settings/calendars/${calendarId}`);
   await expect(page.getByText("Calendar could not be loaded")).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Back to calendars" }),
   ).toBeVisible();
+});
 
-  fixture.editorRequestFailure = false;
+test("calendar preview error state offers Retry", async ({ page }) => {
+  const fixture = await setupCalendarPage(page);
   fixture.previewRequestFailure = true;
   // Use a distinct year so the earlier successful preview cannot be reused from
   // TanStack Query's cache before the failure fixture receives a request.
