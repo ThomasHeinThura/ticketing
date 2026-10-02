@@ -412,7 +412,7 @@ async function main() {
           ({ bg, backdrop, foregroundClass, backgroundClass, theme }) => {
             const surfaceClass = backgroundClass?.[theme] ?? "";
             const node = document.createElement(
-              surfaceClass.includes("[button&,a&]") ? "button" : "span",
+              surfaceClass.includes("[button&,a&]") ? "a" : "span",
             );
             if (foregroundClass) node.className = foregroundClass;
             if (backgroundClass)
