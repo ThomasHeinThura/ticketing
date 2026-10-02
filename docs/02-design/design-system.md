@@ -60,8 +60,7 @@ previously said `date-picker`/`date-range-picker` — use kaneo's real names bel
 
 **Disclosure** — `accordion` `collapsible` `tabs`
 
-**Feedback** — `toast` `spinner` `error-boundary` `error-display` `error-fallback`
-`loading-skeleton` `toolbar`
+**Feedback** — `toast` `spinner` `error-boundary` `toolbar`
 
 Twelve primitives this document previously listed **do not exist in kaneo** and are not
 "taken from kaneo": `resizable`, `aspect-ratio`, `multi-select`, `date-picker`,
@@ -72,6 +71,11 @@ extracted** in "What we add for TaskDesk" below, and budget it; do not assume it
 with the extraction.
 
 ### Error boundary
+
+`Avatar` is the shared root/image/fallback primitive; the app adapter at
+`apps/web/src/components/avatar/` owns API-origin resolution for uploaded `/api/...` URLs.
+`error-display`, its one-line fallback wrapper, `/test-error` harness, and first-session
+loading shell are application compositions, not shared primitives.
 
 `ErrorBoundary` from `@taskdesk/ui` catches errors thrown while rendering its descendants.
 Callers must provide a `fallback` component that receives the `Error` and a `resetError`
@@ -152,7 +156,9 @@ widget shape the way `dashboard-grid` (see below) is.
 
 1. Check kaneo first. If it exists there, take it rather than writing it.
 2. Build on a Base UI primitive where one exists. Do not reimplement focus management.
-3. Tokens only — no literal colours, no arbitrary spacing.
+3. Tokens and density slots — no literal colours or arbitrary token values; density-sensitive
+   rows, fields, and repeated cards use the shared `td-density-*` classes from
+   `packages/ui/src/styles/density.css`. `check:tokens` enforces the declared slot inventory.
 4. Use `cva` for variants. Support `className` passthrough and `asChild` where sensible.
 5. Forward refs. Spread `...props`.
 6. Write the Storybook story: default, every variant, every size, disabled, loading,
@@ -285,3 +291,16 @@ See [Licensing and attribution](../00-overview/licensing-and-attribution.md).
 - [Design tokens](design-tokens.md) · [Design principles](design-principles.md)
 - [Motion](motion.md) · [Accessibility](accessibility.md)
 - [ADR 0008](../01-architecture/adr/0008-single-design-system.md)
+
+
+### Application compositions
+
+`packages/ui` contains reusable primitives only. App-owned avatar URL resolution stays in
+`apps/web/src/components/avatar/`; API-aware error display/fallback compositions live in
+`apps/web/src/components/errors/`; and the first-session shell placeholder lives in
+`apps/web/src/components/app-shell/`. The `/test-error` diagnostic remains route-local.
+The extracted legacy `apps/web/src/components/ui` directory must remain empty; G1c in
+`ux-quality-gates.md` is enforced by `scripts/ci/check-ui.mjs`. Density class and contrast-pair
+ownership are defined in `design-tokens.md` and enforced by G2/G3. Authored palette matching
+remains provisional until the human H1–H6 review at P4; passing numeric contrast is not that
+review.

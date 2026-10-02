@@ -59,12 +59,16 @@ runtime by instance branding.
 | `--color-secondary` | `bg-secondary` | `--alpha(black / 4%)` | `--alpha(white / 4%)` |
 | `--color-accent` | `bg-accent` | `--alpha(black / 4%)` | `--alpha(white / 4%)` |
 | `--color-destructive` | `bg-destructive` | `--color-red-500` | `color-mix(red-500 90%, white)` |
+| `--color-destructive-strong` | `bg-destructive-strong` | `--color-red-700` | `--color-red-700` |
+| `--color-destructive-strong-foreground` | `text-destructive-strong-foreground` | `--color-white` | `--color-white` |
 
 There is **no `--color-danger`** — kaneo's breach/error role is `--destructive`. Every
 colour above also has a `-foreground` counterpart for text placed on it
 (`--destructive-foreground`, `--accent-foreground`, `--muted-foreground`, `--card-foreground`,
 `--popover-foreground`, `--primary-foreground`, `--secondary-foreground`), listed once here
-rather than doubled in the table.
+rather than doubled in the table. Destructive action fills use the additional authored,
+provisional `--color-destructive-strong` / `--color-destructive-strong-foreground` pair so a
+solid destructive button can pass AA independently of the softer status color.
 
 ### Status colours
 
@@ -217,9 +221,26 @@ maintain or drift from kaneo. If a real need for a semantic layout token
 (`--sidebar-width`, `--detail-pane-width`) is found during extraction, add it here with a
 value at that point — do not carry the old placeholder numbers forward.
 
-Density-aware spacing (comfortable/compact) is still a real requirement — it stays as a
-follow-up: whatever mechanism is chosen (semantic spacing tokens or a density class) is
-recorded here once decided, rather than pre-populated with unverified numbers.
+Density-aware spacing uses three shared classes in `packages/ui/src/styles/density.css`:
+`td-density-row` defaults to `py-3` and becomes `py-2` under the existing
+`html.compact-mode`; `td-density-field` defaults to `py-2` and becomes `py-1.5`; and
+`td-density-card` defaults to `p-4` and becomes `p-3`. These are Tailwind built-in values,
+not a new spacing-token layer. Apply them only to registered repeated rows, field controls,
+and shared card content panels. The `compact-mode` root class remains the
+existing persisted user preference. G2 rejects direct vertical padding/gap utilities on a
+registered slot; ordinary layout spacing remains unrestricted.
+
+### Density slot inventory (G2)
+
+| Class | Declared use | Comfortable | Compact |
+|---|---|---|---|
+| `td-density-row` | Repeated data rows in shared list/table compositions | `py-3` | `py-2` |
+| `td-density-field` | Shared form field control/label group | `py-2` | `py-1.5` |
+| `td-density-card` | Shared card content panels (`CardPanel`) | `p-4` | `p-3` |
+
+This is the P0/P1 starter inventory; additions require updating this table and the checker in
+the same implementation batch. Colors and visual matching remain provisional for Thomas's
+P4 H1–H6 review; the numeric contrast gate is still required before then.
 
 ### Motion
 
@@ -256,14 +277,34 @@ produce a contrast ratio directly. The checker must:
    isolation.
 3. Check every pair declared in `pairs.json` in both themes and fail on a violation.
 
-`pairs.json` schema:
+`packages/ui/src/styles/pairs.json` is the machine-readable inventory. Each entry records
+`fg`, `bg`, `category` (`body`, `large-text`, or `non-text`), `minRatio`, both `themes`,
+`usage` (the real component/story/screen owner), `foregroundClass`, `backgroundClass` (the
+actual surface class for each theme, including alpha/interaction modifiers), and `backdrop`
+when either computed color is translucent. The current source-coverage inventory registers
+the shared Button, Badge, and Input variant declarations; adding a new styled component to
+that inventory requires adding its source and actual pairs to the same gate batch. Example:
 
 ```json
-{ "fg": "--color-muted-foreground", "bg": "--color-card", "minRatio": 4.5, "themes": ["light", "dark"] }
+{
+  "fg": "--color-foreground",
+  "bg": "--color-background",
+  "category": "body",
+  "minRatio": 4.5,
+  "themes": ["light", "dark"],
+  "usage": "packages/ui/src/components/button.tsx",
+  "foregroundClass": "text-foreground",
+  "backgroundClass": { "light": "bg-background", "dark": "bg-background" },
+  "backdrop": "--color-background"
+}
 ```
 
-One entry per declared pair; `minRatio` is `4.5` for body text and `3` for large text and
-non-text indicators.
+The inventory lists actual combinations, not every theoretical cross-product. The gate
+compares observed declared pairs in shared styles and app compositions against the manifest;
+new or unclassified use fails until it has an explicit entry. The runner builds and loads the
+web CSS in Chromium, resolves the computed colors in each theme, composites alpha over the
+recorded opaque backdrop, then computes WCAG 2.1 contrast. Body text uses 4.5:1; large text
+and non-text indicators use 3:1.
 
 Status must never be conveyed by colour alone. An SLA badge carries an icon and a label as
 well as a colour.
@@ -298,8 +339,9 @@ which got this right after its redesign.
 - A hex colour, `rgb()`, `hsl()`, `oklch()`, `color-mix(` or `--alpha(` outside
   `packages/ui/src/styles/`
 - An arbitrary Tailwind value for colour, spacing, radius or z-index outside `packages/ui`
-- A declared foreground/background pair (from `pairs.json`) failing contrast in either
-  theme, per the compositing rule above
+- A fixed vertical padding/gap on a registered `td-density-*` slot
+- A used foreground/background combination missing from `pairs.json` or a declared pair
+  failing contrast in either theme, per the Chromium compositing rule above
 - A token referenced but not defined
 
 ## Adding a token

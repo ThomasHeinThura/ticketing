@@ -1,11 +1,16 @@
 #!/usr/bin/env node
+
 /**
  * check:tokens — the design-token half of gate G2 ("Tokens only") and the "concrete
  * values in light and dark" half of issue #9's own "Done when" line
  * (docs/02-design/ux-quality-gates.md's G2; docs/02-design/design-tokens.md's
  * "Enforcement" section).
  *
- * Two checks, both enforced today:
+ * The gate enforces theme parity, hard-coded literal rejection, and registered density-slot
+ * behavior. G3's built-CSS browser runner is `check-contrast.mjs` and runs in the same
+ * `check:tokens` command.
+ *
+ * Static checks enforced here:
  *
  * 1. **Theme parity.** `packages/ui/src/styles/tokens.css` and `theme.css` must exist, and
  *    every semantic token `theme.css` declares in its light block (`:root`) must also be
@@ -34,27 +39,20 @@
  * class is a G2 violation, and excluding them by directory (rather than by an
  * ever-growing per-file list) is what keeps this gate meaningful rather than noisy.
  *
- * **Known gap, not yet closeable — same shape as check:ui's own partial state**: this does
- * NOT enforce G2's other half (an arbitrary Tailwind bracket value for spacing, radius or
- * z-index outside `packages/ui`) or any of G3's contrast-ratio checking. Measured against
- * the actual tree: `packages/ui`'s own already-reviewed, already-merged primitives use
- * arbitrary bracket values for exact one-off adjustments in dozens of places today
- * (`scale-[0.97]`, `ring-[3px]`, `shadow-[0_1px_--theme(--color-black/4%)]`, and more) —
- * banning every bracketed value outside the token files would fail nearly the whole
- * existing design system on this same change, which is a design-tokens.md-level policy
- * decision (`ux-quality-gates.md`'s own G2 section already flags the density-utility half
- * of this as "recorded here once decided", not yet closeable) rather than something this
- * checker can decide unilaterally. G3's contrast ratio needs a headless-browser
- * compositing pass over the *built* stylesheet (design-tokens.md's "Contrast (G3)"
- * section) — no such rendering pipeline exists in this repo yet. Both remain open follow-up
- * work, tracked here rather than silently claimed.
+ * The inherited arbitrary-spacing/radius/z-index policy remains intentionally bounded to
+ * the declared density slots; arbitrary utility cleanup outside that inventory is not
+ * claimed by this gate. G3's separate Chromium runner resolves the built stylesheet.
  *
  * Usage:
  *   node scripts/ci/check-tokens.mjs
  */
 
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import * as ts from "typescript/unstable/ast";
+import { API } from "typescript/unstable/sync";
 import {
   finish,
   readText,
@@ -68,6 +66,119 @@ const NAME = "check:tokens";
 const STYLES_DIR = "packages/ui/src/styles";
 const TOKENS_CSS = `${STYLES_DIR}/tokens.css`;
 const THEME_CSS = `${STYLES_DIR}/theme.css`;
+const DENSITY_COMPONENTS = new Map([
+  ["packages/ui/src/components/table.tsx", ["table-row", "td-density-row"]],
+  [
+    "packages/ui/src/components/input.tsx",
+    ["input-control", "td-density-field"],
+  ],
+  ["packages/ui/src/components/card.tsx", ["@CardPanel", "td-density-card"]],
+]);
+
+function densitySlotViolations(sourceFile, relativePath) {
+  const failures = [];
+  function visit(node) {
+    if (
+      node.kind === ts.SyntaxKind.JsxOpeningElement ||
+      node.kind === ts.SyntaxKind.JsxSelfClosingElement
+    ) {
+      const attributes = node.attributes?.properties ?? [];
+      const slot = attributes.find(
+        (attribute) =>
+          attribute.kind === ts.SyntaxKind.JsxAttribute &&
+          attribute.name?.getText(sourceFile) === "data-slot" &&
+          attribute.initializer?.kind === ts.SyntaxKind.StringLiteral,
+      )?.initializer?.text;
+      const expected = DENSITY_COMPONENTS.get(relativePath);
+      const isTarget =
+        expected &&
+        (expected[0] === "@CardPanel"
+          ? node.kind === ts.SyntaxKind.FunctionDeclaration &&
+            node.name?.text === "CardPanel"
+          : slot === expected[0]);
+      if (isTarget) {
+        // The AST selects the exact JSX element; inspecting its serialized opening tag also
+        // includes wrapper calls such as cn(...) without confusing adjacent elements.
+        const classes = node.getText(sourceFile);
+        const densityClass = new RegExp(
+          `(?:^|[\\s"'\x60])${expected[1]}(?:$|[\\s"'\x60])`,
+        );
+        if (!densityClass.test(classes)) {
+          failures.push(`${relativePath}: <${slot}> must use ${expected[1]}.`);
+        }
+        const directSpacing =
+          expected[0] === "@CardPanel"
+            ? /(?:^|[\s"'`])p-\d+(?:\/\d+)?(?:$|[\s"'`])/
+            : /(?:^|[\s"'`])(?:py|pt|pb|gap-y|gap)-\d+(?:\/\d+)?(?:$|[\s"'`])/;
+        if (directSpacing.test(classes)) {
+          failures.push(
+            `${relativePath}: <${slot}> has fixed vertical padding/gap; use its registered density class.`,
+          );
+        }
+      }
+    }
+    node.forEachChild(visit);
+  }
+  visit(sourceFile);
+  return failures;
+}
+
+function densityProbeFailures() {
+  const directory = mkdtempSync(path.join(tmpdir(), "taskdesk-density-probe-"));
+  const negativePath = path.join(directory, "negative.tsx");
+  const positivePath = path.join(directory, "positive.tsx");
+  writeFileSync(
+    negativePath,
+    'const item = <tr data-slot="table-row" className="py-3" />;',
+  );
+  writeFileSync(
+    positivePath,
+    'const item = <tr data-slot="table-row" className="td-density-row" />;',
+  );
+  const parser = new API({ cwd: directory });
+  try {
+    const snapshot = parser.updateSnapshot({
+      openFiles: [negativePath, positivePath],
+    });
+    try {
+      const negative = snapshot
+        .getDefaultProjectForFile(negativePath)
+        ?.program.getSourceFile(negativePath);
+      const positive = snapshot
+        .getDefaultProjectForFile(positivePath)
+        ?.program.getSourceFile(positivePath);
+      const issues = negative
+        ? densitySlotViolations(
+            negative,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const safe = positive
+        ? densitySlotViolations(
+            positive,
+            "packages/ui/src/components/table.tsx",
+          )
+        : ["positive JSX fixture did not parse"];
+      const failures = [];
+      if (
+        !issues.some((message) =>
+          message.includes("fixed vertical padding/gap"),
+        )
+      )
+        failures.push(
+          "density negative probe did not reject a hard-coded py-3 row",
+        );
+      if (safe.length)
+        failures.push("density positive probe rejected a semantic row class");
+      return failures;
+    } finally {
+      snapshot.dispose();
+    }
+  } finally {
+    parser.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
 
 /**
  * Where a hard-coded color literal could plausibly be a design-system defect, per this
@@ -313,10 +424,49 @@ async function main() {
     }
   }
 
+  const densityPaths = [...DENSITY_COMPONENTS.keys()].map((relative) =>
+    path.join(repoRoot, relative),
+  );
+  const parser = new API({ cwd: repoRoot });
+  try {
+    const snapshot = parser.updateSnapshot({ openFiles: densityPaths });
+    try {
+      for (const absolute of densityPaths) {
+        const relative = rel(absolute);
+        const sourceFile = snapshot
+          .getDefaultProjectForFile(absolute)
+          ?.program.getSourceFile(absolute);
+        if (!sourceFile) {
+          failures.push(
+            violation(
+              relative,
+              "could not be parsed for the density-slot gate.",
+            ),
+          );
+          continue;
+        }
+        failures.push(
+          ...densitySlotViolations(sourceFile, relative).map((message) =>
+            violation(relative, message),
+          ),
+        );
+      }
+    } finally {
+      snapshot.dispose();
+    }
+  } finally {
+    parser.close();
+  }
+  failures.push(
+    ...densityProbeFailures().map((message) =>
+      violation("scripts/ci/check-tokens.mjs", message),
+    ),
+  );
+
   finish({
     name: NAME,
     failures,
-    ok: "theme.css tokens are concrete in both themes; no hard-coded color literal outside packages/ui/src/styles/.",
+    ok: "theme.css tokens are concrete in both themes; density slots are enforced; no hard-coded color literal outside packages/ui/src/styles/.",
   });
 }
 

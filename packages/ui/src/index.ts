@@ -1,4 +1,6 @@
 // packages/ui — the single source of UI primitives (AGENTS.md rule 1).
+// Extraction batch notes below are historical snapshots; the latest #403 disposition is
+// recorded in the current-state note before Batch 6 and in docs/02-design/design-system.md.
 //
 // Batch 2 (issue #9): nine leaf primitives added on top of the first slice (contract
 // batch C1) — checkbox, collapsible, radio-group, scroll-area, slider, switch, tabs,
@@ -51,6 +53,10 @@
 // its own remove control). `input-otp` remains blocked on the npm dependency (separate
 // issue).
 //
+// Historical batch notes below describe the extraction state at their original commit.
+// In the #403 UI-foundation candidate, the shared Avatar now lives in packages/ui while
+// its URL resolver remains in apps/web/src/components/avatar; app error compositions and
+// the first-load shell are also app-owned, and apps/web/src/components/ui is empty.
 // Batch 6 (issue #9): the last nine movable primitives — breadcrumb, calendar, form,
 // input-otp, pagination, shortcut-number, sidebar, timeline, toast — plus the shared
 // `Slot` helper (`apps/web/src/lib/slot.tsx` -> `./lib/slot.tsx`) and the mobile-breakpoint

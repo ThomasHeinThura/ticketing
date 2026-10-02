@@ -194,7 +194,7 @@ function CardPanel({
 }: useRender.ComponentProps<"div">) {
   const defaultProps = {
     className: cn(
-      "flex-1 p-6 in-[[data-slot=card]:has(>[data-slot=card-header]:not(.border-b))]:pt-0 in-[[data-slot=card]:has(>[data-slot=card-footer]:not(.border-t))]:pb-0",
+      "flex-1 td-density-card in-[[data-slot=card]:has(>[data-slot=card-header]:not(.border-b))]:pt-0 in-[[data-slot=card]:has(>[data-slot=card-footer]:not(.border-t))]:pb-0",
       className,
     ),
     "data-slot": "card-panel",

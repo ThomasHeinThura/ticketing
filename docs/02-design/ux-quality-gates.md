@@ -23,8 +23,10 @@ Three checks wearing one number — they need three implementations, so they are
   package or `@base-ui/react` outside `packages/ui`, and inside `packages/ui` on any Radix
   import not listed in `packages/ui/KNOWN-RADIX.md` ([ui-extraction-plan.md](ui-extraction-plan.md)).
   This is `check:ui` proper.
-- **G1c — the old directory stays empty.** Fails if anything lands in
-  `apps/web/src/components/ui` after extraction.
+- **G1c — the old directory stays empty.** `scripts/ci/check-ui.mjs` fails if
+  `apps/web/src/components/ui` contains any entry after extraction, including ignored and
+  untracked files. App-specific compositions live under `apps/web/src/components/`; shared
+  primitives live under `packages/ui`.
 
 **Why:** v1 hand-wrote every primitive and got inconsistency, missing icons and ad-hoc
 accessibility. See [ADR 0008](../01-architecture/adr/0008-single-design-system.md).
@@ -32,33 +34,35 @@ accessibility. See [ADR 0008](../01-architecture/adr/0008-single-design-system.m
 **Escape hatch:** an inline `// ui-exempt: <reason>` comment. Reviewed; rarely justified.
 
 
-### G2 · Tokens only
+### G2 · Tokens and density slots
 
-**Fails on:** a hex colour, `rgb()`, `hsl()`, `oklch()`, or an arbitrary Tailwind value
-for colour, spacing, radius or z-index, outside `packages/ui/src/styles/`.
+**Fails on:** a hard-coded colour or arbitrary colour/spacing/radius/z-index value outside
+`packages/ui/src/styles/`, and on fixed vertical padding or row gaps placed directly on a
+declared density slot. The shared classes `td-density-row`, `td-density-field`, and
+`td-density-card` are the only density controls. Comfortable is the default; the existing
+root `compact-mode` preference applies the compact values. The initial registered slots are
+repeated data rows, form fields, and repeated cards in `packages/ui` and the app-shell
+compositions. They use the classes from `packages/ui/src/styles/density.css`; ordinary
+layout spacing outside those named slots continues to use Tailwind's built-in scale.
 
-Run by `scripts/check-tokens.mjs`, inherited from v1 — one of the few things it got right.
-
-**Known gap, not yet closeable:** this does not catch a hard-coded density utility (`py-3`
-on a table row) that defeats the comfortable/compact preference — only an *arbitrary*
-value (`p-[13px]`) fails today. [design-tokens.md](design-tokens.md#spacing-z-index-type-scale-shadow-layout--deleted)
-states why: TaskDesk deliberately deleted its own `--space-*` token layer and left the
-density mechanism itself (a semantic spacing token set, or a density utility class) as an
-open follow-up, "recorded here once decided" rather than guessed at now. `G2` gains this
-check once that mechanism is chosen; until then `H5`, a human gate, is the only backstop —
-which is the gap this finding is naming, not a defect in this gate's own logic.
+`scripts/ci/check-tokens.mjs` checks the registered-slot markup and rejects direct vertical
+padding or gap utilities on those elements, while positive probes ensure normal layout
+spacing remains allowed. `design-tokens.md` owns the class values and the slot inventory.
 
 ### G3 · Contrast
 
-**Fails on:** any declared foreground/background pair below WCAG AA, in either theme.
-
-The declared pairs and the token values this checks are real inputs, not a hypothetical:
-[design-tokens.md](design-tokens.md)'s "Semantic assignments", "Status colours" and
-"Priority and SLA colour tokens" sections give every token a value in both themes, and its
-["Contrast (G3)"](design-tokens.md#contrast-g3) section defines the `pairs.json` schema —
-one entry per declared foreground/background combination, `minRatio` 4.5 for body text and
-3 for large text and non-text indicators. `check-tokens.mjs` composites translucent tokens
-over their effective backdrop before measuring, per that section.
+**Fails on:** any declared, actually used foreground/background pair below WCAG AA in either
+theme, any used pair missing from the manifest, or a manifest entry that has no real usage.
+`packages/ui/src/styles/pairs.json` records token roles, category/threshold, theme coverage,
+usage owner, actual background class by theme, and effective opaque backdrop. `pnpm
+check:tokens` runs the token/density checks and builds the web stylesheet, then loads that
+stylesheet in Chromium, reads computed colours, composites transparent layers over the
+declared effective backdrop, and checks 4.5:1 body text or 3:1 large text/non-text
+indicators in light and dark themes. Coverage and failure probes exercise unknown pairs,
+threshold failures, and translucent surfaces. `design-tokens.md` owns the schema and
+`packages/ui/src/styles/theme.css` is the value source. This numerical gate does not approve
+provisional authored colors visually; H1–H6 design review is deferred to P4 under the
+current user decision.
 
 ### G4 · Accessibility
 

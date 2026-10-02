@@ -47,6 +47,8 @@
   --color-foreground: var(--foreground);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-strong-foreground: var(--destructive-strong-foreground);
+  --color-destructive-strong: var(--destructive-strong);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
   --color-code-foreground: var(--code-foreground);
@@ -76,6 +78,8 @@
   --card-foreground: var(--color-neutral-800);
   --destructive: var(--color-red-500);
   --destructive-foreground: var(--color-red-700);
+  --destructive-strong: var(--color-red-700);
+  --destructive-strong-foreground: var(--color-white);
   --foreground: var(--color-neutral-800);
   --info: var(--color-blue-500);
   --info-foreground: var(--color-blue-700);
@@ -128,6 +132,8 @@
   --card-foreground: var(--color-neutral-100);
   --destructive: color-mix(in srgb, var(--color-red-500) 90%, var(--color-white));
   --destructive-foreground: var(--color-red-400);
+  --destructive-strong: var(--color-red-700);
+  --destructive-strong-foreground: var(--color-white);
   --foreground: var(--color-neutral-100);
   --info: var(--color-blue-500);
   --info-foreground: var(--color-blue-400);

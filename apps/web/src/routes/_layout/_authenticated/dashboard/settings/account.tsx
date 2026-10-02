@@ -14,9 +14,9 @@ import {
 } from "@taskdesk/ui";
 import { Bell, Code, Settings, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
 import SettingsSidebar from "@/components/SettingsSidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/cn";
 import { getInitials } from "@/lib/get-initials";
 

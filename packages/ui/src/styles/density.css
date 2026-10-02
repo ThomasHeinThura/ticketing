@@ -1,0 +1,26 @@
+/* Shared comfortable/compact spacing; values use Tailwind's existing spacing scale. */
+.td-density-row > [data-slot="table-cell"],
+.td-density-row > [data-slot="table-head"] {
+  padding-block: calc(var(--spacing) * 3);
+}
+
+.td-density-field {
+  padding-block: calc(var(--spacing) * 2);
+}
+
+.td-density-card {
+  padding: calc(var(--spacing) * 4);
+}
+
+html.compact-mode .td-density-row > [data-slot="table-cell"],
+html.compact-mode .td-density-row > [data-slot="table-head"] {
+  padding-block: calc(var(--spacing) * 2);
+}
+
+html.compact-mode .td-density-field {
+  padding-block: calc(var(--spacing) * 1.5);
+}
+
+html.compact-mode .td-density-card {
+  padding: calc(var(--spacing) * 3);
+}
