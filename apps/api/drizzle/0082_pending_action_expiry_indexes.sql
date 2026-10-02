@@ -1,0 +1,2 @@
+CREATE INDEX "pending_action_expiry_scoped_idx" ON "pending_action" USING btree ("expires_at","id") WHERE "pending_action"."state" = 'pending' and "pending_action"."workspace_id" is not null;--> statement-breakpoint
+CREATE INDEX "pending_action_expiry_unscoped_probe_idx" ON "pending_action" USING btree ("expires_at") WHERE "pending_action"."state" = 'pending' and "pending_action"."workspace_id" is null;

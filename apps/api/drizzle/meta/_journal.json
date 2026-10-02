@@ -575,6 +575,13 @@
 			"when": 1790895278293,
 			"tag": "0081_project_default_comment_visibility",
 			"breakpoints": true
+		},
+		{
+			"idx": 82,
+			"version": "7",
+			"when": 1790902400635,
+			"tag": "0082_pending_action_expiry_indexes",
+			"breakpoints": true
 		}
 	]
 }

@@ -3339,6 +3339,14 @@ export const pendingActionTable = pgTable(
       table.workspaceId,
       table.createdAt.desc(),
     ),
+    index("pending_action_expiry_scoped_idx")
+      .on(table.expiresAt, table.id)
+      .where(
+        sql`${table.state} = 'pending' and ${table.workspaceId} is not null`,
+      ),
+    index("pending_action_expiry_unscoped_probe_idx")
+      .on(table.expiresAt)
+      .where(sql`${table.state} = 'pending' and ${table.workspaceId} is null`),
     uniqueIndex("pending_action_one_pending_target_unique")
       .on(table.requestedByPersonId, table.action, table.targetIds)
       .where(sql`${table.state} = 'pending'`),

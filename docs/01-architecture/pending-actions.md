@@ -128,7 +128,17 @@ thing that is hashed or executed.
   to another resource, and cannot be applied when the payload, targets or scope differ from
   what was approved — the hash comparison in `PA-6` is the mechanism, not a convention.
 - `PA-8` **Expiry:** 15 minutes from creation. `pending-action-expire`
-  ([background-jobs.md](background-jobs.md)) marks stale rows `expired`.
+  ([background-jobs.md](background-jobs.md)) marks stale workspace-scoped rows `expired` in
+  batches of at most 100 and at most 1,000 selected eligible rows per run, using the
+  `pending_action` expiry indexes in [data-model.md](data-model.md#indexing). Each
+  candidate statement samples PostgreSQL's wall clock once for its due cutoff; a row that
+  becomes due after that statement's cutoff waits for a later batch or run. The unsupported
+  null-scope due probe uses a one-row scalar lookup ordered by `expires_at`, coalesced to
+  `false`, so PostgreSQL can use the matching partial probe index. After locking a candidate,
+  the worker resamples database
+  time and conditionally transitions the still-pending due row in the same transaction as its
+  event. Unsupported null-workspace rows stay pending, are excluded from the selected-action
+  cap, and make the worker report degraded.
 - `PA-9` **Invalidation:** an action becomes `invalidated` when the requesting credential
   is revoked, the requester is deactivated, the requester loses reach to any target, the
   required capability is removed, the requester cancels it, a target's version changes, or

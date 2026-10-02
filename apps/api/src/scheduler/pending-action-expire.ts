@@ -17,10 +17,11 @@ export type PendingActionExpireOutcome = {
 
 /**
  * Current PA-8 slice: expire due workspace-scoped actions from the supported
- * work-item-delete request flow. The database clock is sampled after each row is
- * locked so timestamptz comparisons stay timezone-safe and lock waits cannot make
- * the decision use stale time. Organisation/instance actions need an event-scope
- * contract before this worker can process their nullable workspace scope.
+ * work-item-delete request flow. Each candidate statement samples the database wall
+ * clock once for its due cutoff; rows becoming due after that cutoff wait for a later
+ * batch/run. The worker resamples database time after each row is locked so lock waits
+ * cannot make the final decision use stale time. Organisation/instance actions need an
+ * event-scope contract before this worker can process their nullable workspace scope.
  */
 export async function expirePendingActions(): Promise<PendingActionExpireOutcome> {
   return withJobLease(
@@ -29,13 +30,15 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
       let expired = 0;
       let scanned = 0;
       const unsupported = await db.execute<{ exists: boolean }>(sql`
-        SELECT EXISTS (
-          SELECT 1
+        SELECT COALESCE((
+          SELECT true
           FROM pending_action
           WHERE state = 'pending'
             AND workspace_id IS NULL
-            AND expires_at <= clock_timestamp()
-        ) AS exists
+            AND expires_at <= (SELECT clock_timestamp())
+          ORDER BY expires_at
+          LIMIT 1
+        ), false) AS exists
       `);
       let degraded = unsupported.rows[0]?.exists === true;
       let unsupportedLogged = false;
@@ -60,7 +63,7 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
             FROM pending_action
             WHERE state = 'pending'
               AND workspace_id IS NOT NULL
-              AND expires_at <= clock_timestamp()
+              AND expires_at <= (SELECT clock_timestamp())
               ${afterCursor}
             ORDER BY expires_at, id
             FOR UPDATE SKIP LOCKED
