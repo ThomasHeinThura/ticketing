@@ -14,6 +14,12 @@ function isNetworkError(error: unknown): boolean {
   );
 }
 
+export function shouldRetryQuery(failureCount: number, error: Error): boolean {
+  return isNetworkError(error) || isUnauthorizedError(error)
+    ? false
+    : failureCount < 2;
+}
+
 // Cancellation surfaces as AbortError from the fetch signal and from TanStack's
 // own query cancellation. Treat both as expected control flow, not a failure.
 function isCancellationError(error: Error): boolean {
@@ -73,10 +79,7 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       refetchOnMount: false,
-      retry: (failureCount, error) =>
-        isNetworkError(error) || isUnauthorizedError(error)
-          ? false
-          : failureCount < 2,
+      retry: shouldRetryQuery,
     },
     mutations: {
       retry: false,
