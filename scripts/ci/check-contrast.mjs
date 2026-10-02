@@ -339,7 +339,6 @@ export function observedPairsInSources(sources, tokenNames) {
         const foregroundModifiers = foreground.variants.filter(
           (variant) => variant !== "dark",
         );
-        const foregroundModifierKey = foregroundModifiers.join(":");
         for (const group of groups.values()) {
           const state = new Set([...foregroundModifiers, ...group.modifiers]);
           const applicableBackgroundGroups = [...groups.values()].filter(
@@ -353,18 +352,33 @@ export function observedPairsInSources(sources, tokenNames) {
           );
           if (group.modifiers.length !== mostSpecific) continue;
           for (const theme of ["light", "dark"]) {
-            const overriddenInDark =
-              theme === "dark" &&
-              !foreground.darkScoped &&
-              textNames.some(
-                (candidate) =>
-                  candidate.darkScoped &&
-                  candidate.variants
-                    .filter((variant) => variant !== "dark")
-                    .join(":") === foregroundModifierKey,
+            const themeForegrounds = textNames.filter((candidate) => {
+              if (theme === "light" && candidate.darkScoped) return false;
+              const modifiers = candidate.variants.filter(
+                (variant) => variant !== "dark",
               );
-            if ((foreground.darkScoped && theme !== "dark") || overriddenInDark)
-              continue;
+              return modifiers.every((modifier) => state.has(modifier));
+            });
+            const mostSpecificForeground = Math.max(
+              ...themeForegrounds.map(
+                (candidate) =>
+                  candidate.variants.filter((variant) => variant !== "dark")
+                    .length,
+              ),
+            );
+            const maxSpecificityForegrounds = themeForegrounds.filter(
+              (candidate) =>
+                candidate.variants.filter((variant) => variant !== "dark")
+                  .length === mostSpecificForeground,
+            );
+            const darkForegrounds = maxSpecificityForegrounds.filter(
+              (candidate) => candidate.darkScoped,
+            );
+            const activeForegrounds =
+              theme === "dark" && darkForegrounds.length > 0
+                ? darkForegrounds
+                : maxSpecificityForegrounds;
+            if (!activeForegrounds.includes(foreground)) continue;
             const darkOverride =
               theme === "dark" &&
               group.entries.some((entry) => entry.darkScoped);

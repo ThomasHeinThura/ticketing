@@ -194,6 +194,10 @@ describe("G3 contrast inventory and math", () => {
       false,
     );
     assert.equal(
+      observed.has("--color-foreground|--color-primary|hover:bg-primary|light"),
+      false,
+    );
+    assert.equal(
       observed.has("--color-foreground|--color-background|bg-background|dark"),
       false,
     );

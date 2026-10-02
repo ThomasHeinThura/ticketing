@@ -108,6 +108,22 @@ function hasFixedSpacing(classes) {
   });
 }
 
+function classStringLiterals(node) {
+  const values = [];
+  function visit(current) {
+    if (
+      current.kind === ts.SyntaxKind.StringLiteral ||
+      current.kind === ts.SyntaxKind.NoSubstitutionTemplateLiteral
+    ) {
+      values.push(current.text);
+      return;
+    }
+    current.forEachChild(visit);
+  }
+  if (node) visit(node);
+  return values;
+}
+
 function densityCallsiteViolations(sourceFile, relativePath) {
   const failures = [];
   const imports = new Map();
@@ -155,8 +171,13 @@ function densityCallsiteViolations(sourceFile, relativePath) {
             attribute.kind === ts.SyntaxKind.JsxAttribute &&
             attribute.name?.getText(sourceFile) === "className",
         );
-        const value = className?.initializer?.getText(sourceFile) ?? "";
-        if (!isUnstyledInput && hasFixedSpacing(value))
+        const initializer = className?.initializer;
+        const expression =
+          initializer?.kind === ts.SyntaxKind.JsxExpression
+            ? initializer.expression
+            : initializer;
+        const values = classStringLiterals(expression);
+        if (!isUnstyledInput && hasFixedSpacing(values.join(" ")))
           failures.push(
             `${relativePath}: <${node.tagName.text}> className overrides registered ${DENSITY_CALLSITE_COMPONENTS.get(tag)} density spacing.`,
           );
@@ -323,7 +344,7 @@ function densityProbeFailures() {
   );
   writeFileSync(
     callsitePath,
-    'import { CardPanel as Panel, Input } from "@taskdesk/ui"; const view = <><Panel className={cn("!p-4", extra)} /><Input className="py-px" /><Input unstyled className="p-8" /></>;',
+    'import { CardPanel as Panel, Input } from "@taskdesk/ui"; const view = <><Panel className={cn("!p-4")} /><Panel className={condition && "!p-4"} /><Panel className={{ "!p-4": condition }} /><Input className="py-px" /><Input unstyled className="p-8" /></>;',
   );
   const parser = new API({ cwd: directory });
   try {
@@ -607,9 +628,9 @@ function densityProbeFailures() {
         failures.push(
           "density positive probe rejected CardPanel density class",
         );
-      if (callsiteIssues.length !== 2)
+      if (callsiteIssues.length !== 4)
         failures.push(
-          "density callsite probe must reject Input and aliased CardPanel overrides while allowing unstyled Input",
+          "density callsite probe must reject wrapped, conditional, object, and Input overrides while allowing unstyled Input",
         );
       return failures;
     } finally {
