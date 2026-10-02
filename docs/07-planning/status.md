@@ -1,5 +1,38 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## Blocked — 2026-10-02 15:03 UTC
+
+- **Accepted main/runtime:** `main` remains `8ddb9de8` (#574); the #572 marker is accepted.
+  OrbStack remains healthy on image `sha256:7b8f74750b41e5e6551cd17611eba5c9ff518c4f76bf5276829e15b074b78bfd`
+  (OCI `b80ff7c3`, UID 10001). This is not current browser acceptance.
+- **UAT/restore:** read-only 13:43 UAT is old source `c463`, OCI unknown; 77 applied hashes
+  bind to that source and 77–79 remain pending. Signed image `9c97` (source `ad1`) and prior
+  `4b2c` (source `13c`) were verified, not deployed. Backup/restore runner is preparing the
+  full findings batch; none executed and no source-bound soak started.
+- **P0 performance (#575/#525/#558):** #575 head `1e9d13a8c468cf57b582a01c6143a18a2ec46554`
+  is based on older `a8b33755`; reviewed source `aee`. One private source/fresh-build-bound
+  capture exited 0 at 13:58:54 and cleanup was privately verified; this is not G11. Hosted
+  run `37017909532` completed 14/22 budgets, failing eight in the same classes. PostgreSQL
+  job `110873255782` passed 128 files / 1,596 tests / 5 tasks on the older `a8b33755` parent,
+  not current main's 1,600-test result.
+  The third minimal modal route-subscription trial measured route 497.9 → 511.0 ms, palette
+  299.8 → 284.1 ms, keyboard 320.7 → 309.7 ms; all three budgets failed. Rejected; its two
+  owned files were restored clean at `a8b33755` before bulk refresh. Two earlier trials were
+  also rejected. Private raw evidence and failed ledgers are preserved; no speed improvement
+  is established. #549 is closed as superseded by #575, branch preserved; #558's separate
+  cold diagnostic remains failed and unchanged.
+- **Other P0 obligations:** #573 head `11affd07` is spec-only; two Luna reviews, Sol review
+  and 17 checks are clear. Thomas's finished-spec read remains pending; no human read is
+  inferred. This is not implementation or #560 closure. Chrome extension UI still blocks
+  manual browser verification. H1, the P0 Sol phase finalizer and other P0 exit obligations
+  remain open. No stage acceptance, waiver or cutover is claimed.
+- **Review cadence:** the user's 2026-10-02 direction applies: implement related approved
+  work and known findings in substantial batches, test during implementation, then review the
+  frozen bulk candidate at its applicable tier. Do not review small/mechanical edits or
+  speculative trials. Existing tiers, exact-head requirements and protected-merge gates
+  remain. See [AGENTS.md](../../AGENTS.md#bulk-implementation-and-review-cadence) and the
+  newest [decision-log entry](decision-log.md).
+
 ## Blocked — 2026-10-02 07:00 UTC
 
 - **P0 authorization shadow soak (#8):** the dated route-outcome audit at 03:26:35 UTC covered 68 requests across 2026-09-28–30: 46 outcomes agreed and 22 were unevaluated (18 delegated WebSocket outcomes and four legacy self-GET outcomes unknown). The 04:57:08 route-coverage aggregate remained 68 requests but did not establish date coverage. These observations do not establish current Oct 1–2 traffic or representative eligible-router exercise. The required representative soak and reviewed cutover remain open.
