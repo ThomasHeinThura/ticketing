@@ -12,6 +12,16 @@
   padding: calc(var(--spacing) * 4);
 }
 
+[data-slot="card"]:has(>[data-slot="card-header"]:not(.border-b)) >
+  [data-slot="card-panel"].td-density-card {
+  padding-block-start: 0;
+}
+
+[data-slot="card"]:has(>[data-slot="card-footer"]:not(.border-t)) >
+  [data-slot="card-panel"].td-density-card {
+  padding-block-end: 0;
+}
+
 html.compact-mode .td-density-row > [data-slot="table-cell"],
 html.compact-mode .td-density-row > [data-slot="table-head"] {
   padding-block: calc(var(--spacing) * 2);

@@ -60,8 +60,12 @@ usage owner, actual background class by theme, and effective opaque backdrop. `p
 check:tokens` runs the token/density checks and builds the web stylesheet, then loads that
 stylesheet in Chromium, reads computed colours, composites transparent layers over the
 declared effective backdrop, and checks 4.5:1 body text or 3:1 large text/non-text
-indicators in light and dark themes. Coverage and failure probes exercise unknown pairs,
-threshold failures, and translucent surfaces. `design-tokens.md` owns the schema and
+indicators in light and dark themes. It activates hover and pressed attributes on the probe;
+for autofill, it rewrites only the built `:has(:autofill)` state selector to an equivalent
+probe attribute because headless Chromium cannot synthesize autofill. The production class
+selector, declaration, variable values, and cascade remain from the built stylesheet.
+Coverage and failure probes exercise unknown pairs, stale declarations, threshold failures,
+and translucent surfaces. `design-tokens.md` owns the schema and
 `packages/ui/src/styles/theme.css` is the value source. This numerical gate does not approve
 provisional authored colors visually; H1–H6 design review is deferred to P4 under the
 current user decision.

@@ -308,8 +308,11 @@ The inventory lists actual combinations, not every theoretical cross-product. Th
 compares observed declared pairs in the registered Button, Badge, and Input sources against
 the manifest; new or unclassified use in those sources fails until it has an explicit entry.
 Other component sources are not covered until explicitly registered in the gate. The runner builds and loads the
-web CSS in Chromium, resolves the computed colors in each theme, composites alpha over the
-recorded opaque backdrop, then computes WCAG 2.1 contrast. Body text uses 4.5:1; large text
+web CSS in Chromium, resolves the computed colors in each theme and interaction state,
+composites alpha over the recorded opaque backdrop, then computes WCAG 2.1 contrast. For
+autofill, only the built `:has(:autofill)` selector is substituted with a probe attribute
+because headless Chromium cannot synthesize autofill; its production class, declaration,
+variables, and cascade are still measured. Body text uses 4.5:1; large text
 and non-text indicators use 3:1.
 
 Status must never be conveyed by colour alone. An SLA badge carries an icon and a label as

@@ -11,25 +11,44 @@ const requireFromWeb = createRequire(
   path.join(repoRoot, "apps/web/package.json"),
 );
 
+function parseClassToken(className) {
+  const segments = [];
+  let bracketDepth = 0;
+  let segmentStart = 0;
+  for (let index = 0; index < className.length; index += 1) {
+    const character = className[index];
+    if (character === "[") bracketDepth += 1;
+    else if (character === "]") bracketDepth = Math.max(0, bracketDepth - 1);
+    else if (character === ":" && bracketDepth === 0) {
+      segments.push(className.slice(segmentStart, index));
+      segmentStart = index + 1;
+    }
+  }
+  segments.push(className.slice(segmentStart));
+  return {
+    className,
+    variants: segments.slice(0, -1),
+    utility: segments.at(-1) ?? "",
+  };
+}
+
 function sourceUsesPair(source, foregroundClass, backgroundClass, theme) {
   const literal = /(["'`])([\s\S]*?)\1/g;
   for (const match of source.matchAll(literal)) {
-    const classes = match[2].split(/\s+/);
-    const foregroundFound = classes.some(
-      (className) =>
-        className
-          .split(":")
-          .filter((part) => part !== "dark")
-          .join(":") === foregroundClass,
-    );
+    const classes = match[2].split(/\s+/).map(parseClassToken);
+    const foregroundFound = classes.some((parsed) => {
+      const darkScoped = parsed.variants.includes("dark");
+      return (
+        parsed.utility === foregroundClass && (!darkScoped || theme === "dark")
+      );
+    });
     if (!foregroundFound) continue;
     if (
-      classes.some((className) => {
-        const parts = className.split(":");
-        const darkScoped = parts.includes("dark");
-        const normalized = parts.filter((part) => part !== "dark").join(":");
+      classes.some((parsed) => {
+        const darkScoped = parsed.variants.includes("dark");
         return (
-          normalized === backgroundClass && (!darkScoped || theme === "dark")
+          parsed.className === backgroundClass &&
+          (!darkScoped || theme === "dark")
         );
       })
     ) {
@@ -156,44 +175,34 @@ export function observedPairsInSources(sources, tokenNames) {
         token.endsWith("-foreground"),
     ),
   );
-  const backgrounds = new Set(tokenNames);
+  const backgroundTokens = new Set(tokenNames);
   const observed = new Set();
   const literal = /(["'`])([\s\S]*?)\1/g;
   for (const source of sources) {
     for (const match of source.matchAll(literal)) {
-      const textNames = [
-        ...match[2].matchAll(/(?:^|\s)(?:[a-z][a-z0-9-]*:)*text-([a-z0-9-]+)/g),
-      ]
-        .map((item) => item[1])
-        .filter((name) => foregrounds.has(name));
-      const bgNames = [
-        ...match[2].matchAll(
-          /(?:^|\s)((?:[a-z][a-z0-9-]*:)*bg-([a-z0-9-]+)(?:\/\d+)?)/g,
-        ),
-      ]
-        .map((item) => {
-          const parts = item[1].split(":");
-          const darkScoped = parts.includes("dark");
-          const modifiers = parts
-            .slice(0, -1)
-            .filter((modifier) => modifier !== "dark");
-          const surfaceClass = parts
-            .filter((part) => part !== "dark")
-            .join(":");
-          return {
-            name: item[2],
-            darkScoped,
-            modifiers: modifiers.join(":"),
-            surfaceClass,
-          };
-        })
-        .filter(({ name }) => backgrounds.has(name));
-      for (const fg of textNames) {
+      const classes = match[2].split(/\s+/).map(parseClassToken);
+      const textNames = classes
+        .map((parsed) => ({
+          ...parsed,
+          name: parsed.utility.match(/^text-([a-z0-9-]+)$/)?.[1],
+        }))
+        .filter(({ name }) => name && foregrounds.has(name));
+      const backgroundEntries = classes
+        .map((parsed) => ({
+          ...parsed,
+          name: parsed.utility.match(/^bg-([a-z0-9-]+)(?:\/\d+)?$/)?.[1],
+          darkScoped: parsed.variants.includes("dark"),
+        }))
+        .filter(({ name }) => name && backgroundTokens.has(name));
+      for (const foreground of textNames) {
         const groups = new Map();
-        for (const entry of bgNames) {
-          const group = groups.get(entry.modifiers) ?? [];
+        for (const entry of backgroundEntries) {
+          const modifiers = entry.variants
+            .filter((variant) => variant !== "dark")
+            .join(":");
+          const group = groups.get(modifiers) ?? [];
           group.push(entry);
-          groups.set(entry.modifiers, group);
+          groups.set(modifiers, group);
         }
         for (const group of groups.values()) {
           for (const theme of ["light", "dark"]) {
@@ -204,7 +213,7 @@ export function observedPairsInSources(sources, tokenNames) {
             );
             for (const entry of activeEntries) {
               observed.add(
-                `--color-${fg}|--color-${entry.name}|${entry.surfaceClass}|${theme}`,
+                `--color-${foreground.name}|--color-${entry.name}|${entry.className}|${theme}`,
               );
             }
           }
@@ -365,6 +374,32 @@ async function main() {
       "<!doctype html><html><head></head><body></body></html>",
     );
     await page.addStyleTag({ content: css });
+    if (
+      pairs.some((pair) =>
+        Object.values(pair.backgroundClass ?? {}).some((value) =>
+          value.includes("has-autofill:"),
+        ),
+      )
+    ) {
+      if (!css.includes(":has(:autofill)")) {
+        failures.push(
+          violation(
+            manifestPath,
+            "built CSS has no :has(:autofill) selector for the declared autofill pair.",
+          ),
+        );
+      } else {
+        // Headless Chromium does not expose real autofill state. Replace only the state
+        // selector in the built CSS with an equivalent test attribute, retaining the
+        // production class selectors, declarations, variables, and cascade.
+        await page.addStyleTag({
+          content: css.replaceAll(
+            ":has(:autofill)",
+            ":has([data-autofill-probe])",
+          ),
+        });
+      }
+    }
     for (const [index, pair] of pairs.entries()) {
       for (const theme of pair.themes) {
         await page.evaluate(
@@ -375,15 +410,25 @@ async function main() {
         const surfaceClass = pair.backgroundClass?.[theme] ?? "";
         const values = await page.evaluate(
           ({ bg, backdrop, foregroundClass, backgroundClass, theme }) => {
-            const node = document.createElement("span");
+            const surfaceClass = backgroundClass?.[theme] ?? "";
+            const node = document.createElement(
+              surfaceClass.includes("[button&,a&]") ? "button" : "span",
+            );
             if (foregroundClass) node.className = foregroundClass;
             if (backgroundClass)
               node.className = `${node.className} ${backgroundClass[theme]}`;
             node.id = "contrast-probe";
-            if (backgroundClass?.[theme]?.includes("data-pressed:")) {
+            if (backgroundClass?.[theme]?.includes("data-pressed")) {
               node.setAttribute("data-pressed", "");
             }
-            node.textContent = "Contrast";
+            if (backgroundClass?.[theme]?.includes("has-autofill:")) {
+              const child = document.createElement("input");
+              child.type = "text";
+              child.dataset.autofillProbe = "true";
+              child.setAttribute("autocomplete", "given-name");
+              node.append(child);
+            }
+            node.append(document.createTextNode("Contrast"));
             node.style.display = "inline-block";
             node.style.padding = "1rem";
             if (!backgroundClass) node.style.backgroundColor = `var(${bg})`;
@@ -409,7 +454,7 @@ async function main() {
         }
         if (
           surfaceClass.includes("hover:") ||
-          surfaceClass.includes("data-pressed:")
+          surfaceClass.includes("data-pressed")
         ) {
           values.bg = await page
             .locator("#contrast-probe")
@@ -440,7 +485,7 @@ async function main() {
     }
     const density = await page.evaluate(() => {
       document.body.innerHTML =
-        '<table><tr class="td-density-row"><td data-slot="table-cell">row</td></tr></table><div id="field" class="td-density-field">field</div><div id="card" class="td-density-card">card</div>';
+        '<table><tr class="td-density-row"><td data-slot="table-cell">row</td></tr></table><div id="field" class="td-density-field">field</div><div id="card" class="td-density-card">card</div><div data-slot="card"><div data-slot="card-header"></div><div id="card-no-header-border" data-slot="card-panel" class="td-density-card"></div></div><div data-slot="card"><div data-slot="card-header" class="border-b"></div><div id="card-header-border" data-slot="card-panel" class="td-density-card"></div><div data-slot="card-footer"></div></div><div data-slot="card"><div data-slot="card-panel" id="card-no-footer-border" class="td-density-card"></div><div data-slot="card-footer"></div></div><div data-slot="card"><div data-slot="card-panel" id="card-footer-border" class="td-density-card"></div><div data-slot="card-footer" class="border-t"></div></div>';
       const measure = () => ({
         row: getComputedStyle(document.querySelector("[data-slot=table-cell]"))
           .paddingBlockStart,
@@ -448,6 +493,18 @@ async function main() {
           .paddingBlockStart,
         card: getComputedStyle(document.querySelector("#card"))
           .paddingBlockStart,
+        cardNoHeaderBorder: getComputedStyle(
+          document.querySelector("#card-no-header-border"),
+        ).paddingBlockStart,
+        cardHeaderBorder: getComputedStyle(
+          document.querySelector("#card-header-border"),
+        ).paddingBlockStart,
+        cardNoFooterBorder: getComputedStyle(
+          document.querySelector("#card-no-footer-border"),
+        ).paddingBlockEnd,
+        cardFooterBorder: getComputedStyle(
+          document.querySelector("#card-footer-border"),
+        ).paddingBlockEnd,
       });
       document.documentElement.classList.remove("compact-mode");
       const comfortable = measure();
@@ -459,6 +516,10 @@ async function main() {
       row: ["12px", "8px"],
       field: ["8px", "6px"],
       card: ["16px", "12px"],
+      cardNoHeaderBorder: ["0px", "0px"],
+      cardHeaderBorder: ["16px", "12px"],
+      cardNoFooterBorder: ["0px", "0px"],
+      cardFooterBorder: ["16px", "12px"],
     })) {
       if (
         density.comfortable[name] !== expected[0] ||

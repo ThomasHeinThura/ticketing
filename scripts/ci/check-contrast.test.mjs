@@ -60,6 +60,71 @@ describe("G3 contrast inventory and math", () => {
     );
   });
 
+  it("inventories nested arbitrary state variants as real surface classes", () => {
+    const activeSurface = "[:active,[data-pressed]]:bg-secondary/80";
+    const usage = `const classes = "text-secondary-foreground ${activeSurface}";`;
+    const manifest = [
+      {
+        fg: "--color-secondary-foreground",
+        bg: "--color-secondary",
+        category: "body",
+        minRatio: 4.5,
+        themes: ["light", "dark"],
+        usage: "fixture.tsx",
+        backdrop: "--color-background",
+        foregroundClass: "text-secondary-foreground",
+        backgroundClass: { light: activeSurface, dark: activeSurface },
+      },
+    ];
+    const observed = observedPairsInSources(
+      [usage],
+      new Set(["secondary", "secondary-foreground"]),
+    );
+    assert.ok(
+      observed.has(
+        `--color-secondary-foreground|--color-secondary|${activeSurface}|light`,
+      ),
+    );
+    assert.ok(
+      observed.has(
+        `--color-secondary-foreground|--color-secondary|${activeSurface}|dark`,
+      ),
+    );
+    assert.deepEqual(
+      validatePairManifest(manifest, () => usage, observed),
+      [],
+    );
+  });
+
+  it("retains dark theme modifiers on measured surface classes", () => {
+    const darkSurface = "dark:has-autofill:bg-foreground/8";
+    const usage = `const classes = "text-foreground has-autofill:bg-foreground/4 ${darkSurface}";`;
+    const manifest = [
+      {
+        fg: "--color-foreground",
+        bg: "--color-foreground",
+        category: "body",
+        minRatio: 4.5,
+        themes: ["light", "dark"],
+        usage: "fixture.tsx",
+        backdrop: "--color-background",
+        foregroundClass: "text-foreground",
+        backgroundClass: {
+          light: "has-autofill:bg-foreground/4",
+          dark: darkSurface,
+        },
+      },
+    ];
+    const observed = observedPairsInSources([usage], new Set(["foreground"]));
+    assert.ok(
+      observed.has(`--color-foreground|--color-foreground|${darkSurface}|dark`),
+    );
+    assert.deepEqual(
+      validatePairManifest(manifest, () => usage, observed),
+      [],
+    );
+  });
+
   it("composites translucent surfaces before measuring WCAG contrast", () => {
     const tintedWhite = composite([255, 0, 0, 0.08], [255, 255, 255]);
     assert.deepEqual(tintedWhite, [255, 235, 235]);

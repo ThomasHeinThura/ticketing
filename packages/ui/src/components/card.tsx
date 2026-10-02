@@ -193,10 +193,7 @@ function CardPanel({
   ...props
 }: useRender.ComponentProps<"div">) {
   const defaultProps = {
-    className: cn(
-      "flex-1 td-density-card in-[[data-slot=card]:has(>[data-slot=card-header]:not(.border-b))]:pt-0 in-[[data-slot=card]:has(>[data-slot=card-footer]:not(.border-t))]:pb-0",
-      className,
-    ),
+    className: cn("flex-1 td-density-card", className),
     "data-slot": "card-panel",
   };
 
