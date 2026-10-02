@@ -85,6 +85,51 @@ const COLD_NETWORK_CLOCK_KEYS = Object.freeze([
   "duplicateTerminal",
   "unmatchedTrackedEvent",
 ]);
+const COLD_CDP_RESOURCE_KIND_KEYS = Object.freeze([
+  "document",
+  "stylesheet",
+  "image",
+  "media",
+  "font",
+  "script",
+  "texttrack",
+  "xhr",
+  "fetch",
+  "eventsource",
+  "websocket",
+  "manifest",
+  "signedexchange",
+  "ping",
+  "cspviolationreport",
+  "preflight",
+  "other",
+  "unknown",
+]);
+const COLD_INCOMPLETE_SOURCE_CLASS_KEYS = Object.freeze([
+  "verified-build-asset",
+  "known-fixed-route",
+  "same-origin-other",
+  "other-or-invalid",
+]);
+const CDP_RESOURCE_TYPES = Object.freeze({
+  Document: "document",
+  Stylesheet: "stylesheet",
+  Image: "image",
+  Media: "media",
+  Font: "font",
+  Script: "script",
+  TextTrack: "texttrack",
+  XHR: "xhr",
+  Fetch: "fetch",
+  EventSource: "eventsource",
+  WebSocket: "websocket",
+  Manifest: "manifest",
+  SignedExchange: "signedexchange",
+  Ping: "ping",
+  CSPViolationReport: "cspviolationreport",
+  Preflight: "preflight",
+  Other: "other",
+});
 const COLD_FAILURE_FLAG_KEYS = Object.freeze([
   "journeyAssertionsComplete",
   "traceOverflow",
@@ -164,9 +209,10 @@ export function createColdFailureReceipt({
   flags,
   cleanup,
   networkClockState = null,
+  incompleteClassification = null,
 }) {
   const receipt = {
-    schemaVersion: 3,
+    schemaVersion: 4,
     kind: "cold-recorder-failure",
     childOutcome,
     primary,
@@ -174,6 +220,7 @@ export function createColdFailureReceipt({
     flags,
     cleanup,
     networkClockState,
+    incompleteClassification,
   };
   validateColdFailureReceipt(receipt);
   const encoded = JSON.stringify(receipt);
@@ -209,10 +256,11 @@ function validateColdFailureReceipt(value) {
       "flags",
       "cleanup",
       "networkClockState",
+      "incompleteClassification",
     ],
     "failure receipt",
   );
-  if (value.schemaVersion !== 3 || value.kind !== "cold-recorder-failure")
+  if (value.schemaVersion !== 4 || value.kind !== "cold-recorder-failure")
     throw new Error("Invalid cold failure receipt identity.");
   if (
     !["not-started", "passed", "failed", "unknown"].includes(value.childOutcome)
@@ -291,8 +339,46 @@ function validateColdFailureReceipt(value) {
       incomplete > invalidStart + terminalNotSeen + invalidTerminal
     )
       throw new Error("Invalid network clock state relationship.");
+    exactKeys(
+      value.incompleteClassification,
+      ["resourceKinds", "sourceClasses"],
+      "incomplete classification",
+    );
+    exactKeys(
+      value.incompleteClassification.resourceKinds,
+      COLD_CDP_RESOURCE_KIND_KEYS,
+      "incomplete resource-kind partition",
+    );
+    exactKeys(
+      value.incompleteClassification.sourceClasses,
+      COLD_INCOMPLETE_SOURCE_CLASS_KEYS,
+      "incomplete source-class partition",
+    );
+    for (const key of COLD_CDP_RESOURCE_KIND_KEYS) {
+      const count = value.incompleteClassification.resourceKinds[key];
+      if (!Number.isInteger(count) || count < 0 || count > 2_048)
+        throw new Error("Invalid incomplete resource-kind count.");
+    }
+    for (const key of COLD_INCOMPLETE_SOURCE_CLASS_KEYS) {
+      const count = value.incompleteClassification.sourceClasses[key];
+      if (!Number.isInteger(count) || count < 0 || count > 2_048)
+        throw new Error("Invalid incomplete source-class count.");
+    }
+    if (
+      Object.values(value.incompleteClassification.resourceKinds).reduce(
+        (sum, count) => sum + count,
+        0,
+      ) !== incomplete ||
+      Object.values(value.incompleteClassification.sourceClasses).reduce(
+        (sum, count) => sum + count,
+        0,
+      ) !== incomplete
+    )
+      throw new Error("Invalid incomplete classification partition sum.");
   } else if (tracked !== null || incomplete !== null) {
     throw new Error("Known request counts require a network clock snapshot.");
+  } else if (value.incompleteClassification !== null) {
+    throw new Error("Incomplete classification requires a network snapshot.");
   }
   exactKeys(value.flags, COLD_FAILURE_FLAG_KEYS, "failure receipt flags");
   for (const key of COLD_FAILURE_FLAG_KEYS) {
@@ -327,7 +413,13 @@ function validateColdFailureReceipt(value) {
       value.flags.traceDataLoss !== false ||
       value.flags.reportPrivacyPassed !== true ||
       state === null ||
-      COLD_NETWORK_CLOCK_KEYS.some((key) => state[key] !== 0)
+      COLD_NETWORK_CLOCK_KEYS.some((key) => state[key] !== 0) ||
+      Object.values(value.incompleteClassification.resourceKinds).some(
+        (count) => count !== 0,
+      ) ||
+      Object.values(value.incompleteClassification.sourceClasses).some(
+        (count) => count !== 0,
+      )
     )
       throw new Error(
         "Passed child lacks complete successful capture evidence.",
@@ -390,6 +482,7 @@ export function parentChildExitReceipt({
   childOutcome = "failed",
   cleanup,
   networkClockState = null,
+  incompleteClassification = null,
 } = {}) {
   const status = coldCleanupStatuses("not-attempted");
   if (cleanup) Object.assign(status, cleanup);
@@ -401,6 +494,7 @@ export function parentChildExitReceipt({
     flags: emptyColdFlags(),
     cleanup: status,
     networkClockState,
+    incompleteClassification,
   });
 }
 
@@ -831,6 +925,77 @@ function safeAsset(value, origin, assetBasenames) {
   } catch {
     return { kind: "unrecognized" };
   }
+}
+
+export function normalizeColdCdpResourceType(value) {
+  const resourceKind =
+    typeof value === "string" && Object.hasOwn(CDP_RESOURCE_TYPES, value)
+      ? CDP_RESOURCE_TYPES[value]
+      : "unknown";
+  return {
+    resourceKind,
+    reportResourceType:
+      resourceKind !== "unknown" && RESOURCE_TYPES.has(resourceKind)
+        ? resourceKind
+        : "other",
+  };
+}
+
+export function createColdIncompleteClassification() {
+  return {
+    resourceKinds: Object.fromEntries(
+      COLD_CDP_RESOURCE_KIND_KEYS.map((key) => [key, 0]),
+    ),
+    sourceClasses: Object.fromEntries(
+      COLD_INCOMPLETE_SOURCE_CLASS_KEYS.map((key) => [key, 0]),
+    ),
+  };
+}
+
+export function classifyColdIncompleteRequest(
+  request,
+  { origin, assetBasenames } = {},
+) {
+  const resourceKind = COLD_CDP_RESOURCE_KIND_KEYS.includes(
+    request?.resourceKind,
+  )
+    ? request.resourceKind
+    : "unknown";
+  let sourceClass = "other-or-invalid";
+  if (
+    typeof request?.url === "string" &&
+    typeof origin === "string" &&
+    assetBasenames instanceof Set
+  ) {
+    try {
+      const parsed = new URL(request.url);
+      if (parsed.origin === origin) {
+        if (safeAsset(request.url, origin, assetBasenames).kind === "asset") {
+          sourceClass = "verified-build-asset";
+        } else if (safeRoute(request.url, origin) !== "unrecognized") {
+          sourceClass = "known-fixed-route";
+        } else {
+          sourceClass = "same-origin-other";
+        }
+      }
+    } catch {
+      sourceClass = "other-or-invalid";
+    }
+  }
+  return { resourceKind, sourceClass };
+}
+
+export function aggregateColdIncompleteClassification(
+  requests,
+  classificationContext,
+) {
+  const classification = createColdIncompleteClassification();
+  for (const request of requests) {
+    const entry = classifyColdIncompleteRequest(request, classificationContext);
+    classification.resourceKinds[entry.resourceKind] += 1;
+    classification.sourceClasses[entry.sourceClass] += 1;
+  }
+  return classification;
 }
 
 function safeHash(value) {

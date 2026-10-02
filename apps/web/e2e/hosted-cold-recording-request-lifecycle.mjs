@@ -1,3 +1,5 @@
+import { aggregateColdIncompleteClassification } from "./hosted-cold-recording-validation.mjs";
+
 const DEFAULT_REQUEST_LIMIT = 2_048;
 const DEFAULT_EVENT_LIMIT = 250_000;
 
@@ -127,7 +129,7 @@ export function createColdRequestLifecycle({
     return true;
   }
 
-  function snapshot() {
+  function snapshot(classificationContext = undefined) {
     const entries = [...requests.entries()].map(([requestId, request]) => ({
       requestId,
       ...request,
@@ -159,12 +161,20 @@ export function createColdRequestLifecycle({
       duplicateTerminal: anomalies.duplicateTerminal,
       unmatchedTrackedEvent: anomalies.unmatchedTrackedEvent,
     };
+    const incompleteClassification = aggregateColdIncompleteClassification(
+      incomplete,
+      classificationContext,
+    );
     const immutableEntries = entries.map((request) => Object.freeze(request));
     return Object.freeze({
       requests: Object.freeze(immutableEntries),
       trackedRequests,
       incompleteTrackedRequests: incomplete.length,
       networkClockState: Object.freeze(networkClockState),
+      incompleteClassification: Object.freeze({
+        resourceKinds: Object.freeze(incompleteClassification.resourceKinds),
+        sourceClasses: Object.freeze(incompleteClassification.sourceClasses),
+      }),
       requestOverflow,
       anomalyOverflow,
       protocolIntegrityFailure,

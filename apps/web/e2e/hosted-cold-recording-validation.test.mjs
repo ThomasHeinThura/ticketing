@@ -11,15 +11,18 @@ import {
   COLD_FAILURE_CODES,
   COLD_FAILURE_RECEIPT_MAX_BYTES,
   COLD_FAILURE_RECEIPT_PREFIX,
+  classifyColdIncompleteRequest,
   coldCleanupStatuses,
   coldDiagnosticFailure,
   coldPassedHandoffMatchesValidatedReport,
   createColdClockSample,
   createColdFailureReceipt,
+  createColdIncompleteClassification,
   deriveManifestAssetBasenames,
   estimateClockAlignment,
   formatColdFailureReceiptLine,
   hashedBasename,
+  normalizeColdCdpResourceType,
   ownedColdDiagnosticFailureFields,
   parseColdFailureReceipt,
   resolveColdFailureReceipt,
@@ -185,6 +188,34 @@ function failureReceipt(overrides = {}) {
       duplicateTerminal: 0,
       unmatchedTrackedEvent: 0,
     },
+    incompleteClassification: {
+      resourceKinds: {
+        document: 0,
+        stylesheet: 0,
+        image: 0,
+        media: 0,
+        font: 0,
+        script: 0,
+        texttrack: 0,
+        xhr: 1,
+        fetch: 0,
+        eventsource: 0,
+        websocket: 0,
+        manifest: 0,
+        signedexchange: 0,
+        ping: 0,
+        cspviolationreport: 0,
+        preflight: 0,
+        other: 0,
+        unknown: 0,
+      },
+      sourceClasses: {
+        "verified-build-asset": 0,
+        "known-fixed-route": 1,
+        "same-origin-other": 0,
+        "other-or-invalid": 0,
+      },
+    },
     ...overrides,
   });
 }
@@ -223,10 +254,119 @@ function successfulChildEvidence(overrides = {}) {
       reportPrivacyPassed: true,
     },
     cleanup: coldCleanupStatuses(),
+    incompleteClassification: createColdIncompleteClassification(),
     networkClockState: zeroState,
     ...overrides,
   };
 }
+
+test("CDP resource kinds normalize through a finite mapping and incomplete source classes disclose no URL data", () => {
+  assert.deepEqual(normalizeColdCdpResourceType("Fetch"), {
+    resourceKind: "fetch",
+    reportResourceType: "fetch",
+  });
+  assert.deepEqual(normalizeColdCdpResourceType("Script"), {
+    resourceKind: "script",
+    reportResourceType: "script",
+  });
+  assert.deepEqual(normalizeColdCdpResourceType("CSPViolationReport"), {
+    resourceKind: "cspviolationreport",
+    reportResourceType: "other",
+  });
+  assert.deepEqual(normalizeColdCdpResourceType(undefined), {
+    resourceKind: "unknown",
+    reportResourceType: "other",
+  });
+  assert.deepEqual(normalizeColdCdpResourceType("customer-secret-type"), {
+    resourceKind: "unknown",
+    reportResourceType: "other",
+  });
+
+  const context = {
+    origin: "http://127.0.0.1:4179",
+    assetBasenames,
+  };
+  const asset = classifyColdIncompleteRequest(
+    {
+      url: `${context.origin}/assets/agent-initial-runtime-AbCdEf012345.js?token=customer-secret`,
+      resourceKind: "script",
+    },
+    context,
+  );
+  const unlistedHashedName = classifyColdIncompleteRequest(
+    {
+      url: `${context.origin}/assets/not-in-manifest-AbCdEf012345.js`,
+      resourceKind: "script",
+    },
+    context,
+  );
+  const knownRoute = classifyColdIncompleteRequest(
+    {
+      url: `${context.origin}/api/projects/customer-secret/work-items?cursor=private`,
+      resourceKind: "fetch",
+    },
+    context,
+  );
+  const sameOriginOther = classifyColdIncompleteRequest(
+    {
+      url: `${context.origin}/private/path?secret=value`,
+      resourceKind: "unknown",
+    },
+    context,
+  );
+  const foreign = classifyColdIncompleteRequest(
+    {
+      url: "https://foreign.invalid/private/path?secret=value",
+      resourceKind: "xhr",
+    },
+    context,
+  );
+  const invalid = classifyColdIncompleteRequest(
+    { url: "not a URL secret=value", resourceKind: "other" },
+    context,
+  );
+  assert.deepEqual(asset, {
+    resourceKind: "script",
+    sourceClass: "verified-build-asset",
+  });
+  assert.deepEqual(unlistedHashedName, {
+    resourceKind: "script",
+    sourceClass: "same-origin-other",
+  });
+  assert.deepEqual(knownRoute, {
+    resourceKind: "fetch",
+    sourceClass: "known-fixed-route",
+  });
+  assert.deepEqual(sameOriginOther, {
+    resourceKind: "unknown",
+    sourceClass: "same-origin-other",
+  });
+  assert.deepEqual(foreign, {
+    resourceKind: "xhr",
+    sourceClass: "other-or-invalid",
+  });
+  assert.deepEqual(invalid, {
+    resourceKind: "other",
+    sourceClass: "other-or-invalid",
+  });
+  const serialized = JSON.stringify([
+    asset,
+    unlistedHashedName,
+    knownRoute,
+    sameOriginOther,
+    foreign,
+    invalid,
+  ]);
+  for (const secret of [
+    "customer-secret",
+    "private/path",
+    "cursor=private",
+    "foreign.invalid",
+    "secret=value",
+    "not a URL",
+  ])
+    assert.equal(serialized.includes(secret), false);
+});
 
 test("failure receipts are closed, bounded, typed, and relay only validated values", () => {
   const receipt = failureReceipt();
@@ -379,7 +519,7 @@ test("passed child cleanup failure is represented separately from a null primary
     ...successfulChildEvidence(),
     cleanup,
   });
-  assert.equal(receipt.schemaVersion, 3);
+  assert.equal(receipt.schemaVersion, 4);
   assert.equal(receipt.primary, null);
   assert.equal(receipt.cleanup.generatedConfig, "failed");
   assert.equal(
@@ -475,9 +615,10 @@ test("passed handoff must match the independently validated v1 report before pub
   );
 });
 
-test("v3 network clock receipt validates null, bounded snapshot counts, and overlapping relationships", () => {
+test("v4 receipt validates null, bounded network snapshot and classification partitions", () => {
   const base = unknownColdFailureReceipt();
   assert.equal(base.networkClockState, null);
+  assert.equal(base.incompleteClassification, null);
   const snapshot = {
     invalidStart: 1,
     terminalNotSeen: 1,
@@ -495,11 +636,44 @@ test("v3 network clock receipt validates null, bounded snapshot counts, and over
       incompleteTrackedRequests: 1,
     },
     networkClockState: snapshot,
+    incompleteClassification: {
+      resourceKinds: {
+        document: 0,
+        stylesheet: 0,
+        image: 0,
+        media: 0,
+        font: 0,
+        script: 0,
+        texttrack: 0,
+        xhr: 1,
+        fetch: 0,
+        eventsource: 0,
+        websocket: 0,
+        manifest: 0,
+        signedexchange: 0,
+        ping: 0,
+        cspviolationreport: 0,
+        preflight: 0,
+        other: 0,
+        unknown: 0,
+      },
+      sourceClasses: {
+        "verified-build-asset": 0,
+        "known-fixed-route": 1,
+        "same-origin-other": 0,
+        "other-or-invalid": 0,
+      },
+    },
   });
   assert.deepEqual(
     parseColdFailureReceipt(Buffer.from(JSON.stringify(valid)))
       .networkClockState,
     snapshot,
+  );
+  assert.deepEqual(
+    parseColdFailureReceipt(Buffer.from(JSON.stringify(valid)))
+      .incompleteClassification,
+    valid.incompleteClassification,
   );
   const invalid = [
     { ...snapshot, leakedUrl: "https://private.invalid/path?token=secret" },
@@ -524,6 +698,45 @@ test("v3 network clock receipt validates null, bounded snapshot counts, and over
     createColdFailureReceipt({
       ...valid,
       counts: { ...valid.counts, incompleteTrackedRequests: 0 },
+    }),
+  );
+  assert.throws(() =>
+    createColdFailureReceipt({ ...valid, incompleteClassification: null }),
+  );
+  assert.throws(() =>
+    createColdFailureReceipt({
+      ...base,
+      incompleteClassification: createColdIncompleteClassification(),
+    }),
+  );
+  assert.throws(() =>
+    parseColdFailureReceipt(
+      Buffer.from(JSON.stringify({ ...valid, schemaVersion: 3 })),
+    ),
+  );
+  assert.throws(() =>
+    createColdFailureReceipt({
+      ...valid,
+      incompleteClassification: {
+        ...valid.incompleteClassification,
+        resourceKinds: {
+          ...valid.incompleteClassification.resourceKinds,
+          xhr: 0,
+          unknown: 0,
+        },
+      },
+    }),
+  );
+  assert.throws(() =>
+    createColdFailureReceipt({
+      ...valid,
+      incompleteClassification: {
+        ...valid.incompleteClassification,
+        resourceKinds: {
+          ...valid.incompleteClassification.resourceKinds,
+          xhr: 2_049,
+        },
+      },
     }),
   );
   const hostile =

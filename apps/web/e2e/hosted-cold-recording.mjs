@@ -152,6 +152,7 @@ import {
   coldDiagnosticFailure,
   createColdClockSample,
   estimateClockAlignment,
+  normalizeColdCdpResourceType,
   ownedColdDiagnosticFailureFields,
   translateColdNetworkTimestamp,
   translateColdTraceInterval,
@@ -181,6 +182,7 @@ let coldStage = "prepare";
 let coldOwnedReport = null;
 let childReceiptAttempted = false;
 let coldNetworkClockState = null;
+let coldIncompleteClassification = null;
 const coldCounts = {
   clockSamples: 0,
   traceEventsReceived: 0,
@@ -210,6 +212,7 @@ async function writeChildFailureReceipt(error) {
     counts: { ...coldCounts },
     flags: { ...coldFlags },
     networkClockState: coldNetworkClockState,
+    incompleteClassification: coldIncompleteClassification,
   });
 }
 type SafeTraceEvent = {
@@ -300,10 +303,12 @@ async function startColdCapture(page: Page) {
     const stackFrame = asRecord(callFrames[0]);
     const url = request?.url;
     const initiatorUrl = stackFrame?.url;
+    const resourceType = normalizeColdCdpResourceType(event?.type);
     requestLifecycle.requestWillBeSent(event, {
       url: typeof url === "string" && url.length <= 4096 ? url : "",
       method: typeof request?.method === "string" ? request.method : undefined,
-      resourceType: typeof event.type === "string" ? event.type : undefined,
+      resourceKind: resourceType.resourceKind,
+      resourceType: resourceType.reportResourceType,
       initiatorType: typeof initiator?.type === "string" ? initiator.type : undefined,
       initiatorUrl: typeof initiatorUrl === "string" && initiatorUrl.length <= 4096 ? initiatorUrl : "",
       priority: typeof request?.initialPriority === "string" ? request.initialPriority : undefined,
@@ -312,9 +317,11 @@ async function startColdCapture(page: Page) {
   session.on("Network.responseReceived", (value: unknown) => {
     const event = asRecord(value);
     const response = asRecord(event?.response);
+    const resourceType = normalizeColdCdpResourceType(event?.type);
     requestLifecycle.responseReceived(event, {
       status: isFiniteNumber(response?.status) ? response.status : undefined,
-      resourceType: typeof event?.type === "string" ? event.type : undefined,
+      resourceKind: resourceType.resourceKind,
+      resourceType: resourceType.reportResourceType,
     });
   });
   session.on("Network.resourceChangedPriority", (value: unknown) => {
@@ -377,8 +384,12 @@ async function startColdCapture(page: Page) {
     await session.send("Tracing.end");
     const completion = await tracingComplete;
     await session.detach();
-    const requestSnapshot = requestLifecycle.snapshot();
+    const requestSnapshot = requestLifecycle.snapshot({
+      origin: "http://127.0.0.1:4179",
+      assetBasenames: COLD_ASSET_BASENAMES,
+    });
     coldNetworkClockState = requestSnapshot.networkClockState;
+    coldIncompleteClassification = requestSnapshot.incompleteClassification;
     coldCounts.trackedRequests = requestSnapshot.trackedRequests;
     coldCounts.incompleteTrackedRequests =
       requestSnapshot.incompleteTrackedRequests;
@@ -639,6 +650,7 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
         counts: { ...coldCounts },
         flags: { ...coldFlags },
         networkClockState: coldNetworkClockState,
+        incompleteClassification: coldIncompleteClassification,
       });
       if (!snapshotReceipt.persisted)
         throw coldDiagnosticFailure("report-write", "report-write", "Private network snapshot handoff failed.");
@@ -679,6 +691,7 @@ let parentStage = "prepare";
 let counts = null;
 let flags = null;
 let networkClockState = null;
+let incompleteClassification = null;
 let discoveryPrimary = null;
 
 function emptyEvidence() {
@@ -687,6 +700,7 @@ function emptyEvidence() {
     counts: empty.counts,
     flags: empty.flags,
     networkClockState: null,
+    incompleteClassification: null,
   };
 }
 
@@ -952,6 +966,7 @@ try {
       counts = childReceipt.counts;
       flags = childReceipt.flags;
       networkClockState = childReceipt.networkClockState;
+      incompleteClassification = childReceipt.incompleteClassification;
       childReportCleanup = childReceipt.cleanup.childReport;
     } else {
       const fallback = parentChildExitReceipt({ childOutcome: "failed" });
@@ -959,6 +974,7 @@ try {
       counts = fallback.counts;
       flags = fallback.flags;
       networkClockState = fallback.networkClockState;
+      incompleteClassification = fallback.incompleteClassification;
       childReportCleanup = fallback.cleanup.childReport;
     }
     if (discoveryOnly) discoveryPrimary = primaryFailure;
@@ -982,6 +998,7 @@ try {
         "Private network snapshot handoff is invalid.",
       );
     networkClockState = childReceipt.networkClockState;
+    incompleteClassification = childReceipt.incompleteClassification;
     counts = childReceipt.counts;
     flags = childReceipt.flags;
     if (!(await verifyPrivateTempDirectory(scratchOwned)))
@@ -1098,6 +1115,7 @@ if (discoveryOnly) {
       counts,
       flags,
       networkClockState,
+      incompleteClassification,
       cleanup,
     });
     process.stdout.write(`${formatColdFailureReceiptLine(receipt)}\n`);
@@ -1112,6 +1130,7 @@ if (discoveryOnly) {
     counts,
     flags,
     networkClockState,
+    incompleteClassification,
     childReport: childReportCleanup,
     parentReport: parentReportOwned,
     generatedSpec: generatedSpecOwned,

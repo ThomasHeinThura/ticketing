@@ -231,6 +231,7 @@ export async function writeChildFailureReceipt({
   counts,
   flags,
   networkClockState = null,
+  incompleteClassification = null,
 }) {
   if (!isDirectChild(scratch?.path, path))
     return { receipt: null, persisted: false };
@@ -245,6 +246,7 @@ export async function writeChildFailureReceipt({
     flags,
     cleanup,
     networkClockState,
+    incompleteClassification,
   });
   const result = await createOwnedScratchFile(
     scratch,
@@ -260,6 +262,7 @@ export async function writeChildSnapshotReceipt({
   counts,
   flags,
   networkClockState,
+  incompleteClassification,
 }) {
   if (networkClockState === null) return { receipt: null, persisted: false };
   if (!isDirectChild(scratch?.path, path))
@@ -273,6 +276,7 @@ export async function writeChildSnapshotReceipt({
     flags,
     cleanup: coldCleanupStatuses(),
     networkClockState,
+    incompleteClassification,
   });
   const result = await createOwnedScratchFile(
     scratch,
@@ -356,6 +360,7 @@ export async function finalizeParentOutcome({
   counts,
   flags,
   networkClockState = null,
+  incompleteClassification = null,
   childReport,
   parentReport,
   generatedSpec,
@@ -394,6 +399,7 @@ export async function finalizeParentOutcome({
     flags: flags ?? empty.flags,
     cleanup,
     networkClockState,
+    incompleteClassification,
   });
   try {
     await emitLine(`${formatColdFailureReceiptLine(receipt)}\n`);

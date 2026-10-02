@@ -29,6 +29,7 @@ import {
 } from "./hosted-cold-recording-io.mjs";
 import {
   COLD_FAILURE_RECEIPT_PREFIX,
+  createColdIncompleteClassification,
   parseColdFailureReceipt,
   unknownColdFailureReceipt,
 } from "./hosted-cold-recording-validation.mjs";
@@ -38,6 +39,13 @@ async function privateRoot(t) {
   await chmod(path, 0o700);
   t.after(async () => rm(path, { recursive: true, force: true }));
   return path;
+}
+
+function oneIncompleteClassification() {
+  const classification = createColdIncompleteClassification();
+  classification.resourceKinds.unknown = 1;
+  classification.sourceClasses["other-or-invalid"] = 1;
+  return classification;
 }
 
 function knownChildEvidence() {
@@ -67,6 +75,7 @@ function knownChildEvidence() {
       duplicateTerminal: 0,
       unmatchedTrackedEvent: 0,
     },
+    incompleteClassification: oneIncompleteClassification(),
   };
 }
 
@@ -101,6 +110,7 @@ function knownSuccessfulChildEvidence() {
       duplicateTerminal: 0,
       unmatchedTrackedEvent: 0,
     },
+    incompleteClassification: createColdIncompleteClassification(),
   };
 }
 
@@ -158,6 +168,7 @@ test("production cleanup preserves a child primary and independently records eac
     counts: relayed.counts,
     flags: relayed.flags,
     networkClockState: relayed.networkClockState,
+    incompleteClassification: relayed.incompleteClassification,
     childReport: relayed.cleanup.childReport,
     parentReport: parentReport.owned,
     generatedSpec: generatedSpec.owned,
@@ -289,6 +300,7 @@ test("a successful child followed by cleanup failure removes the owned report an
     counts: evidence.counts,
     flags,
     networkClockState: evidence.networkClockState,
+    incompleteClassification: evidence.incompleteClassification,
     childReport: "not-attempted",
     parentReport: report.owned,
     generatedSpec: spec.owned,
@@ -312,7 +324,8 @@ test("a successful child followed by cleanup failure removes the owned report an
 test("successful child snapshot handoff survives only in private cleanup receipt when parent cleanup fails", async (t) => {
   const root = await privateRoot(t);
   const scratch = await createOwnedTempDirectory("taskdesk-cold-snapshot-");
-  const { counts, flags, networkClockState } = knownSuccessfulChildEvidence();
+  const { counts, flags, networkClockState, incompleteClassification } =
+    knownSuccessfulChildEvidence();
   const receiptPath = join(scratch.path, "snapshot-receipt.json");
   const childSnapshot = await writeChildSnapshotReceipt({
     scratch,
@@ -320,6 +333,7 @@ test("successful child snapshot handoff survives only in private cleanup receipt
     counts,
     flags,
     networkClockState,
+    incompleteClassification,
   });
   assert.equal(childSnapshot.persisted, true);
   assert.equal((await lstat(receiptPath)).mode & 0o777, 0o600);
@@ -342,6 +356,7 @@ test("successful child snapshot handoff survives only in private cleanup receipt
     counts,
     flags,
     networkClockState: childSnapshot.receipt.networkClockState,
+    incompleteClassification: childSnapshot.receipt.incompleteClassification,
     childReport: "not-attempted",
     parentReport: report.owned,
     generatedSpec: spec.owned,
@@ -510,6 +525,7 @@ test("clean success preserves the exact owned report and emits no failure receip
     counts: evidence.counts,
     flags: evidence.flags,
     networkClockState: evidence.networkClockState,
+    incompleteClassification: evidence.incompleteClassification,
     childReport: "not-attempted",
     parentReport: report.owned,
     generatedSpec: generatedSpec.owned,
@@ -669,8 +685,8 @@ test("invalid, oversized, duplicate-key, and symlink child receipts are inaccess
 
   const duplicate = join(receiptScratch.path, "duplicate");
   const duplicateBytes = JSON.stringify(receipt).replace(
-    '"schemaVersion":3',
-    '"schemaVersion":3,"schemaVersion":3',
+    '"schemaVersion":4',
+    '"schemaVersion":4,"schemaVersion":4',
   );
   await writeFile(duplicate, duplicateBytes, { mode: 0o600 });
   assert.equal(await readChildFailureReceipt(duplicate, receiptScratch), null);
