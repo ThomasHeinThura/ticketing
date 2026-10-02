@@ -85,8 +85,10 @@ see the semantic table above. There is no separate `--danger` token.)
 
 ### Chart series
 
-`--chart-1` … `--chart-5`, used by any chart primitive so `G3` contrast applies to series
-colours. **Different in light and dark** — copy both, do not average them:
+`--chart-1` … `--chart-5` are reserved for chart primitives. **Different in light and
+dark** — copy both, do not average them. G3 contrast coverage begins only when chart-series
+pairs are registered in the bounded inventory; current automated coverage is limited to
+shared Button, Badge, and Input variants:
 
 | Token | Light | Dark |
 | --- | --- | --- |

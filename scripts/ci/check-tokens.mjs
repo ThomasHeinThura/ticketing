@@ -85,14 +85,19 @@ function densitySlotViolations(sourceFile, relativePath) {
     if (!densityClass.test(classes)) {
       failures.push(`${relativePath}: <${slot}> must use ${expected[1]}.`);
     }
-    const spacingValue = String.raw`(?:px|\d+(?:\.\d+)?(?:\/\d+)?|\[[^\]\s]+\])`;
+    // Tailwind v4 accepts CSS-variable shorthand (`py-(--space)`) and puts the
+    // important modifier after the utility (`sm:py-4!`). Both can override a
+    // registered density slot just like numeric and arbitrary values.
+    const spacingValue = String.raw`(?:px|\d+(?:\.\d+)?(?:\/\d+)?|\[[^\]\s]+\]|\([^()\s]+\))`;
     const spacingUtilities =
       expected[0] === "@CardPanel"
         ? "(?:p|py|pt|pb|gap-y|gap)"
         : "(?:py|pt|pb|gap-y|gap)";
-    const directSpacing = new RegExp(`^${spacingUtilities}-${spacingValue}$`);
+    const directSpacing = new RegExp(`^${spacingUtilities}-${spacingValue}!?$`);
     const hasFixedSpacing = classes.split(/\s+/).some((rawClass) => {
-      const className = rawClass.replace(/^["'`]+|["'`,;)]+$/g, "");
+      const className = rawClass
+        .replace(/^className\s*=\s*/, "")
+        .replace(/^["'`]+|["'`,;]+$/g, "");
       let bracketDepth = 0;
       let utilityStart = 0;
       for (let index = 0; index < className.length; index += 1) {
@@ -149,12 +154,22 @@ function densityProbeFailures() {
   const negativePath = path.join(directory, "negative.tsx");
   const positivePath = path.join(directory, "positive.tsx");
   const negativePxPath = path.join(directory, "negative-px.tsx");
+  const negativeFirstUtilityPath = path.join(
+    directory,
+    "negative-first-utility.tsx",
+  );
+  const negativeImportantPath = path.join(directory, "negative-important.tsx");
+  const negativeVariablePath = path.join(directory, "negative-variable.tsx");
   const negativeResponsivePath = path.join(
     directory,
     "negative-responsive.tsx",
   );
   const negativeCardPath = path.join(directory, "negative-card.tsx");
   const negativeCardPxPath = path.join(directory, "negative-card-px.tsx");
+  const negativeCardFirstUtilityPath = path.join(
+    directory,
+    "negative-card-first-utility.tsx",
+  );
   const negativeCardResponsivePath = path.join(
     directory,
     "negative-card-responsive.tsx",
@@ -167,6 +182,18 @@ function densityProbeFailures() {
   writeFileSync(
     negativePxPath,
     'const item = <tr data-slot="table-row" className="td-density-row py-px" />;',
+  );
+  writeFileSync(
+    negativeFirstUtilityPath,
+    'const item = <tr data-slot="table-row" className="py-px td-density-row" />;',
+  );
+  writeFileSync(
+    negativeImportantPath,
+    'const item = <tr data-slot="table-row" className="sm:py-4! td-density-row" />;',
+  );
+  writeFileSync(
+    negativeVariablePath,
+    'const item = <tr data-slot="table-row" className="py-(--manual-space) td-density-row" />;',
   );
   writeFileSync(
     negativeResponsivePath,
@@ -185,6 +212,10 @@ function densityProbeFailures() {
     'function CardPanel() { return <div className="flex-1 td-density-card p-px" />; }',
   );
   writeFileSync(
+    negativeCardFirstUtilityPath,
+    'function CardPanel() { return <div className="p-px td-density-card" />; }',
+  );
+  writeFileSync(
     negativeCardResponsivePath,
     'function CardPanel() { return <div className="flex-1 td-density-card md:py-6" />; }',
   );
@@ -199,9 +230,13 @@ function densityProbeFailures() {
         negativePath,
         positivePath,
         negativePxPath,
+        negativeFirstUtilityPath,
+        negativeImportantPath,
+        negativeVariablePath,
         negativeResponsivePath,
         negativeCardPath,
         negativeCardPxPath,
+        negativeCardFirstUtilityPath,
         negativeCardResponsivePath,
         positiveCardPath,
       ],
@@ -216,6 +251,15 @@ function densityProbeFailures() {
       const negativePx = snapshot
         .getDefaultProjectForFile(negativePxPath)
         ?.program.getSourceFile(negativePxPath);
+      const negativeFirstUtility = snapshot
+        .getDefaultProjectForFile(negativeFirstUtilityPath)
+        ?.program.getSourceFile(negativeFirstUtilityPath);
+      const negativeImportant = snapshot
+        .getDefaultProjectForFile(negativeImportantPath)
+        ?.program.getSourceFile(negativeImportantPath);
+      const negativeVariable = snapshot
+        .getDefaultProjectForFile(negativeVariablePath)
+        ?.program.getSourceFile(negativeVariablePath);
       const negativeResponsive = snapshot
         .getDefaultProjectForFile(negativeResponsivePath)
         ?.program.getSourceFile(negativeResponsivePath);
@@ -225,6 +269,9 @@ function densityProbeFailures() {
       const negativeCardPx = snapshot
         .getDefaultProjectForFile(negativeCardPxPath)
         ?.program.getSourceFile(negativeCardPxPath);
+      const negativeCardFirstUtility = snapshot
+        .getDefaultProjectForFile(negativeCardFirstUtilityPath)
+        ?.program.getSourceFile(negativeCardFirstUtilityPath);
       const negativeCardResponsive = snapshot
         .getDefaultProjectForFile(negativeCardResponsivePath)
         ?.program.getSourceFile(negativeCardResponsivePath);
@@ -255,6 +302,24 @@ function densityProbeFailures() {
             "packages/ui/src/components/table.tsx",
           )
         : [];
+      const firstUtilityIssues = negativeFirstUtility
+        ? densitySlotViolations(
+            negativeFirstUtility,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const importantIssues = negativeImportant
+        ? densitySlotViolations(
+            negativeImportant,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const variableIssues = negativeVariable
+        ? densitySlotViolations(
+            negativeVariable,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
       const responsiveIssues = negativeResponsive
         ? densitySlotViolations(
             negativeResponsive,
@@ -264,6 +329,12 @@ function densityProbeFailures() {
       const cardPxIssues = negativeCardPx
         ? densitySlotViolations(
             negativeCardPx,
+            "packages/ui/src/components/card.tsx",
+          )
+        : [];
+      const cardFirstUtilityIssues = negativeCardFirstUtility
+        ? densitySlotViolations(
+            negativeCardFirstUtility,
             "packages/ui/src/components/card.tsx",
           )
         : [];
@@ -287,6 +358,28 @@ function densityProbeFailures() {
       if (!pxIssues.some((message) => message.includes("fixed padding/gap")))
         failures.push("density negative probe did not reject py-px on a row");
       if (
+        !firstUtilityIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      )
+        failures.push(
+          "density negative probe did not reject a first-position row utility",
+        );
+      if (
+        !importantIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      )
+        failures.push(
+          "density negative probe did not reject an important utility",
+        );
+      if (
+        !variableIssues.some((message) => message.includes("fixed padding/gap"))
+      )
+        failures.push(
+          "density negative probe did not reject a CSS-variable utility",
+        );
+      if (
         !responsiveIssues.some((message) =>
           message.includes("fixed padding/gap"),
         )
@@ -308,6 +401,15 @@ function densityProbeFailures() {
       ) {
         failures.push(
           "density negative probe did not reject p-px on CardPanel",
+        );
+      }
+      if (
+        !cardFirstUtilityIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      ) {
+        failures.push(
+          "density negative probe did not reject a first-position CardPanel utility",
         );
       }
       if (
