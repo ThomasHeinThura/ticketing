@@ -87,6 +87,7 @@ async function createAppWithShadow(value: "on" | "off"): Promise<FreshApp> {
           updatedAt: new Date(),
           ipAddress: null,
           userAgent: null,
+          portal: "agent",
         },
         // Mirrors mockAuthenticatedSession's own MockSessionUser widening
         // (tests/api-integration/helpers/auth.ts) — `role` is a plain userTable column, not
