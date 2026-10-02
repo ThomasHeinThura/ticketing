@@ -307,31 +307,47 @@ God Mode and should be recorded as one.
 Issue #8, Slice 2's request-path shadow middleware records every request it evaluates to
 `policy_shadow_tally` and, for a disagreement, `policy_shadow_event`
 ([data-model.md § Policy shadow evidence](../01-architecture/data-model.md#policy-shadow-evidence-issue-8-slice-2)).
-This is the per-router summary a cut-over PR cites as its "about 7 clean days" evidence —
-run against the deployment's own database, not exposed as an HTTP endpoint.
+For development/P0 verification, this per-router summary reports the user-authorized three
+UTC calendar-date window — run against the deployment's own database, not exposed as an HTTP
+endpoint. It does not establish production readiness or authorize cutover; the separate
+production/go-live soak requirement remains the roughly seven-day UAT window recorded in the
+2026-09-23 runtime policy decision.
 
-**Per-router summary for the last 7 days** (agree / disagree / unevaluated counts, by
-router group and outcome):
+**Per-router, per-date development summary for three UTC dates** (UTC today and the preceding
+two dates; agree / disagree / unevaluated counts, by router group and outcome):
 
 ```sql
 select
+  day as utc_day,
   router_group,
   outcome,
   reason_code,
   sum(count) as total,
   max(last_seen_at) as last_seen_at
 from policy_shadow_tally
-where day >= (current_date - interval '7 days')
-group by router_group, outcome, reason_code
-order by router_group, outcome, total desc;
+where day >= ((now() at time zone 'UTC')::date - 2)
+group by day, router_group, outcome, reason_code
+order by day, router_group, outcome, total desc;
 ```
+
+The inclusive predicate selects exactly three UTC date buckets. Record the selected date
+values, source/build identity, and actual source-bound UTC coverage interval with the result.
+The current UTC date may be partial: the date buckets alone do not prove three complete days
+or 72 hours. Claim three issue-free days only when actual traffic and exercised router/behavior
+coverage support all three dates; do not synthesize or backfill missing observations. Existing
+representative evidence may count if it covers the same source and behavior.
 
 **"Clean" means zero *unexplained* disagreements** — every `legacy_allow_policy_deny`,
 `legacy_deny_policy_allow`, `unevaluated` and `evaluator_error` row above for a router group
-must either be fixed or have its `reason_code` explained in the cut-over PR. Every cut-over PR
-must also **paste the summary output as it stood at decision time**, so the evidence a
-decision cited cannot change underneath it once the tables keep receiving writes (the Opus
-review of #323, S7). **`shadow_saturated` is named as never explainable row-by-row**: a router with any such row in the window is not clean, because it means part of that router's traffic was never evaluated at all (the Opus delta of #323, D1).
+must either be fixed or have its `reason_code` explained in the evidence for the window being
+assessed. Record each summary output as it stood at decision time so later writes cannot
+change the evidence underneath it (the Opus review of #323, S7). Every production cutover PR
+must still paste the complete UAT summary for its required production window. **`shadow_saturated`
+is never explainable row-by-row**: a router with any such row in the window is not clean,
+because part of its traffic was never evaluated (the Opus delta of #323, D1).
+
+For a production cutover, continue to meet the separate roughly seven-day UAT requirement;
+the three-day development query is not a substitute or shortened production gate.
 
 An event cap can omit details after 50 matching events in a bucket. A non-agree tally bucket
 whose count exceeds its event-row count is therefore not explained row by row and cannot be
@@ -346,7 +362,7 @@ left join policy_shadow_event e
  and e.route_key = t.route_key
  and e.outcome = t.outcome
  and e.reason_code is not distinct from t.reason_code
-where t.day >= (current_date - interval '7 days')
+where t.day >= ((now() at time zone 'UTC')::date - 2)
   and t.outcome <> 'agree'
 group by t.day, t.route_key, t.outcome, t.reason_code, t.count
 having t.count > count(e.id)
@@ -364,15 +380,16 @@ order by created_at desc
 limit 50;
 ```
 
-**Coverage check** — a router with zero rows in the last 7 days was never actually
-exercised, which the addendum treats the same as "not clean":
+**Coverage check** — this reports observed requests per router and UTC date. Compare each
+required router group against all three selected dates; a missing date means coverage for that
+router is not established and the window is not clean:
 
 ```sql
-select router_group, sum(count) as requests_evaluated
+select day as utc_day, router_group, sum(count) as requests_evaluated
 from policy_shadow_tally
-where day >= (current_date - interval '7 days')
-group by router_group
-order by requests_evaluated asc;
+where day >= ((now() at time zone 'UTC')::date - 2)
+group by day, router_group
+order by day, requests_evaluated asc;
 ```
 
 **Coverage share, before vs after a cutover** (issue #324 acceptance criterion 6) — per

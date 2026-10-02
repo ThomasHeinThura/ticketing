@@ -1,5 +1,17 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## Blocked — 2026-10-02 15:10 UTC
+
+- **Development/P0 shadow cadence:** user direction now sets three issue-free UTC date buckets
+  with source-bound behavior/router coverage; representative matching evidence may count, and
+  note-only/mechanical changes do not restart it. Run ready performance, unit, integration,
+  and browser checks immediately. Production/go-live criteria remain unchanged. See the newest
+  [decision](decision-log.md).
+- **No clean three-day result:** the existing 68-request shadow record remains
+  nonrepresentative and tied to the older source with unknown OCI identity. Authenticated
+  missing/foreign-Origin WebSockets still returned 101, and the latest hosted performance run
+  failed 8 of 22 budgets. These are not clean development evidence or acceptance.
+
 ## Blocked — 2026-10-02 15:03 UTC
 
 - **Accepted main/runtime:** `main` remains `8ddb9de8` (#574); the #572 marker is accepted.

@@ -245,6 +245,16 @@ fixes may join the next batch unless the user explicitly asks for isolated deliv
 cadence never permits an unreviewed merge, self-review, a waived gate, a security-tier
 downgrade, or bypassing main's protection.
 
+For development/P0 policy-shadow verification, use the user-authorized minimum of three
+issue-free UTC calendar-date buckets when applicable; require source-bound evidence that the
+tested behavior and router coverage span all three. Existing representative evidence may count
+when it covers the same source/behavior. A note-only or mechanical change that does not affect
+tested behavior does not restart the window. Run performance, unit, integration, and browser
+checks as soon as the implementation batch is ready; do not wait for the shadow window. A
+known failure does not become a pass through elapsed time, and synthetic backfill is not
+evidence. This development rule does not alter production/go-live acceptance. See the newest
+[decision-log entry](docs/07-planning/decision-log.md).
+
 **Tier by what the change actually risks, not by which directory it sits in.** A security path
 makes a change a candidate for heavier review; the actual semantic risk determines the depth.
 

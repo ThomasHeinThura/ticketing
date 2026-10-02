@@ -5,6 +5,29 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · Development/P0 policy-shadow verification uses three issue-free UTC dates
+
+**Decision:** for development and P0 verification, use three issue-free UTC calendar-date
+buckets for policy-shadow evidence instead of the former approximately seven-day development
+wait. Require actual, source-bound coverage showing the tested behavior and relevant routers
+were exercised across all three dates. Existing representative three-day evidence counts when
+it covers the same source and behavior. Do not automatically restart the window for note-only
+or mechanical changes that do not affect tested behavior.
+
+Run performance, unit, integration, and browser checks as soon as the implementation batch is
+ready; do not wait for the shadow-soak calendar. Known failures do not become passes through
+elapsed time, and synthetic backfill is not evidence. Prioritize necessary remaining P0 work
+and avoid unrelated feature scope.
+
+**Boundary:** this changes development/P0 verification cadence only. The separate
+production/go-live acceptance criteria, including the roughly seven-day UAT shadow requirement
+in the 2026-09-23 runtime policy decision, remain unchanged. A three-date query selects exactly
+three UTC date buckets; it does not by itself prove 72 hours or full-day coverage.
+
+**Decided by:** Thomas, explicit user instruction, 2026-10-02 15:10 UTC. See the
+[development shadow summary](../05-operations/runbook.md#policy-shadow-summary) and canonical
+[agent instruction](../../AGENTS.md).
+
 ### 2026-10-02 · Bulk implementation and review cadence
 
 **Decision:** implement related approved slices and known-finding fixes in coherent,
