@@ -1,5 +1,21 @@
 # PR #558 — hosted cold recording security and privacy review
 
+## Current review binding — 2026-10-02
+
+**Reviewed head:** `04bed34f86326c9437e124f8a65dac6ee246bb31`
+
+This note binds the current source review to the exact PR head above. The PR base is `a8b33755bae543b6937afa0cd62363e74a236c47`, a normal merge composition whose ancestry includes accepted `main` commit `13c2abc033ca1e004344c83308aead714e9521b4`. This ancestry does not claim that PR #525 or G11 has been accepted.
+
+Fresh independent GPT-6 Luna review [5388446206](https://github.com/ThomasHeinThura/ticketing/pull/558#pullrequestreview-5388446206) returned CLEAR for exact head `04bed34f86326c9437e124f8a65dac6ee246bb31` at 2026-10-02 04:57:58 UTC. After reading that ordinary review, a fresh independent full GPT-6 Sol security/privacy review [5388456823](https://github.com/ThomasHeinThura/ticketing/pull/558#pullrequestreview-5388456823) returned CLEAR on the same exact head at 05:00:27 UTC. Neither reviewer authored, directed, or remediated this candidate. Both are GitHub `COMMENTED` reviews, not approving reviews or waivers. Sol's report is `/Users/heinthura/.codex/taskdesk-evidence/2026-10-02/pr558-04bed34-independent-sol-security-review.md`.
+
+The reviewed source delta fixes positive sub-decisecond failure-trace intervals that could collapse to zero width during endpoint quantization. Failure-only phase census now validates raw positive widths, clips intervals before aggregate rounding, and retains exclusive category totals. Successful report-v1 endpoint rounding remains unchanged. The six categories, fixed LCP/click-to-paint windows, receipt schema and 2 KiB cap, report schema, success-only publication, capture journey, fixture, selectors, actions, budgets, and retry policy are unchanged.
+
+The four production-shared diagnostic suites passed **54/54** on source `bc78d92bc13aa9bc006c7bc08335c19912963134`: phase census 9/9, validation 24/24, I/O 12/12, and request lifecycle 9/9. Both exact-head reviewers independently reported running all four suites at `04bed34` (54/54); their checks also included source inspection and `git diff --check`. The later merge changed no diagnostic helper, test, fixture, or contract, so the author did not rerun these suites on the merge commit. No build, capture, or manual/browser session was run for this binding.
+
+One authorized capture on source `98fbae5`, before the interval fix, failed with primary `network-clock-incomplete` and `phaseCensus: not-validated`; no report was produced. Its raw trace was not retained, so the cause remains unknown. The attempt ledger is preserved at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-02/pr558-98fbae5-v5-one-attempt-041251z/`. This is not evidence that the interval defect caused that capture failure, and no later capture is claimed here.
+
+At the actual GitHub status read at 2026-10-02 05:03:33 UTC, G11 and PostgreSQL integration were still in progress; the hosted diagnostic was skipped; the PR-template/security-review check was failed; GitGuardian and the listed completed fast/full checks were successful. This snapshot does not claim G11 acceptance, a successful capture/report, browser verification, P0 completion, or merge readiness. The current source binding does not replace the historical c07/e611/v4 findings and capture records below.
+
 **Reviewed head:** `951cc9a9e8c2fcd7b8ed2da14d2c145acb8f2921`
 **Reviewed head:** `965dd9e51993195219be525160a1c2542f2d5a17`
 
