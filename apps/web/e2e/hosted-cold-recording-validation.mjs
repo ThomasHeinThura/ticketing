@@ -1245,8 +1245,10 @@ export function deriveColdPhaseCensus(
     previousEnd = segment.end;
     return {
       phase: segment.phase,
-      startMs: Math.round(segment.start * 10) / 10,
-      durationMs: Math.round((segment.end - segment.start) * 10) / 10,
+      // Keep validated source precision until each clipped category total is
+      // rounded. Rounding both endpoints first can collapse a positive interval.
+      startMs: segment.start,
+      durationMs: segment.end - segment.start,
     };
   });
   const windows = {

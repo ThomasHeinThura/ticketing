@@ -46,7 +46,7 @@ export function deriveExclusiveMainThreadPhases(
   mainTid,
   offsetMs,
   journeyEndMs,
-  { includeInferredIdleTail = true } = {},
+  { includeInferredIdleTail = true, roundSegments = true } = {},
 ) {
   if (
     !Number.isFinite(journeyEndMs) ||
@@ -157,8 +157,8 @@ export function deriveExclusiveMainThreadPhases(
     segments.push({ phase: "main-thread-idle", start: cursor, end });
   return segments.map((segment) => ({
     phase: segment.phase,
-    start: Math.round(segment.start * 10) / 10,
-    end: Math.round(segment.end * 10) / 10,
+    start: roundSegments ? Math.round(segment.start * 10) / 10 : segment.start,
+    end: roundSegments ? Math.round(segment.end * 10) / 10 : segment.end,
   }));
 }
 
@@ -175,12 +175,14 @@ export function deriveColdFailurePhaseCensus(events, offsetMs, marks) {
   )?.tid;
   if (!Number.isInteger(mainTid)) throw new Error("missing-main-thread-marker");
   const endMs = Math.max(marks.lcpMs, marks.routeStartMs + marks.routePaintMs);
+  // The failure census clips precise positive intervals before rounding totals;
+  // successful report-v1 derivation keeps the helper's default endpoint rounding.
   const segments = deriveExclusiveMainThreadPhases(
     events,
     mainTid,
     offsetMs,
     endMs,
-    { includeInferredIdleTail: false },
+    { includeInferredIdleTail: false, roundSegments: false },
   );
   return deriveColdPhaseCensus(segments, marks);
 }

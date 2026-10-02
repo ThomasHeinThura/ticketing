@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { deriveColdFailurePhaseCensus } from "./hosted-cold-recording-phase-census.mjs";
+import {
+  deriveColdFailurePhaseCensus,
+  deriveExclusiveMainThreadPhases,
+} from "./hosted-cold-recording-phase-census.mjs";
 import {
   COLD_MAX_PHASE_SEGMENTS,
   COLD_PHASE_CATEGORIES,
@@ -88,6 +91,58 @@ test("P0 #558 v5: clips both ends and rounds each category to integer deci-ms", 
   assert.ok(
     Object.values(result.windows.lcp).every(Number.isInteger) &&
       Object.values(result.windows.clickToPaint).every(Number.isInteger),
+  );
+});
+
+test("P0 #558 v5: preserves positive sub-decisecond intervals through census aggregation", () => {
+  const events = trace([event("RunTask", 0, 230), event("Paint", 10.06, 0.05)]);
+  const successfulPhases = deriveExclusiveMainThreadPhases(events, 7, 0, 230, {
+    includeInferredIdleTail: false,
+  });
+  assert.deepEqual(
+    successfulPhases.find((segment) => segment.phase === "paint-layout"),
+    { phase: "paint-layout", start: 10.1, end: 10.1 },
+  );
+
+  const census = deriveColdFailurePhaseCensus(events, 0, marks);
+  assert.equal(census.state, "validated");
+  assert.equal(census.windows.lcp["paint-layout"], 1);
+});
+
+test("P0 #558 v5: sums dense microsecond intervals before deci-ms rounding", () => {
+  const microsecondPaints = Array.from({ length: 100 }, (_, index) => ({
+    name: "Paint",
+    ph: "X",
+    tid: 7,
+    ts: 20_000 + index,
+    dur: 1,
+  }));
+  const census = deriveColdFailurePhaseCensus(
+    trace([
+      { name: "RunTask", ph: "X", tid: 7, ts: 0, dur: 230_000 },
+      ...microsecondPaints,
+    ]),
+    0,
+    marks,
+  );
+  assert.equal(census.windows.lcp["paint-layout"], 1);
+});
+
+test("P0 #558 v5: rejects zero and reversed source intervals before quantization", () => {
+  for (const [start, end] of [
+    [10, 10],
+    [11, 10],
+  ]) {
+    assert.throws(() =>
+      deriveColdPhaseCensus([{ phase: "paint-layout", start, end }], marks),
+    );
+  }
+  assert.throws(() =>
+    deriveColdFailurePhaseCensus(
+      trace([event("RunTask", 0, 230), { ...event("Paint", 10, 1), dur: -1 }]),
+      0,
+      marks,
+    ),
   );
 });
 
