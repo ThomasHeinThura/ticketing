@@ -29,6 +29,7 @@ import {
   hashedBasename,
   ownedColdDiagnosticFailureFields,
   parentChildExitReceipt,
+  unavailableColdPhaseCensus,
   unknownColdFailureReceipt,
 } from "./hosted-cold-recording-validation.mjs";
 
@@ -145,17 +146,18 @@ async function readBuildEvidence() {
 const generatedRecorder = `
 import { createOwnedScratchFile, verifyPrivateTempDirectory, writeChildFailureReceipt as persistChildFailureReceipt, writeChildSnapshotReceipt as persistChildSnapshotReceipt } from "./hosted-cold-recording-io.mjs";
 import { createColdRequestLifecycle } from "./hosted-cold-recording-request-lifecycle.mjs";
+import { deriveColdFailurePhaseCensus, deriveExclusiveMainThreadPhases } from "./hosted-cold-recording-phase-census.mjs";
 import {
   assertColdReportPrivacy,
-  assertColdMainThreadJourneyOverlap,
   buildSanitizedColdReport,
   coldDiagnosticFailure,
   createColdClockSample,
   estimateClockAlignment,
   normalizeColdCdpResourceType,
+  notValidatedColdPhaseCensus,
   ownedColdDiagnosticFailureFields,
   translateColdNetworkTimestamp,
-  translateColdTraceInterval,
+  unavailableColdPhaseCensus,
 } from "./hosted-cold-recording-validation.mjs";
 
 const COLD_REPORT_PATH = __REPORT_PATH__;
@@ -183,6 +185,7 @@ let coldOwnedReport = null;
 let childReceiptAttempted = false;
 let coldNetworkClockState = null;
 let coldIncompleteClassification = null;
+let coldPhaseCensus = unavailableColdPhaseCensus();
 const coldCounts = {
   clockSamples: 0,
   traceEventsReceived: 0,
@@ -213,6 +216,7 @@ async function writeChildFailureReceipt(error) {
     flags: { ...coldFlags },
     networkClockState: coldNetworkClockState,
     incompleteClassification: coldIncompleteClassification,
+    phaseCensus: coldPhaseCensus,
   });
 }
 type SafeTraceEvent = {
@@ -223,7 +227,6 @@ type SafeTraceEvent = {
   dur?: number;
   args?: { name?: string; data?: { functionName?: string } };
 };
-type TraceInterval = { start: number; end: number; name: string; phase: string | null };
 type RawRecord = Record<string, unknown>;
 
 function asRecord(value: unknown): RawRecord | undefined {
@@ -375,7 +378,12 @@ async function startColdCapture(page: Page) {
   }
   return {
     align: clockSample,
-    finish: async (expectedTimeOriginMs: number, journeyEndMs: number) => {
+    finish: async (
+      expectedTimeOriginMs: number,
+      routePaintDurationMs: number,
+      lcpMs: number,
+      routeStartMs: number,
+    ) => {
       coldStage = "capture-finish";
       await clockSample();
       await clockSample();
@@ -414,8 +422,33 @@ async function startColdCapture(page: Page) {
     ) throw coldDiagnosticFailure("clock-alignment", "clock", "Document clock origins did not match.");
     const offsetMs = clockAlignment.offsetMs;
     coldStage = "network";
-    if (requestSnapshot.incompleteTrackedRequests > 0)
+    if (requestSnapshot.incompleteTrackedRequests > 0) {
+      const hasCensusEvidence =
+        !requestSnapshot.protocolIntegrityFailure &&
+        !requestSnapshot.anomalyOverflow &&
+        clockSamples.length === 3 &&
+        receivedTraceEventCount > 0 &&
+        traceEvents.length > 0 &&
+        samples.length > 0 &&
+        nodes.length > 0 &&
+        coldFlags.journeyAssertionsComplete === true &&
+        traceOverflow === false &&
+        networkOverflow === false &&
+        completion.dataLossOccurred === false;
+      if (hasCensusEvidence) {
+        coldPhaseCensus = notValidatedColdPhaseCensus();
+        try {
+          coldPhaseCensus = deriveColdFailurePhaseCensus(
+            traceEvents,
+            offsetMs,
+            { lcpMs, routeStartMs, routePaintMs: routePaintDurationMs },
+          );
+        } catch {
+          coldPhaseCensus = notValidatedColdPhaseCensus();
+        }
+      }
       throw coldDiagnosticFailure("network-clock-incomplete", "network", "A tracked request has incomplete clock endpoints.");
+    }
     if (requestSnapshot.protocolIntegrityFailure || requestSnapshot.anomalyOverflow)
       throw coldDiagnosticFailure("trace-integrity", "capture-finish", "Network lifecycle integrity check failed.");
     const resources = requestSnapshot.requests.map((request) => {
@@ -435,7 +468,7 @@ async function startColdCapture(page: Page) {
     )?.tid;
     if (typeof mainTid !== "number") throw coldDiagnosticFailure("phase-validation", "phase", "Main thread marker is missing.");
     coldStage = "phase";
-    const phases = deriveExclusiveMainThreadPhases(traceEvents, mainTid, offsetMs, journeyEndMs);
+    const phases = deriveExclusiveMainThreadPhases(traceEvents, mainTid, offsetMs, routePaintDurationMs);
     return {
       resources,
       phases,
@@ -450,91 +483,6 @@ async function startColdCapture(page: Page) {
     };
     },
   };
-}
-
-function tracePhase(event: SafeTraceEvent) {
-  const name = event.name;
-  const functionName = event.args?.data?.functionName ?? "";
-  if (["EvaluateScript", "CompileScript", "ParseHTML", "V8.CompileCode", "V8.ParseOnBackground"].includes(name)) return "parse-evaluate";
-  if (["RemoveChild", "Remove", "DOM.removeChild"].includes(name)) return "dom-removal";
-  if (["UpdateLayoutTree", "RecalculateStyles", "Layout", "PrePaint", "Paint", "CompositeLayers"].includes(name)) return "paint-layout";
-  if (/^(performUnitOfWork|completeUnitOfWork|renderWithHooks|commitRoot|commitMutationEffects|flushPassiveEffects|beginWork|completeWork)$/.test(functionName)) return "react-render-commit";
-  if (name === "FunctionCall" || name === "RunMicrotasks" || name === "EventDispatch") return "main-thread-other";
-  return null;
-}
-
-function deriveExclusiveMainThreadPhases(events: SafeTraceEvent[], mainTid: number, offsetMs: number, journeyEndMs: number) {
-  if (!isFiniteNumber(journeyEndMs) || journeyEndMs <= 0 || journeyEndMs > 600_000)
-    throw new Error("invalid-observed-journey-window");
-  const intervals: TraceInterval[] = events.flatMap((event) => {
-    if (event.tid !== mainTid || event.ph !== "X") return [];
-    if (!isFiniteNumber(event.ts) || !isFiniteNumber(event.dur) || event.dur < 0)
-      throw new Error("invalid-main-thread-trace-clock");
-    if (event.dur === 0) return [];
-    const translated = translateColdTraceInterval(event.ts, event.dur, offsetMs);
-    return [{
-      start: translated.startMs,
-      end: translated.endMs,
-      name: event.name,
-      phase: tracePhase(event),
-    }];
-  });
-  const tasks = intervals.filter((event) => event.name === "RunTask").sort((a, b) => a.start - b.start);
-  assertColdMainThreadJourneyOverlap(tasks, journeyEndMs);
-  const classifiedIntervals = intervals
-    .filter((event) => event.phase && event.name !== "RunTask")
-    .sort((a, b) => a.start - b.start);
-  const candidatesByTask: TraceInterval[][] = tasks.map(() => []);
-  let candidateAssignments = 0;
-  for (const candidate of classifiedIntervals) {
-    let low = 0;
-    let high = tasks.length;
-    while (low < high) {
-      const middle = Math.floor((low + high) / 2);
-      if (tasks[middle].end <= candidate.start) low = middle + 1;
-      else high = middle;
-    }
-    for (let taskIndex = low; taskIndex < tasks.length && tasks[taskIndex].start < candidate.end; taskIndex += 1) {
-      if (tasks[taskIndex].end > candidate.start) {
-        candidatesByTask[taskIndex].push(candidate);
-        candidateAssignments += 1;
-        if (candidateAssignments > 500_000) throw new Error("phase-overflow");
-      }
-    }
-  }
-  const segments: Array<{ phase: string; start: number; end: number }> = [];
-  let cursor = 0;
-  for (const [taskIndex, task] of tasks.entries()) {
-    const taskStart = Math.max(0, task.start);
-    const taskEnd = Math.min(600_000, task.end);
-    if (taskEnd <= taskStart || taskStart < cursor) continue;
-    if (taskStart > cursor) segments.push({ phase: "main-thread-idle", start: cursor, end: taskStart });
-    const candidates = candidatesByTask[taskIndex].filter((candidate) => candidate.start < taskEnd && candidate.end > taskStart);
-    const boundaries = new Set([taskStart, taskEnd]);
-    for (const candidate of candidates) {
-      boundaries.add(Math.max(taskStart, candidate.start));
-      boundaries.add(Math.min(taskEnd, candidate.end));
-    }
-    const points = [...boundaries].sort((a, b) => a - b);
-    for (let index = 0; index < points.length - 1; index++) {
-      const start = points[index];
-      const end = points[index + 1];
-      if (end <= start) continue;
-      const midpoint = (start + end) / 2;
-      const active = candidates.filter((candidate) => candidate.start <= midpoint && candidate.end >= midpoint);
-      const phase = ["dom-removal", "paint-layout", "react-render-commit", "parse-evaluate", "main-thread-other"].find((item) => active.some((candidate) => candidate.phase === item)) ?? "main-thread-other";
-      segments.push({ phase, start, end });
-      if (segments.length > 100_000) throw new Error("phase-overflow");
-    }
-    cursor = taskEnd;
-  }
-  const end = tasks.length ? Math.min(600_000, Math.max(0, ...tasks.map((task) => task.end))) : 0;
-  if (end > cursor) segments.push({ phase: "main-thread-idle", start: cursor, end });
-  return segments.map((segment) => ({
-    phase: segment.phase,
-    start: Math.round(segment.start * 10) / 10,
-    end: Math.round(segment.end * 10) / 10,
-  }));
 }
 
 test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
@@ -597,7 +545,12 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
       if (detailUrl.pathname !== "/agent/work-items/WLP-1") throw coldDiagnosticFailure("journey-assertion", "journey", "The fixed detail URL predicate failed.");
       coldFlags.journeyAssertionsComplete = true;
       coldStage = "capture-finish";
-      const rawCapture = await capture.finish(lcpState.timeOriginMs, routeState.routePaintMs);
+      const rawCapture = await capture.finish(
+        lcpState.timeOriginMs,
+        routeState.routePaintMs,
+        lcpState.lcpMs,
+        routeState.routeStartMs,
+      );
       if (rawCapture.documentTimeOriginMs !== routeState.timeOriginMs)
         throw coldDiagnosticFailure("clock-alignment", "clock", "Capture and journey clock origins did not match.");
       coldStage = "report-build";
@@ -692,6 +645,7 @@ let counts = null;
 let flags = null;
 let networkClockState = null;
 let incompleteClassification = null;
+let phaseCensus = unavailableColdPhaseCensus();
 let discoveryPrimary = null;
 
 function emptyEvidence() {
@@ -701,6 +655,7 @@ function emptyEvidence() {
     flags: empty.flags,
     networkClockState: null,
     incompleteClassification: null,
+    phaseCensus: unavailableColdPhaseCensus(),
   };
 }
 
@@ -967,6 +922,7 @@ try {
       flags = childReceipt.flags;
       networkClockState = childReceipt.networkClockState;
       incompleteClassification = childReceipt.incompleteClassification;
+      phaseCensus = childReceipt.phaseCensus;
       childReportCleanup = childReceipt.cleanup.childReport;
     } else {
       const fallback = parentChildExitReceipt({ childOutcome: "failed" });
@@ -975,6 +931,7 @@ try {
       flags = fallback.flags;
       networkClockState = fallback.networkClockState;
       incompleteClassification = fallback.incompleteClassification;
+      phaseCensus = fallback.phaseCensus;
       childReportCleanup = fallback.cleanup.childReport;
     }
     if (discoveryOnly) discoveryPrimary = primaryFailure;
@@ -999,6 +956,7 @@ try {
       );
     networkClockState = childReceipt.networkClockState;
     incompleteClassification = childReceipt.incompleteClassification;
+    phaseCensus = childReceipt.phaseCensus;
     counts = childReceipt.counts;
     flags = childReceipt.flags;
     if (!(await verifyPrivateTempDirectory(scratchOwned)))
@@ -1116,6 +1074,7 @@ if (discoveryOnly) {
       flags,
       networkClockState,
       incompleteClassification,
+      phaseCensus,
       cleanup,
     });
     process.stdout.write(`${formatColdFailureReceiptLine(receipt)}\n`);
@@ -1131,6 +1090,7 @@ if (discoveryOnly) {
     flags,
     networkClockState,
     incompleteClassification,
+    phaseCensus,
     childReport: childReportCleanup,
     parentReport: parentReportOwned,
     generatedSpec: generatedSpecOwned,

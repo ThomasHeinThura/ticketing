@@ -210,9 +210,10 @@ export function createColdFailureReceipt({
   cleanup,
   networkClockState = null,
   incompleteClassification = null,
+  phaseCensus = unavailableColdPhaseCensus(),
 }) {
   const receipt = {
-    schemaVersion: 4,
+    schemaVersion: 5,
     kind: "cold-recorder-failure",
     childOutcome,
     primary,
@@ -221,6 +222,7 @@ export function createColdFailureReceipt({
     cleanup,
     networkClockState,
     incompleteClassification,
+    phaseCensus,
   };
   validateColdFailureReceipt(receipt);
   const encoded = JSON.stringify(receipt);
@@ -257,10 +259,11 @@ function validateColdFailureReceipt(value) {
       "cleanup",
       "networkClockState",
       "incompleteClassification",
+      "phaseCensus",
     ],
     "failure receipt",
   );
-  if (value.schemaVersion !== 4 || value.kind !== "cold-recorder-failure")
+  if (value.schemaVersion !== 5 || value.kind !== "cold-recorder-failure")
     throw new Error("Invalid cold failure receipt identity.");
   if (
     !["not-started", "passed", "failed", "unknown"].includes(value.childOutcome)
@@ -380,6 +383,7 @@ function validateColdFailureReceipt(value) {
   } else if (value.incompleteClassification !== null) {
     throw new Error("Incomplete classification requires a network snapshot.");
   }
+  validateColdPhaseCensus(value.phaseCensus, value);
   exactKeys(value.flags, COLD_FAILURE_FLAG_KEYS, "failure receipt flags");
   for (const key of COLD_FAILURE_FLAG_KEYS) {
     if (value.flags[key] !== null && typeof value.flags[key] !== "boolean")
@@ -412,6 +416,7 @@ function validateColdFailureReceipt(value) {
       value.flags.networkOverflow !== false ||
       value.flags.traceDataLoss !== false ||
       value.flags.reportPrivacyPassed !== true ||
+      value.phaseCensus.state !== "unavailable" ||
       state === null ||
       COLD_NETWORK_CLOCK_KEYS.some((key) => state[key] !== 0) ||
       Object.values(value.incompleteClassification.resourceKinds).some(
@@ -426,6 +431,66 @@ function validateColdFailureReceipt(value) {
       );
   }
   return value;
+}
+
+function validateColdPhaseCensus(census, receipt) {
+  exactKeys(census, ["state", "windows"], "phase census");
+  if (!new Set(["unavailable", "not-validated", "validated"]).has(census.state))
+    throw new Error("Invalid phase census state.");
+  if (census.state !== "validated") {
+    if (census.windows !== null)
+      throw new Error("Unvalidated phase census cannot contain numbers.");
+    if (
+      census.state === "not-validated" &&
+      (receipt.childOutcome !== "failed" ||
+        receipt.primary?.code !== "network-clock-incomplete" ||
+        receipt.primary?.stage !== "network")
+    )
+      throw new Error(
+        "Unvalidated phase census requires network-incomplete failure.",
+      );
+    return;
+  }
+  if (
+    receipt.childOutcome !== "failed" ||
+    receipt.primary?.code !== "network-clock-incomplete" ||
+    receipt.primary?.stage !== "network" ||
+    receipt.counts.clockSamples !== 3 ||
+    receipt.counts.traceEventsReceived < 1 ||
+    receipt.counts.timelineRecordsRetained < 1 ||
+    receipt.counts.cpuSamples < 1 ||
+    receipt.counts.cpuNodes < 1 ||
+    receipt.counts.incompleteTrackedRequests < 1 ||
+    receipt.flags.journeyAssertionsComplete !== true ||
+    receipt.flags.traceOverflow !== false ||
+    receipt.flags.networkOverflow !== false ||
+    receipt.flags.traceDataLoss !== false ||
+    receipt.networkClockState === null ||
+    receipt.networkClockState.unexpectedSameIdReplacement !== 0 ||
+    receipt.networkClockState.duplicateTerminal !== 0 ||
+    receipt.networkClockState.unmatchedTrackedEvent !== 0 ||
+    receipt.incompleteClassification === null
+  )
+    throw new Error(
+      "Validated phase census lacks coherent failed-capture prerequisites.",
+    );
+  exactKeys(census.windows, ["lcp", "clickToPaint"], "phase census windows");
+  for (const [windowName, maxDurationDeci] of [
+    ["lcp", 6_000_000],
+    ["clickToPaint", 6_000_000],
+  ]) {
+    const totals = census.windows[windowName];
+    exactKeys(totals, COLD_PHASE_CATEGORIES, `${windowName} phase census`);
+    let sum = 0;
+    for (const phase of COLD_PHASE_CATEGORIES) {
+      const value = totals[phase];
+      if (!Number.isInteger(value) || value < 0 || value > maxDurationDeci)
+        throw new Error("Invalid phase census deci-millisecond value.");
+      sum += value;
+    }
+    if (sum > maxDurationDeci + COLD_PHASE_CATEGORIES.length)
+      throw new Error("Phase census window exceeds its maximum duration.");
+  }
 }
 
 // Call only after the parent has privacy- and provenance-validated the report.
@@ -542,6 +607,7 @@ const PHASES = new Set([
   "dom-removal",
   "paint-layout",
 ]);
+export const COLD_PHASE_CATEGORIES = Object.freeze([...PHASES]);
 const KNOWN_ROUTES = [
   [],
   ["auth", "sign-in"],
@@ -1141,6 +1207,86 @@ function windowPhaseTotals(segments, start, end) {
       ) / 10,
     ]),
   );
+}
+
+export function unavailableColdPhaseCensus() {
+  return { state: "unavailable", windows: null };
+}
+
+export function notValidatedColdPhaseCensus() {
+  return { state: "not-validated", windows: null };
+}
+
+export function deriveColdPhaseCensus(
+  segments,
+  { lcpMs, routeStartMs, routePaintMs },
+) {
+  if (
+    !Array.isArray(segments) ||
+    segments.length === 0 ||
+    segments.length > COLD_MAX_PHASE_SEGMENTS ||
+    !finite(lcpMs, 0, 600_000) ||
+    !finite(routeStartMs, 0, 600_000) ||
+    !finite(routePaintMs, Number.MIN_VALUE, 600_000) ||
+    routeStartMs + routePaintMs > 600_000
+  )
+    throw new Error("Invalid phase census prerequisites.");
+  let previousEnd = Number.NEGATIVE_INFINITY;
+  const normalized = segments.map((segment) => {
+    exactKeys(segment, ["phase", "start", "end"], "phase census segment");
+    if (
+      !COLD_PHASE_CATEGORIES.includes(segment.phase) ||
+      !finite(segment.start, 0, 600_000) ||
+      !finite(segment.end, segment.start, 600_000) ||
+      segment.end <= segment.start ||
+      segment.start < previousEnd
+    )
+      throw new Error("Invalid phase census segment.");
+    previousEnd = segment.end;
+    return {
+      phase: segment.phase,
+      startMs: Math.round(segment.start * 10) / 10,
+      durationMs: Math.round((segment.end - segment.start) * 10) / 10,
+    };
+  });
+  const windows = {
+    lcp: windowPhaseTotals(normalized, 0, lcpMs),
+    clickToPaint: windowPhaseTotals(
+      normalized,
+      routeStartMs,
+      routeStartMs + routePaintMs,
+    ),
+  };
+  const lcpDurationDeci = Math.round(lcpMs * 10);
+  const clickDurationDeci = Math.round(routePaintMs * 10);
+  if (
+    Math.round(
+      Object.values(windows.lcp).reduce((sum, value) => sum + value, 0) * 10,
+    ) >
+      lcpDurationDeci + COLD_PHASE_CATEGORIES.length ||
+    Math.round(
+      Object.values(windows.clickToPaint).reduce(
+        (sum, value) => sum + value,
+        0,
+      ) * 10,
+    ) >
+      clickDurationDeci + COLD_PHASE_CATEGORIES.length
+  )
+    throw new Error("Phase census window totals exceed observed duration.");
+  const deci = (values) =>
+    Object.fromEntries(
+      COLD_PHASE_CATEGORIES.map((phase) => [
+        phase,
+        Math.round(values[phase] * 10),
+      ]),
+    );
+  return {
+    state: "validated",
+    windows: {
+      lcp: deci(windows.lcp),
+      clickToPaint: deci(windows.clickToPaint),
+    },
+  };
 }
 
 function nonCausalIdleRequestOverlap(resources, segments) {

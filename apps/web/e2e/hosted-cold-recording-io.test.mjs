@@ -146,6 +146,10 @@ test("production cleanup preserves a child primary and independently records eac
   assert.equal(relayed.primary.code, "network-clock");
   assert.equal(relayed.primary.stage, "network");
   assert.equal(relayed.counts.trackedRequests, 2);
+  assert.deepEqual(relayed.phaseCensus, {
+    state: "unavailable",
+    windows: null,
+  });
   assert.equal(relayed.cleanup.childReport, "failed");
 
   const generatedSpec = await createOwnedFile(
@@ -179,6 +183,10 @@ test("production cleanup preserves a child primary and independently records eac
 
   assert.equal(result.succeeded, false);
   assert.equal(result.receipt.primary.code, "network-clock");
+  assert.deepEqual(result.receipt.phaseCensus, {
+    state: "unavailable",
+    windows: null,
+  });
   assert.deepEqual(result.cleanup, {
     childReport: "failed",
     parentReport: "ok",
@@ -685,8 +693,8 @@ test("invalid, oversized, duplicate-key, and symlink child receipts are inaccess
 
   const duplicate = join(receiptScratch.path, "duplicate");
   const duplicateBytes = JSON.stringify(receipt).replace(
-    '"schemaVersion":4',
-    '"schemaVersion":4,"schemaVersion":4',
+    '"schemaVersion":5',
+    '"schemaVersion":5,"schemaVersion":5',
   );
   await writeFile(duplicate, duplicateBytes, { mode: 0o600 });
   assert.equal(await readChildFailureReceipt(duplicate, receiptScratch), null);

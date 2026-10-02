@@ -11,6 +11,7 @@ import {
   COLD_FAILURE_CODES,
   COLD_FAILURE_RECEIPT_MAX_BYTES,
   COLD_FAILURE_RECEIPT_PREFIX,
+  COLD_PHASE_CATEGORIES,
   classifyColdIncompleteRequest,
   coldCleanupStatuses,
   coldDiagnosticFailure,
@@ -214,6 +215,44 @@ function failureReceipt(overrides = {}) {
         "known-fixed-route": 1,
         "same-origin-other": 0,
         "other-or-invalid": 0,
+      },
+    },
+    ...overrides,
+  });
+}
+
+function validatedPhaseFailureReceipt(overrides = {}) {
+  const base = failureReceipt();
+  return createColdFailureReceipt({
+    ...base,
+    childOutcome: "failed",
+    primary: { code: "network-clock-incomplete", stage: "network" },
+    counts: {
+      ...base.counts,
+      clockSamples: 3,
+      traceEventsReceived: 20,
+      timelineRecordsRetained: 10,
+      cpuSamples: 5,
+      cpuNodes: 3,
+      trackedRequests: 2,
+      incompleteTrackedRequests: 1,
+    },
+    flags: {
+      ...base.flags,
+      journeyAssertionsComplete: true,
+      traceOverflow: false,
+      networkOverflow: false,
+      traceDataLoss: false,
+    },
+    phaseCensus: {
+      state: "validated",
+      windows: {
+        lcp: Object.fromEntries(
+          COLD_PHASE_CATEGORIES.map((phase) => [phase, 0]),
+        ),
+        clickToPaint: Object.fromEntries(
+          COLD_PHASE_CATEGORIES.map((phase) => [phase, 0]),
+        ),
       },
     },
     ...overrides,
@@ -500,6 +539,10 @@ test("failure receipt relay rejects hostile schemas, counts, flags, and oversize
   assert.equal(fallback.primary.stage, "child-start");
   assert.ok(Object.values(fallback.counts).every((value) => value === null));
   assert.ok(Object.values(fallback.flags).every((value) => value === null));
+  assert.deepEqual(fallback.phaseCensus, {
+    state: "unavailable",
+    windows: null,
+  });
   for (const absentOrInvalid of [
     null,
     Buffer.from("{}"),
@@ -519,7 +562,7 @@ test("passed child cleanup failure is represented separately from a null primary
     ...successfulChildEvidence(),
     cleanup,
   });
-  assert.equal(receipt.schemaVersion, 4);
+  assert.equal(receipt.schemaVersion, 5);
   assert.equal(receipt.primary, null);
   assert.equal(receipt.cleanup.generatedConfig, "failed");
   assert.equal(
@@ -582,7 +625,15 @@ test("passed handoff must match the independently validated v1 report before pub
   const report = buildSanitizedColdReport(reportInput());
   assertColdReportPrivacy(report, assetBasenames);
   const handoff = createColdFailureReceipt(successfulChildEvidence());
+  assert.deepEqual(handoff.phaseCensus, {
+    state: "unavailable",
+    windows: null,
+  });
   assert.equal(coldPassedHandoffMatchesValidatedReport(handoff, report), true);
+  assert.equal(
+    coldPassedHandoffMatchesValidatedReport(failureReceipt(), report),
+    false,
+  );
   assert.equal(
     coldPassedHandoffMatchesValidatedReport(
       createColdFailureReceipt({
@@ -615,7 +666,7 @@ test("passed handoff must match the independently validated v1 report before pub
   );
 });
 
-test("v4 receipt validates null, bounded network snapshot and classification partitions", () => {
+test("v5 receipt validates null, bounded network snapshot and classification partitions", () => {
   const base = unknownColdFailureReceipt();
   assert.equal(base.networkClockState, null);
   assert.equal(base.incompleteClassification, null);
@@ -715,6 +766,11 @@ test("v4 receipt validates null, bounded network snapshot and classification par
     ),
   );
   assert.throws(() =>
+    parseColdFailureReceipt(
+      Buffer.from(JSON.stringify({ ...valid, schemaVersion: 4 })),
+    ),
+  );
+  assert.throws(() =>
     createColdFailureReceipt({
       ...valid,
       incompleteClassification: {
@@ -744,6 +800,156 @@ test("v4 receipt validates null, bounded network snapshot and classification par
   const line = formatColdFailureReceiptLine(valid);
   assert.equal(line.includes(hostile), false);
   assert.equal(line.includes("requestId"), false);
+});
+
+test("P0 #558 v5: census state and validated receipt prerequisites are closed", () => {
+  const valid = validatedPhaseFailureReceipt();
+  assert.deepEqual(
+    parseColdFailureReceipt(Buffer.from(JSON.stringify(valid))).phaseCensus,
+    valid.phaseCensus,
+  );
+  for (const phaseCensus of [
+    { state: "mystery", windows: null },
+    { state: "not-validated", windows: { lcp: {}, clickToPaint: {} } },
+    { state: "validated", windows: null },
+    {
+      ...valid.phaseCensus,
+      extra: true,
+    },
+    {
+      state: "validated",
+      windows: {
+        ...valid.phaseCensus.windows,
+        lcp: {
+          ...valid.phaseCensus.windows.lcp,
+          leaked: 1,
+        },
+      },
+    },
+    {
+      state: "validated",
+      windows: {
+        ...valid.phaseCensus.windows,
+        lcp: {
+          ...valid.phaseCensus.windows.lcp,
+          "parse-evaluate": 0.1,
+        },
+      },
+    },
+    {
+      state: "validated",
+      windows: {
+        ...valid.phaseCensus.windows,
+        lcp: {
+          ...valid.phaseCensus.windows.lcp,
+          "parse-evaluate": 6_000_001,
+        },
+      },
+    },
+  ]) {
+    assert.throws(() => createColdFailureReceipt({ ...valid, phaseCensus }));
+  }
+  assert.equal(
+    createColdFailureReceipt({
+      ...failureReceipt(),
+      primary: { code: "network-clock-incomplete", stage: "network" },
+      phaseCensus: { state: "not-validated", windows: null },
+    }).primary.code,
+    "network-clock-incomplete",
+  );
+  assert.throws(() =>
+    createColdFailureReceipt({
+      ...valid,
+      primary: { code: "journey-assertion", stage: "journey" },
+    }),
+  );
+  assert.throws(() =>
+    createColdFailureReceipt({
+      ...valid,
+      counts: { ...valid.counts, clockSamples: 2 },
+    }),
+  );
+  assert.throws(() =>
+    createColdFailureReceipt({
+      ...valid,
+      flags: { ...valid.flags, traceDataLoss: true },
+    }),
+  );
+  assert.throws(() =>
+    createColdFailureReceipt({
+      ...valid,
+      networkClockState: {
+        ...valid.networkClockState,
+        unmatchedTrackedEvent: 1,
+      },
+    }),
+  );
+  assert.throws(() =>
+    createColdFailureReceipt({
+      ...valid,
+      childOutcome: "passed",
+      primary: null,
+      counts: { ...valid.counts, incompleteTrackedRequests: 0 },
+      phaseCensus: valid.phaseCensus,
+    }),
+  );
+});
+
+test("P0 #558 v5: maximum valid counts and census fit the canonical 2 KiB receipt", () => {
+  const base = validatedPhaseFailureReceipt();
+  const counts = Object.fromEntries(
+    Object.entries(base.counts).map(([key, value]) => [
+      key,
+      value === null ? null : value,
+    ]),
+  );
+  Object.assign(counts, {
+    clockSamples: 3,
+    traceEventsReceived: 250_000,
+    timelineRecordsRetained: 250_000,
+    trackedRequests: 2_048,
+    incompleteTrackedRequests: 2_048,
+    cpuSamples: 500_000,
+    cpuNodes: 50_000,
+  });
+  const resourceKinds = Object.fromEntries(
+    Object.keys(base.incompleteClassification.resourceKinds).map((kind) => [
+      kind,
+      0,
+    ]),
+  );
+  resourceKinds.unknown = 2_048;
+  const sourceClasses = Object.fromEntries(
+    Object.keys(base.incompleteClassification.sourceClasses).map((kind) => [
+      kind,
+      0,
+    ]),
+  );
+  sourceClasses["other-or-invalid"] = 2_048;
+  const maxWindow = Object.fromEntries(
+    COLD_PHASE_CATEGORIES.map((phase) => [phase, 1_000_000]),
+  );
+  const receipt = createColdFailureReceipt({
+    ...base,
+    counts,
+    networkClockState: {
+      invalidStart: 2_048,
+      terminalNotSeen: 2_048,
+      invalidTerminal: 0,
+      notSeenAfterResponse: 0,
+      incompleteAfterRedirect: 0,
+      unexpectedSameIdReplacement: 0,
+      duplicateTerminal: 0,
+      unmatchedTrackedEvent: 0,
+    },
+    incompleteClassification: { resourceKinds, sourceClasses },
+    phaseCensus: {
+      state: "validated",
+      windows: { lcp: maxWindow, clickToPaint: maxWindow },
+    },
+  });
+  const bytes = Buffer.byteLength(JSON.stringify(receipt), "utf8");
+  assert.ok(bytes <= COLD_FAILURE_RECEIPT_MAX_BYTES, `${bytes} bytes`);
 });
 
 test("cold report binds the exact source and emits only bounded diagnostic evidence", () => {
