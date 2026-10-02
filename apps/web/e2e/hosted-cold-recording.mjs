@@ -423,9 +423,7 @@ async function startColdCapture(page: Page) {
     const offsetMs = clockAlignment.offsetMs;
     coldStage = "network";
     if (requestSnapshot.incompleteTrackedRequests > 0) {
-      const hasCensusEvidence =
-        !requestSnapshot.protocolIntegrityFailure &&
-        !requestSnapshot.anomalyOverflow &&
+      const hasRequiredCensusEvidence =
         clockSamples.length === 3 &&
         receivedTraceEventCount > 0 &&
         traceEvents.length > 0 &&
@@ -435,16 +433,21 @@ async function startColdCapture(page: Page) {
         traceOverflow === false &&
         networkOverflow === false &&
         completion.dataLossOccurred === false;
-      if (hasCensusEvidence) {
+      if (hasRequiredCensusEvidence) {
         coldPhaseCensus = notValidatedColdPhaseCensus();
-        try {
-          coldPhaseCensus = deriveColdFailurePhaseCensus(
-            traceEvents,
-            offsetMs,
-            { lcpMs, routeStartMs, routePaintMs: routePaintDurationMs },
-          );
-        } catch {
-          coldPhaseCensus = notValidatedColdPhaseCensus();
+        if (
+          !requestSnapshot.protocolIntegrityFailure &&
+          !requestSnapshot.anomalyOverflow
+        ) {
+          try {
+            coldPhaseCensus = deriveColdFailurePhaseCensus(
+              traceEvents,
+              offsetMs,
+              { lcpMs, routeStartMs, routePaintMs: routePaintDurationMs },
+            );
+          } catch {
+            coldPhaseCensus = notValidatedColdPhaseCensus();
+          }
         }
       }
       throw coldDiagnosticFailure("network-clock-incomplete", "network", "A tracked request has incomplete clock endpoints.");
@@ -871,6 +874,7 @@ try {
       join(scriptDir, "hosted-cold-recording-validation.test.mjs"),
       join(scriptDir, "hosted-cold-recording-io.test.mjs"),
       join(scriptDir, "hosted-cold-recording-request-lifecycle.test.mjs"),
+      join(scriptDir, "hosted-cold-recording-phase-census.test.mjs"),
     ],
     { cwd: webDir, stdio: "ignore" },
   );
