@@ -284,9 +284,13 @@ session happened.
 
 ## WebSocket
 
-- The upgrade is accepted only when `Origin` is exactly the configured origin for the
-  request host, and the session's `portal` matches — cookie-authenticated upgrades are not
-  protected by the same-origin policy, so this check is the control.
+- Cookie-authenticated upgrades require the configured request-host `Origin` and a
+  matching stored session `portal` before `101`; browser same-origin policy does not
+  protect the upgrade. The proposed rule covers **every resolved session regardless of
+  credential carrier**; only a resolved API key without a session may omit `Origin`.
+  Exact single, non-`null` Origin parsing, credential classification, and real mounted
+  route tests are in [realtime.md](realtime.md#transport), pending Thomas's
+  finished-spec read for #560.
 - Subscriptions are **re-authorized**, not only authorised at subscribe: the socket
   subscribes to the identity-cache invalidation channel and drops affected topics the moment
   a membership or role changes; as a floor, every subscription is re-checked every 60 s.
