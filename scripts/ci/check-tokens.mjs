@@ -85,7 +85,7 @@ function densitySlotViolations(sourceFile, relativePath) {
     if (!densityClass.test(classes)) {
       failures.push(`${relativePath}: <${slot}> must use ${expected[1]}.`);
     }
-    const spacingValue = String.raw`(?:\d+(?:\.\d+)?(?:\/\d+)?|\[[^\]\s]+\])`;
+    const spacingValue = String.raw`(?:px|\d+(?:\.\d+)?(?:\/\d+)?|\[[^\]\s]+\])`;
     const tokenStart = String.raw`(?:^|[\s"'\x60])`;
     const tokenEnd = String.raw`(?:$|[\s"'\x60])`;
     const spacingUtilities =
@@ -142,7 +142,7 @@ function densityProbeFailures() {
   const positiveCardPath = path.join(directory, "positive-card.tsx");
   writeFileSync(
     negativePath,
-    'const item = <tr data-slot="table-row" className="py-1.5 gap-y-[7px]" />;',
+    'const item = <tr data-slot="table-row" className="py-1.5 gap-y-[7px] py-px" />;',
   );
   writeFileSync(
     positivePath,
@@ -150,7 +150,7 @@ function densityProbeFailures() {
   );
   writeFileSync(
     negativeCardPath,
-    'function CardPanel() { return <div className="flex-1 py-6 p-1.5 p-[17px] gap-y-[7px]" />; }',
+    'function CardPanel() { return <div className="flex-1 py-6 p-1.5 p-[17px] gap-y-[7px] p-px" />; }',
   );
   writeFileSync(
     positiveCardPath,
