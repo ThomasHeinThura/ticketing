@@ -1,4 +1,38 @@
 /**
+ * Reconstruct timestamp/node pairs from the raw profile order, then return a
+ * stable chronological view without changing the captured arrays.
+ * @param {{samples?: number[], timeDeltas?: number[], startTime?: number} | undefined} profile
+ * @returns {Array<{timestamp: number, nodeId: number, originalIndex: number}>}
+ */
+export function normalizeHostedProfileSamples(profile) {
+  const samples = profile?.samples;
+  const deltas = profile?.timeDeltas;
+  if (
+    !Array.isArray(samples) ||
+    !Array.isArray(deltas) ||
+    samples.length !== deltas.length
+  ) {
+    return [];
+  }
+
+  let timestamp = profile.startTime;
+  return deltas
+    .map((delta, originalIndex) => {
+      timestamp += delta;
+      return {
+        timestamp,
+        nodeId: samples[originalIndex],
+        originalIndex,
+      };
+    })
+    .sort(
+      (left, right) =>
+        left.timestamp - right.timestamp ||
+        left.originalIndex - right.originalIndex,
+    );
+}
+
+/**
  * @param {{cpuProfile?: {nodes?: Array<{id?: number, children?: number[], callFrame?: unknown}>, samples?: number[], timeDeltas?: number[], startTime?: number, endTime?: number}, traceEvents?: Array<{name?: string, cat?: string, ph?: string, ts?: number}>, counts?: {cpuProfileNodes?: number, cpuSamples?: number, timeDeltas?: number, timelineEvents?: number}, tracingComplete?: {dataLossOccurred?: boolean}}} payload
  * @param {string} path
  */
@@ -28,30 +62,20 @@ export function assertHostedCaptureComplete(payload, path) {
     Array.isArray(deltas) &&
     deltas.length === samples.length &&
     samples.every((sample) => nodeIds.has(sample)) &&
-    deltas.every((delta) => Number.isFinite(delta) && delta >= 0);
+    deltas.every((delta) => Number.isFinite(delta));
   const validProfileTiming =
     Number.isFinite(profile?.startTime) &&
     Number.isFinite(profile?.endTime) &&
     profile.endTime > profile.startTime;
-  let sampleTime = profile?.startTime;
-  const reconstructedSampleTimes = Array.isArray(deltas)
-    ? deltas.map((delta) => {
-        sampleTime += delta;
-        return sampleTime;
-      })
-    : [];
+  const normalizedSamples = normalizeHostedProfileSamples(profile);
   const validSampleTiming =
     validProfileTiming &&
-    reconstructedSampleTimes.length === samples?.length &&
-    reconstructedSampleTimes.every(
-      (timestamp) =>
+    normalizedSamples.length === samples?.length &&
+    normalizedSamples.every(
+      ({ timestamp }) =>
         Number.isFinite(timestamp) &&
         timestamp >= profile.startTime &&
         timestamp <= profile.endTime,
-    ) &&
-    reconstructedSampleTimes.every(
-      (timestamp, index) =>
-        index === 0 || timestamp >= reconstructedSampleTimes[index - 1],
     );
   const timelineEvents = payload.traceEvents;
   const hasTimelineData =

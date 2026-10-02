@@ -3,13 +3,18 @@ import test from "node:test";
 import {
   assertHostedCaptureComplete,
   hostedProfileTraceOptions,
+  normalizeHostedProfileSamples,
   parseCandidateSha,
   rewriteHostedProfileOrigin,
 } from "./hosted-profile-validation.mjs";
 
 const validPayload = () => ({
   cpuProfile: {
-    nodes: [{ id: 1, callFrame: { functionName: "probe" }, children: [] }],
+    nodes: [1, 2, 3].map((id) => ({
+      id,
+      callFrame: { functionName: "probe" },
+      children: [],
+    })),
     samples: [1],
     timeDeltas: [1000],
     startTime: 1,
@@ -17,7 +22,7 @@ const validPayload = () => ({
   },
   traceEvents: [{ name: "RunTask", cat: "devtools.timeline", ph: "X", ts: 1 }],
   counts: {
-    cpuProfileNodes: 1,
+    cpuProfileNodes: 3,
     cpuSamples: 1,
     timeDeltas: 1,
     timelineEvents: 1,
@@ -31,43 +36,54 @@ test("accepts structurally consistent CPU and timeline capture", () => {
   );
 });
 
-test("rejects negative CPU time deltas", () => {
+test("accepts signed deltas and normalizes paired samples chronologically", () => {
   const payload = validPayload();
   payload.cpuProfile.startTime = 100;
-  payload.cpuProfile.endTime = 500;
-  payload.cpuProfile.samples = [1, 1, 1];
-  payload.cpuProfile.timeDeltas = [200, -1, 200];
+  payload.cpuProfile.endTime = 140;
+  payload.cpuProfile.samples = [1, 2, 3];
+  payload.cpuProfile.timeDeltas = [30, -20, 20];
   payload.counts.cpuSamples = 3;
   payload.counts.timeDeltas = 3;
-  assert.throws(
-    () => assertHostedCaptureComplete(payload, "negative-delta-profile.json"),
-    /Incomplete or malformed hosted profile/,
+  const originalProfile = structuredClone(payload.cpuProfile);
+  assert.doesNotThrow(() =>
+    assertHostedCaptureComplete(payload, "signed-delta-profile.json"),
   );
+  assert.deepEqual(normalizeHostedProfileSamples(payload.cpuProfile), [
+    { timestamp: 110, nodeId: 2, originalIndex: 1 },
+    { timestamp: 130, nodeId: 1, originalIndex: 0 },
+    { timestamp: 130, nodeId: 3, originalIndex: 2 },
+  ]);
+  assert.deepEqual(payload.cpuProfile, originalProfile);
 });
 
-test("accepts equal reconstructed timestamps when a delta is zero", () => {
+test("keeps equal timestamps stable by original sample index", () => {
   const payload = validPayload();
   payload.cpuProfile.startTime = 100;
-  payload.cpuProfile.endTime = 300;
-  payload.cpuProfile.samples = [1, 1, 1];
-  payload.cpuProfile.timeDeltas = [100, 0, 100];
+  payload.cpuProfile.endTime = 130;
+  payload.cpuProfile.samples = [3, 1, 2];
+  payload.cpuProfile.timeDeltas = [20, 0, 10];
   payload.counts.cpuSamples = 3;
   payload.counts.timeDeltas = 3;
   assert.doesNotThrow(() =>
     assertHostedCaptureComplete(payload, "equal-sample-times.json"),
   );
+  assert.deepEqual(normalizeHostedProfileSamples(payload.cpuProfile), [
+    { timestamp: 120, nodeId: 3, originalIndex: 0 },
+    { timestamp: 120, nodeId: 1, originalIndex: 1 },
+    { timestamp: 130, nodeId: 2, originalIndex: 2 },
+  ]);
 });
 
-test("rejects structurally decreasing reconstructed sample timestamps", () => {
+test("rejects a negative first reconstructed timestamp below profile start", () => {
   const payload = validPayload();
   payload.cpuProfile.startTime = 100;
   payload.cpuProfile.endTime = 500;
-  payload.cpuProfile.samples = [1, 1, 1];
-  payload.cpuProfile.timeDeltas = [200, -100, 200];
-  payload.counts.cpuSamples = 3;
-  payload.counts.timeDeltas = 3;
+  payload.cpuProfile.samples = [1];
+  payload.cpuProfile.timeDeltas = [-1];
+  payload.counts.cpuSamples = 1;
+  payload.counts.timeDeltas = 1;
   assert.throws(
-    () => assertHostedCaptureComplete(payload, "decreasing-sample-times.json"),
+    () => assertHostedCaptureComplete(payload, "before-start-profile.json"),
     /Incomplete or malformed hosted profile/,
   );
 });
@@ -87,7 +103,7 @@ for (const [label, mutate] of [
         callFrame: { functionName: "duplicate" },
         children: [],
       });
-      payload.counts.cpuProfileNodes = 2;
+      payload.counts.cpuProfileNodes = 4;
     },
   ],
   [
@@ -103,7 +119,7 @@ for (const [label, mutate] of [
     },
   ],
   [
-    "reconstructed sample outside profile interval",
+    "positive sample timestamp past profile end",
     (payload) => {
       payload.cpuProfile.timeDeltas = [1001];
     },
