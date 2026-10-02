@@ -124,8 +124,9 @@ feature spec; grouped rows use the shared design tokens at the default density.
 
 **`chart`'s contract:** series colours are drawn only from a fixed token ramp
 (`--chart-series-1` … `--chart-series-n` in `tokens.css`), never a colour Recharts or a
-caller picks freely — this is what lets `G3` check chart contrast the same way it checks
-every other token. `chart` never renders alone: every instance renders its `chart-table`
+caller picks freely. These semantic series tokens can be added to G3 when chart pair coverage
+is registered; the current G3 inventory is limited to shared Button, Badge, and Input variants
+and does not claim chart-series contrast coverage. `chart` never renders alone: every instance renders its `chart-table`
 alongside it (visually hidden by default, reachable by keyboard, per `RP-11`), not as an
 optional companion a screen may skip. A screen that renders a `chart` without its
 `chart-table` fails `G4`.
@@ -264,8 +265,8 @@ table above, server-side, before it reaches `instance_branding`. This is a styli
 injection surface otherwise: an unbounded "custom CSS variable override" lets an
 administrator write anything the theme engine will interpolate into the page.
 
-`--brand-accent` is run through the same contrast check `G3` runs over the committed
-tokens ([`ux-quality-gates.md`](ux-quality-gates.md#g3--contrast)), against both the light
+Runtime validation for `--brand-accent` uses the same WCAG AA threshold described for `G3`
+([`ux-quality-gates.md`](ux-quality-gates.md#g3--contrast)), against both the light
 and dark `--background` it will pair with. A submission that fails AA contrast is not
 silently accepted — God Mode shows the computed ratio and a warning before save, the same
 shape as any other validated form field. `G3`'s own CI check only ever sees the committed

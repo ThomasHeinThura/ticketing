@@ -85,10 +85,16 @@ function densitySlotViolations(sourceFile, relativePath) {
     if (!densityClass.test(classes)) {
       failures.push(`${relativePath}: <${slot}> must use ${expected[1]}.`);
     }
-    const directSpacing =
+    const spacingValue = String.raw`(?:\d+(?:\.\d+)?(?:\/\d+)?|\[[^\]\s]+\])`;
+    const tokenStart = String.raw`(?:^|[\s"'\x60])`;
+    const tokenEnd = String.raw`(?:$|[\s"'\x60])`;
+    const spacingUtilities =
       expected[0] === "@CardPanel"
-        ? /(?:^|[\s"'`])p-\d+(?:\/\d+)?(?:$|[\s"'`])/
-        : /(?:^|[\s"'`])(?:py|pt|pb|gap-y|gap)-\d+(?:\/\d+)?(?:$|[\s"'`])/;
+        ? "(?:p|py|pt|pb|gap-y|gap)"
+        : "(?:py|pt|pb|gap-y|gap)";
+    const directSpacing = new RegExp(
+      `${tokenStart}${spacingUtilities}-${spacingValue}${tokenEnd}`,
+    );
     if (directSpacing.test(classes)) {
       failures.push(
         `${relativePath}: <${slot}> has fixed padding/gap; use its registered density class.`,
@@ -136,7 +142,7 @@ function densityProbeFailures() {
   const positiveCardPath = path.join(directory, "positive-card.tsx");
   writeFileSync(
     negativePath,
-    'const item = <tr data-slot="table-row" className="py-3" />;',
+    'const item = <tr data-slot="table-row" className="py-1.5 gap-y-[7px]" />;',
   );
   writeFileSync(
     positivePath,
@@ -144,7 +150,7 @@ function densityProbeFailures() {
   );
   writeFileSync(
     negativeCardPath,
-    'function CardPanel() { return <div className="flex-1 p-6" />; }',
+    'function CardPanel() { return <div className="flex-1 py-6 p-1.5 p-[17px] gap-y-[7px]" />; }',
   );
   writeFileSync(
     positiveCardPath,
@@ -200,7 +206,7 @@ function densityProbeFailures() {
       const failures = [];
       if (!issues.some((message) => message.includes("fixed padding/gap")))
         failures.push(
-          "density negative probe did not reject a hard-coded py-3 row",
+          "density negative probe did not reject fixed spacing on a row",
         );
       if (safe.length)
         failures.push("density positive probe rejected a semantic row class");

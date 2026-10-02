@@ -37,11 +37,11 @@ accessibility. See [ADR 0008](../01-architecture/adr/0008-single-design-system.m
 ### G2 · Tokens and density slots
 
 **Fails on:** a hard-coded colour outside `packages/ui/src/styles/`, and on fixed vertical
-padding/gap utilities placed directly on a registered density slot. The shared classes `td-density-row`, `td-density-field`, and
-`td-density-card` are the only density controls. Comfortable is the default; the existing
-root `compact-mode` preference applies the compact values. The initial registered slots are
-repeated data rows, form fields, and repeated cards in `packages/ui` and the app-shell
-compositions. They use the classes from `packages/ui/src/styles/density.css`; ordinary
+padding/gap utilities placed directly on a registered density slot. The shared classes
+`td-density-row`, `td-density-field`, and `td-density-card` are the only density controls.
+Comfortable is the default; the existing root `compact-mode` preference applies the compact
+values. The currently checked slots are shared table rows, input controls, and `CardPanel` in
+`packages/ui`; they use the classes from `packages/ui/src/styles/density.css`. Ordinary
 layout spacing outside those named slots continues to use Tailwind's built-in scale.
 
 `scripts/ci/check-tokens.mjs` checks registered rows, fields, and `CardPanel` density markup,
