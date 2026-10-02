@@ -138,11 +138,17 @@ function densityProbeFailures() {
   const directory = mkdtempSync(path.join(tmpdir(), "taskdesk-density-probe-"));
   const negativePath = path.join(directory, "negative.tsx");
   const positivePath = path.join(directory, "positive.tsx");
+  const negativePxPath = path.join(directory, "negative-px.tsx");
   const negativeCardPath = path.join(directory, "negative-card.tsx");
+  const negativeCardPxPath = path.join(directory, "negative-card-px.tsx");
   const positiveCardPath = path.join(directory, "positive-card.tsx");
   writeFileSync(
     negativePath,
-    'const item = <tr data-slot="table-row" className="py-1.5 gap-y-[7px] py-px" />;',
+    'const item = <tr data-slot="table-row" className="td-density-row py-1.5 gap-y-[7px]" />;',
+  );
+  writeFileSync(
+    negativePxPath,
+    'const item = <tr data-slot="table-row" className="td-density-row py-px" />;',
   );
   writeFileSync(
     positivePath,
@@ -150,7 +156,11 @@ function densityProbeFailures() {
   );
   writeFileSync(
     negativeCardPath,
-    'function CardPanel() { return <div className="flex-1 py-6 p-1.5 p-[17px] gap-y-[7px] p-px" />; }',
+    'function CardPanel() { return <div className="flex-1 td-density-card py-6 p-1.5 p-[17px] gap-y-[7px]" />; }',
+  );
+  writeFileSync(
+    negativeCardPxPath,
+    'function CardPanel() { return <div className="flex-1 td-density-card p-px" />; }',
   );
   writeFileSync(
     positiveCardPath,
@@ -162,7 +172,9 @@ function densityProbeFailures() {
       openFiles: [
         negativePath,
         positivePath,
+        negativePxPath,
         negativeCardPath,
+        negativeCardPxPath,
         positiveCardPath,
       ],
     });
@@ -173,9 +185,15 @@ function densityProbeFailures() {
       const positive = snapshot
         .getDefaultProjectForFile(positivePath)
         ?.program.getSourceFile(positivePath);
+      const negativePx = snapshot
+        .getDefaultProjectForFile(negativePxPath)
+        ?.program.getSourceFile(negativePxPath);
       const negativeCard = snapshot
         .getDefaultProjectForFile(negativeCardPath)
         ?.program.getSourceFile(negativeCardPath);
+      const negativeCardPx = snapshot
+        .getDefaultProjectForFile(negativeCardPxPath)
+        ?.program.getSourceFile(negativeCardPxPath);
       const positiveCard = snapshot
         .getDefaultProjectForFile(positiveCardPath)
         ?.program.getSourceFile(positiveCardPath);
@@ -197,6 +215,18 @@ function densityProbeFailures() {
             "packages/ui/src/components/card.tsx",
           )
         : [];
+      const pxIssues = negativePx
+        ? densitySlotViolations(
+            negativePx,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const cardPxIssues = negativeCardPx
+        ? densitySlotViolations(
+            negativeCardPx,
+            "packages/ui/src/components/card.tsx",
+          )
+        : [];
       const safeCard = positiveCard
         ? densitySlotViolations(
             positiveCard,
@@ -208,6 +238,8 @@ function densityProbeFailures() {
         failures.push(
           "density negative probe did not reject fixed spacing on a row",
         );
+      if (!pxIssues.some((message) => message.includes("fixed padding/gap")))
+        failures.push("density negative probe did not reject py-px on a row");
       if (safe.length)
         failures.push("density positive probe rejected a semantic row class");
       if (
@@ -215,6 +247,13 @@ function densityProbeFailures() {
       ) {
         failures.push(
           "density negative probe did not reject fixed padding on CardPanel",
+        );
+      }
+      if (
+        !cardPxIssues.some((message) => message.includes("fixed padding/gap"))
+      ) {
+        failures.push(
+          "density negative probe did not reject p-px on CardPanel",
         );
       }
       if (safeCard.length)
