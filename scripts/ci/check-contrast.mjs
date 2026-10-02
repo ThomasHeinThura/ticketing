@@ -462,6 +462,14 @@ async function main() {
         }
         const backdrop = parseColor(values.backdrop);
         const background = parseColor(values.bg);
+        if (pair.backgroundClass?.[theme] && background[3] === 0) {
+          failures.push(
+            violation(
+              manifestPath,
+              `entry ${index + 1} surface class ${surfaceClass} has no computed background in ${theme}.`,
+            ),
+          );
+        }
         const opaqueBg =
           background[3] < 1
             ? composite(background, backdrop)
