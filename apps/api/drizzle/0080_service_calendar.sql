@@ -11,4 +11,4 @@ CREATE TABLE "service_calendar" (
 );
 --> statement-breakpoint
 ALTER TABLE "service_calendar" ADD CONSTRAINT "service_calendar_workspace_id_workspace_id_fk" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspace"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
-CREATE INDEX "service_calendar_workspace_id_idx" ON "service_calendar" USING btree ("workspace_id");
+CREATE INDEX "service_calendar_workspace_name_id_idx" ON "service_calendar" USING btree ("workspace_id", "name", "id");

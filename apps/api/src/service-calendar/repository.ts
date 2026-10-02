@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { JsonValue } from "@taskdesk/domain";
-import { and, asc, eq, gt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import {
   type AppendAuditLogInput,
@@ -151,7 +151,30 @@ function auditSnapshot(calendar: {
   ) as JsonValue;
 }
 
-type CalendarCursor = { v: 1; workspaceId: string; name: string; id: string };
+type CalendarCursor = {
+  v: 1;
+  workspaceId: string;
+  name: string;
+  id: string;
+  direction: "after" | "before";
+};
+
+function encodeCalendarCursor(
+  row: { name: string; id: string },
+  workspaceId: string,
+  direction: CalendarCursor["direction"],
+) {
+  return Buffer.from(
+    JSON.stringify({
+      v: 1,
+      workspaceId,
+      name: row.name,
+      id: row.id,
+      direction,
+    }),
+    "utf8",
+  ).toString("base64url");
+}
 
 function decodeCalendarCursor(
   cursor: string,
@@ -178,7 +201,10 @@ function decodeCalendarCursor(
     typeof (parsed as CalendarCursor).id !== "string" ||
     (parsed as CalendarCursor).id.length === 0 ||
     (parsed as CalendarCursor).id.length > 64 ||
-    (parsed as CalendarCursor).id.includes("\u0000")
+    (parsed as CalendarCursor).id.includes("\u0000") ||
+    ((parsed as CalendarCursor).direction !== "after" &&
+      (parsed as CalendarCursor).direction !== "before") ||
+    Object.keys(parsed).sort().join(",") !== "direction,id,name,v,workspaceId"
   ) {
     throw new HTTPException(400, {
       message: "cursor: malformed or belongs to another workspace",
@@ -194,48 +220,68 @@ export async function listCalendars(
   const cursor = options.cursor
     ? decodeCalendarCursor(options.cursor, workspaceId)
     : undefined;
+  const cursorPredicate = cursor
+    ? cursor.direction === "after"
+      ? sql`(${serviceCalendarTable.name}, ${serviceCalendarTable.id}) > (${cursor.name}, ${cursor.id})`
+      : sql`(${serviceCalendarTable.name}, ${serviceCalendarTable.id}) < (${cursor.name}, ${cursor.id})`
+    : undefined;
   const rows = await db
     .select()
     .from(serviceCalendarTable)
     .where(
-      and(
-        eq(serviceCalendarTable.workspaceId, workspaceId),
-        cursor
-          ? or(
-              gt(serviceCalendarTable.name, cursor.name),
-              and(
-                eq(serviceCalendarTable.name, cursor.name),
-                gt(serviceCalendarTable.id, cursor.id),
-              ),
-            )
-          : undefined,
-      ),
+      and(eq(serviceCalendarTable.workspaceId, workspaceId), cursorPredicate),
     )
-    .orderBy(asc(serviceCalendarTable.name), asc(serviceCalendarTable.id))
-    .limit(options.limit + 1);
+    .orderBy(
+      cursor?.direction === "before"
+        ? desc(serviceCalendarTable.name)
+        : asc(serviceCalendarTable.name),
+      cursor?.direction === "before"
+        ? desc(serviceCalendarTable.id)
+        : asc(serviceCalendarTable.id),
+    )
+    .limit(options.limit);
+  const data = cursor?.direction === "before" ? rows.reverse() : rows;
   const [count] = await db
     .select({ total: sql<number>`count(*)::int` })
     .from(serviceCalendarTable)
     .where(eq(serviceCalendarTable.workspaceId, workspaceId));
-  const hasMore = rows.length > options.limit;
-  const data = hasMore ? rows.slice(0, options.limit) : rows;
+  const first = data[0];
   const last = data.at(-1);
+  const [hasPrevious] = first
+    ? await db
+        .select({ id: serviceCalendarTable.id })
+        .from(serviceCalendarTable)
+        .where(
+          and(
+            eq(serviceCalendarTable.workspaceId, workspaceId),
+            sql`(${serviceCalendarTable.name}, ${serviceCalendarTable.id}) < (${first.name}, ${first.id})`,
+          ),
+        )
+        .limit(1)
+    : [];
+  const [hasNext] = last
+    ? await db
+        .select({ id: serviceCalendarTable.id })
+        .from(serviceCalendarTable)
+        .where(
+          and(
+            eq(serviceCalendarTable.workspaceId, workspaceId),
+            sql`(${serviceCalendarTable.name}, ${serviceCalendarTable.id}) > (${last.name}, ${last.id})`,
+          ),
+        )
+        .limit(1)
+    : [];
+  const nextCursor =
+    hasNext && last ? encodeCalendarCursor(last, workspaceId, "after") : null;
   return {
     data,
     page: {
-      nextCursor:
-        hasMore && last
-          ? Buffer.from(
-              JSON.stringify({
-                v: 1,
-                workspaceId,
-                name: last.name,
-                id: last.id,
-              }),
-              "utf8",
-            ).toString("base64url")
+      previousCursor:
+        hasPrevious && first
+          ? encodeCalendarCursor(first, workspaceId, "before")
           : null,
-      hasMore,
+      nextCursor,
+      hasMore: nextCursor !== null,
     },
     meta: { total: count?.total ?? 0 },
   };

@@ -5,6 +5,32 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · CAL-16 uses server-issued bidirectional tuple cursors (#513 review remediation)
+
+**Decision:** CAL-16's paginated `GET /api/service-calendars` includes
+`page.previousCursor` and `page.nextCursor`. The server binds each opaque cursor to its
+workspace, `(name, id)` boundary and seek direction. Both seek directions return rows in
+ascending `(name, id)` order; `hasMore` is equivalent to a non-null `nextCursor`. The web
+URL holds one cursor, with no accumulated client history or page-depth limit. The list uses
+the named non-unique B-tree index
+`service_calendar_workspace_name_id_idx` on `(workspace_id, name, id)`.
+
+**Why:** client-maintained cursor history required an unbounded URL value and dropped
+Previous navigation after arbitrary client-side thresholds. A direction-bound cursor
+supports forward and backward keyset seeks at constant URL size. The composite index
+supports both seek directions while retaining workspace-prefix scans. The exact `meta.total`
+remains a separate workspace-scoped count and is not claimed to be constant-time. Pages are
+not a snapshot while rows are created, renamed, or deleted concurrently.
+
+This supersedes the earlier 2026-10-02 CAL-16 visited-page-history wording. It is a bounded
+technical refinement, not H1 approval, a product waiver, or a claim that the API is accepted
+on main.
+
+**Authorization:** Thomas's standing recommended-routine-decision authorization covers this
+bounded CAL-16 implementation.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
 ### 2026-10-02 · Service-calendar list uses the shared cursor collection contract (#513)
 
 **Decision:** introduce `GET /api/service-calendars` with the shared `{data, page, meta}`

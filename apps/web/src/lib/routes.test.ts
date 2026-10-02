@@ -118,15 +118,13 @@ describe("routes.serviceCalendars", () => {
     expect(routes.serviceCalendars.build()).toBe("/agent/settings/calendars");
   });
 
-  it("round-trips opaque cursors and history through URL encoding", () => {
-    const search = {
-      cursor: "eyJ4IjoiYS9iKz0",
-      history: btoa(JSON.stringify(["previous/cursor"])),
-    };
+  it("round-trips one opaque cursor through URL encoding without page history", () => {
+    const search = { cursor: "cursor/a+b?=" };
     const url = routes.serviceCalendars.build(search);
     expect(
       parseServiceCalendarListSearchFromQueryString(url.split("?")[1] ?? ""),
     ).toEqual(search);
+    expect(url).not.toContain("history=");
   });
 
   it("preserves the editor id and preview year in its URL", () => {

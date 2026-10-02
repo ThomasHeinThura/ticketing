@@ -2847,7 +2847,13 @@ export const serviceCalendarTable = pgTable(
       .$onUpdate(() => new Date())
       .notNull(),
   },
-  (table) => [index("service_calendar_workspace_id_idx").on(table.workspaceId)],
+  (table) => [
+    index("service_calendar_workspace_name_id_idx").on(
+      table.workspaceId,
+      table.name,
+      table.id,
+    ),
+  ],
 );
 
 export const workItemKeyAliasTable = pgTable(

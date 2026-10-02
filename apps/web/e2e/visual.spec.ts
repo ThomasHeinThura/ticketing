@@ -147,7 +147,7 @@ async function installAuthenticatedFixture(page: Page) {
     } else if (path.endsWith("/api/service-calendars")) {
       body = {
         data: [serviceCalendar],
-        page: { nextCursor: null, hasMore: false },
+        page: { previousCursor: null, nextCursor: null, hasMore: false },
         meta: { total: 1 },
       };
     } else if (path.endsWith("/api/projects/visual-project/work-items")) {

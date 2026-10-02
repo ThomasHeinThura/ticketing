@@ -44,7 +44,7 @@ function ServiceCalendarsRoute() {
   const { t } = useTranslation("serviceCalendars");
   const location = useLocation();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { cursor, history } = Route.useSearch();
+  const { cursor } = Route.useSearch();
   const { data: workspace, isLoading: isWorkspaceLoading } =
     useActiveWorkspace();
   const {
@@ -155,6 +155,19 @@ function ServiceCalendarsRoute() {
                     {t("list.create")}
                   </Button>
                 ) : null}
+                {cursor ? (
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      void navigate({
+                        to: routes.serviceCalendars.path,
+                        search: { cursor: undefined },
+                      })
+                    }
+                  >
+                    {t("common:actions.reset")}
+                  </Button>
+                ) : null}
               </Empty>
             </CardContent>
           </Card>
@@ -166,19 +179,12 @@ function ServiceCalendarsRoute() {
           >
             <Button
               variant="outline"
-              disabled={!history}
+              disabled={!calendars.page.previousCursor}
               onClick={() => {
-                const stack = history
-                  ? (JSON.parse(atob(history)) as string[])
-                  : [];
-                const previousCursor = stack.pop();
                 void navigate({
                   to: routes.serviceCalendars.path,
                   search: {
-                    cursor: previousCursor || undefined,
-                    history: stack.length
-                      ? btoa(JSON.stringify(stack))
-                      : undefined,
+                    cursor: calendars.page.previousCursor ?? undefined,
                   },
                 });
               }}
@@ -190,16 +196,9 @@ function ServiceCalendarsRoute() {
               variant="outline"
               disabled={!calendars.page.hasMore || !calendars.page.nextCursor}
               onClick={() => {
-                const stack = history
-                  ? (JSON.parse(atob(history)) as string[])
-                  : [];
-                stack.push(cursor ?? "");
                 void navigate({
                   to: routes.serviceCalendars.path,
-                  search: {
-                    cursor: calendars.page.nextCursor ?? undefined,
-                    history: btoa(JSON.stringify(stack)),
-                  },
+                  search: { cursor: calendars.page.nextCursor ?? undefined },
                 });
               }}
             >

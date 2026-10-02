@@ -40,7 +40,7 @@ export type WorkItemListSearch = {
   dir: WorkItemSortDirection;
 };
 
-export type ServiceCalendarListSearch = { cursor?: string; history?: string };
+export type ServiceCalendarListSearch = { cursor?: string };
 
 export function parseServiceCalendarListSearch(
   raw: unknown,
@@ -52,27 +52,7 @@ export function parseServiceCalendarListSearch(
     candidate.cursor.length <= 2048
       ? candidate.cursor
       : undefined;
-  let history: string | undefined;
-  if (
-    typeof candidate.history === "string" &&
-    candidate.history.length <= 8192
-  ) {
-    try {
-      const parsed: unknown = JSON.parse(atob(candidate.history));
-      if (
-        Array.isArray(parsed) &&
-        parsed.length <= 50 &&
-        parsed.every(
-          (value) => typeof value === "string" && value.length <= 2048,
-        )
-      ) {
-        history = candidate.history;
-      }
-    } catch {
-      history = undefined;
-    }
-  }
-  return { cursor, history };
+  return { cursor };
 }
 
 export function parseServiceCalendarListSearchFromQueryString(
@@ -81,7 +61,6 @@ export function parseServiceCalendarListSearchFromQueryString(
   const params = new URLSearchParams(queryString);
   return parseServiceCalendarListSearch({
     cursor: params.get("cursor"),
-    history: params.get("history"),
   });
 }
 
@@ -149,7 +128,6 @@ export const routes = {
       const resolved = parseServiceCalendarListSearch(search);
       const query = new URLSearchParams();
       if (resolved.cursor) query.set("cursor", resolved.cursor);
-      if (resolved.history) query.set("history", resolved.history);
       const suffix = query.toString();
       return suffix
         ? `/agent/settings/calendars?${suffix}`
