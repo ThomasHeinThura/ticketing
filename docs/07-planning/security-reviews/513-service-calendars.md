@@ -3,7 +3,8 @@
 **Reviewed head:** `35109d42b6cf3e21e5c5c37e79683766f447843a`
 **Accepted comparison base:** `c1c820e86381b9ec199ede4f89a2bcd10147d44f`
 **Reviewer:** fresh independent GPT-6 Sol context `/root/calendar513_351_sol_security`.
-**Verdict:** **CLEAR for security at this exact source head. No blocking or non-blocking security findings.** This is the per-PR security review; it is not merge readiness, browser acceptance, H1 approval, or P2 stage completion.
+**Sol verdict at reviewed head:** **CLEAR for security at exact source `35109d42b6cf3e21e5c5c37e79683766f447843a`; the Sol report recorded no blocking or non-blocking finding.** This is historical review evidence, not a current merge or acceptance clearance.
+**Current security status:** **BLOCKED** by the subsequent independent finding recorded below; the reviewed calendar source contains the same helper blob as the blocked P1 source.
 **Full review:** [GPT-6 Sol review comment](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387445863).
 
 ## Exact-head ordinary review chain
@@ -13,6 +14,14 @@ The three independent GPT-6 Luna reviews below each name exact candidate `35109d
 - [Review A — 5387405038](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387405038): exact-head review; clear.
 - [Review B — 5387417330](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387417330): exact-head review; clear. Its scoped URL and pagination unit checks passed, 2 files / 15 tests.
 - [Review C — 5387425283](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387425283): exact-head review; clear. Its local focused CAL-16 attempt failed before setup because the inherited PostgreSQL rejected credentials; 1 selected test failed during setup and 16 tests were skipped, so no assertion was represented as passing. The exact-head hosted PostgreSQL 18 integration check was green.
+
+## Subsequent blocking finding on identical shared source
+
+After the Sol review, an independent GPT-6 Luna review of P1 source `3e02b45e7f3b46bda94c8eaad52df5b88acc9145` found a blocking API-key scope flaw in `apps/api/src/utils/require-api-key-permission-scope.ts`. That review is [PR #512 Review A](https://github.com/ThomasHeinThura/ticketing/pull/512#pullrequestreview-5387504107). The helper blob is `7e58f18797e81e88a525f4c8c0885e72eb62ee4c`, identical in this PR #513 reviewed source `35109d42b6cf3e21e5c5c37e79683766f447843a`.
+
+The helper treats a stored null permissions map as unrestricted. A sufficiently privileged API key can therefore reach the new calendar POST/PATCH routes without the explicit stored write subset required by AK-3/AK-9. The independent review observed the project-setting helper rejects an absent map. This is a permission-boundary blocker in this exact calendar source even though the PR #513 Sol review did not identify it; the current PR is not security-clear or merge-ready.
+
+Required bounded remediation: fail closed for an API key whose stored permissions are null/undefined, preserve session behavior when no API key is present, and add real null-scope POST/PATCH denial/no-mutation regressions while confirming explicit read/manage and session behavior. No implementation change is included in this note update; the source finding remains open until that remediation and a fresh exact-source review are complete.
 
 ## Scope checked
 
