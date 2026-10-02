@@ -131,7 +131,28 @@ async function installAuthenticatedFixture(page: Page) {
         },
       ];
     } else if (path.endsWith("/api/capabilities")) {
-      body = { createTasks: true, manageServiceCalendars: true };
+      body = {
+        manageProjects: false,
+        manageProjectSettings: false,
+        createProjects: false,
+        updateProjects: false,
+        deleteProjects: false,
+        updateTasks: true,
+        createTasks: true,
+        deleteTasks: false,
+        assignTasks: true,
+        createLabels: false,
+        updateLabels: false,
+        deleteLabels: false,
+        manageWorkspace: false,
+        deleteWorkspace: false,
+        inviteUsers: false,
+        manageTeam: false,
+        removeMembers: false,
+        createPublicComments: true,
+        createInternalComments: true,
+        manageServiceCalendars: true,
+      };
     } else if (
       path.endsWith("/api/service-calendars/visual-calendar/preview")
     ) {
@@ -152,6 +173,8 @@ async function installAuthenticatedFixture(page: Page) {
         page: { hasMore: false, nextCursor: null },
         meta: {},
       };
+    } else if (path.endsWith("/api/work-items/HELP-7/activity")) {
+      body = { data: [], page: { hasMore: false, nextCursor: null } };
     } else if (path.endsWith("/api/work-items/HELP-7")) body = workItem;
 
     await route.fulfill({
