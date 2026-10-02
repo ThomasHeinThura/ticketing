@@ -6,12 +6,34 @@ That is the whole requirement, and it should not cost a message broker.
 ## Transport
 
 WebSocket at `/ws`, via `@hono/node-server`'s built-in upgrade helper and the `ws` server,
-on the same origin as the API so the session
-cookie authenticates the upgrade. **Cookie-authenticated upgrades are not protected by the
-same-origin policy**, so the handler also requires the `Origin` header to equal the
-configured origin for the request host and the session's `portal` to match it — otherwise
-403 before the upgrade. This is a security control, not polish
-([security-model.md](security-model.md)).
+on the same origin as the API so the session cookie authenticates the upgrade. The current
+Node listener mounts the user and project handshakes at `/api/ws/user` and
+`/api/ws/:projectId`; `/ws` here describes the transport, not an additional route.
+**Cookie-authenticated upgrades are not protected by the same-origin policy.**
+
+**Proposed #560 Origin-only contract — pending Thomas's finished-spec read:** Before either
+mounted route returns `101`, the request `Host` must identify exactly one configured app
+origin, including its port. A handshake authenticated by a session cookie must carry
+exactly one non-`null` `Origin`, equal to that host's complete configured origin (scheme,
+host and port). A missing, literal `null`, malformed, duplicated or comma-list, foreign,
+or other-portal `Origin`, and an unknown or mismatched `Host`, return `403` before upgrade.
+Compare against the configured public origin, including when TLS terminates at a proxy;
+HTTP CORS and origin values derived from the request URL or forwarding headers do not
+replace this check.
+The session's stored `portal` must also match the request host under the separate portal
+boundary in [auth-and-identity.md](auth-and-identity.md#sessions); this paragraph does not
+close that unfinished part of #560.
+
+**Proposed explicit-credential compatibility decision for review:** A valid explicit
+`x-api-key` or `Authorization: Bearer` API key is not an ambient cookie credential and may
+omit `Origin`. If an explicit-credential request supplies `Origin`, it
+must still be the single exact configured origin for its `Host`. An invalid explicit
+credential returns `401` without falling back to an accompanying cookie; a request that
+actually authenticates with a cookie still requires the cookie Origin check. No query
+credential, portal parameter, new route or capability is introduced. This credential
+distinction and the supplied-Origin rule require Thomas's review; the existing CSRF rule
+for non-ambient credentials in [security-model.md](security-model.md#sessions-csrf-and-step-up)
+supports compatibility but does not by itself settle WebSocket handshake policy.
 
 ```
 Client                          Server
@@ -160,7 +182,9 @@ small "live updates unavailable" indicator. The application remains fully usable
 | Test | Asserts |
 | --- | --- |
 | `ws-auth.test.ts` | Upgrade without a session is refused |
-| `ws-origin.test.ts` | Upgrade with a foreign `Origin`, or a portal session on the agent host, is refused |
+| `ws-origin.test.ts` | For cookie sessions on both mounted Node routes: matching configured `Host` and one exact same-origin `Origin` can reach `101`; missing, `null`, malformed, duplicate/list, foreign and other-portal Origins, plus unknown or wrong-port Hosts, return `403` before `101`. Use raw handshake headers for duplicate/list cases; HTTP CORS is not evidence |
+| `ws-explicit-credential-origin.test.ts` | On both mounted Node routes, a valid explicit `x-api-key` and bearer API key without `Origin` retain access subject to existing reach policy; a supplied foreign Origin is refused, and an invalid explicit credential with a valid cookie cannot fall back. These proposed compatibility cases need the finished-spec decision |
+| `ws-portal-session.test.ts` | Wrong-portal, unbound legacy, and revoked session rows never upgrade on either host; a valid session from each implemented portal succeeds with the matching host and Origin. This is the separate stored-session portion of #560, not evidence supplied by `ws-origin.test.ts` |
 | `ws-subscribe-policy.test.ts` | Subscribing to an out-of-reach project is refused, indistinguishably from a non-existent one |
 | `ws-reauthorize.test.ts` | Subscribe, revoke the membership, assert no further events arrive |
 | `ws-frame-validation.test.ts` | Malformed frames and `user:` topics for another person are refused |
