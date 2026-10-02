@@ -275,9 +275,13 @@ produce a contrast ratio directly. The checker must:
 2. Evaluate `--alpha()` and `color-mix()` by **compositing the translucent token over its
    effective backdrop** (the surface it is actually painted on in that pair), not in
    isolation.
-3. Check every pair declared in `pairs.json` in both themes and fail on a violation.
+3. Check every manifest entry in its declared theme(s) and fail on a violation. Theme-specific
+   interaction classes may be represented by separate entries.
 
-`packages/ui/src/styles/pairs.json` is the machine-readable inventory. Each entry records
+`packages/ui/src/styles/pairs.json` is the machine-readable inventory for shared Button,
+Badge, and Input variant declarations. This is a bounded source inventory, not a scan of all
+application compositions. Adding a source owner requires registering it in the checker and
+adding its actual pairs in the same change. Each entry records
 `fg`, `bg`, `category` (`body`, `large-text`, or `non-text`), `minRatio`, both `themes`,
 `usage` (the real component/story/screen owner), `foregroundClass`, `backgroundClass` (the
 actual surface class for each theme, including alpha/interaction modifiers), and `backdrop`
@@ -338,8 +342,7 @@ which got this right after its redesign.
 
 - A hex colour, `rgb()`, `hsl()`, `oklch()`, `color-mix(` or `--alpha(` outside
   `packages/ui/src/styles/`
-- An arbitrary Tailwind value for colour, spacing, radius or z-index outside `packages/ui`
-- A fixed vertical padding/gap on a registered `td-density-*` slot
+- A fixed vertical padding/gap utility on a registered `td-density-*` slot
 - A used foreground/background combination missing from `pairs.json` or a declared pair
   failing contrast in either theme, per the Chromium compositing rule above
 - A token referenced but not defined

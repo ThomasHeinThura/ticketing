@@ -77,7 +77,32 @@ const DENSITY_COMPONENTS = new Map([
 
 function densitySlotViolations(sourceFile, relativePath) {
   const failures = [];
+  const expected = DENSITY_COMPONENTS.get(relativePath);
+  function checkClasses(classes, slot) {
+    const densityClass = new RegExp(
+      `(?:^|[\\s"'\x60])${expected[1]}(?:$|[\\s"'\x60])`,
+    );
+    if (!densityClass.test(classes)) {
+      failures.push(`${relativePath}: <${slot}> must use ${expected[1]}.`);
+    }
+    const directSpacing =
+      expected[0] === "@CardPanel"
+        ? /(?:^|[\s"'`])p-\d+(?:\/\d+)?(?:$|[\s"'`])/
+        : /(?:^|[\s"'`])(?:py|pt|pb|gap-y|gap)-\d+(?:\/\d+)?(?:$|[\s"'`])/;
+    if (directSpacing.test(classes)) {
+      failures.push(
+        `${relativePath}: <${slot}> has fixed padding/gap; use its registered density class.`,
+      );
+    }
+  }
   function visit(node) {
+    if (
+      expected?.[0] === "@CardPanel" &&
+      node.kind === ts.SyntaxKind.FunctionDeclaration &&
+      node.name?.text === "CardPanel"
+    ) {
+      checkClasses(node.getText(sourceFile), "CardPanel");
+    }
     if (
       node.kind === ts.SyntaxKind.JsxOpeningElement ||
       node.kind === ts.SyntaxKind.JsxSelfClosingElement
@@ -89,32 +114,12 @@ function densitySlotViolations(sourceFile, relativePath) {
           attribute.name?.getText(sourceFile) === "data-slot" &&
           attribute.initializer?.kind === ts.SyntaxKind.StringLiteral,
       )?.initializer?.text;
-      const expected = DENSITY_COMPONENTS.get(relativePath);
       const isTarget =
-        expected &&
-        (expected[0] === "@CardPanel"
-          ? node.kind === ts.SyntaxKind.FunctionDeclaration &&
-            node.name?.text === "CardPanel"
-          : slot === expected[0]);
+        expected && expected[0] !== "@CardPanel" && slot === expected[0];
       if (isTarget) {
         // The AST selects the exact JSX element; inspecting its serialized opening tag also
         // includes wrapper calls such as cn(...) without confusing adjacent elements.
-        const classes = node.getText(sourceFile);
-        const densityClass = new RegExp(
-          `(?:^|[\\s"'\x60])${expected[1]}(?:$|[\\s"'\x60])`,
-        );
-        if (!densityClass.test(classes)) {
-          failures.push(`${relativePath}: <${slot}> must use ${expected[1]}.`);
-        }
-        const directSpacing =
-          expected[0] === "@CardPanel"
-            ? /(?:^|[\s"'`])p-\d+(?:\/\d+)?(?:$|[\s"'`])/
-            : /(?:^|[\s"'`])(?:py|pt|pb|gap-y|gap)-\d+(?:\/\d+)?(?:$|[\s"'`])/;
-        if (directSpacing.test(classes)) {
-          failures.push(
-            `${relativePath}: <${slot}> has fixed vertical padding/gap; use its registered density class.`,
-          );
-        }
+        checkClasses(node.getText(sourceFile), slot);
       }
     }
     node.forEachChild(visit);
@@ -127,6 +132,8 @@ function densityProbeFailures() {
   const directory = mkdtempSync(path.join(tmpdir(), "taskdesk-density-probe-"));
   const negativePath = path.join(directory, "negative.tsx");
   const positivePath = path.join(directory, "positive.tsx");
+  const negativeCardPath = path.join(directory, "negative-card.tsx");
+  const positiveCardPath = path.join(directory, "positive-card.tsx");
   writeFileSync(
     negativePath,
     'const item = <tr data-slot="table-row" className="py-3" />;',
@@ -135,10 +142,23 @@ function densityProbeFailures() {
     positivePath,
     'const item = <tr data-slot="table-row" className="td-density-row" />;',
   );
+  writeFileSync(
+    negativeCardPath,
+    'function CardPanel() { return <div className="flex-1 p-6" />; }',
+  );
+  writeFileSync(
+    positiveCardPath,
+    'function CardPanel() { return <div className="flex-1 td-density-card" />; }',
+  );
   const parser = new API({ cwd: directory });
   try {
     const snapshot = parser.updateSnapshot({
-      openFiles: [negativePath, positivePath],
+      openFiles: [
+        negativePath,
+        positivePath,
+        negativeCardPath,
+        positiveCardPath,
+      ],
     });
     try {
       const negative = snapshot
@@ -147,6 +167,12 @@ function densityProbeFailures() {
       const positive = snapshot
         .getDefaultProjectForFile(positivePath)
         ?.program.getSourceFile(positivePath);
+      const negativeCard = snapshot
+        .getDefaultProjectForFile(negativeCardPath)
+        ?.program.getSourceFile(negativeCardPath);
+      const positiveCard = snapshot
+        .getDefaultProjectForFile(positiveCardPath)
+        ?.program.getSourceFile(positiveCardPath);
       const issues = negative
         ? densitySlotViolations(
             negative,
@@ -159,17 +185,36 @@ function densityProbeFailures() {
             "packages/ui/src/components/table.tsx",
           )
         : ["positive JSX fixture did not parse"];
+      const cardIssues = negativeCard
+        ? densitySlotViolations(
+            negativeCard,
+            "packages/ui/src/components/card.tsx",
+          )
+        : [];
+      const safeCard = positiveCard
+        ? densitySlotViolations(
+            positiveCard,
+            "packages/ui/src/components/card.tsx",
+          )
+        : ["positive CardPanel fixture did not parse"];
       const failures = [];
-      if (
-        !issues.some((message) =>
-          message.includes("fixed vertical padding/gap"),
-        )
-      )
+      if (!issues.some((message) => message.includes("fixed padding/gap")))
         failures.push(
           "density negative probe did not reject a hard-coded py-3 row",
         );
       if (safe.length)
         failures.push("density positive probe rejected a semantic row class");
+      if (
+        !cardIssues.some((message) => message.includes("fixed padding/gap"))
+      ) {
+        failures.push(
+          "density negative probe did not reject fixed padding on CardPanel",
+        );
+      }
+      if (safeCard.length)
+        failures.push(
+          "density positive probe rejected CardPanel density class",
+        );
       return failures;
     } finally {
       snapshot.dispose();

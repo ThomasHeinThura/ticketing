@@ -36,23 +36,25 @@ accessibility. See [ADR 0008](../01-architecture/adr/0008-single-design-system.m
 
 ### G2 · Tokens and density slots
 
-**Fails on:** a hard-coded colour or arbitrary colour/spacing/radius/z-index value outside
-`packages/ui/src/styles/`, and on fixed vertical padding or row gaps placed directly on a
-declared density slot. The shared classes `td-density-row`, `td-density-field`, and
+**Fails on:** a hard-coded colour outside `packages/ui/src/styles/`, and on fixed vertical
+padding/gap utilities placed directly on a registered density slot. The shared classes `td-density-row`, `td-density-field`, and
 `td-density-card` are the only density controls. Comfortable is the default; the existing
 root `compact-mode` preference applies the compact values. The initial registered slots are
 repeated data rows, form fields, and repeated cards in `packages/ui` and the app-shell
 compositions. They use the classes from `packages/ui/src/styles/density.css`; ordinary
 layout spacing outside those named slots continues to use Tailwind's built-in scale.
 
-`scripts/ci/check-tokens.mjs` checks the registered-slot markup and rejects direct vertical
-padding or gap utilities on those elements, while positive probes ensure normal layout
-spacing remains allowed. `design-tokens.md` owns the class values and the slot inventory.
+`scripts/ci/check-tokens.mjs` checks registered rows, fields, and `CardPanel` density markup,
+rejects direct fixed padding/gap utilities there, and uses positive/negative probes. It does
+not claim to enforce arbitrary spacing, radius, or z-index utilities elsewhere. `design-tokens.md`
+owns the class values and the slot inventory.
 
 ### G3 · Contrast
 
 **Fails on:** any declared, actually used foreground/background pair below WCAG AA in either
-theme, any used pair missing from the manifest, or a manifest entry that has no real usage.
+theme, any used pair missing from the manifest, or a stale manifest entry with no observed
+source use. The source inventory currently registers shared Button, Badge, and Input variants;
+it does not claim repository-wide composition coverage.
 `packages/ui/src/styles/pairs.json` records token roles, category/threshold, theme coverage,
 usage owner, actual background class by theme, and effective opaque backdrop. `pnpm
 check:tokens` runs the token/density checks and builds the web stylesheet, then loads that

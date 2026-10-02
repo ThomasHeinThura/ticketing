@@ -11,6 +11,34 @@ const requireFromWeb = createRequire(
   path.join(repoRoot, "apps/web/package.json"),
 );
 
+function sourceUsesPair(source, foregroundClass, backgroundClass, theme) {
+  const literal = /(["'`])([\s\S]*?)\1/g;
+  for (const match of source.matchAll(literal)) {
+    const classes = match[2].split(/\s+/);
+    const foregroundFound = classes.some(
+      (className) =>
+        className
+          .split(":")
+          .filter((part) => part !== "dark")
+          .join(":") === foregroundClass,
+    );
+    if (!foregroundFound) continue;
+    if (
+      classes.some((className) => {
+        const parts = className.split(":");
+        const darkScoped = parts.includes("dark");
+        const normalized = parts.filter((part) => part !== "dark").join(":");
+        return (
+          normalized === backgroundClass && (!darkScoped || theme === "dark")
+        );
+      })
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function validatePairManifest(pairs, readUsage, observedPairs) {
   const failures = [];
   const seen = new Set();
@@ -22,10 +50,6 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
       );
       continue;
     }
-    const key = `${pair.fg}|${pair.bg}|${pair.backgroundClass?.light}|${pair.backgroundClass?.dark}`;
-    if (seen.has(key))
-      failures.push(violation(manifestPath, `${label} duplicates ${key}.`));
-    seen.add(key);
     const expectedRatio = pair.category === "body" ? 4.5 : 3;
     if (
       !["body", "large-text", "non-text"].includes(pair.category) ||
@@ -40,12 +64,14 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
     }
     if (
       !Array.isArray(pair.themes) ||
-      !["light", "dark"].every((theme) => pair.themes.includes(theme))
+      pair.themes.length === 0 ||
+      pair.themes.some((theme) => !["light", "dark"].includes(theme)) ||
+      new Set(pair.themes).size !== pair.themes.length
     ) {
       failures.push(
         violation(
           manifestPath,
-          `${label} must cover both light and dark themes.`,
+          `${label} must list one or more unique light/dark themes.`,
         ),
       );
     }
@@ -58,7 +84,6 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
       );
     const usage = pair.usage ? readUsage(pair.usage) : "";
     const fgClass = pair.fg.replace(/^--color-/, "text-");
-    const bgClass = pair.bg.replace(/^--color-/, "bg-");
     if (pair.foregroundClass !== fgClass)
       failures.push(
         violation(
@@ -66,28 +91,50 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
           `${label} foregroundClass must map to ${fgClass}.`,
         ),
       );
-    const surfaceClasses = pair.backgroundClass && [
-      pair.backgroundClass.light,
-      pair.backgroundClass.dark,
-    ];
-    if (
-      !usage ||
-      !surfaceClasses?.every(
-        (surfaceClass) =>
-          typeof surfaceClass === "string" && usage.includes(surfaceClass),
-      ) ||
-      !usage.includes(fgClass) ||
-      !usage.includes(bgClass)
-    ) {
+    if (!usage || !pair.backgroundClass || !pair.backdrop) {
       failures.push(
-        violation(
-          manifestPath,
-          `${label} is not grounded in both ${fgClass} and ${bgClass} in ${pair.usage ?? "its usage owner"}.`,
-        ),
+        violation(manifestPath, `${label} has no usage or surface class.`),
       );
+      continue;
+    }
+    for (const theme of pair.themes ?? []) {
+      const backgroundClass = pair.backgroundClass[theme];
+      const tokenMatch = backgroundClass?.match(
+        /(?:^|:)bg-([a-z0-9-]+)(?:\/\d+)?$/,
+      );
+      const actualBg = tokenMatch ? `--color-${tokenMatch[1]}` : "";
+      if (actualBg !== pair.bg) {
+        failures.push(
+          violation(
+            manifestPath,
+            `${label} bg token does not match ${theme} surface class ${backgroundClass ?? "(missing)"}.`,
+          ),
+        );
+        continue;
+      }
+      const key = `${pair.fg}|${pair.bg}|${backgroundClass}|${theme}`;
+      if (seen.has(key))
+        failures.push(violation(manifestPath, `${label} duplicates ${key}.`));
+      seen.add(key);
+      if (!observedPairs?.has(key)) {
+        failures.push(
+          violation(
+            manifestPath,
+            `declared pair ${key} has no observed source use.`,
+          ),
+        );
+      }
+      if (!sourceUsesPair(usage, fgClass, backgroundClass, theme)) {
+        failures.push(
+          violation(
+            manifestPath,
+            `${label} foreground/surface classes do not occur together in ${pair.usage} for ${theme}.`,
+          ),
+        );
+      }
     }
   }
-  for (const key of observedPairs) {
+  for (const key of observedPairs ?? []) {
     if (!seen.has(key))
       failures.push(
         violation(manifestPath, `used pair ${key} has no manifest entry.`),
@@ -109,9 +156,7 @@ export function observedPairsInSources(sources, tokenNames) {
         token.endsWith("-foreground"),
     ),
   );
-  const backgrounds = new Set(
-    [...tokenNames].filter((token) => !foregrounds.has(token)),
-  );
+  const backgrounds = new Set(tokenNames);
   const observed = new Set();
   const literal = /(["'`])([\s\S]*?)\1/g;
   for (const source of sources) {
@@ -126,24 +171,43 @@ export function observedPairsInSources(sources, tokenNames) {
           /(?:^|\s)((?:[a-z][a-z0-9-]*:)*bg-([a-z0-9-]+)(?:\/\d+)?)/g,
         ),
       ]
-        .map((item) => ({ className: item[1], name: item[2] }))
+        .map((item) => {
+          const parts = item[1].split(":");
+          const darkScoped = parts.includes("dark");
+          const modifiers = parts
+            .slice(0, -1)
+            .filter((modifier) => modifier !== "dark");
+          const surfaceClass = parts
+            .filter((part) => part !== "dark")
+            .join(":");
+          return {
+            name: item[2],
+            darkScoped,
+            modifiers: modifiers.join(":"),
+            surfaceClass,
+          };
+        })
         .filter(({ name }) => backgrounds.has(name));
       for (const fg of textNames) {
-        const byToken = new Map();
+        const groups = new Map();
         for (const entry of bgNames) {
-          const pair = byToken.get(entry.name) ?? {
-            light: undefined,
-            dark: undefined,
-          };
-          if (entry.className.startsWith("dark:"))
-            pair.dark ??= entry.className.slice(5);
-          else pair.light ??= entry.className;
-          byToken.set(entry.name, pair);
+          const group = groups.get(entry.modifiers) ?? [];
+          group.push(entry);
+          groups.set(entry.modifiers, group);
         }
-        for (const [bg, classes] of byToken) {
-          const light = classes.light ?? classes.dark;
-          const dark = classes.dark ?? classes.light;
-          observed.add(`--color-${fg}|--color-${bg}|${light}|${dark}`);
+        for (const group of groups.values()) {
+          for (const theme of ["light", "dark"]) {
+            const darkOverride =
+              theme === "dark" && group.some((entry) => entry.darkScoped);
+            const activeEntries = group.filter(
+              (entry) => entry.darkScoped === darkOverride,
+            );
+            for (const entry of activeEntries) {
+              observed.add(
+                `--color-${fg}|--color-${entry.name}|${entry.surfaceClass}|${theme}`,
+              );
+            }
+          }
         }
       }
     }
@@ -308,6 +372,7 @@ async function main() {
             document.documentElement.classList.toggle("dark", name === "dark"),
           theme,
         );
+        const surfaceClass = pair.backgroundClass?.[theme] ?? "";
         const values = await page.evaluate(
           ({ bg, backdrop, foregroundClass, backgroundClass, theme }) => {
             const node = document.createElement("span");
@@ -315,6 +380,9 @@ async function main() {
             if (backgroundClass)
               node.className = `${node.className} ${backgroundClass[theme]}`;
             node.id = "contrast-probe";
+            if (backgroundClass?.[theme]?.includes("data-pressed:")) {
+              node.setAttribute("data-pressed", "");
+            }
             node.textContent = "Contrast";
             node.style.display = "inline-block";
             node.style.padding = "1rem";
@@ -336,8 +404,13 @@ async function main() {
           },
           { ...pair, theme },
         );
-        if (pair.backgroundClass?.[theme]?.includes("hover:")) {
+        if (surfaceClass.includes("hover:")) {
           await page.locator("#contrast-probe").hover();
+        }
+        if (
+          surfaceClass.includes("hover:") ||
+          surfaceClass.includes("data-pressed:")
+        ) {
           values.bg = await page
             .locator("#contrast-probe")
             .evaluate((node) => getComputedStyle(node).backgroundColor);
