@@ -1,5 +1,19 @@
 # Security review — service calendar management (#513)
 
+## Current exact-head binding — 2026-10-02
+
+**Reviewed head:** `7fde02c99653fc266930ea02e01a9553a273d946`
+**Accepted comparison base:** `47bda77d6e00521847b8202ae335301cac72709f`
+**Ordinary review:** independent GPT-6 Luna review [5388272407](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5388272407), CLEAR at 04:18:17 UTC on this exact head.
+**Security review:** independent GPT-6 Sol review [5388292487](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5388292487), CLEAR at 04:23:02 UTC on this exact head, after the ordinary review.
+**Current verdict:** CLEAR for the reviewed source delta; no blocking or non-blocking finding identified. The prior d855 reviews below remain bound to d855 only.
+
+The bounded source delta bypasses automatic query retries for deterministic rejected-cursor HTTP 400 responses and delegates other errors to the shared retry policy. Network, 401, 429, and 5xx retry behavior remains governed by that policy. Manual Retry and Reset remain available. The current exact-head check evidence is changed-file Biome (3 files), web typecheck, and service-calendar E2E 9/9 with two workers. The independently selected SQL-NULL regression passed 1/1 in real PostgreSQL 18 (17 filtered); the other filtered cases are not counted as passes. The hosted predecessor trace belongs to PR #512 run 36961266798/job 110695264637 on `eaec8aea375dd32814a6d71ec8f98ec709ed888d`: 1 failed, 10 passed; three deterministic 400 responses left the list loading through the five-second assertion. The one-test local baseline passed and is recorded as timing sensitivity, not a failed local reproduction.
+
+This note update changes documentation only. It does not alter application source, schema, migration, routes, or dependencies. It records these exact-head review bindings and does not claim browser acceptance, G11, H1, stage completion, merge readiness, or completion of the AU-14 metric/administrator notification, CAL-8 usage and safe-deletion, PA-6 pending-action, or #570 native WebSocket/outage-indicator work.
+
+## Prior exact-head review record — d8557d0e149b0b901c73ebfa151a84e653bf2376
+
 **Reviewed head:** `d8557d0e149b0b901c73ebfa151a84e653bf2376`
 **Accepted comparison base:** `47bda77d6e00521847b8202ae335301cac72709f`
 **Reviewer:** fresh independent GPT-6 Sol context `/root/calendar513_351_sol_security`; this reviewer did not author, direct, or remediate the SQL-NULL fix.
