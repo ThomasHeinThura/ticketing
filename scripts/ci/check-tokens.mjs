@@ -101,12 +101,12 @@ function densitySlotViolations(sourceFile, relativePath) {
       // fixed utility that is first inside a class string.
       const attributeOffset = rawClass.indexOf("className");
       const quoteOffset = rawClass.search(/["'`]/);
+      const quotePrefix =
+        quoteOffset >= 0 ? rawClass.slice(0, quoteOffset) : "";
+      const wrappedString =
+        attributeOffset >= 0 || /[=(]\s*$/.test(quotePrefix);
       const className = rawClass
-        .slice(
-          attributeOffset >= 0 && quoteOffset > attributeOffset
-            ? quoteOffset + 1
-            : 0,
-        )
+        .slice(wrappedString && quoteOffset >= 0 ? quoteOffset + 1 : 0)
         .replace(/^["'`]+|["'`,;]+$/g, "");
       let bracketDepth = 0;
       let utilityStart = 0;
@@ -236,7 +236,7 @@ function densityProbeFailures() {
   );
   writeFileSync(
     negativeCardCnUtilityPath,
-    'function CardPanel() { return <div className={cn("p-px td-density-card", className)} />; }',
+    'function CardPanel() { const defaultProps = { className: cn("p-px td-density-card", className), "data-slot": "card-panel" }; return useRender({ props: defaultProps }); }',
   );
   writeFileSync(
     negativeCardResponsivePath,
