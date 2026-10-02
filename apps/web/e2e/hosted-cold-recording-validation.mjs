@@ -65,6 +65,24 @@ const COLD_FAILURE_COUNT_BOUNDS = Object.freeze({
   cpuSamples: 500_000,
   cpuNodes: 50_000,
 });
+const COLD_NETWORK_CLOCK_ENTRY_COUNTS = Object.freeze([
+  "invalidStart",
+  "terminalNotSeen",
+  "invalidTerminal",
+]);
+const COLD_NETWORK_CLOCK_EVENT_COUNTS = Object.freeze([
+  "unexpectedSameIdReplacement",
+  "duplicateTerminal",
+]);
+const COLD_NETWORK_CLOCK_KEYS = Object.freeze([
+  "invalidStart",
+  "terminalNotSeen",
+  "invalidTerminal",
+  "notSeenAfterResponse",
+  "incompleteAfterRedirect",
+  "unexpectedSameIdReplacement",
+  "duplicateTerminal",
+]);
 const COLD_FAILURE_FLAG_KEYS = Object.freeze([
   "journeyAssertionsComplete",
   "traceOverflow",
@@ -143,15 +161,17 @@ export function createColdFailureReceipt({
   counts,
   flags,
   cleanup,
+  networkClockState = null,
 }) {
   const receipt = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     kind: "cold-recorder-failure",
     childOutcome,
     primary,
     counts,
     flags,
     cleanup,
+    networkClockState,
   };
   validateColdFailureReceipt(receipt);
   const encoded = JSON.stringify(receipt);
@@ -171,6 +191,7 @@ export function unknownColdFailureReceipt(stage = "unknown") {
       ...coldCleanupStatuses(),
       childReport: "unknown",
     },
+    networkClockState: null,
   });
 }
 
@@ -185,22 +206,18 @@ function validateColdFailureReceipt(value) {
       "counts",
       "flags",
       "cleanup",
+      "networkClockState",
     ],
     "failure receipt",
   );
-  if (value.schemaVersion !== 2 || value.kind !== "cold-recorder-failure")
+  if (value.schemaVersion !== 3 || value.kind !== "cold-recorder-failure")
     throw new Error("Invalid cold failure receipt identity.");
   if (
     !["not-started", "passed", "failed", "unknown"].includes(value.childOutcome)
   )
     throw new Error("Invalid child outcome.");
   if (value.primary === null) {
-    if (
-      value.childOutcome !== "passed" ||
-      !COLD_CLEANUP_OPERATIONS.some(
-        (operation) => value.cleanup?.[operation] === "failed",
-      )
-    )
+    if (value.childOutcome !== "passed")
       throw new Error("Missing primary failure.");
     if (
       value.flags?.journeyAssertionsComplete !== true ||
@@ -232,6 +249,35 @@ function validateColdFailureReceipt(value) {
   const incomplete = value.counts.incompleteTrackedRequests;
   if (tracked !== null && incomplete !== null && incomplete > tracked)
     throw new Error("Invalid cold failure receipt count relationship.");
+  if (value.networkClockState !== null) {
+    exactKeys(
+      value.networkClockState,
+      COLD_NETWORK_CLOCK_KEYS,
+      "network clock state",
+    );
+    for (const key of COLD_NETWORK_CLOCK_KEYS) {
+      const count = value.networkClockState[key];
+      const max = COLD_NETWORK_CLOCK_EVENT_COUNTS.includes(key)
+        ? COLD_FAILURE_COUNT_BOUNDS.traceEventsReceived
+        : COLD_FAILURE_COUNT_BOUNDS.trackedRequests;
+      if (!Number.isInteger(count) || count < 0 || count > max)
+        throw new Error("Invalid network clock state count.");
+    }
+    if (tracked === null || incomplete === null)
+      throw new Error("Network clock snapshot requires known request counts.");
+    const { invalidStart, terminalNotSeen, invalidTerminal } =
+      value.networkClockState;
+    if (
+      COLD_NETWORK_CLOCK_ENTRY_COUNTS.some(
+        (key) => value.networkClockState[key] > tracked,
+      ) ||
+      value.networkClockState.notSeenAfterResponse > terminalNotSeen ||
+      value.networkClockState.incompleteAfterRedirect > incomplete ||
+      Math.max(invalidStart, terminalNotSeen, invalidTerminal) > incomplete ||
+      incomplete > invalidStart + terminalNotSeen + invalidTerminal
+    )
+      throw new Error("Invalid network clock state relationship.");
+  }
   exactKeys(value.flags, COLD_FAILURE_FLAG_KEYS, "failure receipt flags");
   for (const key of COLD_FAILURE_FLAG_KEYS) {
     if (value.flags[key] !== null && typeof value.flags[key] !== "boolean")
@@ -285,6 +331,7 @@ export function formatColdFailureReceiptLine(receipt) {
 export function parentChildExitReceipt({
   childOutcome = "failed",
   cleanup,
+  networkClockState = null,
 } = {}) {
   const status = coldCleanupStatuses("not-attempted");
   if (cleanup) Object.assign(status, cleanup);
@@ -295,6 +342,7 @@ export function parentChildExitReceipt({
     counts: emptyColdCounts(),
     flags: emptyColdFlags(),
     cleanup: status,
+    networkClockState,
   });
 }
 

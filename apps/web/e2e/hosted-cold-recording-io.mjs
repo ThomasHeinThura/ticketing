@@ -228,6 +228,7 @@ export async function writeChildFailureReceipt({
   primary,
   counts,
   flags,
+  networkClockState = null,
 }) {
   if (!isDirectChild(scratch?.path, path))
     return { receipt: null, persisted: false };
@@ -241,6 +242,7 @@ export async function writeChildFailureReceipt({
     counts,
     flags,
     cleanup,
+    networkClockState,
   });
   const result = await createOwnedScratchFile(
     scratch,
@@ -248,6 +250,38 @@ export async function writeChildFailureReceipt({
     JSON.stringify(receipt),
   );
   return { receipt, persisted: result.complete && result.verifiedPrivate };
+}
+
+export async function writeChildSnapshotReceipt({
+  scratch,
+  path,
+  counts,
+  flags,
+  networkClockState,
+}) {
+  if (networkClockState === null) return { receipt: null, persisted: false };
+  if (!isDirectChild(scratch?.path, path))
+    return { receipt: null, persisted: false };
+  if (!(await verifyPrivateTempDirectory(scratch)))
+    return { receipt: null, persisted: false };
+  const receipt = createColdFailureReceipt({
+    childOutcome: "passed",
+    primary: null,
+    counts,
+    flags,
+    cleanup: coldCleanupStatuses(),
+    networkClockState,
+  });
+  const result = await createOwnedScratchFile(
+    scratch,
+    path,
+    JSON.stringify(receipt),
+  );
+  if (!result.complete || !result.verifiedPrivate) {
+    if (result.owned) await removeOwnedFile(result.owned);
+    return { receipt: null, persisted: false };
+  }
+  return { receipt, persisted: true };
 }
 
 export async function readChildFailureReceipt(path, scratch) {
@@ -319,6 +353,7 @@ export async function finalizeParentOutcome({
   primary,
   counts,
   flags,
+  networkClockState = null,
   childReport,
   parentReport,
   generatedSpec,
@@ -356,6 +391,7 @@ export async function finalizeParentOutcome({
     counts: counts ?? empty.counts,
     flags: flags ?? empty.flags,
     cleanup,
+    networkClockState,
   });
   try {
     await emitLine(`${formatColdFailureReceiptLine(receipt)}\n`);

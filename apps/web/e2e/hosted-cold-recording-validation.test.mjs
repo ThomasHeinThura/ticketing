@@ -328,17 +328,83 @@ test("passed child cleanup failure is represented separately from a null primary
     },
     cleanup,
   });
-  assert.equal(receipt.schemaVersion, 2);
+  assert.equal(receipt.schemaVersion, 3);
   assert.equal(receipt.primary, null);
   assert.equal(receipt.cleanup.generatedConfig, "failed");
+  assert.equal(
+    createColdFailureReceipt({ ...receipt, cleanup: coldCleanupStatuses() })
+      .primary,
+    null,
+  );
   assert.throws(() =>
-    createColdFailureReceipt({ ...receipt, cleanup: coldCleanupStatuses() }),
+    createColdFailureReceipt({
+      ...receipt,
+      childOutcome: "failed",
+      cleanup: coldCleanupStatuses(),
+    }),
   );
   assert.equal(COLD_CLEANUP_OPERATIONS.length, 5);
   assert.ok(COLD_CLEANUP_STATES.includes(receipt.cleanup.scratch));
   const line = formatColdFailureReceiptLine(receipt);
   assert.equal(line.startsWith(COLD_FAILURE_RECEIPT_PREFIX), true);
   assert.ok(Buffer.byteLength(line, "utf8") < COLD_FAILURE_RECEIPT_MAX_BYTES);
+});
+
+test("v3 network clock receipt validates null, bounded snapshot counts, and overlapping relationships", () => {
+  const base = failureReceipt();
+  assert.equal(base.networkClockState, null);
+  const snapshot = {
+    invalidStart: 1,
+    terminalNotSeen: 1,
+    invalidTerminal: 0,
+    notSeenAfterResponse: 1,
+    incompleteAfterRedirect: 0,
+    unexpectedSameIdReplacement: 0,
+    duplicateTerminal: 0,
+  };
+  const valid = failureReceipt({
+    counts: {
+      ...base.counts,
+      trackedRequests: 2,
+      incompleteTrackedRequests: 1,
+    },
+    networkClockState: snapshot,
+  });
+  assert.deepEqual(
+    parseColdFailureReceipt(Buffer.from(JSON.stringify(valid)))
+      .networkClockState,
+    snapshot,
+  );
+  const invalid = [
+    { ...snapshot, leakedUrl: "https://private.invalid/path?token=secret" },
+    { ...snapshot, invalidStart: -1 },
+    { ...snapshot, duplicateTerminal: 250_001 },
+    { ...snapshot, notSeenAfterResponse: 2 },
+    { ...snapshot, incompleteAfterRedirect: 2 },
+    { ...snapshot, terminalNotSeen: 0 },
+  ];
+  for (const networkClockState of invalid) {
+    assert.throws(() =>
+      createColdFailureReceipt({ ...valid, networkClockState }),
+    );
+  }
+  assert.throws(() =>
+    createColdFailureReceipt({
+      ...valid,
+      counts: { ...valid.counts, trackedRequests: null },
+    }),
+  );
+  assert.throws(() =>
+    createColdFailureReceipt({
+      ...valid,
+      counts: { ...valid.counts, incompleteTrackedRequests: 0 },
+    }),
+  );
+  const hostile =
+    "https://tenant.invalid/secret?token=value <div>private</div>";
+  const line = formatColdFailureReceiptLine(valid);
+  assert.equal(line.includes(hostile), false);
+  assert.equal(line.includes("requestId"), false);
 });
 
 test("cold report binds the exact source and emits only bounded diagnostic evidence", () => {

@@ -24,6 +24,7 @@ import {
   removeOwnedFile,
   runParentCleanup,
   writeChildFailureReceipt,
+  writeChildSnapshotReceipt,
 } from "./hosted-cold-recording-io.mjs";
 import {
   COLD_FAILURE_RECEIPT_PREFIX,
@@ -265,6 +266,83 @@ test("a successful child followed by cleanup failure removes the owned report an
   await removeOwnedDirectory(scratch);
 });
 
+test("successful child snapshot handoff survives only in private cleanup receipt when parent cleanup fails", async (t) => {
+  const root = await privateRoot(t);
+  const scratch = await createOwnedTempDirectory("taskdesk-cold-snapshot-");
+  const counts = {
+    clockSamples: 3,
+    traceEventsReceived: 10,
+    timelineRecordsRetained: 5,
+    trackedRequests: 2,
+    incompleteTrackedRequests: 1,
+    cpuSamples: 4,
+    cpuNodes: null,
+  };
+  const flags = {
+    journeyAssertionsComplete: true,
+    traceOverflow: false,
+    networkOverflow: false,
+    traceDataLoss: false,
+    reportPrivacyPassed: true,
+  };
+  const networkClockState = {
+    invalidStart: 1,
+    terminalNotSeen: 1,
+    invalidTerminal: 0,
+    notSeenAfterResponse: 0,
+    incompleteAfterRedirect: 0,
+    unexpectedSameIdReplacement: 0,
+    duplicateTerminal: 0,
+  };
+  const receiptPath = join(scratch.path, "snapshot-receipt.json");
+  const childSnapshot = await writeChildSnapshotReceipt({
+    scratch,
+    path: receiptPath,
+    counts,
+    flags,
+    networkClockState,
+  });
+  assert.equal(childSnapshot.persisted, true);
+  assert.equal((await lstat(receiptPath)).mode & 0o777, 0o600);
+  assert.deepEqual(
+    (await readChildFailureReceipt(receiptPath, scratch)).networkClockState,
+    networkClockState,
+  );
+
+  const reportPath = join(root, "report.json");
+  const report = await createOwnedFile(reportPath, "validated report bytes");
+  const spec = await createOwnedFile(join(root, "generated.spec"), "spec");
+  const configPath = join(root, "generated.config");
+  const config = await createOwnedFile(configPath, "config");
+  await rm(configPath);
+  await mkdir(configPath);
+  const lines = [];
+  const final = await finalizeParentOutcome({
+    childOutcome: "passed",
+    primary: null,
+    counts,
+    flags,
+    networkClockState: childSnapshot.receipt.networkClockState,
+    childReport: "not-attempted",
+    parentReport: report.owned,
+    generatedSpec: spec.owned,
+    generatedConfig: config.owned,
+    scratch,
+    emitLine: (line) => lines.push(line),
+  });
+  assert.equal(final.succeeded, false);
+  assert.equal(final.receipt.primary, null);
+  assert.deepEqual(final.receipt.networkClockState, networkClockState);
+  assert.equal(final.receipt.cleanup.generatedConfig, "failed");
+  assert.equal(lines.length, 1);
+  const parsed = parseColdFailureReceipt(
+    Buffer.from(lines[0].slice(COLD_FAILURE_RECEIPT_PREFIX.length).trim()),
+  );
+  assert.deepEqual(parsed.networkClockState, networkClockState);
+  assert.equal(JSON.stringify(parsed).includes(root), false);
+  await assert.rejects(lstat(reportPath), { code: "ENOENT" });
+});
+
 test("clean success preserves the exact owned report and emits no failure receipt", async (t) => {
   const root = await privateRoot(t);
   const scratch = await createOwnedTempDirectory(
@@ -456,8 +534,8 @@ test("invalid, oversized, duplicate-key, and symlink child receipts are inaccess
 
   const duplicate = join(receiptScratch.path, "duplicate");
   const duplicateBytes = JSON.stringify(receipt).replace(
-    '"schemaVersion":2',
-    '"schemaVersion":2,"schemaVersion":2',
+    '"schemaVersion":3',
+    '"schemaVersion":3,"schemaVersion":3',
   );
   await writeFile(duplicate, duplicateBytes, { mode: 0o600 });
   assert.equal(await readChildFailureReceipt(duplicate, receiptScratch), null);

@@ -141,7 +141,8 @@ async function readBuildEvidence() {
 }
 
 const generatedRecorder = `
-import { createOwnedScratchFile, verifyPrivateTempDirectory, writeChildFailureReceipt as persistChildFailureReceipt } from "./hosted-cold-recording-io.mjs";
+import { createOwnedScratchFile, verifyPrivateTempDirectory, writeChildFailureReceipt as persistChildFailureReceipt, writeChildSnapshotReceipt as persistChildSnapshotReceipt } from "./hosted-cold-recording-io.mjs";
+import { createColdRequestLifecycle } from "./hosted-cold-recording-request-lifecycle.mjs";
 import {
   assertColdReportPrivacy,
   assertColdMainThreadJourneyOverlap,
@@ -177,12 +178,13 @@ const COLD_REACT_FUNCTIONS = new Set([
 let coldStage = "prepare";
 let coldOwnedReport = null;
 let childReceiptAttempted = false;
+let coldNetworkClockState = null;
 const coldCounts = {
   clockSamples: 0,
   traceEventsReceived: 0,
   timelineRecordsRetained: 0,
-  trackedRequests: 0,
-  incompleteTrackedRequests: 0,
+  trackedRequests: null,
+  incompleteTrackedRequests: null,
   cpuSamples: null,
   cpuNodes: null,
 };
@@ -205,6 +207,7 @@ async function writeChildFailureReceipt(error) {
     primary: { code: owned?.code ?? "unknown", stage: owned?.stage ?? coldStage },
     counts: { ...coldCounts },
     flags: { ...coldFlags },
+    networkClockState: coldNetworkClockState,
   });
 }
 type SafeTraceEvent = {
@@ -214,18 +217,6 @@ type SafeTraceEvent = {
   ts?: number;
   dur?: number;
   args?: { name?: string; data?: { functionName?: string } };
-};
-type CapturedRequest = {
-  url: string;
-  method?: string;
-  resourceType?: string;
-  initiatorType?: string;
-  initiatorUrl: string;
-  startTimestamp?: number;
-  endTimestamp?: number;
-  status?: number;
-  failed?: boolean;
-  priority?: string;
 };
 type TraceInterval = { start: number; end: number; name: string; phase: string | null };
 type RawRecord = Record<string, unknown>;
@@ -262,7 +253,10 @@ function keepSafeTraceFields(value: unknown): SafeTraceEvent | null {
 async function startColdCapture(page: Page) {
   const session = await page.context().newCDPSession(page);
   const traceEvents: SafeTraceEvent[] = [];
-  const requests = new Map<string, CapturedRequest>();
+  const requestLifecycle = createColdRequestLifecycle({
+    maxRequests: COLD_MAX_NETWORK,
+    maxEvents: COLD_MAX_EVENTS,
+  });
   let traceOverflow = false;
   let traceClockInvalid = false;
   let receivedTraceEventCount = 0;
@@ -271,28 +265,6 @@ async function startColdCapture(page: Page) {
     session.once("Tracing.tracingComplete", resolve);
   });
   const clockSamples: Array<{ offsetMs: number; uncertaintyMs: number }> = [];
-  function requestIsIncomplete(request: CapturedRequest) {
-    return request.startTimestamp === undefined || request.endTimestamp === undefined;
-  }
-  function storeTrackedRequest(requestId: string, request: CapturedRequest) {
-    const previous = requests.get(requestId);
-    if (previous && requestIsIncomplete(previous))
-      coldCounts.incompleteTrackedRequests -= 1;
-    requests.set(requestId, request);
-    coldCounts.trackedRequests = requests.size;
-    if (requestIsIncomplete(request)) coldCounts.incompleteTrackedRequests += 1;
-  }
-  function setTrackedRequestEnd(
-    request: CapturedRequest,
-    timestamp: unknown,
-    failed: boolean,
-  ) {
-    const wasIncomplete = requestIsIncomplete(request);
-    if (failed) request.failed = true;
-    request.endTimestamp = isFiniteNumber(timestamp) ? timestamp : undefined;
-    const isIncomplete = requestIsIncomplete(request);
-    coldCounts.incompleteTrackedRequests += Number(isIncomplete) - Number(wasIncomplete);
-  }
   session.on("Tracing.dataCollected", (value: unknown) => {
     const event = asRecord(value);
     const values = Array.isArray(event?.value) ? event.value : [];
@@ -318,14 +290,7 @@ async function startColdCapture(page: Page) {
     coldCounts.timelineRecordsRetained = traceEvents.length;
   });
   session.on("Network.requestWillBeSent", (value: unknown) => {
-    if (requests.size >= COLD_MAX_NETWORK) {
-      networkOverflow = true;
-      coldFlags.networkOverflow = true;
-      return;
-    }
     const event = asRecord(value);
-    const requestId = event?.requestId;
-    if (typeof requestId !== "string") return;
     const request = asRecord(event.request);
     const initiator = asRecord(event.initiator);
     const stack = asRecord(initiator?.stack);
@@ -333,42 +298,33 @@ async function startColdCapture(page: Page) {
     const stackFrame = asRecord(callFrames[0]);
     const url = request?.url;
     const initiatorUrl = stackFrame?.url;
-    storeTrackedRequest(requestId, {
+    requestLifecycle.requestWillBeSent(event, {
       url: typeof url === "string" && url.length <= 4096 ? url : "",
       method: typeof request?.method === "string" ? request.method : undefined,
       resourceType: typeof event.type === "string" ? event.type : undefined,
       initiatorType: typeof initiator?.type === "string" ? initiator.type : undefined,
       initiatorUrl: typeof initiatorUrl === "string" && initiatorUrl.length <= 4096 ? initiatorUrl : "",
-      startTimestamp: isFiniteNumber(event.timestamp) ? event.timestamp : undefined,
       priority: typeof request?.initialPriority === "string" ? request.initialPriority : undefined,
     });
   });
   session.on("Network.responseReceived", (value: unknown) => {
     const event = asRecord(value);
-    const request = typeof event?.requestId === "string" ? requests.get(event.requestId) : undefined;
-    if (!request) return;
     const response = asRecord(event?.response);
-    request.status = isFiniteNumber(response?.status) ? response.status : undefined;
-    request.resourceType = typeof event?.type === "string" ? event.type : undefined;
+    requestLifecycle.responseReceived(event, {
+      status: isFiniteNumber(response?.status) ? response.status : undefined,
+      resourceType: typeof event?.type === "string" ? event.type : undefined,
+    });
   });
   session.on("Network.resourceChangedPriority", (value: unknown) => {
     const event = asRecord(value);
-    const request = typeof event?.requestId === "string" ? requests.get(event.requestId) : undefined;
-    if (request && typeof event?.newPriority === "string") request.priority = event.newPriority;
+    if (typeof event?.newPriority === "string")
+      requestLifecycle.update(event, { priority: event.newPriority });
   });
   session.on("Network.loadingFailed", (value: unknown) => {
-    const event = asRecord(value);
-    const request = typeof event?.requestId === "string" ? requests.get(event.requestId) : undefined;
-    if (request) {
-      setTrackedRequestEnd(request, event?.timestamp, true);
-    }
+    requestLifecycle.loadingFailed(value);
   });
   session.on("Network.loadingFinished", (value: unknown) => {
-    const event = asRecord(value);
-    const request = typeof event?.requestId === "string" ? requests.get(event.requestId) : undefined;
-    if (request) {
-      setTrackedRequestEnd(request, event?.timestamp, false);
-    }
+    requestLifecycle.loadingFinished(value);
   });
   await session.send("Network.enable");
   await session.send("Performance.enable");
@@ -419,6 +375,12 @@ async function startColdCapture(page: Page) {
     await session.send("Tracing.end");
     const completion = await tracingComplete;
     await session.detach();
+    const requestSnapshot = requestLifecycle.snapshot();
+    coldNetworkClockState = requestSnapshot.networkClockState;
+    coldCounts.trackedRequests = requestSnapshot.trackedRequests;
+    coldCounts.incompleteTrackedRequests =
+      requestSnapshot.incompleteTrackedRequests;
+    networkOverflow = requestSnapshot.requestOverflow;
     const profile = asRecord(profileResult?.profile);
     const samples = Array.isArray(profile?.samples) ? profile.samples : [];
     const nodes = Array.isArray(profile?.nodes) ? profile.nodes : [];
@@ -439,26 +401,20 @@ async function startColdCapture(page: Page) {
     ) throw coldDiagnosticFailure("clock-alignment", "clock", "Document clock origins did not match.");
     const offsetMs = clockAlignment.offsetMs;
     coldStage = "network";
-    const resources = [...requests.values()].map((request) => {
-      let timing: { start: number; end: number } | undefined;
-      if (request.startTimestamp !== undefined || request.endTimestamp !== undefined) {
-        if (!isFiniteNumber(request.startTimestamp) || !isFiniteNumber(request.endTimestamp))
-          throw coldDiagnosticFailure("network-clock-incomplete", "network", "A tracked request has incomplete clock endpoints.");
-        const start = translateColdNetworkTimestamp(request.startTimestamp, offsetMs);
-        const end = translateColdNetworkTimestamp(request.endTimestamp, offsetMs);
-        if (end < start) throw coldDiagnosticFailure("network-clock", "network", "Tracked request interval is reversed.");
-        timing = { start, end };
-      }
+    if (requestSnapshot.incompleteTrackedRequests > 0)
+      throw coldDiagnosticFailure("network-clock-incomplete", "network", "A tracked request has incomplete clock endpoints.");
+    if (requestSnapshot.protocolIntegrityFailure || requestSnapshot.anomalyOverflow)
+      throw coldDiagnosticFailure("trace-integrity", "capture-finish", "Network lifecycle integrity check failed.");
+    const resources = requestSnapshot.requests.map((request) => {
+      if (request.startClock !== "valid" || request.terminalClock !== "valid")
+        throw coldDiagnosticFailure("network-clock-incomplete", "network", "A tracked request has incomplete clock endpoints.");
+      const start = translateColdNetworkTimestamp(request.startTimestamp, offsetMs);
+      const end = translateColdNetworkTimestamp(request.endTimestamp, offsetMs);
+      if (end < start) throw coldDiagnosticFailure("network-clock", "network", "Tracked request interval is reversed.");
+      const { requestId: _requestId, startClock: _startClock, terminalClock: _terminalClock, responseSeen: _responseSeen, replacedAfterRedirect: _replacedAfterRedirect, ...resource } = request;
       return {
-        url: request.url,
-        method: request.method,
-        resourceType: request.resourceType,
-        initiatorType: request.initiatorType,
-        initiatorUrl: request.initiatorUrl,
-        status: request.status,
-        failed: request.failed,
-        priority: request.priority,
-        timing,
+        ...resource,
+        timing: { start, end },
       };
     });
     const mainTid = traceEvents.find((event) =>
@@ -675,6 +631,15 @@ test("Hosted G11 cold work-list to detail recording", async ({ browser }) => {
       if (!reportWrite.complete || !reportWrite.verifiedPrivate) {
         throw coldDiagnosticFailure("report-write", "report-write", "The bounded report write failed.");
       }
+      const snapshotReceipt = await persistChildSnapshotReceipt({
+        scratch: COLD_SCRATCH,
+        path: COLD_FAILURE_RECEIPT_PATH,
+        counts: { ...coldCounts },
+        flags: { ...coldFlags },
+        networkClockState: coldNetworkClockState,
+      });
+      if (!snapshotReceipt.persisted)
+        throw coldDiagnosticFailure("report-write", "report-write", "Private network snapshot handoff failed.");
     }, { g13Windows: true });
   } catch (error) {
     await writeChildFailureReceipt(error);
@@ -711,11 +676,16 @@ export default defineConfig({
 let parentStage = "prepare";
 let counts = null;
 let flags = null;
+let networkClockState = null;
 let discoveryPrimary = null;
 
 function emptyEvidence() {
   const empty = unknownColdFailureReceipt();
-  return { counts: empty.counts, flags: empty.flags };
+  return {
+    counts: empty.counts,
+    flags: empty.flags,
+    networkClockState: null,
+  };
 }
 
 function setParentFailure(error) {
@@ -929,6 +899,7 @@ try {
       "--test",
       join(scriptDir, "hosted-cold-recording-validation.test.mjs"),
       join(scriptDir, "hosted-cold-recording-io.test.mjs"),
+      join(scriptDir, "hosted-cold-recording-request-lifecycle.test.mjs"),
     ],
     { cwd: webDir, stdio: "ignore" },
   );
@@ -978,12 +949,14 @@ try {
       primaryFailure = childReceipt.primary;
       counts = childReceipt.counts;
       flags = childReceipt.flags;
+      networkClockState = childReceipt.networkClockState;
       childReportCleanup = childReceipt.cleanup.childReport;
     } else {
       const fallback = parentChildExitReceipt({ childOutcome: "failed" });
       primaryFailure = fallback.primary;
       counts = fallback.counts;
       flags = fallback.flags;
+      networkClockState = fallback.networkClockState;
       childReportCleanup = fallback.cleanup.childReport;
     }
     if (discoveryOnly) discoveryPrimary = primaryFailure;
@@ -992,6 +965,23 @@ try {
   } else {
     childOutcome = "unknown";
     parentStage = "report-build";
+    childReceipt = await readChildFailureReceipt(
+      failureReceiptPath,
+      scratchOwned,
+    );
+    if (
+      childReceipt?.childOutcome !== "passed" ||
+      childReceipt.primary !== null ||
+      childReceipt.networkClockState === null
+    )
+      throw coldDiagnosticFailure(
+        "report-schema",
+        "report-build",
+        "Private network snapshot handoff is invalid.",
+      );
+    networkClockState = childReceipt.networkClockState;
+    counts = childReceipt.counts;
+    flags = childReceipt.flags;
     if (!(await verifyPrivateTempDirectory(scratchOwned)))
       throw coldDiagnosticFailure(
         "report-schema",
@@ -1033,13 +1023,13 @@ try {
       );
     childOutcome = "passed";
     flags = {
-      ...emptyEvidence().flags,
+      ...childReceipt.flags,
       journeyAssertionsComplete: true,
       traceDataLoss: report.clocks.dataLoss,
       reportPrivacyPassed: true,
     };
     counts = {
-      ...emptyEvidence().counts,
+      ...childReceipt.counts,
       traceEventsReceived: report.clocks.traceEventCount,
       timelineRecordsRetained: report.clocks.timelineRecordCount,
       cpuSamples: report.clocks.cpuSamples,
@@ -1086,6 +1076,7 @@ if (discoveryOnly) {
       primary: discoveryPrimary ?? { code: "child-exit", stage: "child-start" },
       counts,
       flags,
+      networkClockState,
       cleanup,
     });
     process.stdout.write(`${formatColdFailureReceiptLine(receipt)}\n`);
@@ -1099,6 +1090,7 @@ if (discoveryOnly) {
     primary: primaryFailure,
     counts,
     flags,
+    networkClockState,
     childReport: childReportCleanup,
     parentReport: parentReportOwned,
     generatedSpec: generatedSpecOwned,
