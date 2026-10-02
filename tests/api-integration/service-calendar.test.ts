@@ -126,7 +126,7 @@ function hashApiKeyForTest(key: string): string {
 
 async function createApiKeyFor(
   userId: string,
-  permissions: Record<string, string[]>,
+  permissions: Record<string, string[]> | null,
 ): Promise<{ rawKey: string; id: string; name: string }> {
   const rawKey = `taskdesk_test_${randomUUID()}`;
   const name = "service calendar permission test key";
@@ -140,7 +140,7 @@ async function createApiKeyFor(
       name,
       start: rawKey.slice(0, 12),
       prefix: "taskdesk",
-      permissions: JSON.stringify(permissions),
+      permissions: permissions === null ? null : JSON.stringify(permissions),
       createdAt: now,
       updatedAt: now,
     })
@@ -1125,5 +1125,104 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
       headers: readHeaders,
     });
     expect(detail.status).toBe(200);
+  });
+
+  it("AK-3/AK-9: denies a SQL-NULL API-key scope without calendar side effects", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const nullScopeKey = await createApiKeyFor(owner.user.id, null);
+    const [storedKey] = await db
+      .select({ permissions: schema.apikeyTable.permissions })
+      .from(schema.apikeyTable)
+      .where(eq(schema.apikeyTable.id, nullScopeKey.id));
+    expect(storedKey?.permissions).toBeNull();
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    const body = {
+      workspaceId: owner.workspace.id,
+      name: "Session calendar",
+      timezone: "UTC",
+      windows: weekdayWindows,
+      holidays: [],
+    };
+
+    const sessionCreate = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    expect(sessionCreate.status).toBe(200);
+    const calendar = (await sessionCreate.json()) as { id: string };
+    const beforeCalendar = await db
+      .select()
+      .from(schema.serviceCalendarTable)
+      .where(eq(schema.serviceCalendarTable.id, calendar.id));
+    const beforeAudit = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityType, "service_calendar"),
+          eq(schema.auditLogTable.entityId, calendar.id),
+        ),
+      );
+    const beforeOutbox = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.workspaceId, owner.workspace.id));
+    const beforeRecordedEvents = [...recordedEvents];
+    const keyHeaders = {
+      authorization: `Bearer ${nullScopeKey.rawKey}`,
+      "content-type": "application/json",
+    };
+
+    const deniedCreate = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: keyHeaders,
+      body: JSON.stringify({ ...body, name: "Must not be created" }),
+    });
+    const deniedUpdate = await app.request(
+      `/api/service-calendars/${calendar.id}`,
+      {
+        method: "PATCH",
+        headers: keyHeaders,
+        body: JSON.stringify({ name: "Must not be updated" }),
+      },
+    );
+
+    expect.soft(deniedCreate.status).toBe(403);
+    expect.soft(deniedUpdate.status).toBe(403);
+    expect
+      .soft(await db.select().from(schema.serviceCalendarTable))
+      .toHaveLength(1);
+    expect
+      .soft(
+        await db
+          .select()
+          .from(schema.serviceCalendarTable)
+          .where(eq(schema.serviceCalendarTable.id, calendar.id)),
+      )
+      .toEqual(beforeCalendar);
+    expect
+      .soft(
+        await db
+          .select()
+          .from(schema.auditLogTable)
+          .where(
+            and(
+              eq(schema.auditLogTable.entityType, "service_calendar"),
+              eq(schema.auditLogTable.entityId, calendar.id),
+            ),
+          ),
+      )
+      .toEqual(beforeAudit);
+    expect
+      .soft(
+        await db
+          .select()
+          .from(schema.outboxTable)
+          .where(eq(schema.outboxTable.workspaceId, owner.workspace.id)),
+      )
+      .toEqual(beforeOutbox);
+    expect.soft(recordedEvents).toEqual(beforeRecordedEvents);
   });
 });

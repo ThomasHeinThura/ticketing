@@ -17,11 +17,7 @@ function permissionsSatisfy(
   });
 }
 
-/**
- * API-key permission statements narrow a person's workspace role. A null scope means the
- * key is unrestricted; an explicit empty or incomplete scope refuses the request.
- * `requireWorkspaceCapability` continues to make the independent canonical role check.
- */
+/** API-key scopes narrow workspace roles; a missing scope cannot grant authority. */
 export function apiKeyHasPermissionScope(
   c: Context,
   required: PermissionMap,
@@ -29,9 +25,11 @@ export function apiKeyHasPermissionScope(
   const apiKey = c.get("apiKey") as
     | { permissions?: Record<string, string[]> | null }
     | undefined;
-  return (
-    !apiKey?.permissions || permissionsSatisfy(apiKey.permissions, required)
-  );
+  if (!apiKey) return true;
+  if (apiKey.permissions === null || apiKey.permissions === undefined) {
+    return false;
+  }
+  return permissionsSatisfy(apiKey.permissions, required);
 }
 
 /** Enforce only the API-key narrowing layer; callers still need a role-capability gate. */
