@@ -18,9 +18,9 @@ The child writes and the parent accepts only an exact-key JSON receipt no larger
 schemaVersion, kind, childOutcome, primary, counts, flags, cleanup, networkClockState
 ```
 
-`primary` is either `null` when the child passed its journey and report-privacy assertions, or the existing closed `{ code, stage }` pair. A successful child’s receipt is an ephemeral private handoff with cleanup still `not-attempted`; the parent emits it only if the overall run or parent cleanup later fails. `counts`, `flags`, cleanup-operation names and cleanup status values remain the existing bounded v2 contract. A receipt with unknown, additional, malformed, oversized, duplicated, or internally inconsistent fields is rejected; arbitrary child output is never relayed.
+`primary` is either `null` when no failure has occurred, or the existing closed `{ code, stage }` pair. A successful child’s receipt is an ephemeral private handoff with `primary: null` and cleanup still `not-attempted`; the parent emits it only if the overall run or parent cleanup later fails. If the child passed but a later parent operation fails, the final receipt retains `childOutcome: "passed"`, carries the fixed parent failure, and retains the same verified success evidence. `counts`, `flags`, cleanup-operation names and cleanup status values remain the existing bounded v2 contract. A receipt with unknown, additional, malformed, oversized, duplicated, or internally inconsistent fields is rejected; arbitrary child output is never relayed.
 
-`networkClockState` is `null` until the post-detach network snapshot has been made. `null` means the snapshot was not reached; it is distinct from a completed snapshot whose counters are all zero. Once present, it is an exact object with these integer fields:
+`networkClockState` is `null` when no validated post-detach snapshot is available; early child failures use this value. It is distinct from a completed snapshot whose counters are all zero. Once present, it is an exact object with these integer fields:
 
 ```text
 invalidStart
@@ -30,19 +30,23 @@ notSeenAfterResponse
 incompleteAfterRedirect
 unexpectedSameIdReplacement
 duplicateTerminal
+unmatchedTrackedEvent
 ```
 
-The first three fields count current tracked entries: `invalidStart` counts a missing or malformed start timestamp; `terminalNotSeen` counts entries without a first terminal event at snapshot time; `invalidTerminal` counts a first terminal event with a missing or malformed timestamp. They may overlap for the same entry and must not be summed as disjoint categories. `notSeenAfterResponse` is a subset of `terminalNotSeen`. `incompleteAfterRedirect` counts incomplete current entries marked as a redirect replacement. The final two fields count same-ID replacement without redirect evidence and duplicate terminal events. These anomaly counters are event counts and use the existing received-event bound.
+The first three fields count current tracked entries: `invalidStart` counts a missing or malformed start timestamp; `terminalNotSeen` counts entries without a first terminal event at snapshot time; `invalidTerminal` counts a first terminal event with a missing or malformed timestamp. They may overlap for the same entry and must not be summed as disjoint categories. `notSeenAfterResponse` is a subset of `terminalNotSeen`. `incompleteAfterRedirect` counts incomplete current entries marked as a redirect replacement. The final three fields count same-ID replacement without redirect evidence, duplicate terminal events, and response/priority/terminal events whose request ID is not currently tracked. These anomaly counters are event counts and use the existing received-event bound.
 
 Entry counts are bounded by the existing 2,048 tracked-request cap. Anomaly counts are bounded by the existing 250,000 received-event cap. The validator enforces:
 
 - each of `invalidStart`, `terminalNotSeen`, and `invalidTerminal` is at most `counts.trackedRequests`;
 - `notSeenAfterResponse` is at most `terminalNotSeen`;
 - `incompleteAfterRedirect` is at most `counts.incompleteTrackedRequests`;
+- `terminalNotSeen + invalidTerminal` is at most `counts.trackedRequests`, because terminal absence and malformed first-terminal timestamps are disjoint;
 - with all related values known, `max(invalidStart, terminalNotSeen, invalidTerminal) <= incompleteTrackedRequests <= invalidStart + terminalNotSeen + invalidTerminal`;
 - a non-null snapshot requires known tracked and incomplete request counts, with incomplete no greater than tracked.
 
 Any anomaly counter reaching its bound fails closed through the existing integrity path; counters are never wrapped or truncated. If an incomplete interval exists, the existing `network-clock-incomplete` failure remains primary. A duplicate, unmatched terminal, or unexpected same-ID replacement cannot overwrite earlier lifecycle state or create a complete interval; when there is no incomplete interval, these integrity anomalies fail closed through the existing trace-integrity path.
+
+The successful private handoff is stricter than a bounded failure receipt. It requires the actual fixed journey and capture success evidence: exactly three clock samples, nonzero received and retained trace counts, nonzero CPU sample and node counts, a positive tracked-request count, zero incomplete requests, and the complete success flags (`journeyAssertionsComplete`, trace/network overflow false, trace data loss false, report privacy passed). Every request-lifecycle and protocol-anomaly counter must be zero. The parent validates the handoff again and reconciles its tracked-request count with the `resources` array length of the separately privacy- and provenance-validated report before creating the caller’s output file. It also binds report trace and CPU sample counts to the handoff. A missing snapshot, zero tracked requests, incomplete interval, anomaly, missing/zero required evidence, or count mismatch rejects publication.
 
 ## Request lifecycle and timing
 

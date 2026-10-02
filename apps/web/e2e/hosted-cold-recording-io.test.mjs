@@ -25,6 +25,7 @@ import {
   runParentCleanup,
   writeChildFailureReceipt,
   writeChildSnapshotReceipt,
+  writeValidatedColdReport,
 } from "./hosted-cold-recording-io.mjs";
 import {
   COLD_FAILURE_RECEIPT_PREFIX,
@@ -55,6 +56,50 @@ function knownChildEvidence() {
       networkOverflow: false,
       traceDataLoss: false,
       reportPrivacyPassed: false,
+    },
+    networkClockState: {
+      invalidStart: 1,
+      terminalNotSeen: 1,
+      invalidTerminal: 0,
+      notSeenAfterResponse: 0,
+      incompleteAfterRedirect: 0,
+      unexpectedSameIdReplacement: 0,
+      duplicateTerminal: 0,
+      unmatchedTrackedEvent: 0,
+    },
+  };
+}
+
+function knownSuccessfulChildEvidence() {
+  const unknown = unknownColdFailureReceipt();
+  return {
+    counts: {
+      ...unknown.counts,
+      clockSamples: 3,
+      traceEventsReceived: 100,
+      timelineRecordsRetained: 40,
+      trackedRequests: 5,
+      incompleteTrackedRequests: 0,
+      cpuSamples: 75,
+      cpuNodes: 12,
+    },
+    flags: {
+      ...unknown.flags,
+      journeyAssertionsComplete: true,
+      traceOverflow: false,
+      networkOverflow: false,
+      traceDataLoss: false,
+      reportPrivacyPassed: true,
+    },
+    networkClockState: {
+      invalidStart: 0,
+      terminalNotSeen: 0,
+      invalidTerminal: 0,
+      notSeenAfterResponse: 0,
+      incompleteAfterRedirect: 0,
+      unexpectedSameIdReplacement: 0,
+      duplicateTerminal: 0,
+      unmatchedTrackedEvent: 0,
     },
   };
 }
@@ -112,6 +157,7 @@ test("production cleanup preserves a child primary and independently records eac
     primary: relayed.primary,
     counts: relayed.counts,
     flags: relayed.flags,
+    networkClockState: relayed.networkClockState,
     childReport: relayed.cleanup.childReport,
     parentReport: parentReport.owned,
     generatedSpec: generatedSpec.owned,
@@ -234,18 +280,15 @@ test("a successful child followed by cleanup failure removes the owned report an
   await mkdir(configPath);
   const reportPath = join(root, "report.json");
   const report = await createOwnedFile(reportPath, "validated report bytes");
-  const evidence = knownChildEvidence();
-  const flags = {
-    ...evidence.flags,
-    journeyAssertionsComplete: true,
-    reportPrivacyPassed: true,
-  };
+  const evidence = knownSuccessfulChildEvidence();
+  const flags = evidence.flags;
   const lines = [];
   const result = await finalizeParentOutcome({
     childOutcome: "passed",
     primary: null,
     counts: evidence.counts,
     flags,
+    networkClockState: evidence.networkClockState,
     childReport: "not-attempted",
     parentReport: report.owned,
     generatedSpec: spec.owned,
@@ -269,31 +312,7 @@ test("a successful child followed by cleanup failure removes the owned report an
 test("successful child snapshot handoff survives only in private cleanup receipt when parent cleanup fails", async (t) => {
   const root = await privateRoot(t);
   const scratch = await createOwnedTempDirectory("taskdesk-cold-snapshot-");
-  const counts = {
-    clockSamples: 3,
-    traceEventsReceived: 10,
-    timelineRecordsRetained: 5,
-    trackedRequests: 2,
-    incompleteTrackedRequests: 1,
-    cpuSamples: 4,
-    cpuNodes: null,
-  };
-  const flags = {
-    journeyAssertionsComplete: true,
-    traceOverflow: false,
-    networkOverflow: false,
-    traceDataLoss: false,
-    reportPrivacyPassed: true,
-  };
-  const networkClockState = {
-    invalidStart: 1,
-    terminalNotSeen: 1,
-    invalidTerminal: 0,
-    notSeenAfterResponse: 0,
-    incompleteAfterRedirect: 0,
-    unexpectedSameIdReplacement: 0,
-    duplicateTerminal: 0,
-  };
+  const { counts, flags, networkClockState } = knownSuccessfulChildEvidence();
   const receiptPath = join(scratch.path, "snapshot-receipt.json");
   const childSnapshot = await writeChildSnapshotReceipt({
     scratch,
@@ -343,12 +362,136 @@ test("successful child snapshot handoff survives only in private cleanup receipt
   await assert.rejects(lstat(reportPath), { code: "ENOENT" });
 });
 
+test("production passed-handoff writer rejects incomplete, zero-request, anomalous, missing-state, and unsuccessful evidence", async (t) => {
+  const scratch = await createOwnedTempDirectory(
+    "taskdesk-cold-invalid-success-",
+  );
+  t.after(async () => removeOwnedDirectory(scratch));
+  const evidence = knownSuccessfulChildEvidence();
+  const invalid = [
+    {
+      ...evidence,
+      counts: { ...evidence.counts, incompleteTrackedRequests: 1 },
+      networkClockState: {
+        ...evidence.networkClockState,
+        invalidStart: 1,
+      },
+    },
+    {
+      ...evidence,
+      counts: {
+        ...evidence.counts,
+        trackedRequests: 0,
+      },
+    },
+    {
+      ...evidence,
+      networkClockState: {
+        ...evidence.networkClockState,
+        unmatchedTrackedEvent: 1,
+      },
+    },
+    {
+      ...evidence,
+      flags: { ...evidence.flags, traceDataLoss: true },
+    },
+  ];
+  for (let index = 0; index < invalid.length; index += 1) {
+    const path = join(scratch.path, `invalid-${index}.json`);
+    await assert.rejects(
+      writeChildSnapshotReceipt({
+        scratch,
+        path,
+        ...invalid[index],
+      }),
+    );
+    await assert.rejects(lstat(path), { code: "ENOENT" });
+  }
+  const missingPath = join(scratch.path, "missing-state.json");
+  const missing = await writeChildSnapshotReceipt({
+    scratch,
+    path: missingPath,
+    ...evidence,
+    networkClockState: null,
+  });
+  assert.deepEqual(missing, { receipt: null, persisted: false });
+  await assert.rejects(lstat(missingPath), { code: "ENOENT" });
+});
+
+test("parent publication writer refuses mismatched or missing handoff evidence and writes only a matching report", async (t) => {
+  const root = await privateRoot(t);
+  const evidence = knownSuccessfulChildEvidence();
+  const scratch = await createOwnedTempDirectory(
+    "taskdesk-cold-publication-handoff-",
+  );
+  t.after(async () => removeOwnedDirectory(scratch));
+  const handoff = await writeChildSnapshotReceipt({
+    scratch,
+    path: join(scratch.path, "receipt.json"),
+    ...evidence,
+  });
+  assert.equal(handoff.persisted, true);
+  const passedReceipt = handoff.receipt;
+  const report = {
+    resources: Array.from({ length: 5 }, () => ({})),
+    clocks: {
+      traceEventCount: 100,
+      timelineRecordCount: 40,
+      cpuSamples: 75,
+      dataLoss: false,
+    },
+  };
+  const reportBytes = Buffer.from(JSON.stringify(report));
+  const mismatchPath = join(root, "mismatch.json");
+  const mismatch = await writeValidatedColdReport({
+    path: mismatchPath,
+    report,
+    reportBytes,
+    handoff: {
+      ...passedReceipt,
+      counts: { ...passedReceipt.counts, trackedRequests: 4 },
+    },
+  });
+  assert.equal(mismatch.handoffMatches, false);
+  await assert.rejects(lstat(mismatchPath), { code: "ENOENT" });
+  const byteMismatchPath = join(root, "byte-mismatch.json");
+  const byteMismatch = await writeValidatedColdReport({
+    path: byteMismatchPath,
+    report,
+    reportBytes: Buffer.from("{}"),
+    handoff: passedReceipt,
+  });
+  assert.equal(byteMismatch.handoffMatches, false);
+  await assert.rejects(lstat(byteMismatchPath), { code: "ENOENT" });
+  const missingPath = join(root, "missing.json");
+  const missing = await writeValidatedColdReport({
+    path: missingPath,
+    report,
+    reportBytes,
+    handoff: { ...passedReceipt, networkClockState: null },
+  });
+  assert.equal(missing.handoffMatches, false);
+  await assert.rejects(lstat(missingPath), { code: "ENOENT" });
+  const successPath = join(root, "success.json");
+  const success = await writeValidatedColdReport({
+    path: successPath,
+    report,
+    reportBytes,
+    handoff: passedReceipt,
+  });
+  assert.equal(success.handoffMatches, true);
+  assert.equal(success.complete, true);
+  assert.equal((await lstat(successPath)).mode & 0o777, 0o600);
+  await removeOwnedFile(success.owned);
+  await assert.rejects(lstat(successPath), { code: "ENOENT" });
+});
+
 test("clean success preserves the exact owned report and emits no failure receipt", async (t) => {
   const root = await privateRoot(t);
   const scratch = await createOwnedTempDirectory(
     "taskdesk-cold-clean-success-",
   );
-  const evidence = knownChildEvidence();
+  const evidence = knownSuccessfulChildEvidence();
   const reportPath = join(root, "report.json");
   const report = await createOwnedFile(reportPath, "validated report bytes");
   const generatedSpec = await createOwnedFile(
@@ -365,11 +508,8 @@ test("clean success preserves the exact owned report and emits no failure receip
     childOutcome: "passed",
     primary: null,
     counts: evidence.counts,
-    flags: {
-      ...evidence.flags,
-      journeyAssertionsComplete: true,
-      reportPrivacyPassed: true,
-    },
+    flags: evidence.flags,
+    networkClockState: evidence.networkClockState,
     childReport: "not-attempted",
     parentReport: report.owned,
     generatedSpec: generatedSpec.owned,
@@ -489,12 +629,7 @@ test("parent report cleanup never recursively deletes a replaced directory", asy
   const result = await finalizeParentOutcome({
     childOutcome: "passed",
     primary: null,
-    counts: knownChildEvidence().counts,
-    flags: {
-      ...knownChildEvidence().flags,
-      journeyAssertionsComplete: true,
-      reportPrivacyPassed: true,
-    },
+    ...knownSuccessfulChildEvidence(),
     childReport: "not-attempted",
     parentReport: report.owned,
     generatedSpec: null,

@@ -13,6 +13,7 @@ import {
   COLD_FAILURE_RECEIPT_PREFIX,
   coldCleanupStatuses,
   coldDiagnosticFailure,
+  coldPassedHandoffMatchesValidatedReport,
   createColdClockSample,
   createColdFailureReceipt,
   deriveManifestAssetBasenames,
@@ -174,8 +175,57 @@ function failureReceipt(overrides = {}) {
       journeyAssertionsComplete: false,
     },
     cleanup: { ...coldCleanupStatuses(), childReport: "ok" },
+    networkClockState: {
+      invalidStart: 1,
+      terminalNotSeen: 1,
+      invalidTerminal: 0,
+      notSeenAfterResponse: 0,
+      incompleteAfterRedirect: 0,
+      unexpectedSameIdReplacement: 0,
+      duplicateTerminal: 0,
+      unmatchedTrackedEvent: 0,
+    },
     ...overrides,
   });
+}
+
+function successfulChildEvidence(overrides = {}) {
+  const zeroState = {
+    invalidStart: 0,
+    terminalNotSeen: 0,
+    invalidTerminal: 0,
+    notSeenAfterResponse: 0,
+    incompleteAfterRedirect: 0,
+    unexpectedSameIdReplacement: 0,
+    duplicateTerminal: 0,
+    unmatchedTrackedEvent: 0,
+  };
+  const empty = unknownColdFailureReceipt("journey");
+  return {
+    childOutcome: "passed",
+    primary: null,
+    counts: {
+      ...empty.counts,
+      clockSamples: 3,
+      traceEventsReceived: 100,
+      timelineRecordsRetained: 40,
+      trackedRequests: 5,
+      incompleteTrackedRequests: 0,
+      cpuSamples: 75,
+      cpuNodes: 12,
+    },
+    flags: {
+      ...empty.flags,
+      journeyAssertionsComplete: true,
+      traceOverflow: false,
+      networkOverflow: false,
+      traceDataLoss: false,
+      reportPrivacyPassed: true,
+    },
+    cleanup: coldCleanupStatuses(),
+    networkClockState: zeroState,
+    ...overrides,
+  };
 }
 
 test("failure receipts are closed, bounded, typed, and relay only validated values", () => {
@@ -275,6 +325,14 @@ test("failure receipt relay rejects hostile schemas, counts, flags, and oversize
     changed({ childOutcome: "customer-label" }),
     changed({ primary: null }),
     changed({
+      counts: { ...valid.counts, incompleteTrackedRequests: 2 },
+      networkClockState: {
+        ...valid.networkClockState,
+        terminalNotSeen: 1,
+        invalidTerminal: 2,
+      },
+    }),
+    changed({
       childOutcome: "passed",
       primary: null,
       flags: {
@@ -318,14 +376,7 @@ test("passed child cleanup failure is represented separately from a null primary
   const cleanup = coldCleanupStatuses();
   cleanup.generatedConfig = "failed";
   const receipt = createColdFailureReceipt({
-    childOutcome: "passed",
-    primary: null,
-    counts: failureReceipt().counts,
-    flags: {
-      ...failureReceipt().flags,
-      journeyAssertionsComplete: true,
-      reportPrivacyPassed: true,
-    },
+    ...successfulChildEvidence(),
     cleanup,
   });
   assert.equal(receipt.schemaVersion, 3);
@@ -350,8 +401,82 @@ test("passed child cleanup failure is represented separately from a null primary
   assert.ok(Buffer.byteLength(line, "utf8") < COLD_FAILURE_RECEIPT_MAX_BYTES);
 });
 
+test("passed handoffs require complete nonzero capture evidence and zero network anomalies", () => {
+  const baseline = successfulChildEvidence();
+  const invalidHandoffs = [
+    {
+      ...baseline,
+      counts: { ...baseline.counts, incompleteTrackedRequests: 1 },
+      networkClockState: { ...baseline.networkClockState, invalidStart: 1 },
+    },
+    {
+      ...baseline,
+      counts: { ...baseline.counts, trackedRequests: 0 },
+    },
+    {
+      ...baseline,
+      networkClockState: {
+        ...baseline.networkClockState,
+        unmatchedTrackedEvent: 1,
+      },
+    },
+    {
+      ...baseline,
+      counts: { ...baseline.counts, clockSamples: 2 },
+    },
+    {
+      ...baseline,
+      counts: { ...baseline.counts, cpuNodes: 0 },
+    },
+    {
+      ...baseline,
+      flags: { ...baseline.flags, networkOverflow: null },
+    },
+    { ...baseline, networkClockState: null },
+  ];
+  for (const handoff of invalidHandoffs)
+    assert.throws(() => createColdFailureReceipt(handoff));
+});
+
+test("passed handoff must match the independently validated v1 report before publication", () => {
+  const report = buildSanitizedColdReport(reportInput());
+  assertColdReportPrivacy(report, assetBasenames);
+  const handoff = createColdFailureReceipt(successfulChildEvidence());
+  assert.equal(coldPassedHandoffMatchesValidatedReport(handoff, report), true);
+  assert.equal(
+    coldPassedHandoffMatchesValidatedReport(
+      createColdFailureReceipt({
+        ...successfulChildEvidence(),
+        counts: { ...successfulChildEvidence().counts, trackedRequests: 4 },
+      }),
+      report,
+    ),
+    false,
+  );
+  assert.equal(
+    coldPassedHandoffMatchesValidatedReport(
+      { ...handoff, networkClockState: null },
+      report,
+    ),
+    false,
+  );
+  assert.equal(
+    coldPassedHandoffMatchesValidatedReport(
+      createColdFailureReceipt({
+        ...successfulChildEvidence(),
+        counts: {
+          ...successfulChildEvidence().counts,
+          traceEventsReceived: 99,
+        },
+      }),
+      report,
+    ),
+    false,
+  );
+});
+
 test("v3 network clock receipt validates null, bounded snapshot counts, and overlapping relationships", () => {
-  const base = failureReceipt();
+  const base = unknownColdFailureReceipt();
   assert.equal(base.networkClockState, null);
   const snapshot = {
     invalidStart: 1,
@@ -361,6 +486,7 @@ test("v3 network clock receipt validates null, bounded snapshot counts, and over
     incompleteAfterRedirect: 0,
     unexpectedSameIdReplacement: 0,
     duplicateTerminal: 0,
+    unmatchedTrackedEvent: 0,
   };
   const valid = failureReceipt({
     counts: {

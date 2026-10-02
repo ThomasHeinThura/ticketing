@@ -23,6 +23,7 @@ export function createColdRequestLifecycle({
   const anomalies = {
     unexpectedSameIdReplacement: 0,
     duplicateTerminal: 0,
+    unmatchedTrackedEvent: 0,
   };
   let requestOverflow = false;
   let anomalyOverflow = false;
@@ -78,7 +79,11 @@ export function createColdRequestLifecycle({
       typeof event?.requestId === "string"
         ? requests.get(event.requestId)
         : undefined;
-    if (!request) return false;
+    if (!request) {
+      incrementAnomaly("unmatchedTrackedEvent");
+      protocolIntegrityFailure = true;
+      return false;
+    }
     request.responseSeen = true;
     if (data && typeof data === "object") Object.assign(request, data);
     return true;
@@ -91,6 +96,7 @@ export function createColdRequestLifecycle({
         ? requests.get(event.requestId)
         : undefined;
     if (!request) {
+      incrementAnomaly("unmatchedTrackedEvent");
       protocolIntegrityFailure = true;
       return false;
     }
@@ -105,6 +111,7 @@ export function createColdRequestLifecycle({
         ? requests.get(event.requestId)
         : undefined;
     if (!request) {
+      incrementAnomaly("unmatchedTrackedEvent");
       protocolIntegrityFailure = true;
       return false;
     }
@@ -150,6 +157,7 @@ export function createColdRequestLifecycle({
       ).length,
       unexpectedSameIdReplacement: anomalies.unexpectedSameIdReplacement,
       duplicateTerminal: anomalies.duplicateTerminal,
+      unmatchedTrackedEvent: anomalies.unmatchedTrackedEvent,
     };
     const immutableEntries = entries.map((request) => Object.freeze(request));
     return Object.freeze({

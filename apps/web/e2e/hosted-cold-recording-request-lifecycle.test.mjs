@@ -35,6 +35,7 @@ test("valid finish and failed finish retain first valid intervals and failure st
     incompleteAfterRedirect: 0,
     unexpectedSameIdReplacement: 0,
     duplicateTerminal: 0,
+    unmatchedTrackedEvent: 0,
   });
 });
 
@@ -53,6 +54,7 @@ test("both missing endpoints and response-without-terminal fail the completion i
     incompleteAfterRedirect: 0,
     unexpectedSameIdReplacement: 0,
     duplicateTerminal: 0,
+    unmatchedTrackedEvent: 0,
   });
 });
 
@@ -80,6 +82,7 @@ test("missing and nonfinite starts and terminals remain distinct from unseen ter
     incompleteAfterRedirect: 0,
     unexpectedSameIdReplacement: 0,
     duplicateTerminal: 0,
+    unmatchedTrackedEvent: 0,
   });
 });
 
@@ -103,6 +106,7 @@ test("redirect replacement tracks only the current hop and preserves incomplete 
     incompleteAfterRedirect: 1,
     unexpectedSameIdReplacement: 0,
     duplicateTerminal: 0,
+    unmatchedTrackedEvent: 0,
   });
   lifecycle.loadingFinished(finish("redirect-id", 22));
   assert.equal(lifecycle.snapshot().incompleteTrackedRequests, 0);
@@ -115,6 +119,8 @@ test("unexpected replacement, unmatched terminal, and duplicate terminal fail cl
   lifecycle.loadingFinished(finish("same-id", 14));
   lifecycle.loadingFailed(finish("same-id", 16));
   lifecycle.loadingFinished(finish("unmatched", 18));
+  lifecycle.responseReceived({ requestId: "unmatched-response" });
+  lifecycle.update({ requestId: "unmatched-priority" }, { priority: "Low" });
   const snapshot = lifecycle.snapshot();
   assert.equal(snapshot.incompleteTrackedRequests, 0);
   assert.equal(snapshot.protocolIntegrityFailure, true);
@@ -128,6 +134,7 @@ test("unexpected replacement, unmatched terminal, and duplicate terminal fail cl
     incompleteAfterRedirect: 0,
     unexpectedSameIdReplacement: 1,
     duplicateTerminal: 1,
+    unmatchedTrackedEvent: 3,
   });
 });
 

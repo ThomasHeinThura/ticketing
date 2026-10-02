@@ -13,7 +13,9 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import {
   COLD_CLEANUP_OPERATIONS,
   COLD_FAILURE_RECEIPT_MAX_BYTES,
+  COLD_REPORT_MAX_BYTES,
   coldCleanupStatuses,
+  coldPassedHandoffMatchesValidatedReport,
   createColdFailureReceipt,
   formatColdFailureReceiptLine,
   parseColdFailureReceipt,
@@ -408,6 +410,34 @@ export async function createReportParent(path) {
   } catch {
     return false;
   }
+}
+
+// Parent calls this after report privacy and provenance validation; keep the
+// exact bytes and the success handoff bound at the final publication boundary.
+export async function writeValidatedColdReport({
+  path,
+  report,
+  reportBytes,
+  handoff,
+}) {
+  let serializedReport;
+  try {
+    serializedReport = JSON.stringify(report);
+  } catch {
+    return { handoffMatches: false, owned: null, complete: false };
+  }
+  if (
+    !(reportBytes instanceof Uint8Array) ||
+    reportBytes.byteLength > COLD_REPORT_MAX_BYTES ||
+    Buffer.compare(
+      Buffer.from(reportBytes),
+      Buffer.from(serializedReport, "utf8"),
+    ) !== 0 ||
+    !coldPassedHandoffMatchesValidatedReport(handoff, report)
+  )
+    return { handoffMatches: false, owned: null, complete: false };
+  const result = await createOwnedFile(path, reportBytes);
+  return { ...result, handoffMatches: true };
 }
 
 export function cleanupHasFailure(cleanup) {

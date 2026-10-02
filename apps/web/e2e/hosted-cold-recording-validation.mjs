@@ -73,6 +73,7 @@ const COLD_NETWORK_CLOCK_ENTRY_COUNTS = Object.freeze([
 const COLD_NETWORK_CLOCK_EVENT_COUNTS = Object.freeze([
   "unexpectedSameIdReplacement",
   "duplicateTerminal",
+  "unmatchedTrackedEvent",
 ]);
 const COLD_NETWORK_CLOCK_KEYS = Object.freeze([
   "invalidStart",
@@ -82,6 +83,7 @@ const COLD_NETWORK_CLOCK_KEYS = Object.freeze([
   "incompleteAfterRedirect",
   "unexpectedSameIdReplacement",
   "duplicateTerminal",
+  "unmatchedTrackedEvent",
 ]);
 const COLD_FAILURE_FLAG_KEYS = Object.freeze([
   "journeyAssertionsComplete",
@@ -249,6 +251,12 @@ function validateColdFailureReceipt(value) {
   const incomplete = value.counts.incompleteTrackedRequests;
   if (tracked !== null && incomplete !== null && incomplete > tracked)
     throw new Error("Invalid cold failure receipt count relationship.");
+  if (
+    value.counts.traceEventsReceived !== null &&
+    value.counts.timelineRecordsRetained !== null &&
+    value.counts.timelineRecordsRetained > value.counts.traceEventsReceived
+  )
+    throw new Error("Invalid cold failure trace count relationship.");
   if (value.networkClockState !== null) {
     exactKeys(
       value.networkClockState,
@@ -265,6 +273,12 @@ function validateColdFailureReceipt(value) {
     }
     if (tracked === null || incomplete === null)
       throw new Error("Network clock snapshot requires known request counts.");
+    if (
+      value.networkClockState.terminalNotSeen +
+        value.networkClockState.invalidTerminal >
+      tracked
+    )
+      throw new Error("Invalid network terminal partition.");
     const { invalidStart, terminalNotSeen, invalidTerminal } =
       value.networkClockState;
     if (
@@ -277,6 +291,8 @@ function validateColdFailureReceipt(value) {
       incomplete > invalidStart + terminalNotSeen + invalidTerminal
     )
       throw new Error("Invalid network clock state relationship.");
+  } else if (tracked !== null || incomplete !== null) {
+    throw new Error("Known request counts require a network clock snapshot.");
   }
   exactKeys(value.flags, COLD_FAILURE_FLAG_KEYS, "failure receipt flags");
   for (const key of COLD_FAILURE_FLAG_KEYS) {
@@ -295,7 +311,49 @@ function validateColdFailureReceipt(value) {
         "Unknown cleanup status is only valid for inaccessible child evidence.",
       );
   }
+  if (value.childOutcome === "passed") {
+    const state = value.networkClockState;
+    if (
+      value.counts.clockSamples !== 3 ||
+      value.counts.traceEventsReceived < 1 ||
+      value.counts.timelineRecordsRetained < 1 ||
+      value.counts.cpuSamples < 1 ||
+      value.counts.cpuNodes < 1 ||
+      value.counts.trackedRequests < 1 ||
+      value.counts.incompleteTrackedRequests !== 0 ||
+      value.flags.journeyAssertionsComplete !== true ||
+      value.flags.traceOverflow !== false ||
+      value.flags.networkOverflow !== false ||
+      value.flags.traceDataLoss !== false ||
+      value.flags.reportPrivacyPassed !== true ||
+      state === null ||
+      COLD_NETWORK_CLOCK_KEYS.some((key) => state[key] !== 0)
+    )
+      throw new Error(
+        "Passed child lacks complete successful capture evidence.",
+      );
+  }
   return value;
+}
+
+// Call only after the parent has privacy- and provenance-validated the report.
+export function coldPassedHandoffMatchesValidatedReport(receipt, report) {
+  try {
+    validateColdFailureReceipt(receipt);
+  } catch {
+    return false;
+  }
+  return Boolean(
+    receipt.childOutcome === "passed" &&
+      receipt.primary === null &&
+      Array.isArray(report?.resources) &&
+      receipt.counts.trackedRequests === report.resources.length &&
+      receipt.counts.traceEventsReceived === report.clocks?.traceEventCount &&
+      receipt.counts.timelineRecordsRetained ===
+        report.clocks?.timelineRecordCount &&
+      receipt.counts.cpuSamples === report.clocks?.cpuSamples &&
+      receipt.flags.traceDataLoss === report.clocks?.dataLoss,
+  );
 }
 
 export function parseColdFailureReceipt(bytes) {

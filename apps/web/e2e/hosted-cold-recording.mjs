@@ -17,10 +17,12 @@ import {
   runParentCleanup,
   runWithVerifiedScratch,
   verifyPrivateTempDirectory,
+  writeValidatedColdReport,
 } from "./hosted-cold-recording-io.mjs";
 import {
   assertColdReportPrivacy,
   coldDiagnosticFailure,
+  coldPassedHandoffMatchesValidatedReport,
   createColdFailureReceipt,
   deriveManifestAssetBasenames,
   formatColdFailureReceiptLine,
@@ -1021,6 +1023,12 @@ try {
         "privacy",
         "Completed child report failed parent validation.",
       );
+    if (!coldPassedHandoffMatchesValidatedReport(childReceipt, report))
+      throw coldDiagnosticFailure(
+        "report-schema",
+        "report-build",
+        "Private capture evidence does not match the validated report.",
+      );
     childOutcome = "passed";
     flags = {
       ...childReceipt.flags,
@@ -1041,7 +1049,20 @@ try {
         "report-write",
         "Report output setup failed.",
       );
-    const outputWrite = await createOwnedFile(resolvedOutputPath, reportBytes);
+    const outputWrite = await writeValidatedColdReport({
+      path: resolvedOutputPath,
+      report,
+      reportBytes,
+      handoff: childReceipt,
+    });
+    if (!outputWrite.handoffMatches) {
+      childOutcome = "unknown";
+      throw coldDiagnosticFailure(
+        "report-schema",
+        "report-write",
+        "Private capture evidence changed before report publication.",
+      );
+    }
     parentReportOwned = outputWrite.owned;
     if (!outputWrite.complete)
       throw coldDiagnosticFailure(
