@@ -491,7 +491,7 @@ test("calendar list resets a rejected cursor after Retry repeats the 400", async
   await expect(page.getByRole("button", { name: "Retry" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Reset" })).toBeVisible();
   const initialRejectedRequestCount = fixture.rejectedCursorRequestCount;
-  expect(initialRejectedRequestCount).toBeGreaterThan(0);
+  expect(initialRejectedRequestCount).toBe(1);
 
   await page.getByRole("button", { name: "Retry" }).click();
   await expect

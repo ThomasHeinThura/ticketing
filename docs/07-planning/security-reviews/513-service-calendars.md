@@ -1,52 +1,48 @@
 # Security review — service calendar management (#513)
 
-**Reviewed head:** `35109d42b6cf3e21e5c5c37e79683766f447843a`
-**Accepted comparison base:** `c1c820e86381b9ec199ede4f89a2bcd10147d44f`
-**Reviewer:** fresh independent GPT-6 Sol context `/root/calendar513_351_sol_security`.
-**Sol verdict at reviewed head:** **CLEAR for security at exact source `35109d42b6cf3e21e5c5c37e79683766f447843a`; the Sol report recorded no blocking or non-blocking finding.** This is historical review evidence, not a current merge or acceptance clearance.
-**Current security status:** **BLOCKED** by the subsequent independent finding recorded below; the reviewed calendar source contains the same helper blob as the blocked P1 source.
-**Full review:** [GPT-6 Sol review comment](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387445863).
+**Reviewed head:** `d8557d0e149b0b901c73ebfa151a84e653bf2376`
+**Accepted comparison base:** `47bda77d6e00521847b8202ae335301cac72709f`
+**Reviewer:** fresh independent GPT-6 Sol context `/root/calendar513_351_sol_security`; this reviewer did not author, direct, or remediate the SQL-NULL fix.
+**Sol verdict at reviewed head:** **CLEAR for security at exact source `d8557d0e149b0b901c73ebfa151a84e653bf2376`; no blocking or non-blocking security finding identified.**
+**Full review:** [GPT-6 Sol review 5387701727](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387701727).
 
 ## Exact-head ordinary review chain
 
-The three independent GPT-6 Luna reviews below each name exact candidate `35109d42b6cf3e21e5c5c37e79683766f447843a` and base `c1c820e86381b9ec199ede4f89a2bcd10147d44f`; each reports no blocking or non-blocking finding. The Sol review followed those reviews.
+Both fresh independent GPT-6 Luna contexts reviewed exact source `d8557d0e149b0b901c73ebfa151a84e653bf2376` after the SQL-NULL correction and reported no findings. The Sol security review followed both genuine exact-head ordinary reviews.
 
-- [Review A — 5387405038](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387405038): exact-head review; clear.
-- [Review B — 5387417330](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387417330): exact-head review; clear. Its scoped URL and pagination unit checks passed, 2 files / 15 tests.
-- [Review C — 5387425283](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387425283): exact-head review; clear. Its local focused CAL-16 attempt failed before setup because the inherited PostgreSQL rejected credentials; 1 selected test failed during setup and 16 tests were skipped, so no assertion was represented as passing. The exact-head hosted PostgreSQL 18 integration check was green.
+- [Review A — 5387667528](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387667528): exact-head authorization-delta review; no findings. Six in-process scope-boundary assertions passed. Its two focused PostgreSQL attempts failed before assertions because the inherited PostgreSQL password was rejected with SQLSTATE `28P01`; those attempts are **not passes**. The reviewer did not claim the integration assertions passed.
+- [Review B — 5387681960](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387681960): exact-head authorization-delta review; no findings. The focused SQL-NULL API-key scope regression passed **1/1** in isolated PostgreSQL 18; 17 other tests were filtered and are not counted as passes.
+- [GPT-6 Sol security review — 5387701727](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387701727): full independent review of the exact candidate and accepted-base-to-head scope; CLEAR for security.
 
-## Subsequent blocking finding on identical shared source
+## Current SQL-NULL finding and remediation
 
-After the Sol review, an independent GPT-6 Luna review of P1 source `3e02b45e7f3b46bda94c8eaad52df5b88acc9145` found a blocking API-key scope flaw in `apps/api/src/utils/require-api-key-permission-scope.ts`. That review is [PR #512 Review A](https://github.com/ThomasHeinThura/ticketing/pull/512#pullrequestreview-5387504107). The helper blob is `7e58f18797e81e88a525f4c8c0885e72eb62ee4c`, identical in this PR #513 reviewed source `35109d42b6cf3e21e5c5c37e79683766f447843a`.
+The earlier independent finding on source `35109d42b6cf3e21e5c5c37e79683766f447843a` remains historical and is preserved below. That source treated a stored SQL-NULL API-key permissions map as unrestricted. The exact-head fix in `d8557d0e149b0b901c73ebfa151a84e653bf2376` distinguishes absence of an API-key context (session) from a present key with null or undefined permissions, and denies the latter. Explicit key permissions still narrow, rather than grant, the canonical workspace capability. The added SQL-NULL regression asserts POST and PATCH denial and unchanged calendar, audit, outbox, and event state. The current ordinary B review and Sol review independently checked this remediation; A's `28P01` integration attempt is not represented as a pass.
 
-The helper treats a stored null permissions map as unrestricted. A sufficiently privileged API key can therefore reach the new calendar POST/PATCH routes without the explicit stored write subset required by AK-3/AK-9. The independent review observed the project-setting helper rejects an absent map. This is a permission-boundary blocker in this exact calendar source even though the PR #513 Sol review did not identify it; the current PR is not security-clear or merge-ready.
+## Scope checked by the Sol reviewer
 
-Required bounded remediation: fail closed for an API key whose stored permissions are null/undefined, preserve session behavior when no API key is present, and add real null-scope POST/PATCH denial/no-mutation regressions while confirming explicit read/manage and session behavior. No implementation change is included in this note update; the source finding remains open until that remediation and a fresh exact-source review are complete.
+The reviewer checked the accepted-base-to-head inventory; calendar API authentication and key parsing; workspace reach; API-key scope narrowing and canonical role checks; route policies; handlers and repository writes; audit and outbox effects; migration, schema and index; cursor/preview behavior; URL/cache recovery; and the relevant feature, API, data-model, ADR-0009, AK-3/AK-9, RBAC, workflow and CI security-scope contracts. The source delta after `35109d42b6cf3e21e5c5c37e79683766f447843a` changes the key-scope helper and SQL-NULL integration regression, plus planning/security-note records; calendar schema, migration, routes, repository, UI and domain are unchanged from that source.
 
-## Scope checked
+For a session without API-key context, the helper passes only its narrowing layer and the route still evaluates the caller's current workspace capability. For bearer and `x-api-key` requests, the authentication path preserves stored SQL NULL; the helper denies it. Missing required resource/action entries in a non-null permission map also fail. A read-only key cannot create or update; an explicit manage scope remains subject to the caller's current role. The regression requires POST/PATCH 403 and unchanged calendar, audit, outbox and emitted-event snapshots. The separate canonical workspace-capability check continues to prevent a manage-scoped key owned by a viewer from writing.
 
-The full accepted-base-to-head file inventory and service-calendar API/policy/tenant/API-key authority, cursor SQL and workspace scoping, schema/migration/index, row locking and version checks, validation, audit/outbox transaction behavior, preview calculations, UI URL/query/cache/conflict recovery, and regression tests were examined against the feature spec, data model, API concurrency contract, ADR 0009, workflow, status, decision log, and CI security-scope paths.
-
-- List seeks apply authorized workspace equality alongside forward/backward `(name,id)` boundaries. Page size is bounded at 1–200 (default 50); cursor fields, workspace, direction, and version are validated. Both directions return ascending rows and probe adjacent edges. The exact workspace total remains a scoped count; pages are not snapshots.
-- Detail, update, and preview derive workspace from the stored calendar and hide inaccessible IDs as 404. List/create validate the requested workspace. API-key permission scope narrows canonical role authority; it does not grant it. The capabilities endpoint is session-only.
-- PATCH compares optional quoted `If-Match` under a workspace-scoped row lock and increments version on success. A stale assertion returns 409 without calendar, audit, or outbox mutation.
-- Create/update audit through a savepoint inside the mutation transaction and write the durable event envelope through the outer transaction. Outbox failure rolls back mutation and successful audit. Actor and scope come from persisted rows. No direct calendar DELETE route is exposed.
-- The `0080_service_calendar` migration follows accepted `0079_task_version`; lifecycle timestamps are `timestamptz`. The composite `(workspace_id,name,id)` index matches cursor ordering.
-- The list error state keeps Retry and offers Reset when a cursor remains in the URL; Reset clears it through registered navigation. The exact-source regression verifies Retry repeats the rejected 400 request before Reset returns to the first page.
+Collection routes validate request workspace before authorization. Detail/update/preview derive workspace from the persisted calendar and mask foreign or absent rows as 404. PATCH locks the workspace-scoped row, compares `If-Match`, and writes audit/outbox only after authorization. No direct DELETE route exists. The migration's workspace foreign key and `(workspace_id,name,id)` index and the collection workspace predicate are unchanged. No alternate calendar route bypasses the corrected helper.
 
 ## Checks and evidence actually used by Sol
 
-- `CI=true pnpm --filter @taskdesk/api exec vitest run --config vitest.integration.config.ts ../../tests/api-integration/service-calendar.test.ts -t 'CAL permissions|API-key scope|EV-1'` — **1 file, 3/3 selected tests passed; 14 not selected**.
-- The same CI/Testcontainers command with `-t 'CAL-14: serializes|CAL-15: rejects'` — **1 file, 2/2 selected tests passed; 15 not selected**.
-- `pnpm --filter @taskdesk/api exec drizzle-kit check` — passed, “Everything’s fine”.
-- `git diff --check c1c820e86381b9ec199ede4f89a2bcd10147d44f..HEAD` — passed.
-- The exact-head hosted rollup observed PostgreSQL 18 integration, route policy/matrix, OpenAPI, build, unit/component, domain, G8, accessibility, and static checks green. These were observations of GitHub checks, not Sol executions.
+- `CI=true pnpm --filter @taskdesk/api exec vitest run --config vitest.integration.config.ts ../../tests/api-integration/service-calendar.test.ts -t 'AK-3/AK-9: denies|API-key scope narrows'` — **2/2 passed**, 16 filtered, one file, isolated PostgreSQL 18 Testcontainers. The tests cover actual SQL NULL, POST/PATCH 403 with unchanged calendar/audit/outbox/event state, read-only denial, explicit manage acceptance and viewer-role denial.
+- `git diff --check 47bda77d6e00521847b8202ae335301cac72709f..HEAD` — passed in the reviewer's exact-source checkout.
+- Live exact-head PR and review metadata were verified. At review time, hosted PostgreSQL 18 integration, route policy/matrix, unit, domain, OpenAPI, G8 and image-build checks showed success. These hosted checks and author-reported full calendar/unit/permission/typecheck/Biome/image evidence are external evidence, not Sol executions. Sol did not rerun broad suites or build/boot an image.
 
 ## Residual gates and scope
 
-AU-14 alerting metric and notification to every instance administrator remain incomplete. CAL-8 usage/affected-item count and safe deletion remain blocked on the approved pending-action path and missing SLA/project references; presets and import remain outside this slice. G11 is not enabled. The isolated Chrome live walkthrough remains blocked; fixture Playwright checks and API smoke are not manual browser acceptance. At review time the PR-template/security-review and GitGuardian checks were red. No gate is waived and no stage completion is claimed.
+The live PR is blocked by the PR-template/security-review and GitGuardian failures. G11 is disabled/skipped on accepted `main` and is not acceptance evidence. This note does not mark the manual browser walkthrough or H1 complete. The following remain open and are not waived: live browser use; light/dark review; 200% zoom; density preference; AU-14 alerting metric and administrator notification; PA-6 pending-action-backed deletion; project/SLA usage references, imports and presets; error-state/dependency and documentation follow-through recorded by the feature/PR; and G11. CAL-8 affected-item counts and safe deletion remain blocked by the missing project/SLA references and pending-action path. No H1, stage completion, merge readiness, gate waiver, or product-browser verification is claimed.
 
-The preceding note-only candidate and review at `5cc4268617db51dc8fb3a5ed2bfb4ba1b3081b96` are retained below as historical evidence. This note binds the current verdict to source `35109d42b6cf3e21e5c5c37e79683766f447843a`; the note-recording commit must remain note-only.
+The two current Luna reviews and the Sol review are bound to source `d8557d0e149b0b901c73ebfa151a84e653bf2376`; the follow-up commit recording this note must remain note-only. Historical review records and the missed source-351 blocker below are retained as history, not rewritten as current clearance.
+
+## Historical review record — pre-fix source `35109d42b6cf3e21e5c5c37e79683766f447843a`
+
+The three original independent GPT-6 Luna reviews were [A, 5387405038](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387405038), [B, 5387417330](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387417330), and [C, 5387425283](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387425283). Each reviewed source `35109d42b6cf3e21e5c5c37e79683766f447843a` against accepted base `c1c820e86381b9ec199ede4f89a2bcd10147d44f` and reported no finding. Review C's focused CAL-16 local attempt failed during inherited PostgreSQL setup with SQLSTATE `28P01`; it did not pass an assertion. The exact-source hosted PostgreSQL 18 check was observed separately.
+
+The historical independent GPT-6 Sol review [5387445863](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387445863) also recorded CLEAR at source `35109d42b6cf3e21e5c5c37e79683766f447843a`. That review **missed** the SQL-NULL API-key scope flaw later independently reported in [PR #512 Review A, 5387504107](https://github.com/ThomasHeinThura/ticketing/pull/512#pullrequestreview-5387504107), on source `3e02b45e7f3b46bda94c8eaad52df5b88acc9145`. The vulnerable helper blob `7e58f18797e81e88a525f4c8c0885e72eb62ee4c` was identical in #513 source `35109d42b6cf3e21e5c5c37e79683766f447843a`; stored SQL NULL was treated as unrestricted, allowing a sufficiently privileged key to reach calendar POST/PATCH without an explicit stored write subset. This was a real permission-boundary blocker despite the earlier clear verdict. The `d8557d0e` fix and exact-head reviews are documented above; this historical miss is retained and is not current clearance for source `35109d42`.
 
 ## Historical Sol report — reviewed source `5cc4268617db51dc8fb3a5ed2bfb4ba1b3081b96`
 
