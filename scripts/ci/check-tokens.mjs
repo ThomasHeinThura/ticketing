@@ -7,8 +7,8 @@
  * "Enforcement" section).
  *
  * The gate enforces theme parity, hard-coded literal rejection, and registered density-slot
- * behavior. G3's built-CSS browser runner is `check-contrast.mjs` and runs in the same
- * `check:tokens` command.
+ * behavior both in primitive definitions and direct callsite className overrides. G3's
+ * built-CSS browser runner is `check-contrast.mjs` and runs in the same `check:tokens` command.
  *
  * Static checks enforced here:
  *
@@ -75,6 +75,99 @@ const DENSITY_COMPONENTS = new Map([
   ["packages/ui/src/components/card.tsx", ["@CardPanel", "td-density-card"]],
 ]);
 
+const DENSITY_CALLSITE_COMPONENTS = new Map([
+  ["TableRow", "row"],
+  ["Input", "field"],
+  ["CardPanel", "card"],
+]);
+
+function hasFixedSpacing(classes) {
+  const spacingValue = String.raw`(?:px|\d+(?:\.\d+)?(?:\/\d+)?|\[[^\]\s]+\]|\([^()\s]+\))`;
+  const directSpacing = new RegExp(
+    `^!?(?:p|py|pt|pb|gap-y|gap)-${spacingValue}!?$`,
+  );
+  return classes.split(/\s+/).some((rawClass) => {
+    const attributeOffset = rawClass.indexOf("className");
+    const quoteOffset = rawClass.search(/["'`]/);
+    const quotePrefix = quoteOffset >= 0 ? rawClass.slice(0, quoteOffset) : "";
+    const wrappedString = attributeOffset >= 0 || /[=(]\s*$/.test(quotePrefix);
+    const className = rawClass
+      .slice(wrappedString && quoteOffset >= 0 ? quoteOffset + 1 : 0)
+      .replace(/^["'`]+|["'`,;]+$/g, "");
+    let bracketDepth = 0;
+    let utilityStart = 0;
+    for (let index = 0; index < className.length; index += 1) {
+      if (className[index] === "[") bracketDepth += 1;
+      else if (className[index] === "]")
+        bracketDepth = Math.max(0, bracketDepth - 1);
+      else if (className[index] === ":" && bracketDepth === 0) {
+        utilityStart = index + 1;
+      }
+    }
+    return directSpacing.test(className.slice(utilityStart));
+  });
+}
+
+function densityCallsiteViolations(sourceFile, relativePath) {
+  const failures = [];
+  const imports = new Map();
+  function collectImports(node) {
+    if (
+      node.kind === ts.SyntaxKind.ImportDeclaration &&
+      node.moduleSpecifier?.text === "@taskdesk/ui"
+    ) {
+      const bindings = node.importClause?.namedBindings;
+      if (bindings?.kind === ts.SyntaxKind.NamedImports) {
+        for (const element of bindings.elements) {
+          const imported = element.propertyName?.text ?? element.name.text;
+          if (DENSITY_CALLSITE_COMPONENTS.has(imported))
+            imports.set(element.name.text, imported);
+        }
+      }
+    }
+    node.forEachChild(collectImports);
+  }
+  collectImports(sourceFile);
+
+  function visit(node) {
+    if (
+      node.kind === ts.SyntaxKind.JsxOpeningElement ||
+      node.kind === ts.SyntaxKind.JsxSelfClosingElement
+    ) {
+      const tag =
+        node.tagName?.kind === ts.SyntaxKind.Identifier
+          ? imports.get(node.tagName.text)
+          : undefined;
+      if (tag) {
+        const attributes = node.attributes?.properties ?? [];
+        const unstyled = attributes.find(
+          (attribute) =>
+            attribute.kind === ts.SyntaxKind.JsxAttribute &&
+            attribute.name?.getText(sourceFile) === "unstyled",
+        );
+        const isUnstyledInput =
+          tag === "Input" &&
+          unstyled &&
+          (unstyled.initializer === undefined ||
+            unstyled.initializer.getText(sourceFile).trim() === "{true}");
+        const className = attributes.find(
+          (attribute) =>
+            attribute.kind === ts.SyntaxKind.JsxAttribute &&
+            attribute.name?.getText(sourceFile) === "className",
+        );
+        const value = className?.initializer?.getText(sourceFile) ?? "";
+        if (!isUnstyledInput && hasFixedSpacing(value))
+          failures.push(
+            `${relativePath}: <${node.tagName.text}> className overrides registered ${DENSITY_CALLSITE_COMPONENTS.get(tag)} density spacing.`,
+          );
+      }
+    }
+    node.forEachChild(visit);
+  }
+  visit(sourceFile);
+  return failures;
+}
+
 function densitySlotViolations(sourceFile, relativePath) {
   const failures = [];
   const expected = DENSITY_COMPONENTS.get(relativePath);
@@ -85,44 +178,7 @@ function densitySlotViolations(sourceFile, relativePath) {
     if (!densityClass.test(classes)) {
       failures.push(`${relativePath}: <${slot}> must use ${expected[1]}.`);
     }
-    // Tailwind v4 accepts CSS-variable shorthand (`py-(--space)`) and places
-    // the important modifier before or after the utility. Both can override a
-    // registered density slot just like numeric and arbitrary values.
-    const spacingValue = String.raw`(?:px|\d+(?:\.\d+)?(?:\/\d+)?|\[[^\]\s]+\]|\([^()\s]+\))`;
-    const spacingUtilities =
-      expected[0] === "@CardPanel"
-        ? "(?:p|py|pt|pb|gap-y|gap)"
-        : "(?:p|py|pt|pb|gap-y|gap)";
-    const directSpacing = new RegExp(
-      `^!?${spacingUtilities}-${spacingValue}!?$`,
-    );
-    const hasFixedSpacing = classes.split(/\s+/).some((rawClass) => {
-      // Source slices can begin at any part of JSX syntax: `className="..."`
-      // or `className={cn("...", ...)}`. When a token contains a quote, use
-      // the text after its last opening quote so wrapper syntax cannot hide a
-      // fixed utility that is first inside a class string.
-      const attributeOffset = rawClass.indexOf("className");
-      const quoteOffset = rawClass.search(/["'`]/);
-      const quotePrefix =
-        quoteOffset >= 0 ? rawClass.slice(0, quoteOffset) : "";
-      const wrappedString =
-        attributeOffset >= 0 || /[=(]\s*$/.test(quotePrefix);
-      const className = rawClass
-        .slice(wrappedString && quoteOffset >= 0 ? quoteOffset + 1 : 0)
-        .replace(/^["'`]+|["'`,;]+$/g, "");
-      let bracketDepth = 0;
-      let utilityStart = 0;
-      for (let index = 0; index < className.length; index += 1) {
-        if (className[index] === "[") bracketDepth += 1;
-        else if (className[index] === "]")
-          bracketDepth = Math.max(0, bracketDepth - 1);
-        else if (className[index] === ":" && bracketDepth === 0) {
-          utilityStart = index + 1;
-        }
-      }
-      return directSpacing.test(className.slice(utilityStart));
-    });
-    if (hasFixedSpacing) {
+    if (hasFixedSpacing(classes)) {
       failures.push(
         `${relativePath}: <${slot}> has fixed padding/gap; use its registered density class.`,
       );
@@ -200,6 +256,7 @@ function densityProbeFailures() {
     "negative-card-responsive.tsx",
   );
   const positiveCardPath = path.join(directory, "positive-card.tsx");
+  const callsitePath = path.join(directory, "density-callsites.tsx");
   writeFileSync(
     negativePath,
     'const item = <tr data-slot="table-row" className="td-density-row sm:py-1.5 gap-y-[7px]" />;',
@@ -264,6 +321,10 @@ function densityProbeFailures() {
     positiveCardPath,
     'function CardPanel() { return <div className="flex-1 td-density-card" />; }',
   );
+  writeFileSync(
+    callsitePath,
+    'import { CardPanel as Panel, Input } from "@taskdesk/ui"; const view = <><Panel className={cn("!p-4", extra)} /><Input className="py-px" /><Input unstyled className="p-8" /></>;',
+  );
   const parser = new API({ cwd: directory });
   try {
     const snapshot = parser.updateSnapshot({
@@ -284,6 +345,7 @@ function densityProbeFailures() {
         negativeCardCnUtilityPath,
         negativeCardResponsivePath,
         positiveCardPath,
+        callsitePath,
       ],
     });
     try {
@@ -335,6 +397,9 @@ function densityProbeFailures() {
       const positiveCard = snapshot
         .getDefaultProjectForFile(positiveCardPath)
         ?.program.getSourceFile(positiveCardPath);
+      const callsiteSource = snapshot
+        .getDefaultProjectForFile(callsitePath)
+        ?.program.getSourceFile(callsitePath);
       const issues = negative
         ? densitySlotViolations(
             negative,
@@ -431,6 +496,9 @@ function densityProbeFailures() {
             "packages/ui/src/components/card.tsx",
           )
         : ["positive CardPanel fixture did not parse"];
+      const callsiteIssues = callsiteSource
+        ? densityCallsiteViolations(callsiteSource, "density-callsites.tsx")
+        : ["density callsite fixture did not parse"];
       const failures = [];
       if (!issues.some((message) => message.includes("fixed padding/gap")))
         failures.push(
@@ -538,6 +606,10 @@ function densityProbeFailures() {
       if (safeCard.length)
         failures.push(
           "density positive probe rejected CardPanel density class",
+        );
+      if (callsiteIssues.length !== 2)
+        failures.push(
+          "density callsite probe must reject Input and aliased CardPanel overrides while allowing unstyled Input",
         );
       return failures;
     } finally {
@@ -796,9 +868,13 @@ async function main() {
   const densityPaths = [...DENSITY_COMPONENTS.keys()].map((relative) =>
     path.join(repoRoot, relative),
   );
+  const densityCallsitePaths = (await walk(path.join(repoRoot, "apps/web/src")))
+    .filter((absolute) => [".tsx", ".jsx"].includes(path.extname(absolute)))
+    .filter((absolute) => !densityPaths.includes(absolute));
+  const parsedDensityPaths = [...densityPaths, ...densityCallsitePaths];
   const parser = new API({ cwd: repoRoot });
   try {
-    const snapshot = parser.updateSnapshot({ openFiles: densityPaths });
+    const snapshot = parser.updateSnapshot({ openFiles: parsedDensityPaths });
     try {
       for (const absolute of densityPaths) {
         const relative = rel(absolute);
@@ -816,6 +892,26 @@ async function main() {
         }
         failures.push(
           ...densitySlotViolations(sourceFile, relative).map((message) =>
+            violation(relative, message),
+          ),
+        );
+      }
+      for (const absolute of densityCallsitePaths) {
+        const relative = rel(absolute);
+        const sourceFile = snapshot
+          .getDefaultProjectForFile(absolute)
+          ?.program.getSourceFile(absolute);
+        if (!sourceFile) {
+          failures.push(
+            violation(
+              relative,
+              "could not be parsed for density callsite overrides.",
+            ),
+          );
+          continue;
+        }
+        failures.push(
+          ...densityCallsiteViolations(sourceFile, relative).map((message) =>
             violation(relative, message),
           ),
         );

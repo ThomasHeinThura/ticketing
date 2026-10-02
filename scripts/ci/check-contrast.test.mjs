@@ -96,6 +96,29 @@ describe("G3 contrast inventory and math", () => {
     assert.ok(observed.has("--color-white|--color-white|bg-white|light"));
   });
 
+  it("pairs compatible conditional cn arguments and object entries", () => {
+    for (const source of [
+      'const classes = cn(a && "text-white", b && "bg-white");',
+      'const classes = cn({ "text-white": a, "bg-white": b });',
+    ]) {
+      const observed = observedPairsInSources([source], new Set(["white"]));
+      assert.ok(observed.has("--color-white|--color-white|bg-white|light"));
+    }
+  });
+
+  it("does not cross-pair mutually exclusive conditional class strings", () => {
+    const observed = observedPairsInSources(
+      [
+        'const classes = cn(variant === "light" && "text-foreground", variant === "dark" && "bg-background");',
+      ],
+      new Set(["foreground", "background"]),
+    );
+    assert.equal(
+      observed.has("--color-foreground|--color-background|bg-background|light"),
+      false,
+    );
+  });
+
   it("inventories nested arbitrary state variants as real surface classes", () => {
     const activeSurface = "[:active,[data-pressed]]:bg-secondary/80";
     const usage = `const classes = "text-secondary-foreground ${activeSurface}";`;
@@ -176,6 +199,25 @@ describe("G3 contrast inventory and math", () => {
     );
     assert.ok(
       observed.has("--color-white|--color-background|bg-background|dark"),
+    );
+  });
+
+  it("pairs hover foregrounds with the active hover surface instead of the base surface", () => {
+    const observed = observedPairsInSources(
+      [
+        'const classes = "bg-background text-foreground hover:text-white hover:bg-primary";',
+      ],
+      new Set(["background", "foreground", "white", "primary"]),
+    );
+    assert.ok(
+      observed.has("--color-foreground|--color-background|bg-background|light"),
+    );
+    assert.ok(
+      observed.has("--color-white|--color-primary|hover:bg-primary|light"),
+    );
+    assert.equal(
+      observed.has("--color-white|--color-background|bg-background|light"),
+      false,
     );
   });
 

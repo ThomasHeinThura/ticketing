@@ -61,23 +61,71 @@ function classLiteralGroups(source) {
       }
     }
     args.push(body.slice(start));
-    const unconditional = [];
-    const conditional = [];
-    for (const argument of args) {
+    const branches = [];
+    function addLiteral(text, guard, argIndex) {
+      branches.push({ text, guard: guard?.trim() || null, argIndex });
+    }
+    for (const [argIndex, argument] of args.entries()) {
       const trimmed = argument.trim();
       const quote = trimmed[0];
       if (
         (quote === '"' || quote === "'" || quote === "`") &&
         trimmed.at(-1) === quote
       ) {
-        unconditional.push(trimmed.slice(1, -1));
+        addLiteral(trimmed.slice(1, -1), null, argIndex);
       } else {
-        conditional.push(
-          [...trimmed.matchAll(literal)].map((match) => match[2]),
+        const objectEntries = [
+          ...trimmed.matchAll(/(["'`])([^"'`]+)\1\s*:\s*([^,}]+)/g),
+        ];
+        if (objectEntries.length > 0) {
+          for (const entry of objectEntries)
+            addLiteral(entry[2], entry[3], argIndex);
+          continue;
+        }
+        const ternary = trimmed.match(
+          /^(.+?)\?\s*["'`]([\s\S]*?)["'`]\s*:\s*["'`]([\s\S]*?)["'`]$/,
         );
+        if (ternary) {
+          addLiteral(ternary[2], ternary[1], argIndex);
+          addLiteral(ternary[3], `!(${ternary[1]})`, argIndex);
+          continue;
+        }
+        const and = trimmed.indexOf("&&");
+        const guard = and >= 0 ? trimmed.slice(0, and) : `__arg_${argIndex}`;
+        const values = [...trimmed.matchAll(literal)].map((match) => match[2]);
+        for (const value of values) addLiteral(value, guard, argIndex);
       }
     }
-    return { unconditional, conditional: conditional.flat() };
+    return branches;
+  }
+  function compatibleGuards(left, right) {
+    if (!left || !right) return true;
+    const normalize = (guard) => guard.replace(/[()\s]/g, "");
+    const leftNormalized = normalize(left);
+    const rightNormalized = normalize(right);
+    if (
+      leftNormalized === `!${rightNormalized}` ||
+      rightNormalized === `!${leftNormalized}`
+    )
+      return false;
+    const leftNegated = left.match(/^!\(\s*(.*?)\s*\)$/)?.[1];
+    const rightNegated = right.match(/^!\(\s*(.*?)\s*\)$/)?.[1];
+    if (
+      (leftNegated && normalize(leftNegated) === rightNormalized) ||
+      (rightNegated && normalize(rightNegated) === leftNormalized)
+    )
+      return false;
+    const equality = (guard) =>
+      guard.match(
+        /^\(?\s*([\w.$]+)\s*(===|!==|==|!=)\s*["'`]([^"'`]+)["'`]\s*\)?$/,
+      );
+    const l = equality(left);
+    const r = equality(right);
+    if (l && r && l[1] === r[1]) {
+      if (l[2].startsWith("!") !== r[2].startsWith("!")) return l[3] !== r[3];
+      if (!l[2].startsWith("!") && l[3] !== r[3]) return false;
+    }
+    return true;
   }
   const calls = /\bcn\s*\(/g;
   for (const call of source.matchAll(calls)) {
@@ -101,12 +149,11 @@ function classLiteralGroups(source) {
         depth -= 1;
         if (depth === 0) {
           const body = source.slice(open + 1, index);
-          const args = directArguments(body);
-          if (args.unconditional.length > 1)
-            groups.push(args.unconditional.join(" "));
-          if (args.unconditional.length > 0) {
-            for (const branch of args.conditional) {
-              groups.push([...args.unconditional, branch].join(" "));
+          const branches = directArguments(body);
+          for (let left = 0; left < branches.length; left += 1) {
+            for (let right = left + 1; right < branches.length; right += 1) {
+              if (compatibleGuards(branches[left].guard, branches[right].guard))
+                groups.push(`${branches[left].text} ${branches[right].text}`);
             }
           }
           break;
@@ -278,20 +325,33 @@ export function observedPairsInSources(sources, tokenNames) {
           darkScoped: parsed.variants.includes("dark"),
         }))
         .filter(({ name }) => name && backgroundTokens.has(name));
+      const groups = new Map();
+      for (const entry of backgroundEntries) {
+        const modifiers = entry.variants.filter(
+          (variant) => variant !== "dark",
+        );
+        const key = modifiers.join(":");
+        const group = groups.get(key) ?? { modifiers, entries: [] };
+        group.entries.push(entry);
+        groups.set(key, group);
+      }
       for (const foreground of textNames) {
-        const foregroundModifiers = foreground.variants
-          .filter((variant) => variant !== "dark")
-          .join(":");
-        const groups = new Map();
-        for (const entry of backgroundEntries) {
-          const modifiers = entry.variants
-            .filter((variant) => variant !== "dark")
-            .join(":");
-          const group = groups.get(modifiers) ?? [];
-          group.push(entry);
-          groups.set(modifiers, group);
-        }
+        const foregroundModifiers = foreground.variants.filter(
+          (variant) => variant !== "dark",
+        );
+        const foregroundModifierKey = foregroundModifiers.join(":");
         for (const group of groups.values()) {
+          const state = new Set([...foregroundModifiers, ...group.modifiers]);
+          const applicableBackgroundGroups = [...groups.values()].filter(
+            (candidate) =>
+              candidate.modifiers.every((modifier) => state.has(modifier)),
+          );
+          const mostSpecific = Math.max(
+            ...applicableBackgroundGroups.map(
+              (candidate) => candidate.modifiers.length,
+            ),
+          );
+          if (group.modifiers.length !== mostSpecific) continue;
           for (const theme of ["light", "dark"]) {
             const overriddenInDark =
               theme === "dark" &&
@@ -301,13 +361,14 @@ export function observedPairsInSources(sources, tokenNames) {
                   candidate.darkScoped &&
                   candidate.variants
                     .filter((variant) => variant !== "dark")
-                    .join(":") === foregroundModifiers,
+                    .join(":") === foregroundModifierKey,
               );
             if ((foreground.darkScoped && theme !== "dark") || overriddenInDark)
               continue;
             const darkOverride =
-              theme === "dark" && group.some((entry) => entry.darkScoped);
-            const activeEntries = group.filter(
+              theme === "dark" &&
+              group.entries.some((entry) => entry.darkScoped);
+            const activeEntries = group.entries.filter(
               (entry) => entry.darkScoped === darkOverride,
             );
             for (const entry of activeEntries) {

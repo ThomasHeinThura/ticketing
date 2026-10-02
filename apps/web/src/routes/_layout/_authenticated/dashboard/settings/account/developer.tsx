@@ -81,7 +81,7 @@ function RouteComponent() {
           </Card>
 
           <Card className="!rounded-none">
-            <CardPanel className="p-4">
+            <CardPanel>
               <ApiKeyTable apiKeys={apiKeys} isLoading={isLoading} />
             </CardPanel>
           </Card>
