@@ -113,7 +113,10 @@ function classStringLiterals(node) {
   function visit(current) {
     if (
       current.kind === ts.SyntaxKind.StringLiteral ||
-      current.kind === ts.SyntaxKind.NoSubstitutionTemplateLiteral
+      current.kind === ts.SyntaxKind.NoSubstitutionTemplateLiteral ||
+      current.kind === ts.SyntaxKind.TemplateHead ||
+      current.kind === ts.SyntaxKind.TemplateMiddle ||
+      current.kind === ts.SyntaxKind.TemplateTail
     ) {
       values.push(current.text);
       return;
@@ -342,10 +345,10 @@ function densityProbeFailures() {
     positiveCardPath,
     'function CardPanel() { return <div className="flex-1 td-density-card" />; }',
   );
-  writeFileSync(
-    callsitePath,
-    'import { CardPanel as Panel, Input } from "@taskdesk/ui"; const view = <><Panel className={cn("!p-4")} /><Panel className={condition && "!p-4"} /><Panel className={{ "!p-4": condition }} /><Input className="py-px" /><Input unstyled className="p-8" /></>;',
-  );
+  const callsiteSource =
+    'import { CardPanel as Panel, Input } from "@taskdesk/ui"; const view = <><Panel className={cn("!p-4")} /><Panel className={condition && "!p-4"} /><Panel className={{ "!p-4": condition }} /><Panel className={`!p-4 $' +
+    '{extra}`} /><Input className="py-px" /><Input unstyled className="p-8" /></>;';
+  writeFileSync(callsitePath, callsiteSource);
   const parser = new API({ cwd: directory });
   try {
     const snapshot = parser.updateSnapshot({
@@ -628,9 +631,9 @@ function densityProbeFailures() {
         failures.push(
           "density positive probe rejected CardPanel density class",
         );
-      if (callsiteIssues.length !== 4)
+      if (callsiteIssues.length !== 5)
         failures.push(
-          "density callsite probe must reject wrapped, conditional, object, and Input overrides while allowing unstyled Input",
+          "density callsite probe must reject wrapped, conditional, object, template, and Input overrides while allowing unstyled Input",
         );
       return failures;
     } finally {
