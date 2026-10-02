@@ -727,5 +727,31 @@
 		"backgroundClass": {
 			"dark": "[button&,a&]:hover:bg-secondary/90"
 		}
+	},
+	{
+		"fg": "--color-destructive-strong-foreground",
+		"bg": "--color-destructive-strong",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-strong-foreground",
+		"backgroundClass": {
+			"light": "[button&,a&]:hover:bg-destructive-strong/90"
+		}
+	},
+	{
+		"fg": "--color-destructive-strong-foreground",
+		"bg": "--color-destructive-strong",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-strong-foreground",
+		"backgroundClass": {
+			"dark": "[button&,a&]:hover:bg-destructive-strong/90"
+		}
 	}
 ]

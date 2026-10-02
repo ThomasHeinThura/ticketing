@@ -60,6 +60,42 @@ describe("G3 contrast inventory and math", () => {
     );
   });
 
+  it("inventories foreground and background classes split across cn arguments", () => {
+    const source = 'const classes = cn("text-white", "bg-white");';
+    const observed = observedPairsInSources([source], new Set(["white"]));
+    assert.ok(observed.has("--color-white|--color-white|bg-white|light"));
+    assert.ok(observed.has("--color-white|--color-white|bg-white|dark"));
+  });
+
+  it("does not invent color pairs across mutually exclusive cn branches", () => {
+    const observed = observedPairsInSources(
+      [
+        'const classes = cn(variant === "a" && "text-foreground bg-background", variant === "b" && "text-primary-foreground bg-primary");',
+      ],
+      new Set(["foreground", "primary-foreground", "background", "primary"]),
+    );
+    assert.ok(
+      observed.has("--color-foreground|--color-background|bg-background|light"),
+    );
+    assert.ok(
+      observed.has(
+        "--color-primary-foreground|--color-primary|bg-primary|light",
+      ),
+    );
+    assert.equal(
+      observed.has("--color-foreground|--color-primary|bg-primary|light"),
+      false,
+    );
+  });
+
+  it("pairs a conditional cn class with its unconditional class arguments", () => {
+    const observed = observedPairsInSources(
+      ['const classes = cn(condition && "text-white", "bg-white");'],
+      new Set(["white"]),
+    );
+    assert.ok(observed.has("--color-white|--color-white|bg-white|light"));
+  });
+
   it("inventories nested arbitrary state variants as real surface classes", () => {
     const activeSurface = "[:active,[data-pressed]]:bg-secondary/80";
     const usage = `const classes = "text-secondary-foreground ${activeSurface}";`;
@@ -122,6 +158,24 @@ describe("G3 contrast inventory and math", () => {
     assert.deepEqual(
       validatePairManifest(manifest, () => usage, observed),
       [],
+    );
+  });
+
+  it("does not inventory dark-only foregrounds in light theme", () => {
+    const observed = observedPairsInSources(
+      ['const classes = "text-foreground bg-background dark:text-white";'],
+      new Set(["foreground", "white", "background"]),
+    );
+    assert.equal(
+      observed.has("--color-white|--color-background|bg-background|light"),
+      false,
+    );
+    assert.equal(
+      observed.has("--color-foreground|--color-background|bg-background|dark"),
+      false,
+    );
+    assert.ok(
+      observed.has("--color-white|--color-background|bg-background|dark"),
     );
   });
 

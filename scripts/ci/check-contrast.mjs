@@ -32,10 +32,94 @@ function parseClassToken(className) {
   };
 }
 
-function sourceUsesPair(source, foregroundClass, backgroundClass, theme) {
+function classLiteralGroups(source) {
   const literal = /(["'`])([\s\S]*?)\1/g;
-  for (const match of source.matchAll(literal)) {
-    const classes = match[2].split(/\s+/).map(parseClassToken);
+  const groups = [...source.matchAll(literal)].map((match) => match[2]);
+  function directArguments(body) {
+    const args = [];
+    let start = 0;
+    let depth = 0;
+    let quote = "";
+    let escaped = false;
+    for (let index = 0; index < body.length; index += 1) {
+      const character = body[index];
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === quote) quote = "";
+        continue;
+      }
+      if (character === '"' || character === "'" || character === "`") {
+        quote = character;
+      } else if (character === "(" || character === "[" || character === "{") {
+        depth += 1;
+      } else if (character === ")" || character === "]" || character === "}") {
+        depth -= 1;
+      } else if (character === "," && depth === 0) {
+        args.push(body.slice(start, index));
+        start = index + 1;
+      }
+    }
+    args.push(body.slice(start));
+    const unconditional = [];
+    const conditional = [];
+    for (const argument of args) {
+      const trimmed = argument.trim();
+      const quote = trimmed[0];
+      if (
+        (quote === '"' || quote === "'" || quote === "`") &&
+        trimmed.at(-1) === quote
+      ) {
+        unconditional.push(trimmed.slice(1, -1));
+      } else {
+        conditional.push(
+          [...trimmed.matchAll(literal)].map((match) => match[2]),
+        );
+      }
+    }
+    return { unconditional, conditional: conditional.flat() };
+  }
+  const calls = /\bcn\s*\(/g;
+  for (const call of source.matchAll(calls)) {
+    const open = source.indexOf("(", call.index);
+    let depth = 1;
+    let quote = "";
+    let escaped = false;
+    for (let index = open + 1; index < source.length; index += 1) {
+      const character = source[index];
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === quote) quote = "";
+        continue;
+      }
+      if (character === '"' || character === "'" || character === "`") {
+        quote = character;
+      } else if (character === "(") {
+        depth += 1;
+      } else if (character === ")") {
+        depth -= 1;
+        if (depth === 0) {
+          const body = source.slice(open + 1, index);
+          const args = directArguments(body);
+          if (args.unconditional.length > 1)
+            groups.push(args.unconditional.join(" "));
+          if (args.unconditional.length > 0) {
+            for (const branch of args.conditional) {
+              groups.push([...args.unconditional, branch].join(" "));
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+  return groups;
+}
+
+function sourceUsesPair(source, foregroundClass, backgroundClass, theme) {
+  for (const classText of classLiteralGroups(source)) {
+    const classes = classText.split(/\s+/).map(parseClassToken);
     const foregroundFound = classes.some((parsed) => {
       const darkScoped = parsed.variants.includes("dark");
       return (
@@ -177,14 +261,14 @@ export function observedPairsInSources(sources, tokenNames) {
   );
   const backgroundTokens = new Set(tokenNames);
   const observed = new Set();
-  const literal = /(["'`])([\s\S]*?)\1/g;
   for (const source of sources) {
-    for (const match of source.matchAll(literal)) {
-      const classes = match[2].split(/\s+/).map(parseClassToken);
+    for (const classText of classLiteralGroups(source)) {
+      const classes = classText.split(/\s+/).map(parseClassToken);
       const textNames = classes
         .map((parsed) => ({
           ...parsed,
           name: parsed.utility.match(/^text-([a-z0-9-]+)$/)?.[1],
+          darkScoped: parsed.variants.includes("dark"),
         }))
         .filter(({ name }) => name && foregrounds.has(name));
       const backgroundEntries = classes
@@ -195,6 +279,9 @@ export function observedPairsInSources(sources, tokenNames) {
         }))
         .filter(({ name }) => name && backgroundTokens.has(name));
       for (const foreground of textNames) {
+        const foregroundModifiers = foreground.variants
+          .filter((variant) => variant !== "dark")
+          .join(":");
         const groups = new Map();
         for (const entry of backgroundEntries) {
           const modifiers = entry.variants
@@ -206,6 +293,18 @@ export function observedPairsInSources(sources, tokenNames) {
         }
         for (const group of groups.values()) {
           for (const theme of ["light", "dark"]) {
+            const overriddenInDark =
+              theme === "dark" &&
+              !foreground.darkScoped &&
+              textNames.some(
+                (candidate) =>
+                  candidate.darkScoped &&
+                  candidate.variants
+                    .filter((variant) => variant !== "dark")
+                    .join(":") === foregroundModifiers,
+              );
+            if ((foreground.darkScoped && theme !== "dark") || overriddenInDark)
+              continue;
             const darkOverride =
               theme === "dark" && group.some((entry) => entry.darkScoped);
             const activeEntries = group.filter(

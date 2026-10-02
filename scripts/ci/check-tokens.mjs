@@ -85,15 +85,17 @@ function densitySlotViolations(sourceFile, relativePath) {
     if (!densityClass.test(classes)) {
       failures.push(`${relativePath}: <${slot}> must use ${expected[1]}.`);
     }
-    // Tailwind v4 accepts CSS-variable shorthand (`py-(--space)`) and puts the
-    // important modifier after the utility (`sm:py-4!`). Both can override a
+    // Tailwind v4 accepts CSS-variable shorthand (`py-(--space)`) and places
+    // the important modifier before or after the utility. Both can override a
     // registered density slot just like numeric and arbitrary values.
     const spacingValue = String.raw`(?:px|\d+(?:\.\d+)?(?:\/\d+)?|\[[^\]\s]+\]|\([^()\s]+\))`;
     const spacingUtilities =
       expected[0] === "@CardPanel"
         ? "(?:p|py|pt|pb|gap-y|gap)"
-        : "(?:py|pt|pb|gap-y|gap)";
-    const directSpacing = new RegExp(`^${spacingUtilities}-${spacingValue}!?$`);
+        : "(?:p|py|pt|pb|gap-y|gap)";
+    const directSpacing = new RegExp(
+      `^!?${spacingUtilities}-${spacingValue}!?$`,
+    );
     const hasFixedSpacing = classes.split(/\s+/).some((rawClass) => {
       // Source slices can begin at any part of JSX syntax: `className="..."`
       // or `className={cn("...", ...)}`. When a token contains a quote, use
@@ -170,6 +172,14 @@ function densityProbeFailures() {
   );
   const negativeCnUtilityPath = path.join(directory, "negative-cn-utility.tsx");
   const negativeImportantPath = path.join(directory, "negative-important.tsx");
+  const negativeLeadingImportantPath = path.join(
+    directory,
+    "negative-leading-important.tsx",
+  );
+  const negativeRowPaddingPath = path.join(
+    directory,
+    "negative-row-padding.tsx",
+  );
   const negativeVariablePath = path.join(directory, "negative-variable.tsx");
   const negativeResponsivePath = path.join(
     directory,
@@ -209,6 +219,14 @@ function densityProbeFailures() {
   writeFileSync(
     negativeImportantPath,
     'const item = <tr data-slot="table-row" className="sm:py-4! td-density-row" />;',
+  );
+  writeFileSync(
+    negativeLeadingImportantPath,
+    'const item = <tr data-slot="table-row" className="sm:!py-4 td-density-row" />;',
+  );
+  writeFileSync(
+    negativeRowPaddingPath,
+    'const item = <tr data-slot="table-row" className="p-4! td-density-row" />;',
   );
   writeFileSync(
     negativeVariablePath,
@@ -256,6 +274,8 @@ function densityProbeFailures() {
         negativeFirstUtilityPath,
         negativeCnUtilityPath,
         negativeImportantPath,
+        negativeLeadingImportantPath,
+        negativeRowPaddingPath,
         negativeVariablePath,
         negativeResponsivePath,
         negativeCardPath,
@@ -285,6 +305,12 @@ function densityProbeFailures() {
       const negativeImportant = snapshot
         .getDefaultProjectForFile(negativeImportantPath)
         ?.program.getSourceFile(negativeImportantPath);
+      const negativeLeadingImportant = snapshot
+        .getDefaultProjectForFile(negativeLeadingImportantPath)
+        ?.program.getSourceFile(negativeLeadingImportantPath);
+      const negativeRowPadding = snapshot
+        .getDefaultProjectForFile(negativeRowPaddingPath)
+        ?.program.getSourceFile(negativeRowPaddingPath);
       const negativeVariable = snapshot
         .getDefaultProjectForFile(negativeVariablePath)
         ?.program.getSourceFile(negativeVariablePath);
@@ -348,6 +374,18 @@ function densityProbeFailures() {
       const importantIssues = negativeImportant
         ? densitySlotViolations(
             negativeImportant,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const leadingImportantIssues = negativeLeadingImportant
+        ? densitySlotViolations(
+            negativeLeadingImportant,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const rowPaddingIssues = negativeRowPadding
+        ? densitySlotViolations(
+            negativeRowPadding,
             "packages/ui/src/components/table.tsx",
           )
         : [];
@@ -423,6 +461,22 @@ function densityProbeFailures() {
       )
         failures.push(
           "density negative probe did not reject an important utility",
+        );
+      if (
+        !leadingImportantIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      )
+        failures.push(
+          "density negative probe did not reject a leading important utility",
+        );
+      if (
+        !rowPaddingIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      )
+        failures.push(
+          "density negative probe did not reject all-side row padding",
         );
       if (
         !variableIssues.some((message) => message.includes("fixed padding/gap"))
