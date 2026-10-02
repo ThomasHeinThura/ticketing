@@ -231,12 +231,19 @@ Never:
 
 ### Bulk implementation and review cadence
 
-Implement multiple related, approved slices and collect/fix known findings in coherent,
-substantial batches. Do not open standalone review passes for small or mechanical edits or
-speculative trials. Run meaningful tests during implementation so the batch is ready to review
-when its scope is complete. Then freeze the final bulk candidate SHA and run its applicable
-independent review panel, plus the required GPT-6 Sol security review where applicable,
-before the protected merge.
+Implement the full related feature set first, using approved contracts or documented
+recommendations explicitly authorized by the user, then conduct one integrated bulk review.
+For P0–P3, human spec/design/H1 review is deferred to the integrated P4 human review; do not
+make it an early implementation prerequisite. The current documented recommendations,
+including #573, are authorized for implementation. Record human review as deferred, never as
+approved. A recorded deferral does not block technical P0–P3 stage closure when all other
+applicable criteria are met. If implementation encounters behavior the written contract does
+not settle, stop that decision path and record the unresolved point rather than guessing.
+
+Do not open standalone review passes for small or mechanical edits or speculative trials. Run
+meaningful tests during implementation so the completed feature batch is ready for integrated
+review. Freeze its final candidate SHA and run the applicable independent review panel, plus
+the required GPT-6 Sol security review where applicable, before protected merge.
 
 When a review finds issues, fix the findings as a coherent batch, freeze the new candidate,
 and review that delta at the tier it requires. Do not add automatic extra rounds for comfort;
@@ -245,15 +252,14 @@ fixes may join the next batch unless the user explicitly asks for isolated deliv
 cadence never permits an unreviewed merge, self-review, a waived gate, a security-tier
 downgrade, or bypassing main's protection.
 
-For development/P0 policy-shadow verification, use the user-authorized minimum of three
-issue-free UTC calendar-date buckets when applicable; require source-bound evidence that the
-tested behavior and router coverage span all three. Existing representative evidence may count
-when it covers the same source/behavior. A note-only or mechanical change that does not affect
-tested behavior does not restart the window. Run performance, unit, integration, and browser
-checks as soon as the implementation batch is ready; do not wait for the shadow window. A
-known failure does not become a pass through elapsed time, and synthetic backfill is not
-evidence. This development rule does not alter production/go-live acceptance. See the newest
-[decision-log entry](docs/07-planning/decision-log.md).
+For development/P0 and UAT policy-shadow verification, use three issue-free UTC calendar-date
+buckets; require source-bound evidence that the tested behavior and router coverage span all
+three. Existing representative evidence may count when it covers the same source/behavior. A
+note-only or mechanical change that does not affect tested behavior does not restart the
+window. Run performance, unit, integration, and browser checks as soon as the implementation
+batch is ready; do not wait for the shadow window. A known failure does not become a pass
+through elapsed time, and synthetic backfill is not evidence. Production/go-live criteria
+apply only to actual production promotion. See the newest [decision-log entry](docs/07-planning/decision-log.md).
 
 **Tier by what the change actually risks, not by which directory it sits in.** A security path
 makes a change a candidate for heavier review; the actual semantic risk determines the depth.

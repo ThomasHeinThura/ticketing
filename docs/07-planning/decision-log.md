@@ -5,6 +5,37 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · Implement P0–P3 features before integrated P4 human review
+
+**Decision:** implement the full related P0–P3 feature set first, then conduct its integrated
+bulk review. Early Thomas spec-read, design-review, and H1–H6 approval are not prerequisites
+for P0–P3 implementation. Human review is deferred to the integrated P4 review; record it as
+deferred and never claim H1 approval before it occurs. Approved contracts and documented
+recommendations explicitly authorized by the user are implementation direction now, including
+the documented #573 recommendation. If the written contract does not settle a behavior, do
+not guess; pause only that decision path and record the unresolved point.
+
+For development and UAT P0 policy-shadow verification, use three issue-free UTC calendar-date
+buckets, superseding the earlier approximately seven-day UAT wait for this P0/UAT purpose.
+Require source-bound behavior and router coverage across all three dates; matching existing
+representative evidence may count, and note-only or mechanical changes that do not affect the
+tested behavior do not restart the window. Run performance, unit, integration, and browser
+checks as soon as the batch is ready, without waiting for the shadow window. Elapsed time does
+not clear known failures; synthetic backfill is not evidence. Prioritize necessary P0 work and
+avoid unrelated features.
+
+**Boundary:** this defers human approval; it does not fabricate it, waive automated or
+independent review, weaken exact-head/CI/security/stage-finalizer requirements, or authorize an
+unreviewed merge. P0–P3 technical stage closure may record the human design review as deferred
+to P4 when every other applicable criterion, including automated/browser checks and the
+stage-level GPT-6 Sol finalizer, is satisfied. The three-day UAT/P0 rule is not a production
+cutover requirement. Separate production/go-live criteria apply only to an actual production
+promotion; this decision does not change them.
+
+**Decided by:** Thomas, explicit user instruction, 2026-10-02. See the canonical
+[bulk-review and human-review timing rules](../../AGENTS.md#bulk-implementation-and-review-cadence),
+[SDLC](../../04-engineering/sdlc.md), and [runbook](../05-operations/runbook.md#policy-shadow-summary).
+
 ### 2026-10-02 · Development/P0 policy-shadow verification uses three issue-free UTC dates
 
 **Decision:** for development and P0 verification, use three issue-free UTC calendar-date

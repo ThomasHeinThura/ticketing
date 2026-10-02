@@ -59,12 +59,16 @@ and later never came.
   **empty** — the ~300 medium/low audit findings close here, feature by feature, and a
   feature may not enter step 3 while any remain. Reviewers check this box, not the
   author.
-- Thomas has read it. For anything non-trivial this is a real gate, not a formality — it
-  is far cheaper to correct a spec than an implementation.
+- For P0–P3, human spec/design review is deferred until the integrated P4 human review; it is
+  not an implementation prerequisite. A committed documented recommendation explicitly
+  authorized by the user is sufficient to build against, including the current #573 contract.
+  Record the human review as deferred, not approved. If the written contract leaves a
+  behavior unresolved, stop that decision path rather than guessing.
 
-> **This step is not optional and it is not "documentation".** It is the design. An
-> agent implementing from a vague spec will produce something plausible and wrong, and
-> the wrongness will only surface at step 6.
+> **This step is not optional and it is not "documentation".** It is the design. Implement
+> only behavior established by the written spec or explicitly authorized recommendation;
+> defer human review through P0–P3 and bring the completed feature set to the integrated P4
+> human review. Do not treat the deferral as approval or fill gaps by assumption.
 
 ---
 
@@ -72,7 +76,8 @@ and later never came.
 
 **Purpose** — write the code.
 
-**Entry** — an approved spec.
+**Entry** — a written contract that is approved or explicitly authorized by the user for
+implementation. Human spec/design review for P0–P3 is deferred to the integrated P4 review.
 
 **Do**
 
@@ -139,8 +144,11 @@ recorded on the pull request.
 - Read every string aloud.
 - Check empty, loading and error states are *good*, not merely present.
 
-**Exit** — every automated gate green; the human checks H1 to H6 signed off in the pull
-request.
+**Exit** — every applicable automated gate is green. For P0–P3, mark human H1–H6 review as
+deferred to the integrated P4 review; do not claim sign-off. At P4, perform the integrated
+human review and record its actual outcome. The documented deferral does not block technical
+P0–P3 stage closure when all other applicable criteria, including the stage-level GPT-6 Sol
+finalizer, are met.
 
 ---
 

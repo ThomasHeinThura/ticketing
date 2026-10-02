@@ -307,11 +307,10 @@ God Mode and should be recorded as one.
 Issue #8, Slice 2's request-path shadow middleware records every request it evaluates to
 `policy_shadow_tally` and, for a disagreement, `policy_shadow_event`
 ([data-model.md § Policy shadow evidence](../01-architecture/data-model.md#policy-shadow-evidence-issue-8-slice-2)).
-For development/P0 verification, this per-router summary reports the user-authorized three
-UTC calendar-date window — run against the deployment's own database, not exposed as an HTTP
-endpoint. It does not establish production readiness or authorize cutover; the separate
-production/go-live soak requirement remains the roughly seven-day UAT window recorded in the
-2026-09-23 runtime policy decision.
+For development/P0 and UAT verification, this per-router summary reports the user-authorized
+three UTC calendar-date window — run against the deployment's own database, not exposed as an
+HTTP endpoint. It does not establish production readiness or authorize production promotion;
+production-specific go-live criteria apply only when promoting an actual production release.
 
 **Per-router, per-date development summary for three UTC dates** (UTC today and the preceding
 two dates; agree / disagree / unevaluated counts, by router group and outcome):
@@ -341,13 +340,15 @@ representative evidence may count if it covers the same source and behavior.
 `legacy_deny_policy_allow`, `unevaluated` and `evaluator_error` row above for a router group
 must either be fixed or have its `reason_code` explained in the evidence for the window being
 assessed. Record each summary output as it stood at decision time so later writes cannot
-change the evidence underneath it (the Opus review of #323, S7). Every production cutover PR
-must still paste the complete UAT summary for its required production window. **`shadow_saturated`
-is never explainable row-by-row**: a router with any such row in the window is not clean,
-because part of its traffic was never evaluated (the Opus delta of #323, D1).
+change the evidence underneath it (the Opus review of #323, S7). Any decision citing this query
+must paste the complete output and identify its environment and window; a P0/UAT summary is
+not production evidence. **`shadow_saturated` is never explainable row-by-row**: a router with
+any such row in the window is not clean, because part of its traffic was never evaluated (the
+Opus delta of #323, D1).
 
-For a production cutover, continue to meet the separate roughly seven-day UAT requirement;
-the three-day development query is not a substitute or shortened production gate.
+The three-day window applies to P0 development and UAT verification; it is not a seven-day UAT
+cutover prerequisite. Actual production promotion remains subject to its production-specific
+go-live criteria, which this development query does not satisfy or change.
 
 An event cap can omit details after 50 matching events in a bucket. A non-agree tally bucket
 whose count exceeds its event-row count is therefore not explained row by row and cannot be

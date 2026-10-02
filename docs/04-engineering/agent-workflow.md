@@ -13,12 +13,12 @@ work without producing incompatible codebases.
 | | Thomas | Agents |
 | --- | --- | --- |
 | Decides scope and priority | ✅ | ❌ |
-| Writes and approves specs | ✅ approves | ✅ drafts |
+| Writes and approves specs | ✅ final integrated human review at P4 | ✅ drafts and implements against authorized documented contracts |
 | Writes ADRs | ✅ approves | ✅ drafts |
 | Implements | occasionally | ✅ mostly |
 | Writes tests | | ✅ |
 | Reviews | ✅ final say | ✅ first pass |
-| Approves a design (H1–H6) | ✅ only | ❌ |
+| Human design review (H1–H6) | ✅ at integrated P4 review | ❌ |
 | Waives a quality gate | ✅ only | ❌ |
 | Merges to `main` | ✅ | ✅ — the orchestrating session, once every required gate is genuinely green (Thomas, 2026-09-15). Lane/subagents: ❌, always |
 | Deploys to production | ✅ | ❌ |
@@ -69,12 +69,12 @@ B, tests for feature C. Do not parallelise across a shared file.
 
 ## Model policy
 
-Apply these model assignments to every implementation and pull request, regardless of which
+Apply these model assignments to every implementation and bulk candidate, regardless of which
 agent or tool orchestrates the work:
 
 | Work | Model | Requirements |
 | --- | --- | --- |
-| Implementation and tests against an agreed spec | **GPT-6 Luna** | Keep work scoped to the approved spec and report what was run. |
+| Implementation and tests against an approved or explicitly user-authorized documented recommendation | **GPT-6 Luna** | Keep work inside the written contract, surface unresolved behavior rather than guessing, and report what was run. |
 | Ordinary independent review | **GPT-6 Luna** | Use fresh reviewer contexts and the review count required by [AGENTS.md § Review tiers](../../AGENTS.md#review-tiers): at least two for ordinary substantive work, three for broad or high-coupling work, and the stated security-scope exceptions. Review the exact candidate SHA. |
 | Security review for a candidate touching the security-scope paths in [ci-cd.md](ci-cd.md#pull-request-pipeline) | **GPT-6 Sol** | Required independently after ordinary review clears. The reviewer must not have materially authored, directed, or remediated the candidate. Review the exact candidate SHA. |
 | Phase finalizer for P0–P7 | **GPT-6 Sol** | Required as an additional fresh independent pass before a stage is claimed complete. Cover everything merged for that stage since the prior finalizer. |
@@ -87,6 +87,13 @@ panel and any required Sol review before merge. Fix findings together and review
 delta at its required tier without automatic comfort rounds. Tiny urgent fixes may join the
 next batch unless the user explicitly requests isolated delivery. The detailed canonical rule
 is in [AGENTS.md § Bulk implementation and review cadence](../../AGENTS.md#bulk-implementation-and-review-cadence).
+
+For P0–P3, implement the full related feature set before its integrated bulk review; do not
+block implementation on Thomas's spec read or H1–H6 review. Documented recommendations
+explicitly authorized by the user, including #573, are implementation contracts. Record human
+spec/design/H1 review as deferred until the integrated P4 review; never imply it has happened.
+This deferral changes human-review timing only. Automated gates, independent Luna/Sol review,
+exact-head requirements, stage finalizers, CI, and protected merge remain in force.
 
 The ordinary reviewer count is sized by semantic risk and coupling, not merely by a path's
 location. Keep the exact-head rule: a changed candidate requires review of its current SHA.
@@ -166,7 +173,8 @@ What NOT to do. This matters more than it sounds — agents expand scope helpful
 
 ### Do
 
-1. **Read the spec before writing code.** If it has open questions, stop and ask.
+1. **Read the spec or authorized documented contract before writing code.** If behavior is
+   unresolved by that contract, stop that decision path and record the question; do not guess.
 2. **Follow the existing pattern.** Feature folders, fetchers, query hooks — the shape is
    already decided.
 3. **Write tests as you go**, citing spec rule numbers in test names.
@@ -269,7 +277,8 @@ Every frozen bulk candidate gets:
 4. **Merge**, through the normal protected pull-request flow, by the orchestrating session
    once every one of the above is genuinely green on the exact candidate SHA
    (Thomas, 2026-09-15 — delegated; supersedes "only Thomas merges"). Thomas retains sole
-   authority over design approval (H1–H6) and gate waivers — those are unchanged.
+   authority over design approval (H1–H6) and gate waivers; P0–P3 timing is deferred to the
+   integrated P4 review as stated above.
 
 `main` enforces as much of this as a machine can. The `protect-main` ruleset requires a
 pull request, blocks deletion and non-fast-forward pushes, dismisses stale approvals on

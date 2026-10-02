@@ -1,5 +1,19 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## Blocked — 2026-10-02 15:25 UTC
+
+- **Human review timing:** user direction removes early Thomas spec-read/design/H1–H6
+  prerequisites for P0–P3. Implement the full related feature set before integrated bulk
+  review; documented user-authorized recommendations, including #573, may be implemented now.
+  Human review is deferred to P4, not approved; no H1 approval is inferred. This deferral does
+  not block technical P0–P3 closure when all other applicable criteria, including the stage
+  GPT-6 Sol finalizer, pass.
+- **P0/UAT shadow:** three issue-free UTC date buckets apply, not a seven-day UAT wait.
+  Current 68-request evidence is nonrepresentative and source/OCI identity is unknown;
+  authenticated missing/foreign-Origin WebSockets returned 101 and the hosted performance
+  run failed 8/22. No clean three-day result is established. Production/go-live criteria apply
+  only at actual production promotion and remain separate.
+
 ## Blocked — 2026-10-02 15:10 UTC
 
 - **Development/P0 shadow cadence:** user direction now sets three issue-free UTC date buckets
