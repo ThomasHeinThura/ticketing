@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_WORK_ITEM_LIST_SEARCH,
+  parseServiceCalendarListSearchFromQueryString,
   parseWorkItemActivityFilter,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
@@ -133,6 +134,15 @@ describe("routes.workItemDetail", () => {
 describe("routes.serviceCalendars", () => {
   it("builds the list route named by the screen inventory", () => {
     expect(routes.serviceCalendars.build()).toBe("/agent/settings/calendars");
+  });
+
+  it("round-trips one opaque cursor through URL encoding without page history", () => {
+    const search = { cursor: "cursor/a+b?=" };
+    const url = routes.serviceCalendars.build(search);
+    expect(
+      parseServiceCalendarListSearchFromQueryString(url.split("?")[1] ?? ""),
+    ).toEqual(search);
+    expect(url).not.toContain("history=");
   });
 
   it("preserves the editor id and preview year in its URL", () => {

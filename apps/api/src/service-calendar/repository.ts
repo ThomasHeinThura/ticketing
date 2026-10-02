@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { JsonValue } from "@taskdesk/domain";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { HTTPException } from "hono/http-exception";
 import {
   type AppendAuditLogInput,
   appendAuditLog,
@@ -150,12 +151,141 @@ function auditSnapshot(calendar: {
   ) as JsonValue;
 }
 
-export const listCalendars = (workspaceId: string) =>
-  db
+type CalendarCursor = {
+  v: 1;
+  workspaceId: string;
+  name: string;
+  id: string;
+  direction: "after" | "before";
+};
+
+function encodeCalendarCursor(
+  row: { name: string; id: string },
+  workspaceId: string,
+  direction: CalendarCursor["direction"],
+) {
+  return Buffer.from(
+    JSON.stringify({
+      v: 1,
+      workspaceId,
+      name: row.name,
+      id: row.id,
+      direction,
+    }),
+    "utf8",
+  ).toString("base64url");
+}
+
+function decodeCalendarCursor(
+  cursor: string,
+  workspaceId: string,
+): CalendarCursor {
+  if (!/^[A-Za-z0-9_-]+$/.test(cursor)) {
+    throw new HTTPException(400, { message: "cursor: malformed" });
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+  } catch {
+    throw new HTTPException(400, { message: "cursor: malformed" });
+  }
+  if (
+    typeof parsed !== "object" ||
+    parsed === null ||
+    (parsed as CalendarCursor).v !== 1 ||
+    (parsed as CalendarCursor).workspaceId !== workspaceId ||
+    typeof (parsed as CalendarCursor).name !== "string" ||
+    (parsed as CalendarCursor).name.length === 0 ||
+    (parsed as CalendarCursor).name.length > 120 ||
+    (parsed as CalendarCursor).name.includes("\u0000") ||
+    typeof (parsed as CalendarCursor).id !== "string" ||
+    (parsed as CalendarCursor).id.length === 0 ||
+    (parsed as CalendarCursor).id.length > 64 ||
+    (parsed as CalendarCursor).id.includes("\u0000") ||
+    ((parsed as CalendarCursor).direction !== "after" &&
+      (parsed as CalendarCursor).direction !== "before") ||
+    Object.keys(parsed).sort().join(",") !== "direction,id,name,v,workspaceId"
+  ) {
+    throw new HTTPException(400, {
+      message: "cursor: malformed or belongs to another workspace",
+    });
+  }
+  return parsed as CalendarCursor;
+}
+
+export async function listCalendars(
+  workspaceId: string,
+  options: { cursor?: string; limit: number },
+) {
+  const cursor = options.cursor
+    ? decodeCalendarCursor(options.cursor, workspaceId)
+    : undefined;
+  const cursorPredicate = cursor
+    ? cursor.direction === "after"
+      ? sql`(${serviceCalendarTable.name}, ${serviceCalendarTable.id}) > (${cursor.name}, ${cursor.id})`
+      : sql`(${serviceCalendarTable.name}, ${serviceCalendarTable.id}) < (${cursor.name}, ${cursor.id})`
+    : undefined;
+  const rows = await db
     .select()
     .from(serviceCalendarTable)
-    .where(eq(serviceCalendarTable.workspaceId, workspaceId))
-    .orderBy(serviceCalendarTable.name);
+    .where(
+      and(eq(serviceCalendarTable.workspaceId, workspaceId), cursorPredicate),
+    )
+    .orderBy(
+      cursor?.direction === "before"
+        ? desc(serviceCalendarTable.name)
+        : asc(serviceCalendarTable.name),
+      cursor?.direction === "before"
+        ? desc(serviceCalendarTable.id)
+        : asc(serviceCalendarTable.id),
+    )
+    .limit(options.limit);
+  const data = cursor?.direction === "before" ? rows.reverse() : rows;
+  const [count] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(serviceCalendarTable)
+    .where(eq(serviceCalendarTable.workspaceId, workspaceId));
+  const first = data[0];
+  const last = data.at(-1);
+  const [hasPrevious] = first
+    ? await db
+        .select({ id: serviceCalendarTable.id })
+        .from(serviceCalendarTable)
+        .where(
+          and(
+            eq(serviceCalendarTable.workspaceId, workspaceId),
+            sql`(${serviceCalendarTable.name}, ${serviceCalendarTable.id}) < (${first.name}, ${first.id})`,
+          ),
+        )
+        .limit(1)
+    : [];
+  const [hasNext] = last
+    ? await db
+        .select({ id: serviceCalendarTable.id })
+        .from(serviceCalendarTable)
+        .where(
+          and(
+            eq(serviceCalendarTable.workspaceId, workspaceId),
+            sql`(${serviceCalendarTable.name}, ${serviceCalendarTable.id}) > (${last.name}, ${last.id})`,
+          ),
+        )
+        .limit(1)
+    : [];
+  const nextCursor =
+    hasNext && last ? encodeCalendarCursor(last, workspaceId, "after") : null;
+  return {
+    data,
+    page: {
+      previousCursor:
+        hasPrevious && first
+          ? encodeCalendarCursor(first, workspaceId, "before")
+          : null,
+      nextCursor,
+      hasMore: nextCursor !== null,
+    },
+    meta: { total: count?.total ?? 0 },
+  };
+}
 export const getCalendar = async (id: string, workspaceId: string) =>
   (
     await db

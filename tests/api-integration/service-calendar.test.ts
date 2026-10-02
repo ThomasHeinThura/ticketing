@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, notInArray, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { subscribeToEvent } from "../../apps/api/src/events";
@@ -149,7 +149,7 @@ async function createApiKeyFor(
   return { rawKey, id: apiKey.id, name };
 }
 
-describe("API integration: service calendars (CAL-1–CAL-15)", () => {
+describe("API integration: service calendars (CAL-1–CAL-16)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
     recordedEvents.length = 0;
@@ -159,6 +159,198 @@ describe("API integration: service calendars (CAL-1–CAL-15)", () => {
     await disarmAuditInsertFailure();
     await disarmOutboxInsertFailure();
     vi.restoreAllMocks();
+  });
+
+  it("CAL-16: traverses 52 forward and backward pages across duplicate names", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(owner.user);
+    const { app } = createApp();
+    await db.insert(schema.serviceCalendarTable).values(
+      Array.from({ length: 2551 }, () => ({
+        workspaceId: owner.workspace.id,
+        name: "Repeated calendar name",
+        timezone: "UTC",
+        windows: weekdayWindows,
+        holidays: [],
+      })),
+    );
+    const otherWorkspace = await createWorkspaceMember({ role: "admin" });
+    await db.insert(schema.serviceCalendarTable).values({
+      workspaceId: otherWorkspace.workspace.id,
+      name: "Not in the requested workspace",
+      timezone: "UTC",
+      windows: weekdayWindows,
+      holidays: [],
+    });
+    const all = await db
+      .select({ id: schema.serviceCalendarTable.id })
+      .from(schema.serviceCalendarTable)
+      .where(eq(schema.serviceCalendarTable.workspaceId, owner.workspace.id))
+      .orderBy(
+        asc(schema.serviceCalendarTable.name),
+        asc(schema.serviceCalendarTable.id),
+      );
+    type CalendarPage = {
+      data: Array<{ id: string }>;
+      page: {
+        previousCursor: string | null;
+        nextCursor: string | null;
+        hasMore: boolean;
+      };
+      meta: { total: number };
+    };
+    const fetchPage = async (cursor?: string): Promise<CalendarPage> => {
+      const query = new URLSearchParams({
+        workspaceId: owner.workspace.id,
+        limit: "50",
+      });
+      if (cursor) query.set("cursor", cursor);
+      const response = await app.request(`/api/service-calendars?${query}`);
+      expect(response.status).toBe(200);
+      return (await response.json()) as CalendarPage;
+    };
+
+    const forwardPages: CalendarPage[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await fetchPage(cursor);
+      forwardPages.push(page);
+      cursor = page.page.nextCursor ?? undefined;
+    } while (cursor);
+
+    expect(forwardPages).toHaveLength(52);
+    expect(forwardPages.map(({ data }) => data.length)).toEqual([
+      ...Array.from({ length: 51 }, () => 50),
+      1,
+    ]);
+    expect(forwardPages[0]?.page.previousCursor).toBeNull();
+    expect(forwardPages.at(-1)?.page.nextCursor).toBeNull();
+    expect(forwardPages.every(({ meta }) => meta.total === 2551)).toBe(true);
+    expect(
+      forwardPages.flatMap(({ data }) => data.map(({ id }) => id)),
+    ).toEqual(all.map(({ id }) => id));
+    const cursorSizes = forwardPages.flatMap(({ page }) =>
+      [page.previousCursor, page.nextCursor]
+        .filter((value): value is string => value !== null)
+        .map((value) => value.length),
+    );
+    expect(Math.max(...cursorSizes)).toBeLessThan(512);
+    expect(
+      Math.max(...cursorSizes) - Math.min(...cursorSizes),
+    ).toBeLessThanOrEqual(2);
+
+    const backwardPages = [forwardPages.at(-1) as CalendarPage];
+    cursor = backwardPages[0]?.page.previousCursor ?? undefined;
+    while (cursor) {
+      const page = await fetchPage(cursor);
+      backwardPages.push(page);
+      cursor = page.page.previousCursor ?? undefined;
+    }
+    expect(backwardPages).toHaveLength(52);
+    expect(backwardPages.at(-1)?.page.previousCursor).toBeNull();
+    const expectedBackward = Array.from({ length: 52 }, (_, pageIndex) =>
+      all
+        .slice(pageIndex * 50, Math.min((pageIndex + 1) * 50, all.length))
+        .map(({ id }) => id),
+    )
+      .reverse()
+      .flat();
+    expect(
+      backwardPages.flatMap(({ data }) => data.map(({ id }) => id)),
+    ).toEqual(expectedBackward);
+
+    const one = await app.request(
+      `/api/service-calendars?workspaceId=${owner.workspace.id}&limit=1`,
+    );
+    const oneResult = (await one.json()) as CalendarPage;
+    expect(oneResult.data).toHaveLength(1);
+    expect(oneResult.page.hasMore).toBe(true);
+    expect(oneResult.meta.total).toBe(2551);
+    const defaultLimit = await app.request(
+      `/api/service-calendars?workspaceId=${owner.workspace.id}`,
+    );
+    expect(((await defaultLimit.json()) as CalendarPage).data).toHaveLength(50);
+    const maximum = await app.request(
+      `/api/service-calendars?workspaceId=${owner.workspace.id}&limit=200`,
+    );
+    expect(((await maximum.json()) as CalendarPage).data).toHaveLength(200);
+
+    for (const cursorPayload of [
+      {
+        v: 2,
+        workspaceId: owner.workspace.id,
+        name: "Repeated calendar name",
+        id: "x",
+        direction: "after",
+      },
+      {
+        v: 1,
+        workspaceId: owner.workspace.id,
+        name: "Repeated calendar name",
+        id: "x",
+        direction: "sideways",
+      },
+      {
+        v: 1,
+        workspaceId: "other-workspace",
+        name: "Repeated calendar name",
+        id: "x",
+        direction: "after",
+      },
+    ]) {
+      const invalidCursor = Buffer.from(JSON.stringify(cursorPayload)).toString(
+        "base64url",
+      );
+      expect(
+        (
+          await app.request(
+            `/api/service-calendars?workspaceId=${owner.workspace.id}&cursor=${invalidCursor}`,
+          )
+        ).status,
+      ).toBe(400);
+    }
+    expect(
+      (
+        await app.request(
+          `/api/service-calendars?workspaceId=${owner.workspace.id}&limit=201`,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await app.request(
+          `/api/service-calendars?workspaceId=${owner.workspace.id}&cursor=${"a".repeat(2049)}`,
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await app.request(
+          `/api/service-calendars?workspaceId=${owner.workspace.id}&cursor=not-a-cursor`,
+        )
+      ).status,
+    ).toBe(400);
+
+    const nextFromFirst = forwardPages[0]?.page.nextCursor;
+    expect(nextFromFirst).toBeTruthy();
+    await db
+      .delete(schema.serviceCalendarTable)
+      .where(
+        and(
+          eq(schema.serviceCalendarTable.workspaceId, owner.workspace.id),
+          notInArray(
+            schema.serviceCalendarTable.id,
+            forwardPages[0]?.data.map(({ id }) => id) ?? [],
+          ),
+        ),
+      );
+    const staleBoundary = await fetchPage(nextFromFirst ?? undefined);
+    expect(staleBoundary.data).toHaveLength(0);
+    expect(staleBoundary.page).toEqual({
+      previousCursor: null,
+      nextCursor: null,
+      hasMore: false,
+    });
   });
 
   it("CAL-1–CAL-7: persists calendar data and previews weekly and annual cover", async () => {
@@ -227,7 +419,7 @@ describe("API integration: service calendars (CAL-1–CAL-15)", () => {
       `/api/service-calendars?workspaceId=${creator.workspace.id}`,
     );
     expect(listed.status).toBe(200);
-    expect(await listed.json()).toHaveLength(1);
+    expect((await listed.json()).data).toHaveLength(1);
     const preview = await app.request(
       `/api/service-calendars/${calendar.id}/preview?year=2026`,
     );

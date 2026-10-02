@@ -65,7 +65,11 @@ export const calendarDataSchema = z.object({
   holidays: z.array(holidaySchema),
 });
 
-export const workspaceIdQuery = z.object({ workspaceId: z.string().min(1) });
+export const workspaceIdQuery = z.object({
+  workspaceId: z.string().min(1),
+  cursor: z.string().min(1).max(2048).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
 export const calendarIdParam = z.object({ id: z.string().min(1) });
 export const previewQuery = z.object({
   year: z.coerce.number().int().min(1).max(9998),

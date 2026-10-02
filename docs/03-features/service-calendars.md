@@ -118,6 +118,15 @@ repeats every year (`CAL-12`).
   increments `version` and advances `updated_at`. The editor sends the loaded version and,
   after a `409`, keeps the draft available while offering to reload the latest calendar or
   explicitly resubmit that draft against the latest version.
+- `CAL-16` Calendar list requests use the shared cursor collection contract. The default
+  page size is 50 and `limit` accepts 1–200. Results sort by `(name ASC, id ASC)` and a
+  cursor continues within the requested workspace. Each page returns server-issued
+  `previousCursor` and `nextCursor` values for the tuple boundaries; either is null exactly
+  when that adjacent page does not exist. `hasMore` is true exactly when `nextCursor` is
+  non-null. A malformed, unsupported-version, or cross-workspace cursor returns `400`.
+  Every page reports the exact workspace total. The list screen keeps one opaque cursor in
+  its URL for Next, Previous, deep links, and browser Back. Pages are not a snapshot: rows
+  created, renamed, or deleted while paging may change subsequent pages.
 - A `service_calendar.*` event must be recorded in the durable outbox in the same
   transaction as its calendar mutation (`EV-1`). Create and update now write their
   catalogue event envelopes transactionally. They do not use the post-commit in-memory
@@ -160,7 +169,7 @@ what they meant, and calendar mistakes are silent and expensive.
 ## API
 
 ```
-GET    /api/service-calendars                 sla_policy:read
+GET    /api/service-calendars?workspaceId=…&cursor=<opaque>&limit=50  sla_policy:read
 POST   /api/service-calendars                 sla_policy:manage
 GET    /api/service-calendars/{id}            sla_policy:read
 PATCH  /api/service-calendars/{id}            sla_policy:manage
@@ -169,6 +178,15 @@ POST   /api/service-calendars/{id}/holidays/preset?country={cc}&year={yyyy} sla_
 GET    /api/service-calendars/{id}/preview?year=2026 sla_policy:read
 GET    /api/service-calendars/{id}/usage             sla_policy:read
 ```
+
+The list response follows the generic collection envelope with calendar navigation edges:
+`{data: ServiceCalendar[], page: {previousCursor: string | null, nextCursor: string | null, hasMore: boolean}, meta: {total: number}}`.
+Each cursor is opaque, workspace-bound, direction-bound, and encodes a `(name, id)` tuple.
+Forward and backward requests both return rows in ascending `(name, id)` order. If a stale
+cursor produces an empty page, both cursors are null and the UI offers a return to the first
+page.
+This operation is new relative to accepted main; there is no previously published GET
+response shape to replace in the main-to-PR OpenAPI comparison.
 
 ### Backend slice status (2026-10-01)
 

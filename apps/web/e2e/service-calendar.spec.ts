@@ -81,6 +81,8 @@ type CalendarPageFixture = {
   set listIsEmpty(value: boolean);
   get listRequestFailure(): boolean;
   set listRequestFailure(value: boolean);
+  get paginationEnabled(): boolean;
+  set paginationEnabled(value: boolean);
   get editorRequestFailure(): boolean;
   set editorRequestFailure(value: boolean);
   get previewRequestFailure(): boolean;
@@ -103,6 +105,7 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
   let savedCalendar = { ...calendar };
   let listIsEmpty = false;
   let listRequestFailure = false;
+  let paginationEnabled = false;
   let editorRequestFailure = false;
   let previewRequestFailure = false;
   let holdListResponse = false;
@@ -238,10 +241,53 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
         });
         return;
       }
+      const requestedCursor = url.searchParams.get("cursor");
+      const firstPage =
+        !requestedCursor || requestedCursor === "previous-page-cursor";
+      const secondPage =
+        requestedCursor === "next-page-cursor" ||
+        requestedCursor === "previous-to-second";
+      const thirdPage = requestedCursor === "third-page-cursor";
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(listIsEmpty ? [] : [savedCalendar]),
+        body: JSON.stringify({
+          data: listIsEmpty
+            ? []
+            : paginationEnabled && secondPage
+              ? [
+                  {
+                    ...savedCalendar,
+                    id: "calendar-e2e-2",
+                    name: "Second page calendar",
+                  },
+                ]
+              : paginationEnabled && thirdPage
+                ? [
+                    {
+                      ...savedCalendar,
+                      id: "calendar-e2e-3",
+                      name: "Third page calendar",
+                    },
+                  ]
+                : [savedCalendar],
+          page: {
+            previousCursor:
+              listIsEmpty || !paginationEnabled || firstPage
+                ? null
+                : secondPage
+                  ? "previous-page-cursor"
+                  : "previous-to-second",
+            nextCursor:
+              listIsEmpty || !paginationEnabled || thirdPage
+                ? null
+                : firstPage
+                  ? "next-page-cursor"
+                  : "third-page-cursor",
+            hasMore: paginationEnabled && !listIsEmpty && !thirdPage,
+          },
+          meta: { total: paginationEnabled ? 3 : listIsEmpty ? 0 : 1 },
+        }),
       });
       return;
     }
@@ -336,6 +382,12 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
     set listRequestFailure(value) {
       listRequestFailure = value;
     },
+    get paginationEnabled() {
+      return paginationEnabled;
+    },
+    set paginationEnabled(value) {
+      paginationEnabled = value;
+    },
     get editorRequestFailure() {
       return editorRequestFailure;
     },
@@ -378,6 +430,42 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
     },
   };
 }
+
+test("calendar list server cursors support Previous, deep links, and browser Back", async ({
+  page,
+}) => {
+  // Fixture cursors exercise UI navigation; PostgreSQL integration covers cursor issuance and seeking.
+  const fixture = await setupCalendarPage(page);
+  fixture.paginationEnabled = true;
+  await page.goto("/agent/settings/calendars");
+  await expect(
+    page.getByRole("link", { name: "Support coverage" }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Previous" })).toBeDisabled();
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page).toHaveURL(/cursor=next-page-cursor/);
+  await expect(page).not.toHaveURL(/history=/);
+  await expect(
+    page.getByRole("link", { name: "Second page calendar" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Previous" }).click();
+  await expect(page).toHaveURL(/cursor=previous-page-cursor/);
+  await expect(
+    page.getByRole("link", { name: "Support coverage" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Next" }).click();
+  await page.goBack();
+  await expect(page).toHaveURL(/cursor=previous-page-cursor/);
+  await page.goto("/agent/settings/calendars?cursor=third-page-cursor");
+  await expect(
+    page.getByRole("link", { name: "Third page calendar" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Previous" }).click();
+  await expect(page).toHaveURL(/cursor=previous-to-second/);
+  await expect(
+    page.getByRole("link", { name: "Second page calendar" }),
+  ).toBeVisible();
+});
 
 test("calendar list and editor preserve URL state and confirm manual changes", async ({
   page,
@@ -567,6 +655,10 @@ test("calendar list and editor expose loading, empty, error, and partial states"
   fixture.listIsEmpty = true;
   await page.reload();
   await expect(page.getByText("No service calendars yet")).toBeVisible();
+  await page.goto("/agent/settings/calendars?cursor=stale-boundary");
+  await expect(page.getByRole("button", { name: "Reset" })).toBeVisible();
+  await page.getByRole("button", { name: "Reset" }).click();
+  await expect(page).not.toHaveURL(/cursor=/);
 
   fixture.listIsEmpty = false;
   fixture.listRequestFailure = true;
@@ -586,7 +678,9 @@ test("calendar list and editor expose loading, empty, error, and partial states"
 
   fixture.editorRequestFailure = false;
   fixture.previewRequestFailure = true;
-  await page.goto(`/agent/settings/calendars/${calendarId}`);
+  // Use a distinct year so the earlier successful preview cannot be reused from
+  // TanStack Query's cache before the failure fixture receives a request.
+  await page.goto(`/agent/settings/calendars/${calendarId}?year=2027`);
   await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
     "Support coverage",
   );

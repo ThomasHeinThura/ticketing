@@ -719,6 +719,7 @@ create index on work_item (assignee_id) where archived_at is null and deleted_at
 create index on work_item (due_date) where resolved_at is null;
 create unique index on work_item (project_id, number);
 create unique index on project (key);
+create index service_calendar_workspace_name_id_idx on service_calendar (workspace_id, name, id); -- CAL-16 bidirectional keyset pages
 create index on work_item using gin (title gin_trgm_ops);           -- typo tolerance, duplicate suggestions
 create index on activity (work_item_id, created_at desc, seq desc);  -- seq: same-instant tiebreak
 create index on activity (workspace_id);                             -- reach filtering, #192's shape

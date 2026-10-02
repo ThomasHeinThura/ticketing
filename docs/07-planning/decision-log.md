@@ -5,6 +5,51 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · CAL-16 uses server-issued bidirectional tuple cursors (#513 review remediation)
+
+**Decision:** CAL-16's paginated `GET /api/service-calendars` includes
+`page.previousCursor` and `page.nextCursor`. The server binds each opaque cursor to its
+workspace, `(name, id)` boundary and seek direction. Both seek directions return rows in
+ascending `(name, id)` order; `hasMore` is equivalent to a non-null `nextCursor`. The web
+URL holds one cursor, with no accumulated client history or page-depth limit. The list uses
+the named non-unique B-tree index
+`service_calendar_workspace_name_id_idx` on `(workspace_id, name, id)`.
+
+**Why:** client-maintained cursor history required an unbounded URL value and dropped
+Previous navigation after arbitrary client-side thresholds. A direction-bound cursor
+supports forward and backward keyset seeks at constant URL size. The composite index
+supports both seek directions while retaining workspace-prefix scans. The exact `meta.total`
+remains a separate workspace-scoped count and is not claimed to be constant-time. Pages are
+not a snapshot while rows are created, renamed, or deleted concurrently.
+
+This supersedes the earlier 2026-10-02 CAL-16 visited-page-history wording. It is a bounded
+technical refinement, not H1 approval, a product waiver, or a claim that the API is accepted
+on main.
+
+**Authorization:** Thomas's standing recommended-routine-decision authorization covers this
+bounded CAL-16 implementation.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
+### 2026-10-02 · Service-calendar list uses the shared cursor collection contract (#513)
+
+**Decision:** introduce `GET /api/service-calendars` with the shared `{data, page, meta}`
+cursor envelope. Pages default to 50 and
+accept limits 1–200; ordering is `(name ASC, id ASC)` and the workspace-bound cursor
+continues after that tuple. The calendar list keeps cursor navigation and visited-page
+history in its URL.
+
+**Why:** the endpoint otherwise reads an unbounded workspace collection. The existing API
+design already standardizes cursor pagination, and stable ordering by both name and id
+prevents duplicate names from being skipped between pages. Accepted main has no calendar
+GET operation, so this introduces the route with its paginated response and does not break
+an accepted-main contract. This is not H1 approval or a quality-gate waiver.
+
+**Authorization:** Thomas's standing recommended-routine-decision authorization covers
+this application of the established cursor contract.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
+
 ### 2026-10-02 · P0 production advisory floors for ip-address and fast-uri (#557)
 
 **Decision:** raise only the existing pnpm override floors for `ip-address` to `^10.7.1`

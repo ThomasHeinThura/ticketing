@@ -57,6 +57,30 @@ export type WorkItemListSearch = {
   dir: WorkItemSortDirection;
 };
 
+export type ServiceCalendarListSearch = { cursor?: string };
+
+export function parseServiceCalendarListSearch(
+  raw: unknown,
+): ServiceCalendarListSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  const cursor =
+    typeof candidate.cursor === "string" &&
+    candidate.cursor.length > 0 &&
+    candidate.cursor.length <= 2048
+      ? candidate.cursor
+      : undefined;
+  return { cursor };
+}
+
+export function parseServiceCalendarListSearchFromQueryString(
+  queryString: string,
+) {
+  const params = new URLSearchParams(queryString);
+  return parseServiceCalendarListSearch({
+    cursor: params.get("cursor"),
+  });
+}
+
 export const DEFAULT_WORK_ITEM_LIST_SEARCH: WorkItemListSearch = {
   layout: "list",
   sort: "key",
@@ -117,7 +141,15 @@ export const routes = {
   /** `docs/02-design/screen-inventory.md` "Workspace — service calendars". */
   serviceCalendars: {
     path: "/agent/settings/calendars" as const,
-    build: () => "/agent/settings/calendars",
+    build: (search: ServiceCalendarListSearch = {}) => {
+      const resolved = parseServiceCalendarListSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
+      const suffix = query.toString();
+      return suffix
+        ? `/agent/settings/calendars?${suffix}`
+        : "/agent/settings/calendars";
+    },
   },
   /** `docs/02-design/screen-inventory.md` "Service calendar editor". */
   serviceCalendarEditor: {
