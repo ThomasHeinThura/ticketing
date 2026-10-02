@@ -38,6 +38,12 @@ The live PR is blocked by the PR-template/security-review and GitGuardian failur
 
 The two current Luna reviews and the Sol review are bound to source `d8557d0e149b0b901c73ebfa151a84e653bf2376`; the follow-up commit recording this note must remain note-only. Historical review records and the missed source-351 blocker below are retained as history, not rewritten as current clearance.
 
+## Historical review record — pre-fix source `35109d42b6cf3e21e5c5c37e79683766f447843a`
+
+The three original independent GPT-6 Luna reviews were [A, 5387405038](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387405038), [B, 5387417330](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387417330), and [C, 5387425283](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387425283). Each reviewed source `35109d42b6cf3e21e5c5c37e79683766f447843a` against accepted base `c1c820e86381b9ec199ede4f89a2bcd10147d44f` and reported no finding. Review C's focused CAL-16 local attempt failed during inherited PostgreSQL setup with SQLSTATE `28P01`; it did not pass an assertion. The exact-source hosted PostgreSQL 18 check was observed separately.
+
+The historical independent GPT-6 Sol review [5387445863](https://github.com/ThomasHeinThura/ticketing/pull/513#pullrequestreview-5387445863) also recorded CLEAR at source `35109d42b6cf3e21e5c5c37e79683766f447843a`. That review **missed** the SQL-NULL API-key scope flaw later independently reported in [PR #512 Review A, 5387504107](https://github.com/ThomasHeinThura/ticketing/pull/512#pullrequestreview-5387504107), on source `3e02b45e7f3b46bda94c8eaad52df5b88acc9145`. The vulnerable helper blob `7e58f18797e81e88a525f4c8c0885e72eb62ee4c` was identical in #513 source `35109d42b6cf3e21e5c5c37e79683766f447843a`; stored SQL NULL was treated as unrestricted, allowing a sufficiently privileged key to reach calendar POST/PATCH without an explicit stored write subset. This was a real permission-boundary blocker despite the earlier clear verdict. The `d8557d0e` fix and exact-head reviews are documented above; this historical miss is retained and is not current clearance for source `35109d42`.
+
 ## Historical Sol report — reviewed source `5cc4268617db51dc8fb3a5ed2bfb4ba1b3081b96`
 
 - **Reviewer/model:** GPT-6 Sol, fresh independent context `/root/deps_519_sol_exact`. I did not author, direct, remediate, or merge this service-calendar candidate.
