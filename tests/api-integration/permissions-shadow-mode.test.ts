@@ -151,6 +151,116 @@ afterEach(async () => {
 
 const UPDATE_LABEL_ROUTE_KEY = "PUT /api/label/{id}";
 const LIST_PROJECTS_ROUTE_KEY = "GET /api/project";
+const LIST_NOTIFICATIONS_ROUTE_KEY = "GET /api/notification";
+const GET_NOTIFICATION_PREFERENCES_ROUTE_KEY =
+  "GET /api/notification-preferences";
+const DELETE_NOTIFICATION_WORKSPACE_RULE_ROUTE_KEY =
+  "DELETE /api/notification-preferences/workspaces/{workspaceId}";
+
+describe("successful authentication is recorded as the legacy self-policy decision", () => {
+  it("compares notification and preference reads as authenticated self routes", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+
+    const notifications = await fresh.app.request("/api/notification");
+    const preferences = await fresh.app.request(
+      "/api/notification-preferences",
+    );
+    expect(notifications.status).toBe(200);
+    expect(preferences.status).toBe(200);
+
+    const notificationRows = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(LIST_NOTIFICATIONS_ROUTE_KEY);
+      return rows.length ? rows : undefined;
+    });
+    const preferenceRows = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(
+        GET_NOTIFICATION_PREFERENCES_ROUTE_KEY,
+      );
+      return rows.length ? rows : undefined;
+    });
+
+    expect(notificationRows).toContainEqual(
+      expect.objectContaining({ outcome: "agree", reasonCode: null }),
+    );
+    expect(preferenceRows).toContainEqual(
+      expect.objectContaining({ outcome: "agree", reasonCode: null }),
+    );
+  });
+
+  it("does not shadow an authentication denial as an allowed request", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const response = await fresh.app.request("/api/notification");
+
+    expect(response.status).toBe(401);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(await shadowTalliesFor(LIST_NOTIFICATIONS_ROUTE_KEY)).toEqual([]);
+  });
+
+  it("keeps an authenticated comparison when a handler fails", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+    vi.spyOn(
+      fresh.db.query.userNotificationPreferenceTable,
+      "findFirst",
+    ).mockRejectedValueOnce(new Error("injected preference read failure"));
+
+    const response = await fresh.app.request("/api/notification-preferences");
+    expect(response.status).toBe(500);
+
+    const rows = await waitForShadowEvidence(async () => {
+      const tallies = await shadowTalliesFor(
+        GET_NOTIFICATION_PREFERENCES_ROUTE_KEY,
+      );
+      return tallies.length ? tallies : undefined;
+    });
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        outcome: "unevaluated",
+        reasonCode: "legacy_outcome_unknown",
+      }),
+    );
+  });
+
+  it("leaves an unrelated inline workspace denial unknown", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const other = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const response = await fresh.app.request(
+      `/api/notification-preferences/workspaces/${other.workspace.id}`,
+      { method: "DELETE" },
+    );
+    expect(response.status).toBe(403);
+
+    const rows = await waitForShadowEvidence(async () => {
+      const tallies = await shadowTalliesFor(
+        DELETE_NOTIFICATION_WORKSPACE_RULE_ROUTE_KEY,
+      );
+      return tallies.length ? tallies : undefined;
+    });
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        outcome: "unevaluated",
+        reasonCode: "legacy_outcome_unknown",
+      }),
+    );
+  });
+});
 
 async function createLabelFixture(
   fresh: FreshApp,
