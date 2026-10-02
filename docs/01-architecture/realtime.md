@@ -5,7 +5,8 @@ That is the whole requirement, and it should not cost a message broker.
 
 ## Transport
 
-WebSocket at `/ws`, via `@hono/node-ws`, on the same origin as the API so the session
+WebSocket at `/ws`, via `@hono/node-server`'s built-in upgrade helper and the `ws` server,
+on the same origin as the API so the session
 cookie authenticates the upgrade. **Cookie-authenticated upgrades are not protected by the
 same-origin policy**, so the handler also requires the `Origin` header to equal the
 configured origin for the request host and the session's `portal` to match it — otherwise

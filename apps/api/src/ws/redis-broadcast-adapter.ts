@@ -1,6 +1,12 @@
 import type Redis from "ioredis";
 import * as v from "valibot";
-import { closeRedis, getRedisPub, getRedisSub } from "../redis";
+import {
+  closeRedis,
+  forceCloseRedis,
+  getRedisPub,
+  getRedisSub,
+  type RedisClient,
+} from "../redis";
 import type {
   BroadcastAdapter,
   BroadcastMessage,
@@ -35,6 +41,11 @@ const userBroadcastSchema = v.object({
 export class RedisBroadcastAdapter implements BroadcastAdapter {
   private subscribed = false;
   private userSubscribed = false;
+  private subscriber: RedisClient | null = null;
+  private closing = false;
+  private forced = false;
+
+  constructor(private readonly clientFactory?: () => RedisClient) {}
   private _pmessageHandler:
     | ((pattern: string, channel: string, data: string) => void)
     | null = null;
@@ -43,22 +54,26 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     | null = null;
 
   async publish(msg: BroadcastMessage): Promise<void> {
-    await getRedisPub().publish(
+    if (this.forced) return;
+    await getRedisPub(this.clientFactory).publish(
       this.channelForProject(msg.projectId),
       JSON.stringify(msg),
     );
   }
 
   async publishToUser(msg: UserBroadcast): Promise<void> {
-    await getRedisPub().publish(
+    if (this.forced) return;
+    await getRedisPub(this.clientFactory).publish(
       this.channelForUser(msg.userId),
       JSON.stringify(msg),
     );
   }
 
   async subscribe(handler: (msg: BroadcastMessage) => void): Promise<void> {
-    if (this.subscribed) return;
+    if (this.subscribed || this.closing) return;
     this.subscribed = true;
+    const sub = getRedisSub(this.clientFactory);
+    this.subscriber = sub;
 
     // Pattern-subscribe to ALL project channels at once
     // "pmessage" fires for pattern subscriptions (not "message")
@@ -67,7 +82,7 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
       _channel: string,
       data: string,
     ) => {
-      if (pattern !== CHANNEL_PATTERN) return;
+      if (this.closing || pattern !== CHANNEL_PATTERN) return;
       try {
         const parsed = v.safeParse(broadcastMessageSchema, JSON.parse(data));
         if (!parsed.success) {
@@ -79,20 +94,22 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
         console.error("Failed to parse broadcast message:", err);
       }
     };
-    (getRedisSub() as Redis).on("pmessage", this._pmessageHandler);
-    await getRedisSub().psubscribe(CHANNEL_PATTERN);
+    (sub as Redis).on("pmessage", this._pmessageHandler);
+    await sub.psubscribe(CHANNEL_PATTERN);
   }
 
   async subscribeToUser(handler: (msg: UserBroadcast) => void): Promise<void> {
-    if (this.userSubscribed) return;
+    if (this.userSubscribed || this.closing) return;
     this.userSubscribed = true;
+    const sub = getRedisSub(this.clientFactory);
+    this.subscriber = sub;
 
     this._userPmessageHandler = (
       pattern: string,
       channel: string,
       data: string,
     ) => {
-      if (pattern !== USER_CHANNEL_PATTERN) return;
+      if (this.closing || pattern !== USER_CHANNEL_PATTERN) return;
       try {
         const parsed = v.safeParse(userBroadcastSchema, JSON.parse(data));
         if (!parsed.success) {
@@ -108,28 +125,68 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
         console.error("Failed to parse user broadcast message:", err);
       }
     };
-    (getRedisSub() as Redis).on("pmessage", this._userPmessageHandler);
-    await getRedisSub().psubscribe(USER_CHANNEL_PATTERN);
+    (sub as Redis).on("pmessage", this._userPmessageHandler);
+    await sub.psubscribe(USER_CHANNEL_PATTERN);
   }
 
   async shutdown(): Promise<void> {
-    const sub = getRedisSub() as Redis;
+    this.beginShutdown();
+    if (this.forced) return;
 
+    const sub = this.subscriber as Redis | null;
+    const failures: unknown[] = [];
+
+    if (sub && !this.forced) {
+      try {
+        await sub.punsubscribe(CHANNEL_PATTERN);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (sub && !this.forced) {
+      try {
+        await sub.punsubscribe(USER_CHANNEL_PATTERN);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (!this.forced) {
+      try {
+        await closeRedis();
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+
+    this.subscriber = null;
+    this.subscribed = false;
+    this.userSubscribed = false;
+
+    if (failures.length > 0) {
+      throw new AggregateError(failures, "WebSocket Redis shutdown failed");
+    }
+  }
+
+  beginShutdown(): void {
+    if (this.closing) return;
+    this.closing = true;
+    const sub = this.subscriber as Redis | null;
     if (this._pmessageHandler) {
-      sub.off("pmessage", this._pmessageHandler);
+      sub?.off("pmessage", this._pmessageHandler);
       this._pmessageHandler = null;
     }
     if (this._userPmessageHandler) {
-      sub.off("pmessage", this._userPmessageHandler);
+      sub?.off("pmessage", this._userPmessageHandler);
       this._userPmessageHandler = null;
     }
+  }
 
-    // Unsubscribe from the pattern, which covers all project channels
-    await getRedisSub().punsubscribe(CHANNEL_PATTERN);
-    await getRedisSub().punsubscribe(USER_CHANNEL_PATTERN);
-    this.subscribed = false;
-    this.userSubscribed = false;
-    await closeRedis();
+  forceShutdown(): void {
+    if (this.forced) return;
+    this.forced = true;
+    this.beginShutdown();
+    this.subscriber = null;
+    forceCloseRedis();
   }
 
   private channelForProject(projectId: string): string {

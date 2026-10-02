@@ -163,8 +163,9 @@ God Mode → Organisations → Contoso → Identity → [ Add connection ]   (cu
     Scopes                openid profile email
     Claim mapping         identifier: oid + tid (fixed) · email: email → preferred_username
                           → upn · name → name · groups → groups          (IP-27)
-    Auto-provision (JIT)  [x] create a person on first login
-      → role              Viewer ▾   (≤ this connection's max role rank; customer
+    Auto-provision (JIT)  [x] create a person on first login (Entra admission role required)
+      → admission role     [configured Entra app-role value; not a TaskDesk role]
+      → default role       Viewer ▾   (≤ this connection's max role rank; customer
                                       connections have exactly one choice: Customer)
     Max role rank         50 (Lead) ▾                     ← agent connections only
     Group → role mapping  1f9a…-c3d2 "TaskDesk-Leads" → Lead   [+ add rule]
@@ -181,8 +182,10 @@ God Mode → Organisations → Contoso → Identity → [ Add connection ]   (cu
 
 Two things the form deliberately **cannot** express, because `IP-4` forbids them: **side**
 is never chosen — it follows the connection's portal (`agent` ⇒ staff, `customer` ⇒
-customer); **organisation** is never derived from a claim or an email domain — a customer
-connection is bound to one organisation at creation, an agent connection to the instance.
+customer); after authenticated admission, **organisation scope** comes only from the selected
+connection's persisted `organisation_id` — never directly from a claim or typed email domain.
+A customer connection is bound to one organisation at creation; an agent connection is
+instance-scoped.
 The same form serves both places it appears: God Mode → Authentication → *Add connection*
 (agent) and God Mode → Organisations → *org* → Identity → *Add connection* (customer, with
 the organisation pre-filled and locked).
@@ -200,15 +203,20 @@ auth reconfiguration suite asserts each of them against a mock IdP:
 
 - **PKCE with `S256`** on every authorization-code flow, including confidential clients.
 - A **`state`** value that is single-use, CSPRNG-generated, bound to the initiating
-  session *and* to the portal it was started from, and expired after ten minutes.
+  session and portal, and expired after ten minutes. Its server-side context for customer
+  home-realm routing records the selected identity-connection id and its persisted
+  `organisation_id`; the callback consumes this context and cannot reselect these values
+  (`IP-7`, `IP-9`).
 - A **`nonce`** in the request, validated in the ID token; the ID token's `iss`, `aud`,
   `exp` and signature (via the discovered JWKS, cached, with key rotation honoured) are
   validated before any claim is read.
 - Redirect URIs are exact-match, per portal, and never taken from the request.
 - The issuer is the connection's **resolved, tenant-specific** issuer, and — for Entra —
   the token's `tid` must equal the connection's tenant as well as its `iss` (`IP-26`).
-- The domain mapping and the account-linking rules below apply **after** the token is
-  validated, never to raw claims.
+- Customer login initiation may use the visitor's typed email domain for connection
+  routing. Callback-claim collision checks and account-linking rules apply only after the
+  token is validated; the callback cannot change the connection or scope bound in state
+  (`IP-9`).
 
 ### What Microsoft Entra actually sends — the claim rules
 
@@ -221,17 +229,26 @@ they exist.
 - **The issuer must be a specific tenant** — `IP-26`. `/common` and `/organizations` are
   refused at save; the connection stores the resolved tenant-specific issuer; every ID token
   must match both `iss` and `tid`. `05-no-user-controlled-tenant-selection.test.ts`.
-- **The identifier is `oid` + `tid`, and there may be no `email` claim** — `IP-27`. Address
-  precedence `email` → `preferred_username` → `upn`; no `email_verified` claim exists at
-  all; JIT fails closed rather than inventing an address.
+- **Entra subject admission is separate from JIT creation and profile metadata** — `IP-27`.
+  Every Entra connection requires an exact configured app role and signed `acct=0` after
+  exact token validation, for every login including existing invite/SCIM identities when
+  JIT is disabled. JIT controls only creation/default-grant behavior. A valid negative
+  admission retires only that identity's OIDC/JIT grants and denies a new session; an
+  invalid/unverified token or invalid server configuration mutates no grants. The durable
+  identifier is `oid` + `tid`; `email` → `preferred_username` →
+  `upn` supplies contact/display metadata only. An absent usable address may fail a profile
+  data requirement, never the admission decision by proving or disproving domain ownership.
 - **The `groups` claim carries object ids, and can go missing** — `IP-28`. Mapping is keyed
-  on the group object id with a name snapshot; on overage the claim is ignored, the JIT
-  default role is provisioned, and a `provisioning_event` and Health warning are raised. No
-  Graph call in the first release.
+  on the group object id with a name snapshot. On a valid login with absent, malformed, or
+  overage groups, retire only this external identity's prior OIDC group grants; keep only a
+  currently permitted JIT-default grant and independent direct, SCIM, or other-connection
+  grants. Emit the existing `provisioning_event` and Health warning for overage. Do not
+  query Graph in the first release. Invalid or unverified tokens do not mutate grants.
 
-A domain binding **refuses** a token whose email domain belongs to another connection. It
-never *selects* the organisation — that is `identity_connection.organisation_id`, resolved
-from the connection ([multi-tenancy.md](multi-tenancy.md)).
+Home-realm routing, connection-bound callback scope and deny-only post-validation domain
+collision checks follow the single boundary in `IP-9`; `identity_connection.organisation_id`
+is persisted on the selected connection and is the only customer-organisation scope source
+([multi-tenancy.md](multi-tenancy.md)).
 
 ### Per-portal binding
 
@@ -250,11 +267,20 @@ plugins may be `both` ([ADR 0003](adr/0003-better-auth-primary.md),
 
 **The agent login screen renders the providers scoped to `agent`** — there are few of them,
 they belong to the instance, and naming them discloses nothing. **The portal login screen
-renders no connection list at all.** Customer connections are per-organisation, so a list
-would name every customer organisation to every anonymous visitor. The portal asks for an
-email address and resolves the connection server-side from `domain_bindings`
-([customer-portal.md](../03-features/customer-portal.md) `CP-18`,
-[identity-provisioning.md](../03-features/identity-provisioning.md) `IP-29`).
+renders no connection list at all.** Customer connections are per-organisation; the portal
+may use the typed email domain to route login initiation to a configured connection, with an
+unbound domain falling through to non-SSO methods. The limited, domain-specific disclosure
+in the complete unauthenticated flow is defined in `IP-29`; no organisation/connection list
+is published. The authoritative routing/admission and state-scope boundary is `IP-9`/`IP-29`
+and `CP-18`.
+
+New-person JIT admission follows the single authoritative rule in `IP-9` and `IP-27`
+after OIDC validation; no provider-specific exception is inferred here. For customer sign-in,
+state-bound connection and scope follow `IP-7`/`IP-9`. Callback email-like claims are
+metadata only; any cross-connection domain collision can deny after validation, never admit
+or switch scope. Upstream app-role deassignment alone does not promise immediate revocation
+of an existing TaskDesk session. The first-release rule does not define a guest-login or
+alternate account-linking path.
 
 ## Identity architecture — the authoritative model
 
@@ -386,8 +412,10 @@ Everything about *what a person is allowed to do* comes from the database, keyed
 id, on every request. Consequences:
 
 - Revoking access takes effect on the next request, not when a token expires.
-- An IdP compromise cannot mint privilege — group claims are only ever inputs to a
-  *provisioning* decision, and only at the moment of provisioning.
+- A validated OIDC groups claim is an input to a transactional, source-isolated grant
+  reconciliation on every login. Stored `membership_grant` provenance and the single
+  effective membership projection—not claims—authorize requests. Overage or absent/malformed
+  groups retire that identity's stale OIDC group grants; invalid tokens do not mutate grants.
 - RBAC changes are safe to deploy; there are no in-flight tokens carrying stale rules.
 
 Resolution is cached in Valkey for **30 seconds** (the revocation-latency budget, stated
@@ -396,6 +424,21 @@ invalidated explicitly on every membership, role, deactivation and connection ch
 practice an authority change is immediate and 30 s is only the worst case when the
 invalidation message is lost. This is the *authority* cache; the *session* SLA is the one
 stated under [Sessions](#sessions), and they are different budgets.
+
+The proposed provenance ledger and effective-membership projection are specified in
+[data-model.md](data-model.md) §2 and [RBAC](rbac.md). They require
+[ADR 0015](adr/0015-membership-grant-provenance.md), which remains Proposed pending Thomas's
+approval. In the target, each source adds/retires only its own grants; the projection chooses
+one role without capability union. Every connection/mapping/JIT/role-policy write must also
+preserve the shared IP-22 current-source validity and projection invariant, including
+role-priority changes with no grant retirement; see
+[identity-provisioning.md](../03-features/identity-provisioning.md) `IP-22`. OIDC reevaluation
+on connection A is not evidence about
+an explicitly linked connection B, so upstream removal on B is observed only at B's next
+validated login, SCIM update, or administrative disable/change. Global SCIM deactivation is
+the defined exception: all external grants for that inactive person retire. The 30-second
+authority-cache bound applies after committed grant/projection changes; no upstream
+instantaneous-revocation guarantee is implied.
 
 **Accounts are never linked automatically.** kaneo ships better-auth with
 `account.accountLinking: { enabled: true, trustedProviders: ["github","google","discord",

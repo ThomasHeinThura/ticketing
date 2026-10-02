@@ -196,8 +196,8 @@ covered elsewhere:
 
 ## Identity provisioning tests — SCIM and Microsoft Entra
 
-**Where** — `tests/api-integration/identity/`. Seventeen named acceptance tests, numbered
-`01`–`17` in [identity-provisioning.md](../03-features/identity-provisioning.md#testing),
+**Where** — `tests/api-integration/identity/`. Twenty-five named acceptance tests, numbered
+`01`–`25` in [identity-provisioning.md](../03-features/identity-provisioning.md#testing),
 run on every PR against a mock IdP and, **before the P3 identity gate closes, against a real
 Microsoft Entra test tenant**. In one line each: agent OIDC is agent-portal-only; customer
 OIDC is bound to one organisation; portal sessions are isolated both ways; a SCIM token
@@ -206,7 +206,38 @@ a customer connection cannot create staff or authority; SCIM create/filter/updat
 reactivate behave per Entra; groups map only to permitted roles in scope; nothing grants
 `instance:admin` automatically; token rotation invalidates the old token and never leaks;
 OIDC protocol failures block sign-in; a second IdP does not auto-link on email; every
-identity event is audited. `/scim/v2/*` is also inside the IDOR fuzz and tenant-isolation
+identity event is audited. Test 05 also covers exact per-connection Entra app-role
+admission on first and repeat login, missing/malformed `acct` and guest rejection, unapproved
+provider JIT, collision-deny-only domain handling, valid negative-admission retirement of
+only the selected identity's OIDC/JIT grants, and no mutation for invalid tokens; test 15
+covers PKCE mismatch, state replay, wrong-portal or expired state, nonce mismatch, and the
+distinction between invalid-token no-mutation and valid absent/malformed/overage-group
+reconciliation. Test 05's planned browser assertions capture the
+complete bound- and unbound-domain flow: initial response, `Location` and cookie headers,
+navigation, and next screen. They verify the accepted domain-to-SSO-binding/public-IdP-
+destination disclosure and prohibit organisation/connection inventory, names, ids, discovery
+configuration, claim mappings, secrets, or a TaskDesk user-account-existence signal.
+The same 25 tests carry the source-provenance contract: tests 01–03 prove connection-only
+reevaluation within the fixed portal/organisation; 04, 06 and 09 prove foreign scope, side,
+reach and forbidden authority are rejected; 07–08 prove immutable same-connection subject
+resolution and SCIM-grant linkage; 10–11 prove global SCIM deactivation/re-derivation without
+resurrecting history; 12–13 prove one-role projection, direct-role precedence, group-source
+independence and fail-closed equal-rank conflicts; 14 and 19–22 retain credential and SCIM
+protocol boundaries; 16 and 23 prove linked-connection and disable isolation; 17 proves safe
+grant/audit records; 18 proves placeholder claims cannot get grants; and 24–25 retain the
+no-auto-link and separate cache/session SLA checks. Test 12 or 17 includes a real-PostgreSQL
+concurrency subcase for OIDC login racing SCIM group removal on one person/scope. Migration
+coverage must classify every legacy membership from durable evidence in a read-only
+preflight before any DDL, backfill, uniqueness constraint, or projection. Null `derived_from`
+does not prove direct provenance; any ambiguous or unclassified row must stop the whole
+migration with no partial schema or data change. Assert that owner-approved reconciliation
+is required, any failure rolls back DDL and data changes together, and a successful backfill
+occurs only after all rows are classified. Duplicate-membership detection, explicit
+provenance backfill, and migration refusal are subcases of the existing named tests, not
+current test evidence; none is claimed implemented or run. The 25-test real-Entra
+gate remains required. The planned `tests/e2e/security/` suite must cover the CSRF negatives
+stated in the security model before the applicable security gate is claimed; the suite is not
+implemented at this candidate. `/scim/v2/*` is also inside the IDOR fuzz and tenant-isolation
 suites like any other scoped surface.
 
 ## Pending-action tests — universal deletion approval
