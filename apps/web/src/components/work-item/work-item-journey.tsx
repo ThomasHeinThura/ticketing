@@ -1,9 +1,4 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Alert,
   AlertDescription,
@@ -27,9 +22,9 @@ import WorkItemActivityComment from "@/components/work-item/work-item-activity-c
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
 import createWorkItemComment from "@/fetchers/work-item/create-work-item-comment";
 import getAssignablePeople from "@/fetchers/work-item/get-assignable-people";
-import getWorkItemActivity from "@/fetchers/work-item/get-work-item-activity";
 import unassignWorkItem from "@/fetchers/work-item/unassign-work-item";
 import updateWorkItem from "@/fetchers/work-item/update-work-item";
+import useGetWorkItemActivity from "@/hooks/queries/work-item/use-get-work-item-activity";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatDateTime } from "@/lib/format";
 import { HttpError } from "@/lib/http-error";
@@ -228,15 +223,7 @@ function WorkItemJourneyForItem({
     : mayCreateInternalComment
       ? "internal"
       : "public";
-  const activity = useInfiniteQuery({
-    queryKey: ["work-items", "activity", item.key],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => getWorkItemActivity(item.key, pageParam),
-    getNextPageParam: (lastPage) =>
-      lastPage.page.hasMore
-        ? (lastPage.page.nextCursor ?? undefined)
-        : undefined,
-  });
+  const activity = useGetWorkItemActivity(item.key);
   const assignees = useQuery({
     queryKey: ["projects", item.projectId, "assignable"],
     queryFn: () => getAssignablePeople(item.projectId),
