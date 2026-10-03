@@ -5,7 +5,6 @@ import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
 import WorkItemDetailLoading from "@/components/work-item/work-item-detail-loading";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
-import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { HttpError } from "@/lib/http-error";
 
 const WorkItemDetail = lazy(loadWorkItemDetail);
@@ -31,10 +30,6 @@ export const Route = createFileRoute(
 function WorkItemDetailRouteComponent() {
   const { key } = Route.useParams();
 
-  const { data: workspace } = useActiveWorkspace();
-  const { data: projects } = useGetProjects({
-    workspaceId: workspace?.id ?? "",
-  });
   const {
     data: item,
     isLoading,
@@ -47,28 +42,63 @@ function WorkItemDetailRouteComponent() {
   // purpose (a guessable `{slug}-{number}` key), so a 404 is shown as one not-found
   // state, not split into "missing" vs "no access".
   const isNotFound = error instanceof HttpError && error.status === 404;
-  const project = item
-    ? projects?.find((candidate) => candidate.id === item.projectId)
-    : undefined;
-
   return (
     <>
       <PageTitle title={item?.title ? `${item.title} · ${key}` : key} />
       <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
         <Suspense fallback={<WorkItemDetailLoading />}>
-          <WorkItemDetail
-            item={item}
-            workItemKey={key}
-            project={
-              project ? { name: project.name, slug: project.slug } : undefined
-            }
-            isLoading={isLoading}
-            isNotFound={isNotFound}
-            isError={isError && !isNotFound}
-            onRetry={refetch}
-          />
+          {item ? (
+            <WorkItemDetailWithProject
+              item={item}
+              workItemKey={key}
+              isNotFound={isNotFound}
+              isError={isError && !isNotFound}
+              onRetry={refetch}
+            />
+          ) : (
+            <WorkItemDetail
+              item={undefined}
+              workItemKey={key}
+              project={undefined}
+              isLoading={isLoading}
+              isNotFound={isNotFound}
+              isError={isError && !isNotFound}
+              onRetry={refetch}
+            />
+          )}
         </Suspense>
       </div>
     </>
+  );
+}
+
+function WorkItemDetailWithProject({
+  item,
+  workItemKey,
+  isNotFound,
+  isError,
+  onRetry,
+}: {
+  item: NonNullable<ReturnType<typeof useGetWorkItem>["data"]>;
+  workItemKey: string;
+  isNotFound: boolean;
+  isError: boolean;
+  onRetry: () => void;
+}) {
+  const { data: projects } = useGetProjects({ workspaceId: item.workspaceId });
+  const project = projects?.find(
+    (candidate) => candidate.id === item.projectId,
+  );
+
+  return (
+    <WorkItemDetail
+      item={item}
+      workItemKey={workItemKey}
+      project={project ? { name: project.name, slug: project.slug } : undefined}
+      isLoading={false}
+      isNotFound={isNotFound}
+      isError={isError}
+      onRetry={onRetry}
+    />
   );
 }

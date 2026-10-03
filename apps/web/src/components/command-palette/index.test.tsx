@@ -5,7 +5,7 @@ import { KeyboardShortcutsProvider } from "@/hooks/use-keyboard-shortcuts";
 import CommandPalette from "./index";
 
 const mocks = vi.hoisted(() => ({
-  preloadRoute: vi.fn().mockResolvedValue(undefined),
+  projectsPageModule: vi.fn(),
 }));
 
 /**
@@ -23,8 +23,12 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
   useLocation: () => ({ pathname: "/dashboard/workspace/w1" }),
-  useRouter: () => ({ preloadRoute: mocks.preloadRoute }),
 }));
+
+vi.mock("@/components/project-list/projects-page", () => {
+  mocks.projectsPageModule();
+  return { default: () => null };
+});
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -138,7 +142,7 @@ describe("CommandPalette (#407)", () => {
     expect(() => unmount()).not.toThrow();
   });
 
-  it("preloads the Projects route on explicit keyboard destination intent", () => {
+  it("preloads the Projects page chunk on explicit keyboard destination intent", async () => {
     render(
       <KeyboardShortcutsProvider>
         <CommandPalette />
@@ -147,13 +151,12 @@ describe("CommandPalette (#407)", () => {
 
     fireEvent.keyDown(document, { key: "k", ctrlKey: true });
     expect(screen.getByTestId("command-dialog")).toBeInTheDocument();
-    expect(mocks.preloadRoute).not.toHaveBeenCalled();
+    expect(mocks.projectsPageModule).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByTestId("highlight-project-command"));
 
-    expect(mocks.preloadRoute).toHaveBeenCalledWith({
-      to: "/dashboard/workspace/$workspaceId",
-      params: { workspaceId: "w1" },
-    });
+    await vi.waitFor(() =>
+      expect(mocks.projectsPageModule).toHaveBeenCalledOnce(),
+    );
   });
 });

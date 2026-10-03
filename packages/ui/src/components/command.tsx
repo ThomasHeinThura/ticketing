@@ -38,7 +38,7 @@ function CommandDialogBackdrop({
   return (
     <CommandDialogPrimitive.Backdrop
       className={cn(
-        "fixed inset-0 z-50 bg-black/32 backdrop-blur-sm transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0",
+        "fixed inset-0 z-50 bg-black/32 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0",
         className,
       )}
       data-slot="command-dialog-backdrop"
@@ -68,15 +68,18 @@ function CommandDialogPopup({
   children,
   instant = false,
   keepMounted = false,
+  blurBackdrop = true,
   ...props
 }: CommandDialogPrimitive.Popup.Props & {
   instant?: boolean;
   keepMounted?: boolean;
+  blurBackdrop?: boolean;
 }) {
   return (
     <CommandDialogPortal keepMounted={keepMounted}>
       <CommandDialogBackdrop
         className={cn(
+          blurBackdrop ? "backdrop-blur-sm" : "backdrop-blur-none",
           instant &&
             "transition-none data-starting-style:opacity-100 data-ending-style:opacity-100",
         )}

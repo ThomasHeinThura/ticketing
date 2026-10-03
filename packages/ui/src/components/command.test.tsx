@@ -57,6 +57,32 @@ describe("Command", () => {
     expect(onSelectBanana).toHaveBeenCalledTimes(1);
   });
 
+  it("reports the item reached by keyboard highlight", () => {
+    const onItemHighlighted = vi.fn();
+    render(
+      <Command
+        items={["Projects", "Search"]}
+        onItemHighlighted={onItemHighlighted}
+      >
+        <CommandInput aria-label="Search commands" autoFocus={false} />
+        <CommandList>
+          {(item: string) => (
+            <CommandItem key={item} value={item}>
+              {item}
+            </CommandItem>
+          )}
+        </CommandList>
+      </Command>,
+    );
+
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+
+    expect(onItemHighlighted).toHaveBeenLastCalledWith(
+      "Search",
+      expect.objectContaining({ reason: "keyboard" }),
+    );
+  });
+
   it("has no accessibility violations", async () => {
     const { baseElement } = render(
       <Command items={["Apple", "Banana"]}>
@@ -104,6 +130,31 @@ describe("Command", () => {
       </CommandDialog>,
     );
 
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(
+      document.querySelector('[data-slot="command-dialog-backdrop"]'),
+    ).toHaveClass("backdrop-blur-sm");
+  });
+
+  it("preserves the dim backdrop when full-screen blur is disabled", () => {
+    render(
+      <CommandDialog open>
+        <CommandDialogPopup blurBackdrop={false}>
+          <Command>
+            <CommandInput aria-label="Search commands" autoFocus={false} />
+            <CommandList>
+              <CommandItem value="projects">Projects</CommandItem>
+            </CommandList>
+          </Command>
+        </CommandDialogPopup>
+      </CommandDialog>,
+    );
+
+    const backdrop = document.querySelector(
+      '[data-slot="command-dialog-backdrop"]',
+    );
+    expect(backdrop).toHaveClass("bg-black/32", "backdrop-blur-none");
+    expect(backdrop).not.toHaveClass("backdrop-blur-sm");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

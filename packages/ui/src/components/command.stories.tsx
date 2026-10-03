@@ -39,6 +39,32 @@ function KeepMountedCommandDialog() {
   );
 }
 
+function NoBackdropBlurCommandDialog() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>
+        Open low-cost command palette
+      </Button>
+      <CommandDialog open={open} onOpenChange={setOpen}>
+        <CommandDialogPopup instant keepMounted blurBackdrop={false}>
+          <Command items={["Projects", "Search", "Members"]}>
+            <CommandInput aria-label="Search commands" />
+            <CommandList>
+              {(item: string) => (
+                <CommandItem key={item} value={item}>
+                  {item}
+                </CommandItem>
+              )}
+            </CommandList>
+          </Command>
+        </CommandDialogPopup>
+      </CommandDialog>
+    </>
+  );
+}
+
 const meta = {
   title: "Primitives/Command",
   component: Command,
@@ -82,6 +108,10 @@ export const Empty: Story = {
       </Command>
     </div>
   ),
+};
+
+export const NoBackdropBlur: Story = {
+  render: () => <NoBackdropBlurCommandDialog />,
 };
 
 export const KeepMountedDialog: Story = {

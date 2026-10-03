@@ -18,12 +18,13 @@ afterEach(() => {
 const mocks = vi.hoisted(() => ({
   loadDetail: vi.fn().mockResolvedValue({ default: () => null }),
   getWorkItem: vi.fn().mockResolvedValue({}),
+  preloadRoute: vi.fn().mockResolvedValue(undefined),
   navigate: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
   useRouter: () => ({
-    preloadRoute: vi.fn().mockResolvedValue(undefined),
+    preloadRoute: mocks.preloadRoute,
     navigate: mocks.navigate,
   }),
 }));
@@ -121,10 +122,19 @@ describe("WorkItemList", () => {
       />,
     );
 
+    await waitFor(() => expect(mocks.preloadRoute).toHaveBeenCalled());
+    mocks.preloadRoute.mockClear();
+
     fireEvent.mouseEnter(
       screen.getByText("PROJ-123").closest("a") as HTMLElement,
     );
 
+    await waitFor(() =>
+      expect(mocks.preloadRoute).toHaveBeenCalledWith({
+        to: "/agent/work-items/$key",
+        params: { key: "PROJ-123" },
+      }),
+    );
     await waitFor(() => expect(mocks.loadDetail).toHaveBeenCalledOnce());
     await waitFor(() => expect(mocks.getWorkItem).toHaveBeenCalledOnce());
 

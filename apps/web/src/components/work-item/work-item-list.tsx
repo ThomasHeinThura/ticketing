@@ -195,6 +195,12 @@ function WorkItemList({
   }
 
   function prefetchDetail(key: string) {
+    void router
+      .preloadRoute({
+        to: routes.workItemDetail.path,
+        params: { key },
+      })
+      .catch(() => {});
     void loadWorkItemDetail().catch(() => {});
     void queryClient.prefetchQuery({
       queryKey: ["work-items", "detail", key],

@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, useRouter } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   Command,
   CommandCollection,
@@ -65,7 +65,6 @@ function CommandPalette() {
   const { t } = useTranslation();
   const { setTheme } = useUserPreferencesStore();
   const navigate = useNavigate();
-  const router = useRouter();
   const { data: workspace } = useActiveWorkspace();
   const { data: session } = authClient.useSession();
   const { data: config } = useGetConfig();
@@ -79,24 +78,32 @@ function CommandPalette() {
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
   useEffect(() => {
-    let mounted = true;
-    void (document.fonts?.ready ?? Promise.resolve()).then(() => {
-      if (mounted) setKeepPaletteMounted(true);
-    });
+    let idleCallbackId: number | undefined;
+    let frameId: number | undefined;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (idleWindow.requestIdleCallback) {
+      idleCallbackId = idleWindow.requestIdleCallback(() => {
+        setKeepPaletteMounted(true);
+      });
+    } else {
+      frameId = requestAnimationFrame(() => setKeepPaletteMounted(true));
+    }
     return () => {
-      mounted = false;
+      if (idleCallbackId !== undefined)
+        idleWindow.cancelIdleCallback?.(idleCallbackId);
+      if (frameId !== undefined) cancelAnimationFrame(frameId);
     };
   }, []);
 
-  const preloadProjectsRoute = useCallback(() => {
+  const preloadProjectsPage = useCallback(() => {
     if (!workspace?.id) return;
-    void router
-      .preloadRoute({
-        to: "/dashboard/workspace/$workspaceId",
-        params: { workspaceId: workspace.id },
-      })
-      .catch(() => {});
-  }, [router, workspace?.id]);
+    // The route itself is already part of the router tree. Its visible page is
+    // a separate React.lazy chunk, so preload that chunk on destination intent.
+    void import("@/components/project-list/projects-page").catch(() => {});
+  }, [workspace?.id]);
 
   const handleItemHighlighted = useCallback(
     (value: unknown, { reason }: { reason: string }) => {
@@ -107,10 +114,10 @@ function CommandPalette() {
         // Load the route after explicit destination intent. This keeps route
         // work off the palette's opening path and lets keyboard/pointer users
         // warm the route before activating the highlighted command.
-        preloadProjectsRoute();
+        preloadProjectsPage();
       }
     },
-    [preloadProjectsRoute],
+    [preloadProjectsPage],
   );
 
   useRegisterShortcuts({
@@ -317,7 +324,11 @@ function CommandPalette() {
   return (
     <>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandDialogPopup instant keepMounted={keepPaletteMounted}>
+        <CommandDialogPopup
+          instant
+          keepMounted={keepPaletteMounted}
+          blurBackdrop={false}
+        >
           <Command
             items={groupedItems}
             onItemHighlighted={handleItemHighlighted}
