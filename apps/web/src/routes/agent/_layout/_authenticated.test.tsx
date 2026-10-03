@@ -42,6 +42,61 @@ function buildRealLocation(pathname: string, rawSearch: string, hash: string) {
 describe("_authenticated route beforeLoad", () => {
   beforeEach(() => {
     getSession.mockReset();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ required: false, enabled: false }), {
+          status: 200,
+        }),
+      ),
+    );
+  });
+
+  it("starts the factor freshness read alongside session resolution", async () => {
+    let resolveSession!: (value: { data: object; error: null }) => void;
+    getSession.mockReturnValue(
+      new Promise((resolve) => {
+        resolveSession = resolve;
+      }),
+    );
+    const beforeLoad = Route.options.beforeLoad;
+    if (!beforeLoad) throw new Error("_authenticated route has no beforeLoad");
+
+    const result = beforeLoad({
+      location: buildRealLocation("/dashboard/workspace/w1", "", ""),
+    } as Parameters<typeof beforeLoad>[0]);
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    resolveSession({ data: {}, error: null });
+    await expect(result).resolves.toEqual({ session: {}, sessionError: false });
+  });
+
+  it("retries one factor 401 after session resolution before enforcing enrollment", async () => {
+    getSession.mockResolvedValue({ data: {}, error: null });
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ required: true, enabled: false }), {
+          status: 200,
+        }),
+      );
+    const beforeLoad = Route.options.beforeLoad;
+    if (!beforeLoad) throw new Error("_authenticated route has no beforeLoad");
+
+    let thrown: unknown;
+    try {
+      await beforeLoad({
+        location: buildRealLocation("/dashboard/workspace/w1", "", ""),
+      } as Parameters<typeof beforeLoad>[0]);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(thrown).toBeInstanceOf(Response);
+    expect((thrown as Response & { options: { to: string } }).options.to).toBe(
+      "/dashboard/settings/account/security",
+    );
   });
 
   it("fixture reproduces the actual defect: an empty query string parses to a null-prototype object that throws on concatenation", () => {

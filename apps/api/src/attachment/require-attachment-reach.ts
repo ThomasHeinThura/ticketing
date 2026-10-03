@@ -81,6 +81,7 @@ export function requireAttachmentReach(idKey = "id") {
     c.set("workspaceId", row.workspaceId);
     c.set("workspaceIdSource", "row");
     c.set("workItemId", row.workItemId);
+    c.set("policyScopeResource", "work_item");
 
     const apiKey = c.get("apiKey");
     try {

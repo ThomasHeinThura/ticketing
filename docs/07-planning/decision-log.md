@@ -62,6 +62,49 @@ ADR-0015 provenance cut-over and owner-approved reconciliation of any ambiguous 
 membership rows; no row is classified by guesswork.
 
 **Recorded by:** GPT-6 Sol architecture author, 2026-10-04.
+### 2026-10-04 · Implement opt-in per-policy-source strict enforcement for #8
+
+**Decision:** complete the production request-path ALLOW/DENY integration for issue #8 in
+the current P0 implementation batch. Keep the existing hand-written guards in place beside
+strict evaluation until the later removal slice. Strict mode is an explicit bootstrap
+setting, `TASKDESK_POLICY_ENFORCE`, containing a comma-separated set of exact registered
+policy-source paths. It defaults to empty. Unknown, duplicate, whitespace-padded, empty
+members, or a request to enable `apps/api/src/task/policy.ts` before every other registered
+source is enabled fail startup. A source can be added only after the existing shadow evidence
+and the three-issue-free-UTC-date P0 verification rule below have been satisfied against the
+same deployed policy/source behavior; no dates or traffic are synthesized by code. This is
+an operational cutover control, not an automatic finding waiver or authorization to activate
+it now. No persistent development/UAT/production setting is changed by this implementation.
+
+The setting is a narrow temporary bridge because the specified per-scope feature-flag store
+in `plugin-architecture.md` is not implemented and the existing `TASKDESK_POLICY_SHADOW`
+switch cannot express one-router-at-a-time enforcement. It is bootstrap-only, read and
+validated before serving, and must be replaced by the approved feature-flag mechanism when
+that mechanism is delivered. The exact source-path vocabulary is the registry's
+`RegistryEntry.source`; there is no independent alias, per-customer branch, exception list,
+or capability translation.
+
+Every enabled route is evaluated after its route-specific validators and authoritative
+scope loaders but before its terminal handler can mutate state. Missing identity, malformed
+context, unknown scope provenance, unavailable reach/predicate evidence, unsupported required
+step-up binding, or an evaluator error denies before the handler. Persisted-row scopes may
+use only row-derived facts; request hints never substitute for missing row facts. The existing
+session-only, API-key capability ceiling, portal, CSRF, and operation-bound step-up controls
+remain in force. Delegated handlers retain their own protocol authorization. Registry denial
+does not invoke the terminal handler.
+
+For `GET /api/invitation/{id}`, implement the documented 2026-09-28 recommendation already
+present in `invitation/policy.ts`: retain the stable URL as deprecated and permanently
+disabled; its real row-scope `member:invite` and session-only middleware runs, then its handler
+refuses unconditionally. Do not introduce a sixth policy kind or expose invitation data.
+Keep the #392 `task` → `work_item` re-key and persisted backfill; do not contract away the
+legacy key while #398's deployment/rollback prerequisites remain unverified. The task policy
+source stays last in the strict source sequence.
+
+This selects implementation behavior under Thomas's standing authorization to proceed with
+documented recommendations and finish related P0 work. It does not satisfy the real three-date
+observation, authorize a live cutover, approve human H1–H6, waive a gate, or claim P0 complete.
+
 
 ### 2026-10-03 · Select the bounded P2 holiday-import profile
 

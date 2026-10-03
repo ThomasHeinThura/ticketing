@@ -89,12 +89,9 @@
  *     table would carry `is_mcp`; without it, every key-authenticated request resolves to
  *     the `"api_key"` `CredentialKind`. Harmless today (both kinds are clamped identically
  *     by `can()`), but the loader can never produce `"mcp_key"` until that column exists.
- *  3. **`sees_all` has no populated source for workspace-scope memberships.** The `membership`
- *     table (`data-model.md` §2, P1 identity schema) has the real `sees_all` column, but
- *     nothing writes a `membership` row for a workspace membership yet — `workspace_member`
- *     (the table that actually has rows) has no such column at all. The loader therefore
- *     always resolves `seesAll: false`. The pure mapper scopes any future sees_all grant to
- *     the workspace whose membership carries it; it never becomes global reach.
+ *  3. **Legacy `workspace_member` rows do not carry `sees_all`.** Those rows resolve it as
+ *     false. The generic P1 `membership` table is also loaded and its `sees_all` value is
+ *     retained only on its validated concrete workspace scope; it never becomes global reach.
  *  4. **Instance-admin, as modelled here, is narrower than two existing bypasses.**
  *     `docs/01-architecture/rbac.md` § Reach step 1 says `instance:admin` grants *reach*
  *     only; `BUILT_IN_ROLES.instance_admin` (`packages/permissions/src/roles.ts`) holds only
@@ -131,6 +128,7 @@ import {
   type Membership,
   type Reach,
   type ResolvedIdentity,
+  ROLE_SCOPES,
   type RoleGrant,
   type Side,
 } from "@taskdesk/permissions";
@@ -150,9 +148,9 @@ export type WorkspaceMembershipFact = {
   readonly workspaceId: string;
   readonly role: string;
   /**
-   * The `sees_all` grant for this membership. Always `false` from the real loader today
-   * (see KNOWN GAP 3 above) — present here so the pure mapper's reach logic is fully
-   * testable without a database.
+   * The `sees_all` grant for this legacy membership. The `workspace_member` table has no such
+   * column, so its loader supplies false. Generic `membership` rows use
+   * `ScopedRoleMembershipFact` below.
    */
   readonly seesAll: boolean;
   /**
@@ -222,6 +220,22 @@ export type TeamMembershipFact = {
   readonly workspaceId: string;
 };
 
+/** A membership-table row joined to its persisted role and scope owner. */
+export type ScopedRoleMembershipFact = {
+  readonly scope: string;
+  readonly scopeId: string;
+  readonly seesAll: boolean;
+  readonly inheritedFrom: string | null;
+  readonly roleId: string;
+  readonly roleKey: string;
+  readonly roleScope: string;
+  readonly roleWorkspaceId: string | null;
+  readonly scopeWorkspaceId: string | null;
+  readonly scopeExists: boolean;
+  readonly rank: number;
+  readonly capabilities: unknown;
+};
+
 /** Every fact `resolveIdentityFromFacts` needs, already loaded — no I/O inside the mapper. */
 export type IdentityFacts = {
   readonly userId: string;
@@ -232,6 +246,8 @@ export type IdentityFacts = {
   readonly isInstanceAdmin: boolean;
   /** Every `workspace_member` row for this user, across every workspace — no per-row I/O. */
   readonly workspaceMemberships: readonly WorkspaceMembershipFact[];
+  /** Generic persisted role memberships (project/organisation and current P1 memberships). */
+  readonly scopedRoleMemberships?: readonly ScopedRoleMembershipFact[];
   /**
    * Every `team_member` row for this user, with each team's `workspace_id`. Filtered down
    * to `teamIds` in the mapper, keeping only teams whose workspace the person currently has
@@ -297,6 +313,39 @@ function keyCapabilitiesFor(
   // Invariant (`identity.ts`): a key credential ALWAYS carries a defined subset, even when
   // nothing was actually loaded for it. `?? []` is the fail-closed default — see KNOWN GAP 1.
   return facts.apiKey?.capabilities ?? [];
+}
+
+function isTrustedScopedRoleMembership(row: ScopedRoleMembershipFact): boolean {
+  if (
+    !ROLE_SCOPES.includes(row.scope as (typeof ROLE_SCOPES)[number]) ||
+    row.scope !== row.roleScope ||
+    !ROLE_SCOPES.includes(row.roleScope as (typeof ROLE_SCOPES)[number]) ||
+    !row.roleId ||
+    !row.roleKey ||
+    !Number.isSafeInteger(row.rank) ||
+    !Array.isArray(row.capabilities) ||
+    !row.capabilities.every((capability) => typeof capability === "string")
+  ) {
+    return false;
+  }
+  switch (row.scope) {
+    case "workspace":
+      return row.scopeExists && row.roleWorkspaceId === row.scopeId;
+    case "project":
+      return (
+        row.scopeExists &&
+        row.scopeWorkspaceId !== null &&
+        row.roleWorkspaceId === row.scopeWorkspaceId
+      );
+    case "organisation":
+      return (
+        row.scopeExists &&
+        row.roleWorkspaceId === null &&
+        row.scopeWorkspaceId === null
+      );
+    default:
+      return false;
+  }
 }
 
 /**
@@ -444,6 +493,55 @@ export function resolveIdentityFromFacts(
     });
   }
 
+  // The P1 `membership` + `role` tables are the persisted authority source for project and
+  // organisation grants, and also carry current workspace `sees_all` facts. Never translate
+  // a role name from `workspace_member`; accept only a joined, scope-consistent role row.
+  for (const row of facts.scopedRoleMemberships ?? []) {
+    if (
+      !ROLE_SCOPES.includes(row.scope as (typeof ROLE_SCOPES)[number]) ||
+      row.scope !== row.roleScope ||
+      !ROLE_SCOPES.includes(row.roleScope as (typeof ROLE_SCOPES)[number]) ||
+      !row.roleId ||
+      !row.roleKey ||
+      !Number.isSafeInteger(row.rank) ||
+      !Array.isArray(row.capabilities) ||
+      !row.capabilities.every((capability) => typeof capability === "string")
+    ) {
+      continue;
+    }
+
+    const scope = row.scope as (typeof ROLE_SCOPES)[number];
+    const wellAnchored =
+      (scope === "workspace" &&
+        row.scopeExists &&
+        row.roleWorkspaceId === row.scopeId) ||
+      (scope === "project" &&
+        row.scopeExists &&
+        row.scopeWorkspaceId !== null &&
+        row.roleWorkspaceId === row.scopeWorkspaceId) ||
+      (scope === "organisation" &&
+        row.scopeExists &&
+        row.roleWorkspaceId === null &&
+        row.scopeWorkspaceId === null);
+    if (!wellAnchored) continue;
+
+    memberships.push({
+      scope,
+      scopeId: row.scopeId,
+      seesAll: row.seesAll,
+      ...(row.inheritedFrom === null
+        ? {}
+        : { inheritedFrom: row.inheritedFrom }),
+    });
+    authority.push({
+      roleKey: row.roleKey,
+      scope,
+      scopeId: row.scopeId,
+      rank: row.rank,
+      capabilities: row.capabilities,
+    });
+  }
+
   if (facts.isInstanceAdmin) {
     authority.push({
       roleKey: BUILT_IN_ROLES.instance_admin.key,
@@ -457,7 +555,10 @@ export function resolveIdentityFromFacts(
   const seesAllWorkspaceIds = [
     ...new Set(
       memberships
-        .filter((membership) => membership.seesAll)
+        .filter(
+          (membership) =>
+            membership.scope === "workspace" && membership.seesAll,
+        )
         .map((membership) => membership.scopeId),
     ),
   ];
@@ -478,9 +579,15 @@ export function resolveIdentityFromFacts(
   // `workspace_member` row exists for), not just the ones that resolved to a valid grant
   // above — a malformed or ambiguous role value is a data-quality problem with the ROLE,
   // not evidence that the person stopped being a member of the workspace.
-  const memberWorkspaceIds = new Set(
-    facts.workspaceMemberships.map((row) => row.workspaceId),
-  );
+  const memberWorkspaceIds = new Set([
+    ...facts.workspaceMemberships.map((row) => row.workspaceId),
+    ...(facts.scopedRoleMemberships ?? [])
+      .filter(
+        (row) =>
+          row.scope === "workspace" && isTrustedScopedRoleMembership(row),
+      )
+      .map((row) => row.scopeId),
+  ]);
   const teamIds = [
     ...new Set(
       facts.teamMemberships
@@ -520,9 +627,8 @@ export type ResolveIdentityInput = {
 
 /**
  * Loads exactly what `resolveIdentityFromFacts` needs, in a bounded, fixed number of
- * queries — never one per membership. Four queries regardless of how many workspaces or
- * teams the user belongs to (issue #318 added the fourth; the loader ran three of these
- * before it):
+ * queries — never one per membership. Fixed query count regardless of how many scopes or
+ * teams the user belongs to:
  *
  *   1. `user` left-joined to `person` left-joined to `organisation` (role, ban status,
  *      person facts and the customer-gating organisation facts, all in one round trip);
@@ -532,7 +638,9 @@ export type ResolveIdentityInput = {
  *      not one per membership — so the mapper can tell a genuine seeded built-in role row
  *      from a custom row that merely shares its name. Skipped (no query at all) when query
  *      2 found no memberships;
- *   4. every `team_member` row for this user, inner-joined to `team` for its `workspace_id`
+ *   4. each persisted `membership` joined to its `role` and concrete scope row, so project and
+ *      organisation grants and `sees_all` are sourced from their authoritative tables;
+ *   5. every `team_member` row for this user, inner-joined to `team` for its `workspace_id`
  *      (S5) — still one query, not a second round trip.
  */
 export async function resolveIdentity(
@@ -638,6 +746,51 @@ export async function resolveIdentity(
     systemRoleRows.map((row) => `${row.workspaceId}\u0000${row.role}`),
   );
 
+  const scopedRoleRows = await executor
+    .select({
+      scope: schema.membershipTable.scope,
+      scopeId: schema.membershipTable.scopeId,
+      seesAll: schema.membershipTable.seesAll,
+      inheritedFrom: schema.membershipTable.inheritedFrom,
+      roleId: schema.roleTable.id,
+      roleKey: schema.roleTable.key,
+      roleScope: schema.roleTable.scope,
+      roleWorkspaceId: schema.roleTable.workspaceId,
+      rank: schema.roleTable.rank,
+      capabilities: schema.roleTable.capabilities,
+      projectId: schema.projectTable.id,
+      projectWorkspaceId: schema.projectTable.workspaceId,
+      workspaceId: schema.workspaceTable.id,
+      organisationId: schema.organisationTable.id,
+    })
+    .from(schema.membershipTable)
+    .innerJoin(
+      schema.roleTable,
+      eq(schema.roleTable.id, schema.membershipTable.roleId),
+    )
+    .leftJoin(
+      schema.projectTable,
+      and(
+        eq(schema.membershipTable.scope, "project"),
+        eq(schema.projectTable.id, schema.membershipTable.scopeId),
+      ),
+    )
+    .leftJoin(
+      schema.workspaceTable,
+      and(
+        eq(schema.membershipTable.scope, "workspace"),
+        eq(schema.workspaceTable.id, schema.membershipTable.scopeId),
+      ),
+    )
+    .leftJoin(
+      schema.organisationTable,
+      and(
+        eq(schema.membershipTable.scope, "organisation"),
+        eq(schema.organisationTable.id, schema.membershipTable.scopeId),
+      ),
+    )
+    .where(eq(schema.membershipTable.personId, person.personId));
+
   const teamRows = await executor
     .select({
       teamId: schema.teamMemberTable.teamId,
@@ -658,11 +811,30 @@ export async function resolveIdentity(
     workspaceMemberships: memberRows.map((member) => ({
       workspaceId: member.workspaceId,
       role: member.role,
-      // KNOWN GAP 3: no populated `sees_all` source for workspace-scope memberships yet.
+      // Legacy workspace_member has no sees_all column; generic membership rows are loaded
+      // and validated separately below.
       seesAll: false,
       isSystemRole: systemRoleKeys.has(
         `${member.workspaceId}\u0000${member.role}`,
       ),
+    })),
+    scopedRoleMemberships: scopedRoleRows.map((membership) => ({
+      scope: membership.scope,
+      scopeId: membership.scopeId,
+      seesAll: membership.seesAll,
+      inheritedFrom: membership.inheritedFrom,
+      roleId: membership.roleId,
+      roleKey: membership.roleKey,
+      roleScope: membership.roleScope,
+      roleWorkspaceId: membership.roleWorkspaceId,
+      scopeWorkspaceId: membership.projectWorkspaceId,
+      scopeExists:
+        (membership.scope === "project" && membership.projectId !== null) ||
+        (membership.scope === "workspace" && membership.workspaceId !== null) ||
+        (membership.scope === "organisation" &&
+          membership.organisationId !== null),
+      rank: membership.rank,
+      capabilities: membership.capabilities,
     })),
     teamMemberships: teamRows.map((team) => ({
       teamId: team.teamId,

@@ -30,6 +30,19 @@ describe("Kanban column rendering", () => {
     const onContextMenuTask = vi.fn();
     const props = {
       column,
+      projectSlug: "PRJ",
+      projectColumns: [column],
+      displayPreferences: {
+        showAssignees: true,
+        showPriority: true,
+        showDueDates: true,
+        showLabels: true,
+        showTaskNumbers: true,
+        showTaskItemCounts: true,
+      },
+      selectedTaskIds: new Set<string>(),
+      focusedTaskId: null,
+      toggleSelection: vi.fn(),
       workspaceId: "workspace-1",
       workspaceUsers: undefined,
       onContextMenuTask,

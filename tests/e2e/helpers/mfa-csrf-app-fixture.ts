@@ -1,6 +1,15 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { createHmac, randomBytes, randomUUID } from "node:crypto";
-import { closeSync, existsSync, openSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  fsyncSync,
+  openSync,
+  readFileSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { chmod, mkdtemp } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
@@ -29,6 +38,187 @@ export type MfaCsrfAppFixture = {
   email: string;
   password: string;
 };
+
+type MetricsLockOwner = { pid: number; token: string };
+type MetricsLockOptions = {
+  lockPath?: string;
+  waitMs?: number;
+  pollMs?: number;
+};
+
+const DEFAULT_METRICS_LOCK_PATH = resolve(
+  tmpdir(),
+  "taskdesk-mfa-csrf-metrics-9464.lock",
+);
+
+function processIsAlive(pid: number) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code !== "ESRCH";
+  }
+}
+
+function readLockOwner(lockPath: string): MetricsLockOwner | undefined {
+  try {
+    const value: unknown = JSON.parse(readFileSync(lockPath, "utf8"));
+    const record = value as Record<string, unknown>;
+    if (
+      typeof value === "object" &&
+      value !== null &&
+      Number.isSafeInteger(record.pid) &&
+      (record.pid as number) > 0 &&
+      typeof record.token === "string" &&
+      record.token.length > 0
+    ) {
+      return { pid: record.pid as number, token: record.token };
+    }
+  } catch {
+    // A lock that is being created or is malformed is never reclaimed by guessing.
+  }
+  return undefined;
+}
+
+function reclaimDeadOwner(lockPath: string, owner: MetricsLockOwner) {
+  if (processIsAlive(owner.pid)) return false;
+
+  const reaperPath = `${lockPath}.reap`;
+  const reaper = { pid: process.pid, token: randomUUID() };
+  let descriptor: number;
+  try {
+    descriptor = openSync(reaperPath, "wx", 0o600);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") return false;
+    throw error;
+  }
+
+  try {
+    writeFileSync(descriptor, JSON.stringify(reaper));
+    fsyncSync(descriptor);
+  } catch (error) {
+    closeSync(descriptor);
+    try {
+      unlinkSync(reaperPath);
+    } catch {
+      // Keep the original creation failure.
+    }
+    throw error;
+  }
+
+  try {
+    const before = statSync(lockPath);
+    const current = readLockOwner(lockPath);
+    const after = statSync(lockPath);
+    if (
+      !current ||
+      current.pid !== owner.pid ||
+      current.token !== owner.token ||
+      before.dev !== after.dev ||
+      before.ino !== after.ino ||
+      processIsAlive(current.pid)
+    ) {
+      return false;
+    }
+    unlinkSync(lockPath);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    closeSync(descriptor);
+    const currentReaper = readLockOwner(reaperPath);
+    if (
+      currentReaper?.pid === reaper.pid &&
+      currentReaper.token === reaper.token
+    ) {
+      try {
+        unlinkSync(reaperPath);
+      } catch {
+        // A stale reaper lock fails closed on the next acquisition attempt.
+      }
+    }
+  }
+}
+
+/**
+ * Serializes test app lifetimes that bind the production metrics listener to 9464.
+ * A stale lock is reclaimed only when its recorded process is definitely gone and
+ * the same lock file is still present; malformed locks fail closed after a bounded wait.
+ */
+export async function withExclusiveMetricsListener<T>(
+  run: () => Promise<T>,
+  {
+    lockPath = DEFAULT_METRICS_LOCK_PATH,
+    waitMs = 180_000,
+    pollMs = 100,
+  }: MetricsLockOptions = {},
+): Promise<T> {
+  const deadline = Date.now() + waitMs;
+  const owner = { pid: process.pid, token: randomUUID() };
+  let acquired = false;
+
+  while (!acquired) {
+    try {
+      const descriptor = openSync(lockPath, "wx", 0o600);
+      try {
+        writeFileSync(descriptor, JSON.stringify(owner));
+        fsyncSync(descriptor);
+        acquired = true;
+      } catch (writeError) {
+        try {
+          unlinkSync(lockPath);
+        } catch {
+          // Preserve the write error; another process cannot own this created file.
+        }
+        throw writeError;
+      } finally {
+        closeSync(descriptor);
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      const existing = readLockOwner(lockPath);
+      if (existing) reclaimDeadOwner(lockPath, existing);
+      if (Date.now() >= deadline) {
+        throw new Error(
+          "Timed out waiting for the isolated MFA app metrics listener; the owner may still be active or its lock is malformed.",
+        );
+      }
+      await new Promise((resolveWait) => setTimeout(resolveWait, pollMs));
+    }
+  }
+
+  let result!: T;
+  let runFailure: unknown;
+  let runFailed = false;
+  try {
+    result = await run();
+  } catch (error) {
+    runFailure = error;
+    runFailed = true;
+  }
+
+  let releaseFailure: unknown;
+  const current = readLockOwner(lockPath);
+  if (current?.pid === owner.pid && current.token === owner.token) {
+    try {
+      unlinkSync(lockPath);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+        releaseFailure = error;
+      }
+    }
+  }
+
+  if (runFailed && releaseFailure) {
+    throw new AggregateError(
+      [runFailure, releaseFailure],
+      "The isolated fixture failed and its metrics lock could not be released.",
+    );
+  }
+  if (runFailed) throw runFailure;
+  if (releaseFailure) throw releaseFailure;
+  return result;
+}
 
 function decodeBase32(value: string) {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -226,6 +416,12 @@ export async function withMfaCsrfApp<T>(
     );
   }
 
+  return withExclusiveMetricsListener(() => runMfaCsrfApp(run));
+}
+
+async function runMfaCsrfApp<T>(
+  run: (fixture: MfaCsrfAppFixture) => Promise<T>,
+): Promise<T> {
   const { PostgreSqlContainer } = apiPackageRequire(
     "@testcontainers/postgresql",
   ) as {

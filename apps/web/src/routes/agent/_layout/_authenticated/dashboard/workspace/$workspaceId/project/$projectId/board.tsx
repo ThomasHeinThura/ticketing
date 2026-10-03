@@ -246,6 +246,7 @@ function RouteComponent() {
         <div
           className="flex h-full flex-1 overflow-hidden bg-background"
           data-testid={sortedProject ? "g13-board-content" : undefined}
+          data-primary-content-ready={sortedProject ? "true" : undefined}
         >
           {sortedProject ? (
             viewMode === "board" ? (
