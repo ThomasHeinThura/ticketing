@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import {
   Command,
   CommandCollection,
@@ -65,6 +65,7 @@ function CommandPalette() {
   const { t } = useTranslation();
   const { setTheme } = useUserPreferencesStore();
   const navigate = useNavigate();
+  const router = useRouter();
   const { data: workspace } = useActiveWorkspace();
   const { data: session } = authClient.useSession();
   const { data: config } = useGetConfig();
@@ -100,10 +101,16 @@ function CommandPalette() {
 
   const preloadProjectsPage = useCallback(() => {
     if (!workspace?.id) return;
-    // The route itself is already part of the router tree. Its visible page is
-    // a separate React.lazy chunk, so preload that chunk on destination intent.
+    // TanStack's auto-split route component and its nested React.lazy page are
+    // separate chunks; warm both as soon as keyboard or pointer intent is clear.
+    void router
+      .preloadRoute({
+        to: "/dashboard/workspace/$workspaceId",
+        params: { workspaceId: workspace.id },
+      })
+      .catch(() => {});
     void import("@/components/project-list/projects-page").catch(() => {});
-  }, [workspace?.id]);
+  }, [router, workspace?.id]);
 
   const handleItemHighlighted = useCallback(
     (value: unknown, { reason }: { reason: string }) => {

@@ -6,6 +6,7 @@ import CommandPalette from "./index";
 
 const mocks = vi.hoisted(() => ({
   projectsPageModule: vi.fn(),
+  preloadRoute: vi.fn().mockResolvedValue(undefined),
 }));
 
 /**
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
   useLocation: () => ({ pathname: "/dashboard/workspace/w1" }),
+  useRouter: () => ({ preloadRoute: mocks.preloadRoute }),
 }));
 
 vi.mock("@/components/project-list/projects-page", () => {
@@ -158,5 +160,9 @@ describe("CommandPalette (#407)", () => {
     await vi.waitFor(() =>
       expect(mocks.projectsPageModule).toHaveBeenCalledOnce(),
     );
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({
+      to: "/dashboard/workspace/$workspaceId",
+      params: { workspaceId: "w1" },
+    });
   });
 });
