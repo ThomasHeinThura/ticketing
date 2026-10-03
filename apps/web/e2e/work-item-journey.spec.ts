@@ -549,6 +549,9 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await page.getByLabel("Title", { exact: true }).fill("First report");
   await page.getByLabel("Title", { exact: true }).press("Enter");
   await expect(page.getByRole("link", { name: /First report/ })).toBeVisible();
+  await page.screenshot({
+    path: test.info().outputPath("p1-work-item-list.png"),
+  });
   await page.getByRole("button", { name: "Board" }).click();
   await expect(page).toHaveURL(/layout=board/);
   await expect(page.getByRole("region", { name: "Ready" })).toBeVisible();
@@ -654,6 +657,9 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(page).toHaveScreenshot("work-item-detail.png", {
     fullPage: false,
     animations: "disabled",
+  });
+  await page.screenshot({
+    path: test.info().outputPath("p1-work-item-detail.png"),
   });
   await page.setViewportSize({ width: 1280, height: 720 });
   const editButton = page.getByRole("button", { name: "Edit", exact: true });

@@ -3,7 +3,6 @@ import { Alert, AlertDescription, Button } from "@taskdesk/ui";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import BulkAssignToolbar from "@/components/work-item/bulk-assign-toolbar";
 import WorkItemList from "@/components/work-item/work-item-list";
 import useGetProjectStates from "@/hooks/queries/project/use-get-project-states";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -15,6 +14,9 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 
 const CreateWorkItemDialog = lazy(
   () => import("@/components/work-item/create-work-item-dialog"),
+);
+const BulkAssignToolbar = lazy(
+  () => import("@/components/work-item/bulk-assign-toolbar"),
 );
 const WorkItemListRealtime = lazy(
   () => import("@/components/work-item/work-item-list-realtime"),
@@ -325,16 +327,18 @@ function WorkItemsRouteComponent() {
           </Suspense>
         ) : null}
         {project && workspace && selectedKeys.length > 0 && canBulkAssign && (
-          <BulkAssignToolbar
-            projectId={project.id}
-            workspaceId={workspace.id}
-            selectedKeys={selectedKeys}
-            onAssigned={(succeeded) =>
-              setSelectedKeys((current) =>
-                current.filter((key) => !succeeded.includes(key)),
-              )
-            }
-          />
+          <Suspense fallback={null}>
+            <BulkAssignToolbar
+              projectId={project.id}
+              workspaceId={workspace.id}
+              selectedKeys={selectedKeys}
+              onAssigned={(succeeded) =>
+                setSelectedKeys((current) =>
+                  current.filter((key) => !succeeded.includes(key)),
+                )
+              }
+            />
+          </Suspense>
         )}
         {project && !isLoading && realtimeProjectId === project.id ? (
           <Suspense fallback={null}>

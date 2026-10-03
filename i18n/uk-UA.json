@@ -2274,7 +2274,9 @@
 			"unassigned": "Unassigned",
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
-			"assigneeInactive": "(inactive)"
+			"assigneeInactive": "(inactive)",
+			"boardLayout": "Board",
+			"listLayout": "List"
 		},
 		"create": {
 			"cancel": "Cancel",
@@ -2357,6 +2359,38 @@
 			"transitionNote": "Примітка до переходу",
 			"transitionNoteRequired": "Потрібна примітка",
 			"transitionBlocked": "Заблоковано: {{reasons}}"
+		},
+		"board": {
+			"changeState": "Change state",
+			"chooseState": "Choose a new state for {{key}}",
+			"chooseStatePlaceholder": "Choose an available transition",
+			"currentState": "Current state: {{state}}",
+			"emptyColumn": "No work items in this state.",
+			"loadErrorDescription": "The project states or work items could not be loaded.",
+			"loadErrorTitle": "Couldn't load the work board",
+			"loadingMore": "Loading more…",
+			"loadingTransitions": "Loading available transitions…",
+			"loadMore": "Load more",
+			"moveFailed": "Couldn't move or reorder this work item. The board was refreshed.",
+			"moveState": "Move",
+			"noStatesDescription": "Configure an active project state before using the board.",
+			"noStatesTitle": "No active states",
+			"rankSaved": "Work item order updated.",
+			"retry": "Retry",
+			"selectColumn": "Select all items in {{state}}",
+			"transitionBlocked": "That transition is blocked: {{reason}}.",
+			"transitionForbidden": "You don't have permission to change this item's state.",
+			"transitionLoadError": "Couldn't load available transitions.",
+			"transitionSaved": "{{key}} moved to {{state}}.",
+			"transitionUnavailable": "That state isn't an available transition for this item."
+		},
+		"bulk": {
+			"assign": "Assign selected",
+			"assignee": "Choose a project member",
+			"result": "{{succeeded}} assigned; {{failed}} failed.",
+			"selectAll": "Select all work items",
+			"selected": "{{count}} selected",
+			"selectItem": "Select {{key}}"
 		}
 	},
 	"serviceCalendars": {
