@@ -48,8 +48,8 @@ import type {
   WorkspaceUser,
   WorkspaceUserInvitation,
 } from "@/types/workspace-user";
+import { Avatar, AvatarFallback, AvatarImage } from "../avatar";
 import { useAuth } from "../providers/auth-provider/hooks/use-auth";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 type Props = {
   workspaceId: string;

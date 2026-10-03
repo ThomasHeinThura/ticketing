@@ -88,6 +88,11 @@ exact context appears in the ruleset.
 └──────────────────────────────────────────────────┘
 ```
 
+The fast workflow installs the web workspace's pinned Playwright Chromium browser as a
+setup prerequisite before `pnpm check:tokens`; the check builds the stylesheet and measures
+the declared contrast pairs in that browser. The browser install is setup, not an independent
+quality gate: a missing browser makes `check:tokens` fail.
+
 `pnpm test:contract` regenerates and checks the committed OpenAPI document, runs Redocly's
 recommended lint rules, then runs `oasdiff breaking --fail-on WARN` against `origin/main`.
 Redocly currently reports 16 inherited findings in the generated contract; lint findings

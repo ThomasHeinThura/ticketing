@@ -29,9 +29,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { z } from "zod";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import PageTitle from "@/components/page-title";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import useDeleteAccount, {
   SESSION_TOO_OLD,
 } from "@/hooks/mutations/use-delete-account";
