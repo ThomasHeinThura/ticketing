@@ -173,7 +173,8 @@ thing that is hashed or executed.
   (`authenticated + self`, session-only) creates a five-minute challenge for either the
   current requester's pending action or an explicitly registered operation. The operation
   allowlist is `metrics_token_rotate`, `oidc_group_mapping_create`,
-  `oidc_group_mapping_update`, and `mfa_reset`. Pending-action binding uses its existing `pending_action.id`
+  `oidc_group_mapping_update`, `scim_admin_update`, and `mfa_reset`. Pending-action binding
+  uses its existing `pending_action.id`
   and `payload_hash`; operation binding uses the exact fixed route key, operation key,
   expected resource version and server-computed canonical request-binding hash. The client
   cannot choose a route or submit a hash. The response contains an opaque challenge id and a
@@ -210,20 +211,26 @@ thing that is hashed or executed.
   { "kind": "operation", "operation": "oidc_group_mapping_update",
     "connectionId": "...", "mappingId": "...",
     "request": { "configVersion": 7, "enabled": false } }
+  { "kind": "operation", "operation": "scim_admin_update",
+    "connectionId": "...",
+    "request": { "configVersion": 7, "kind": "mapping_update",
+      "mappingId": "...", "enabled": false } }
   ```
 
   For `metrics_token_rotate`, the server requires current `instance:admin` and a matching
   current `observability_config_version`, then hashes the canonical body bytes defined in
   [api-design.md](api-design.md#observability-administration-and-step-up). For either OIDC
-  mapping operation, it requires current `instance:admin`, session-only authentication, the
-  exact allowlisted route and a connection/mapping pair that resolves to that route; it
+  mapping operation, or the SCIM administration operation, it requires current
+  `instance:admin`, session-only authentication, the exact allowlisted route and a
+  connection with any variant-specific mapping that belongs to it; it
   checks the current `identity_connection.config_version` against `request.configVersion`
   (stored as `expected_version`) and validates the strict request against the persisted
-  connection and mapping before issuing a challenge. The canonical request-binding hash
-  covers the fixed route key, the
-  path `connectionId` and (for update) `mappingId`, and the server-canonical serialization
-  of the complete validated request body. The client supplies neither a route key nor a
-  hash. For a pending action, it verifies current requester ownership and pending state and
+  connection and mapping, or SCIM child and selected mapping when the SCIM variant has one,
+  before issuing a challenge. The canonical request-binding hash covers the fixed route key,
+  path `connectionId`, OIDC path `mappingId` where applicable, and the server-canonical
+  serialization of the complete validated request body. The SCIM mapping id is inside that
+  strict body. The client supplies neither a route key nor a hash. For a pending action,
+  it verifies current requester ownership and pending state and
   takes the existing payload hash itself. The no-store response is `{challengeId, challengeNonce, expiresAt,
   reauthenticationMethods}`; the nonce is 32 random bytes as unpadded 43-character
   base64url. The step-up request repeats the binding to prevent completing a different
@@ -236,6 +243,11 @@ thing that is hashed or executed.
   { "kind": "operation", "operation": "oidc_group_mapping_update",
     "connectionId": "...", "mappingId": "...",
     "request": { "configVersion": 7, "enabled": false },
+    "challengeId": "...", "challengeNonce": "...",
+    "proof": { "method": "password", "value": "..." } }
+  { "kind": "operation", "operation": "scim_admin_update",
+    "connectionId": "...",
+    "request": { "configVersion": 7, "kind": "settings", "enabled": false },
     "challengeId": "...", "challengeNonce": "...",
     "proof": { "method": "password", "value": "..." } }
   ```
@@ -255,10 +267,13 @@ thing that is hashed or executed.
   | `mfa_reset` | `POST /api/instance/users/{id}/reset-mfa` | fixed operation version `1` |
   | `oidc_group_mapping_create` | `POST /api/instance/identity-connections/{id}/oidc-group-mappings` | `identity_connection.config_version` |
   | `oidc_group_mapping_update` | `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` | `identity_connection.config_version` |
+  | `scim_admin_update` | `PATCH /api/instance/identity-connections/{id}/scim` | `identity_connection.config_version` |
 
-  OIDC mapping challenge and completion requests carry the exact connection id, mapping id
-  where applicable, and strict operation body; the service re-resolves them and checks that
-  the mapping belongs to the named connection. The step-up request repeats the binding.
+  OIDC mapping and SCIM administration challenge and completion requests carry the exact
+  connection id and strict operation body; the OIDC mapping id is a separate path id, while
+  the SCIM mapping id, when applicable, is inside its validated body. The service re-resolves
+  both resources and checks that each mapping belongs to the named connection. The step-up
+  request repeats the binding.
   Each protected route uses `X-TaskDesk-Step-Up-Token` and recomputes the request-binding
   hash from the loaded path parameters and server-validated canonical body. In one database
   transaction, re-read the current active person and session, re-evaluate the exact
@@ -271,9 +286,11 @@ thing that is hashed or executed.
 
   For metrics rotation, the route/body canonicalization remains as specified in
   [api-design.md](api-design.md#observability-administration-and-step-up). For OIDC mapping
-  writes, the canonical request envelope and field ordering are specified in
-  [api-design.md](api-design.md#oidc-group-mapping-administration). No operation may reuse
-  another operation's proof, and no session-wide freshness window is introduced.
+  and SCIM administration writes, the canonical request envelopes and field ordering are
+  specified in [api-design.md](api-design.md#oidc-group-mapping-administration) and
+  [api-design.md](api-design.md#scim-administration-patch--issue-561-owner-contract).
+  No operation may reuse another operation's proof, and no session-wide freshness window
+  is introduced.
 
   For `mfa_reset`, both challenge and proof repeat the target user id and exact validated
   `verificationNote`. The canonical body hash covers the fixed route, operation, fixed

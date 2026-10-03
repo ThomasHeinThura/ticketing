@@ -5,6 +5,34 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-04 · Select the bounded SCIM administration PATCH contract for #561
+
+**Decision:** under Thomas's explicit P0–P4 contract-authoring authorization, the existing
+God Mode SCIM PATCH accepts exactly one settings, mapping-create or mapping-update edit per
+request, with closed DTOs and secret-safe projection in
+[api-design.md](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).
+The write is always `instance:admin`, elevated and session-only. It uses the parent
+`identity_connection.config_version` CAS shared with connection and OIDC mapping writers,
+and the newly registered, route/body/connection/version-bound `scim_admin_update` operation
+in the **single authoritative** [PA-15 allowlist](../01-architecture/pending-actions.md).
+The route does not edit tokens, OIDC config or SCIM attribute mapping; the latter has no
+closed authoritative syntax and needs its own contract before an editor is exposed.
+
+**Source transition:** use `IP-22`'s parent-first total locks, source-validity projection,
+same-source re-evidence and linked SCIM history repair for disable, group-resource removal
+and mapping change. Keep direct/OIDC/JIT and other-connection sources independent. Keep
+existing audit, provisioning, outbox and cache rules. No runtime route is mounted by this
+decision, and an implementation without the fresh PA-15 verifier remains fail-closed.
+
+**Authority status:** this selects a bounded documented recommendation for implementation;
+it does not approve proposed ADR-0015, close owning review findings 81–82, perform the
+P4 human H1–H6 review, claim any of the 25 P3 tests, or satisfy independent bulk/security
+review and exact-head gates. Source projection implementation still depends on the
+ADR-0015 provenance cut-over and owner-approved reconciliation of any ambiguous legacy
+membership rows; no row is classified by guesswork.
+
+**Recorded by:** GPT-6 Sol architecture author, 2026-10-04.
+
 ### 2026-10-03 · Select the bounded P2 holiday-import profile
 
 **Decision:** complete calendar holiday import in a separate full P2 implementation batch

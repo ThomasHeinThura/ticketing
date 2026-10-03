@@ -128,12 +128,13 @@ is required and has not been granted. These are target contracts, not implemente
   Every write through the existing `PATCH /api/instance/identity-connections/{id}/scim`
   administration route is unconditionally `instance:admin`, elevated and `sessionOnly`,
   including settings, lifecycle, mapping, display-only and customer changes. This route-wide
-  policy covers the prior conditional triggers without body-selected elevation. The route is
-  not yet a usable elevated operation: its strict DTO, parent-version CAS and dedicated
-  PA-15 binding are undefined. Issue [#561](https://github.com/ThomasHeinThura/ticketing/issues/561)
-  owns that separate API/proof contract; until completed, any mounted write fails closed
-  with `403 step_up_unavailable` and makes no mutation. OIDC mapping writes remain
-  unconditionally elevated and use their already-defined operation bindings.
+  policy covers the prior conditional triggers without body-selected elevation. The strict
+  DTO, exact permitted settings/mapping writes, shared parent-version CAS and dedicated
+  `scim_admin_update` PA-15 binding are specified in
+  [api-design.md](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).
+  This is a design contract, not a mounted runtime route; an implementation lacking the
+  verifier still fails closed with `403 step_up_unavailable` and makes no mutation. OIDC
+  mapping writes remain unconditionally elevated with separate operation bindings.
   Mapping to `instance:admin` or `sees_all` is not elevated — it is **impossible**: the
   mapping editor does not offer it and the server refuses it.
 
@@ -360,8 +361,9 @@ protocol code; only the credential check reuses the platform.
 
   For external grants, the locked writer's single `valid_now(grant, locked_rows)` predicate
   requires an active person whose owning organisation is active and not deleted; an
-  enabled, scope-eligible connection; a current matching JIT default or enabled same-source
-  mapping; an existing role on the correct side/scope that is still the configured/mapped
+  enabled, scope-eligible connection; for `scim_group`, an enabled SCIM child with `groups`
+  in `allowed_resources`; a current matching JIT default or enabled same-source mapping;
+  an existing role on the correct side/scope that is still the configured/mapped
   role, has no externally forbidden capability, and (for staff) is within the connection's
   current `max_role_rank`; and a live target. A customer target is its active, non-deleted
   organisation with `portal_access=true`. An agent target is a non-deleted workspace owned
@@ -562,7 +564,7 @@ protocol code; only the credential check reuses the platform.
 | Create, edit, enable, disable, delete a connection | `instance:admin` + elevated; positive `configVersion` CAS on configuration writes |
 | Create, rotate, revoke a SCIM token | `instance:admin` + elevated |
 | Create, edit, enable or disable an OIDC group mapping | `instance:admin`; always elevated, session-only and operation-bound for POST/PATCH under `IP-34`, including customer, display-snapshot-only and non-authority changes |
-| Edit SCIM administration settings or group mappings | `instance:admin`; every PATCH is elevated and session-only; not usable until strict DTO, shared version CAS and dedicated PA-15 proof contract in issue [#561](https://github.com/ThomasHeinThura/ticketing/issues/561) are specified; fail closed with `403 step_up_unavailable` meanwhile (`IP-6`) |
+| Edit SCIM administration settings or group mappings | `instance:admin`; every PATCH is elevated, session-only and bound to the dedicated `scim_admin_update` PA-15 operation, shared parent version and strict DTO in [api-design.md](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract); unavailable proof fails closed (`IP-6`) |
 | Call `/scim/v2/*` | The SCIM bearer token — `delegated: scim`, organisation and portal from the token |
 | Sign in through a connection | Anyone the connection's portal and organisation admit |
 
@@ -572,7 +574,7 @@ protocol code; only the credential check reuses the platform.
 | --- | --- | --- |
 | God Mode → Authentication (identity connections, agent scope) | `/agent/god-mode/authentication` | Existing rows; the list becomes "identity connections" |
 | Connection editor | `/agent/god-mode/authentication/{id}` | OIDC settings, JIT policy, domain bindings, OIDC object-id group mappings (selection/open state in URL), **SCIM panel** (endpoint URL, token create/rotate/revoke, allowed resources and distinct SCIM mappings, last sync), Test OIDC, Test SCIM |
-| God Mode → Organisations → detail → **Identity** | `/agent/god-mode/organisations/{id}/identity` | The customer-organisation connection: enable/disable portal SSO; provider type (Entra first); organisation-bound OIDC settings; SCIM endpoint info; token create/rotate; Test OIDC; Test SCIM; provisioning status and last sync; errors without secrets; attribute mapping; group mapping (selection/open state in URL); audit history; **unmissable organisation-scope and portal-scope warnings** |
+| God Mode → Organisations → detail → **Identity** | `/agent/god-mode/organisations/{id}/identity` | The customer-organisation connection: enable/disable portal SSO; provider type (Entra first); organisation-bound OIDC settings; SCIM endpoint info; token create/rotate; Test OIDC; Test SCIM; provisioning status and last sync; errors without secrets; attribute-mapping status only until its editor contract exists; group mapping (selection/open state in URL); audit history; **unmissable organisation-scope and portal-scope warnings** |
 
 ## API
 
@@ -588,7 +590,7 @@ POST   /api/instance/identity-connections/{id}/test               instance:admin
 POST   /api/instance/identity-connections/{id}/scim               instance:admin  E  (create SCIM connection + first token)
 POST   /api/instance/identity-connections/{id}/scim/rotate-token  instance:admin  E
 POST   /api/instance/identity-connections/{id}/scim/revoke-token  instance:admin  E
-PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E  (route-wide; not usable until strict DTO/CAS/dedicated PA-15 contract in issue #561; otherwise fail closed)
+PATCH  /api/instance/identity-connections/{id}/scim               instance:admin  E  (route-wide, session-only, dedicated PA-15 operation; design only until implemented)
 POST   /api/instance/identity-connections/{id}/scim/test          instance:admin
 GET    /api/instance/identity-connections/{id}/events             instance:admin      (provisioning events, paged)
 
@@ -768,12 +770,13 @@ verifier fail-closed behavior, atomic
 subcases under tests 04, 09, 12, 13, 15, 16, 17 and 23; the 25 test names are unchanged and
 none of this evidence is claimed implemented or run.
 
-After issue #561 specifies the SCIM administration DTO and PA-15 operation, tests 09/12
-also retain planned negatives for API-key/MCP/impersonation `403 session_required`, missing
-or unavailable proof, wrong OIDC/metrics operation, wrong connection, changed canonical
+The issue #561 SCIM administration DTO and PA-15 contract adds planned tests 09/12
+for API-key/MCP/impersonation `403 session_required`, missing
+or unavailable proof, wrong OIDC/MFA/metrics operation, wrong connection, changed canonical
 body, stale parent version, expiry, replay and concurrent edit; failures make no mutation or
-grant change, and stale CAS rolls proof consumption back. No operation key or DTO is defined
-by this proposal.
+grant change, and stale CAS rolls proof consumption back. Cover all three body variants,
+forbidden role/scope, absent `groups`, independent-source preservation, SCIM history
+repair and later same-source re-evidence. The 25 named tests remain planned.
 
 The shared IP-22 invariant adds planned subcases to the same named tests: 12 covers JIT
 disable/default-role change and re-enable evidence, stale/expanded lock-set retry (including a

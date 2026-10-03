@@ -1,5 +1,16 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## P3 SCIM administration design handoff — 2026-10-04 UTC
+
+The issue #561 owner contract is written on branch `codex/p3-scim-administration-contract`:
+strict settings/mapping PATCH variants, parent identity-connection version CAS, secret-safe
+response, and dedicated `scim_admin_update` PA-15 allowlist binding. This is architecture
+preparation only. The runtime route remains absent; issue #561 remains open for the complete
+P3 implementation and acceptance batch. SCIM attribute-mapping syntax is still unspecified
+and its editor remains unavailable. ADR-0015 is proposed; provenance cut-over and any
+ambiguous legacy row reconciliation remain gated, and owning findings 81–82 require
+independent disposition. Human H1–H6 review is deferred to integrated P4. P0 retains priority.
+
 ## P0 ordinary audit clearance and current image — 2026-10-03 18:51 UTC
 
 Fresh independent GPT-6 Luna auth delta review clears the complete lifecycle remediation on `37f8f46685db8dedf92a978692ff96928882c5a0`: one unit file / two tests and one real PostgreSQL file / six tests passed. The report is `security-reviews/579-luna-auth-delta-final.md`; it records the original finding disposition and execution limits. Runtime/web scope verdicts at `19a9...` remain historical; only the later auth/audit delta was rechecked. No required security clearance, hosted acceptance or phase completion is inferred.
