@@ -114,8 +114,12 @@ function CommandPalette() {
 
   const handleItemHighlighted = useCallback(
     (value: unknown, { reason }: { reason: string }) => {
+      const highlightedValue =
+        typeof value === "object" && value !== null && "value" in value
+          ? value.value
+          : value;
       if (
-        value === "projects" &&
+        highlightedValue === "projects" &&
         (reason === "keyboard" || reason === "pointer")
       ) {
         // Load the route after explicit destination intent. This keeps route

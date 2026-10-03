@@ -117,15 +117,7 @@ export default defineConfig({
     sourcemap: "hidden",
     rolldownOptions: {
       output: {
-        codeSplitting: {
-          groups: [
-            {
-              name: "agent-initial-runtime",
-              tags: ["$initial"],
-              maxSize: 1_000_000,
-            },
-          ],
-        },
+        codeSplitting: { groups: [] },
       },
     },
     commonjsOptions: {

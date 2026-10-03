@@ -77,17 +77,14 @@ vi.mock("@taskdesk/ui", () => {
       children,
       onItemHighlighted,
     }: PropsWithChildren<{
-      onItemHighlighted?: (
-        value: string | undefined,
-        details: { reason: string },
-      ) => void;
+      onItemHighlighted?: (value: unknown, details: { reason: string }) => void;
     }>) => (
       <>
         <button
           type="button"
           data-testid="highlight-project-command"
           onClick={() =>
-            onItemHighlighted?.("projects", { reason: "keyboard" })
+            onItemHighlighted?.({ value: "projects" }, { reason: "keyboard" })
           }
         >
           Highlight Projects with keyboard

@@ -25,6 +25,9 @@ export const Route = createFileRoute(
   "/_layout/_authenticated/agent/work-items/$key",
 )({
   component: WorkItemDetailRouteComponent,
+  pendingComponent: WorkItemDetailLoading,
+  pendingMs: 0,
+  pendingMinMs: 0,
 });
 
 function WorkItemDetailRouteComponent() {
