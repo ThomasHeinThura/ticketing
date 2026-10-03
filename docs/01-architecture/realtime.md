@@ -242,6 +242,12 @@ Revisit when there is evidence people actually co-edit descriptions.
 
 ## Fallback
 
+An initial socket connection and its topic subscription acknowledgements are a pending
+state, not an outage. Active queries keep the 30-second foreground polling fallback until
+all requested topics are acknowledged, but the unavailable indicator appears only after a
+connection error, close, or denied subscription. After an outage, keep the indicator and
+polling active through reconnect until all requested topics are acknowledged again.
+
 If the WebSocket cannot connect — a proxy that strips upgrades, a hostile corporate
 network — the client falls back to polling active queries every 30 seconds and shows a
 small "live updates unavailable" indicator. The application remains fully usable.

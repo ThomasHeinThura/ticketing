@@ -291,7 +291,7 @@ async function installPerformanceApiFixture(
           "Access-Control-Allow-Origin": "http://127.0.0.1:4178",
           "Access-Control-Allow-Credentials": "true",
           "Access-Control-Allow-Headers":
-            "Content-Type, X-TaskDesk-Window-Id, If-Match",
+            "Content-Type, X-TaskDesk-Window-Id, X-TaskDesk-CSRF, If-Match",
           "Access-Control-Allow-Methods":
             "GET, POST, PUT, PATCH, DELETE, OPTIONS",
         },
@@ -305,7 +305,7 @@ async function installPerformanceApiFixture(
           "Access-Control-Allow-Origin": "http://127.0.0.1:4178",
           "Access-Control-Allow-Credentials": "true",
           "Access-Control-Allow-Headers":
-            "Content-Type, X-TaskDesk-Window-Id, If-Match",
+            "Content-Type, X-TaskDesk-Window-Id, X-TaskDesk-CSRF, If-Match",
           "Access-Control-Allow-Methods":
             "GET, POST, PUT, PATCH, DELETE, OPTIONS",
         },
@@ -324,6 +324,17 @@ async function installPerformanceApiFixture(
 
     if (path.endsWith("/auth/get-session"))
       return json(isAuthenticated ? SESSION : null);
+    if (path === "/api/me/security/factors" && request.method() === "GET")
+      return isAuthenticated
+        ? json({ enabled: false, required: false, policyMode: "optional" })
+        : json({ message: "Unauthorized" }, 401);
+    if (path === "/api/me/csrf-token" && request.method() === "GET")
+      return isAuthenticated
+        ? json({
+            token: "g11-performance-csrf-token",
+            expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+          })
+        : json({ message: "Unauthorized" }, 401);
     if (path.endsWith("/auth/sign-in/email") && request.method() === "POST") {
       await new Promise((resolve) => setTimeout(resolve, 250));
       isAuthenticated = true;
@@ -1259,6 +1270,9 @@ async function collectCommandPaletteInteraction(
   metric: "open" | "navigate" = "open",
 ) {
   await openWorkList(page);
+  const palettePopup = page.locator('[data-slot="command-dialog-popup"]');
+  await expect(palettePopup).toHaveCount(1);
+  await expect(palettePopup).toBeHidden();
   await page.keyboard.press(
     process.platform === "darwin" ? "Meta+k" : "Control+k",
   );
@@ -1569,12 +1583,21 @@ async function collectBoardDragFrameP95(page: Page) {
   await page.waitForTimeout(400);
 
   let versionedWriteRequests = 0;
+  let csrfIssuerRequests = 0;
+  let csrfIssuerResponses = 0;
   const versionedWriteResults: Array<{
     taskId: string;
     ifMatch: string | undefined;
+    csrfHeaderPresent: boolean;
     status: number;
   }> = [];
   page.on("request", (request) => {
+    if (
+      request.method() === "GET" &&
+      new URL(request.url()).pathname === "/api/me/csrf-token"
+    ) {
+      csrfIssuerRequests += 1;
+    }
     if (
       request.method() === "PUT" &&
       new URL(request.url()).pathname.match(/^\/api\/v2\/task\/[^/]+$/)
@@ -1585,6 +1608,13 @@ async function collectBoardDragFrameP95(page: Page) {
   page.on("response", (response) => {
     const request = response.request();
     if (
+      request.method() === "GET" &&
+      new URL(response.url()).pathname === "/api/me/csrf-token" &&
+      response.status() === 200
+    ) {
+      csrfIssuerResponses += 1;
+    }
+    if (
       request.method() === "PUT" &&
       new URL(response.url()).pathname.match(/^\/api\/v2\/task\/[^/]+$/)
     ) {
@@ -1592,6 +1622,7 @@ async function collectBoardDragFrameP95(page: Page) {
       versionedWriteResults.push({
         taskId: decodeURIComponent(path.slice("/api/v2/task/".length)),
         ifMatch: request.headers()["if-match"],
+        csrfHeaderPresent: Boolean(request.headers()["x-taskdesk-csrf"]),
         status: response.status(),
       });
     }
@@ -1659,10 +1690,15 @@ async function collectBoardDragFrameP95(page: Page) {
   const frameP95 = ordered[Math.ceil(ordered.length * 0.95) - 1];
 
   expect(versionedWriteRequests).toBeGreaterThan(0);
+  expect(csrfIssuerRequests).toBeGreaterThan(0);
+  expect(csrfIssuerResponses).toBe(csrfIssuerRequests);
   expect(versionedWriteResults).toHaveLength(versionedWriteRequests);
   expect(versionedWriteResults.every(({ status }) => status === 200)).toBe(
     true,
   );
+  expect(
+    versionedWriteResults.every(({ csrfHeaderPresent }) => csrfHeaderPresent),
+  ).toBe(true);
   await page.reload();
   await expect(
     page.getByText("Seeded legacy task 1", { exact: true }),

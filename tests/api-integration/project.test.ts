@@ -4,10 +4,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -41,6 +43,23 @@ async function createApiKeyFor(
   return rawKey;
 }
 
+async function mockSessionCookie(userId: string): Promise<string> {
+  const now = new Date();
+  await db
+    .insert(schema.sessionTable)
+    .values({
+      id: `session-${userId}`,
+      token: `token-${userId}`,
+      userId,
+      expiresAt: new Date(now.getTime() + 60 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+      portal: "agent",
+    })
+    .onConflictDoNothing({ target: schema.sessionTable.id });
+  return `__Host-tdk_agent_session=project-test-${userId}`;
+}
+
 describe("API integration: project creation", () => {
   beforeEach(async () => {
     await resetTestDatabase();
@@ -70,20 +89,24 @@ describe("API integration: project creation", () => {
   it("creates a project for a workspace member and seeds default columns", async () => {
     const member = await createWorkspaceMember();
     mockAuthenticatedSession(member.user);
+    const cookie = await mockSessionCookie(member.user.id);
     const { app } = createApp();
 
-    const response = await app.request("/api/project", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
+    const response = await csrfRequest(
+      app,
+      "/api/project",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: member.workspace.id,
+          name: "Roadmap",
+          icon: "FolderKanban",
+          slug: "roadmap",
+        }),
       },
-      body: JSON.stringify({
-        workspaceId: member.workspace.id,
-        name: "Roadmap",
-        icon: "FolderKanban",
-        slug: "roadmap",
-      }),
-    });
+      cookie,
+    );
 
     expect(response.status).toBe(200);
     const payload =
@@ -135,18 +158,24 @@ describe("API integration: project creation", () => {
       workspaceId: member.workspace.id,
     });
     mockAuthenticatedSession(member.user);
+    const cookie = await mockSessionCookie(member.user.id);
     const { app } = createApp();
-    const updateResponse = await app.request(`/api/project/${project.id}`, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name: project.name,
-        icon: project.icon ?? "Layout",
-        slug: project.slug,
-        description: project.description ?? "",
-        defaultCommentVisibility: "public",
-      }),
-    });
+    const updateResponse = await csrfRequest(
+      app,
+      `/api/project/${project.id}`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: project.name,
+          icon: project.icon ?? "Layout",
+          slug: project.slug,
+          description: project.description ?? "",
+          defaultCommentVisibility: "public",
+        }),
+      },
+      cookie,
+    );
 
     expect(updateResponse.status).toBe(200);
     await expect(updateResponse.json()).resolves.toMatchObject({
@@ -180,21 +209,28 @@ describe("API integration: project creation", () => {
     });
     mockAuthenticatedSession(lead.user);
     const { app } = createApp();
+    const cookie = await mockSessionCookie(lead.user.id);
 
-    const settingResponse = await app.request(`/api/project/${project.id}`, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name: project.name,
-        icon: project.icon ?? "Layout",
-        slug: project.slug,
-        description: project.description ?? "",
-        defaultCommentVisibility: "public",
-      }),
-    });
+    const settingResponse = await csrfRequest(
+      app,
+      `/api/project/${project.id}`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: project.name,
+          icon: project.icon ?? "Layout",
+          slug: project.slug,
+          description: project.description ?? "",
+          defaultCommentVisibility: "public",
+        }),
+      },
+      cookie,
+    );
     expect(settingResponse.status).toBe(403);
 
-    const ordinaryUpdateResponse = await app.request(
+    const ordinaryUpdateResponse = await csrfRequest(
+      app,
       `/api/project/${project.id}`,
       {
         method: "PUT",
@@ -206,6 +242,7 @@ describe("API integration: project creation", () => {
           description: project.description ?? "",
         }),
       },
+      cookie,
     );
     expect(ordinaryUpdateResponse.status).toBe(200);
   });
@@ -301,21 +338,26 @@ describe("API integration: project creation", () => {
       "outsider",
     );
 
+    await prepareAuthenticatedApiFixture(outsider.id);
     mockAuthenticatedSession(outsider);
+    const cookie = await mockSessionCookie(outsider.id);
     const { app } = createApp();
 
-    const response = await app.request("/api/project", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
+    const response = await csrfRequest(
+      app,
+      "/api/project",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: member.workspace.id,
+          name: "Forbidden Project",
+          icon: "Folder",
+          slug: "forbidden-project",
+        }),
       },
-      body: JSON.stringify({
-        workspaceId: member.workspace.id,
-        name: "Forbidden Project",
-        icon: "Folder",
-        slug: "forbidden-project",
-      }),
-    });
+      cookie,
+    );
 
     expect(response.status).toBe(403);
     await expect(response.text()).resolves.toBe(

@@ -19,7 +19,6 @@ describe("uploadTaskImage", () => {
       headers: {},
     });
     mocks.finalizeImageUpload.mockResolvedValue({
-      id: "asset123",
       url: "https://storage.example/file.conf",
     });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true }));
@@ -48,7 +47,6 @@ describe("uploadTaskImage", () => {
     );
     expect(asset.mimeType).toBe("application/octet-stream");
     expect(asset.kind).toBe("attachment");
-    expect(asset.url).toBe("/api/asset/asset123");
   });
 
   it("preserves a browser-provided content type", async () => {
@@ -68,6 +66,10 @@ describe("uploadTaskImage", () => {
     );
     expect(asset.mimeType).toBe("image/png");
     expect(asset.kind).toBe("image");
+    expect(fetch).toHaveBeenCalledWith(
+      "https://storage.example/upload",
+      expect.objectContaining({ credentials: "omit", method: "PUT" }),
+    );
     expect(asset.url).toBe("https://storage.example/file.conf");
   });
 });

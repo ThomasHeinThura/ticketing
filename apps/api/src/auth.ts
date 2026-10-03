@@ -1,20 +1,30 @@
+import { createHmac } from "node:crypto";
 import { apiKey } from "@better-auth/api-key";
 import { sendMagicLinkEmail, sendOtpEmail } from "@taskdesk/email";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
+import { deleteSessionCookie } from "better-auth/cookies";
 import {
   admin as adminPlugin,
   emailOTP,
   genericOAuth,
   lastLoginMethod,
   magicLink,
+  twoFactor as twoFactorPlugin,
 } from "better-auth/plugins";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
-import { count, eq, sql } from "drizzle-orm";
+import { and, count, eq, ne, sql } from "drizzle-orm";
+import { appendAuditLog } from "./audit/audit-writer";
+import { loadLocalFactorState } from "./auth/local-factor-service";
 import db, { schema } from "./database";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "./instance/observability/audit-failure-notifier";
+import {
+  logTaskDesk,
+  recordAuditWriteFailure,
+} from "./instance/observability/runtime";
 import {
   isBootstrapAdminEmail,
   isSetupCompleted,
@@ -77,6 +87,18 @@ if (!authSecretResult.ok) {
 }
 
 const authSecret = authSecretResult.secret;
+
+/** Sign narrowly scoped CSRF tokens without exposing Better Auth's root secret. */
+export function signCsrfPayload(payload: string): string {
+  return createHmac("sha256", authSecret)
+    .update("taskdesk:csrf:v1\0", "utf8")
+    .update(payload, "utf8")
+    .digest("base64url");
+}
+
+export function getConfiguredAgentOrigin(): string {
+  return new URL(agentOrigin).origin;
+}
 
 async function getUserLocale(email: string) {
   const [user] = await db
@@ -141,6 +163,7 @@ function createAuth(portal: AuthPortal) {
         account: schema.accountTable,
         session: schema.sessionTable,
         verification: schema.verificationTable,
+        twoFactor: schema.twoFactorTable,
         apikey: schema.apikeyTable,
       },
     }),
@@ -218,10 +241,22 @@ function createAuth(portal: AuthPortal) {
               magicLink: url,
               locale,
             });
-          } catch (error) {
-            console.error(error);
+          } catch {
+            logTaskDesk({
+              module: "auth",
+              message: "auth.failure",
+              level: "error",
+              result: "failed",
+            });
           }
         },
+      }),
+      twoFactorPlugin({
+        issuer: "TaskDesk",
+        skipVerificationOnEnable: false,
+        // Trusted-device cookies would create a factor bypass across session
+        // revocation and runtime policy changes. Every protected login must verify.
+        trustDeviceMaxAge: 0,
       }),
       ...(isEmailOtpSignInDisabled
         ? []
@@ -572,6 +607,36 @@ function createAuth(portal: AuthPortal) {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path === "/two-factor/enable" && ctx.context.session?.user.id) {
+          const state = await loadLocalFactorState(ctx.context.session.user.id);
+          if (state.policy.mode === "off") {
+            throw new APIError("FORBIDDEN", {
+              message:
+                "Local factor enrollment is disabled by instance policy.",
+            });
+          }
+        }
+
+        if (
+          ctx.path === "/two-factor/disable" ||
+          ctx.path === "/two-factor/generate-backup-codes"
+        ) {
+          throw new APIError("FORBIDDEN", {
+            message:
+              "A factor-bound confirmation is required for this operation.",
+          });
+        }
+
+        if (
+          ctx.path === "/two-factor/enable" &&
+          ctx.context.session?.user.twoFactorEnabled
+        ) {
+          throw new APIError("FORBIDDEN", {
+            message:
+              "An enrolled factor cannot be replaced through enrollment.",
+          });
+        }
+
         if (isLoginFormDisabled && isLocalSignInPath(ctx.path)) {
           throw new APIError("FORBIDDEN", {
             message:
@@ -639,26 +704,84 @@ function createAuth(portal: AuthPortal) {
         }
       }),
       after: createAuthMiddleware(async (ctx) => {
+        const newSession = ctx.context.newSession;
+        const previousSession = ctx.context.session;
+        const completedEnrollment =
+          ctx.path === "/two-factor/verify-totp" &&
+          previousSession?.user.twoFactorEnabled !== true &&
+          newSession?.user.twoFactorEnabled === true;
+        if (completedEnrollment && newSession) {
+          // Better Auth replaces the session used to verify enrollment. Revoke any
+          // other sessions as well so the newly verified factor gates every device.
+          await db
+            .delete(schema.sessionTable)
+            .where(
+              and(
+                eq(schema.sessionTable.userId, newSession.user.id),
+                ne(schema.sessionTable.id, newSession.session.id),
+              ),
+            );
+          await appendAuditLog(db, {
+            action: "auth.mfa_enrolled",
+            actorId: newSession.user.id,
+            actorType: "person",
+            workspaceId: null,
+            entityType: "person",
+            entityId: newSession.user.id,
+            after: { method: "totp" },
+          }).catch(async () => {
+            recordAuditWriteFailure("mutation");
+            await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+          });
+        }
+        if (!newSession) return;
+
+        const factorVerifiedEndpoint =
+          ctx.path === "/two-factor/verify-totp" ||
+          ctx.path === "/two-factor/verify-backup-code";
+        const passwordSignInPath =
+          ctx.path === "/sign-in/email" ||
+          ctx.path === "/sign-in/username" ||
+          ctx.path === "/sign-in/phone-number";
+        if (
+          newSession.user.twoFactorEnabled &&
+          !factorVerifiedEndpoint &&
+          !passwordSignInPath
+        ) {
+          // The plugin's built-in sign-in gate covers password sign-in. Other
+          // credential flows may not establish that challenge; refuse their
+          // session rather than let a local factor be skipped.
+          await ctx.context.internalAdapter.deleteSession(
+            newSession.session.token,
+          );
+          deleteSessionCookie(ctx, true);
+          ctx.context.setNewSession(null);
+          return;
+        }
+
+        await db
+          .update(schema.sessionTable)
+          .set({ portal })
+          .where(eq(schema.sessionTable.id, newSession.session.id));
+
         if (
           ctx.path.startsWith("/sign-up") ||
-          ctx.path.startsWith("/sign-in")
+          ctx.path.startsWith("/sign-in") ||
+          factorVerifiedEndpoint
         ) {
-          const newSession = ctx.context.newSession;
-          if (newSession) {
-            const workspaceMember = await db
-              .select({ workspaceId: schema.workspaceUserTable.workspaceId })
-              .from(schema.workspaceUserTable)
-              .where(eq(schema.workspaceUserTable.userId, newSession.user.id))
-              .limit(1);
+          const workspaceMember = await db
+            .select({ workspaceId: schema.workspaceUserTable.workspaceId })
+            .from(schema.workspaceUserTable)
+            .where(eq(schema.workspaceUserTable.userId, newSession.user.id))
+            .limit(1);
 
-            const activeWorkspaceId = workspaceMember[0]?.workspaceId || null;
+          const activeWorkspaceId = workspaceMember[0]?.workspaceId || null;
 
-            if (activeWorkspaceId) {
-              await db
-                .update(schema.sessionTable)
-                .set({ activeOrganizationId: activeWorkspaceId })
-                .where(eq(schema.sessionTable.id, newSession.session.id));
-            }
+          if (activeWorkspaceId) {
+            await db
+              .update(schema.sessionTable)
+              .set({ activeOrganizationId: activeWorkspaceId })
+              .where(eq(schema.sessionTable.id, newSession.session.id));
           }
         }
       }),

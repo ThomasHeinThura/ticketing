@@ -2,9 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import useGetWorkItem, {
-  WORK_ITEM_REFRESH_INTERVAL_MS,
-} from "./use-get-work-item";
+import useGetWorkItem from "./use-get-work-item";
 
 const getWorkItem = vi.hoisted(() => vi.fn());
 
@@ -48,7 +46,7 @@ describe("useGetWorkItem refresh", () => {
     expect(
       (detailQuery?.options as { refetchInterval?: number } | undefined)
         ?.refetchInterval,
-    ).toBe(WORK_ITEM_REFRESH_INTERVAL_MS);
+    ).toBe(30_000);
     await act(async () => {
       await result.current.refetch();
     });

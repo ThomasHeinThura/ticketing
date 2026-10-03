@@ -38,8 +38,11 @@ itself: update the ruleset to require its context and verify the live rule after
 As of 2026-09-23, `domain coverage (90%)` is required alongside the contexts listed in the
 repository's active ruleset. The full-stage `integration - Postgres 18`,
 `e2e - protected-route redirect`, and `a11y - accessibility (G4, axe)` contexts are also
-required; do not infer that a workflow configured to run before merge is enforced unless its
-exact context appears in the ruleset.
+required. The G11 job's exact context is `performance - budgets (G11)` and is intended to be
+required as well; do not infer that a workflow configured to run before merge is enforced
+unless its exact context appears in the ruleset. The complete local implementation run and
+its source-binding limit are recorded in the
+[G11 evidence note](../07-planning/evidence/2026-10-03-g11-7402.md).
 
 ```
 ┌─ Setup ──────────────────────────────────────────┐
@@ -195,7 +198,9 @@ move to in progress. The current
 `reduced-motion`, and `mobile-320` project
 commands above document future suites; none are enabled yet. The `e2e - protected-route
 redirect` smoke, G4's `a11y - accessibility (G4, axe)` scan, and G8's `visual regression
-(G8)` are required branch-protection status checks.
+(G8)` are required branch-protection status checks. G11's exact workflow context is
+`performance - budgets (G11)`; its run is verified by the local full-gate manifest and
+workflow reconciliation.
 
 The fast stage exists because a required check that takes an hour gets worked around; the
 full stage exists because the things it checks cannot be made fast. Both block a merge.

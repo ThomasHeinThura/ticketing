@@ -25,6 +25,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 import {
@@ -109,6 +110,8 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     "addWorkspaceMember: user",
   );
 
+  await prepareAuthenticatedApiFixture(user.id);
+
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
     userId: user.id,
@@ -147,20 +150,36 @@ async function addPersonOnRoster({
 }) {
   const organisation = await ensureInternalOrganisation();
   const now = new Date();
-  const person = requireRow(
-    await db
-      .insert(schema.personTable)
-      .values({
-        userId: userId ?? null,
-        organisationId: organisation.id,
-        side: "staff",
-        active,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning(),
-    "addPersonOnRoster: person",
-  );
+  const [existingPerson] = userId
+    ? await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, userId))
+        .limit(1)
+    : [];
+  const person = existingPerson
+    ? requireRow(
+        await db
+          .update(schema.personTable)
+          .set({ active })
+          .where(eq(schema.personTable.id, existingPerson.id))
+          .returning(),
+        "addPersonOnRoster: existing person",
+      )
+    : requireRow(
+        await db
+          .insert(schema.personTable)
+          .values({
+            userId: userId ?? null,
+            organisationId: organisation.id,
+            side: "staff",
+            active,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning(),
+        "addPersonOnRoster: person",
+      );
   const role = requireRow(
     await db
       .insert(schema.roleTable)

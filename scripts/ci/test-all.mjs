@@ -256,8 +256,8 @@ const manifest = [
   {
     gate: "pnpm test:perf",
     stage: "full",
-    run: null,
-    why: "the G11 thresholds exist, but a deterministic performance journey and separate agent/portal bundles are still prerequisites.",
+    run: ["pnpm", "test:perf"],
+    note: "runs the deterministic G11 Playwright interaction, route, render, layout-stability, and board budgets; dual-entry bundle budgets are checked separately by pnpm check:bundle-size.",
   },
 ];
 

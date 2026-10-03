@@ -12,7 +12,28 @@ export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/",
 )({
   component: RouteComponent,
+  pendingComponent: ProjectsRouteLoading,
+  pendingMs: 0,
+  pendingMinMs: 0,
 });
+
+function ProjectsRouteLoading() {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      aria-label={t("common:empty.loading")}
+      className="flex h-full flex-col gap-4 overflow-y-auto p-6"
+      data-testid="workspace-projects-route-pending"
+      role="status"
+    >
+      <h1>{t("workspace:projects.pageTitle")}</h1>
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+    </div>
+  );
+}
 
 function RouteComponent() {
   const { t } = useTranslation();
@@ -21,21 +42,7 @@ function RouteComponent() {
   return (
     <>
       <PageTitle title={t("workspace:projects.pageTitle")} />
-      <Suspense
-        fallback={
-          <div
-            aria-label={t("common:empty.loading")}
-            className="flex h-full flex-col gap-4 overflow-y-auto p-6"
-            data-testid="workspace-projects-route-pending"
-            role="status"
-          >
-            <h1>{t("workspace:projects.pageTitle")}</h1>
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        }
-      >
+      <Suspense fallback={<ProjectsRouteLoading />}>
         <ProjectsPage workspaceId={workspaceId} />
       </Suspense>
     </>

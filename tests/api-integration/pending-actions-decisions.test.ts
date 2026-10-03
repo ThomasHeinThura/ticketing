@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -9,6 +9,7 @@ import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 
 beforeEach(async () => {
   await resetTestDatabase();
+  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
 });
 
 function hashApiKeyForTest(key: string): string {
@@ -104,12 +105,13 @@ describe("POST /api/me/pending-actions/{id}/deny and /cancel", () => {
     "AU-14: succeeds with the %s transition when its audit insert fails",
     async (route, outcome) => {
       const { user, workspace, person } = await setupRequester();
+      await db
+        .update(schema.userTable)
+        .set({ role: "admin" })
+        .where(eq(schema.userTable.id, user.id));
       const pending = await insertPendingAction(person.id, workspace.id);
       mockAuthenticatedSession(user);
       const { app } = createApp();
-      const auditFailure = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => undefined);
       await db.execute(
         sql.raw(`
           CREATE OR REPLACE FUNCTION fail_pending_action_decision_http_audit_insert()
@@ -163,12 +165,15 @@ describe("POST /api/me/pending-actions/{id}/deny and /cancel", () => {
         expect(events).toHaveLength(1);
         expect(events[0]?.payload).toMatchObject({ payload: { outcome } });
         expect(audits).toHaveLength(0);
-        expect(auditFailure).toHaveBeenCalledWith(
-          "AU-14: pending-action decision audit write failed",
-          expect.anything(),
-        );
+        const alerts = await db
+          .select({ eventData: schema.notificationTable.eventData })
+          .from(schema.notificationTable)
+          .where(eq(schema.notificationTable.type, "audit_write_failed"));
+        expect(alerts).toHaveLength(1);
+        expect(alerts[0]?.eventData).toMatchObject({
+          operation: "pending_action_decision",
+        });
       } finally {
-        auditFailure.mockRestore();
         await db.execute(
           sql.raw(
             "DROP TRIGGER IF EXISTS fail_pending_action_decision_http_audit_insert ON audit_log",

@@ -31,7 +31,10 @@ function createSession(
  * mock a session with `role` set, unset, or explicitly `null`, without
  * masking a real narrowing defect behind a broader type.
  */
-type MockSessionUser = User & { role?: string | null };
+type MockSessionUser = Omit<User, "twoFactorEnabled"> & {
+  role?: string | null;
+  twoFactorEnabled?: boolean | null;
+};
 
 export function mockAuthenticatedSession(
   user: MockSessionUser,
@@ -42,7 +45,7 @@ export function mockAuthenticatedSession(
 ) {
   const result = {
     session: createSession(user.id, sessionOverrides),
-    user,
+    user: { ...user, twoFactorEnabled: user.twoFactorEnabled ?? false },
   };
   const agentMock = vi.spyOn(auth.api, "getSession").mockResolvedValue(result);
   vi.spyOn(portalAuth.api, "getSession").mockResolvedValue(result);

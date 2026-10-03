@@ -15,6 +15,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 import {
   raceProjectArchive,
@@ -93,6 +94,8 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     })
     .returning();
   if (!user) throw new Error("addWorkspaceMember: no user row");
+
+  await prepareAuthenticatedApiFixture(user.id);
 
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,

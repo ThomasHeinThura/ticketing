@@ -38,6 +38,9 @@ export const Route = createFileRoute(
         : parseWorkItemActivityFilter(search.activity),
   }),
   component: WorkItemDetailRouteComponent,
+  pendingComponent: WorkItemDetailLoading,
+  pendingMs: 0,
+  pendingMinMs: 0,
 });
 
 function WorkItemDetailRouteComponent() {

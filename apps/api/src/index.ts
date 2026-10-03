@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { serve, upgradeWebSocket } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { OpenAPIHono } from "@hono/zod-openapi";
+import { normaliseRouteKey } from "@taskdesk/permissions";
 import type { Session, User } from "better-auth/types";
 import { and, eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -22,6 +23,10 @@ import {
   authForHost,
   portalForHost,
 } from "./auth";
+import csrfToken from "./auth/csrf-token-api";
+import factorStatus from "./auth/factor-status-api";
+import { loadLocalFactorState } from "./auth/local-factor-service";
+import stepUp from "./auth/step-up-api";
 import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
 import column from "./column";
@@ -42,6 +47,17 @@ import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
+import localFactorPolicy from "./instance/local-factor-policy";
+import observability from "./instance/observability";
+import metricsTokenRotation from "./instance/observability/metrics-token-rotation";
+import {
+  beginObservedRequest,
+  logTaskDesk,
+  observeRequest,
+  startObservabilityRuntime,
+  stopObservabilityRuntime,
+} from "./instance/observability/runtime";
+import resetMfa from "./instance/reset-mfa";
 import { ensureSetupToken } from "./instance/setup-token";
 import invitation from "./invitation";
 import label from "./label";
@@ -88,6 +104,7 @@ import {
 import { loadReachableAsset } from "./utils/authorize-asset-access";
 import { backfillWorkspaceAndProjectDefaults } from "./utils/backfill-workspace-project-defaults";
 import { getInvitationDetails } from "./utils/check-registration-allowed";
+import { csrfProtectionMiddleware } from "./utils/csrf-protection";
 import { migrateApiKeyReferenceId } from "./utils/migrate-apikey-reference-id";
 import { migrateNotificationPreferencesSchema } from "./utils/migrate-notification-preferences-schema";
 import { migrateSessionColumn } from "./utils/migrate-session-column";
@@ -146,6 +163,23 @@ type ApiVariables = {
     apiKey?: ApiKey;
   };
 };
+
+async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
+  if (c.req.path === "/api/me/security/factors") return;
+  const userId = c.get("userId");
+  const session = c.get("session") as (Session & { portal?: string }) | null;
+  if (!userId || !session || session.portal !== "agent") return;
+
+  let state: Awaited<ReturnType<typeof loadLocalFactorState>>;
+  try {
+    state = await loadLocalFactorState(userId);
+  } catch {
+    throw new HTTPException(503, { message: "factor_policy_unavailable" });
+  }
+  if (state.required && !state.enabled) {
+    throw new HTTPException(403, { message: "mfa_enrollment_required" });
+  }
+}
 
 const SAFE_INLINE_ASSET_TYPES = new Set([
   "image/apng",
@@ -373,6 +407,36 @@ export function createApp(
 ) {
   assertCookieDomainIsNotConfiguredForHostIsolation();
   const app = new Hono<AppVariables>();
+
+  const requestMetricsMiddleware = async (
+    c: Context<AppVariables>,
+    next: Next,
+  ) => {
+    const startedAt = performance.now();
+    const release = beginObservedRequest();
+    try {
+      await next();
+    } finally {
+      release();
+      const routePath = c.req.routePath;
+      let registeredRoute: string | undefined;
+      if (routePath) {
+        try {
+          registeredRoute = normaliseRouteKey(`${c.req.method} ${routePath}`);
+        } catch {
+          registeredRoute = undefined;
+        }
+      }
+      observeRequest({
+        method: c.req.method,
+        route: registeredRoute,
+        status: c.res.status,
+        durationMs: Math.max(0, performance.now() - startedAt),
+      });
+    }
+  };
+  declareCatchAllMiddleware(requestMetricsMiddleware);
+  app.use("*", requestMetricsMiddleware);
 
   app.onError((err, c) => {
     if (err instanceof HTTPException) {
@@ -1013,6 +1077,9 @@ export function createApp(
           throw new HTTPException(403, { message: "Forbidden" });
       }
       await authenticateApiRequest(c);
+      await enforceLocalFactorEnrollment(c);
+      const csrfResponse = await csrfProtectionMiddleware()(c, async () => {});
+      if (csrfResponse instanceof Response) return csrfResponse;
       // Issue #8: refuses outright (never silently serves) a route below this guard that
       // has no entry at all in the declarative policy registry -- see
       // `route-classification-guard.ts`'s own doc comment for exactly what this does and
@@ -1034,7 +1101,12 @@ export function createApp(
       );
     } catch (error) {
       if (!(error instanceof HTTPException)) {
-        console.error("API authentication failed:", error);
+        logTaskDesk({
+          module: "auth",
+          message: "auth.failure",
+          level: "error",
+          result: "failed",
+        });
         throw new HTTPException(500, { message: "Internal Server Error" });
       }
       throw error;
@@ -1156,6 +1228,13 @@ export function createApp(
   const workItemApi = api.route("/", workItem);
   const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
+  const factorStatusApi = api.route("/me", factorStatus);
+  const csrfTokenApi = api.route("/me", csrfToken);
+  const stepUpApi = api.route("/me", stepUp);
+  const observabilityApi = api.route("/instance", observability);
+  const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
+  const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
+  const resetMfaApi = api.route("/instance", resetMfa);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
@@ -1173,9 +1252,15 @@ export function createApp(
         throw new HTTPException(403, { message: "Forbidden" });
       try {
         await authenticateApiRequest(c);
+        await enforceLocalFactorEnrollment(c);
       } catch (error) {
         if (error instanceof HTTPException) throw error;
-        console.error("API authentication failed:", error);
+        logTaskDesk({
+          module: "auth",
+          message: "auth.failure",
+          level: "error",
+          result: "failed",
+        });
         throw new HTTPException(500, { message: "Internal Server Error" });
       }
       const originResult = checkWebSocketOrigin({
@@ -1210,6 +1295,7 @@ export function createApp(
             async () => {
               try {
                 await authenticateApiRequest(c);
+                await enforceLocalFactorEnrollment(c);
                 const refreshed = readCredential();
                 if (!refreshed.userId) return null;
                 return refreshed;
@@ -1245,11 +1331,17 @@ export function createApp(
     upgradeWebSocket(async (c) => {
       try {
         await authenticateApiRequest(c);
+        await enforceLocalFactorEnrollment(c);
       } catch (error) {
         if (error instanceof HTTPException) {
           throw error;
         }
-        console.error("API authentication failed:", error);
+        logTaskDesk({
+          module: "auth",
+          message: "auth.failure",
+          level: "error",
+          result: "failed",
+        });
         throw new HTTPException(500, { message: "Internal Server Error" });
       }
 
@@ -1308,11 +1400,17 @@ export function createApp(
 
       try {
         await authenticateApiRequest(c);
+        await enforceLocalFactorEnrollment(c);
       } catch (error) {
         if (error instanceof HTTPException) {
           throw error;
         }
-        console.error("API authentication failed:", error);
+        logTaskDesk({
+          module: "auth",
+          message: "auth.failure",
+          level: "error",
+          result: "failed",
+        });
         throw new HTTPException(500, { message: "Internal Server Error" });
       }
 
@@ -1418,6 +1516,13 @@ export function createApp(
     commentApi,
     configApi,
     externalLinkApi,
+    factorStatusApi,
+    csrfTokenApi,
+    stepUpApi,
+    observabilityApi,
+    metricsTokenRotationApi,
+    localFactorPolicyApi,
+    resetMfaApi,
     invitationApi,
     invitationPublicApi,
     oauthApi,
@@ -1559,6 +1664,7 @@ export async function runApiBootTasks(): Promise<void> {
   initializePlugins();
   initializeScheduler();
   await initializeWebSocketAdapter();
+  await startObservabilityRuntime();
 }
 
 const DEFAULT_PORT = 5173;
@@ -1749,6 +1855,7 @@ export async function startServer(port = DEFAULT_PORT) {
 
     console.log("🛑 Shutting down gracefully...");
     shutdownScheduler();
+    await stopObservabilityRuntime();
     const result = await close();
     if (result === "graceful") {
       console.log("✅ API shutdown completed gracefully");
@@ -1779,6 +1886,13 @@ const {
   commentApi,
   configApi,
   externalLinkApi,
+  factorStatusApi,
+  csrfTokenApi,
+  stepUpApi,
+  observabilityApi,
+  metricsTokenRotationApi,
+  localFactorPolicyApi,
+  resetMfaApi,
   invitationApi,
   invitationPublicApi,
   oauthApi,
@@ -1855,6 +1969,13 @@ export type AppType =
   | typeof serviceCalendarApi
   | typeof taskRelationApi
   | typeof externalLinkApi
+  | typeof factorStatusApi
+  | typeof csrfTokenApi
+  | typeof stepUpApi
+  | typeof observabilityApi
+  | typeof metricsTokenRotationApi
+  | typeof localFactorPolicyApi
+  | typeof resetMfaApi
   | typeof workflowApi
   | typeof workflowRuleApi
   | typeof workItemApi

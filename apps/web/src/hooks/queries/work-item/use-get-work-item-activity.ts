@@ -1,6 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import getWorkItemActivity from "@/fetchers/work-item/get-work-item-activity";
-import { WORK_ITEM_REFRESH_INTERVAL_MS } from "./use-get-work-item";
+
+const WORK_ITEM_ACTIVITY_REFRESH_INTERVAL_MS = 30_000;
 
 export default function useGetWorkItemActivity(key: string) {
   return useInfiniteQuery({
@@ -11,7 +12,7 @@ export default function useGetWorkItemActivity(key: string) {
       lastPage.page.hasMore
         ? (lastPage.page.nextCursor ?? undefined)
         : undefined,
-    refetchInterval: WORK_ITEM_REFRESH_INTERVAL_MS,
+    refetchInterval: WORK_ITEM_ACTIVITY_REFRESH_INTERVAL_MS,
     refetchIntervalInBackground: false,
   });
 }

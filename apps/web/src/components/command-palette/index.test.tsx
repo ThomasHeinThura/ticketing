@@ -2,10 +2,11 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { KeyboardShortcutsProvider } from "@/hooks/use-keyboard-shortcuts";
-import CommandPalette from "./index";
+import CommandPaletteLauncher from "./command-palette-launcher";
 
 const mocks = vi.hoisted(() => ({
   projectsPageModule: vi.fn(),
+  preloadRoute: vi.fn().mockResolvedValue(undefined),
 }));
 
 /**
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
   useLocation: () => ({ pathname: "/dashboard/workspace/w1" }),
+  useRouter: () => ({ preloadRoute: mocks.preloadRoute }),
 }));
 
 vi.mock("@/components/project-list/projects-page", () => {
@@ -75,17 +77,14 @@ vi.mock("@taskdesk/ui", () => {
       children,
       onItemHighlighted,
     }: PropsWithChildren<{
-      onItemHighlighted?: (
-        value: string | undefined,
-        details: { reason: string },
-      ) => void;
+      onItemHighlighted?: (value: unknown, details: { reason: string }) => void;
     }>) => (
       <>
         <button
           type="button"
           data-testid="highlight-project-command"
           onClick={() =>
-            onItemHighlighted?.("projects", { reason: "keyboard" })
+            onItemHighlighted?.({ value: "projects" }, { reason: "keyboard" })
           }
         >
           Highlight Projects with keyboard
@@ -125,7 +124,7 @@ describe("CommandPalette (#407)", () => {
   it("mounts inside the real KeyboardShortcutsProvider without hanging or OOMing", () => {
     render(
       <KeyboardShortcutsProvider>
-        <CommandPalette />
+        <CommandPaletteLauncher />
       </KeyboardShortcutsProvider>,
     );
     // Closed by default -- proves the tree actually finished rendering
@@ -136,7 +135,7 @@ describe("CommandPalette (#407)", () => {
   it("unmounts cleanly, unregistering its shortcuts", () => {
     const { unmount } = render(
       <KeyboardShortcutsProvider>
-        <CommandPalette />
+        <CommandPaletteLauncher />
       </KeyboardShortcutsProvider>,
     );
     expect(() => unmount()).not.toThrow();
@@ -145,12 +144,14 @@ describe("CommandPalette (#407)", () => {
   it("preloads the Projects page chunk on explicit keyboard destination intent", async () => {
     render(
       <KeyboardShortcutsProvider>
-        <CommandPalette />
+        <CommandPaletteLauncher />
       </KeyboardShortcutsProvider>,
     );
 
     fireEvent.keyDown(document, { key: "k", ctrlKey: true });
-    expect(screen.getByTestId("command-dialog")).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(screen.getByTestId("command-dialog")).toBeInTheDocument(),
+    );
     expect(mocks.projectsPageModule).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByTestId("highlight-project-command"));
@@ -158,5 +159,9 @@ describe("CommandPalette (#407)", () => {
     await vi.waitFor(() =>
       expect(mocks.projectsPageModule).toHaveBeenCalledOnce(),
     );
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({
+      to: "/dashboard/workspace/$workspaceId",
+      params: { workspaceId: "w1" },
+    });
   });
 });

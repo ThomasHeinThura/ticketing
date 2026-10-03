@@ -5,6 +5,54 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-03 · Complete the existing cookie CSRF requirement in the P0 implementation batch
+
+**Decision:** implement security-model.md's existing Origin/Referer **and** double-submit
+requirement for unsafe custom API requests authenticated by an ambient session cookie.
+Session-only authorization is not CSRF protection. Exemption depends on actually resolved
+nonambient credentials, not the presence of an Authorization or API-key header.
+
+The bounded implementation contract is authenticated `GET /api/me/csrf-token`, returning
+`{token, expiresAt}`, with a signed token bound to the current live session and configured
+agent origin, a random nonce and a ten-minute expiry. The HTTP-only host-only cookie is
+`__Host-tdk_csrf` on HTTPS (`Secure`, `SameSite=Strict`, `Path=/`, no `Domain`); explicit HTTP
+development uses the documented signed `tdk_csrf_dev` fallback. Unsafe session requests
+must supply the same token in `X-TaskDesk-CSRF` and a valid same-origin source. Referer may
+substitute only when Origin is absent; a supplied malformed, null or foreign Origin cannot
+be repaired by Referer. No browser-storage token is introduced. The issuer reuses a valid
+token to avoid invalidating another tab; any client retry is limited to a distinct CSRF
+failure rejected before mutation, never a generic permission or step-up denial.
+
+BetterAuth's own public authentication endpoints retain their separate origin protections;
+the disabled P0 portal API remains unavailable. The custom API boundary must not grant a
+new capability or relax any session realm, factor, impersonation or step-up requirement.
+Server enforcement, client transport, fixtures and actual negative/positive journeys form
+one full implementation batch before bulk review. This records implementation direction,
+not independent acceptance or a gate waiver.
+
+**Authorization:** the orchestrator's recommended implementation choices under Thomas's
+standing direction to finish all necessary P0 features and proceed with recommended
+decisions. The authoritative requirement remains in security-model.md.
+
+
+### 2026-10-03 · P0 structured logging and metrics dependencies authorized
+
+**Decision:** Thomas explicitly approved adding Pino and prom-client in this chat on
+2026-10-03. The P0 runtime implementation uses exact pins `pino` 10.4.0 (MIT) and
+`prom-client` 15.1.3 (Apache-2.0), verified against the npm registry and the projects'
+official release records. Node 24 satisfies the metrics client's declared engine range.
+The registry marks prom-client deprecated in favor of its renamed successor
+`@prometheus-io/client`; this entry authorizes the explicitly approved package, and does
+not silently add another dependency. Runtime APIs, singleton configuration, labels, token
+handling and listener boundaries follow observability.md and api-design.md.
+
+**Scope:** these dependencies support the still-missing P0 logging and metrics runtime.
+Installing them alone does not establish instrumentation, a usable metrics listener,
+durable AU-14 administrator alerts, acceptance, deployment or phase completion. The full
+implementation is batched before independent review.
+
+**Decided by:** Thomas, explicit dependency-approval reply; recorded by the orchestrator.
+
 ### 2026-10-03 · Native work-item realtime uses one subscribed socket and key-only outbox hints (#570)
 
 **Decision:** P0 work-item subscriptions use `GET /api/ws` on the agent origin and explicit validated `subscribe` / `unsubscribe` frames for `project:{projectId}` and `work_item:{key}`. The separate legacy user socket continues to deliver notifications, and the legacy project socket continues to serve existing Task-model consumers; neither is the native work-item event path. The native server resolves topic resources from persisted project/work-item relationships and applies the same read capabilities and row/project reach as REST. Missing and unreadable topics have the same denial frame. Agent-host session Host/Origin/portal checks remain those in ADR 0004 and `realtime.md`.

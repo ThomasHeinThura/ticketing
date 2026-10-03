@@ -52,8 +52,8 @@ const countsOf = (routes: HonoLikeApp["routes"]): Map<string, number> => {
 
 describe("telling middleware from routes", () => {
   it("treats the declared global registrations as middleware, whatever their arity", () => {
-    // Host selection, CORS, compression and static serving share this key.
-    const routes = Array.from({ length: 4 }, (_, index) =>
+    // Request metrics, host selection, CORS, compression and static serving share this key.
+    const routes = Array.from({ length: 5 }, (_, index) =>
       entry("ALL", "/*", index % 2 ? 0 : 2),
     );
     const counts = countsOf(routes);
@@ -92,9 +92,10 @@ describe("telling middleware from routes", () => {
   });
 
   it("voids a declared key's exemption when an extra registration crowds it", () => {
-    // A fifth registration at "/*" crowds the declared four entries. Every entry sharing the
+    // A sixth registration at "/*" crowds the declared five entries. Every entry sharing the
     // key stops being excluded; none gets to keep the exemption silently.
     const routes = [
+      entry("ALL", "/*", 2),
       entry("ALL", "/*", 2),
       entry("ALL", "/*", 2),
       entry("ALL", "/*", 2),
@@ -106,7 +107,7 @@ describe("telling middleware from routes", () => {
   });
 
   it("voids a declared key's exemption when a registration goes missing", () => {
-    const routes = [entry("ALL", "/*", 2)]; // declared count is 4; only 1 is present
+    const routes = [entry("ALL", "/*", 2)]; // declared count is 5; only 1 is present
     const counts = countsOf(routes);
     expect(isMiddlewareEntry(routes[0], counts)).toBe(false);
   });
@@ -179,6 +180,7 @@ describe("collectRoutes", () => {
     expect(
       collectMiddleware(
         app([
+          entry("ALL", "/*", 2),
           entry("ALL", "/*", 2),
           entry("ALL", "/*", 2),
           entry("ALL", "/*", 2),
