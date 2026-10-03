@@ -63,5 +63,19 @@
 		"applicationRoute": "/agent/settings/calendars/$id",
 		"test": "service calendar editor screen @visual",
 		"screenshot": "service-calendar-editor.png"
+	},
+	{
+		"name": "sla-policy-list",
+		"inventoryRoute": "/agent/settings/sla-policies",
+		"applicationRoute": "/agent/settings/sla-policies",
+		"test": "SLA policy list screen @visual",
+		"screenshot": "sla-policy-list.png"
+	},
+	{
+		"name": "sla-policy-editor",
+		"inventoryRoute": "/agent/settings/sla-policies/{id}",
+		"applicationRoute": "/agent/settings/sla-policies/$id",
+		"test": "SLA policy editor screen @visual",
+		"screenshot": "sla-policy-editor.png"
 	}
 ]

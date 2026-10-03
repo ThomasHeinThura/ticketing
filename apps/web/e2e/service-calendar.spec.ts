@@ -224,6 +224,20 @@ async function setupCalendarPage(page: Page): Promise<CalendarPageFixture> {
       }),
     }),
   );
+  await page.route("**/api/me/csrf-token", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: {
+        "set-cookie":
+          "tdk_csrf_dev=e2e-csrf-token; Path=/; SameSite=Strict; HttpOnly",
+      },
+      body: JSON.stringify({
+        token: "e2e-csrf-token",
+        expiresAt: "2027-01-01T00:00:00.000Z",
+      }),
+    }),
+  );
   await page.route("**/api/service-calendars**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
