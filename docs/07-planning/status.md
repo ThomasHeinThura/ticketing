@@ -1,5 +1,35 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## Current delivery and remaining P0 work — 2026-10-03 01:57 UTC
+
+- **UAT refreshed:** the live v2 UAT app now uses signed accepted source
+  `ad1d5238b02532f0a814b3fa586175a7e660f657`, digest
+  `sha256:9c97ce586b4d7b5d1a9bbfaf0a52a789e3a2d83001b287bddc10bcde0ce495a6`.
+  Final encrypted database/attachment/environment snapshots were taken with the app stopped;
+  archive validation, migration exit 0, all 80 journal hashes, UID 10001 and four agent/portal
+  certificate-validated HTTPS health probes passed. Shadow remains on. No production deployment,
+  live database restore, authenticated UAT business smoke, or three-day clean result is claimed.
+- **Recovery proven:** the prior preliminary clone rehearsal completed exit 0; accepted and
+  signed prior-source fallback both booted against the same migrated schema. Exact clone
+  resource cleanup and unchanged live app were verified afterward. Evidence lives under
+  `/Users/heinthura/.codex/taskdesk-evidence/2026-10-02/uat-restore-rehearsal/`, correcting the
+  temporary-path reference in the earlier snapshot. Upgrade receipts are under
+  `/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/uat-upgrade/run-20261003t015443z/`.
+  A first live attempt failed before migration and safely restarted the original app; its
+  encrypted backups and failure/recovery evidence remain preserved.
+- **Complete-batch implementation:** #577 implements host-selected authentication, stored
+  session portal and Origin/cookie boundaries; #578 implements shared Avatar, app composition
+  relocation, density and contrast enforcement. Remaining CI/runtime/browser gaps are being
+  fixed together before final bulk review. These are drafts, not accepted security closure.
+- **Performance:** #525's local candidate tree, now committed at `cce8f703`, passed 19/22
+  unchanged canonical cases versus 9/22 on accepted-main source. Detail first paint
+  521.6/300 ms, palette open 306.1/200 ms and palette navigation 304.9/200 ms still fail.
+  This is local measured progress, not hosted G11 acceptance; G11 remains disabled on main.
+- **Priorities:** finish the remaining P0 features and meaningful checks, then review frozen
+  implementation batches. Early human spec/design review remains deferred to P4; do not
+  fabricate approvals. Three issue-free development/UAT days replace the previous seven-day
+  wait. Real remaining failures, native realtime integration and the Sol finalizer remain open.
+
 ## Blocked — 2026-10-02 15:29 UTC
 
 - **Isolated UAT restore rehearsal:** preliminary restore/migrate and accepted-image plus
