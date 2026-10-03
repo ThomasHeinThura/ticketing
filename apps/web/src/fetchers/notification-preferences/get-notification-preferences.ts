@@ -1,3 +1,4 @@
+import { apiFetch } from "@taskdesk/libs";
 import { getApiUrl } from "@/fetchers/get-api-url";
 
 export type NotificationPreferenceWorkspaceRule = {
@@ -45,9 +46,7 @@ export type NotificationPreferences = {
 };
 
 async function getNotificationPreferences(): Promise<NotificationPreferences> {
-  const response = await fetch(getApiUrl("/notification-preferences"), {
-    credentials: "include",
-  });
+  const response = await apiFetch(getApiUrl("/notification-preferences"));
 
   if (!response.ok) {
     const error = await response.text();
