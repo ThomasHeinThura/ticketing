@@ -23,6 +23,8 @@ import {
   authForHost,
   portalForHost,
 } from "./auth";
+import { isBootstrapMfaPending } from "./auth/bootstrap-mfa";
+import { isBootstrapAllowedAuthPath } from "./auth/bootstrap-mfa-path";
 import csrfToken from "./auth/csrf-token-api";
 import factorStatus from "./auth/factor-status-api";
 import { loadLocalFactorState } from "./auth/local-factor-service";
@@ -175,7 +177,7 @@ async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
   } catch {
     throw new HTTPException(503, { message: "factor_policy_unavailable" });
   }
-  if (state.required && !state.enabled) {
+  if (state.bootstrapRequired || (state.required && !state.enabled)) {
     throw new HTTPException(403, { message: "mfa_enrollment_required" });
   }
 }
@@ -293,6 +295,19 @@ async function handleAuthRequest(c: Context, headers?: Headers) {
   });
   if (session?.session && session.session.portal !== portal) {
     throw new HTTPException(403, { message: "Forbidden" });
+  }
+
+  const authPath = c.req.path.startsWith("/api/auth/")
+    ? c.req.path.slice("/api/auth".length)
+    : c.req.path;
+  if (
+    session?.user &&
+    (await isBootstrapMfaPending(session.user.id)) &&
+    !isBootstrapAllowedAuthPath(authPath)
+  ) {
+    throw new HTTPException(403, {
+      message: "mfa_enrollment_required",
+    });
   }
 
   return selected.handler(buildAuthRequest(c, headers));

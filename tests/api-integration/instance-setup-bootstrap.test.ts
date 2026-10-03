@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { createRequire } from "node:module";
 import { count, eq, sql } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import {
@@ -8,10 +9,20 @@ import {
   isBootstrapAdminEmail,
   isSetupCompleted,
   SETUP_TOKEN_HEADER,
-  verifyAndConsumeSetupToken,
+  verifyAndReserveSetupToken,
 } from "../../apps/api/src/instance/setup-token";
 import { resetTestDatabase } from "./helpers/database";
 import { nextClientIp } from "./helpers/organization-http";
+
+const apiRequire = createRequire(
+  new URL("../../apps/api/package.json", import.meta.url),
+);
+const { base32 } = apiRequire("@better-auth/utils/base32") as {
+  base32: { decode(value: string): Uint8Array };
+};
+const { createOTP } = apiRequire("@better-auth/utils/otp") as {
+  createOTP(secret: string): { totp(): Promise<string> };
+};
 
 /**
  * Issue #18 — the inherited zero-user registration bypass and the
@@ -34,6 +45,15 @@ async function totalUserCount(): Promise<number> {
   return row?.value ?? 0;
 }
 
+async function issueSetupTokenPrivately() {
+  const output = vi.spyOn(console, "log").mockImplementation(() => {});
+  try {
+    return await ensureSetupToken();
+  } finally {
+    output.mockRestore();
+  }
+}
+
 async function roleOf(userId: string): Promise<string | null> {
   const [row] = await db
     .select({ role: schema.userTable.role })
@@ -48,6 +68,7 @@ function signUp(
     email?: string;
     setupToken?: string;
     invitationId?: string;
+    password?: string;
   } = {},
 ) {
   const headers: Record<string, string> = {
@@ -65,13 +86,67 @@ function signUp(
     headers,
     body: JSON.stringify({
       email: overrides.email ?? `bootstrap-${randomUUID()}@example.com`,
-      password: throwawayPassword(),
+      password: overrides.password ?? throwawayPassword(),
       name: "Bootstrap Candidate",
       ...(overrides.invitationId
         ? { invitationId: overrides.invitationId }
         : {}),
     }),
   });
+}
+
+async function verifyBootstrapEnrollment(
+  app: ReturnType<typeof createApp>["app"],
+  response: Response,
+  password: string,
+) {
+  const sessionCookie = response.headers
+    .getSetCookie()
+    .find((value) => value.startsWith("__Host-tdk_agent_session="))
+    ?.split(";", 1)[0];
+  if (!sessionCookie) throw new Error("bootstrap session cookie is missing");
+  const enabled = await app.request("/api/auth/two-factor/enable", {
+    method: "POST",
+    headers: {
+      cookie: sessionCookie,
+      "content-type": "application/json",
+      "x-forwarded-for": nextClientIp(),
+    },
+    body: JSON.stringify({ password, issuer: "TaskDesk" }),
+  });
+  if (enabled.status !== 200)
+    throw new Error(
+      `bootstrap factor enrollment did not start (${enabled.status})`,
+    );
+  const { totpURI } = (await enabled.json()) as { totpURI: string };
+  const secret = new URL(totpURI).searchParams.get("secret");
+  if (!secret) throw new Error("bootstrap factor secret is missing");
+  const rawSecret = Buffer.from(base32.decode(secret)).toString("utf8");
+  const code = await createOTP(rawSecret).totp();
+  const invalidCode = `${(Number(code[0]) + 1) % 10}${code.slice(1)}`;
+  const rejected = await app.request("/api/auth/two-factor/verify-totp", {
+    method: "POST",
+    headers: {
+      cookie: sessionCookie,
+      "content-type": "application/json",
+      "x-forwarded-for": nextClientIp(),
+    },
+    body: JSON.stringify({ code: invalidCode }),
+  });
+  if (rejected.status === 200 || (await isSetupCompleted())) {
+    throw new Error("invalid TOTP unexpectedly completed bootstrap");
+  }
+  const verified = await app.request("/api/auth/two-factor/verify-totp", {
+    method: "POST",
+    headers: {
+      cookie: sessionCookie,
+      "content-type": "application/json",
+      "x-forwarded-for": nextClientIp(),
+    },
+    body: JSON.stringify({ code }),
+  });
+  if (verified.status !== 200)
+    throw new Error("bootstrap factor verification failed");
 }
 
 describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
@@ -135,8 +210,16 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const { app: claimedApp } = createApp();
     // Claim the instance first (registration still closed after), then probe
     // the ordinary refusal path on the now-claimed instance.
-    const claimToken = (await ensureSetupToken()) as string;
-    await signUp(claimedApp, { setupToken: claimToken });
+    const claimToken = (await issueSetupTokenPrivately()) as string;
+    const claimed = await signUp(claimedApp, {
+      setupToken: claimToken,
+      password: "Bootstrap-Candidate-Password1!",
+    });
+    await verifyBootstrapEnrollment(
+      claimedApp,
+      claimed,
+      "Bootstrap-Candidate-Password1!",
+    );
     const claimedResponse = await signUp(claimedApp);
     const claimedBody = await claimedResponse.json();
 
@@ -173,8 +256,16 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
 
     await resetTestDatabase();
     const { app: claimedApp } = createApp();
-    const claimToken = (await ensureSetupToken()) as string;
-    await signUp(claimedApp, { setupToken: claimToken });
+    const claimToken = (await issueSetupTokenPrivately()) as string;
+    const claimed = await signUp(claimedApp, {
+      setupToken: claimToken,
+      password: "Bootstrap-Candidate-Password1!",
+    });
+    await verifyBootstrapEnrollment(
+      claimedApp,
+      claimed,
+      "Bootstrap-Candidate-Password1!",
+    );
     const claimedResponse = await signUp(claimedApp, {
       invitationId: bogusInvitationId,
     });
@@ -185,15 +276,21 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     expect(unclaimedBody.message).toBe(claimedBody.message);
   });
 
-  it("(b) a valid setup token lets first-registration succeed and promotes the registrant to admin", async () => {
-    const rawToken = await ensureSetupToken();
+  it("(b) a valid setup token bootstraps the admin but does not complete setup before verified TOTP", async () => {
+    const rawToken = await issueSetupTokenPrivately();
     expect(rawToken).toEqual(expect.any(String));
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ localFactorPolicy: { mode: "off", requiredRoleId: null } })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
 
     const { app } = createApp();
     const email = `admin-${randomUUID()}@example.com`;
+    const password = "Bootstrap-Candidate-Password1!";
     const response = await signUp(app, {
       email,
       setupToken: rawToken as string,
+      password,
     });
 
     expect(response.status).toBe(200);
@@ -201,10 +298,9 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
 
     expect(await roleOf(body.user.id)).toBe("admin");
     expect(await totalUserCount()).toBe(1);
-    expect(await isSetupCompleted()).toBe(true);
+    expect(await isSetupCompleted()).toBe(false);
 
-    // The token is consumed: the row's hash/expiry are cleared, so it is
-    // no longer sitting there valid-but-unused.
+    // Reservation expires the token while retaining the fields until verified setup.
     const [setting] = await db
       .select({
         setupTokenHash: schema.instanceSettingTable.setupTokenHash,
@@ -212,8 +308,50 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
       })
       .from(schema.instanceSettingTable)
       .limit(1);
-    expect(setting?.setupTokenHash).toBeNull();
-    expect(setting?.setupCompletedAt).not.toBeNull();
+    expect(setting?.setupTokenHash).toEqual(expect.any(String));
+    expect(setting?.setupCompletedAt).toBeNull();
+    const sessionCookie = response.headers
+      .getSetCookie()
+      .find((value) => value.startsWith("__Host-tdk_agent_session="))
+      ?.split(";", 1)[0];
+    expect(sessionCookie).toBeDefined();
+    if (!sessionCookie) throw new Error("bootstrap session cookie is missing");
+    const factorStatus = await app.request("/api/me/security/factors", {
+      headers: { cookie: sessionCookie },
+    });
+    expect(factorStatus.status).toBe(200);
+    expect(await factorStatus.json()).toMatchObject({
+      required: true,
+      bootstrapRequired: true,
+      enabled: false,
+    });
+    const blockedAuth = await app.request("/api/auth/update-user", {
+      method: "POST",
+      headers: {
+        cookie: sessionCookie,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ name: "Blocked Update" }),
+    });
+    expect(blockedAuth.status).toBe(403);
+    expect(await blockedAuth.text()).toBe("mfa_enrollment_required");
+    const blocked = await app.request("/api/instance/observability", {
+      headers: { cookie: sessionCookie },
+    });
+    expect(blocked.status).toBe(403);
+    expect(await blocked.text()).toBe("mfa_enrollment_required");
+    await verifyBootstrapEnrollment(app, response, password);
+    expect(await isSetupCompleted()).toBe(true);
+    const policy = await db
+      .select({ value: schema.instanceSettingTable.localFactorPolicy })
+      .from(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    expect(policy[0]?.value).toEqual({ mode: "off", requiredRoleId: null });
+    const [completed] = await db
+      .select({ setupTokenHash: schema.instanceSettingTable.setupTokenHash })
+      .from(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    expect(completed?.setupTokenHash).toBeNull();
   });
 
   it("(b) a used token is invalidated at the storage layer -- a second consume attempt fails", async () => {
@@ -225,23 +363,24 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     // only checked an HTTP status code. Calling the actual consuming
     // function twice is what proves the token itself, not just the
     // zero-user window, is single-use.
-    const rawToken = (await ensureSetupToken()) as string;
+    const rawToken = (await issueSetupTokenPrivately()) as string;
 
-    expect(await verifyAndConsumeSetupToken(rawToken)).toBe(true);
-    expect(await verifyAndConsumeSetupToken(rawToken)).toBe(false);
+    expect(await verifyAndReserveSetupToken(rawToken)).toBe(true);
+    expect(await verifyAndReserveSetupToken(rawToken)).toBe(false);
   });
 
   it("(b) a used token cannot be replayed to bootstrap a SECOND admin once registration is closed", async () => {
-    const rawToken = (await ensureSetupToken()) as string;
+    const rawToken = (await issueSetupTokenPrivately()) as string;
     const { app } = createApp();
 
-    const first = await signUp(app, { setupToken: rawToken });
+    const first = await signUp(app, {
+      setupToken: rawToken,
+      password: "Bootstrap-Candidate-Password1!",
+    });
     expect(first.status).toBe(200);
     expect(await totalUserCount()).toBe(1);
 
-    // Lock the instance down the way an operator who just finished setup
-    // plausibly would. With the token already consumed and no invitation,
-    // a replay attempt has nothing left to succeed through.
+    // The bootstrap account exists, so registration stays closed until TOTP verifies.
     process.env.DISABLE_REGISTRATION = "true";
     const replay = await signUp(app, { setupToken: rawToken });
 
@@ -249,10 +388,10 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     expect(await totalUserCount()).toBe(1);
   });
 
-  it("(c) once a user exists, the zero-user bootstrap path is fully inert regardless of any token", async () => {
+  it("(c) an incomplete bootstrap with an existing user neither reissues a token nor allows another registration", async () => {
     // Seed one ordinary user directly -- no admin, and crucially no trip
     // through the bootstrap flow at all, so instance_setting still has no
-    // setup_completed_at and a token can still be issued.
+    // setup_completed_at remains null, but no token may be reissued.
     await db.insert(schema.userTable).values({
       id: `seed-${randomUUID()}`,
       email: `seed-${randomUUID()}@example.com`,
@@ -262,22 +401,19 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     expect(await totalUserCount()).toBe(1);
     expect(await isSetupCompleted()).toBe(false);
 
-    const rawToken = (await ensureSetupToken()) as string;
-    expect(rawToken).toEqual(expect.any(String));
+    expect(await issueSetupTokenPrivately()).toBeNull();
 
-    // With registration wide open, presenting the (still objectively valid)
-    // token has NO special effect any more -- it is only meaningful on a
-    // zero-user instance. The new user must NOT be promoted to admin.
+    // Incomplete setup blocks another registration even when the ordinary
+    // self-registration setting is open.
     process.env.DISABLE_REGISTRATION = "false";
     const { app } = createApp();
     const openEmail = `ordinary-${randomUUID()}@example.com`;
     const openResponse = await signUp(app, {
       email: openEmail,
-      setupToken: rawToken,
+      setupToken: "stale-token",
     });
-    expect(openResponse.status).toBe(200);
-    const openBody = (await openResponse.json()) as { user: { id: string } };
-    expect(await roleOf(openBody.user.id)).not.toBe("admin");
+    expect(openResponse.status).toBe(403);
+    expect(await totalUserCount()).toBe(1);
 
     // And with registration disabled, the very same token does NOT bypass
     // that control the way the zero-user window used to bypass everything.
@@ -285,7 +421,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     const blockedEmail = `blocked-${randomUUID()}@example.com`;
     const blockedResponse = await signUp(app, {
       email: blockedEmail,
-      setupToken: rawToken,
+      setupToken: "stale-token",
     });
     expect(blockedResponse.status).toBe(403);
     expect(
@@ -298,21 +434,26 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     ).toBe(0);
   });
 
-  it("(headless) TASKDESK_BOOTSTRAP_ADMIN_EMAIL lets the named address bootstrap with no token", async () => {
+  it("(headless) TASKDESK_BOOTSTRAP_ADMIN_EMAIL follows the verified-factor bootstrap flow", async () => {
     const adminEmail = `operator-${randomUUID()}@example.com`;
     process.env.TASKDESK_BOOTSTRAP_ADMIN_EMAIL = adminEmail;
+    await issueSetupTokenPrivately();
 
     const { app } = createApp();
-    const response = await signUp(app, { email: adminEmail });
+    const password = "Bootstrap-Candidate-Password1!";
+    const response = await signUp(app, { email: adminEmail, password });
 
     expect(response.status).toBe(200);
     const body = (await response.json()) as { user: { id: string } };
     expect(await roleOf(body.user.id)).toBe("admin");
+    expect(await isSetupCompleted()).toBe(false);
+    await verifyBootstrapEnrollment(app, response, password);
     expect(await isSetupCompleted()).toBe(true);
   });
 
   it("(headless) a different address is still refused even when TASKDESK_BOOTSTRAP_ADMIN_EMAIL is set", async () => {
     process.env.TASKDESK_BOOTSTRAP_ADMIN_EMAIL = `operator-${randomUUID()}@example.com`;
+    await issueSetupTokenPrivately();
 
     const { app } = createApp();
     const response = await signUp(app, {
@@ -352,10 +493,18 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
   });
 
   it("(headless) TASKDESK_BOOTSTRAP_ADMIN_EMAIL is ignored once the instance is set up", async () => {
-    const rawToken = (await ensureSetupToken()) as string;
+    const rawToken = (await issueSetupTokenPrivately()) as string;
     const { app } = createApp();
-    const firstResponse = await signUp(app, { setupToken: rawToken });
+    const firstResponse = await signUp(app, {
+      setupToken: rawToken,
+      password: "Bootstrap-Candidate-Password1!",
+    });
     expect(firstResponse.status).toBe(200);
+    await verifyBootstrapEnrollment(
+      app,
+      firstResponse,
+      "Bootstrap-Candidate-Password1!",
+    );
     expect(await isSetupCompleted()).toBe(true);
 
     // Deleting the only admin drops the user count back to zero, but the
@@ -377,19 +526,26 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
   });
 
   it("(d) deleting every admin from an already-set-up instance does not re-open the bootstrap window", async () => {
-    const rawToken = (await ensureSetupToken()) as string;
+    const rawToken = (await issueSetupTokenPrivately()) as string;
     const { app } = createApp();
-    const first = await signUp(app, { setupToken: rawToken });
+    const first = await signUp(app, {
+      setupToken: rawToken,
+      password: "Bootstrap-Candidate-Password1!",
+    });
     expect(first.status).toBe(200);
+    await verifyBootstrapEnrollment(
+      app,
+      first,
+      "Bootstrap-Candidate-Password1!",
+    );
     expect(await isSetupCompleted()).toBe(true);
 
     await db.delete(schema.userTable);
     expect(await totalUserCount()).toBe(0);
 
-    // No token was ever reissued (isSetupCompleted() is true, so
-    // ensureSetupToken() below is a no-op) and none is presented here
+    // No token is reissued after the durable setup marker is set and none is presented here
     // either -- proving the zero-user state alone is not enough any more.
-    const reissued = await ensureSetupToken();
+    const reissued = await issueSetupTokenPrivately();
     expect(reissued).toBeNull();
 
     // Registration is open by default in this suite, so an ordinary signup
@@ -411,7 +567,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
   });
 
   it("(d) concurrent signups presenting the same valid setup token resolve to exactly one admin", async () => {
-    const rawToken = (await ensureSetupToken()) as string;
+    const rawToken = (await issueSetupTokenPrivately()) as string;
     const { app } = createApp();
 
     // Registration is closed so the loser has no fallback path: whichever
@@ -420,7 +576,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     // signup once the winner's row has committed. That keeps this test's
     // outcome deterministic regardless of exactly how the two requests
     // interleave, while still exercising the real concurrency-sensitive
-    // path: the atomic token consumption in `verifyAndConsumeSetupToken`
+    // path: the atomic setup-token reservation
     // AND the advisory-locked promotion in auth.ts's `after` hook both run
     // for real, against a real Postgres, under a genuine race.
     process.env.DISABLE_REGISTRATION = "true";
@@ -437,7 +593,7 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     // Exactly one request wins the single-use token; the other is refused.
     expect(statuses).toEqual([200, 403]);
     expect(await totalUserCount()).toBe(1);
-    expect(await isSetupCompleted()).toBe(true);
+    expect(await isSetupCompleted()).toBe(false);
 
     const [winner] = await db.select().from(schema.userTable).limit(1);
     expect(winner?.role).toBe("admin");
@@ -456,10 +612,10 @@ describe("issue #18: GET /api/instance/status no longer advertises setup state",
     expect(unclaimedResponse.status).toBe(200);
     expect(await unclaimedResponse.json()).toEqual({ status: "ok" });
 
-    const rawToken = (await ensureSetupToken()) as string;
+    const rawToken = (await issueSetupTokenPrivately()) as string;
     const signUpResponse = await signUp(app, { setupToken: rawToken });
     expect(signUpResponse.status).toBe(200);
-    expect(await isSetupCompleted()).toBe(true);
+    expect(await isSetupCompleted()).toBe(false);
 
     const claimedResponse = await app.request("/api/instance/status");
     expect(claimedResponse.status).toBe(200);

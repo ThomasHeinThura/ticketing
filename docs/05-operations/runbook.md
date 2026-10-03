@@ -60,7 +60,7 @@ of an instance's whole life happens.
 
 | Cause | Fix |
 | --- | --- |
-| **Setup token expired or lost** | The token is short-lived and single-use. While `setup_completed_at` is null, **every container restart prints a fresh token and invalidates the previous one** ([auth-and-identity.md](../01-architecture/auth-and-identity.md)) — so run `dc restart taskdesk` and read the new one out of `dc logs taskdesk`. Nothing else is lost; no administrator exists yet |
+| **Setup token expired or lost before the first account is created** | The token is short-lived. While the user table is empty, restarting `taskdesk` prints a fresh token and invalidates the previous one ([auth-and-identity.md](../01-architecture/auth-and-identity.md)); read the new token from the service log. After the bootstrap account exists, restarting does not reissue a token or reopen registration; finish TOTP enrollment using that account. If its password and canonical email access are both lost before enrollment, no supported credential-recovery path is defined; do not repair the database directly. |
 | Setup page says setup is already complete | Someone else claimed the first administrator. Sign in as them, or use break-glass below |
 | Headless install created no administrator | `TASKDESK_BOOTSTRAP_ADMIN_EMAIL` was unset. Set it and restart, or use the setup page |
 | Certificate not issued on the first `up` | DNS did not point here when ACME ran. Fix the record and restart Traefik; the installer's pre-flight exists to catch exactly this ([one-line-install.md](one-line-install.md)) |

@@ -16,7 +16,12 @@ export const Route = createFileRoute(
   }),
 });
 
-type FactorStatus = { enabled: boolean; required: boolean; policyMode: string };
+type FactorStatus = {
+  enabled: boolean;
+  required: boolean;
+  bootstrapRequired: boolean;
+  policyMode: string;
+};
 
 function AccountSecurity() {
   const { t } = useTranslation();
@@ -165,7 +170,7 @@ function AccountSecurity() {
               </Button>
             </form>
           </section>
-        ) : status?.policyMode === "off" ? (
+        ) : status?.policyMode === "off" && !status.bootstrapRequired ? (
           <p className="text-sm text-muted-foreground">
             {t("auth:accountSecurity.enrollmentDisabled")}
           </p>

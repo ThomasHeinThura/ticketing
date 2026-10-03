@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import db, { schema } from "../database";
+import { isBootstrapMfaPending } from "./bootstrap-mfa";
 import {
   isLocalFactorRequired,
   type LocalFactorPolicy,
@@ -9,6 +10,7 @@ import {
 export type LocalFactorState = {
   policy: LocalFactorPolicy;
   required: boolean;
+  bootstrapRequired: boolean;
   enabled: boolean;
   personId: string;
   personSide: "staff" | "customer";
@@ -72,13 +74,17 @@ export async function loadLocalFactorState(
     }
   }
 
+  const bootstrapRequired = await isBootstrapMfaPending(userId);
   return {
     policy,
-    required: isLocalFactorRequired({
-      policy,
-      personSide: person.side,
-      activeRoleIds: memberships.map(({ roleId }) => roleId),
-    }),
+    required:
+      bootstrapRequired ||
+      isLocalFactorRequired({
+        policy,
+        personSide: person.side,
+        activeRoleIds: memberships.map(({ roleId }) => roleId),
+      }),
+    bootstrapRequired,
     enabled: person.enabled === true,
     personId: person.id,
     personSide: person.side,

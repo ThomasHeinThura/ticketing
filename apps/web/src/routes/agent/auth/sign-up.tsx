@@ -129,15 +129,11 @@ function SignUp() {
                 disabled={false}
               />
             );
-            // Hide the self-service SSO alternatives when registration
-            // is disabled and the user isn't either accepting an invitation
-            // or doing first-user instance setup; otherwise the alternatives
-            // would either bypass the policy or send the user into a flow
-            // the backend will reject.
+            // First-admin setup uses local credentials so the administrator
+            // can enroll and verify TaskDesk-managed TOTP before setup completes.
             const selfServiceAllowed =
-              !config?.disableRegistration ||
-              !!invitationId ||
-              isInstanceAdminSetup;
+              !isInstanceAdminSetup &&
+              (!config?.disableRegistration || !!invitationId);
             const hasAnySso =
               selfServiceAllowed &&
               (config?.hasGoogleSignIn ||

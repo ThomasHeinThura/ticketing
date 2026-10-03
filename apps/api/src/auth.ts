@@ -18,6 +18,14 @@ import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
 import { and, count, eq, ne, sql } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
+import {
+  completeBootstrapMfaEnrollment,
+  isBootstrapMfaPending,
+} from "./auth/bootstrap-mfa";
+import {
+  isBootstrapAllowedAuthPath,
+  isBootstrapSignupPath,
+} from "./auth/bootstrap-mfa-path";
 import { loadLocalFactorState } from "./auth/local-factor-service";
 import db, { schema } from "./database";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "./instance/observability/audit-failure-notifier";
@@ -28,9 +36,9 @@ import {
 import {
   isBootstrapAdminEmail,
   isSetupCompleted,
+  reserveSetupTokenForHeadlessBootstrap,
   SETUP_TOKEN_HEADER,
-  SETUP_TOKEN_SINGLETON_ID,
-  verifyAndConsumeSetupToken,
+  verifyAndReserveSetupToken,
 } from "./instance/setup-token";
 import deleteAccountData from "./user/controllers/delete-account-data";
 import { checkRegistrationAllowed } from "./utils/check-registration-allowed";
@@ -443,7 +451,19 @@ function createAuth(portal: AuthPortal) {
                 ctx?.headers?.get("x-invitation-id"),
             );
 
-            if (existingUserCount === 0 && !(await isSetupCompleted())) {
+            const setupCompleted = await isSetupCompleted();
+            if (existingUserCount > 0 && !setupCompleted) {
+              throw new APIError("FORBIDDEN", {
+                message: "Registration is currently unavailable.",
+              });
+            }
+
+            if (existingUserCount === 0 && !setupCompleted) {
+              if (!isBootstrapSignupPath(ctx?.path ?? "")) {
+                throw new APIError("FORBIDDEN", {
+                  message: "Registration is currently unavailable.",
+                });
+              }
               // This is the one-time bootstrap. It is allowed through even
               // when DISABLE_REGISTRATION / DISABLE_PASSWORD_REGISTRATION are
               // set -- but ONLY on proof of authorization: the operator's
@@ -452,11 +472,11 @@ function createAuth(portal: AuthPortal) {
               // no other bypass; an unauthorized zero-user signup is refused
               // below exactly like any other signup would be.
               if (isBootstrapAdminEmail(user.email)) {
-                return;
+                if (await reserveSetupTokenForHeadlessBootstrap()) return;
               }
 
               const presentedToken = ctx?.headers?.get(SETUP_TOKEN_HEADER);
-              if (await verifyAndConsumeSetupToken(presentedToken)) {
+              if (await verifyAndReserveSetupToken(presentedToken)) {
                 return;
               }
 
@@ -572,24 +592,6 @@ function createAuth(portal: AuthPortal) {
                   .update(schema.userTable)
                   .set({ role: "admin" })
                   .where(eq(schema.userTable.id, user.id));
-
-                await tx
-                  .insert(schema.instanceSettingTable)
-                  .values({
-                    id: SETUP_TOKEN_SINGLETON_ID,
-                    setupCompletedAt: new Date(),
-                    setupTokenHash: null,
-                    setupTokenExpiresAt: null,
-                  })
-                  .onConflictDoUpdate({
-                    target: schema.instanceSettingTable.id,
-                    set: {
-                      setupCompletedAt: new Date(),
-                      setupTokenHash: null,
-                      setupTokenExpiresAt: null,
-                      updatedAt: new Date(),
-                    },
-                  });
               }
             });
 
@@ -607,9 +609,23 @@ function createAuth(portal: AuthPortal) {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        const signedInUserId = ctx.context.session?.user.id;
+        if (
+          signedInUserId &&
+          (await isBootstrapMfaPending(signedInUserId)) &&
+          !isBootstrapAllowedAuthPath(ctx.path)
+        ) {
+          throw new APIError("FORBIDDEN", {
+            message: "mfa_enrollment_required",
+          });
+        }
+
         if (ctx.path === "/two-factor/enable" && ctx.context.session?.user.id) {
-          const state = await loadLocalFactorState(ctx.context.session.user.id);
-          if (state.policy.mode === "off") {
+          const [state, bootstrapRequired] = await Promise.all([
+            loadLocalFactorState(ctx.context.session.user.id),
+            isBootstrapMfaPending(ctx.context.session.user.id),
+          ]);
+          if (state.policy.mode === "off" && !bootstrapRequired) {
             throw new APIError("FORBIDDEN", {
               message:
                 "Local factor enrollment is disabled by instance policy.",
@@ -710,6 +726,12 @@ function createAuth(portal: AuthPortal) {
           ctx.path === "/two-factor/verify-totp" &&
           previousSession?.user.twoFactorEnabled !== true &&
           newSession?.user.twoFactorEnabled === true;
+        if (
+          ctx.path === "/two-factor/verify-totp" &&
+          newSession?.user.twoFactorEnabled === true
+        ) {
+          await completeBootstrapMfaEnrollment(newSession.user.id);
+        }
         if (completedEnrollment && newSession) {
           // Better Auth replaces the session used to verify enrollment. Revoke any
           // other sessions as well so the newly verified factor gates every device.

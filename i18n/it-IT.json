@@ -342,7 +342,7 @@
 			"enrollmentStartError": "Factor enrollment could not start. Check your password and try again.",
 			"loading": "Loading security settings…",
 			"pageTitle": "Account security",
-			"required": "Instance policy requires you to enroll a factor before continuing.",
+			"required": "A second factor is required before you can continue.",
 			"saveCodes": "Save these backup codes now. They are shown once and cannot be retrieved later.",
 			"savedCodes": "I saved these codes",
 			"scanDescription": "Scan this URI with your authenticator app. Treat it as a secret and do not share it.",

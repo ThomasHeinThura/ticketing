@@ -5,6 +5,7 @@ import { loadLocalFactorState } from "./local-factor-service";
 const factorStatusResponse = z.object({
   enabled: z.boolean(),
   required: z.boolean(),
+  bootstrapRequired: z.boolean(),
   policyMode: z.enum([
     "off",
     "optional",
@@ -40,6 +41,7 @@ const factorStatus = apiRouter().openapi(statusRoute, async (c) => {
       {
         enabled: state.enabled,
         required: state.required,
+        bootstrapRequired: state.bootstrapRequired,
         policyMode: state.policy.mode,
       },
       200,

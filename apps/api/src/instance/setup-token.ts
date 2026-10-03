@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, count, eq, gt, isNotNull, isNull } from "drizzle-orm";
 import db from "../database";
-import { instanceSettingTable } from "../database/schema";
+import { instanceSettingTable, userTable } from "../database/schema";
 
 /**
  * Issue #18 — the setup-token flow specified in
@@ -53,11 +53,9 @@ export async function isSetupCompleted(): Promise<boolean> {
 }
 
 /**
- * Called once at server boot (runStartupTasks). While the instance is
- * unclaimed, every start generates a fresh token and invalidates whatever
- * token was printed before -- so an operator who lost the first one just
- * restarts the container (runbook.md's "First run" symptom row) rather than
- * needing a separate recovery path.
+ * Called once at server boot. A fresh token is generated only while the
+ * instance has no users; an incomplete first-admin enrollment is not reset
+ * by restarting the service.
  *
  * A no-op once setup_completed_at is set: the `WHERE ... IS NULL` guard on
  * the upsert means a completed instance's row is never touched here, even if
@@ -73,6 +71,9 @@ export async function ensureSetupToken(): Promise<string | null> {
   if (await isSetupCompleted()) {
     return null;
   }
+
+  const [users] = await db.select({ value: count() }).from(userTable);
+  if ((users?.value ?? 0) > 0) return null;
 
   const rawToken = generateRawSetupToken();
   const tokenHash = hashSetupToken(rawToken);
@@ -124,12 +125,10 @@ export async function ensureSetupToken(): Promise<string | null> {
 }
 
 /**
- * Atomically checks a candidate token and, if valid, invalidates it in the
- * same statement -- single use, enforced by the database rather than by a
- * read-then-write race in application code. Only one concurrent caller can
- * ever have this return true for a given token.
+ * Atomically reserves a candidate token for the single bootstrap signup.
+ * Its digest remains until verified factor enrollment completes setup.
  */
-export async function verifyAndConsumeSetupToken(
+export async function verifyAndReserveSetupToken(
   candidate: string | null | undefined,
 ): Promise<boolean> {
   if (!candidate) {
@@ -140,7 +139,7 @@ export async function verifyAndConsumeSetupToken(
 
   const result = await db
     .update(instanceSettingTable)
-    .set({ setupTokenHash: null, setupTokenExpiresAt: null })
+    .set({ setupTokenExpiresAt: new Date(0), updatedAt: new Date() })
     .where(
       and(
         eq(instanceSettingTable.id, SETUP_TOKEN_SINGLETON_ID),
@@ -151,6 +150,22 @@ export async function verifyAndConsumeSetupToken(
     .returning({ id: instanceSettingTable.id });
 
   return result.length > 0;
+}
+
+export async function reserveSetupTokenForHeadlessBootstrap(): Promise<boolean> {
+  const result = await db
+    .update(instanceSettingTable)
+    .set({ setupTokenExpiresAt: new Date(0), updatedAt: new Date() })
+    .where(
+      and(
+        eq(instanceSettingTable.id, SETUP_TOKEN_SINGLETON_ID),
+        isNull(instanceSettingTable.setupCompletedAt),
+        isNotNull(instanceSettingTable.setupTokenHash),
+        gt(instanceSettingTable.setupTokenExpiresAt, new Date()),
+      ),
+    )
+    .returning({ id: instanceSettingTable.id });
+  return result.length === 1;
 }
 
 /**

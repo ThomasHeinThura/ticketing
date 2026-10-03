@@ -721,14 +721,11 @@ export const instanceSettingTable = pgTable(
   {
     id: text("id").primaryKey().default("singleton"),
     // Durable first-run marker (auth-and-identity.md § Break-glass). Non-null means
-    // the instance has been claimed: the zero-user bootstrap bypass in auth.ts and
-    // the TASKDESK_BOOTSTRAP_ADMIN_EMAIL headless path are both permanently inert
-    // from this point on, even if every admin is later deleted and the user count
-    // returns to zero -- there is no way to re-open this by deleting rows.
+    // verified first-admin TOTP enrollment completed; it is never cleared by deleting
+    // users, so that cannot re-open bootstrap.
     setupCompletedAt: timestamp("setup_completed_at", { mode: "date" }),
-    // SHA-256 hex digest of the current setup token; never the raw token (same
-    // hash-only-at-rest convention as invitation tokens and API keys). Null once
-    // consumed, expired-and-regenerated, or once setup_completed_at is set.
+    // SHA-256 hex digest of the setup token; never the raw token. Reservation
+    // expires it, and verified first-admin factor enrollment clears both fields.
     setupTokenHash: text("setup_token_hash"),
     setupTokenExpiresAt: timestamp("setup_token_expires_at", { mode: "date" }),
     localFactorPolicy: jsonb("local_factor_policy")

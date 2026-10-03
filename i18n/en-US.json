@@ -278,7 +278,7 @@
 		"accountSecurity": {
 			"pageTitle": "Account security",
 			"description": "Manage your authenticator factor and backup codes.",
-			"required": "Instance policy requires you to enroll a factor before continuing.",
+			"required": "A second factor is required before you can continue.",
 			"unavailable": "Security settings are unavailable.",
 			"enabled": "Authenticator factor enabled",
 			"enabledDescription": "Sign-ins require an authenticator or an unused backup code.",

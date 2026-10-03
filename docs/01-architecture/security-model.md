@@ -258,6 +258,23 @@ The server is.
 | Step-up for elevated actions | Re-authentication means the **second factor** when the account has one — never "password *or* MFA". The initial supported account class is a current local-password session with no enrolled or required second factor, after rechecking the current identity and verifying that password. SSO-only accounts require a validated IdP response with exact configured issuer/audience and single-use `state`/`nonce` bound to challenge/session/subject/connection, a `prompt=login` request, and signed `auth_time` satisfying `challenge.created_at - 60s <= auth_time <= callback_received_at + 60s` and `callback_received_at - auth_time <= 5min`; callback must precede challenge expiry. If policy requires MFA, fresh `amr`/`acr` evidence must satisfy the configured provider mapping or a real local factor; a static upstream-MFA flag is insufficient. Missing/untrustworthy evidence, changed subject/connection/session, or unavailable required verifier fails closed (`403 step_up_unavailable` or authentication failure), with no password/email-OTP fallback. `POST /api/me/step-up/challenges` and `POST /api/me/step-up` mint a single-use confirmation only after actual proof verification. It binds either to one existing pending-action id/payload hash or to one PA-15-registered operation (`metrics_token_rotate`, `mfa_reset`, `oidc_group_mapping_create`, or `oidc_group_mapping_update`) with its exact route, resource version and server-computed canonical request-binding hash; OIDC mapping bindings include the connection and mapping path ids as well as the validated request body. No session-wide window exists. The token is valid five minutes after issuance, hash-only at rest, and consumed atomically with its protected action. Existing pending-action tokens remain re-mintable while the action is pending. Operation challenges are limited to five per person/session/operation in a rolling 15-minute window, with one credential-verification attempt per challenge; failed proof or nonce expires the challenge. The SCIM administration PATCH is proposed elevated/session-only but has no PA-15 operation binding yet; its strict DTO, version and exact proof contract remain with [issue #561](https://github.com/ThomasHeinThura/ticketing/issues/561). Until defined, fail closed with `403 step_up_unavailable` and no mutation; do not infer or reuse an operation key. Missing required verification support fails closed with `403 step_up_unavailable`. Current source includes the local Better Auth `twoFactor` plugin and candidate TOTP/backup-code adapters; fresh upstream SSO step-up remains unavailable. The candidate has not passed integrated acceptance evidence. Details: [pending-actions.md](pending-actions.md) `PA-15` |
 | Elevated list | The single list in [RBAC](rbac.md) |
 
+During first-run bootstrap, the first administrator remains uninitialized until a real TOTP
+verification succeeds. `setup_completed_at` stays null until that point. The pending
+administrator is factor-required regardless of `local_factor_policy` (including `off`) and
+can use only the current session/sign-in/sign-out, factor status/enrollment/verification, and
+existing authentication provisioning/recovery surfaces; other authenticated API calls fail
+with `403 mfa_enrollment_required`. Additional registration is blocked while an account
+exists and setup remains incomplete. Headless bootstrap follows the same rule. Setup-token
+reissue is limited to an empty user table. Successful verification locks and rechecks the
+sole first administrator, active staff identity, and enabled TOTP before atomically setting
+the durable marker and clearing the token fields. The policy itself is not changed. See
+[auth-and-identity.md](auth-and-identity.md#multi-factor-authentication). The separate #231
+zero-admin bootstrap race remains open. On an uninitialized instance, the server permits
+first-user creation only through local email/password signup; email-OTP and magic-link
+auto-provisioning and OAuth/social callbacks cannot create the first account. A configured
+bootstrap email is not local-credential proof. This restriction ends after initialization, so
+configured providers retain their existing behavior on initialized instances.
+
 ## Impersonation
 
 Rules `GM-7`–`GM-11` in [god-mode.md](../03-features/god-mode.md): 30-minute cap, doubly
