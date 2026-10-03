@@ -142,6 +142,7 @@ function rawPost(
   origin: string,
   cookie: string,
   body: string,
+  extraHeaders: Record<string, string> = {},
 ) {
   return new Promise<{
     status: number;
@@ -160,6 +161,7 @@ function rawPost(
           cookie,
           "content-type": "application/json",
           "content-length": Buffer.byteLength(body),
+          ...extraHeaders,
         },
       },
       (response) => {
@@ -960,6 +962,17 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       workspaceId: stranger.workspace.id,
     });
     mockAuthenticatedSession(member.user);
+    const sessionId = `session-${member.user.id}`;
+    const sessionNow = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: sessionId,
+      token: `token-${member.user.id}`,
+      userId: member.user.id,
+      expiresAt: new Date(sessionNow.getTime() + 60 * 60 * 1000),
+      createdAt: sessionNow,
+      updatedAt: sessionNow,
+      portal: "agent",
+    });
 
     const { app } = createApp();
     const node = createNodeServer(app);
@@ -978,6 +991,28 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     expect(live.headers.get("content-type")).toContain("application/json");
     await expect(live.json()).resolves.toEqual({ status: "ok" });
 
+    // The issuer and the unsafe request both traverse the real Node listener. The
+    // session row is deliberately real even though Better Auth's session lookup is
+    // mocked for this transport-boundary test: the CSRF issuer independently checks
+    // that the mocked session is still active in the database.
+    const csrfResponse = await rawGetToHost(
+      address.port,
+      "/api/me/csrf-token",
+      headers.host,
+      headers.origin,
+      { cookie: headers.cookie },
+    );
+    expect(csrfResponse.status).toBe(200);
+    const csrfToken = (JSON.parse(csrfResponse.body) as { token: string })
+      .token;
+    const csrfSetCookie = csrfResponse.headers["set-cookie"];
+    expect(csrfToken).toBeTruthy();
+    expect(csrfSetCookie).toBeDefined();
+    const csrfCookie = (
+      Array.isArray(csrfSetCookie) ? csrfSetCookie : [csrfSetCookie ?? ""]
+    ).find((value) => value.startsWith("tdk_csrf_dev="));
+    expect(csrfCookie).toBeDefined();
+
     const foreignOrigin = await fetch(`${httpBase}/api/public/health/live`, {
       headers: { origin: "https://attacker.example" },
     });
@@ -987,13 +1022,14 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       address.port,
       "/api/project",
       headers.origin,
-      headers.cookie,
+      `${headers.cookie}; ${csrfCookie?.split(";", 1)[0]}`,
       JSON.stringify({
         workspaceId: member.workspace.id,
         name: "Real listener JSON body",
         icon: "FolderKanban",
         slug: "real-listener-json-body",
       }),
+      { "x-taskdesk-csrf": csrfToken },
     );
     expect(created.status).toBe(200);
     expect(created.headers["access-control-allow-origin"]).toBe(headers.origin);
