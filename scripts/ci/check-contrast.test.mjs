@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { describe, it } from "node:test";
 import {
+  collectContrastSourcePaths,
   composite,
   contrastRatio,
   observedPairsInSources,
@@ -8,8 +11,36 @@ import {
 } from "./check-contrast.mjs";
 
 describe("G3 contrast inventory and math", () => {
+  it("scans styled sources across shared UI and application compositions", async () => {
+    const sources = await collectContrastSourcePaths();
+    assert.ok(sources.includes("packages/ui/src/components/button.tsx"));
+    assert.ok(sources.includes("apps/web/src/components/SettingsSidebar.tsx"));
+    const applicationSource = await readFile(
+      path.join(process.cwd(), "apps/web/src/components/SettingsSidebar.tsx"),
+      "utf8",
+    );
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    const observed = observedPairsInSources([applicationSource], tokenNames);
+    const sidebarPair =
+      "--color-sidebar-foreground|--color-sidebar|bg-sidebar|light";
+    assert.ok(observed.has(sidebarPair));
+    assert.ok(
+      validatePairManifest([], () => applicationSource, observed).some(
+        (failure) => failure.includes(`${sidebarPair} has no manifest entry`),
+      ),
+    );
+  });
+
   it("fails closed when a source introduces an unlisted foreground/background pair", () => {
-    const usage = "text-foreground bg-background";
+    const usage = '<div className="text-foreground bg-background" />';
     const manifest = [
       {
         fg: "--color-foreground",
@@ -25,7 +56,7 @@ describe("G3 contrast inventory and math", () => {
     ];
     const observed = observedPairsInSources(
       [
-        'const classes = "text-foreground bg-background"; const added = "text-primary-foreground bg-primary";',
+        '<div className="text-foreground bg-background" />; <div className="text-primary-foreground bg-primary" />;',
       ],
       new Set(["foreground", "primary-foreground", "background", "primary"]),
     );
@@ -38,7 +69,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("fails when a manifest row no longer has an observed source use", () => {
-    const usage = 'const classes = "text-foreground bg-background";';
+    const usage = '<div className="text-foreground bg-background" />';
     const manifest = [
       {
         fg: "--color-foreground",
@@ -61,7 +92,7 @@ describe("G3 contrast inventory and math", () => {
   });
 
   it("inventories foreground and background classes split across cn arguments", () => {
-    const source = 'const classes = cn("text-white", "bg-white");';
+    const source = '<div className={cn("text-white", "bg-white")} />';
     const observed = observedPairsInSources([source], new Set(["white"]));
     assert.ok(observed.has("--color-white|--color-white|bg-white|light"));
     assert.ok(observed.has("--color-white|--color-white|bg-white|dark"));
@@ -70,7 +101,7 @@ describe("G3 contrast inventory and math", () => {
   it("does not invent color pairs across mutually exclusive cn branches", () => {
     const observed = observedPairsInSources(
       [
-        'const classes = cn(variant === "a" && "text-foreground bg-background", variant === "b" && "text-primary-foreground bg-primary");',
+        '<div className={cn(variant === "a" && "text-foreground bg-background", variant === "b" && "text-primary-foreground bg-primary")} />',
       ],
       new Set(["foreground", "primary-foreground", "background", "primary"]),
     );
@@ -90,7 +121,7 @@ describe("G3 contrast inventory and math", () => {
 
   it("pairs a conditional cn class with its unconditional class arguments", () => {
     const observed = observedPairsInSources(
-      ['const classes = cn(condition && "text-white", "bg-white");'],
+      ['<div className={cn(condition && "text-white", "bg-white")} />'],
       new Set(["white"]),
     );
     assert.ok(observed.has("--color-white|--color-white|bg-white|light"));
@@ -98,8 +129,8 @@ describe("G3 contrast inventory and math", () => {
 
   it("pairs compatible conditional cn arguments and object entries", () => {
     for (const source of [
-      'const classes = cn(a && "text-white", b && "bg-white");',
-      'const classes = cn({ "text-white": a, "bg-white": b });',
+      '<div className={cn(a && "text-white", b && "bg-white")} />',
+      '<div className={cn({ "text-white": a, "bg-white": b })} />',
     ]) {
       const observed = observedPairsInSources([source], new Set(["white"]));
       assert.ok(observed.has("--color-white|--color-white|bg-white|light"));
@@ -109,7 +140,7 @@ describe("G3 contrast inventory and math", () => {
   it("does not cross-pair mutually exclusive conditional class strings", () => {
     const observed = observedPairsInSources(
       [
-        'const classes = cn(variant === "light" && "text-foreground", variant === "dark" && "bg-background");',
+        '<div className={cn(variant === "light" && "text-foreground", variant === "dark" && "bg-background")} />',
       ],
       new Set(["foreground", "background"]),
     );
@@ -121,7 +152,7 @@ describe("G3 contrast inventory and math", () => {
 
   it("inventories nested arbitrary state variants as real surface classes", () => {
     const activeSurface = "[:active,[data-pressed]]:bg-secondary/80";
-    const usage = `const classes = "text-secondary-foreground ${activeSurface}";`;
+    const usage = `<div className={\`text-secondary-foreground ${activeSurface}\`} />`;
     const manifest = [
       {
         fg: "--color-secondary-foreground",
@@ -157,7 +188,7 @@ describe("G3 contrast inventory and math", () => {
 
   it("retains dark theme modifiers on measured surface classes", () => {
     const darkSurface = "dark:has-autofill:bg-foreground/8";
-    const usage = `const classes = "text-foreground has-autofill:bg-foreground/4 ${darkSurface}";`;
+    const usage = `<div className={\`text-foreground has-autofill:bg-foreground/4 ${darkSurface}\`} />`;
     const manifest = [
       {
         fg: "--color-foreground",
@@ -186,7 +217,7 @@ describe("G3 contrast inventory and math", () => {
 
   it("does not inventory dark-only foregrounds in light theme", () => {
     const observed = observedPairsInSources(
-      ['const classes = "text-foreground bg-background dark:text-white";'],
+      ['<div className="text-foreground bg-background dark:text-white" />'],
       new Set(["foreground", "white", "background"]),
     );
     assert.equal(
@@ -209,7 +240,7 @@ describe("G3 contrast inventory and math", () => {
   it("pairs hover foregrounds with the active hover surface instead of the base surface", () => {
     const observed = observedPairsInSources(
       [
-        'const classes = "bg-background text-foreground hover:text-white hover:bg-primary";',
+        '<div className="bg-background text-foreground hover:text-white hover:bg-primary" />',
       ],
       new Set(["background", "foreground", "white", "primary"]),
     );

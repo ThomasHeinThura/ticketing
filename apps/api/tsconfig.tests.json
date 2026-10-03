@@ -46,6 +46,7 @@
 		"scripts/seed-test-setup.ts",
 		"vitest.seed.config.ts",
 		"../../tests/api/**/*.ts",
-		"../../tests/api-integration/**/*.ts"
+		"../../tests/api-integration/**/*.ts",
+		"../../tests/e2e/helpers/mfa-csrf-app-fixture.ts"
 	]
 }

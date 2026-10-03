@@ -4,7 +4,7 @@ import { readdir, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { repoRoot, violation } from "./lib/repo.mjs";
+import { repoRoot, violation, walk } from "./lib/repo.mjs";
 
 const manifestPath = "packages/ui/src/styles/pairs.json";
 const requireFromWeb = createRequire(
@@ -164,8 +164,47 @@ function classLiteralGroups(source) {
   return groups;
 }
 
+function classNameLiteralGroups(source) {
+  const groups = [];
+  const attributes = /\bclassName\s*=\s*/g;
+  for (const attribute of source.matchAll(attributes)) {
+    const valueStart = attribute.index + attribute[0].length;
+    const opening = source[valueStart];
+    if (opening === '"' || opening === "'") {
+      let end = valueStart + 1;
+      while (end < source.length) {
+        if (source[end] === "\\") end += 2;
+        else if (source[end] === opening) break;
+        else end += 1;
+      }
+      groups.push(...classLiteralGroups(source.slice(valueStart, end + 1)));
+      continue;
+    }
+    if (opening !== "{") continue;
+    let depth = 1;
+    let quote = "";
+    let escaped = false;
+    let end = valueStart + 1;
+    for (; end < source.length && depth > 0; end += 1) {
+      const character = source[end];
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === quote) quote = "";
+        continue;
+      }
+      if (character === '"' || character === "'" || character === "`")
+        quote = character;
+      else if (character === "{") depth += 1;
+      else if (character === "}") depth -= 1;
+    }
+    groups.push(...classLiteralGroups(source.slice(valueStart + 1, end - 1)));
+  }
+  return groups;
+}
+
 function sourceUsesPair(source, foregroundClass, backgroundClass, theme) {
-  for (const classText of classLiteralGroups(source)) {
+  for (const classText of classNameLiteralGroups(source)) {
     const classes = classText.split(/\s+/).map(parseClassToken);
     const foregroundFound = classes.some((parsed) => {
       const darkScoped = parsed.variants.includes("dark");
@@ -309,7 +348,7 @@ export function observedPairsInSources(sources, tokenNames) {
   const backgroundTokens = new Set(tokenNames);
   const observed = new Set();
   for (const source of sources) {
-    for (const classText of classLiteralGroups(source)) {
+    for (const classText of classNameLiteralGroups(source)) {
       const classes = classText.split(/\s+/).map(parseClassToken);
       const textNames = classes
         .map((parsed) => ({
@@ -340,7 +379,19 @@ export function observedPairsInSources(sources, tokenNames) {
           (variant) => variant !== "dark",
         );
         for (const group of groups.values()) {
+          if (
+            group.modifiers.includes("before") ||
+            group.modifiers.includes("after")
+          ) {
+            continue;
+          }
           const state = new Set([...foregroundModifiers, ...group.modifiers]);
+          if (
+            foregroundModifiers.includes("data-indeterminate") &&
+            group.modifiers.includes("data-checked")
+          ) {
+            continue;
+          }
           const applicableBackgroundGroups = [...groups.values()].filter(
             (candidate) =>
               candidate.modifiers.every((modifier) => state.has(modifier)),
@@ -396,6 +447,22 @@ export function observedPairsInSources(sources, tokenNames) {
     }
   }
   return observed;
+}
+
+export async function collectContrastSourcePaths() {
+  const roots = ["apps/web/src", "packages/ui/src"];
+  const files = await Promise.all(
+    roots.map((root) =>
+      walk(
+        path.join(repoRoot, root),
+        (file) => file.endsWith(".tsx") || file.endsWith(".jsx"),
+      ),
+    ),
+  );
+  return files
+    .flat()
+    .map((file) => path.relative(repoRoot, file))
+    .sort();
 }
 
 export function luminance(rgb) {
@@ -485,11 +552,7 @@ async function main() {
   const pairs = JSON.parse(
     await readFile(path.join(repoRoot, manifestPath), "utf8"),
   );
-  const sourcePaths = [
-    "packages/ui/src/components/button.tsx",
-    "packages/ui/src/components/badge.tsx",
-    "packages/ui/src/components/input.tsx",
-  ];
+  const sourcePaths = await collectContrastSourcePaths();
   const sourceText = await Promise.all(
     sourcePaths.map((file) => readFile(path.join(repoRoot, file), "utf8")),
   );
@@ -593,6 +656,7 @@ async function main() {
         const values = await page.evaluate(
           ({ bg, backdrop, foregroundClass, backgroundClass, theme }) => {
             const surfaceClass = backgroundClass?.[theme] ?? "";
+            const parent = document.createElement("span");
             const node = document.createElement(
               surfaceClass.includes("[button&,a&]") ? "a" : "span",
             );
@@ -600,8 +664,34 @@ async function main() {
             if (backgroundClass)
               node.className = `${node.className} ${backgroundClass[theme]}`;
             node.id = "contrast-probe";
-            if (backgroundClass?.[theme]?.includes("data-pressed")) {
-              node.setAttribute("data-pressed", "");
+            let parentNeeded = false;
+            for (const variant of surfaceClass.split(":")) {
+              const bracketAttribute = variant.match(
+                /^data-\[([a-z0-9-]+)(?:=([^\]]+))?\]$/,
+              );
+              const plainAttribute = variant.match(/^data-([a-z0-9-]+)$/);
+              const ancestorAttribute = variant.match(/^in-data-([a-z0-9-]+)$/);
+              const ancestorClass = variant.match(/^in-\[\.([a-z0-9-]+)\]$/);
+              if (bracketAttribute) {
+                node.setAttribute(
+                  `data-${bracketAttribute[1]}`,
+                  bracketAttribute[2]?.replace(/^['"]|['"]$/g, "") ?? "",
+                );
+              } else if (plainAttribute) {
+                node.setAttribute(`data-${plainAttribute[1]}`, "");
+              } else if (ancestorAttribute) {
+                parent.setAttribute(`data-${ancestorAttribute[1]}`, "");
+                parentNeeded = true;
+              } else if (ancestorClass) {
+                parent.classList.add(ancestorClass[1]);
+                parentNeeded = true;
+              }
+            }
+            if (parentNeeded) {
+              parent.append(node);
+              document.body.append(parent);
+            } else {
+              document.body.append(node);
             }
             if (backgroundClass?.[theme]?.includes("has-autofill:")) {
               const child = document.createElement("input");
@@ -614,7 +704,6 @@ async function main() {
             node.style.display = "inline-block";
             node.style.padding = "1rem";
             if (!backgroundClass) node.style.backgroundColor = `var(${bg})`;
-            document.body.append(node);
             const style = getComputedStyle(node);
             const backdropNode = document.createElement("span");
             backdropNode.style.backgroundColor = `var(${backdrop})`;

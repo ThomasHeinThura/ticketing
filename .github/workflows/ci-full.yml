@@ -71,6 +71,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Build the web app and workspace dependencies
         run: pnpm build
+        env:
+          VITE_API_URL: ""
       - name: Install Chromium
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Run browser smoke
@@ -92,6 +94,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Build the web app and workspace dependencies
         run: pnpm build
+        env:
+          VITE_API_URL: ""
       - name: Install Chromium
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Scan Storybook stories and browser screens
@@ -144,6 +148,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Build the web app and workspace dependencies
         run: pnpm build
+        env:
+          VITE_API_URL: ""
       - name: Install Chromium
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Measure G11 performance budgets
