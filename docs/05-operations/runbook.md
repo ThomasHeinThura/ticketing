@@ -317,6 +317,36 @@ three UTC calendar-date window — run against the deployment's own database, no
 HTTP endpoint. It does not establish production readiness or authorize production promotion;
 production-specific go-live criteria apply only when promoting an actual production release.
 
+## Strict policy router cutover
+
+`TASKDESK_POLICY_ENFORCE` is a temporary bootstrap control for strict request-path evaluation
+(`apps/api/src/permissions/strict-policy-enforcement.ts`). It accepts a comma-separated list of
+exact registered policy-source paths. The default is empty, so no source is enforced. A listed
+source is evaluated after that route's existing middleware and request validation, immediately
+before its terminal handler. Existing authorization checks continue to run; a registry denial
+prevents the handler from starting. The setting is read and validated during API module startup.
+An unknown, duplicate, blank, reordered, or malformed source refuses startup rather than
+silently selecting a weaker policy set.
+
+For a development or UAT rollout, first establish the documented three real, issue-free UTC
+date buckets for the exact source and representative behaviors being considered (see **Policy
+shadow summary** above). Record the source/build identity, selected UTC dates, route coverage,
+complete summary output, and any explained outcomes with the deployment evidence. Do not
+backfill missing observations or count a partial current day as a complete date. Only after
+that evidence is accepted should the deployment's operator set the approved exact source list
+and restart the API. Add eligible non-task sources in registry-owned path order; the complete
+registered set must precede `apps/api/src/task/policy.ts`, which is required to be last. Do not
+enable the task router until the role re-key prerequisite is verified and every preceding
+source is already enforced. This staged setting does not authorize production promotion.
+
+**Rollback:** remove the affected exact source path from the setting and restart the API. If
+the task path is selected, remove it first before removing any preceding source. Setting the
+value to empty and restarting returns all routes to their existing authorization plus shadow
+mode. Confirm the running deployment's environment through the deployment's protected
+configuration interface; never print environment values into a shell transcript or logs. Record
+the rollback source/build and reason. A malformed setting intentionally prevents boot, so use
+the last known-valid configuration when correcting a startup refusal.
+
 **Per-router, per-date development summary for three UTC dates** (UTC today and the preceding
 two dates; agree / disagree / unevaluated counts, by router group and outcome):
 
