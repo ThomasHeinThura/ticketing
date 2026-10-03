@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, vi } from "vitest";
+import { withConfiguredAgentAuthority } from "./helpers/agent-authority";
 import { deriveWorktreeTestDatabaseUrl } from "./helpers/worktree-database-name";
 
 // Prevent dotenv-mono from loading the local .env file during tests.
@@ -9,6 +10,29 @@ import { deriveWorktreeTestDatabaseUrl } from "./helpers/worktree-database-name"
 vi.mock("dotenv-mono", () => ({
   config: () => {},
 }));
+
+// Relative in-process Hono requests represent calls made through the configured
+// agent origin. Supply that Host only for this test harness path; absolute inputs,
+// Request objects, and raw Node HTTP/WS requests retain their explicit authorities.
+vi.mock("../../apps/api/src/index", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../apps/api/src/index")>();
+  return {
+    ...actual,
+    createApp: (...args: Parameters<typeof actual.createApp>) => {
+      const created = actual.createApp(...args);
+      const request = created.app.request.bind(created.app);
+      created.app.request = (input, init, env, executionCtx) => {
+        if (typeof input === "string") {
+          const normalized = withConfiguredAgentAuthority(input, init);
+          return request(normalized.input, normalized.init, env, executionCtx);
+        }
+        return request(input, init, env, executionCtx);
+      };
+      return created;
+    },
+  };
+});
 
 function stripEnvValueQuotes(value: string) {
   const trimmed = value.trim();
