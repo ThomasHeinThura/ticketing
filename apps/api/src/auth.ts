@@ -66,6 +66,7 @@ const githubSso = getGithubSsoOAuthCredentials();
 const isRegistrationDisabled = process.env.DISABLE_REGISTRATION === "true";
 const isPasswordRegistrationDisabled =
   process.env.DISABLE_PASSWORD_REGISTRATION === "true";
+const registrationUnavailableMessage = "Registration is currently unavailable.";
 const isLoginFormDisabled = process.env.DISABLE_LOGIN_FORM === "true";
 const isEmailOtpSignInDisabled =
   process.env.DISABLE_EMAIL_OTP_SIGN_IN === "true";
@@ -482,44 +483,11 @@ function createAuth(portal: AuthPortal) {
                 return { data: { role: "admin" } };
               }
 
-              // #18 security review (B1, then D1): this refusal must be
-              // impossible to distinguish from an ordinary registration
-              // refusal, for EVERY shape of request, not just the plain one.
-              // B1's first fix hard-coded one fixed message here -- which
-              // closed the plain case but reopened the same oracle the moment
-              // a caller added an `invitationId`: checkRegistrationAllowed
-              // below has two different messages (no invitation attempted vs.
-              // an invitation that didn't resolve), and a claimed instance
-              // reaches it while an unclaimed one used to short-circuit here
-              // first with only ever the first message -- so which of the two
-              // messages came back told an attacker claimed from unclaimed
-              // just as reliably as the original, more obviously-named one
-              // did. On a genuinely empty instance no invitation can ever
-              // exist (nothing has created a workspace or sent one yet), so
-              // calling the SAME function with the SAME arguments here always
-              // reproduces whichever of its two refusal messages a claimed
-              // instance would give for that identical request shape, because
-              // it is literally the same call. When registration is open
-              // (DISABLE_REGISTRATION=false), that call would itself say
-              // "allowed" -- but there is no message to mirror in that branch
-              // either, since a claimed+open instance would answer with 200,
-              // not an error body, so this falls back to the same fixed
-              // refusal text as before; the remaining 200-vs-403 signal in
-              // that specific configuration is inherent to never letting an
-              // unauthenticated signup through on an unclaimed instance, not
-              // something a message change can close. The setup URL and token
-              // are still printed to the boot log (ensureSetupToken) and
-              // documented in the runbook -- an operator never needs this
-              // response to learn them.
-              const bootstrapRefusal = await checkRegistrationAllowed(
-                user.email,
-                invitationId,
-                { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
-              );
+              // The same fixed refusal is used for every registration-control
+              // denial; setup credentials are delivered only through the
+              // documented boot channel.
               throw new APIError("FORBIDDEN", {
-                message: bootstrapRefusal.allowed
-                  ? "Registration is currently disabled. Please use a valid invitation link to create an account."
-                  : bootstrapRefusal.reason,
+                message: registrationUnavailableMessage,
               });
             }
 
@@ -530,7 +498,7 @@ function createAuth(portal: AuthPortal) {
             );
             if (!result.allowed) {
               throw new APIError("FORBIDDEN", {
-                message: result.reason,
+                message: registrationUnavailableMessage,
               });
             }
           },
@@ -628,8 +596,7 @@ function createAuth(portal: AuthPortal) {
         if (ctx.path === "/sign-up/email") {
           if (isPasswordRegistrationDisabled && !isInstanceAdminSetup) {
             throw new APIError("FORBIDDEN", {
-              message:
-                "Password registration is currently disabled. Please use a configured social or OIDC sign-in method.",
+              message: registrationUnavailableMessage,
             });
           }
 
@@ -664,7 +631,7 @@ function createAuth(portal: AuthPortal) {
           const result = await checkRegistrationAllowed(email, invitationId);
           if (!result.allowed) {
             throw new APIError("FORBIDDEN", {
-              message: result.reason,
+              message: registrationUnavailableMessage,
             });
           }
         }
