@@ -35,7 +35,7 @@
     "check:reviews": "node ./scripts/ci/check-reviews.mjs",
     "check:route-policy": "node ./scripts/ci/route-policy-gate.mjs",
     "check:skips": "node ./scripts/ci/check-skips.mjs",
-    "check:tokens": "node ./scripts/ci/check-tokens.mjs",
+    "check:tokens": "node ./scripts/ci/check-tokens.mjs && node ./scripts/ci/check-contrast.mjs",
     "check:ui": "node ./scripts/ci/check-ui.mjs",
     "check:vocabulary": "node ./scripts/ci/check-vocabulary.mjs",
     "check:visual-scope": "node ./scripts/ci/check-visual-scope.mjs",

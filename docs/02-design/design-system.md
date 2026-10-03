@@ -12,7 +12,7 @@
 | Styling | Tailwind CSS v4, CSS variables |
 | Variants | class-variance-authority |
 | Icons | lucide-react — the only icon source |
-| Typography | Geist Variable / Geist Mono Variable |
+| Typography | Locally bundled Geist Variable / Geist Mono Variable (`@fontsource-variable`) |
 | Motion | Framer Motion, tokenised |
 | Catalogue | Storybook 10 |
 | Charting | Recharts (Thomas, 2026-09-23 — see [decision log](../07-planning/decision-log.md)) |
@@ -60,8 +60,7 @@ previously said `date-picker`/`date-range-picker` — use kaneo's real names bel
 
 **Disclosure** — `accordion` `collapsible` `tabs`
 
-**Feedback** — `toast` `spinner` `error-boundary` `error-display` `error-fallback`
-`loading-skeleton` `toolbar`
+**Feedback** — `toast` `spinner` `error-boundary` `toolbar`
 
 Twelve primitives this document previously listed **do not exist in kaneo** and are not
 "taken from kaneo": `resizable`, `aspect-ratio`, `multi-select`, `date-picker`,
@@ -72,6 +71,11 @@ extracted** in "What we add for TaskDesk" below, and budget it; do not assume it
 with the extraction.
 
 ### Error boundary
+
+`Avatar` is the shared root/image/fallback primitive; the app adapter at
+`apps/web/src/components/avatar/` owns API-origin resolution for uploaded `/api/...` URLs.
+`error-display`, its one-line fallback wrapper, `/test-error` harness, and first-session
+loading shell are application compositions, not shared primitives.
 
 `ErrorBoundary` from `@taskdesk/ui` catches errors thrown while rendering its descendants.
 Callers must provide a `fallback` component that receives the `Error` and a `resetError`
@@ -120,8 +124,9 @@ feature spec; grouped rows use the shared design tokens at the default density.
 
 **`chart`'s contract:** series colours are drawn only from a fixed token ramp
 (`--chart-series-1` … `--chart-series-n` in `tokens.css`), never a colour Recharts or a
-caller picks freely — this is what lets `G3` check chart contrast the same way it checks
-every other token. `chart` never renders alone: every instance renders its `chart-table`
+caller picks freely. These semantic series tokens can be added to G3 when chart pair coverage
+is registered; the current G3 inventory is limited to shared Button, Badge, and Input variants
+and does not claim chart-series contrast coverage. `chart` never renders alone: every instance renders its `chart-table`
 alongside it (visually hidden by default, reachable by keyboard, per `RP-11`), not as an
 optional companion a screen may skip. A screen that renders a `chart` without its
 `chart-table` fails `G4`.
@@ -152,7 +157,9 @@ widget shape the way `dashboard-grid` (see below) is.
 
 1. Check kaneo first. If it exists there, take it rather than writing it.
 2. Build on a Base UI primitive where one exists. Do not reimplement focus management.
-3. Tokens only — no literal colours, no arbitrary spacing.
+3. Tokens and density slots — no literal colours or arbitrary token values; density-sensitive
+   rows, fields, and repeated cards use the shared `td-density-*` classes from
+   `packages/ui/src/styles/density.css`. `check:tokens` enforces the declared slot inventory.
 4. Use `cva` for variants. Support `className` passthrough and `asChild` where sensible.
 5. Forward refs. Spread `...props`.
 6. Write the Storybook story: default, every variant, every size, disabled, loading,
@@ -205,7 +212,7 @@ Taken from kaneo unchanged.
 
 **Agent** — collapsible sidebar with workspace switcher, primary navigation and project
 list; topbar with breadcrumb, search, notification bell and user menu; command palette on
-`⌘K`. Below 900 px the sidebar becomes an icon rail.
+`⌘K`. Below the shared `app` breakpoint (900 px), the sidebar becomes an icon rail.
 
 **Portal** — the same shell, dramatically simplified: a short navigation list, no
 workspace switcher, no command palette by default. Same components, less of them.
@@ -258,8 +265,8 @@ table above, server-side, before it reaches `instance_branding`. This is a styli
 injection surface otherwise: an unbounded "custom CSS variable override" lets an
 administrator write anything the theme engine will interpolate into the page.
 
-`--brand-accent` is run through the same contrast check `G3` runs over the committed
-tokens ([`ux-quality-gates.md`](ux-quality-gates.md#g3--contrast)), against both the light
+Runtime validation for `--brand-accent` uses the same WCAG AA threshold described for `G3`
+([`ux-quality-gates.md`](ux-quality-gates.md#g3--contrast)), against both the light
 and dark `--background` it will pair with. A submission that fails AA contrast is not
 silently accepted — God Mode shows the computed ratio and a warning before save, the same
 shape as any other validated form field. `G3`'s own CI check only ever sees the committed
@@ -285,3 +292,16 @@ See [Licensing and attribution](../00-overview/licensing-and-attribution.md).
 - [Design tokens](design-tokens.md) · [Design principles](design-principles.md)
 - [Motion](motion.md) · [Accessibility](accessibility.md)
 - [ADR 0008](../01-architecture/adr/0008-single-design-system.md)
+
+
+### Application compositions
+
+`packages/ui` contains reusable primitives only. App-owned avatar URL resolution stays in
+`apps/web/src/components/avatar/`; API-aware error display/fallback compositions live in
+`apps/web/src/components/errors/`; and the first-session shell placeholder lives in
+`apps/web/src/components/app-shell/`. The `/test-error` diagnostic remains route-local.
+The extracted legacy `apps/web/src/components/ui` directory must remain empty; G1c in
+`ux-quality-gates.md` is enforced by `scripts/ci/check-ui.mjs`. Density class and contrast-pair
+ownership are defined in `design-tokens.md` and enforced by G2/G3. Authored palette matching
+remains provisional until the human H1–H6 review at P4; passing numeric contrast is not that
+review.

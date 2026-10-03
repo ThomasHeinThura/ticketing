@@ -118,11 +118,11 @@ jobs:
         run: pnpm lint:ci
       - name: pnpm typecheck
         run: pnpm typecheck
+      - name: Install Chromium for G3
+        run: ./apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: pnpm check:tokens
-        # #9 — theme.css token parity (concrete values in both light and dark) and no
-        # hard-coded color literal outside packages/ui/src/styles/, scoped to apps/web/src
-        # and packages/ui. See scripts/ci/check-tokens.mjs's own header for what G2/G3
-        # this does not yet cover (arbitrary spacing/radius/z-index values, contrast ratio).
+        # Token parity/literals plus density-slot enforcement and built-CSS Chromium contrast.
+        # The checker builds the web CSS and reuses the app's pinned Playwright tooling.
         run: pnpm check:tokens
       - name: pnpm check:i18n
         run: pnpm check:i18n

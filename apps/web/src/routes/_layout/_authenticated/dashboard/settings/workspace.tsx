@@ -15,8 +15,8 @@ import {
 } from "@taskdesk/ui";
 import { Settings, Shield, Tag } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import SettingsSidebar from "@/components/SettingsSidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import activateWorkspace from "@/fetchers/workspace/activate-workspace";
 import getWorkspaces from "@/fetchers/workspace/get-workspaces";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";

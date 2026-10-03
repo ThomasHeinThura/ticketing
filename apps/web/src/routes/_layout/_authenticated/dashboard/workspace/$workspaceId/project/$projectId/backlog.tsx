@@ -15,13 +15,13 @@ import { produce } from "immer";
 import { ArrowRight, Calendar, Filter, Plus, User, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import BacklogListView from "@/components/backlog-list-view";
 import ProjectLayout from "@/components/common/project-layout";
 import SortControl from "@/components/common/sort-control";
 import PageTitle from "@/components/page-title";
 import CreateTaskModal from "@/components/shared/modals/create-task-modal";
 import TaskDetailsSheet from "@/components/task/task-details-sheet";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { shortcuts } from "@/constants/shortcuts";
 import {
   hasPendingTaskUpdate,

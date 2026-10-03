@@ -20,8 +20,8 @@ import {
 import { Eye, GitBranch, Plug, Settings } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import SettingsSidebar from "@/components/SettingsSidebar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";

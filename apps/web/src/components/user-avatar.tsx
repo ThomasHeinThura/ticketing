@@ -11,8 +11,8 @@ import {
 } from "@taskdesk/ui";
 import { LogOut, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import useSignOut from "@/hooks/mutations/use-sign-out";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
 import { getInitials } from "@/lib/get-initials";

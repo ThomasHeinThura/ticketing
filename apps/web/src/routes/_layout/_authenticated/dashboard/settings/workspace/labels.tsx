@@ -251,7 +251,7 @@ function RouteComponent() {
           </Card>
 
           <Card className="!rounded-none">
-            <CardPanel className="p-4">
+            <CardPanel>
               {workspaceLabels.length === 0 ? (
                 <Empty>
                   <EmptyHeader>
