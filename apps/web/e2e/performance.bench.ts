@@ -1259,6 +1259,9 @@ async function collectCommandPaletteInteraction(
   metric: "open" | "navigate" = "open",
 ) {
   await openWorkList(page);
+  const palettePopup = page.locator('[data-slot="command-dialog-popup"]');
+  await expect(palettePopup).toHaveCount(1);
+  await expect(palettePopup).toBeHidden();
   await page.keyboard.press(
     process.platform === "darwin" ? "Meta+k" : "Control+k",
   );

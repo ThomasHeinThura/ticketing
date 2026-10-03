@@ -5,6 +5,7 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 
 export const Route = createFileRoute("/_layout/_authenticated/dashboard")({
   component: DashboardLayoutComponent,
+  codeSplitGroupings: [],
 });
 
 function DashboardLayoutComponent() {

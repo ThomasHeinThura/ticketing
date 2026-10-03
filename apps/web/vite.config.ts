@@ -56,7 +56,7 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve locale assets.",
           );
 
-        const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${JSON.stringify([...files].map((file) => `/${file}`))};const locales=${JSON.stringify(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink)})();`;
+        const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${JSON.stringify([...files].map((file) => `/${file}`))};const locales=${JSON.stringify(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink);for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}})();`;
         const source = String(html.source);
         const head = source.match(/<head(?:\s[^>]*)?>/i)?.[0];
         if (!head)
@@ -165,16 +165,17 @@ export default defineConfig(({ mode }) => {
         input: path.resolve(root, "index.html"),
         output: {
           codeSplitting: {
-            groups: isPortal
-              ? []
-              : [
-                  {
-                    name: "agent-initial-runtime",
-                    tags: ["$initial"],
-                    maxSize: 1_000_000,
-                  },
-                ],
+            groups: [
+              {
+                name: isPortal
+                  ? "portal-initial-runtime"
+                  : "agent-initial-runtime",
+                tags: ["$initial"],
+                maxSize: 1_000_000,
+              },
+            ],
           },
+          strictExecutionOrder: true,
         },
       },
       commonjsOptions: {

@@ -92,8 +92,10 @@ describe("resolveStaticRoot", () => {
 describe("static file serving", () => {
   let staticRoot: string;
 
-  const requestAsAgent = (app: ReturnType<typeof createApp>["app"], path: string) =>
-    app.request(path, { headers: { host: "localhost:5173" } });
+  const requestAsAgent = (
+    app: ReturnType<typeof createApp>["app"],
+    path: string,
+  ) => app.request(path, { headers: { host: "localhost:5173" } });
   let privateFile: string;
 
   beforeAll(() => {
@@ -146,7 +148,10 @@ describe("static file serving", () => {
   it("never falls back to index.html for an unmatched API-prefixed route", async () => {
     const { app } = createApp({ staticRoot });
 
-    const response = await requestAsAgent(app, "/api/this-route-does-not-exist");
+    const response = await requestAsAgent(
+      app,
+      "/api/this-route-does-not-exist",
+    );
 
     // The app-wide `/api/*` guard (apps/api/src/index.ts's `api.use("*", ...)`)
     // authenticates before routing can even decide "not found", so an
