@@ -117,7 +117,7 @@ notes, or old decision-log entries merely because the current model policy chang
 
 | Work | Required model / context |
 | --- | --- |
-| Implementation against an agreed spec | **GPT-6 Luna**, explicitly selected |
+| Implementation against an approved or explicitly user-authorized documented recommendation | **GPT-6 Luna**, explicitly selected |
 | Small mechanical implementation / tests | **GPT-6 Luna** |
 | Bulk repository reading and context preparation | **GPT-6 Luna** by default; **GPT-6 Sol** when the reasoning is security/architecture-heavy |
 | Ordinary review — bugs, tests, code quality | fresh independent **GPT-6 Luna** context(s) |
@@ -131,13 +131,26 @@ notes, or old decision-log entries merely because the current model policy chang
 Every model/context used for a review is named explicitly in the PR or review note. Never rely
 on an inherited/default model label.
 
+## Bulk implementation and review cadence
+
+Follow the canonical rule in [`AGENTS.md`](AGENTS.md#bulk-implementation-and-review-cadence):
+implement the full related P0–P3 feature set first against approved or explicitly
+user-authorized documented contracts, then freeze and review the integrated bulk candidate at
+its required independent Luna/Sol tiers before merge. Human spec/design/H1 review is deferred
+until the integrated P4 review; record the deferral and never claim unperformed approval.
+Do not open standalone review passes for small/mechanical edits or speculative trials. Fix
+findings as a batch and review the changed candidate at the applicable tier, with no automatic
+comfort rounds. Reviewer counts, exact-head discipline, security scope, stage finalizers,
+required checks, and protected-merge rules remain in force.
+
 ---
 
 ## GPT-6 Luna — implementation and ordinary review
 
 GPT-6 Luna inherits the work previously assigned to Sonnet:
 
-- implement code/tests against an already-approved spec;
+- implement code/tests against an approved or explicitly user-authorized documented
+  recommendation, without guessing behavior the contract leaves open;
 - prepare bounded context;
 - perform ordinary correctness/test/quality review in a fresh context;
 - perform project-alignment review for ordinary changes;

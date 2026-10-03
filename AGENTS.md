@@ -229,6 +229,38 @@ Never:
 
 ## Review tiers
 
+### Bulk implementation and review cadence
+
+Implement the full related feature set first, using approved contracts or documented
+recommendations explicitly authorized by the user, then conduct one integrated bulk review.
+For P0–P3, human spec/design/H1 review is deferred to the integrated P4 human review; do not
+make it an early implementation prerequisite. The current documented recommendations,
+including #573, are authorized for implementation. Record human review as deferred, never as
+approved. A recorded deferral does not block technical P0–P3 stage closure when all other
+applicable criteria are met. If implementation encounters behavior the written contract does
+not settle, stop that decision path and record the unresolved point rather than guessing.
+
+Do not open standalone review passes for small or mechanical edits or speculative trials. Run
+meaningful tests during implementation so the completed feature batch is ready for integrated
+review. Freeze its final candidate SHA and run the applicable independent review panel, plus
+the required GPT-6 Sol security review where applicable, before protected merge.
+
+When a review finds issues, fix the findings as a coherent batch, freeze the new candidate,
+and review that delta at the tier it requires. Do not add automatic extra rounds for comfort;
+the existing risk-based review tiers and exact-head requirements still govern. Tiny urgent
+fixes may join the next batch unless the user explicitly asks for isolated delivery. This
+cadence never permits an unreviewed merge, self-review, a waived gate, a security-tier
+downgrade, or bypassing main's protection.
+
+For development/P0 and UAT policy-shadow verification, use three issue-free UTC calendar-date
+buckets; require source-bound evidence that the tested behavior and router coverage span all
+three. Existing representative evidence may count when it covers the same source/behavior. A
+note-only or mechanical change that does not affect tested behavior does not restart the
+window. Run performance, unit, integration, and browser checks as soon as the implementation
+batch is ready; do not wait for the shadow window. A known failure does not become a pass
+through elapsed time, and synthetic backfill is not evidence. Production/go-live criteria
+apply only to actual production promotion. See the newest [decision-log entry](docs/07-planning/decision-log.md).
+
 **Tier by what the change actually risks, not by which directory it sits in.** A security path
 makes a change a candidate for heavier review; the actual semantic risk determines the depth.
 
@@ -277,7 +309,8 @@ assertions enforce.
 At each stage's completion P0–P7, before it is claimed done, run one broader **fresh independent
 GPT-6 Sol** red-team pass across everything merged for that stage since the previous finalizer.
 
-The finalizer is additive. It never substitutes for, delays, or batches per-PR Sol review.
+The finalizer is additive. It never substitutes for or delays the required GPT-6 Sol review
+of a bulk candidate before that candidate merges.
 If GPT-6 Sol is unavailable for the finalizer, the stage is not claimed complete.
 
 ### Sampled big review — Opus 5.5

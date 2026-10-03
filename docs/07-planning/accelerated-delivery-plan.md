@@ -38,16 +38,17 @@ be fantasy. Three things make an aggressive attempt realistic rather than fantas
    takes kaneo — a working, tested, styled work-management application — as the starting
    point. Week 1 is de-branding and hardening a running product, not building one from a
    blank editor.
-2. **The specs already exist.** All 31 feature specs, the data model, the API design, the
-   RBAC model and thirteen ADRs are written. [SDLC](../04-engineering/sdlc.md) step 2 (Specify)
-   — normally the slowest stage because it requires human judgement — is already done for
-   the whole product. What is left is steps 3–9, which parallelise.
+2. **The contracts already exist.** All 31 feature specs, the data model, the API design, the
+   RBAC model and thirteen ADRs are written. Human spec/design/H1 review for P0–P3 is deferred
+   to the integrated P4 human review under the current user decision; it is not a prerequisite
+   to implementation. What is left is steps 3–9, which parallelise.
 3. **Heavy, model-tiered AI-agent parallelisation.** Independent workstreams (below) run
    concurrently, each on its own branch, per
    [agent-workflow.md](../04-engineering/agent-workflow.md)'s "parallelise across
    independent areas" rule and its
    [model policy](../04-engineering/agent-workflow.md#model-policy) —
-   GPT-6 Luna implementing against an already-approved spec, independent GPT-6 Luna ordinary
+   GPT-6 Luna implementing against an approved or explicitly user-authorized documented
+   recommendation, independent GPT-6 Luna ordinary
    review, and **GPT-6 Sol gating security on every workstream, always, with no exception for
    schedule pressure.**
 
