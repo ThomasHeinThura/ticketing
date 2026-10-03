@@ -19,6 +19,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { Client } from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runApiBootTasks, runMigrationStep } from "../../apps/api/src/index";
+import { stopObservabilityRuntime } from "../../apps/api/src/instance/observability/runtime";
 import { shutdownScheduler } from "../../apps/api/src/scheduler";
 import { shutdownWebSocketAdapter } from "../../apps/api/src/ws";
 
@@ -42,6 +43,9 @@ describe("boot orchestration (issue #296, S1) — runApiBootTasks succeeds as th
   let seededOrganisationId: string | undefined;
 
   afterEach(async () => {
+    // runApiBootTasks starts the fixed-port metrics listener. Always release it so
+    // this isolated boot test cannot leave a child process holding the manifest port.
+    await stopObservabilityRuntime();
     shutdownScheduler();
     await shutdownWebSocketAdapter();
 
