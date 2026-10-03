@@ -1,6 +1,6 @@
 import { chmod, mkdir } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
-import { withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
+import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 
@@ -10,15 +10,12 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
   test.setTimeout(90_000);
   page.setDefaultTimeout(8_000);
   await withMfaCsrfApp(async ({ origin, email, password }) => {
-    const signup = await page.request.post(
-      new URL("/api/auth/sign-up/email", origin).toString(),
-      {
-        headers: { Origin: origin },
-        data: { name: "Disposable Calendar Admin", email, password },
-      },
-    );
-    expect(signup.status()).toBe(200);
-    await page.goto(new URL("/onboarding", origin).toString());
+    await page.goto(new URL("/auth/sign-up", origin).toString());
+    await page.getByLabel("Full name").fill("Disposable Calendar Admin");
+    await page.getByLabel("Email").fill(email);
+    await page.locator('input[autocomplete="new-password"]').fill(password);
+    await page.getByRole("button", { name: "Create account" }).click();
+    await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
     await page
       .getByLabel("Workspace name")
       .fill("Disposable Calendar Workspace");
