@@ -1153,26 +1153,52 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
       }
     }
     for (const lazy of source.matchAll(
-      /(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*lazy\(\s*([A-Za-z_$][\w$]*)\s*\)/gu,
+      /(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*lazy\(\s*(?:([A-Za-z_$][\w$]*)|(?:\(\s*\)\s*=>\s*import\(\s*["']([^"']+)["']\s*\)\s*,?))\s*\)/gu,
     )) {
-      const loader = imported.get(lazy[2]);
-      if (!loader) continue;
-      const loaderSource = requireFromWeb("node:fs").readFileSync(
-        path.join(repoRoot, loader.file),
-        "utf8",
-      );
-      const dynamicPath = loaderSource.match(
-        /import\(\s*["']([^"']+)["']\s*\)/u,
-      )?.[1];
-      if (!dynamicPath) continue;
-      const absolute = path.resolve(
-        path.dirname(path.join(repoRoot, loader.file)),
-        dynamicPath,
-      );
-      imported.set(lazy[1], {
-        file: sourceModulePath(path.relative(repoRoot, absolute)),
-        symbol: "default",
-      });
+      let target;
+      if (lazy[3]) {
+        const moduleName = lazy[3];
+        const relative = moduleName.startsWith("@/")
+          ? path.join("apps/web/src", moduleName.slice(2))
+          : moduleName.startsWith(".")
+            ? path.relative(
+                repoRoot,
+                path.resolve(
+                  path.dirname(path.join(repoRoot, sourcePath)),
+                  moduleName,
+                ),
+              )
+            : undefined;
+        if (relative)
+          target = { file: sourceModulePath(relative), symbol: "default" };
+      } else if (lazy[2]) {
+        const loader = imported.get(lazy[2]);
+        if (loader) {
+          const loaderSource = requireFromWeb("node:fs").readFileSync(
+            path.join(repoRoot, loader.file),
+            "utf8",
+          );
+          const dynamicPath = loaderSource.match(
+            /import\(\s*["']([^"']+)["']\s*\)/u,
+          )?.[1];
+          if (dynamicPath) {
+            const relative = dynamicPath.startsWith("@/")
+              ? path.join("apps/web/src", dynamicPath.slice(2))
+              : dynamicPath.startsWith(".")
+                ? path.relative(
+                    repoRoot,
+                    path.resolve(
+                      path.dirname(path.join(repoRoot, loader.file)),
+                      dynamicPath,
+                    ),
+                  )
+                : undefined;
+            if (relative)
+              target = { file: sourceModulePath(relative), symbol: "default" };
+          }
+        }
+      }
+      if (target?.file) imported.set(lazy[1], target);
     }
     for (const [localName, target] of imported)
       imported.set(localName, resolveLocalExport(target));
