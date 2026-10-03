@@ -172,8 +172,8 @@ thing that is hashed or executed.
   session/person-bound challenge and confirmation. `POST /api/me/step-up/challenges`
   (`authenticated + self`, session-only) creates a five-minute challenge for either the
   current requester's pending action or an explicitly registered operation. The operation
-  allowlist is `metrics_token_rotate`, `oidc_group_mapping_create`, and
-  `oidc_group_mapping_update`. Pending-action binding uses its existing `pending_action.id`
+  allowlist is `metrics_token_rotate`, `oidc_group_mapping_create`,
+  `oidc_group_mapping_update`, and `mfa_reset`. Pending-action binding uses its existing `pending_action.id`
   and `payload_hash`; operation binding uses the exact fixed route key, operation key,
   expected resource version and server-computed canonical request-binding hash. The client
   cannot choose a route or submit a hash. The response contains an opaque challenge id and a
@@ -190,11 +190,21 @@ thing that is hashed or executed.
   tokens invalidate older unused material for the same session and binding; consumed rows
   are retained for at most 24 hours for replay diagnosis.
 
+  Custom operation proof verification is bounded independently of Better Auth's HTTP
+  limiter: a person/session/operation may create at most five challenges in a rolling
+  15-minute window. Each challenge authorizes one verifier attempt; a failed password,
+  factor, or nonce expires that challenge. Missing or unrelated challenge identifiers do not
+  burn another challenge. The database advisory lock serializes challenge issuance and
+  attempt accounting across API replicas. A rejected attempt never issues a proof or mutates
+  the bound operation.
+
   Challenge requests are a strict discriminated union:
 
   ```json
   { "kind": "pending_action", "pendingActionId": "..." }
   { "kind": "operation", "operation": "metrics_token_rotate", "version": 7 }
+  { "kind": "operation", "operation": "mfa_reset", "userId": "...",
+    "verificationNote": "..." }
   { "kind": "operation", "operation": "oidc_group_mapping_create",
     "connectionId": "...", "request": { "configVersion": 7, "externalGroupId": "...", "roleId": "...", "scope": "workspace", "scopeId": "..." } }
   { "kind": "operation", "operation": "oidc_group_mapping_update",
@@ -230,10 +240,11 @@ thing that is hashed or executed.
     "proof": { "method": "password", "value": "..." } }
   ```
 
-  The only initial proof is the current password for the supported local-password account
-  class with no enrolled/required second factor. TOTP, backup-code, or SSO proof may be
-  accepted only after its adapter exists and verifies the live challenge; an SSO callback
-  stores a server-verifiable receipt and accepts no client claim of success. The mint
+  Supported proofs are the current password only for a local-password account with no
+  enrolled or required second factor, or a currently enrolled TOTP / unused backup code
+  verified by Better Auth against the live challenge. A required but unsupported upstream
+  SSO proof fails closed; an SSO callback stores a server-verifiable receipt and accepts no
+  client claim of success. The mint
   response is the no-store `{stepUpToken, expiresAt}`; no proof is logged or persisted.
 
   The operation bindings are only these exact routes and request contracts:
@@ -241,6 +252,7 @@ thing that is hashed or executed.
   | Operation key | Route | Version source |
   | --- | --- | --- |
   | `metrics_token_rotate` | `POST /api/instance/observability/metrics-token/rotate` | `observability_config_version` |
+  | `mfa_reset` | `POST /api/instance/users/{id}/reset-mfa` | fixed operation version `1` |
   | `oidc_group_mapping_create` | `POST /api/instance/identity-connections/{id}/oidc-group-mappings` | `identity_connection.config_version` |
   | `oidc_group_mapping_update` | `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` | `identity_connection.config_version` |
 
@@ -262,6 +274,13 @@ thing that is hashed or executed.
   writes, the canonical request envelope and field ordering are specified in
   [api-design.md](api-design.md#oidc-group-mapping-administration). No operation may reuse
   another operation's proof, and no session-wide freshness window is introduced.
+
+  For `mfa_reset`, both challenge and proof repeat the target user id and exact validated
+  `verificationNote`. The canonical body hash covers the fixed route, operation, fixed
+  version, target user id, and trimmed note. The reset route recomputes that binding and
+  consumes the one-use token in the same transaction that locks the target, clears the
+  factor, revokes sessions and keys, and inserts the target's private security notification.
+  A stale, missing, replayed, wrong-target or wrong-note proof makes no reset change.
 
   The metrics operation uses `X-TaskDesk-Step-Up-Token` and recomputes the canonical
   request hash server-side.

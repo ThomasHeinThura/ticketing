@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import {
   createPendingAction,
@@ -36,6 +36,7 @@ function requestInput(requesterPersonId = "person-pending-action-test") {
 describe("pending-action service persistence", () => {
   beforeEach(async () => {
     await resetTestDatabase();
+    await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
     await db.insert(schema.organisationTable).values({
       id: organisationId,
       key: organisationId,
@@ -439,9 +440,10 @@ describe("pending-action service persistence", () => {
 
   it("AU-14: commits the request and outbox when its audit insert fails", async () => {
     const input = requestInput();
-    const auditFailure = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, "user-pending-action-test"));
     await db.execute(
       sql.raw(`
         CREATE OR REPLACE FUNCTION fail_pending_action_audit_insert()
@@ -481,12 +483,13 @@ describe("pending-action service persistence", () => {
       expect(pendingRows).toEqual([{ id: response.pendingActionId }]);
       expect(outboxRows).toHaveLength(1);
       expect(auditRows).toHaveLength(0);
-      expect(auditFailure).toHaveBeenCalledWith(
-        expect.stringContaining("AU-14:"),
-        expect.anything(),
-      );
+      const alerts = await db
+        .select({ eventData: schema.notificationTable.eventData })
+        .from(schema.notificationTable)
+        .where(eq(schema.notificationTable.type, "audit_write_failed"));
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]?.eventData).toMatchObject({ operation: "mutation" });
     } finally {
-      auditFailure.mockRestore();
       await db.execute(
         sql.raw(
           "DROP TRIGGER IF EXISTS fail_pending_action_audit_insert ON audit_log",
@@ -669,6 +672,10 @@ describe("pending-action service persistence", () => {
   it.each(["denied", "cancelled"] as const)(
     "AU-14: commits %s and its outbox event when the decision audit insert fails",
     async (outcome) => {
+      await db
+        .update(schema.userTable)
+        .set({ role: "admin" })
+        .where(eq(schema.userTable.id, "user-pending-action-test"));
       const input = requestInput();
       const created = await createPendingAction(input);
       const targetBefore = requireRow(
@@ -683,9 +690,6 @@ describe("pending-action service persistence", () => {
           .limit(1),
         "pending-action target before injected audit failure",
       );
-      const auditFailure = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => undefined);
       await db.execute(
         sql.raw(`
         CREATE OR REPLACE FUNCTION fail_pending_action_decision_audit_insert()
@@ -743,12 +747,15 @@ describe("pending-action service persistence", () => {
         expect(events[0]?.payload).toMatchObject({ payload: { outcome } });
         expect(auditRows).toHaveLength(0);
         expect(targetAfter).toEqual(targetBefore);
-        expect(auditFailure).toHaveBeenCalledWith(
-          "AU-14: pending-action decision audit write failed",
-          expect.anything(),
-        );
+        const alerts = await db
+          .select({ eventData: schema.notificationTable.eventData })
+          .from(schema.notificationTable)
+          .where(eq(schema.notificationTable.type, "audit_write_failed"));
+        expect(alerts).toHaveLength(1);
+        expect(alerts[0]?.eventData).toMatchObject({
+          operation: "pending_action_decision",
+        });
       } finally {
-        auditFailure.mockRestore();
         await db.execute(
           sql.raw(
             "DROP TRIGGER IF EXISTS fail_pending_action_decision_audit_insert ON audit_log",

@@ -81,6 +81,13 @@ vi.mock("../../apps/api/src/work-item/activity", async () => {
 });
 
 async function addPersonForUser(userId: string) {
+  const [existingPerson] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  if (existingPerson) return existingPerson;
+
   const organisation = await ensureInternalOrganisation();
   const now = new Date();
   return requireRow(

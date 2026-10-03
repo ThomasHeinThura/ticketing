@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { generatedRouteMetadata } from "./generated-route-metadata";
 import {
+  buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
+  parseGeneratedRouteUrl,
+  parseServiceCalendarListSearchFromQueryString,
+  parseSlaPolicyListSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   routes,
@@ -8,6 +13,7 @@ import {
   WORK_ITEM_SORT_DIRECTIONS,
   WORK_ITEM_SORT_FIELDS,
 } from "./routes";
+import { parseCalendarEditorSearch } from "./service-calendar-form";
 
 describe("routes.workItemList", () => {
   it("round-trips every sort field and direction through build -> parse", () => {
@@ -97,6 +103,44 @@ describe("routes.workItemList", () => {
   });
 });
 
+describe("G5 route metadata", () => {
+  it("keeps agent and portal routes sourced from their independent generated trees", () => {
+    expect(generatedRouteMetadata.agent).toContain(
+      "/agent/projects/$projectKey/work",
+    );
+    expect(generatedRouteMetadata.portal).toEqual(["/"]);
+  });
+
+  it("round-trips the portal root URL through its route helper", () => {
+    const url = new URL(
+      routes.portalHome.build(),
+      "https://portal.example.test",
+    );
+    expect(routes.portalHome.parse(url.pathname)).toBe(
+      routes.portalHome.build(),
+    );
+    expect(routes.portalHome.parse("/unmatched")).toBeUndefined();
+  });
+
+  it("builds and parses every generated agent and portal route template", () => {
+    for (const surface of ["agent", "portal"] as const) {
+      for (const template of generatedRouteMetadata[surface]) {
+        const names = [...template.matchAll(/\$([A-Za-z0-9_]+)/gu)].map(
+          (match) => match[1],
+        );
+        const params = Object.fromEntries(
+          names.map((name) => [name, `value/${name} part`]),
+        );
+        const url = buildGeneratedRouteUrl(surface, template, params);
+        expect(parseGeneratedRouteUrl(surface, template, url)).toEqual({
+          pathname: url,
+          params,
+        });
+      }
+    }
+  });
+});
+
 describe("routes.workItemDetail", () => {
   it("builds the future detail path with the work item key", () => {
     expect(routes.workItemDetail.build({ key: "PROJ-123" })).toBe(
@@ -107,6 +151,54 @@ describe("routes.workItemDetail", () => {
   it("encodes a key that needs escaping", () => {
     expect(routes.workItemDetail.build({ key: "a/b" })).toBe(
       "/agent/work-items/a%2Fb",
+    );
+  });
+});
+
+describe("routes.serviceCalendars", () => {
+  it("builds the list route named by the screen inventory", () => {
+    expect(routes.serviceCalendars.build()).toBe("/agent/settings/calendars");
+  });
+
+  it("round-trips one opaque cursor through URL encoding without page history", () => {
+    const search = { cursor: "cursor/a+b?=" };
+    const url = routes.serviceCalendars.build(search);
+    expect(
+      parseServiceCalendarListSearchFromQueryString(url.split("?")[1] ?? ""),
+    ).toEqual(search);
+    expect(url).not.toContain("history=");
+  });
+
+  it("preserves the editor id and preview year in its URL", () => {
+    const url = routes.serviceCalendarEditor.build({ id: "cal/one" }, 2026);
+    expect(url).toBe("/agent/settings/calendars/cal%2Fone?year=2026");
+    expect(
+      parseCalendarEditorSearch({
+        year: new URL(url, "https://taskdesk.invalid").searchParams.get("year"),
+      }),
+    ).toEqual({ year: 2026 });
+  });
+
+  it("does not add search state when the year is not supplied", () => {
+    expect(routes.serviceCalendarEditor.build({ id: "new" })).toBe(
+      "/agent/settings/calendars/new",
+    );
+  });
+});
+
+describe("routes.slaPolicies", () => {
+  it("round-trips the list cursor and editor id through registered route builders", () => {
+    const url = routes.slaPolicies.build({ cursor: "opaque/a+b" });
+    expect(url).toBe("/agent/settings/sla-policies?cursor=opaque%2Fa%2Bb");
+    expect(
+      parseSlaPolicyListSearch({
+        cursor: new URL(url, "https://taskdesk.invalid").searchParams.get(
+          "cursor",
+        ),
+      }),
+    ).toEqual({ cursor: "opaque/a+b" });
+    expect(routes.slaPolicyEditor.build({ id: "policy/one" })).toBe(
+      "/agent/settings/sla-policies/policy%2Fone",
     );
   });
 });

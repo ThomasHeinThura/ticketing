@@ -9,6 +9,40 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * (`docs/01-architecture/rbac.md`, elevation coverage test).
  */
 export const instancePolicies = {
+  "POST /api/instance/users/{id}/reset-mfa": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "MFA reset is an instance-wide identity recovery operation",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
+  "GET /api/instance/local-factor-policy": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide MFA policy has no tenant resource",
+    },
+    elevated: false,
+    elevationExemptionReason: "read-only current instance MFA policy",
+  },
+  "PATCH /api/instance/local-factor-policy": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide MFA policy has no tenant resource",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "validates and audits the instance MFA policy; required users are then gated at every protected API",
+  },
   // Public liveness probe for the auth surface, registered above the authentication
   // middleware, and declared here so that "public" is a stated, reviewable act rather than a
   // consequence of line ordering. #8 re-confirms this against the retained surface, and the
@@ -29,5 +63,42 @@ export const instancePolicies = {
     elevated: false,
     elevationExemptionReason:
       "returns a constant value regardless of instance state; it grants nothing, changes nothing, and no longer distinguishes claimed from unclaimed (#18)",
+  },
+  "GET /api/instance/observability": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "instance-wide observability configuration has no tenant resource",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "safe read-only configuration response; it does not expose the token digest or bearer",
+  },
+  "PATCH /api/instance/observability": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "instance-wide observability configuration has no tenant resource",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "changes only validated log levels through version compare-and-set and records an audit row",
+  },
+  "POST /api/instance/observability/metrics-token/rotate": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "metrics-token authority belongs to the instance configuration",
+    },
+    elevated: true,
+    sessionOnly: true,
   },
 } as const satisfies PolicyMap;

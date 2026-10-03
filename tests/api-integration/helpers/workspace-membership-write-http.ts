@@ -1,3 +1,4 @@
+import { csrfRequest } from "./csrf";
 import type { App } from "./organization-http";
 
 // HTTP helpers for the S5 NATIVE membership write routes (issue #6, retrofit
@@ -15,11 +16,16 @@ export async function addWorkspaceMemberNative(
   workspaceId: string,
   body: { userId?: unknown; role?: unknown },
 ): Promise<Response> {
-  return app.request(`/api/workspace/${workspaceId}/members`, {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify(body),
-  });
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}/members`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify(body),
+    },
+    cookie,
+  );
 }
 
 export async function removeWorkspaceMemberNative(
@@ -28,10 +34,15 @@ export async function removeWorkspaceMemberNative(
   workspaceId: string,
   userId: string,
 ): Promise<Response> {
-  return app.request(`/api/workspace/${workspaceId}/members/${userId}`, {
-    method: "DELETE",
-    headers: { cookie },
-  });
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}/members/${userId}`,
+    {
+      method: "DELETE",
+      headers: { cookie },
+    },
+    cookie,
+  );
 }
 
 export async function updateWorkspaceMemberRoleNative(
@@ -41,11 +52,16 @@ export async function updateWorkspaceMemberRoleNative(
   userId: string,
   body: { role?: unknown },
 ): Promise<Response> {
-  return app.request(`/api/workspace/${workspaceId}/members/${userId}/role`, {
-    method: "PATCH",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify(body),
-  });
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}/members/${userId}/role`,
+    {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify(body),
+    },
+    cookie,
+  );
 }
 
 export async function leaveWorkspaceNative(
@@ -53,10 +69,15 @@ export async function leaveWorkspaceNative(
   cookie: string,
   workspaceId: string,
 ): Promise<Response> {
-  return app.request(`/api/workspace/${workspaceId}/leave`, {
-    method: "POST",
-    headers: { cookie },
-  });
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}/leave`,
+    {
+      method: "POST",
+      headers: { cookie },
+    },
+    cookie,
+  );
 }
 
 export async function transferWorkspaceOwnershipNative(
@@ -65,9 +86,14 @@ export async function transferWorkspaceOwnershipNative(
   workspaceId: string,
   body: { newOwnerUserId?: unknown },
 ): Promise<Response> {
-  return app.request(`/api/workspace/${workspaceId}/transfer-ownership`, {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify(body),
-  });
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}/transfer-ownership`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify(body),
+    },
+    cookie,
+  );
 }

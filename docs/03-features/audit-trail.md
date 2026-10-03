@@ -173,13 +173,21 @@ Borrowed from OpenProject's journal design.
   because auditing failed is worse than a gap — but the failure is never silent: a safe
   error-level log line and `taskdesk_audit_write_failures_total{operation}` alert, plus a
   durable notification to every current instance administrator. The counter's closed
-  initial `operation` values are `mutation`, `pending_action_decision`, and
-  `pending_action_self_read`; its increment and log line happen outside a rolled-back audit
-  savepoint. The alert is an operational reporting seam, not the required administrator
-  notification. That notification remains unimplemented and AU-14 remains unfinished until
-  the durable notification path exists and is exercised
+  `operation` values are `mutation`, `pending_action_decision`, `pending_action_self_read`,
+  and `audit_read`. Each failed append increments the counter once. The expiry worker groups
+  administrator notifications and its safe log by degraded batch, not by pending-action id;
+  each failed append still increments the counter. The current candidate implements the
+  durable notification path; integrated runtime and independent review gates remain pending
   ([security-model.md](../01-architecture/security-model.md#audit),
   [observability.md](../01-architecture/observability.md)).
+  Read behavior follows the owning feature contract: audit-log reads remain best-effort,
+  while PA-11 pending-action detail reads fail closed and return no summary when their
+  `pending_action.viewed` audit append fails ([pending-actions.md](../01-architecture/pending-actions.md)).
+  SLA policy create/update/publish mutations use the same mutation rule: an audit failure
+  after the policy write rolls back only the nested audit savepoint, allows the policy
+  mutation to commit, and reports the failure through the bounded AU-14 counter/log and
+  durable administrator-notification path. Publish immutability checks remain enforced
+  independently of audit success.
 - `AU-15` Rows are **hash-chained**: `row_hash` is SHA-256 over the **canonical form defined
   once in data-model.md §11** — the ordered column list (`prev_hash` **included**, as its
   first field, per §11's own "Hash input" list — corrected 2026-09-16: an earlier version
@@ -219,15 +227,19 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | Audit-only action | Written when |
 | --- | --- |
 | `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
-| `auth.mfa_enrolled` · `auth.mfa_reset` | Planned audit events for second-factor enrollment and administrator reset (with verification note); current source has no MFA factor adapter and does not emit these events |
+| `auth.mfa_enrolled` · `auth.mfa_reset` | Second-factor enrollment and administrator reset (with the required verification note); never record the secret, TOTP, backup codes, or proof |
 | `auth.step_up_issued` · `auth.step_up_consumed` · `auth.step_up_denied` | A single-use step-up confirmation is issued, consumed, or denied; record binding kind and fixed operation key/route where applicable, never proof, nonce, token, hash or request body |
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
 | `project.reach_changed` | `owner_team_id` or `parent_id` changed ([rbac.md](../01-architecture/rbac.md#reach)) |
+| `sla_policy.created` | SLA policy created; record only `policyId` and its initial `versionId` as safe identifiers. The raw policy body is never audited. |
+| `sla_policy.updated` | SLA policy draft changed; record `policyId`, `versionId`, a closed `changedFields` list (`name`, `description`, `calendarId`, `atRiskThresholdPct`, `goals`), and only the safe scalar values `calendarId` and `atRiskThresholdPct` when changed. Never record names/descriptions, goal matrices, or a raw request body. Published versions are immutable; an edit creates or updates a draft version and never rewrites a published one. |
+| `sla_policy.published` | SLA policy version published; record `policyId`, `versionId`, prior active version id when present, and the canonical `effectiveFrom` scalar. A publish never mutates an already-published version. |
 | `invitation.sent` · `invitation.redeemed` · `invitation.revoked` | Invitations |
 | `plugin.changed` · `plugin.tested` · `secrets.rekeyed` | Plugin configuration (keys only, never values), a `test()` call even when unsaved, key rotation |
 | `feature_flag.changed` | Any level |
 | `instance.observability_changed` | Log-level keys or the metrics-token setting changed; record changed key names only, never values, token, hash, or arbitrary before/after documents |
+| `instance.local_factor_policy_changed` | Instance local-factor policy changed; record only the selected mode and configured role identifier |
 | `permission.denied` | A 403 or an out-of-reach 404 on a scoped route |
 | `work_item.exported` · `report.exported` · `attachment.downloaded` · `config.exported` · `instance.exported` | Data leaving through a person's hands |
 | `bulk.performed` | One summary row per bulk operation (plus one per item) |
@@ -278,7 +290,7 @@ GET  /api/work-items/{key}/reconstruct?at=…    work_item:read
 | Case | Behaviour |
 | --- | --- |
 | Very large before/after payload | Truncated at 64 KB with a marker; the full diff remains in `activity` for work items |
-| Audit write fails | The mutation still succeeds (`AU-14`); safe error-level log and `taskdesk_audit_write_failures_total{operation}` alert. Durable notification to every current instance administrator remains required but unimplemented; AU-14 is unfinished until it is delivered |
+| Audit write fails | The mutation/read contract is preserved (`AU-14`); safe error-level log and `taskdesk_audit_write_failures_total{operation}` alert, plus a durable notification to every current instance administrator. The expiry worker sends one notification per degraded batch while counting every failed append. The current candidate implements this path; integrated runtime and review gates remain pending |
 | Clock skew across replicas | Timestamps come from the database, never from the application |
 | Actor deleted | Rows retain the id and a tombstoned display name |
 | Retention shortened | Applies from the next purge. The change is audited |

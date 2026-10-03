@@ -17,7 +17,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import useGetLabelsByTask from "@/hooks/queries/label/use-get-labels-by-task";
 import useGetProject from "@/hooks/queries/project/use-get-project";

@@ -1,2 +1,2 @@
 export { resolveApiBaseUrl } from "./api-url";
-export { client, windowId } from "./hono";
+export { apiFetch, client, createApiFetch, windowId } from "./hono";

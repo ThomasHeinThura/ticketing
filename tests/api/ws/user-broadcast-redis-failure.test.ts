@@ -10,6 +10,8 @@ const listeners: Array<(p: string, c: string, d: string) => void> = [];
 const subscriber = {
   psubscribe: vi.fn().mockResolvedValue(undefined),
   punsubscribe: vi.fn().mockResolvedValue(undefined),
+  subscribe: vi.fn().mockResolvedValue(undefined),
+  unsubscribe: vi.fn().mockResolvedValue(undefined),
   on: vi.fn((event: string, fn: (p: string, c: string, d: string) => void) => {
     if (event === "pmessage") listeners.push(fn);
   }),

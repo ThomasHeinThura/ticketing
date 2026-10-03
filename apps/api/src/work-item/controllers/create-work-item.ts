@@ -10,6 +10,7 @@ import {
 import { publishEvent } from "../../events";
 import { isUniqueViolation } from "../../utils/is-unique-violation";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
+import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import { claimWorkItemNumber } from "./claim-work-item-number";
 
 /**
@@ -149,6 +150,9 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // live column is `project.slug`, which already plays exactly that role --
   // `project/index.ts`: "The slug becomes the prefix of its task identifiers").
   let created: typeof workItemTable.$inferSelect;
+  let realtimeEvent:
+    | Awaited<ReturnType<typeof recordWorkItemEvent>>
+    | undefined;
   try {
     created = await db.transaction(async (tx) => {
       const number = await claimWorkItemNumber(project.id, tx);
@@ -192,6 +196,25 @@ export async function createWorkItem(input: CreateWorkItemInput) {
           payload: { key: inserted.key, title: inserted.title },
         },
       ]);
+
+      realtimeEvent = await recordWorkItemEvent(tx, {
+        kind: "work_item.created",
+        workItemId: inserted.id,
+        key: inserted.key,
+        workspaceId: inserted.workspaceId,
+        projectId: inserted.projectId,
+        actorId,
+        actorType,
+        customerVisible: true,
+        payload: {
+          key: inserted.key,
+          url: `/agent/work-items/${encodeURIComponent(inserted.key)}`,
+          typeId: inserted.typeId,
+          stateId: inserted.stateId,
+          requesterId: inserted.requesterId,
+          source,
+        },
+      });
 
       return inserted;
     });
@@ -261,6 +284,14 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     actorId,
     actorType,
   });
+  if (realtimeEvent) {
+    await publishWorkItemHint(realtimeEvent, {
+      kind: "work_item.created",
+      key: created.key,
+      projectId: created.projectId,
+      customerVisible: true,
+    });
+  }
 
   return created;
 }

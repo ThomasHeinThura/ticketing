@@ -2,14 +2,17 @@
 
 Every screen in the product, its route, its kind, its stage, and its status.
 
-**Kind:** `route` — has a URL in `lib/routes.ts` · `overlay` — a pane/palette over another
+**Kind:** `route` — has a declared URL · `overlay` — a pane/palette over another
 screen · `dialog` — modal · `section` — a region of a parent screen.
 **Status:** ⬜ not started · 🟡 in progress · ✅ done · 🔒 blocked
 
 Update this file as part of the work. It is the answer to "what is left?" Rewritten
 2026-09-05: the [planning review](../07-planning/review-2026-09-05.md) found the counts
 wrong in five of seven stages and about twenty screens the specs require missing. Routes
-are written in full so a script can check them against `lib/routes.ts`.
+are written in full so `check:inventory` can compare active screens with the generated agent
+and portal route metadata. Not-started rows are planned URLs; they do not claim a route is
+implemented. The checker reports planned and inherited-route counts separately. This
+prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-planning/decision-log.md#2026-09-28--10s-gate-scope-semantics-decided-applicable-now-gates-required-future-stage-gates-activate-with-their-prerequisite).
 
 ---
 
@@ -19,12 +22,11 @@ are written in full so a script can check them against `lib/routes.ts`.
 | --- | --- | --- | --- | :-: |
 | Sign in | `/agent/sign-in` | route | P0 | ⬜ |
 | Sign-in — provider chooser | `/agent/sign-in` | section | P0 | ⬜ |
-| MFA challenge | `/agent/sign-in/mfa` | route | P0 | ⬜ |
-| MFA enrolment | `/agent/sign-in/mfa/enrol` | route | P0 | ⬜ |
+| MFA challenge | `/auth/two-factor` | route | P0 | 🟡 |
+| MFA enrolment | `/dashboard/settings/account/security` | route | P0 | 🟡 |
 | Accept invitation | `/agent/invite` | route | P3 | ⬜ |
 | Workspace home (default dashboard) | `/agent` | route | P1 | ⬜ |
 | Inbox | `/agent/inbox` | route | P1 | ⬜ |
-| Notifications inbox | `/agent/notifications` | route | P1 | ⬜ |
 | My work | `/agent/my-work` | route | P1 | ⬜ |
 | Triage | `/agent/triage` | route | P2 | ⬜ |
 | Command palette | — | overlay | P1 | ⬜ |
@@ -116,9 +118,10 @@ are written in full so a script can check them against `lib/routes.ts`.
 | Workspace — states | `/agent/settings/states` | route | P1 | ⬜ |
 | Workspace — workflows | `/agent/settings/workflows` | route | P2 | ⬜ |
 | Workflow editor | `/agent/settings/workflows/{id}` | route | P2 | ⬜ |
-| Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | ⬜ |
-| SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | ⬜ |
-| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | ⬜ |
+| Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | 🟡 |
+| SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | 🟡 |
+| Workspace — service calendars | `/agent/settings/calendars` | route | P2 | 🟡 |
+| Service calendar editor | `/agent/settings/calendars/{id}` | route | P2 | 🟡 |
 | Workspace — request types | `/agent/settings/request-types` | route | P2 | ⬜ |
 | Request type editor / form builder | `/agent/settings/request-types/{id}` | route | P2 | ⬜ |
 | Workspace — custom fields (incl. sections) | `/agent/settings/custom-fields` | route | P4 | ⬜ |
@@ -164,7 +167,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 | Feature flags | `/agent/god-mode/features` | route | P4 | ⬜ |
 | Jobs | `/agent/god-mode/jobs` | route | P4 | ⬜ |
 | Plugins | `/agent/god-mode/plugins` | route | P4 | ⬜ |
-| Observability | `/agent/god-mode/observability` | route | P4 | ⬜ |
+| Observability and instance MFA policy | `/god-mode/observability` | route | P0 | 🟡 |
 | MCP usage | `/agent/god-mode/mcp` | route | P4 | ⬜ |
 | Audit log | `/agent/god-mode/audit` | route | P2 | ⬜ |
 | Import runs | `/agent/god-mode/import` | route | P6 | ⬜ |
@@ -174,6 +177,7 @@ are written in full so a script can check them against `lib/routes.ts`.
 
 | Screen | Route | Kind | Stage | Status |
 | --- | --- | --- | --- | :-: |
+| Portal unavailable notice (P0 interim state) | `/` | route | P0 | 🟡 |
 | Sign in | `/portal/sign-in` | route | P3 | ⬜ |
 | Accept invitation | `/portal/invite` | route | P3 | ⬜ |
 | Home | `/portal` | route | P3 | ⬜ |
@@ -193,64 +197,38 @@ are written in full so a script can check them against `lib/routes.ts`.
 
 ---
 
-## Docs Site (planned; implementation not present)
-
-These public-origin screens use the future site-local `apps/site/lib/routes.ts`, not the
-`apps/web` route registry. They remain ⬜ until the site is built and verified. This separate
-six-column table declares `Origin` explicitly so the current G8 checker, which parses the
-canonical five-column app inventory tables only, does not treat docs-host routes as app
-routes. G8 currently covers `apps/web` only; the docs route registry and docs visual catalog
-do not exist until the site is implemented. This distinction preserves the app G8 checks and
-does not waive them.
-
-| Origin | Screen | Route | Kind | Stage | Status |
-| --- | --- | --- | --- | --- | :-: |
-| Docs Site | Documentation home | `/` | route | P0 | ⬜ |
-| Docs Site | Documentation index and inline concept section | `/docs` | route | P0 | ⬜ |
-| Docs Site | Documentation search | `/search` | route | P0 | ⬜ |
-| Docs Site | Not found (docs origin) | `*` | route | P0 | ⬜ |
-
----
-
 ## Counts
 
-These counts are manually maintained inventory targets. The app has a partial typed route
-registry at `apps/web/src/lib/routes.ts` with round-trip tests; it does not yet cover this
-entire planned inventory. The planned Docs Site registry at `apps/site/lib/routes.ts` is not
-implemented. `check:inventory` is still staged and is not a CI gate today. When implemented,
-it must compare app-origin routes with `apps/web` and Docs Site routes with `apps/site`
-independently, including canonical query-route handling.
+Recomputed by `scripts/check-inventory.mjs` in CI from the rows above; the table fails the
+build if it drifts.
 
 | Stage | Screens |
 | --- | --- |
-| P0 Foundation | 10 |
-| P1 Core work | 34 |
-| P2 Service desk | 18 |
+| P0 Foundation | 7 |
+| P1 Core work | 33 |
+| P2 Service desk | 19 |
 | P3 Portal & identity | 21 |
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **142** |
+| **Total** | **139** |
 
-The P0 and total counts include the four planned docs-origin routes above; these are inventory targets, not implemented screens. The `/docs` concept section is content at the existing route, not a fifth route. For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
+For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see
 [Product principles](../00-overview/product-principles.md), principle 7.
 
 ## Rules
 
-- Every route belongs in the typed registry for its surface: app-origin screens use the
-  existing, partial `apps/web/src/lib/routes.ts`; Docs Site rows use the planned
-  `apps/site/lib/routes.ts`. The existing app registry and its round-trip tests do not yet
-  cover every planned app screen. The Docs Site registry and `check:inventory` are not
-  implemented. Each surface needs its own round-trip and inventory check when completed.
-- Rows whose route differs only by a query string (`?layout=`, `?tab=`, `?lens=`) share one
-  **canonical route**. The future inventory check compares canonicalized app routes against
-  the generated app registry and docs routes against the separate site registry; many screen
-  rows may share one route entry. Wildcard rows are distinct when they belong to different
-  origins.
+- Both generated route trees contribute every actual route to the deterministic metadata
+  re-exported by `lib/routes.ts`; G5 builds and parses a URL for every generated template.
+- Rows marked in progress or complete must match the generated route trees. Not-started
+  route rows remain planned work; they become required when implementation moves them to
+  in progress. Rows whose route differs only by a query string (`?layout=`, `?tab=`,
+  `?lens=`) share one **canonical route** for inventory comparison, while their query-state
+  round trips remain a separate G5 requirement for implemented list surfaces.
 - Assignment has no screen of its own — its rules live in project settings and the work-item
-  side pane ([assignment.md](../03-features/assignment.md)); the future inventory check
-  must exempt it explicitly.
+  side pane ([assignment.md](../03-features/assignment.md)); `check:inventory` exempts it
+  explicitly.
 - A screen is not ✅ until it passes every automated gate (`G1`–`G13`) and the human gates
   at review (`H1`–`H6`); the stage-level checks (`P1`–`P6`) apply at stage close.
 - Adding a screen means adding a row here in the same pull request — and every screen a

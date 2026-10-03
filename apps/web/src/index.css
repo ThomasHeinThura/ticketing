@@ -4,6 +4,7 @@
 @source "../../../packages/ui/src";
 @import "@taskdesk/ui/styles/tokens.css";
 @import "@taskdesk/ui/styles/theme.css";
+@import "@taskdesk/ui/styles/density.css";
 @import "@taskdesk/ui/styles/motion.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";

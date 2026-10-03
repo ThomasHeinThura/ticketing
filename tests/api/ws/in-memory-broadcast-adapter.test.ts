@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type {
   BroadcastMessage,
+  NativeBroadcastMessage,
   UserBroadcast,
 } from "../../../apps/api/src/ws/broadcast-adapter";
 import { InMemoryBroadcastAdapter } from "../../../apps/api/src/ws/in-memory-broadcast-adapter";
@@ -108,6 +109,28 @@ describe("InMemoryBroadcastAdapter", () => {
     expect(userMessages).toEqual([
       { userId: "user-1", message: { type: "NOTIFICATION_CREATED" } },
     ]);
+    expect(projectMessages).toHaveLength(0);
+  });
+
+  it("delivers native hints only to the native subscriber", async () => {
+    const adapter = new InMemoryBroadcastAdapter();
+    const projectMessages: BroadcastMessage[] = [];
+    const nativeMessages: NativeBroadcastMessage[] = [];
+    await adapter.subscribe((msg) => projectMessages.push(msg));
+    await adapter.subscribeToNative((msg) => nativeMessages.push(msg));
+
+    const message: NativeBroadcastMessage = {
+      projectId: "p1",
+      topics: ["project:p1", "work_item:SUP-1"],
+      eventId: "evt-1",
+      eventType: "work_item.updated",
+      at: "2026-10-03T00:00:00.000Z",
+      key: "SUP-1",
+      customerVisible: true,
+    };
+    await adapter.publishNative(message);
+
+    expect(nativeMessages).toEqual([message]);
     expect(projectMessages).toHaveLength(0);
   });
 });

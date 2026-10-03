@@ -7,8 +7,16 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
+
+const originalAgentUrl = process.env.TASKDESK_AGENT_URL;
+
+function restoreAgentUrl() {
+  if (originalAgentUrl === undefined) delete process.env.TASKDESK_AGENT_URL;
+  else process.env.TASKDESK_AGENT_URL = originalAgentUrl;
+}
 
 describe("API integration: task image upload finalize", () => {
   beforeEach(async () => {
@@ -23,6 +31,7 @@ describe("API integration: task image upload finalize", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    restoreAgentUrl();
   });
 
   it("returns a URL using KANEO_API_URL", async () => {
@@ -135,6 +144,9 @@ describe("API integration: task image upload finalize", () => {
 
   it("falls back to deriving URL from the request when KANEO_API_URL is not set", async () => {
     delete process.env.KANEO_API_URL;
+    const configuredAgentUrl = process.env.TASKDESK_AGENT_URL;
+    if (!configuredAgentUrl) throw new Error("Missing configured agent URL");
+    const agentOrigin = new URL(configuredAgentUrl).origin;
 
     const member = await createWorkspaceMember();
     const { project, columns } = await createProjectFixture({
@@ -164,7 +176,7 @@ describe("API integration: task image upload finalize", () => {
     const key = `workspace/${member.workspace.id}/project/${project.id}/task/${task.id}/descriptions/fallback-image.png`;
 
     const response = await app.request(
-      `https://app.taskdesk.test/api/task/image-upload/${task.id}/finalize`,
+      `${agentOrigin}/api/task/image-upload/${task.id}/finalize`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -180,10 +192,7 @@ describe("API integration: task image upload finalize", () => {
 
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { id: string; url: string };
-    expect(payload.url).toBe(
-      `https://app.taskdesk.test/api/asset/${payload.id}`,
-    );
-    expect(payload.url).not.toContain("localhost");
+    expect(payload.url).toBe(`${agentOrigin}/api/asset/${payload.id}`);
   });
 
   it("persists a new asset record with correct metadata", async () => {
@@ -418,6 +427,7 @@ describe("API integration: task image upload finalize", () => {
         .returning(),
       "outsider",
     );
+    await prepareAuthenticatedApiFixture(outsider.id);
 
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,

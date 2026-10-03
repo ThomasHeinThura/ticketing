@@ -35,6 +35,7 @@ import { activityPolicies } from "./activity/policy";
 import { assetPolicies } from "./asset/policy";
 import { attachmentPolicies } from "./attachment/policy";
 import { auditPolicies } from "./audit/policy";
+import { factorStatusPolicies } from "./auth/factor-status-policy";
 import { cannedResponsePolicies } from "./canned-response/policy";
 import { capabilitiesPolicies } from "./capabilities/policy";
 import { columnPolicies } from "./column/policy";
@@ -50,6 +51,8 @@ import { oauthPolicies } from "./oauth/policy";
 import { pendingActionPolicies } from "./pending-action/policy";
 import { projectPolicies } from "./project/policy";
 import { searchPolicies } from "./search/policy";
+import { serviceCalendarPolicies } from "./service-calendar/policy";
+import { slaPolicyPolicies } from "./sla-policy/policy";
 import { taskPolicies } from "./task/policy";
 import { taskRelationPolicies } from "./task-relation/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
@@ -98,6 +101,11 @@ export const platformPolicies = {
 
   // The websocket surface. The upgrade handler authenticates the request itself before the
   // socket opens; there is no Hono response for a policy middleware to shape.
+  "GET /api/ws": {
+    delegated: "websocket",
+    reason:
+      "native subscription upgrade authenticates first and authorizes every topic against persisted reach",
+  },
   "GET /api/ws/user": {
     delegated: "websocket",
     reason:
@@ -282,6 +290,10 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/search/policy.ts", policies: searchPolicies },
   { name: "apps/api/src/user/policy.ts", policies: userPolicies },
   {
+    name: "apps/api/src/auth/factor-status-policy.ts",
+    policies: factorStatusPolicies,
+  },
+  {
     name: "apps/api/src/pending-action/policy.ts",
     policies: pendingActionPolicies,
   },
@@ -290,6 +302,14 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/audit/policy.ts", policies: auditPolicies },
   { name: "apps/api/src/label/policy.ts", policies: labelPolicies },
   { name: "apps/api/src/asset/policy.ts", policies: assetPolicies },
+  {
+    name: "apps/api/src/service-calendar/policy.ts",
+    policies: serviceCalendarPolicies,
+  },
+  {
+    name: "apps/api/src/sla-policy/policy.ts",
+    policies: slaPolicyPolicies,
+  },
   { name: "apps/api/src/attachment/policy.ts", policies: attachmentPolicies },
   { name: "apps/api/src/workflow/policy.ts", policies: workflowPolicies },
 ];
