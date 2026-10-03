@@ -17,7 +17,7 @@ import { WebSocketServer } from "ws";
 import activity from "./activity";
 import attachment from "./attachment";
 import audit from "./audit";
-import { auth } from "./auth";
+import { authForHost, portalForHost } from "./auth";
 import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
 import column from "./column";
@@ -76,7 +76,10 @@ import timeEntry from "./time-entry";
 import user from "./user";
 import getAvatar from "./user/controllers/get-avatar";
 import { buildAuthRequest } from "./utils/auth-request";
-import { authenticateApiRequest } from "./utils/authenticate-api-request";
+import {
+  authenticateApiRequest,
+  hasInvalidExplicitCredential,
+} from "./utils/authenticate-api-request";
 import { loadReachableAsset } from "./utils/authorize-asset-access";
 import { backfillWorkspaceAndProjectDefaults } from "./utils/backfill-workspace-project-defaults";
 import { getInvitationDetails } from "./utils/check-registration-allowed";
@@ -102,6 +105,7 @@ import {
   removeUserConnection,
   shutdownWebSocketAdapter,
 } from "./ws";
+import { checkWebSocketOrigin } from "./ws/origin-policy";
 
 type ApiKey = {
   id: string;
@@ -214,6 +218,37 @@ export function resolveStaticRoot(
 
 function isApiRequestPath(path: string): boolean {
   return path === "/api" || path.startsWith("/api/");
+}
+
+function authForRequest(c: Context) {
+  const selected = authForHost(c.req.header("Host"));
+  if (!selected) throw new HTTPException(403, { message: "Forbidden" });
+  return selected;
+}
+
+async function handleAuthRequest(c: Context, headers?: Headers) {
+  if (
+    hasInvalidExplicitCredential(
+      c.req.header("Authorization"),
+      c.req.header("x-api-key"),
+    )
+  ) {
+    throw new HTTPException(401, { message: "Unauthorized" });
+  }
+
+  const host = c.req.header("Host");
+  const portal = portalForHost(host);
+  const selected = authForRequest(c);
+  if (!portal) throw new HTTPException(403, { message: "Forbidden" });
+
+  const session = await selected.api.getSession({
+    headers: c.req.raw.headers,
+  });
+  if (session?.session && session.session.portal !== portal) {
+    throw new HTTPException(403, { message: "Forbidden" });
+  }
+
+  return selected.handler(buildAuthRequest(c, headers));
 }
 
 /**
@@ -445,7 +480,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
         },
       },
     }),
-    async (c) => auth.handler(buildAuthRequest(c)),
+    async (c) => handleAuthRequest(c),
   );
 
   api.openapi(
@@ -854,7 +889,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
         }
         return c.redirect(deviceUrl.toString(), 302);
       }
-      return auth.handler(buildAuthRequest(c));
+      return authForRequest(c).handler(buildAuthRequest(c));
     },
   );
 
@@ -864,24 +899,15 @@ export function createApp(options: { staticRoot?: string } = {}) {
     const bearerToken = authHeader?.match(/^Bearer\s+(\S+)$/i)?.[1];
 
     if (bearerToken && !apiKeyHeader) {
-      const session = await auth.api.getSession({
-        headers: c.req.raw.headers,
-      });
-
-      // Preserve Better Auth bearer session tokens on auth routes.
-      if (session?.session && session.user) {
-        return auth.handler(buildAuthRequest(c));
-      }
-
       const headers = new Headers(c.req.raw.headers);
 
       // Better Auth API key plugin validates from x-api-key by default.
       headers.set("x-api-key", bearerToken);
 
-      return auth.handler(buildAuthRequest(c, headers));
+      return handleAuthRequest(c, headers);
     }
 
-    return auth.handler(buildAuthRequest(c));
+    return handleAuthRequest(c);
   });
 
   // Named (not inline in `.use()`) so its exact function reference can be declared to
@@ -1059,6 +1085,18 @@ export function createApp(options: { staticRoot?: string } = {}) {
         throw new HTTPException(500, { message: "Internal Server Error" });
       }
 
+      const originResult = checkWebSocketOrigin({
+        host: c.req.header("Host") ?? null,
+        origin: c.req.header("Origin") ?? null,
+        sessionPortal: (
+          c.get("session") as (Session & { portal?: unknown }) | null
+        )?.portal,
+        hasSession: c.get("session") !== null,
+      });
+      if (!originResult.allowed) {
+        throw new HTTPException(originResult.status, { message: "Forbidden" });
+      }
+
       const userId = c.get("userId");
       let conn: ReturnType<typeof addUserConnection> | null = null;
 
@@ -1108,6 +1146,18 @@ export function createApp(options: { staticRoot?: string } = {}) {
         }
         console.error("API authentication failed:", error);
         throw new HTTPException(500, { message: "Internal Server Error" });
+      }
+
+      const originResult = checkWebSocketOrigin({
+        host: c.req.header("Host") ?? null,
+        origin: c.req.header("Origin") ?? null,
+        sessionPortal: (
+          c.get("session") as (Session & { portal?: unknown }) | null
+        )?.portal,
+        hasSession: c.get("session") !== null,
+      });
+      if (!originResult.allowed) {
+        throw new HTTPException(originResult.status, { message: "Forbidden" });
       }
 
       const userId = c.get("userId");

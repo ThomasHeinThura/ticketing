@@ -284,13 +284,15 @@ session happened.
 
 ## WebSocket
 
-- Cookie-authenticated upgrades require the configured request-host `Origin` and a
-  matching stored session `portal` before `101`; browser same-origin policy does not
-  protect the upgrade. The proposed rule covers **every resolved session regardless of
+- Session resolution selects Better Auth by exact configured request host and rejects a
+  stored session whose `portal` does not match that host, including when its cookie value
+  is copied into the other portal's cookie name. Legacy sessions without a stored portal
+  fail closed and require a fresh sign-in. Cookie-authenticated WebSocket upgrades also
+  require the configured request-host `Origin` before `101`; browser same-origin policy
+  does not protect the upgrade. The rule covers **every resolved session regardless of
   credential carrier**; only a resolved API key without a session may omit `Origin`.
   Exact single, non-`null` Origin parsing, credential classification, and real mounted
-  route tests are in [realtime.md](realtime.md#transport), pending Thomas's
-  finished-spec read for #560.
+  route tests are specified in [realtime.md](realtime.md#transport).
 - Subscriptions are **re-authorized**, not only authorised at subscribe: the socket
   subscribes to the identity-cache invalidation channel and drops affected topics the moment
   a membership or role changes; as a floor, every subscription is re-checked every 60 s.
