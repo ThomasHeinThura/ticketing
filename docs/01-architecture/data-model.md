@@ -97,6 +97,19 @@ erDiagram
 | `idempotency_key` | `actor_id`, `actor_type`, `key`, `route`, `request_hash`, `response_status`, `response_body jsonb`, `state` (`in_flight`\|`done`), `created_at`, `expires_at`. Unique `(actor_id, key)`. An in-flight duplicate returns `409` |
 | `backup_run` | `started_at`, `finished_at`, `kind` (`database`\|`objects`\|`wal`), `bytes`, `outcome`, `notes`. Written by `scripts/backup.sh`; read by God Mode → Health for the "no backup in 48 h" warning |
 
+The first-user bootstrap invariant is enforced by the registered PostgreSQL trigger
+`user_bootstrap_admission` and function `enforce_user_bootstrap_admission()`. For a server-
+authorized `user.role = 'admin'` insert while `instance_setting.setup_completed_at IS NULL`,
+the trigger takes the existing `pg_advisory_xact_lock(2026)` promotion lock and rechecks the
+singleton marker and current user count. It accepts the role only when no user exists;
+otherwise it raises SQLSTATE `23514`. The signup transaction commits the first user and
+pending admin role together, and concurrent losing bootstrap signups roll back their
+user/account/session writes. Ordinary user inserts retain their existing database behavior;
+the auth hook closes ordinary registration while bootstrap is pending. Initialized
+installations bypass this guard and retain current provider behavior. The auth hook remains
+responsible for proving the local bootstrap credential before setting the server-controlled
+role.
+
 Marketplace licensing ([ADR 0013](adr/0013-marketplace-metering-plugin.md)) needs no table
 of its own: `license.none` / `license.aws-marketplace` are `instance_plugin_config` rows.
 

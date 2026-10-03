@@ -577,8 +577,8 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
     // outcome deterministic regardless of exactly how the two requests
     // interleave, while still exercising the real concurrency-sensitive
     // path: the atomic setup-token reservation
-    // AND the advisory-locked promotion in auth.ts's `after` hook both run
-    // for real, against a real Postgres, under a genuine race.
+    // AND the insert-time PostgreSQL admission guard both run for real,
+    // against a real Postgres, under a genuine race.
     process.env.DISABLE_REGISTRATION = "true";
 
     const emailA = `racer-a-${randomUUID()}@example.com`;
@@ -597,6 +597,38 @@ describe("issue #18: the setup-token flow gates first-admin bootstrap", () => {
 
     const [winner] = await db.select().from(schema.userTable).limit(1);
     expect(winner?.role).toBe("admin");
+  });
+
+  it("(#231) concurrent token and matching headless-email signups commit one pending admin and roll back the loser", async () => {
+    const rawToken = (await issueSetupTokenPrivately()) as string;
+    const headlessEmail = `operator-${randomUUID()}@example.com`;
+    process.env.TASKDESK_BOOTSTRAP_ADMIN_EMAIL = headlessEmail;
+    process.env.DISABLE_REGISTRATION = "true";
+    const { app } = createApp();
+    const tokenEmail = `token-${randomUUID()}@example.com`;
+
+    const [tokenResponse, headlessResponse] = await Promise.all([
+      signUp(app, { email: tokenEmail, setupToken: rawToken }),
+      signUp(app, { email: headlessEmail }),
+    ]);
+
+    const statuses = [tokenResponse.status, headlessResponse.status].sort();
+    expect(statuses[0]).toBe(200);
+    expect([403, 422]).toContain(statuses[1]);
+    expect(await totalUserCount()).toBe(1);
+    expect(await isSetupCompleted()).toBe(false);
+
+    const [winner] = await db.select().from(schema.userTable);
+    expect(winner?.role).toBe("admin");
+    expect([tokenEmail, headlessEmail]).toContain(winner?.email);
+    const loserEmail =
+      winner?.email === tokenEmail ? headlessEmail : tokenEmail;
+    expect(
+      await db
+        .select({ id: schema.userTable.id })
+        .from(schema.userTable)
+        .where(eq(schema.userTable.email, loserEmail)),
+    ).toHaveLength(0);
   });
 });
 

@@ -610,6 +610,13 @@
 			"when": 1791006362154,
 			"tag": "0086_eager_toad_men",
 			"breakpoints": true
+		},
+		{
+			"idx": 87,
+			"version": "7",
+			"when": 1791029036524,
+			"tag": "0087_bootstrap_admission_guard",
+			"breakpoints": true
 		}
 	]
 }

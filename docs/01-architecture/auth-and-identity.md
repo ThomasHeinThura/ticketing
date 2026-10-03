@@ -513,8 +513,22 @@ no account.
   credential possession. This restriction applies only before the instance is initialized;
   configured providers keep their existing behavior afterward. Bootstrap does not change the
   stored factor policy or create another authority source. The zero-admin
-  bootstrap race remains tracked separately in #231. If both the pending administrator's
-  password and canonical email access are lost before enrollment, there is no supported
+  first-user admission is serialized by the PostgreSQL `user_bootstrap_admission` trigger
+  and its `enforce_user_bootstrap_admission()` function. A valid local bootstrap signup sets
+  the initial `user.role = 'admin'` only in the server hook; the trigger takes the shared
+  `pg_advisory_xact_lock(2026)` promotion lock before the insert, re-reads
+  `instance_setting.setup_completed_at` and the user table, and allows that role only when
+  this is the first user on an incomplete instance. The user and pending administrator role
+  are therefore committed or rolled back together. A competing server-authorized bootstrap
+  insert is rejected by the same trigger, so a losing token/email signup leaves no user row;
+  the auth hook refuses ordinary registration while setup is incomplete. The trigger does
+  not grant authority: the auth hook still validates the local
+  email/password signup path and either the exact setup token or configured headless email;
+  client fields and identity-provider claims are not inputs to that decision. Setup-token
+  expiry and reservation are rechecked with their conditional database update, and the
+  trigger rechecks initialization and first-user state under the shared lock. After setup is
+  initialized, the trigger leaves existing user-creation behavior unchanged. If both the
+  pending administrator's password and canonical email access are lost before enrollment, there is no supported
   credential-recovery or direct-database repair path; operator recovery for this state needs
   a separately selected contract.
 - **Enrollment and recovery:** enrollment starts from a real session, returns the setup

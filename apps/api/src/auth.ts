@@ -16,7 +16,7 @@ import {
 } from "better-auth/plugins";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
-import { and, count, eq, ne, sql } from "drizzle-orm";
+import { and, count, eq, ne } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
 import {
   completeBootstrapMfaEnrollment,
@@ -472,12 +472,14 @@ function createAuth(portal: AuthPortal) {
               // no other bypass; an unauthorized zero-user signup is refused
               // below exactly like any other signup would be.
               if (isBootstrapAdminEmail(user.email)) {
-                if (await reserveSetupTokenForHeadlessBootstrap()) return;
+                if (await reserveSetupTokenForHeadlessBootstrap()) {
+                  return { data: { role: "admin" } };
+                }
               }
 
               const presentedToken = ctx?.headers?.get(SETUP_TOKEN_HEADER);
               if (await verifyAndReserveSetupToken(presentedToken)) {
-                return;
+                return { data: { role: "admin" } };
               }
 
               // #18 security review (B1, then D1): this refusal must be
@@ -542,58 +544,6 @@ function createAuth(portal: AuthPortal) {
             if (userWithAnonymous.isAnonymous) {
               return;
             }
-
-            // Promote the first user to instance admin atomically.
-            //
-            // A previous version of this code checked the user count in
-            // the `before` hook and returned `role: "admin"`, but the
-            // count and the eventual INSERT happened in separate
-            // transactions, so two concurrent first-signups could both
-            // see count=0 and both become admins (qodo bot #5).
-            //
-            // We now run the check + promote inside a single transaction
-            // guarded by a Postgres advisory lock. Whichever transaction
-            // wins the lock first promotes its user; any concurrent
-            // transaction then sees totalUserCount > 1 and skips.
-            //
-            // Note: we count total users (not admins) so that upgrading
-            // an existing instance (where every existing user has
-            // role=NULL from the new column) doesn't promote the next
-            // signup to admin (qodo bot #4).
-            //
-            // #18: also re-check `setup_completed_at` INSIDE the lock. Without
-            // this, deleting every admin from an already-set-up instance would
-            // let the next signup silently re-trigger admin auto-promotion --
-            // exactly the durable-marker guarantee this column exists for.
-            await db.transaction(async (tx) => {
-              await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
-
-              const totalRows = await tx
-                .select({ value: count() })
-                .from(schema.userTable);
-              const totalUserCount = totalRows[0]?.value ?? 0;
-
-              const [setting] = await tx
-                .select({
-                  setupCompletedAt:
-                    schema.instanceSettingTable.setupCompletedAt,
-                })
-                .from(schema.instanceSettingTable)
-                .limit(1);
-              const setupAlreadyCompleted = setting?.setupCompletedAt != null;
-
-              // This hook runs after the user row is inserted, so the
-              // just-created user is included in the count. If they are
-              // the only row in the table, and the instance has never
-              // completed setup, this is the fresh-instance bootstrap and
-              // they get promoted to admin.
-              if (totalUserCount === 1 && !setupAlreadyCompleted) {
-                await tx
-                  .update(schema.userTable)
-                  .set({ role: "admin" })
-                  .where(eq(schema.userTable.id, user.id));
-              }
-            });
 
             // #315 S7 / #324: boot seeding alone misses local users who register
             // after startup. The current local password-signup path creates ordinary
