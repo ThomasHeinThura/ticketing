@@ -12,7 +12,6 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -39,6 +38,7 @@ import {
   type WorkItemSortField,
 } from "@/lib/routes";
 import type { WorkItemField, WorkItemRow } from "@/types/work-item";
+import WorkItemListLoading from "./work-item-list-loading";
 
 export type WorkItemListProps = {
   workItems: WorkItemRow[] | undefined;
@@ -270,22 +270,7 @@ function WorkItemList({
   }
 
   if (isLoading) {
-    return (
-      <div
-        className="flex flex-col gap-2"
-        data-testid="work-item-list-loading"
-        aria-busy="true"
-        aria-live="polite"
-      >
-        <span className="sr-only">{t("workItems:list.loading")}</span>
-        {Array.from({ length: 6 }).map((_, index) => (
-          // Skeleton rows have no identity to key on; the list is static in length and
-          // never reordered while loading.
-          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholder rows
-          <Skeleton key={index} className="h-10 w-full" />
-        ))}
-      </div>
-    );
+    return <WorkItemListLoading />;
   }
 
   if (!workItems || workItems.length === 0) {

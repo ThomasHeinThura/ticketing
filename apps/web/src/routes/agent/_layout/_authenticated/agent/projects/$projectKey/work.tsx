@@ -3,7 +3,7 @@ import { Alert, AlertDescription, Button } from "@taskdesk/ui";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import WorkItemList from "@/components/work-item/work-item-list";
+import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -15,6 +15,9 @@ const CreateWorkItemDialog = lazy(
 );
 const WorkItemListRealtime = lazy(
   () => import("@/components/work-item/work-item-list-realtime"),
+);
+const WorkItemList = lazy(
+  () => import("@/components/work-item/work-item-list"),
 );
 
 import {
@@ -175,15 +178,17 @@ function WorkItemsRouteComponent() {
             </AlertDescription>
           </Alert>
         ) : null}
-        <WorkItemList
-          workItems={workItems}
-          isLoading={isLoading}
-          isError={isError}
-          sort={sort}
-          dir={dir}
-          onSortChange={handleSortChange}
-          onRetry={handleRetry}
-        />
+        <Suspense fallback={<WorkItemListLoading />}>
+          <WorkItemList
+            workItems={workItems}
+            isLoading={isLoading}
+            isError={isError}
+            sort={sort}
+            dir={dir}
+            onSortChange={handleSortChange}
+            onRetry={handleRetry}
+          />
+        </Suspense>
         {project && !isLoading && realtimeProjectId === project.id ? (
           <Suspense fallback={null}>
             <WorkItemListRealtime
