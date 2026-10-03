@@ -364,7 +364,11 @@ function registerStaticServing(
 }
 
 export function createApp(
-  options: { staticRoot?: string; portalStaticRoot?: string } = {},
+  options: {
+    staticRoot?: string;
+    portalStaticRoot?: string;
+    registerAdditionalRoutes?: (app: Hono<AppVariables>) => void;
+  } = {},
 ) {
   assertCookieDomainIsNotConfiguredForHostIsolation();
   const app = new Hono<AppVariables>();
@@ -1397,6 +1401,7 @@ export function createApp(
   );
 
   app.route("/api", api);
+  options.registerAdditionalRoutes?.(app);
   registerStaticServing(app, staticRoots);
 
   return {

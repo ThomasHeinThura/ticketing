@@ -9,27 +9,36 @@ WebSocket at `/api/ws`, via `@hono/node-server`'s built-in upgrade helper and th
 server, on the same origin as the API so the session cookie authenticates the upgrade.
 **Cookie-authenticated upgrades are not protected by the same-origin policy.**
 
-Before the route returns `101`, the request `Host` must identify exactly one
-configured app origin, including its port. Every handshake that resolves a session,
+P0 exposes native browser realtime only on the configured agent origin. CP-19 denies every
+portal `/api` request and websocket upgrade with the same generic 404 before authentication,
+session/API-key resolution, or socket handling. This denial takes precedence over the
+otherwise applicable handshake checks below. The internal `portalAuth` instance is not a
+public login or realtime surface; portal socket availability waits for the reviewed P3
+identity boundary and a corresponding CP-19 change.
+
+Before an agent-host route returns `101`, the request `Host` must identify exactly the
+configured agent origin, including its port. Every handshake that resolves a session,
 regardless of whether the credential arrived in a cookie or an explicit header, must carry
 exactly one non-`null` `Origin`, equal to that host's complete configured origin (scheme,
 host and port). A missing, literal `null`, malformed, duplicated or comma-list, foreign,
-or other-portal `Origin`, and an unknown or mismatched `Host`, return `403` before
-upgrade. Compare against the configured public origin, including when TLS terminates at a
-proxy; HTTP CORS and origin values derived from the request URL or forwarding headers do
-not replace this check.
-The session's stored `portal` must also match the request host. Legacy sessions without a
-stored portal are refused and require a fresh sign-in.
+or mismatched `Origin` returns `403` before upgrade. An unknown or mismatched `Host` is
+rejected by the host-routing guard with the generic `404` before upgrade.
+Compare against the configured public origin, including when TLS terminates at a proxy;
+HTTP CORS and origin values derived from the request URL or forwarding headers do not
+replace this check. The session's stored `portal` must also be `agent`. Legacy sessions
+without a stored portal are refused and require a fresh sign-in.
 
 ### Native work-item endpoint and protocol (P0)
 
-The native subscription transport is `GET /api/ws`. `/api/ws/user` and
-`/api/ws/{projectId}` are retired as subscription routes; all browser subscriptions use one
-socket and explicit `subscribe` / `unsubscribe` frames. The handshake authenticates and
-checks the configured Host, exact Origin, and stored session portal before upgrade using
-the rules above. API keys remain subject to their stored capability subset. This endpoint is
-delegated to the WebSocket handshake in the route-policy registry; authorization is
-performed again for each topic and periodically for the life of the connection.
+The native work-item subscription transport is `GET /api/ws` on the agent origin. It uses
+one socket and explicit `subscribe` / `unsubscribe` frames for work-item topics. The legacy
+`/api/ws/user` notification socket and `/api/ws/{projectId}` Task-model socket remain for
+their existing clients; they are not sources for native work-item event delivery. Their
+retirement requires migrating those consumers separately. The native handshake authenticates
+and checks the configured agent Host, exact Origin, and stored session portal before upgrade
+using the rules above. API keys remain subject to their stored capability subset. This
+endpoint is delegated to the WebSocket handshake in the route-policy registry; authorization
+is performed again for each topic and periodically for the life of the connection.
 
 Frames are JSON objects validated against a closed Zod union. The client may send
 `{ "type": "subscribe", "topic": "project:{id}" }`,
@@ -118,11 +127,11 @@ is fetched through the normal policy-enforced API.
 
 | Existing canonical event | Project topic | Work-item topic | Customer portal |
 | --- | --- | --- | --- |
-| `work_item.created` | invalidate list | — | only when ordinary read policy exposes the new row |
-| `work_item.updated`, `work_item.transitioned`, `work_item.assigned`, `work_item.unassigned` | invalidate list | invalidate matching item | suppress internal-only changes before publication |
-| `work_item.escalated`, `work_item.unblocked`, `work_item.mentioned` | invalidate list when the projection changes | invalidate matching item/activity | suppress internal-only details; frame remains key-only |
-| `work_item.commented` | invalidate list only if list projection depends on activity | invalidate matching activity | publish only for a public comment visible to that portal identity |
-| `work_item.deleted` | invalidate list | invalidate matching item/activity | only after approved deletion commits; pending/denied/expired/invalidated requests emit no deletion hint |
+| `work_item.created` | invalidate list | — | unavailable in P0; portal edge is denied |
+| `work_item.updated`, `work_item.transitioned`, `work_item.assigned`, `work_item.unassigned` | invalidate list | invalidate matching item | unavailable in P0; portal edge is denied |
+| `work_item.escalated`, `work_item.unblocked`, `work_item.mentioned` | invalidate list when the projection changes | invalidate matching item/activity | unavailable in P0; portal edge is denied |
+| `work_item.commented` | invalidate list only if list projection depends on activity | invalidate matching activity | unavailable in P0; portal edge is denied |
+| `work_item.deleted` | invalidate list | invalidate matching item/activity | unavailable in P0; portal edge is denied |
 
 One event may reach both an authorized project and item topic. Clients deduplicate by
 `eventId` for the life of the socket and always invalidate affected active queries,
@@ -241,10 +250,10 @@ small "live updates unavailable" indicator. The application remains fully usable
 
 | Test | Asserts |
 | --- | --- |
-| `ws-auth.test.ts` | Upgrade without a valid credential is refused. On the pinned auth stack, an issued session token sent as `Authorization: Bearer` without its cookie returns `401` on both mounted Node routes; it does not become an API key or a newly supported bearer session |
-| `ws-origin.test.ts` | For session-backed handshakes on both mounted Node routes: matching configured `Host` and one exact same-origin `Origin` can reach `101`; missing, `null`, malformed, duplicate/list, foreign and other-portal Origins, plus unknown or wrong-port Hosts, return `403` before `101`. This applies to every credential carrier that actually resolves a session. Use raw handshake headers for duplicate/list cases; HTTP CORS is not evidence |
-| `ws-explicit-credential-origin.test.ts` | On both mounted Node routes, a valid explicit `x-api-key` and bearer API key without `Origin` retain access subject to existing reach policy; a supplied foreign Origin is refused. An invalid explicit bearer token or key with a valid cookie cannot fall back to that cookie.  |
-| `ws-portal-session.test.ts` | Wrong-portal, unbound legacy, and revoked session rows never upgrade on either host; a valid session from each implemented portal succeeds with the matching host and Origin.  |
+| `ws-auth.test.ts` | Upgrade without a valid credential is refused. On the pinned auth stack, an issued session token sent as `Authorization: Bearer` without its cookie returns `401` on the agent host; it does not become an API key or a newly supported bearer session |
+| `ws-origin.test.ts` | On the agent-host Node route, matching configured `Host` and one exact same-origin `Origin` can reach `101`; missing, `null`, malformed, duplicate/list, foreign Origins return `403` before `101`; an unknown or wrong-port Host receives the generic host-denial 404. Use raw handshake headers for duplicate/list cases; HTTP CORS is not evidence. Portal upgrades are covered by the CP-19 generic-denial host-routing test. |
+| `ws-explicit-credential-origin.test.ts` | On the agent host, a valid explicit `x-api-key` and bearer API key without `Origin` retain access subject to existing reach policy; a supplied foreign Origin is refused. An invalid explicit bearer token or key with a valid cookie cannot fall back to that cookie. |
+| `ws-portal-session.test.ts` | The agent host rejects non-agent, unbound legacy, and revoked session rows before upgrade. The portal public edge returns CP-19's generic 404 without session resolution; internal portal session binding tests do not assert public socket reachability. |
 | `ws-subscribe-policy.test.ts` | Subscribing to an out-of-reach project is refused, indistinguishably from a non-existent one |
 | `ws-reauthorize.test.ts` | Subscribe, revoke the membership, assert no further events arrive |
 | `ws-frame-validation.test.ts` | Malformed frames and `user:` topics for another person are refused |

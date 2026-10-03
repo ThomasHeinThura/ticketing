@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { checkWebSocketOrigin } from "../../../apps/api/src/ws/origin-policy";
 
 const agent = { host: "localhost:5173", origin: "http://localhost:5173" };
-const portal = { host: "localhost:5174", origin: "http://localhost:5174" };
+const portal = {
+  host: "portal.localhost:5174",
+  origin: "http://portal.localhost:5174",
+};
 
 describe("WebSocket Origin and portal boundary", () => {
   it("accepts only a stored matching portal and its exact configured Origin", () => {
