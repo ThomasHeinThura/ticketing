@@ -33,6 +33,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 
 // This file resets the complete app module graph to test the import-time shadow
@@ -42,11 +43,9 @@ vi.unmock("../../apps/api/src/index");
 
 /**
  * `resolveIdentity` requires a `person` row (#315 S7 — the real backfill runs once, at
- * boot). `createWorkspaceMember()` only inserts `user`/`workspace_member` rows, so every
- * test below calls this immediately after creating its fixtures, the same way
- * `tests/api-integration/resolve-identity.test.ts` does — otherwise every shadow comparison
- * in this file would itself demonstrate S7's own "unevaluated: missing_identity" case
- * instead of the scenario each test is actually about.
+ * boot). `createWorkspaceMember()` now provisions an ordinary active identity; this
+ * backfill remains for direct user rows this file creates so shadow comparisons exercise
+ * their intended scenario instead of S7's `missing_identity` case.
  */
 async function backfillPersons(): Promise<void> {
   await seedInternalOrganisationAndStaffPersons();
@@ -662,6 +661,7 @@ describe("#324 — denied param workspace scope is checked against a verified ro
       role: "admin",
     };
     await fresh.db.insert(fresh.schema.userTable).values(instanceAdminUser);
+    await prepareAuthenticatedApiFixture(instanceAdminUser.id);
     await backfillPersons();
     fresh.mockUser(instanceAdminUser);
     const untrustedWorkspaceId = `attacker-${"x".repeat(6_000)}`;
