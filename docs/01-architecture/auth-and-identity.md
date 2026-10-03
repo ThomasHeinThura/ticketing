@@ -610,6 +610,15 @@ issue a replacement ([runbook](../05-operations/runbook.md)). `TASKDESK_BOOTSTRA
 optional override for **headless** installs (automation that cannot read a log) and is
 ignored once `setup_completed_at` is set.
 
+Registration refusals do not reveal whether a first administrator has already claimed the
+instance. Any unauthenticated password-signup attempt refused because global registration,
+password registration, bootstrap proof, or invitation validation does not permit it returns
+`403` with the same generic message: `Registration is currently unavailable.` This does not
+change policy: valid invitations still work where allowed, an initialized instance with open
+registration still accepts ordinary signup, and a valid setup token or configured headless
+address still admits the first local-credential bootstrap even when registration is disabled.
+No error text describes which gate refused the request.
+
 ### P4 recovery contract — orchestrator decision
 
 The following is the **orchestrator-selected implementation contract**, using Thomas's

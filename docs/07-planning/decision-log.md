@@ -5,6 +5,29 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-04 · Unify denied password-signup responses across bootstrap state (#232)
+
+**Decision:** every unauthenticated password-signup attempt denied by registration policy,
+bootstrap proof, or invitation validation returns HTTP 403 with the same generic message:
+`Registration is currently unavailable.` Do not expose which gate refused the request or
+whether the instance is claimed. This applies with `DISABLE_REGISTRATION`,
+`DISABLE_PASSWORD_REGISTRATION`, and both enabled. It does not change who may register:
+valid invitations remain accepted under the existing policy, an initialized instance with
+open registration still accepts signup, and an uninitialized instance still admits only a
+valid one-time setup token or the exact configured headless bootstrap address. Those valid
+bootstrap admissions remain available even when registration flags are enabled.
+
+The source also captures registration environment variables at module import. Therefore the
+regression proof must set each configuration in a fresh pre-import process and exercise the
+real PostgreSQL-backed auth hooks; mutating `process.env` inside an already-imported test is
+not evidence for the deployed boot path.
+
+**Authorization and status:** the orchestrator selects this recommendation under Thomas's
+standing authorization to proceed with recommended decisions. This records implementation
+direction, not Thomas's integrated P4 design approval or independent security review.
+
+### 2026-10-03 · Resolve the P4 break-glass implementation contract
+
 
 ### 2026-10-03 · Resolve the P4 break-glass implementation contract
 

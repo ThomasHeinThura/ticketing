@@ -275,6 +275,12 @@ auto-provisioning and OAuth/social callbacks cannot create the first account. A 
 bootstrap email is not local-credential proof. This restriction ends after initialization, so
 configured providers retain their existing behavior on initialized instances.
 
+Unauthenticated password-signup refusals use one generic `403` message across claimed and
+unclaimed installations: `Registration is currently unavailable.` The same response applies
+when global registration, password registration, bootstrap proof, or invitation validation
+denies a signup. Successful signups permitted by the configured registration policy and
+valid first-admin bootstrap admissions keep their existing behavior.
+
 ## Impersonation
 
 Rules `GM-7`–`GM-11` in [god-mode.md](../03-features/god-mode.md): 30-minute cap, doubly
