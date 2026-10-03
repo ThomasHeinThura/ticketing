@@ -421,8 +421,10 @@ An **audit write failure alerts** through
 `taskdesk_audit_write_failures_total{operation}` and a safe error-level log line, because
 the deliberate trade in `AU-14` — the mutation still succeeds — is only acceptable if
 someone finds out. The metric is an operational signal, not the required durable notification
-to every current instance administrator; that notification path remains unimplemented, so
-AU-14 is unfinished. Rows contain PII deliberately; the erasure position is in
+to every current instance administrator. The current candidate writes that notification for
+interactive and background failures; the expiry worker groups notifications by degraded
+batch while retaining one metric increment per failed append. Integrated runtime and review
+gates remain pending. Rows contain PII deliberately; the erasure position is in
 [data-protection.md](../05-operations/data-protection.md).
 
 ## Public and operational endpoints

@@ -1,4 +1,3 @@
-import { normaliseRouteKey } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import db, { schema } from "../../database";
 import {
@@ -6,6 +5,7 @@ import {
   type TaskDeskLogEvent,
 } from "../../observability/logger.js";
 import {
+  type AuditFailureOperation,
   createTaskDeskMetrics,
   registeredRouteKey,
   UNMATCHED_ROUTE,
@@ -73,18 +73,19 @@ export function beginObservedRequest(): () => void {
 }
 
 export function recordAuditWriteFailure(
-  operation:
-    | "mutation"
-    | "pending_action_decision"
-    | "pending_action_self_read",
+  operation: AuditFailureOperation,
+  options: { readonly log?: boolean } = {},
 ): void {
   metrics.recordAuditWriteFailure(operation);
-  logger.log({
-    module: "audit",
-    message: "audit.write_failure",
-    level: "error",
-    result: "failed",
-  });
+  if (options.log !== false) {
+    logger.log({
+      module: "audit",
+      message: "audit.write_failure",
+      level: "error",
+      result: "failed",
+      auditOperation: operation,
+    });
+  }
 }
 
 export async function startObservabilityRuntime(): Promise<void> {

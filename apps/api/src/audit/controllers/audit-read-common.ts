@@ -2,6 +2,8 @@ import { and, gte, like, lt, type SQL } from "drizzle-orm";
 import type { Context } from "hono";
 import db from "../../database";
 import { auditLogTable } from "../../database/schema";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../../instance/observability/audit-failure-notifier";
+import { recordAuditWriteFailure } from "../../instance/observability/runtime";
 import { appendAuditLog } from "../audit-writer";
 
 export type AuditQuery = {
@@ -63,7 +65,8 @@ export async function writeAuditRead(
       entityType: "audit_log",
       entityId: scope.workspaceId ?? "instance",
     });
-  } catch (error) {
-    console.error("AU-14: audit.read write failed", error);
+  } catch {
+    recordAuditWriteFailure("audit_read");
+    await notifyCurrentInstanceAdminsOfAuditFailure("audit_read");
   }
 }

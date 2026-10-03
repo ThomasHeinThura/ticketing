@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -37,6 +38,107 @@ beforeEach(async () => {
 });
 
 describe("instance local-factor policy API", () => {
+  it("applies evaluator key ceilings and refuses impersonation for admin settings", async () => {
+    const [admin] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-api-key-admin",
+        name: "Admin Key Owner",
+        email: "factor-api-key-admin@example.test",
+        role: "admin",
+      })
+      .returning();
+    if (!admin) throw new Error("admin key owner was not created");
+    await ensureStaffPersonForUser(admin.id);
+    mockAuthenticatedSession(admin);
+
+    const rawKey = "taskdesk_test_factor_admin_without_session";
+    const hashedKey = createHash("sha256")
+      .update(rawKey)
+      .digest()
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/u, "");
+    const now = new Date();
+    await db.insert(schema.apikeyTable).values({
+      referenceId: admin.id,
+      userId: admin.id,
+      key: hashedKey,
+      name: "admin owner narrow key",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      permissions: JSON.stringify({ task: ["read"] }),
+      enabled: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const { app } = createApp();
+    const headers = { authorization: `Bearer ${rawKey}` };
+    const [before] = await db
+      .select({
+        logLevels: schema.instanceSettingTable.observabilityLogLevels,
+        version: schema.instanceSettingTable.observabilityConfigVersion,
+        factorPolicy: schema.instanceSettingTable.localFactorPolicy,
+      })
+      .from(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    if (!before) throw new Error("instance settings were not initialized");
+    const settings = await app.request("/api/instance/observability", {
+      headers,
+    });
+    const patchSettings = await app.request("/api/instance/observability", {
+      method: "PATCH",
+      headers: { ...headers, "content-type": "application/json" },
+      body: JSON.stringify({
+        version: before.version,
+        logLevels: {
+          default: "debug",
+          modules: {
+            http: "debug",
+            auth: "debug",
+            database: "debug",
+            jobs: "debug",
+            audit: "debug",
+            plugins: "debug",
+          },
+        },
+      }),
+    });
+    const factorPolicy = await app.request(
+      "/api/instance/local-factor-policy",
+      { headers },
+    );
+    const patchFactorPolicy = await app.request(
+      "/api/instance/local-factor-policy",
+      {
+        method: "PATCH",
+        headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ mode: "off", requiredRoleId: null }),
+      },
+    );
+    expect(settings.status).toBe(403);
+    expect(patchSettings.status).toBe(403);
+    expect(factorPolicy.status).toBe(403);
+    expect(patchFactorPolicy.status).toBe(403);
+
+    mockAuthenticatedSession(admin, { impersonatedBy: "acting-admin" });
+    const impersonatedSettings = await app.request(
+      "/api/instance/observability",
+    );
+    expect(impersonatedSettings.status).toBe(403);
+    const [after] = await db
+      .select({
+        logLevels: schema.instanceSettingTable.observabilityLogLevels,
+        version: schema.instanceSettingTable.observabilityConfigVersion,
+        factorPolicy: schema.instanceSettingTable.localFactorPolicy,
+      })
+      .from(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    expect(after).toEqual(before);
+  });
+
   it("requires TOTP enrollment verification and enforces one-use backup-code login", async () => {
     const [user] = await db
       .insert(schema.userTable)

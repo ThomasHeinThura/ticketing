@@ -1,5 +1,4 @@
-import { eq, sql } from "drizzle-orm";
-import type { Context } from "hono";
+import { eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import { parseLocalFactorPolicy } from "../auth/local-factor-policy";
@@ -7,11 +6,9 @@ import db, { schema } from "../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
-import {
-  isCurrentInstanceAdmin,
-  notifyCurrentInstanceAdminsOfAuditFailure,
-} from "./observability/audit-failure-notifier";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "./observability/audit-failure-notifier";
 import { recordAuditWriteFailure } from "./observability/runtime";
+import { requireCurrentInstanceAdmin } from "./require-instance-admin";
 
 const policySchema = z
   .object({
@@ -43,11 +40,6 @@ const policySchema = z
   });
 
 const responseSchema = z.object({ policy: policySchema });
-
-async function requireAdmin(c: Context) {
-  if (!(await isCurrentInstanceAdmin(c.get("userId"))))
-    throw new HTTPException(403, { message: "Forbidden" });
-}
 
 const getRoute = createRoute({
   method: "get",
@@ -87,7 +79,11 @@ const patchRoute = createRoute({
 
 const routes = apiRouter()
   .openapi(getRoute, async (c) => {
-    await requireAdmin(c);
+    await requireCurrentInstanceAdmin(
+      c,
+      "GET",
+      "/api/instance/local-factor-policy",
+    );
     setShadowLegacyAuthorization(c, "allowed");
     c.header("Cache-Control", "no-store");
     const [row] = await db
@@ -103,7 +99,11 @@ const routes = apiRouter()
     }
   })
   .openapi(patchRoute, async (c) => {
-    await requireAdmin(c);
+    await requireCurrentInstanceAdmin(
+      c,
+      "PATCH",
+      "/api/instance/local-factor-policy",
+    );
     c.header("Cache-Control", "no-store");
     const requested = parseLocalFactorPolicy(c.req.valid("json"));
     const result = await db.transaction(async (tx) => {

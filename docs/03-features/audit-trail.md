@@ -173,11 +173,11 @@ Borrowed from OpenProject's journal design.
   because auditing failed is worse than a gap — but the failure is never silent: a safe
   error-level log line and `taskdesk_audit_write_failures_total{operation}` alert, plus a
   durable notification to every current instance administrator. The counter's closed
-  initial `operation` values are `mutation`, `pending_action_decision`, and
-  `pending_action_self_read`; its increment and log line happen outside a rolled-back audit
-  savepoint. The alert is an operational reporting seam, not the required administrator
-  notification. That notification remains unimplemented and AU-14 remains unfinished until
-  the durable notification path exists and is exercised
+  `operation` values are `mutation`, `pending_action_decision`, `pending_action_self_read`,
+  and `audit_read`. Each failed append increments the counter once. The expiry worker groups
+  administrator notifications and its safe log by degraded batch, not by pending-action id;
+  each failed append still increments the counter. The current candidate implements the
+  durable notification path; integrated runtime and independent review gates remain pending
   ([security-model.md](../01-architecture/security-model.md#audit),
   [observability.md](../01-architecture/observability.md)).
 - `AU-15` Rows are **hash-chained**: `row_hash` is SHA-256 over the **canonical form defined
@@ -279,7 +279,7 @@ GET  /api/work-items/{key}/reconstruct?at=…    work_item:read
 | Case | Behaviour |
 | --- | --- |
 | Very large before/after payload | Truncated at 64 KB with a marker; the full diff remains in `activity` for work items |
-| Audit write fails | The mutation still succeeds (`AU-14`); safe error-level log and `taskdesk_audit_write_failures_total{operation}` alert. Durable notification to every current instance administrator remains required but unimplemented; AU-14 is unfinished until it is delivered |
+| Audit write fails | The mutation/read contract is preserved (`AU-14`); safe error-level log and `taskdesk_audit_write_failures_total{operation}` alert, plus a durable notification to every current instance administrator. The expiry worker sends one notification per degraded batch while counting every failed append. The current candidate implements this path; integrated runtime and review gates remain pending |
 | Clock skew across replicas | Timestamps come from the database, never from the application |
 | Actor deleted | Rows retain the id and a tombstoned display name |
 | Retention shortened | Applies from the next purge. The change is audited |

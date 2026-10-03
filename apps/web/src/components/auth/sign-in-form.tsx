@@ -59,7 +59,11 @@ export function SignInForm({ onSuccess, defaultEmail }: SignInFormProps) {
         return;
       }
 
-      if (result.data?.twoFactorRedirect) {
+      if (
+        result.data &&
+        "twoFactorRedirect" in result.data &&
+        result.data.twoFactorRedirect === true
+      ) {
         await navigate({ to: "/auth/two-factor" });
         return;
       }

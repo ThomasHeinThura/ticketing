@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
-import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import type { LocalFactorState } from "../../auth/local-factor-service";
