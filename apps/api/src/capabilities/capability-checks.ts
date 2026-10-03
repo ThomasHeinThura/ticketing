@@ -27,6 +27,7 @@ export const CAPABILITY_CHECKS = {
   updateProjects: { project: ["update"] },
   deleteProjects: { project: ["delete"] },
   updateTasks: { work_item: ["update"] },
+  transitionTasks: { work_item: ["transition"] },
   createTasks: { work_item: ["create"] },
   deleteTasks: { work_item: ["delete"] },
   assignTasks: { work_item: ["assign"] },

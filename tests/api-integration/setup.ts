@@ -4,6 +4,35 @@ import { fileURLToPath } from "node:url";
 import { afterEach, vi } from "vitest";
 import { deriveWorktreeTestDatabaseUrl } from "./helpers/worktree-database-name";
 
+// Simulate the configured agent authority for Hono's in-process helper, which otherwise
+// turns path-only requests into `http://localhost` and is rejected by the real host guard.
+// Tests that exercise host policy use explicit Request URLs/headers and remain untouched.
+vi.mock("../../apps/api/src/index", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../apps/api/src/index")>();
+  return {
+    ...actual,
+    createApp: (...args: Parameters<typeof actual.createApp>) => {
+      const created = actual.createApp(...args);
+      const request = created.app.request.bind(created.app);
+      created.app.request = (input, init, env, executionCtx) => {
+        if (typeof input === "string" && input.startsWith("/")) {
+          const headers = new Headers(init?.headers);
+          if (!headers.has("host")) headers.set("host", "localhost:1337");
+          return request(
+            `http://localhost:1337${input}`,
+            { ...init, headers },
+            env,
+            executionCtx,
+          );
+        }
+        return request(input, init, env, executionCtx);
+      };
+      return created;
+    },
+  };
+});
+
 // Prevent dotenv-mono from loading the local .env file during tests.
 // All env vars are set explicitly below; the .env file must be ignored.
 vi.mock("dotenv-mono", () => ({
@@ -78,7 +107,8 @@ assertTestDatabaseUrl(process.env.TASKDESK_DATABASE_URL);
 process.env.NODE_ENV = "test";
 process.env.TASKDESK_AUTH_SECRET = "test-secret-with-at-least-32-chars";
 process.env.KANEO_API_URL = "http://localhost:1337";
-process.env.TASKDESK_AGENT_URL = "http://localhost:5173";
+process.env.TASKDESK_AGENT_URL = "http://localhost:1337";
+process.env.TASKDESK_PORTAL_URL = "http://portal.localhost:5174";
 // DISABLE_GUEST_ACCESS is gone with the guest surface it gated: anonymous() was
 // removed server-side in #6, and the client, the two buttons and hasGuestAccess
 // followed. Nothing reads this variable any more.

@@ -227,6 +227,22 @@ test("sign-in screen @visual", async ({ page }) => {
   });
 });
 
+test("portal disabled notice @visual", async ({ page }) => {
+  await page.goto("http://127.0.0.1:4179/");
+  await expect(
+    page.getByText("Customer portal unavailable", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("portal-disabled.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
 test("work-item list screen @visual", async ({ page }) => {
   await installAuthenticatedFixture(page);
   await page.goto("/agent/projects/help/work?layout=list");

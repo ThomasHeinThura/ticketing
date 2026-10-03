@@ -2310,7 +2310,11 @@
 			"visibilityUnavailable": "Visibility unavailable",
 			"assignToMe": "Assign to me",
 			"loadOlderActivity": "Load older activity",
-			"loadingOlderActivity": "Loading older activity…"
+			"loadingOlderActivity": "Loading older activity…",
+			"transitionPlaceholder": "Scegli uno stato",
+			"transitionNote": "Nota di transizione",
+			"transitionNoteRequired": "Nota obbligatoria",
+			"transitionBlocked": "Bloccato: {{reasons}}"
 		}
 	},
 	"serviceCalendars": {
@@ -2446,6 +2450,20 @@
 			"startLabel": "{{label}} start",
 			"starts": "Starts",
 			"timeline": "{{day}} coverage timeline"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Portale clienti non disponibile",
+			"description": "L’accesso clienti non è ancora disponibile. Contatta l’amministratore del service desk."
+		},
+		"notFound": {
+			"title": "Pagina non trovata",
+			"description": "Questa pagina non è disponibile. Controlla l’indirizzo e riprova."
+		},
+		"error": {
+			"title": "Si è verificato un errore",
+			"description": "Impossibile caricare la pagina. Riprova."
 		}
 	}
 }

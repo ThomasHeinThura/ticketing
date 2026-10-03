@@ -1,3 +1,64 @@
+// Canonical route helpers (AGENTS.md rule 4): every screen has a URL, and
+// any filter/sort state it carries lives in the query string so a reload reproduces it
+// exactly. `generatedRouteMetadata` is produced from both TanStack trees and checked
+// against in-progress/complete screen inventory rows by `pnpm check:inventory`; not-started
+// rows remain planned URLs. Builders below define URL state contracts exercised by tests.
+
+export { generatedRouteMetadata } from "./generated-route-metadata";
+
+import { generatedRouteMetadata } from "./generated-route-metadata";
+
+export type RouteSurface = keyof typeof generatedRouteMetadata;
+
+function assertGeneratedRoute(surface: RouteSurface, template: string) {
+  if (
+    !(generatedRouteMetadata[surface] as readonly string[]).includes(template)
+  )
+    throw new Error(`Unknown generated ${surface} route: ${template}`);
+}
+
+/** Builds a path from a generated route template, requiring every dynamic segment. */
+export function buildGeneratedRouteUrl(
+  surface: RouteSurface,
+  template: string,
+  params: Record<string, string> = {},
+): string {
+  assertGeneratedRoute(surface, template);
+  return template.replace(/\$([A-Za-z0-9_]+)/gu, (_match, name: string) => {
+    const value = params[name];
+    if (typeof value !== "string" || value.length === 0)
+      throw new Error(`Route ${template} requires parameter ${name}.`);
+    return encodeURIComponent(value);
+  });
+}
+
+/** Parses a generated route URL and returns decoded dynamic segments, if it matches. */
+export function parseGeneratedRouteUrl(
+  surface: RouteSurface,
+  template: string,
+  input: string,
+): { pathname: string; params: Record<string, string> } | undefined {
+  assertGeneratedRoute(surface, template);
+  const url = new URL(input, "https://route.invalid");
+  const names: string[] = [];
+  const pattern = template
+    .split(/(\$[A-Za-z0-9_]+)/gu)
+    .map((part) => {
+      if (part.startsWith("$")) {
+        names.push(part.slice(1));
+        return "([^/]+)";
+      }
+      return part.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+    })
+    .join("");
+  const match = new RegExp(`^${pattern}$`, "u").exec(url.pathname);
+  if (!match) return undefined;
+  const params = Object.fromEntries(
+    names.map((name, index) => [name, decodeURIComponent(match[index + 1])]),
+  );
+  return { pathname: url.pathname, params };
+}
+
 // Canonical route registry (AGENTS.md rule 4): every v2 ("agent") screen has a URL, and
 // any filter/sort state it carries lives in the query string so a reload reproduces it
 // exactly. This is the FIRST entry in this registry -- v2 has exactly one screen so far,
@@ -158,6 +219,12 @@ export const routes = {
       const path = `/agent/settings/calendars/${encodeURIComponent(params.id)}`;
       return year === undefined ? path : `${path}?year=${year}`;
     },
+  },
+  /** Customer portal P0 disabled landing page on its separate origin. */
+  portalHome: {
+    path: "/" as const,
+    build: () => "/",
+    parse: (pathname: string) => (pathname === "/" ? "/" : undefined),
   },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {

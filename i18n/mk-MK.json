@@ -2303,7 +2303,11 @@
 			"visibilityUnavailable": "Visibility unavailable",
 			"assignToMe": "Assign to me",
 			"loadOlderActivity": "Load older activity",
-			"loadingOlderActivity": "Loading older activity…"
+			"loadingOlderActivity": "Loading older activity…",
+			"transitionPlaceholder": "Избери состојба",
+			"transitionNote": "Белешка за преминот",
+			"transitionNoteRequired": "Белешката е задолжителна",
+			"transitionBlocked": "Блокирано: {{reasons}}"
 		}
 	},
 	"serviceCalendars": {
@@ -2439,6 +2443,20 @@
 			"startLabel": "{{label}} start",
 			"starts": "Starts",
 			"timeline": "{{day}} coverage timeline"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Порталот за клиенти не е достапен",
+			"description": "Пристапот за клиенти сè уште не е достапен. Обратете се кај администраторот на сервисниот центар."
+		},
+		"notFound": {
+			"title": "Страницата не е пронајдена",
+			"description": "Оваа страница не е достапна. Проверете ја адресата и обидете се повторно."
+		},
+		"error": {
+			"title": "Се појави проблем",
+			"description": "Страницата не можеше да се вчита. Обидете се повторно."
 		}
 	}
 }

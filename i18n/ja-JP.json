@@ -2296,7 +2296,11 @@
 			"visibilityUnavailable": "Visibility unavailable",
 			"assignToMe": "Assign to me",
 			"loadOlderActivity": "Load older activity",
-			"loadingOlderActivity": "Loading older activity…"
+			"loadingOlderActivity": "Loading older activity…",
+			"transitionPlaceholder": "状態を選択",
+			"transitionNote": "状態変更のメモ",
+			"transitionNoteRequired": "メモが必要です",
+			"transitionBlocked": "ブロック中: {{reasons}}"
 		}
 	},
 	"serviceCalendars": {
@@ -2432,6 +2436,20 @@
 			"startLabel": "{{label}} start",
 			"starts": "Starts",
 			"timeline": "{{day}} coverage timeline"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "カスタマーポータルは利用できません",
+			"description": "お客様向けアクセスはまだ利用できません。サポートが必要な場合はサービスデスク管理者にお問い合わせください。"
+		},
+		"notFound": {
+			"title": "ページが見つかりません",
+			"description": "このページは利用できません。アドレスを確認して、もう一度お試しください。"
+		},
+		"error": {
+			"title": "問題が発生しました",
+			"description": "ページを読み込めませんでした。もう一度お試しください。"
 		}
 	}
 }

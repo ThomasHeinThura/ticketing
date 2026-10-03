@@ -2303,7 +2303,11 @@
 			"visibilityUnavailable": "Visibility unavailable",
 			"assignToMe": "Assign to me",
 			"loadOlderActivity": "Load older activity",
-			"loadingOlderActivity": "Loading older activity…"
+			"loadingOlderActivity": "Loading older activity…",
+			"transitionPlaceholder": "Επιλέξτε κατάσταση",
+			"transitionNote": "Σημείωση μετάβασης",
+			"transitionNoteRequired": "Απαιτείται σημείωση",
+			"transitionBlocked": "Αποκλείστηκε: {{reasons}}"
 		}
 	},
 	"serviceCalendars": {
@@ -2439,6 +2443,20 @@
 			"startLabel": "{{label}} start",
 			"starts": "Starts",
 			"timeline": "{{day}} coverage timeline"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Η πύλη πελατών δεν είναι διαθέσιμη",
+			"description": "Η πρόσβαση πελατών δεν είναι ακόμη διαθέσιμη. Επικοινωνήστε με τον διαχειριστή του service desk."
+		},
+		"notFound": {
+			"title": "Η σελίδα δεν βρέθηκε",
+			"description": "Αυτή η σελίδα δεν είναι διαθέσιμη. Ελέγξτε τη διεύθυνση και δοκιμάστε ξανά."
+		},
+		"error": {
+			"title": "Κάτι πήγε στραβά",
+			"description": "Η σελίδα δεν ήταν δυνατό να φορτωθεί. Δοκιμάστε ξανά."
 		}
 	}
 }

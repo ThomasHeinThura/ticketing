@@ -2373,7 +2373,11 @@
 			"visibilityUnavailable": "Visibility unavailable",
 			"assignToMe": "Assign to me",
 			"loadOlderActivity": "Load older activity",
-			"loadingOlderActivity": "Loading older activity…"
+			"loadingOlderActivity": "Loading older activity…",
+			"transitionPlaceholder": "Выберите состояние",
+			"transitionNote": "Примечание к переходу",
+			"transitionNoteRequired": "Требуется примечание",
+			"transitionBlocked": "Заблокировано: {{reasons}}"
 		}
 	},
 	"serviceCalendars": {
@@ -2509,6 +2513,20 @@
 			"startLabel": "{{label}} start",
 			"starts": "Starts",
 			"timeline": "{{day}} coverage timeline"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Портал клиентов недоступен",
+			"description": "Доступ для клиентов пока недоступен. Обратитесь за помощью к администратору службы поддержки."
+		},
+		"notFound": {
+			"title": "Страница не найдена",
+			"description": "Эта страница недоступна. Проверьте адрес и попробуйте ещё раз."
+		},
+		"error": {
+			"title": "Что-то пошло не так",
+			"description": "Не удалось загрузить страницу. Попробуйте ещё раз."
 		}
 	}
 }

@@ -1,11 +1,16 @@
 #!/usr/bin/env node
+
 /**
  * check:tokens — the design-token half of gate G2 ("Tokens only") and the "concrete
  * values in light and dark" half of issue #9's own "Done when" line
  * (docs/02-design/ux-quality-gates.md's G2; docs/02-design/design-tokens.md's
  * "Enforcement" section).
  *
- * Two checks, both enforced today:
+ * The gate enforces theme parity, hard-coded literal rejection, and registered density-slot
+ * behavior both in primitive definitions and direct callsite className overrides. G3's
+ * built-CSS browser runner is `check-contrast.mjs` and runs in the same `check:tokens` command.
+ *
+ * Static checks enforced here:
  *
  * 1. **Theme parity.** `packages/ui/src/styles/tokens.css` and `theme.css` must exist, and
  *    every semantic token `theme.css` declares in its light block (`:root`) must also be
@@ -34,27 +39,20 @@
  * class is a G2 violation, and excluding them by directory (rather than by an
  * ever-growing per-file list) is what keeps this gate meaningful rather than noisy.
  *
- * **Known gap, not yet closeable — same shape as check:ui's own partial state**: this does
- * NOT enforce G2's other half (an arbitrary Tailwind bracket value for spacing, radius or
- * z-index outside `packages/ui`) or any of G3's contrast-ratio checking. Measured against
- * the actual tree: `packages/ui`'s own already-reviewed, already-merged primitives use
- * arbitrary bracket values for exact one-off adjustments in dozens of places today
- * (`scale-[0.97]`, `ring-[3px]`, `shadow-[0_1px_--theme(--color-black/4%)]`, and more) —
- * banning every bracketed value outside the token files would fail nearly the whole
- * existing design system on this same change, which is a design-tokens.md-level policy
- * decision (`ux-quality-gates.md`'s own G2 section already flags the density-utility half
- * of this as "recorded here once decided", not yet closeable) rather than something this
- * checker can decide unilaterally. G3's contrast ratio needs a headless-browser
- * compositing pass over the *built* stylesheet (design-tokens.md's "Contrast (G3)"
- * section) — no such rendering pipeline exists in this repo yet. Both remain open follow-up
- * work, tracked here rather than silently claimed.
+ * The inherited arbitrary-spacing/radius/z-index policy remains intentionally bounded to
+ * the declared density slots; arbitrary utility cleanup outside that inventory is not
+ * claimed by this gate. G3's separate Chromium runner resolves the built stylesheet.
  *
  * Usage:
  *   node scripts/ci/check-tokens.mjs
  */
 
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import * as ts from "typescript/unstable/ast";
+import { API } from "typescript/unstable/sync";
 import {
   finish,
   readText,
@@ -68,6 +66,584 @@ const NAME = "check:tokens";
 const STYLES_DIR = "packages/ui/src/styles";
 const TOKENS_CSS = `${STYLES_DIR}/tokens.css`;
 const THEME_CSS = `${STYLES_DIR}/theme.css`;
+const DENSITY_COMPONENTS = new Map([
+  ["packages/ui/src/components/table.tsx", ["table-row", "td-density-row"]],
+  [
+    "packages/ui/src/components/input.tsx",
+    ["input-control", "td-density-field"],
+  ],
+  ["packages/ui/src/components/card.tsx", ["@CardPanel", "td-density-card"]],
+]);
+
+const DENSITY_CALLSITE_COMPONENTS = new Map([
+  ["TableRow", "row"],
+  ["Input", "field"],
+  ["CardPanel", "card"],
+]);
+
+function hasFixedSpacing(classes) {
+  const spacingValue = String.raw`(?:px|\d+(?:\.\d+)?(?:\/\d+)?|\[[^\]\s]+\]|\([^()\s]+\))`;
+  const directSpacing = new RegExp(
+    `^!?(?:p|py|pt|pb|gap-y|gap)-${spacingValue}!?$`,
+  );
+  return classes.split(/\s+/).some((rawClass) => {
+    const attributeOffset = rawClass.indexOf("className");
+    const quoteOffset = rawClass.search(/["'`]/);
+    const quotePrefix = quoteOffset >= 0 ? rawClass.slice(0, quoteOffset) : "";
+    const wrappedString = attributeOffset >= 0 || /[=(]\s*$/.test(quotePrefix);
+    const className = rawClass
+      .slice(wrappedString && quoteOffset >= 0 ? quoteOffset + 1 : 0)
+      .replace(/^["'`]+|["'`,;]+$/g, "");
+    let bracketDepth = 0;
+    let utilityStart = 0;
+    for (let index = 0; index < className.length; index += 1) {
+      if (className[index] === "[") bracketDepth += 1;
+      else if (className[index] === "]")
+        bracketDepth = Math.max(0, bracketDepth - 1);
+      else if (className[index] === ":" && bracketDepth === 0) {
+        utilityStart = index + 1;
+      }
+    }
+    return directSpacing.test(className.slice(utilityStart));
+  });
+}
+
+function classStringLiterals(node) {
+  const values = [];
+  function visit(current) {
+    if (
+      current.kind === ts.SyntaxKind.StringLiteral ||
+      current.kind === ts.SyntaxKind.NoSubstitutionTemplateLiteral ||
+      current.kind === ts.SyntaxKind.TemplateHead ||
+      current.kind === ts.SyntaxKind.TemplateMiddle ||
+      current.kind === ts.SyntaxKind.TemplateTail
+    ) {
+      values.push(current.text);
+      return;
+    }
+    current.forEachChild(visit);
+  }
+  if (node) visit(node);
+  return values;
+}
+
+function densityCallsiteViolations(sourceFile, relativePath) {
+  const failures = [];
+  const imports = new Map();
+  function collectImports(node) {
+    if (
+      node.kind === ts.SyntaxKind.ImportDeclaration &&
+      node.moduleSpecifier?.text === "@taskdesk/ui"
+    ) {
+      const bindings = node.importClause?.namedBindings;
+      if (bindings?.kind === ts.SyntaxKind.NamedImports) {
+        for (const element of bindings.elements) {
+          const imported = element.propertyName?.text ?? element.name.text;
+          if (DENSITY_CALLSITE_COMPONENTS.has(imported))
+            imports.set(element.name.text, imported);
+        }
+      }
+    }
+    node.forEachChild(collectImports);
+  }
+  collectImports(sourceFile);
+
+  function visit(node) {
+    if (
+      node.kind === ts.SyntaxKind.JsxOpeningElement ||
+      node.kind === ts.SyntaxKind.JsxSelfClosingElement
+    ) {
+      const tag =
+        node.tagName?.kind === ts.SyntaxKind.Identifier
+          ? imports.get(node.tagName.text)
+          : undefined;
+      if (tag) {
+        const attributes = node.attributes?.properties ?? [];
+        const unstyled = attributes.find(
+          (attribute) =>
+            attribute.kind === ts.SyntaxKind.JsxAttribute &&
+            attribute.name?.getText(sourceFile) === "unstyled",
+        );
+        const isUnstyledInput =
+          tag === "Input" &&
+          unstyled &&
+          (unstyled.initializer === undefined ||
+            unstyled.initializer.getText(sourceFile).trim() === "{true}");
+        const className = attributes.find(
+          (attribute) =>
+            attribute.kind === ts.SyntaxKind.JsxAttribute &&
+            attribute.name?.getText(sourceFile) === "className",
+        );
+        const initializer = className?.initializer;
+        const expression =
+          initializer?.kind === ts.SyntaxKind.JsxExpression
+            ? initializer.expression
+            : initializer;
+        const values = classStringLiterals(expression);
+        if (!isUnstyledInput && hasFixedSpacing(values.join(" ")))
+          failures.push(
+            `${relativePath}: <${node.tagName.text}> className overrides registered ${DENSITY_CALLSITE_COMPONENTS.get(tag)} density spacing.`,
+          );
+      }
+    }
+    node.forEachChild(visit);
+  }
+  visit(sourceFile);
+  return failures;
+}
+
+function densitySlotViolations(sourceFile, relativePath) {
+  const failures = [];
+  const expected = DENSITY_COMPONENTS.get(relativePath);
+  function checkClasses(classes, slot) {
+    const densityClass = new RegExp(
+      `(?:^|[\\s"'\x60])${expected[1]}(?:$|[\\s"'\x60])`,
+    );
+    if (!densityClass.test(classes)) {
+      failures.push(`${relativePath}: <${slot}> must use ${expected[1]}.`);
+    }
+    if (hasFixedSpacing(classes)) {
+      failures.push(
+        `${relativePath}: <${slot}> has fixed padding/gap; use its registered density class.`,
+      );
+    }
+  }
+  function visit(node) {
+    if (
+      expected?.[0] === "@CardPanel" &&
+      node.kind === ts.SyntaxKind.FunctionDeclaration &&
+      node.name?.text === "CardPanel"
+    ) {
+      checkClasses(node.getText(sourceFile), "CardPanel");
+    }
+    if (
+      node.kind === ts.SyntaxKind.JsxOpeningElement ||
+      node.kind === ts.SyntaxKind.JsxSelfClosingElement
+    ) {
+      const attributes = node.attributes?.properties ?? [];
+      const slot = attributes.find(
+        (attribute) =>
+          attribute.kind === ts.SyntaxKind.JsxAttribute &&
+          attribute.name?.getText(sourceFile) === "data-slot" &&
+          attribute.initializer?.kind === ts.SyntaxKind.StringLiteral,
+      )?.initializer?.text;
+      const isTarget =
+        expected && expected[0] !== "@CardPanel" && slot === expected[0];
+      if (isTarget) {
+        // The AST selects the exact JSX element; inspecting its serialized opening tag also
+        // includes wrapper calls such as cn(...) without confusing adjacent elements.
+        checkClasses(node.getText(sourceFile), slot);
+      }
+    }
+    node.forEachChild(visit);
+  }
+  visit(sourceFile);
+  return failures;
+}
+
+function densityProbeFailures() {
+  const directory = mkdtempSync(path.join(tmpdir(), "taskdesk-density-probe-"));
+  const negativePath = path.join(directory, "negative.tsx");
+  const positivePath = path.join(directory, "positive.tsx");
+  const negativePxPath = path.join(directory, "negative-px.tsx");
+  const negativeFirstUtilityPath = path.join(
+    directory,
+    "negative-first-utility.tsx",
+  );
+  const negativeCnUtilityPath = path.join(directory, "negative-cn-utility.tsx");
+  const negativeImportantPath = path.join(directory, "negative-important.tsx");
+  const negativeLeadingImportantPath = path.join(
+    directory,
+    "negative-leading-important.tsx",
+  );
+  const negativeRowPaddingPath = path.join(
+    directory,
+    "negative-row-padding.tsx",
+  );
+  const negativeVariablePath = path.join(directory, "negative-variable.tsx");
+  const negativeResponsivePath = path.join(
+    directory,
+    "negative-responsive.tsx",
+  );
+  const negativeCardPath = path.join(directory, "negative-card.tsx");
+  const negativeCardPxPath = path.join(directory, "negative-card-px.tsx");
+  const negativeCardFirstUtilityPath = path.join(
+    directory,
+    "negative-card-first-utility.tsx",
+  );
+  const negativeCardCnUtilityPath = path.join(
+    directory,
+    "negative-card-cn-utility.tsx",
+  );
+  const negativeCardResponsivePath = path.join(
+    directory,
+    "negative-card-responsive.tsx",
+  );
+  const positiveCardPath = path.join(directory, "positive-card.tsx");
+  const callsitePath = path.join(directory, "density-callsites.tsx");
+  writeFileSync(
+    negativePath,
+    'const item = <tr data-slot="table-row" className="td-density-row sm:py-1.5 gap-y-[7px]" />;',
+  );
+  writeFileSync(
+    negativePxPath,
+    'const item = <tr data-slot="table-row" className="td-density-row py-px" />;',
+  );
+  writeFileSync(
+    negativeFirstUtilityPath,
+    'const item = <tr data-slot="table-row" className="py-px td-density-row" />;',
+  );
+  writeFileSync(
+    negativeCnUtilityPath,
+    'const item = <tr data-slot="table-row" className={cn("py-px td-density-row", className)} />;',
+  );
+  writeFileSync(
+    negativeImportantPath,
+    'const item = <tr data-slot="table-row" className="sm:py-4! td-density-row" />;',
+  );
+  writeFileSync(
+    negativeLeadingImportantPath,
+    'const item = <tr data-slot="table-row" className="sm:!py-4 td-density-row" />;',
+  );
+  writeFileSync(
+    negativeRowPaddingPath,
+    'const item = <tr data-slot="table-row" className="p-4! td-density-row" />;',
+  );
+  writeFileSync(
+    negativeVariablePath,
+    'const item = <tr data-slot="table-row" className="py-(--manual-space) td-density-row" />;',
+  );
+  writeFileSync(
+    negativeResponsivePath,
+    'const item = <tr data-slot="table-row" className="td-density-row sm:py-6" />;',
+  );
+  writeFileSync(
+    positivePath,
+    'const item = <tr data-slot="table-row" className="td-density-row" />;',
+  );
+  writeFileSync(
+    negativeCardPath,
+    'function CardPanel() { return <div className="flex-1 td-density-card md:py-6 p-1.5 p-[17px] gap-y-[7px]" />; }',
+  );
+  writeFileSync(
+    negativeCardPxPath,
+    'function CardPanel() { return <div className="flex-1 td-density-card p-px" />; }',
+  );
+  writeFileSync(
+    negativeCardFirstUtilityPath,
+    'function CardPanel() { return <div className="p-px td-density-card" />; }',
+  );
+  writeFileSync(
+    negativeCardCnUtilityPath,
+    'function CardPanel() { const defaultProps = { className: cn("p-px td-density-card", className), "data-slot": "card-panel" }; return useRender({ props: defaultProps }); }',
+  );
+  writeFileSync(
+    negativeCardResponsivePath,
+    'function CardPanel() { return <div className="flex-1 td-density-card md:py-6" />; }',
+  );
+  writeFileSync(
+    positiveCardPath,
+    'function CardPanel() { return <div className="flex-1 td-density-card" />; }',
+  );
+  const callsiteSource =
+    'import { CardPanel as Panel, Input } from "@taskdesk/ui"; const view = <><Panel className={cn("!p-4")} /><Panel className={condition && "!p-4"} /><Panel className={{ "!p-4": condition }} /><Panel className={`!p-4 $' +
+    '{extra}`} /><Input className="py-px" /><Input unstyled className="p-8" /></>;';
+  writeFileSync(callsitePath, callsiteSource);
+  const parser = new API({ cwd: directory });
+  try {
+    const snapshot = parser.updateSnapshot({
+      openFiles: [
+        negativePath,
+        positivePath,
+        negativePxPath,
+        negativeFirstUtilityPath,
+        negativeCnUtilityPath,
+        negativeImportantPath,
+        negativeLeadingImportantPath,
+        negativeRowPaddingPath,
+        negativeVariablePath,
+        negativeResponsivePath,
+        negativeCardPath,
+        negativeCardPxPath,
+        negativeCardFirstUtilityPath,
+        negativeCardCnUtilityPath,
+        negativeCardResponsivePath,
+        positiveCardPath,
+        callsitePath,
+      ],
+    });
+    try {
+      const negative = snapshot
+        .getDefaultProjectForFile(negativePath)
+        ?.program.getSourceFile(negativePath);
+      const positive = snapshot
+        .getDefaultProjectForFile(positivePath)
+        ?.program.getSourceFile(positivePath);
+      const negativePx = snapshot
+        .getDefaultProjectForFile(negativePxPath)
+        ?.program.getSourceFile(negativePxPath);
+      const negativeFirstUtility = snapshot
+        .getDefaultProjectForFile(negativeFirstUtilityPath)
+        ?.program.getSourceFile(negativeFirstUtilityPath);
+      const negativeCnUtility = snapshot
+        .getDefaultProjectForFile(negativeCnUtilityPath)
+        ?.program.getSourceFile(negativeCnUtilityPath);
+      const negativeImportant = snapshot
+        .getDefaultProjectForFile(negativeImportantPath)
+        ?.program.getSourceFile(negativeImportantPath);
+      const negativeLeadingImportant = snapshot
+        .getDefaultProjectForFile(negativeLeadingImportantPath)
+        ?.program.getSourceFile(negativeLeadingImportantPath);
+      const negativeRowPadding = snapshot
+        .getDefaultProjectForFile(negativeRowPaddingPath)
+        ?.program.getSourceFile(negativeRowPaddingPath);
+      const negativeVariable = snapshot
+        .getDefaultProjectForFile(negativeVariablePath)
+        ?.program.getSourceFile(negativeVariablePath);
+      const negativeResponsive = snapshot
+        .getDefaultProjectForFile(negativeResponsivePath)
+        ?.program.getSourceFile(negativeResponsivePath);
+      const negativeCard = snapshot
+        .getDefaultProjectForFile(negativeCardPath)
+        ?.program.getSourceFile(negativeCardPath);
+      const negativeCardPx = snapshot
+        .getDefaultProjectForFile(negativeCardPxPath)
+        ?.program.getSourceFile(negativeCardPxPath);
+      const negativeCardFirstUtility = snapshot
+        .getDefaultProjectForFile(negativeCardFirstUtilityPath)
+        ?.program.getSourceFile(negativeCardFirstUtilityPath);
+      const negativeCardCnUtility = snapshot
+        .getDefaultProjectForFile(negativeCardCnUtilityPath)
+        ?.program.getSourceFile(negativeCardCnUtilityPath);
+      const negativeCardResponsive = snapshot
+        .getDefaultProjectForFile(negativeCardResponsivePath)
+        ?.program.getSourceFile(negativeCardResponsivePath);
+      const positiveCard = snapshot
+        .getDefaultProjectForFile(positiveCardPath)
+        ?.program.getSourceFile(positiveCardPath);
+      const callsiteSource = snapshot
+        .getDefaultProjectForFile(callsitePath)
+        ?.program.getSourceFile(callsitePath);
+      const issues = negative
+        ? densitySlotViolations(
+            negative,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const safe = positive
+        ? densitySlotViolations(
+            positive,
+            "packages/ui/src/components/table.tsx",
+          )
+        : ["positive JSX fixture did not parse"];
+      const cardIssues = negativeCard
+        ? densitySlotViolations(
+            negativeCard,
+            "packages/ui/src/components/card.tsx",
+          )
+        : [];
+      const pxIssues = negativePx
+        ? densitySlotViolations(
+            negativePx,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const firstUtilityIssues = negativeFirstUtility
+        ? densitySlotViolations(
+            negativeFirstUtility,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const cnUtilityIssues = negativeCnUtility
+        ? densitySlotViolations(
+            negativeCnUtility,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const importantIssues = negativeImportant
+        ? densitySlotViolations(
+            negativeImportant,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const leadingImportantIssues = negativeLeadingImportant
+        ? densitySlotViolations(
+            negativeLeadingImportant,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const rowPaddingIssues = negativeRowPadding
+        ? densitySlotViolations(
+            negativeRowPadding,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const variableIssues = negativeVariable
+        ? densitySlotViolations(
+            negativeVariable,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const responsiveIssues = negativeResponsive
+        ? densitySlotViolations(
+            negativeResponsive,
+            "packages/ui/src/components/table.tsx",
+          )
+        : [];
+      const cardPxIssues = negativeCardPx
+        ? densitySlotViolations(
+            negativeCardPx,
+            "packages/ui/src/components/card.tsx",
+          )
+        : [];
+      const cardFirstUtilityIssues = negativeCardFirstUtility
+        ? densitySlotViolations(
+            negativeCardFirstUtility,
+            "packages/ui/src/components/card.tsx",
+          )
+        : [];
+      const cardCnUtilityIssues = negativeCardCnUtility
+        ? densitySlotViolations(
+            negativeCardCnUtility,
+            "packages/ui/src/components/card.tsx",
+          )
+        : [];
+      const cardResponsiveIssues = negativeCardResponsive
+        ? densitySlotViolations(
+            negativeCardResponsive,
+            "packages/ui/src/components/card.tsx",
+          )
+        : [];
+      const safeCard = positiveCard
+        ? densitySlotViolations(
+            positiveCard,
+            "packages/ui/src/components/card.tsx",
+          )
+        : ["positive CardPanel fixture did not parse"];
+      const callsiteIssues = callsiteSource
+        ? densityCallsiteViolations(callsiteSource, "density-callsites.tsx")
+        : ["density callsite fixture did not parse"];
+      const failures = [];
+      if (!issues.some((message) => message.includes("fixed padding/gap")))
+        failures.push(
+          "density negative probe did not reject fixed spacing on a row",
+        );
+      if (!pxIssues.some((message) => message.includes("fixed padding/gap")))
+        failures.push("density negative probe did not reject py-px on a row");
+      if (
+        !firstUtilityIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      )
+        failures.push(
+          "density negative probe did not reject a first-position row utility",
+        );
+      if (
+        !cnUtilityIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      )
+        failures.push(
+          "density negative probe did not reject a first-position row utility inside cn()",
+        );
+      if (
+        !importantIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      )
+        failures.push(
+          "density negative probe did not reject an important utility",
+        );
+      if (
+        !leadingImportantIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      )
+        failures.push(
+          "density negative probe did not reject a leading important utility",
+        );
+      if (
+        !rowPaddingIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      )
+        failures.push(
+          "density negative probe did not reject all-side row padding",
+        );
+      if (
+        !variableIssues.some((message) => message.includes("fixed padding/gap"))
+      )
+        failures.push(
+          "density negative probe did not reject a CSS-variable utility",
+        );
+      if (
+        !responsiveIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      )
+        failures.push(
+          "density negative probe did not reject responsive row spacing",
+        );
+      if (safe.length)
+        failures.push("density positive probe rejected a semantic row class");
+      if (
+        !cardIssues.some((message) => message.includes("fixed padding/gap"))
+      ) {
+        failures.push(
+          "density negative probe did not reject fixed padding on CardPanel",
+        );
+      }
+      if (
+        !cardPxIssues.some((message) => message.includes("fixed padding/gap"))
+      ) {
+        failures.push(
+          "density negative probe did not reject p-px on CardPanel",
+        );
+      }
+      if (
+        !cardFirstUtilityIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      ) {
+        failures.push(
+          "density negative probe did not reject a first-position CardPanel utility",
+        );
+      }
+      if (
+        !cardCnUtilityIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      ) {
+        failures.push(
+          "density negative probe did not reject a first-position CardPanel utility inside cn()",
+        );
+      }
+      if (
+        !cardResponsiveIssues.some((message) =>
+          message.includes("fixed padding/gap"),
+        )
+      ) {
+        failures.push(
+          "density negative probe did not reject responsive CardPanel spacing",
+        );
+      }
+      if (safeCard.length)
+        failures.push(
+          "density positive probe rejected CardPanel density class",
+        );
+      if (callsiteIssues.length !== 5)
+        failures.push(
+          "density callsite probe must reject wrapped, conditional, object, template, and Input overrides while allowing unstyled Input",
+        );
+      return failures;
+    } finally {
+      snapshot.dispose();
+    }
+  } finally {
+    parser.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
 
 /**
  * Where a hard-coded color literal could plausibly be a design-system defect, per this
@@ -313,10 +889,73 @@ async function main() {
     }
   }
 
+  const densityPaths = [...DENSITY_COMPONENTS.keys()].map((relative) =>
+    path.join(repoRoot, relative),
+  );
+  const densityCallsitePaths = (await walk(path.join(repoRoot, "apps/web/src")))
+    .filter((absolute) => [".tsx", ".jsx"].includes(path.extname(absolute)))
+    .filter((absolute) => !densityPaths.includes(absolute));
+  const parsedDensityPaths = [...densityPaths, ...densityCallsitePaths];
+  const parser = new API({ cwd: repoRoot });
+  try {
+    const snapshot = parser.updateSnapshot({ openFiles: parsedDensityPaths });
+    try {
+      for (const absolute of densityPaths) {
+        const relative = rel(absolute);
+        const sourceFile = snapshot
+          .getDefaultProjectForFile(absolute)
+          ?.program.getSourceFile(absolute);
+        if (!sourceFile) {
+          failures.push(
+            violation(
+              relative,
+              "could not be parsed for the density-slot gate.",
+            ),
+          );
+          continue;
+        }
+        failures.push(
+          ...densitySlotViolations(sourceFile, relative).map((message) =>
+            violation(relative, message),
+          ),
+        );
+      }
+      for (const absolute of densityCallsitePaths) {
+        const relative = rel(absolute);
+        const sourceFile = snapshot
+          .getDefaultProjectForFile(absolute)
+          ?.program.getSourceFile(absolute);
+        if (!sourceFile) {
+          failures.push(
+            violation(
+              relative,
+              "could not be parsed for density callsite overrides.",
+            ),
+          );
+          continue;
+        }
+        failures.push(
+          ...densityCallsiteViolations(sourceFile, relative).map((message) =>
+            violation(relative, message),
+          ),
+        );
+      }
+    } finally {
+      snapshot.dispose();
+    }
+  } finally {
+    parser.close();
+  }
+  failures.push(
+    ...densityProbeFailures().map((message) =>
+      violation("scripts/ci/check-tokens.mjs", message),
+    ),
+  );
+
   finish({
     name: NAME,
     failures,
-    ok: "theme.css tokens are concrete in both themes; no hard-coded color literal outside packages/ui/src/styles/.",
+    ok: "theme.css tokens are concrete in both themes; density slots are enforced; no hard-coded color literal outside packages/ui/src/styles/.",
   });
 }
 

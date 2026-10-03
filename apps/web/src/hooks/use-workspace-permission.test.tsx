@@ -55,6 +55,7 @@ function fullCapabilityMap(overrides: Partial<Record<string, boolean>> = {}) {
     updateProjects: false,
     deleteProjects: false,
     updateTasks: false,
+    transitionTasks: false,
     createTasks: false,
     deleteTasks: false,
     assignTasks: false,
@@ -85,6 +86,7 @@ describe("useWorkspacePermission", () => {
         fullCapabilityMap({
           createTasks: true,
           updateTasks: true,
+          transitionTasks: true,
           deleteTasks: false,
           createLabels: true,
           updateLabels: true,
@@ -102,6 +104,7 @@ describe("useWorkspacePermission", () => {
 
     expect(result.current.canCreateTasks()).toBe(true);
     expect(result.current.canUpdateTasks()).toBe(true);
+    expect(result.current.canTransitionTasks()).toBe(true);
     expect(result.current.canDeleteTasks()).toBe(false);
     expect(result.current.canCreateLabels()).toBe(true);
     expect(result.current.canUpdateLabels()).toBe(true);
@@ -142,6 +145,7 @@ describe("useWorkspacePermission", () => {
           createPublicComments: true,
           createInternalComments: false,
           manageServiceCalendars: true,
+          transitionTasks: true,
         }),
     });
 
@@ -167,6 +171,7 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canCreatePublicComments()).toBe(true);
     expect(result.current.canCreateInternalComments()).toBe(false);
     expect(result.current.canManageServiceCalendars()).toBe(true);
+    expect(result.current.canTransitionTasks()).toBe(true);
   });
 
   it("defaults every capability to false while the request is pending, never undefined", () => {

@@ -509,6 +509,7 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
     expect(response.status).toBe(200);
     const offers = (await response.json()) as {
       toStateTemplateId: string;
+      toStateName: string;
       available: boolean;
       blockedBy: { kind: string; reasonCode: string }[];
     }[];
@@ -520,6 +521,7 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
       (o) => o.toStateTemplateId === done.stateTemplate.id,
     );
     expect(toInProgress?.available).toBe(true);
+    expect(toInProgress?.toStateName).toBe(inProgress.stateTemplate.name);
     expect(toDone?.available).toBe(false);
     expect(toDone?.blockedBy).toEqual([
       { kind: "note", reasonCode: "note.required" },

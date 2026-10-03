@@ -2266,6 +2266,10 @@
 			"saveAttention": "Save needs attention",
 			"editConflict": "Version {{asserted}} is stale; the server is now at version {{current}}. The current item has been reloaded and your draft is preserved for comparison.",
 			"saveError": "Couldn't save these changes.",
+			"transitionPlaceholder": "Choose a state",
+			"transitionNote": "Transition note",
+			"transitionNoteRequired": "Note required",
+			"transitionBlocked": "Blocked: {{reasons}}",
 			"assignmentHeading": "Assignment",
 			"assignee": "Assignee",
 			"assigneePlaceholder": "Choose a person",
@@ -2439,6 +2443,20 @@
 			"nameOptional": "Name (optional)",
 			"remove": "Remove",
 			"removeHoliday": "Remove holiday {{count}}"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Customer portal unavailable",
+			"description": "Customer access is not available yet. Contact your service desk administrator for help."
+		},
+		"notFound": {
+			"title": "Page not found",
+			"description": "This page isn't available. Check the address and try again."
+		},
+		"error": {
+			"title": "Something went wrong",
+			"description": "The page could not be loaded. Try again."
 		}
 	}
 }

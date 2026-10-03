@@ -22,6 +22,8 @@ import WorkItemActivityComment from "@/components/work-item/work-item-activity-c
 import assignWorkItem from "@/fetchers/work-item/assign-work-item";
 import createWorkItemComment from "@/fetchers/work-item/create-work-item-comment";
 import getAssignablePeople from "@/fetchers/work-item/get-assignable-people";
+import getWorkItemTransitions from "@/fetchers/work-item/get-work-item-transitions";
+import transitionWorkItem from "@/fetchers/work-item/transition-work-item";
 import unassignWorkItem from "@/fetchers/work-item/unassign-work-item";
 import updateWorkItem from "@/fetchers/work-item/update-work-item";
 import useGetWorkItemActivity from "@/hooks/queries/work-item/use-get-work-item-activity";
@@ -137,6 +139,7 @@ function WorkItemJourneyForItem({
   const {
     canUpdateTasks,
     canAssignTasks,
+    canTransitionTasks,
     canCreatePublicComments,
     canCreateInternalComments,
     isCheckingPermissions,
@@ -144,6 +147,7 @@ function WorkItemJourneyForItem({
   const mayEdit = !isCheckingPermissions && canUpdateTasks();
   const mayAssign =
     !isCheckingPermissions && (canUpdateTasks() || canAssignTasks());
+  const mayTransition = !isCheckingPermissions && canTransitionTasks();
   const selfAssignmentOnly =
     !isCheckingPermissions && canUpdateTasks() && !canAssignTasks();
   const [editing, setEditing] = useState(false);
@@ -164,6 +168,9 @@ function WorkItemJourneyForItem({
   const [confirmReassign, setConfirmReassign] = useState(false);
   const [editError, setEditError] = useState("");
   const [assignError, setAssignError] = useState("");
+  const [selectedTransitionId, setSelectedTransitionId] = useState("");
+  const [transitionNote, setTransitionNote] = useState("");
+  const [transitionError, setTransitionError] = useState("");
   const commentDraftStorageKey = getCommentDraftStorageKey(userId, item.key);
   const [initialCommentDraft] = useState(() =>
     readCommentDraft(commentDraftStorageKey, defaultCommentVisibility),
@@ -228,6 +235,11 @@ function WorkItemJourneyForItem({
     queryKey: ["projects", item.projectId, "assignable"],
     queryFn: () => getAssignablePeople(item.projectId),
     enabled: mayAssign,
+  });
+  const transitions = useQuery({
+    queryKey: ["work-items", "transitions", item.key],
+    queryFn: () => getWorkItemTransitions(item.key),
+    enabled: mayTransition,
   });
   const invalidate = async () => {
     await Promise.all([
@@ -317,6 +329,32 @@ function WorkItemJourneyForItem({
       }
     },
   });
+  const transitionMutation = useMutation({
+    mutationFn: (input: { toStateTemplateId: string; note?: string }) =>
+      transitionWorkItem({ key: item.key, ...input }),
+    onSuccess: async () => {
+      setSelectedTransitionId("");
+      setTransitionNote("");
+      setTransitionError("");
+      await Promise.all([
+        invalidate(),
+        queryClient.invalidateQueries({
+          queryKey: ["work-items", "transitions", item.key],
+        }),
+      ]);
+    },
+    onError: async () => {
+      setTransitionError(t("workItems:journey.saveError"));
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["work-items", "detail", item.key],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["work-items", "transitions", item.key],
+        }),
+      ]);
+    },
+  });
   const commentMutation = useMutation({
     mutationFn: (submission: {
       draft: CommentDraft;
@@ -374,6 +412,18 @@ function WorkItemJourneyForItem({
           assignees.data?.some(
             (person) => person.personId === item.assigneeId,
           ))),
+  );
+  const selectedTransition = transitions.data?.find(
+    (entry) => entry.transitionId === selectedTransitionId,
+  );
+  const selectedTransitionOnlyNeedsNote = Boolean(
+    selectedTransition?.blockedBy.length === 1 &&
+      selectedTransition.blockedBy[0]?.reasonCode === "note.required",
+  );
+  const selectedTransitionCanRun = Boolean(
+    selectedTransition &&
+      (selectedTransition.available || selectedTransitionOnlyNeedsNote) &&
+      (selectedTransition.notePolicy !== "required" || transitionNote.trim()),
   );
   const activityRows = [
     ...(activity.data?.pages.flatMap((page) => page.data) ?? []),
@@ -476,6 +526,131 @@ function WorkItemJourneyForItem({
           </form>
         )}
       </section>
+
+      {mayTransition &&
+        !transitions.isError &&
+        (transitions.isLoading || (transitions.data?.length ?? 0) > 0) && (
+          <section
+            aria-labelledby="work-item-state-transition-heading"
+            className="flex flex-col gap-3"
+          >
+            <h2
+              id="work-item-state-transition-heading"
+              className="font-medium text-lg"
+            >
+              {t("workItems:detail.stateLabel")}
+            </h2>
+            {transitions.isLoading ? (
+              <p role="status">{t("common:empty.loading")}</p>
+            ) : (
+              <form
+                className="flex flex-col gap-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (!selectedTransition || !selectedTransitionCanRun) return;
+                  transitionMutation.mutate({
+                    toStateTemplateId: selectedTransition.toStateTemplateId,
+                    ...(selectedTransition.notePolicy !== "none" &&
+                    transitionNote.trim()
+                      ? { note: transitionNote.trim() }
+                      : {}),
+                  });
+                }}
+              >
+                <Label htmlFor="work-item-next-state">
+                  {t("workItems:detail.stateLabel")}
+                </Label>
+                <Select
+                  value={selectedTransitionId}
+                  onValueChange={(value) => {
+                    setSelectedTransitionId(value ?? "");
+                    setTransitionNote("");
+                    setTransitionError("");
+                  }}
+                >
+                  <SelectTrigger id="work-item-next-state">
+                    <SelectValue
+                      placeholder={t("workItems:journey.transitionPlaceholder")}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {transitions.data?.map((offer) => {
+                      const onlyNeedsNote =
+                        offer.blockedBy.length === 1 &&
+                        offer.blockedBy[0]?.reasonCode === "note.required";
+                      const blocked = !offer.available && !onlyNeedsNote;
+                      const reasons = offer.blockedBy
+                        .map((reason) => reason.reasonCode)
+                        .join(", ");
+                      return (
+                        <SelectItem
+                          key={offer.transitionId}
+                          value={offer.transitionId}
+                          disabled={blocked}
+                        >
+                          {offer.toStateName}
+                          {blocked
+                            ? ` — ${t("workItems:journey.transitionBlocked", { reasons })}`
+                            : offer.notePolicy === "required"
+                              ? ` — ${t("workItems:journey.transitionNoteRequired")}`
+                              : ""}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {transitions.data?.find(
+                  (entry) => entry.transitionId === selectedTransitionId,
+                )?.notePolicy !== "none" &&
+                  selectedTransitionId && (
+                    <Label>
+                      {t("workItems:journey.transitionNote")}
+                      <Textarea
+                        value={transitionNote}
+                        maxLength={10_000}
+                        onChange={(event) =>
+                          setTransitionNote(event.target.value)
+                        }
+                      />
+                    </Label>
+                  )}
+                {transitionError && <p role="alert">{transitionError}</p>}
+                <div className="flex gap-2">
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={
+                      !selectedTransitionCanRun || transitionMutation.isPending
+                    }
+                  >
+                    {transitionMutation.isPending
+                      ? t("workItems:journey.saving")
+                      : t("workItems:journey.save")}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </section>
+        )}
+      {mayTransition && transitions.isError && (
+        <section aria-labelledby="work-item-state-transition-heading">
+          <h2
+            id="work-item-state-transition-heading"
+            className="font-medium text-lg"
+          >
+            {t("workItems:detail.stateLabel")}
+          </h2>
+          <p role="alert">{t("workItems:journey.saveError")}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void transitions.refetch()}
+          >
+            {t("workItems:detail.retry")}
+          </Button>
+        </section>
+      )}
 
       {mayAssign && (
         <section

@@ -139,7 +139,10 @@ one line saying why — it is never deleted from the pull request.
 
 ## Design review H1–H6
 
-<!-- Thomas only. Agents leave this section blank. -->
+<!--
+P0–P3: record “Deferred to integrated P4 human review; no approval claimed.” Do not
+fabricate or imply H1–H6 approval. Thomas records the integrated human review at P4.
+-->
 
 ## Not done
 

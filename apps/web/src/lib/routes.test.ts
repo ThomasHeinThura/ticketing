@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { generatedRouteMetadata } from "./generated-route-metadata";
 import {
+  buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
+  parseGeneratedRouteUrl,
   parseServiceCalendarListSearchFromQueryString,
   parseWorkItemActivityFilter,
   parseWorkItemListSearch,
@@ -158,6 +161,58 @@ describe("routes.serviceCalendars", () => {
   it("does not add search state when the year is not supplied", () => {
     expect(routes.serviceCalendarEditor.build({ id: "new" })).toBe(
       "/agent/settings/calendars/new",
+    );
+  });
+});
+
+describe("G5 route metadata", () => {
+  it("keeps agent and portal routes sourced from their independent generated trees", () => {
+    expect(generatedRouteMetadata.agent).toContain(
+      "/agent/projects/$projectKey/work",
+    );
+    expect(generatedRouteMetadata.portal).toEqual(["/"]);
+  });
+
+  it("round-trips the portal root URL through its route helper", () => {
+    const url = new URL(
+      routes.portalHome.build(),
+      "https://portal.example.test",
+    );
+    expect(routes.portalHome.parse(url.pathname)).toBe(
+      routes.portalHome.build(),
+    );
+    expect(routes.portalHome.parse("/unmatched")).toBeUndefined();
+  });
+
+  it("builds and parses every generated agent and portal route template", () => {
+    for (const surface of ["agent", "portal"] as const) {
+      for (const template of generatedRouteMetadata[surface]) {
+        const names = [...template.matchAll(/\$([A-Za-z0-9_]+)/gu)].map(
+          (match) => match[1],
+        );
+        const params = Object.fromEntries(
+          names.map((name) => [name, `value/${name} part`]),
+        );
+        const url = buildGeneratedRouteUrl(surface, template, params);
+        expect(parseGeneratedRouteUrl(surface, template, url)).toEqual({
+          pathname: url,
+          params,
+        });
+      }
+    }
+  });
+});
+
+describe("routes.workItemDetail", () => {
+  it("builds the future detail path with the work item key", () => {
+    expect(routes.workItemDetail.build({ key: "PROJ-123" })).toBe(
+      "/agent/work-items/PROJ-123",
+    );
+  });
+
+  it("encodes a key that needs escaping", () => {
+    expect(routes.workItemDetail.build({ key: "a/b" })).toBe(
+      "/agent/work-items/a%2Fb",
     );
   });
 });

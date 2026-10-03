@@ -13,13 +13,16 @@ import WorkItemJourney from "./work-item-journey";
 
 const permissionFlags = vi.hoisted(() => ({
   update: true,
+  transition: false,
   assign: true,
   publicComments: false,
   internalComments: false,
 }));
 const authState = vi.hoisted(() => ({ userId: "user-1" }));
 const activityFetcher = vi.hoisted(() => vi.fn());
+const transitionsFetcher = vi.hoisted(() => vi.fn());
 const updateWorkItem = vi.fn();
+const transitionWorkItem = vi.fn();
 const assignWorkItem = vi.fn();
 const unassignWorkItem = vi.fn();
 const getAssignablePeople = vi.fn();
@@ -29,6 +32,12 @@ vi.mock("@/fetchers/work-item/update-work-item", () => ({
 }));
 vi.mock("@/fetchers/work-item/get-work-item-activity", () => ({
   default: (...args: unknown[]) => activityFetcher(...args),
+}));
+vi.mock("@/fetchers/work-item/get-work-item-transitions", () => ({
+  default: (...args: unknown[]) => transitionsFetcher(...args),
+}));
+vi.mock("@/fetchers/work-item/transition-work-item", () => ({
+  default: (...args: unknown[]) => transitionWorkItem(...args),
 }));
 vi.mock("@/fetchers/work-item/get-assignable-people", () => ({
   default: (...args: unknown[]) => getAssignablePeople(...args),
@@ -79,6 +88,7 @@ vi.mock("@/hooks/use-workspace-permission", () => ({
   useWorkspacePermission: () => ({
     canUpdateTasks: () => permissionFlags.update,
     canAssignTasks: () => permissionFlags.assign,
+    canTransitionTasks: () => permissionFlags.transition,
     canCreatePublicComments: () => permissionFlags.publicComments,
     canCreateInternalComments: () => permissionFlags.internalComments,
     isCheckingPermissions: false,
@@ -93,6 +103,8 @@ beforeEach(() => {
   window.localStorage.clear();
   authState.userId = "user-1";
   updateWorkItem.mockReset();
+  transitionWorkItem.mockReset();
+  transitionWorkItem.mockResolvedValue({});
   assignWorkItem.mockReset();
   assignWorkItem.mockResolvedValue({});
   unassignWorkItem.mockReset();
@@ -102,9 +114,12 @@ beforeEach(() => {
     data: [],
     page: { hasMore: false, nextCursor: null },
   });
+  transitionsFetcher.mockReset();
+  transitionsFetcher.mockResolvedValue([]);
   getAssignablePeople.mockReset();
   getAssignablePeople.mockResolvedValue([]);
   permissionFlags.update = true;
+  permissionFlags.transition = false;
   permissionFlags.assign = true;
   permissionFlags.publicComments = false;
   permissionFlags.internalComments = false;
@@ -728,5 +743,92 @@ describe("WorkItemJourney", () => {
         ),
       ).toBeNull();
     });
+  });
+
+  it("shows server-offered state transitions and requires the requested note", async () => {
+    permissionFlags.transition = true;
+    transitionsFetcher.mockResolvedValue([
+      {
+        transitionId: "resolve",
+        toStateTemplateId: "done-template",
+        toStateName: "Done",
+        toStateId: "done-state",
+        notePolicy: "required",
+        noteVisibility: "public",
+        requiresApproval: false,
+        requiresCab: false,
+        isReopen: false,
+        available: false,
+        blockedBy: [{ kind: "note", reasonCode: "note.required" }],
+      },
+      {
+        transitionId: "blocked",
+        toStateTemplateId: "blocked-template",
+        toStateName: "Blocked state",
+        toStateId: "blocked-state",
+        notePolicy: "none",
+        noteVisibility: "internal",
+        requiresApproval: false,
+        requiresCab: false,
+        isReopen: false,
+        available: false,
+        blockedBy: [{ kind: "guard", reasonCode: "guard.assignee_present" }],
+      },
+    ]);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const onSaved = vi.fn();
+    render(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney item={makeItem()} onSaved={onSaved} />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("combobox", {
+        name: "workItems:detail.stateLabel",
+      }),
+    );
+    expect(
+      await screen.findByRole("option", { name: /Blocked state/ }),
+    ).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(await screen.findByRole("option", { name: /Done/ }));
+    const submit = screen.getByRole("button", {
+      name: "workItems:journey.save",
+    });
+    expect(submit).toBeDisabled();
+    fireEvent.change(
+      screen.getByLabelText("workItems:journey.transitionNote"),
+      { target: { value: "Resolution verified" } },
+    );
+    fireEvent.click(submit);
+    await waitFor(() =>
+      expect(transitionWorkItem).toHaveBeenCalledWith({
+        key: "WLP-1",
+        toStateTemplateId: "done-template",
+        note: "Resolution verified",
+      }),
+    );
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+  });
+
+  it("does not fetch or render state transitions without transition capability", async () => {
+    permissionFlags.transition = false;
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <WorkItemJourney item={makeItem()} onSaved={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => expect(transitionsFetcher).not.toHaveBeenCalled());
+    expect(
+      screen.queryByRole("combobox", {
+        name: "workItems:detail.stateLabel",
+      }),
+    ).not.toBeInTheDocument();
   });
 });

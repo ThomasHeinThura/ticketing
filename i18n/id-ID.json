@@ -2296,7 +2296,11 @@
 			"visibilityUnavailable": "Visibility unavailable",
 			"assignToMe": "Assign to me",
 			"loadOlderActivity": "Load older activity",
-			"loadingOlderActivity": "Loading older activity…"
+			"loadingOlderActivity": "Loading older activity…",
+			"transitionPlaceholder": "Pilih status",
+			"transitionNote": "Catatan transisi",
+			"transitionNoteRequired": "Catatan wajib",
+			"transitionBlocked": "Terblokir: {{reasons}}"
 		}
 	},
 	"serviceCalendars": {
@@ -2432,6 +2436,20 @@
 			"startLabel": "{{label}} start",
 			"starts": "Starts",
 			"timeline": "{{day}} coverage timeline"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Portal pelanggan tidak tersedia",
+			"description": "Akses pelanggan belum tersedia. Hubungi administrator service desk Anda untuk bantuan."
+		},
+		"notFound": {
+			"title": "Halaman tidak ditemukan",
+			"description": "Halaman ini tidak tersedia. Periksa alamat lalu coba lagi."
+		},
+		"error": {
+			"title": "Terjadi kesalahan",
+			"description": "Halaman tidak dapat dimuat. Coba lagi."
 		}
 	}
 }

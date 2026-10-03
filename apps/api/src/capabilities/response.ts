@@ -8,6 +8,7 @@ export const capabilitiesResponseSchema = z
     updateProjects: z.boolean(),
     deleteProjects: z.boolean(),
     updateTasks: z.boolean(),
+    transitionTasks: z.boolean(),
     createTasks: z.boolean(),
     deleteTasks: z.boolean(),
     assignTasks: z.boolean(),

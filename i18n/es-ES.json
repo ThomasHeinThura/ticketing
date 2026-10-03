@@ -2310,7 +2310,11 @@
 			"visibilityUnavailable": "Visibility unavailable",
 			"assignToMe": "Assign to me",
 			"loadOlderActivity": "Load older activity",
-			"loadingOlderActivity": "Loading older activity…"
+			"loadingOlderActivity": "Loading older activity…",
+			"transitionPlaceholder": "Elegir estado",
+			"transitionNote": "Nota de transición",
+			"transitionNoteRequired": "Se requiere una nota",
+			"transitionBlocked": "Bloqueado: {{reasons}}"
 		}
 	},
 	"serviceCalendars": {
@@ -2446,6 +2450,20 @@
 			"startLabel": "{{label}} start",
 			"starts": "Starts",
 			"timeline": "{{day}} coverage timeline"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Portal de clientes no disponible",
+			"description": "El acceso para clientes aún no está disponible. Contacta con el administrador del servicio de asistencia."
+		},
+		"notFound": {
+			"title": "Página no encontrada",
+			"description": "Esta página no está disponible. Comprueba la dirección e inténtalo de nuevo."
+		},
+		"error": {
+			"title": "Algo salió mal",
+			"description": "No se pudo cargar la página. Inténtalo de nuevo."
 		}
 	}
 }

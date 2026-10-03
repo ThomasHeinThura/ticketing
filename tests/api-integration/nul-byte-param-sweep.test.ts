@@ -83,7 +83,14 @@ describe("API integration: #281 NUL-byte sweep on raw param/query reads", () => 
 
     const response = await app.request(
       `/api/ws/${encodeURIComponent("\u0000x")}`,
-      { headers: { Upgrade: "websocket", Connection: "Upgrade" } },
+      {
+        headers: {
+          host: "localhost:5173",
+          origin: "http://localhost:5173",
+          Upgrade: "websocket",
+          Connection: "Upgrade",
+        },
+      },
     );
 
     expect(response.status).toBe(400);

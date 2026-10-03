@@ -82,11 +82,23 @@ exact context appears in the ruleset.
 │ pnpm test:mcp            tool → route parity     │
 ├─ Build ──────────────────────────────────────────┤
 │ pnpm build               all apps and packages   │
-│ check:bundle-purity      G12 — portal is clean   │
-│ check:bundle-size        G11 — size budgets      │
+│ pnpm check:bundle-purity G12 — portal is clean   │
+│ pnpm check:bundle-size   G11 — size budgets      │
 │ helm lint + helm template   charts/taskdesk      │
 └──────────────────────────────────────────────────┘
 ```
+
+The Build job runs `pnpm build`, `pnpm check:bundle-purity` and `pnpm check:bundle-size`.
+The purity gate walks static and dynamic chunks from the portal entry using bundler-emitted
+module graph metadata and rejects agent or God Mode modules. The size checker reads the
+separate agent and portal manifests, measures the agent entry and direct work-list route
+graph (including its early-preloaded component chunk), and applies the strict 350 KB agent/
+work-list and 200 KB portal gzip limits.
+
+The fast workflow installs the web workspace's pinned Playwright Chromium browser as a
+setup prerequisite before `pnpm check:tokens`; the check builds the stylesheet and measures
+the declared contrast pairs in that browser. The browser install is setup, not an independent
+quality gate: a missing browser makes `check:tokens` fail.
 
 `pnpm test:contract` regenerates and checks the committed OpenAPI document, runs Redocly's
 recommended lint rules, then runs `oasdiff breaking --fail-on WARN` against `origin/main`.
@@ -169,15 +181,17 @@ The Playwright suite includes the logged-out protected-route redirect and G8 vis
 snapshots for every exported `packages/ui` Storybook story and each implemented inventory
 route. G8 uses deterministic in-browser fixtures, in-repository Chromium baselines, and a
 scope check that requires every inventory route marked in progress or complete to be
-registered in the generated route tree and to have a screenshot case and baseline. A
-registered inventory route group with no in-progress or complete row also fails, so adding
-a screen requires its route, status, fixture and baseline together. The current inventory
-has 122 route rows: two are in progress and have G8 cases; the other 120 are not started.
-The old inherited `/dashboard` routes are not counted as TaskDesk v2 inventory routes
-because they do not match the inventory's canonical URLs. The inventory's future-stage
-screens become required as they move to in progress. The current `/auth/sign-in` screen is
-also snapshotted as a documented legacy route while the inventory's `/agent/sign-in` route
-is not started. The `security`,
+registered in generated route metadata and to have a screenshot case and baseline. Every
+generated route is also parsed and built through the route helpers, including inherited
+routes that are outside the active v2 inventory. A registered inventory route group with no
+in-progress or complete row also fails, so adding a screen requires its route, status,
+fixture and baseline together. The current inventory has 138 screen rows, including 123
+route rows: three are in progress and have G8 cases; the other 120 route rows remain
+planned (112 distinct canonical planned URLs after query variants are collapsed). The generated agent and portal trees contain 38 canonical routes; 35 are inherited
+or otherwise outside the active v2 inventory. Future-stage screens become required as they
+move to in progress. The current
+`/auth/sign-in` screen is also snapshotted as a documented legacy route while the inventory's
+`/agent/sign-in` route is not started. The `security`,
 `reduced-motion`, and `mobile-320` project
 commands above document future suites; none are enabled yet. The `e2e - protected-route
 redirect` smoke, G4's `a11y - accessibility (G4, axe)` scan, and G8's `visual regression
@@ -645,8 +659,9 @@ main                    always deployable, protected
 Release versions are supplied explicitly when a maintainer dispatches the Release workflow.
 The workflow validates SemVer, builds and scans the selected `main` SHA, publishes and signs
 its image, then creates the matching `v<version>` tag and GitHub release at that SHA. It does
-not make a version-bump commit or rewrite project version files. The existing semantic-release
-configuration is not invoked by the release workflow.
+not make a version-bump commit or rewrite project version files. The unused inherited
+semantic-release configuration and dependency family are removed; the signed manual Release
+workflow is authoritative.
 
 ## Release notes
 

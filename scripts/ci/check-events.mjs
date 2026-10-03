@@ -28,7 +28,7 @@
  *   SURFACE   Only `apps/api/src` is scanned (`SOURCE_ROOTS` below), and `walk()` in
  *             `./lib/repo.mjs` additionally skips symlinks and its own
  *             `ignoredDirectories` (`build`/`dist`/`out`, among others) and
- *             `generatedFiles` (`routeTree.gen.ts`). Today that surface is ACCURATE:
+ *             `generatedFiles` (the two TanStack route trees). Today that surface is ACCURATE:
  *             `grep -rln publishEvent --include=*.ts` outside `apps/api/src` (excluding
  *             `node_modules`, this script and its tests) returns nothing. It is NOT
  *             future-proof — the `work_item.*` migration `events.md` already names implies

@@ -2296,7 +2296,11 @@
 			"visibilityUnavailable": "Visibility unavailable",
 			"assignToMe": "Assign to me",
 			"loadOlderActivity": "Load older activity",
-			"loadingOlderActivity": "Loading older activity…"
+			"loadingOlderActivity": "Loading older activity…",
+			"transitionPlaceholder": "选择状态",
+			"transitionNote": "状态转换备注",
+			"transitionNoteRequired": "需要备注",
+			"transitionBlocked": "已阻止：{{reasons}}"
 		}
 	},
 	"serviceCalendars": {
@@ -2432,6 +2436,20 @@
 			"startLabel": "{{label}} start",
 			"starts": "Starts",
 			"timeline": "{{day}} coverage timeline"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "客户门户暂不可用",
+			"description": "客户访问目前尚不可用。如需帮助，请联系服务台管理员。"
+		},
+		"notFound": {
+			"title": "未找到页面",
+			"description": "此页面不可用。请检查地址后重试。"
+		},
+		"error": {
+			"title": "出现问题",
+			"description": "无法加载此页面。请重试。"
 		}
 	}
 }

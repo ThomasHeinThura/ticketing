@@ -23,8 +23,10 @@ Three checks wearing one number — they need three implementations, so they are
   package or `@base-ui/react` outside `packages/ui`, and inside `packages/ui` on any Radix
   import not listed in `packages/ui/KNOWN-RADIX.md` ([ui-extraction-plan.md](ui-extraction-plan.md)).
   This is `check:ui` proper.
-- **G1c — the old directory stays empty.** Fails if anything lands in
-  `apps/web/src/components/ui` after extraction.
+- **G1c — the old directory stays empty.** `scripts/ci/check-ui.mjs` fails if
+  `apps/web/src/components/ui` contains any entry after extraction, including ignored and
+  untracked files. App-specific compositions live under `apps/web/src/components/`; shared
+  primitives live under `packages/ui`.
 
 **Why:** v1 hand-wrote every primitive and got inconsistency, missing icons and ad-hoc
 accessibility. See [ADR 0008](../01-architecture/adr/0008-single-design-system.md).
@@ -32,33 +34,41 @@ accessibility. See [ADR 0008](../01-architecture/adr/0008-single-design-system.m
 **Escape hatch:** an inline `// ui-exempt: <reason>` comment. Reviewed; rarely justified.
 
 
-### G2 · Tokens only
+### G2 · Tokens and density slots
 
-**Fails on:** a hex colour, `rgb()`, `hsl()`, `oklch()`, or an arbitrary Tailwind value
-for colour, spacing, radius or z-index, outside `packages/ui/src/styles/`.
+**Fails on:** a hard-coded colour outside `packages/ui/src/styles/`, and on fixed vertical
+padding/gap utilities placed directly on a registered density slot. The shared classes
+`td-density-row`, `td-density-field`, and `td-density-card` are the only density controls.
+Comfortable is the default; the existing root `compact-mode` preference applies the compact
+values. The currently checked slots are shared table rows, input controls, and `CardPanel` in
+`packages/ui`; they use the classes from `packages/ui/src/styles/density.css`. Ordinary
+layout spacing outside those named slots continues to use Tailwind's built-in scale.
 
-Run by `scripts/check-tokens.mjs`, inherited from v1 — one of the few things it got right.
-
-**Known gap, not yet closeable:** this does not catch a hard-coded density utility (`py-3`
-on a table row) that defeats the comfortable/compact preference — only an *arbitrary*
-value (`p-[13px]`) fails today. [design-tokens.md](design-tokens.md#spacing-z-index-type-scale-shadow-layout--deleted)
-states why: TaskDesk deliberately deleted its own `--space-*` token layer and left the
-density mechanism itself (a semantic spacing token set, or a density utility class) as an
-open follow-up, "recorded here once decided" rather than guessed at now. `G2` gains this
-check once that mechanism is chosen; until then `H5`, a human gate, is the only backstop —
-which is the gap this finding is naming, not a defect in this gate's own logic.
+`scripts/ci/check-tokens.mjs` checks registered rows, fields, and `CardPanel` density markup,
+rejects direct fixed padding/gap utilities there, and uses positive/negative probes. It does
+not claim to enforce arbitrary spacing, radius, or z-index utilities elsewhere. `design-tokens.md`
+owns the class values and the slot inventory.
 
 ### G3 · Contrast
 
-**Fails on:** any declared foreground/background pair below WCAG AA, in either theme.
-
-The declared pairs and the token values this checks are real inputs, not a hypothetical:
-[design-tokens.md](design-tokens.md)'s "Semantic assignments", "Status colours" and
-"Priority and SLA colour tokens" sections give every token a value in both themes, and its
-["Contrast (G3)"](design-tokens.md#contrast-g3) section defines the `pairs.json` schema —
-one entry per declared foreground/background combination, `minRatio` 4.5 for body text and
-3 for large text and non-text indicators. `check-tokens.mjs` composites translucent tokens
-over their effective backdrop before measuring, per that section.
+**Fails on:** any declared, actually used foreground/background pair below WCAG AA in either
+theme, any used pair missing from the manifest, or a stale manifest entry with no observed
+source use. The source inventory currently registers shared Button, Badge, and Input variants;
+it does not claim repository-wide composition coverage.
+`packages/ui/src/styles/pairs.json` records token roles, category/threshold, theme coverage,
+usage owner, actual background class by theme, and effective opaque backdrop. `pnpm
+check:tokens` runs the token/density checks and builds the web stylesheet, then loads that
+stylesheet in Chromium, reads computed colours, composites transparent layers over the
+declared effective backdrop, and checks 4.5:1 body text or 3:1 large text/non-text
+indicators in light and dark themes. It activates hover and pressed attributes on the probe;
+for autofill, it rewrites only the built `:has(:autofill)` state selector to an equivalent
+probe attribute because headless Chromium cannot synthesize autofill. The production class
+selector, declaration, variable values, and cascade remain from the built stylesheet.
+Coverage and failure probes exercise unknown pairs, stale declarations, threshold failures,
+and translucent surfaces. `design-tokens.md` owns the schema and
+`packages/ui/src/styles/theme.css` is the value source. This numerical gate does not approve
+provisional authored colors visually; H1–H6 design review is deferred to P4 under the
+current user decision.
 
 ### G4 · Accessibility
 
@@ -67,13 +77,19 @@ suite, and on any Storybook story.
 
 ### G5 · Every screen has a URL
 
-**Fails on:** a route present in the generated route trees (`routeTree.agent.gen.ts`,
-`routeTree.portal.gen.ts`) but missing from `lib/routes.ts` — which is **generated from
-those trees, never hand-maintained** — or a declared route that fails the build/parse
-round-trip test. `check:inventory` compares the screen inventory's canonical routes (query
-strings stripped) against the same generated list, so there is one source of truth.
+**Fails on:** a route present in either generated tree (`routeTree.agent.gen.ts`,
+`routeTree.portal.gen.ts`) but missing from `generatedRouteMetadata`, re-exported by
+`lib/routes.ts` and generated from those trees, or a generated route template that fails
+the build/parse round-trip test. `check:inventory` compares canonical URLs for inventory
+routes marked in progress or complete with the generated trees. Not-started inventory URLs
+remain planned; the checker reports their count without treating them as working routes.
+Generated inherited and documented legacy routes stay in the registry and round-trip tests,
+but do not become TaskDesk v2 inventory screens. This active-prerequisite scope follows the
+[2026-09-28 applicable-now gate decision](../07-planning/decision-log.md#2026-09-28--10s-gate-scope-semantics-decided-applicable-now-gates-required-future-stage-gates-activate-with-their-prerequisite)
+and the [G8 route-activation decision](../07-planning/decision-log.md#2026-10-01--g8-requires-implemented-screens-now-and-activates-future-routes-with-implementation).
 
-**Also fails on:** for every list surface (a `route`-kind screen with filters, a layout
+**Also fails on:** for every implemented list surface (a `route`-kind screen marked in
+progress or complete with filters, a layout
 switch or a saved-view lens — the `Work`, `Backlog`, `Triage`, `Views` and `My work`
 inventory rows), an E2E assertion that applying a filter changes the URL to encode it, and
 that reloading that exact URL restores the same filter and layout state. Route registration
@@ -186,7 +202,7 @@ portal bundle's module graph (walked from the bundler's own metadata).
 
 Achievable only with **two router trees**: two `tanstackRouter()` plugin instances
 (`routes/agent`, `routes/portal`) generating two route trees, two Rollup inputs
-(`entry.agent.tsx`, `entry.portal.tsx`) and two HTML files. kaneo's single generated
+(`src/main.tsx`, `src/main.portal.tsx`) and two HTML roots. kaneo's single generated
 `routeTree.gen.ts` (49 static route imports) cannot satisfy this; the split is P0 work
 ([ui-extraction-plan.md](ui-extraction-plan.md)).
 
@@ -218,6 +234,12 @@ makes for the terminology overlay — previously an ADR promise with no gate beh
 
 ## Human — at pull request review
 
+For P0–P3, human H1–H6 review is deferred until the integrated P4 review; it is not an
+early implementation or pull-request prerequisite. Record the status as deferred, never as
+approved. The questions below remain the review criteria when that integrated human review
+occurs. Automated accessibility, behavioral, and browser checks continue on the normal
+implementation schedule.
+
 ### H1 · Does it look like kaneo?
 
 The comparison has an artefact: a **kaneo reference screenshot set** captured at P0 (the same
@@ -230,7 +252,7 @@ a memory test.
 
 Open kaneo. Open this. Would they sit next to each other without one looking wrong?
 
-This is the primary question and it is asked every time.
+This is the primary question for the integrated human review at P4.
 
 ### H2 · Progressive disclosure
 

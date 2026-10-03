@@ -2303,7 +2303,11 @@
 			"visibilityUnavailable": "Visibility unavailable",
 			"assignToMe": "Assign to me",
 			"loadOlderActivity": "Load older activity",
-			"loadingOlderActivity": "Loading older activity…"
+			"loadingOlderActivity": "Loading older activity…",
+			"transitionPlaceholder": "Durum seçin",
+			"transitionNote": "Geçiş notu",
+			"transitionNoteRequired": "Not gerekli",
+			"transitionBlocked": "Engellendi: {{reasons}}"
 		}
 	},
 	"serviceCalendars": {
@@ -2439,6 +2443,20 @@
 			"startLabel": "{{label}} start",
 			"starts": "Starts",
 			"timeline": "{{day}} coverage timeline"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Müşteri portalı kullanılamıyor",
+			"description": "Müşteri erişimi henüz kullanılamıyor. Yardım için servis masası yöneticinizle iletişime geçin."
+		},
+		"notFound": {
+			"title": "Sayfa bulunamadı",
+			"description": "Bu sayfa kullanılamıyor. Adresi kontrol edip tekrar deneyin."
+		},
+		"error": {
+			"title": "Bir şeyler ters gitti",
+			"description": "Sayfa yüklenemedi. Tekrar deneyin."
 		}
 	}
 }

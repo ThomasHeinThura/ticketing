@@ -133,6 +133,9 @@
           "updateTasks": {
             "type": "boolean"
           },
+          "transitionTasks": {
+            "type": "boolean"
+          },
           "createTasks": {
             "type": "boolean"
           },
@@ -183,6 +186,7 @@
           "updateProjects",
           "deleteProjects",
           "updateTasks",
+          "transitionTasks",
           "createTasks",
           "deleteTasks",
           "assignTasks",
@@ -4380,6 +4384,9 @@
           "toStateTemplateId": {
             "type": "string"
           },
+          "toStateName": {
+            "type": "string"
+          },
           "toStateId": {
             "type": "string"
           },
@@ -4420,6 +4427,7 @@
         "required": [
           "transitionId",
           "toStateTemplateId",
+          "toStateName",
           "toStateId",
           "notePolicy",
           "noteVisibility",

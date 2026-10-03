@@ -2317,7 +2317,11 @@
 			"visibilityUnavailable": "Visibility unavailable",
 			"assignToMe": "Assign to me",
 			"loadOlderActivity": "Load older activity",
-			"loadingOlderActivity": "Loading older activity…"
+			"loadingOlderActivity": "Loading older activity…",
+			"transitionPlaceholder": "Wybierz stan",
+			"transitionNote": "Notatka przejścia",
+			"transitionNoteRequired": "Notatka jest wymagana",
+			"transitionBlocked": "Zablokowano: {{reasons}}"
 		}
 	},
 	"serviceCalendars": {
@@ -2453,6 +2457,20 @@
 			"startLabel": "{{label}} start",
 			"starts": "Starts",
 			"timeline": "{{day}} coverage timeline"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Portal klienta jest niedostępny",
+			"description": "Dostęp dla klientów nie jest jeszcze dostępny. Skontaktuj się z administratorem service desk."
+		},
+		"notFound": {
+			"title": "Nie znaleziono strony",
+			"description": "Ta strona jest niedostępna. Sprawdź adres i spróbuj ponownie."
+		},
+		"error": {
+			"title": "Coś poszło nie tak",
+			"description": "Nie udało się wczytać strony. Spróbuj ponownie."
 		}
 	}
 }

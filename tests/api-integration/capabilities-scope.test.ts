@@ -21,6 +21,7 @@ const EXPECTED_CAPABILITY_CHECKS: Record<string, Record<string, string[]>> = {
   updateProjects: { project: ["update"] },
   deleteProjects: { project: ["delete"] },
   updateTasks: { work_item: ["update"] },
+  transitionTasks: { work_item: ["transition"] },
   createTasks: { work_item: ["create"] },
   deleteTasks: { work_item: ["delete"] },
   assignTasks: { work_item: ["assign"] },

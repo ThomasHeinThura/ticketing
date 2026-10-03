@@ -2317,7 +2317,11 @@
 			"visibilityUnavailable": "Visibility unavailable",
 			"assignToMe": "Assign to me",
 			"loadOlderActivity": "Load older activity",
-			"loadingOlderActivity": "Loading older activity…"
+			"loadingOlderActivity": "Loading older activity…",
+			"transitionPlaceholder": "Виберіть стан",
+			"transitionNote": "Примітка до переходу",
+			"transitionNoteRequired": "Потрібна примітка",
+			"transitionBlocked": "Заблоковано: {{reasons}}"
 		}
 	},
 	"serviceCalendars": {
@@ -2453,6 +2457,20 @@
 			"startLabel": "{{label}} start",
 			"starts": "Starts",
 			"timeline": "{{day}} coverage timeline"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Портал клієнтів недоступний",
+			"description": "Доступ для клієнтів поки недоступний. Зверніться по допомогу до адміністратора служби підтримки."
+		},
+		"notFound": {
+			"title": "Сторінку не знайдено",
+			"description": "Ця сторінка недоступна. Перевірте адресу та спробуйте ще раз."
+		},
+		"error": {
+			"title": "Щось пішло не так",
+			"description": "Не вдалося завантажити сторінку. Спробуйте ще раз."
 		}
 	}
 }

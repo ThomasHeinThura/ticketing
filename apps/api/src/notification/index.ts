@@ -8,6 +8,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import clearNotifications from "./controllers/clear-notifications";
 import createNotification from "./controllers/create-notification";
 import getNotifications from "./controllers/get-notifications";
@@ -96,9 +97,13 @@ const clearAllRoute = createRoute({
 });
 
 const notification = apiRouter()
-  .openapi(listNotificationsRoute, async (c) =>
-    c.json(await getNotifications(c.get("userId")), 200),
-  )
+  .openapi(listNotificationsRoute, async (c) => {
+    const notifications = await getNotifications(c.get("userId"));
+    // This route's completed query filters by the authenticated caller's userId.
+    // Record only this proven self-read boundary; a failed query remains unknown.
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.json(notifications, 200);
+  })
   .openapi(createNotificationRoute, async (c) => {
     const {
       title,
