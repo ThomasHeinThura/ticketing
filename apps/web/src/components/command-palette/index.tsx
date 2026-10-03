@@ -25,7 +25,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
@@ -79,7 +78,6 @@ function CommandPalette() {
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
-  const preloadedProjectsWorkspaces = useRef(new Set<string>());
   useEffect(() => {
     let idleCallbackId: number | undefined;
     let frameId: number | undefined;
@@ -103,24 +101,16 @@ function CommandPalette() {
 
   const preloadProjectsPage = useCallback(() => {
     if (!workspace?.id) return;
-    if (preloadedProjectsWorkspaces.current.has(workspace.id)) return;
-    preloadedProjectsWorkspaces.current.add(workspace.id);
     // TanStack's auto-split route component and its nested React.lazy page are
     // separate chunks; warm both as soon as keyboard or pointer intent is clear.
-    void Promise.all([
-      router.preloadRoute({
+    void router
+      .preloadRoute({
         to: "/dashboard/workspace/$workspaceId",
         params: { workspaceId: workspace.id },
-      }),
-      import("@/components/project-list/projects-page"),
-    ]).catch(() => {
-      preloadedProjectsWorkspaces.current.delete(workspace.id);
-    });
+      })
+      .catch(() => {});
+    void import("@/components/project-list/projects-page").catch(() => {});
   }, [router, workspace?.id]);
-
-  useEffect(() => {
-    if (open) preloadProjectsPage();
-  }, [open, preloadProjectsPage]);
 
   const handleItemHighlighted = useCallback(
     (value: unknown, { reason }: { reason: string }) => {
