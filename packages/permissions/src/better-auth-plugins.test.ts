@@ -18,12 +18,20 @@ describe("the approved plugin list", () => {
   it("passes when the constructed list is exactly the kept set", () => {
     const result = checkPluginList(KEPT);
     expect(result.ok).toBe(true);
-    // passkey remains a later-stage addition.
-    expect(result.pendingAddition).toEqual(["passkey"]);
+    // P0 two-factor is also an approved addition; passkey is the later-stage addition.
+    expect(result.pendingAddition).toEqual(["passkey", "two-factor"]);
   });
 
-  it("requires the P0 local-factor plugin once enabled", () => {
-    const constructed = checkPluginList([...KEPT, "two-factor"]);
+  it("accepts the explicit current P0 plugin construction", () => {
+    const constructed = checkPluginList([
+      "last-login-method",
+      "magic-link",
+      "two-factor",
+      "email-otp",
+      "generic-oauth",
+      "api-key",
+      "admin",
+    ]);
     expect(constructed.ok).toBe(true);
     expect(constructed.pendingAddition).toEqual(["passkey"]);
   });
