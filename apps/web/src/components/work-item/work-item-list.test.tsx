@@ -15,14 +15,17 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+const mocks = vi.hoisted(() => ({
+  loadDetail: vi.fn().mockResolvedValue({ default: () => null }),
+  getWorkItem: vi.fn().mockResolvedValue({}),
+  navigate: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@tanstack/react-router", () => ({
-  useRouter: () => ({ preloadRoute: vi.fn().mockResolvedValue(undefined) }),
-  Link: ({
-    children,
-    ...props
-  }: React.PropsWithChildren<Record<string, unknown>>) => (
-    <a {...props}>{children}</a>
-  ),
+  useRouter: () => ({
+    preloadRoute: vi.fn().mockResolvedValue(undefined),
+    navigate: mocks.navigate,
+  }),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -38,11 +41,6 @@ const baseProps = {
   onSortChange: vi.fn(),
   onRetry: vi.fn(),
 };
-
-const mocks = vi.hoisted(() => ({
-  loadDetail: vi.fn().mockResolvedValue({ default: () => null }),
-  getWorkItem: vi.fn().mockResolvedValue({}),
-}));
 
 vi.mock("@/components/work-item/load-work-item-detail", () => ({
   default: mocks.loadDetail,
@@ -92,6 +90,27 @@ const workItem = {
 };
 
 describe("WorkItemList", () => {
+  it("keeps real detail URLs and uses client navigation for an unmodified click", () => {
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    const link = screen.getByRole("link", { name: "PROJ-123" });
+    expect(link).toHaveAttribute("href", "/agent/work-items/PROJ-123");
+
+    fireEvent.click(link, { button: 0 });
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/agent/work-items/$key",
+      params: { key: "PROJ-123" },
+    });
+  });
+
   it("preloads detail code and data when a reachable row receives pointer intent", async () => {
     renderWithQueryClient(
       <WorkItemList

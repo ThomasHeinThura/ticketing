@@ -66,7 +66,6 @@ function CommandPalette() {
   const { setTheme } = useUserPreferencesStore();
   const navigate = useNavigate();
   const router = useRouter();
-  const location = useLocation();
   const { data: workspace } = useActiveWorkspace();
   const { data: session } = authClient.useSession();
   const { data: config } = useGetConfig();
@@ -79,10 +78,6 @@ function CommandPalette() {
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
-  const projectIdFromRoute =
-    location.pathname.match(/\/project\/([^/]+)/)?.[1] ?? undefined;
-  const isBacklogView = location.pathname.endsWith("/backlog");
-
   useEffect(() => {
     let mounted = true;
     void (document.fonts?.ready ?? Promise.resolve()).then(() => {
@@ -93,57 +88,30 @@ function CommandPalette() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!open || !workspace?.id) return;
+  const preloadProjectsRoute = useCallback(() => {
+    if (!workspace?.id) return;
+    void router
+      .preloadRoute({
+        to: "/dashboard/workspace/$workspaceId",
+        params: { workspaceId: workspace.id },
+      })
+      .catch(() => {});
+  }, [router, workspace?.id]);
 
-    // Opening the palette makes Projects a likely next destination. Warm only its
-    // authorized route module while the user chooses a command; route navigation
-    // still runs the normal auth guard, and project data remains demand-loaded.
-    // Defer the import until after the opening paint so route work cannot delay
-    // the palette's first visible response.
-    let idleCallbackId: number | undefined;
-    let deferTimeoutId: number | undefined;
-    let fallbackTimeoutId: number | undefined;
-    const frameId = requestAnimationFrame(() => {
-      const preload = () => {
-        void router
-          .preloadRoute({
-            to: "/dashboard/workspace/$workspaceId",
-            params: { workspaceId: workspace.id },
-          })
-          .catch(() => {});
-      };
-      const requestIdleCallback = (
-        window as Window & {
-          requestIdleCallback?: typeof window.requestIdleCallback;
-        }
-      ).requestIdleCallback;
-
-      deferTimeoutId = window.setTimeout(() => {
-        if (typeof requestIdleCallback === "function") {
-          idleCallbackId = requestIdleCallback.call(window, preload, {
-            timeout: 1500,
-          });
-        } else {
-          fallbackTimeoutId = window.setTimeout(preload, 0);
-        }
-      }, 250);
-    });
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      if (deferTimeoutId !== undefined) window.clearTimeout(deferTimeoutId);
-      const cancelIdleCallback = (
-        window as Window & {
-          cancelIdleCallback?: typeof window.cancelIdleCallback;
-        }
-      ).cancelIdleCallback;
-      if (idleCallbackId !== undefined && cancelIdleCallback)
-        cancelIdleCallback.call(window, idleCallbackId);
-      if (fallbackTimeoutId !== undefined)
-        window.clearTimeout(fallbackTimeoutId);
-    };
-  }, [open, router, workspace?.id]);
+  const handleItemHighlighted = useCallback(
+    (value: unknown, { reason }: { reason: string }) => {
+      if (
+        value === "projects" &&
+        (reason === "keyboard" || reason === "pointer")
+      ) {
+        // Load the route after explicit destination intent. This keeps route
+        // work off the palette's opening path and lets keyboard/pointer users
+        // warm the route before activating the highlighted command.
+        preloadProjectsRoute();
+      }
+    },
+    [preloadProjectsRoute],
+  );
 
   useRegisterShortcuts({
     shortcuts: {
@@ -350,7 +318,10 @@ function CommandPalette() {
     <>
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandDialogPopup instant keepMounted={keepPaletteMounted}>
-          <Command items={groupedItems}>
+          <Command
+            items={groupedItems}
+            onItemHighlighted={handleItemHighlighted}
+          >
             <CommandInput
               autoFocus={false}
               placeholder={t("navigation:commandPalette.inputPlaceholder")}
@@ -425,12 +396,7 @@ function CommandPalette() {
           <SearchCommandMenu open setOpen={setIsSearchOpen} />
         ) : null}
         {isCreateTaskOpen ? (
-          <CreateTaskModal
-            open
-            projectId={projectIdFromRoute}
-            status={isBacklogView ? "planned" : undefined}
-            onClose={() => setIsCreateTaskOpen(false)}
-          />
+          <CreateTaskRouteModal onClose={() => setIsCreateTaskOpen(false)} />
         ) : null}
         {isCreateWorkspaceOpen ? (
           <CreateWorkspaceModal
@@ -446,6 +412,21 @@ function CommandPalette() {
         ) : null}
       </Suspense>
     </>
+  );
+}
+
+function CreateTaskRouteModal({ onClose }: { onClose: () => void }) {
+  const { pathname } = useLocation();
+  const projectId = pathname.match(/\/project\/([^/]+)/)?.[1] ?? undefined;
+  const status = pathname.endsWith("/backlog") ? "planned" : undefined;
+
+  return (
+    <CreateTaskModal
+      open
+      projectId={projectId}
+      status={status}
+      onClose={onClose}
+    />
   );
 }
 

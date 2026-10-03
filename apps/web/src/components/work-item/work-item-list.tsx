@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Link, useRouter } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
 import {
   Alert,
   AlertDescription,
@@ -28,7 +28,7 @@ import {
   ListTodo,
   TriangleAlert,
 } from "lucide-react";
-import { memo, useEffect, useRef } from "react";
+import { type MouseEvent, memo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
 import getWorkItem from "@/fetchers/work-item/get-work-item";
@@ -203,6 +203,25 @@ function WorkItemList({
     });
   }
 
+  function navigateToDetail(event: MouseEvent<HTMLAnchorElement>, key: string) {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    void router.navigate({
+      to: routes.workItemDetail.path,
+      params: { key },
+    });
+  }
+
   if (isError) {
     return (
       <Alert variant="error" data-testid="work-item-list-error">
@@ -299,16 +318,19 @@ function WorkItemList({
                 {item.unavailableFields.includes("key") ? (
                   <UnavailableField field="key" t={t} />
                 ) : (
-                  <Link
-                    to={routes.workItemDetail.path}
-                    params={{ key: item.key }}
-                    preload="intent"
+                  // Keep a real URL and native modified-click behavior without
+                  // one router-location subscription per list anchor. Large lists
+                  // render two anchors per item, so route changes use one shared
+                  // navigate handler instead of notifying every Link instance.
+                  <a
+                    href={routes.workItemDetail.build({ key: item.key })}
                     onMouseEnter={() => prefetchDetail(item.key)}
                     onFocus={() => prefetchDetail(item.key)}
+                    onClick={(event) => navigateToDetail(event, item.key)}
                     className="font-medium text-primary underline-offset-2 hover:underline"
                   >
                     {item.key}
-                  </Link>
+                  </a>
                 )}
               </TableCell>
               <TableCell className="max-w-xs truncate whitespace-nowrap">
@@ -320,17 +342,16 @@ function WorkItemList({
                   // trustworthy.
                   <span title={item.title}>{item.title}</span>
                 ) : (
-                  <Link
-                    to={routes.workItemDetail.path}
-                    params={{ key: item.key }}
-                    preload="intent"
+                  <a
+                    href={routes.workItemDetail.build({ key: item.key })}
                     onMouseEnter={() => prefetchDetail(item.key)}
                     onFocus={() => prefetchDetail(item.key)}
+                    onClick={(event) => navigateToDetail(event, item.key)}
                     className="hover:underline"
                     title={item.title}
                   >
                     {item.title}
-                  </Link>
+                  </a>
                 )}
               </TableCell>
               <TableCell>

@@ -1,8 +1,12 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { KeyboardShortcutsProvider } from "@/hooks/use-keyboard-shortcuts";
 import CommandPalette from "./index";
+
+const mocks = vi.hoisted(() => ({
+  preloadRoute: vi.fn().mockResolvedValue(undefined),
+}));
 
 /**
  * Issue #407: rendering `CommandPalette` inside the real
@@ -19,7 +23,7 @@ import CommandPalette from "./index";
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
   useLocation: () => ({ pathname: "/dashboard/workspace/w1" }),
-  useRouter: () => ({ preloadRoute: vi.fn().mockResolvedValue(undefined) }),
+  useRouter: () => ({ preloadRoute: mocks.preloadRoute }),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -38,7 +42,7 @@ vi.mock("@/hooks/queries/config/use-get-config", () => ({
 }));
 
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
-  default: () => ({ data: undefined }),
+  default: () => ({ data: { id: "w1" } }),
 }));
 
 vi.mock("@/store/user-preferences", () => ({
@@ -63,7 +67,28 @@ vi.mock("@/components/shared/modals/create-project-modal", () => ({
 vi.mock("@taskdesk/ui", () => {
   const Null = ({ children }: PropsWithChildren) => <>{children}</>;
   return {
-    Command: Null,
+    Command: ({
+      children,
+      onItemHighlighted,
+    }: PropsWithChildren<{
+      onItemHighlighted?: (
+        value: string | undefined,
+        details: { reason: string },
+      ) => void;
+    }>) => (
+      <>
+        <button
+          type="button"
+          data-testid="highlight-project-command"
+          onClick={() =>
+            onItemHighlighted?.("projects", { reason: "keyboard" })
+          }
+        >
+          Highlight Projects with keyboard
+        </button>
+        {children}
+      </>
+    ),
     CommandCollection: Null,
     CommandDialog: ({
       open,
@@ -88,6 +113,7 @@ vi.mock("@taskdesk/ui", () => {
 
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
   vi.restoreAllMocks();
 });
 
@@ -110,5 +136,24 @@ describe("CommandPalette (#407)", () => {
       </KeyboardShortcutsProvider>,
     );
     expect(() => unmount()).not.toThrow();
+  });
+
+  it("preloads the Projects route on explicit keyboard destination intent", () => {
+    render(
+      <KeyboardShortcutsProvider>
+        <CommandPalette />
+      </KeyboardShortcutsProvider>,
+    );
+
+    fireEvent.keyDown(document, { key: "k", ctrlKey: true });
+    expect(screen.getByTestId("command-dialog")).toBeInTheDocument();
+    expect(mocks.preloadRoute).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("highlight-project-command"));
+
+    expect(mocks.preloadRoute).toHaveBeenCalledWith({
+      to: "/dashboard/workspace/$workspaceId",
+      params: { workspaceId: "w1" },
+    });
   });
 });
