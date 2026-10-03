@@ -794,6 +794,11 @@ describe("WorkItemJourney", () => {
       await screen.findByRole("option", { name: /Blocked state/ }),
     ).toHaveAttribute("aria-disabled", "true");
     fireEvent.click(await screen.findByRole("option", { name: /Done/ }));
+    expect(
+      screen.getByRole("combobox", {
+        name: "workItems:detail.stateLabel",
+      }),
+    ).toHaveTextContent("Done");
     const submit = screen.getByRole("button", {
       name: "workItems:journey.save",
     });

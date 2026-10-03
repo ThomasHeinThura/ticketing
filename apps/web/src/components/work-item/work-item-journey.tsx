@@ -571,7 +571,9 @@ function WorkItemJourneyForItem({
                   <SelectTrigger id="work-item-next-state">
                     <SelectValue
                       placeholder={t("workItems:journey.transitionPlaceholder")}
-                    />
+                    >
+                      {selectedTransition?.toStateName}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {transitions.data?.map((offer) => {
