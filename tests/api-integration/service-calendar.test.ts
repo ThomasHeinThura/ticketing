@@ -593,6 +593,268 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
     },
   );
 
+  it("CAL-17: imports atomically, preserves rows, deduplicates retries and checks CAS", async () => {
+    const creator = await createWorkspaceMember({ role: "admin" });
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, creator.user.id));
+    mockAuthenticatedSession({ ...creator.user, role: "admin" });
+    const { app } = createApp();
+    const create = await app.request("/api/service-calendars", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: creator.workspace.id,
+        name: "Holiday import",
+        timezone: "UTC",
+        windows: weekdayWindows,
+        holidays: [{ date: "2026-01-01", name: "Existing" }],
+      }),
+    });
+    expect(create.status).toBe(200);
+    const created = (await create.json()) as {
+      id: string;
+      version: number;
+      holidays: unknown[];
+    };
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//TaskDesk//Test//EN",
+      "BEGIN:VEVENT",
+      "UID:2026-new@example.test",
+      "DTSTAMP:20261003T120000Z",
+      "DTSTART;VALUE=DATE:20261224",
+      "DTEND;VALUE=DATE:20261227",
+      "SUMMARY:Company closure",
+      "END:VEVENT",
+      "BEGIN:VEVENT",
+      "UID:2026-existing@example.test",
+      "DTSTAMP:20261003T120000Z",
+      "DTSTART;VALUE=DATE:20260101",
+      "SUMMARY:Existing",
+      "END:VEVENT",
+      "BEGIN:VEVENT",
+      "UID:2026-other@example.test",
+      "DTSTAMP:20261003T120000Z",
+      "DTSTART;VALUE=DATE:20260101",
+      "SUMMARY:New Year observed",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    const importOnce = await app.request(
+      `/api/service-calendars/${created.id}/holidays/import`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "if-match": `"${created.version}"`,
+        },
+        body: JSON.stringify({ ics }),
+      },
+    );
+    expect(importOnce.status).toBe(200);
+    const first = (await importOnce.json()) as {
+      calendar: { version: number; holidays: unknown[] };
+      importedCount: number;
+      duplicateCount: number;
+    };
+    expect(first).toMatchObject({ importedCount: 2, duplicateCount: 1 });
+    expect(first.calendar.holidays).toEqual([
+      { date: "2026-01-01", name: "Existing" },
+      { from: "2026-12-24", to: "2026-12-26", name: "Company closure" },
+      { date: "2026-01-01", name: "New Year observed" },
+    ]);
+    const auditAfterAppend = await db
+      .select()
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityType, "service_calendar"),
+          eq(schema.auditLogTable.entityId, created.id),
+        ),
+      );
+    const outboxAfterAppend = await db
+      .select()
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.workspaceId, creator.workspace.id));
+    expect(
+      auditAfterAppend.filter(
+        (row) => row.action === "service_calendar.updated",
+      ),
+    ).toHaveLength(1);
+    expect(
+      outboxAfterAppend.filter(
+        (row) => row.kind === "service_calendar.updated",
+      ),
+    ).toHaveLength(1);
+
+    const retry = await app.request(
+      `/api/service-calendars/${created.id}/holidays/import`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "if-match": `"${first.calendar.version}"`,
+        },
+        body: JSON.stringify({ ics }),
+      },
+    );
+    expect(retry.status).toBe(200);
+    expect(await retry.json()).toMatchObject({
+      importedCount: 0,
+      duplicateCount: 3,
+    });
+    const afterRetry = await db
+      .select()
+      .from(schema.serviceCalendarTable)
+      .where(eq(schema.serviceCalendarTable.id, created.id));
+    expect(afterRetry[0]?.version).toBe(first.calendar.version);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityType, "service_calendar"),
+            eq(schema.auditLogTable.entityId, created.id),
+          ),
+        ),
+    ).toHaveLength(auditAfterAppend.length);
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.workspaceId, creator.workspace.id)),
+    ).toHaveLength(outboxAfterAppend.length);
+
+    const staleNoop = await app.request(
+      `/api/service-calendars/${created.id}/holidays/import`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "if-match": `"${created.version}"`,
+        },
+        body: JSON.stringify({ ics }),
+      },
+    );
+    expect(staleNoop.status).toBe(409);
+    const invalid = await app.request(
+      `/api/service-calendars/${created.id}/holidays/import`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ics: ics.replace("END:VEVENT", "RRULE:FREQ=YEARLY\r\nEND:VEVENT"),
+        }),
+      },
+    );
+    expect(invalid.status).toBe(400);
+    expect(
+      (
+        await db
+          .select()
+          .from(schema.serviceCalendarTable)
+          .where(eq(schema.serviceCalendarTable.id, created.id))
+      )[0]?.version,
+    ).toBe(first.calendar.version);
+  });
+
+  it("CAL-17 / CAL-14: commits imported holidays and the durable event when SQL audit insertion fails", async () => {
+    const creator = await createWorkspaceMember({ role: "admin" });
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, creator.user.id));
+    mockAuthenticatedSession({ ...creator.user, role: "admin" });
+    const { app } = createApp();
+    const created = await createCalendar({
+      workspaceId: creator.workspace.id,
+      name: "Audit failure import",
+      timezone: "UTC",
+      windows: weekdayWindows,
+      holidays: [],
+      actor: { actorId: creator.user.id, actorType: "person", apiKeyId: null },
+    });
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//TaskDesk//Test//EN",
+      "BEGIN:VEVENT",
+      "UID:failure-case",
+      "DTSTAMP:20261003T120000Z",
+      "DTSTART;VALUE=DATE:20261225",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].join("\r\n");
+    await armAuditInsertFailure();
+    let response: Response;
+    try {
+      response = await app.request(
+        `/api/service-calendars/${created.id}/holidays/import`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "if-match": `"${created.version}"`,
+          },
+          body: JSON.stringify({ ics }),
+        },
+      );
+    } finally {
+      await disarmAuditInsertFailure();
+    }
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      importedCount: 1,
+      duplicateCount: 0,
+    });
+    expect(
+      (
+        await db
+          .select()
+          .from(schema.serviceCalendarTable)
+          .where(eq(schema.serviceCalendarTable.id, created.id))
+      )[0]?.holidays,
+    ).toEqual([{ date: "2026-12-25" }]);
+    expect(
+      await db
+        .select()
+        .from(schema.auditLogTable)
+        .where(
+          and(
+            eq(schema.auditLogTable.entityType, "service_calendar"),
+            eq(schema.auditLogTable.entityId, created.id),
+          ),
+        ),
+    ).toHaveLength(1);
+    expect(
+      await db
+        .select()
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.workspaceId, creator.workspace.id)),
+    ).toHaveLength(2);
+    const auditFailureNotifications = await db
+      .select({
+        eventData: schema.notificationTable.eventData,
+      })
+      .from(schema.notificationTable)
+      .where(
+        and(
+          eq(schema.notificationTable.userId, creator.user.id),
+          eq(schema.notificationTable.type, "audit_write_failed"),
+        ),
+      );
+    expect(auditFailureNotifications.length).toBeGreaterThan(0);
+    expect(
+      JSON.stringify(
+        auditFailureNotifications.map(({ eventData }) => eventData),
+      ),
+    ).not.toContain("injected audit insert failure");
+  });
+
   it("CAL-14: keeps calendar writes when audit inserts fail and withholds deletion", async () => {
     const creator = await createWorkspaceMember({ role: "admin" });
     await db
@@ -1205,9 +1467,30 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
         body: JSON.stringify({ name: "Must not be updated" }),
       },
     );
+    const deniedImport = await app.request(
+      `/api/service-calendars/${calendar.id}/holidays/import`,
+      {
+        method: "POST",
+        headers: keyHeaders,
+        body: JSON.stringify({
+          ics: [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//TaskDesk//Test//EN",
+            "BEGIN:VEVENT",
+            "UID:denied-import",
+            "DTSTAMP:20261003T120000Z",
+            "DTSTART;VALUE=DATE:20261225",
+            "END:VEVENT",
+            "END:VCALENDAR",
+          ].join("\r\n"),
+        }),
+      },
+    );
 
     expect.soft(deniedCreate.status).toBe(403);
     expect.soft(deniedUpdate.status).toBe(403);
+    expect.soft(deniedImport.status).toBe(403);
     expect
       .soft(await db.select().from(schema.serviceCalendarTable))
       .toHaveLength(1);

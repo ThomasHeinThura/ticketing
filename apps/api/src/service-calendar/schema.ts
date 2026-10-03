@@ -82,3 +82,7 @@ export const updateCalendarBody = calendarDataSchema
   .partial()
   .extend({ name: z.string().trim().min(1).max(120).optional() })
   .refine((value) => Object.keys(value).length > 0);
+
+export const importHolidayBody = z.object({
+  ics: z.string().min(1),
+});

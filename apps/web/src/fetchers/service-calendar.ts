@@ -10,6 +10,11 @@ export type ServiceCalendarPage = InferResponseType<
   (typeof client)["service-calendars"]["$get"],
   200
 >;
+export type HolidayImportResponse = {
+  calendar: ServiceCalendar;
+  importedCount: number;
+  duplicateCount: number;
+};
 export type ServiceCalendarPreview = InferResponseType<
   (typeof client)["service-calendars"][":id"]["preview"]["$get"],
   200
@@ -130,6 +135,56 @@ export async function updateServiceCalendar({
     throw new HttpError(response.status, detail || "Failed to save calendar");
   }
 
+  return response.json();
+}
+
+export async function importServiceCalendarHolidays(input: {
+  id: string;
+  version: number;
+  ics: string;
+}): Promise<HolidayImportResponse> {
+  const response = await client["service-calendars"][
+    ":id"
+  ].holidays.import.$post({
+    param: { id: input.id },
+    header: { "if-match": `"${input.version}"` },
+    json: { ics: input.ics },
+  });
+  if (!response.ok) {
+    const detail = await response.text();
+    let message = detail;
+    try {
+      const problem = JSON.parse(detail) as {
+        message?: unknown;
+        detail?: unknown;
+      };
+      if (typeof problem.message === "string") message = problem.message;
+      else if (typeof problem.detail === "string") message = problem.detail;
+    } catch {
+      // Keep a plain-text response when the server did not return a problem document.
+    }
+    if (response.status === 409) {
+      let conflict: {
+        message?: string;
+        assertedVersion?: number;
+        currentVersion?: number;
+      } = {};
+      try {
+        conflict = JSON.parse(detail) as typeof conflict;
+      } catch {
+        /* The plain-text detail remains available. */
+      }
+      throw new ServiceCalendarConflictError(
+        conflict.message ?? "Calendar changed since it was loaded",
+        conflict.assertedVersion ?? input.version,
+        conflict.currentVersion ?? input.version,
+      );
+    }
+    throw new HttpError(
+      response.status,
+      message || "Failed to import holidays",
+    );
+  }
   return response.json();
 }
 

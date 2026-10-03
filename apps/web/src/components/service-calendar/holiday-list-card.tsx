@@ -9,7 +9,8 @@ import {
 import { Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { HolidayFields } from "@/components/service-calendar/holiday-fields";
-import type { Holiday } from "@/fetchers/service-calendar";
+import { HolidayImportPanel } from "@/components/service-calendar/holiday-import-panel";
+import type { Holiday, ServiceCalendar } from "@/fetchers/service-calendar";
 
 export function HolidayListCard({
   holidays,
@@ -18,6 +19,9 @@ export function HolidayListCard({
   onChange,
   onPatch,
   onRemove,
+  calendar,
+  canImport,
+  onImported,
 }: {
   holidays: Holiday[];
   holidayIds: string[];
@@ -25,6 +29,9 @@ export function HolidayListCard({
   onChange: (index: number, holiday: Holiday) => void;
   onPatch: (index: number, patch: Partial<Holiday>) => void;
   onRemove: (index: number) => void;
+  calendar?: ServiceCalendar;
+  canImport: boolean;
+  onImported: (holidays: Holiday[]) => void;
 }) {
   const { t } = useTranslation("serviceCalendars");
   return (
@@ -43,6 +50,9 @@ export function HolidayListCard({
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
+        {calendar && canImport ? (
+          <HolidayImportPanel calendar={calendar} onImported={onImported} />
+        ) : null}
         {holidays.length ? (
           holidays.map((holiday, index) => (
             <HolidayFields

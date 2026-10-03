@@ -5,6 +5,45 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-03 · Select the bounded P2 holiday-import profile
+
+**Decision:** complete calendar holiday import in a separate full P2 implementation batch
+under Thomas's standing authorization for recommended decisions. Record the profile and
+API DTO in `service-calendars.md` before implementation. The initial profile accepts UTF-8
+RFC 5545 VCALENDAR version 2.0 containing finite all-day VEVENTs. DTSTART is required with
+`VALUE=DATE`; optional DATE DTEND is exclusive and defaults to the next day. Preserve an
+inclusive stored range after converting that exclusive endpoint. SUMMARY is optional plain
+text, with RFC unfolding/escaping and safe rendering. Require syntactically valid UID and
+DTSTAMP metadata; they confer no authority. This is a holiday-file importer, not scheduling:
+reject timed/TZID values, recurrence/exception properties, DURATION, non-VEVENT/nested
+components and malformed or unsupported properties with an actionable error. Permit only
+the documented safe calendar/event metadata allowlist; never fetch URLs or execute data.
+No partial successful import, silently dropped event or invented recurrence interpretation.
+Reference: [RFC 5545](https://www.rfc-editor.org/rfc/rfc5545.html), sections 3.1, 3.3.4,
+3.3.11 and 3.6.1. The supported subset and resource limits below are product decisions.
+
+Bound decoded input to 256 KiB UTF-8, 1,000 events, 8 KiB per unfolded content line,
+120 characters per holiday name and 366 covered dates per finite event. Reject an empty
+file/event set and out-of-range real dates; reuse canonical calendar date bounds. Preserve
+existing holidays. Deduplicate exact canonical holiday identities (shape/date or range or
+annual tuple plus normalized name); report added and duplicate counts. Different named
+holidays on the same day remain legitimate. Identical retries are no-op imports: do not
+advance version or emit mutation effects for zero additions. A supplied If-Match must still
+be validated under the row lock before reporting a no-op.
+
+Use existing `POST /api/service-calendars/{id}/holidays/import`, `sla_policy:manage` and
+workspace reach, with JSON `{ics: string}` and optional canonical If-Match. Register the
+response `{calendar, importedCount, duplicateCount}` using the existing safe calendar DTO.
+Parse/validate before mutation, then recheck reach/concurrency and append under the existing
+calendar lock, audit-savepoint, durable event and administrator-alert behavior. Reuse the
+registered calendar-update action/event; no new identifier, dependency, migration, external
+service or direct deletion is selected. Finish shared-UI file selection, confirmation/preview,
+error/partial-input refusal, translations, cache refresh and real persisted browser/API
+proof. Keep unavailable impact counts truthful under the existing CAL-13 limitation.
+Country presets and the other documented calendar dependencies remain distinct work.
+This selection is not independent review, protected acceptance or phase completion.
+
+
 ### 2026-10-03 · Complete the existing cookie CSRF requirement in the P0 implementation batch
 
 **Decision:** implement security-model.md's existing Origin/Referer **and** double-submit

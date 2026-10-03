@@ -2324,7 +2324,7 @@
 			"discardReload": "Discard draft and reload latest",
 			"editableLegend": "Editable service calendar settings",
 			"keepDraft": "Keep my draft",
-			"limitedDescription": "Configure windows and holidays manually. Presets, cloning, country holidays, .ics import, reference counts, and safe deletion are not available in the current API slice.",
+			"limitedDescription": "Configure windows and holidays manually or import a supported .ics file. Presets, cloning, country holidays, reference counts, and safe deletion are not available in the current API slice.",
 			"limitedTitle": "Limited calendar tools",
 			"loadErrorDescription": "The calendar may be unavailable or outside your workspace access.",
 			"loadErrorTitle": "Calendar could not be loaded",
@@ -2381,7 +2381,7 @@
 			"readOnlyTitle": "Read-only access",
 			"retry": "Retry",
 			"title": "Service calendars",
-			"toolsDescription": "Presets, calendar cloning, country holidays, and .ics import are not connected. Add holidays manually. Reference counts and safe deletion are unavailable until the calendar usage API is implemented.",
+			"toolsDescription": "Presets, calendar cloning and country holidays are not available yet. Add holidays manually or import a supported .ics file. Reference counts and safe deletion are unavailable until the calendar usage API is implemented.",
 			"toolsTitle": "Some calendar tools are not available yet",
 			"usageUnavailable": "Policy and project usage counts are not available yet.",
 			"weeklyHours": "{{hours}} h/week"
@@ -2432,6 +2432,25 @@
 			"startLabel": "{{label}} start",
 			"starts": "Starts",
 			"timeline": "{{day}} coverage timeline"
+		},
+		"import": {
+			"title": "Import holidays from an iCalendar file",
+			"description": "Choose a UTF-8 .ics file. Only finite all-day holidays are supported.",
+			"file": "iCalendar file",
+			"unnamed": "Unnamed holiday",
+			"readError": "The file could not be read as UTF-8.",
+			"errorTitle": "Import could not be prepared",
+			"error": "The holidays could not be imported.",
+			"preview": "Preview: {{count}} holidays",
+			"confirmDescription": "Review these holidays. Confirm to append them to this calendar.",
+			"confirm": "Import holidays",
+			"importing": "Importing…",
+			"successTitle": "Holiday import complete",
+			"success": "Added {{imported}} holidays; skipped {{duplicates}} exact duplicates.",
+			"counts": "{{importedCount}} to add; {{duplicateCount}} exact duplicates.",
+			"tooLarge": "Calendar file exceeds the 256 KiB limit.",
+			"tooMany": "Calendar file exceeds the 1,000 event limit.",
+			"noEvents": "No calendar events were found to preview."
 		}
 	},
 	"portal": {
