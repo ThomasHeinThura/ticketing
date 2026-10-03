@@ -22,6 +22,7 @@ describe("bounded TaskDesk metrics", () => {
       durationSeconds: 0.004,
     });
     metrics.recordAuditWriteFailure("mutation");
+    metrics.recordAuditWriteFailure("audit_read");
 
     const exposition = await metrics.metrics();
     expect(exposition).toContain(
@@ -31,6 +32,7 @@ describe("bounded TaskDesk metrics", () => {
       'route="unmatched",method="OTHER",status="4xx"',
     );
     expect(exposition).toContain('operation="mutation"');
+    expect(exposition).toContain('operation="audit_read"');
     expect(exposition).not.toContain("private-customer-key");
     expect(exposition).not.toContain("nodejs_");
     expect(exposition.match(/^# HELP /gm)).toHaveLength(4);
@@ -38,6 +40,7 @@ describe("bounded TaskDesk metrics", () => {
       "mutation",
       "pending_action_decision",
       "pending_action_self_read",
+      "audit_read",
     ]);
   });
 
