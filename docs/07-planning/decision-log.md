@@ -5,6 +5,31 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+
+### 2026-10-03 · Select complete P2 SLA-policy and P4 recovery implementation contracts
+
+**Decision:** use Thomas's standing instruction to proceed with recommended decisions and
+complete implementation batches. This authorizes the selected contracts in the isolated
+feature branches; it does not mark a human design review approved, waive a gate, or claim
+later phases complete.
+
+P2 policy authoring uses reachable workspace scope in the collection query, one editable
+draft, immutable published versions with their own calendar and threshold snapshots,
+complete metric/priority goal matrices for at least one type at publication, row-locked
+version/CAS semantics and the canonical optional If-Match mismatch response. The selected
+spec/data-model checkpoint is `e198fd12e2823ec062e4ef59c85cb615ef0d04d0`; no project policy FK,
+new domain event or direct deletion route is invented. The sole audit-contract author
+registered the three configuration actions before their writers in `ec400c25`.
+
+P4 recovery uses the existing instance-admin source, exactly one eligible active staff
+identity, service-process attribution plus host operator audit, interactive confirmation
+outside database locks, and revalidation under the shared promotion lock. Grant, audit and
+durable alerts are atomic; post-commit email failure reports the committed state and retains
+alerts. The selected canonical contract is `62710869`. MFA policy remains enforced and no
+IdP data, activation, linking or parallel authority source grants administration. Complete
+implementation still needs actual image/operator/browser proof and bulk independent review.
+Human P4 design acceptance remains outstanding.
+
 ### 2026-10-03 · Complete the existing cookie CSRF requirement in the P0 implementation batch
 
 **Decision:** implement security-model.md's existing Origin/Referer **and** double-submit
