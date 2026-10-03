@@ -174,7 +174,10 @@ describe("WorkItemList", () => {
       />,
     );
 
-    expect(screen.getByTestId("work-item-list-loading")).toBeInTheDocument();
+    const loading = screen.getByTestId("work-item-list-loading");
+    expect(loading).toBeInTheDocument();
+    expect(loading).toHaveAttribute("aria-busy", "true");
+    expect(loading).toHaveAttribute("aria-live", "polite");
     expect(
       screen.queryByTestId("work-item-list-populated"),
     ).not.toBeInTheDocument();
