@@ -180,6 +180,9 @@ Borrowed from OpenProject's journal design.
   durable notification path; integrated runtime and independent review gates remain pending
   ([security-model.md](../01-architecture/security-model.md#audit),
   [observability.md](../01-architecture/observability.md)).
+  Read behavior follows the owning feature contract: audit-log reads remain best-effort,
+  while PA-11 pending-action detail reads fail closed and return no summary when their
+  `pending_action.viewed` audit append fails ([pending-actions.md](../01-architecture/pending-actions.md)).
 - `AU-15` Rows are **hash-chained**: `row_hash` is SHA-256 over the **canonical form defined
   once in data-model.md §11** — the ordered column list (`prev_hash` **included**, as its
   first field, per §11's own "Hash input" list — corrected 2026-09-16: an earlier version

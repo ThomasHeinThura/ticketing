@@ -474,6 +474,7 @@ export async function decideOwnPendingAction(input: {
       depth: 0,
       originAutomationId: null,
     });
+    let auditFailure = false;
     try {
       await appendAuditLog(tx, {
         actorId: input.requesterPersonId,
@@ -489,15 +490,17 @@ export async function decideOwnPendingAction(input: {
         after: { state: outcome },
       });
     } catch {
-      recordAuditWriteFailure("pending_action_decision");
-      await notifyCurrentInstanceAdminsOfAuditFailure(
-        "pending_action_decision",
-      );
+      auditFailure = true;
     }
-    return updated;
+    return { updated, auditFailure };
   });
 
-  return toPublicPendingAction(result);
+  if (result.auditFailure) {
+    recordAuditWriteFailure("pending_action_decision");
+    await notifyCurrentInstanceAdminsOfAuditFailure("pending_action_decision");
+  }
+
+  return toPublicPendingAction(result.updated);
 }
 
 async function auditViewed(
@@ -523,6 +526,7 @@ async function auditViewed(
   } catch {
     recordAuditWriteFailure("pending_action_self_read");
     await notifyCurrentInstanceAdminsOfAuditFailure("pending_action_self_read");
+    throw new HTTPException(500, { message: "Audit log unavailable" });
   }
 }
 
