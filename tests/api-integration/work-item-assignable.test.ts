@@ -565,7 +565,11 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     const customerPerson = requireRow(
       await db
         .update(schema.personTable)
-        .set({ side: "customer", organisationId: organisation.id, updatedAt: now })
+        .set({
+          side: "customer",
+          organisationId: organisation.id,
+          updatedAt: now,
+        })
         .where(eq(schema.personTable.userId, memberUser.id))
         .returning(),
       "L4 customer person",
