@@ -18,8 +18,14 @@ describe("the approved plugin list", () => {
   it("passes when the constructed list is exactly the kept set", () => {
     const result = checkPluginList(KEPT);
     expect(result.ok).toBe(true);
-    // two-factor and passkey are approved additions that have not landed yet.
-    expect(result.pendingAddition).toEqual(["passkey", "two-factor"]);
+    // passkey remains a later-stage addition.
+    expect(result.pendingAddition).toEqual(["passkey"]);
+  });
+
+  it("requires the P0 local-factor plugin once enabled", () => {
+    const constructed = checkPluginList([...KEPT, "two-factor"]);
+    expect(constructed.ok).toBe(true);
+    expect(constructed.pendingAddition).toEqual(["passkey"]);
   });
 
   it("fails on a plugin that was removed at fork", () => {

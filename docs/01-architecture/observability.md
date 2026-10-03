@@ -51,7 +51,7 @@ bodies containing custom field values, attachment contents, or arbitrary excepti
 Log level is configurable at runtime in God Mode, per module, so debugging production
 does not require a restart.
 
-## P0 metrics contract (planned; not currently implemented)
+## P0 metrics contract (candidate implementation; not accepted runtime)
 
 P0 starts with bounded HTTP request metrics and the audit-write-failure counter below. The
 broader business, job, and infrastructure catalogue remains a target for later producer-by-
@@ -92,8 +92,7 @@ The P0 administrator surface is `GET /api/instance/observability`,
 `POST /api/instance/observability/metrics-token/rotate`. GET returns only safe settings;
 PATCH changes log levels with an optimistic version; rotation returns the token once and
 requires fresh session-only operation-bound step-up. The route registry, OpenAPI schemas,
-permission matrix, and implementation tests must agree. This API seam does not claim the
-P4 God Mode screen is implemented.
+permission matrix, and implementation tests must agree. The candidate includes the `/god-mode/observability` screen for log levels, local-factor policy, and metrics-token rotation; browser evidence and integrated acceptance remain pending.
 
 Per-module levels are a closed document with `default` and `modules` only. Initial module
 keys are `http`, `auth`, `database`, `jobs`, `audit`, and `plugins`; each level is one of
@@ -104,16 +103,29 @@ every five seconds and apply it atomically. A transient refresh failure keeps th
 non-secret levels, emits one bounded warning per failure interval, and retries. The metrics
 credential is never cached.
 
-The current authentication source does not yet enable `twoFactor` and does not implement a
-fresh Entra `prompt=login` step-up callback. Token rotation therefore remains unusable for
-account classes whose required factor cannot be verified. Such a request fails closed with
-`403 step_up_unavailable`; implementation must not substitute a session-only check, sign-in
-email OTP, or client assertion of successful re-authentication.
+The P0 candidate enables Better Auth `twoFactor` for local TOTP and backup-code verification
+and implements password proof only for the documented account class with no enrolled or
+required second factor. It does not implement a fresh Entra `prompt=login` step-up callback.
+Token rotation therefore remains unusable for account classes whose required factor cannot
+be verified. Such a request fails closed with `403 step_up_unavailable`; implementation must
+not substitute a session-only check, sign-in email OTP, or client assertion of successful
+re-authentication.
 
-**Current status:** the API image does not serve `/metrics`, does not start a listener on
-port 9464, and does not read a metrics bearer token. The metric names below are the target
-instrumentation contract, not live endpoints. Until implementation and verification, use
-the container, database and application logs in the [runbook](../05-operations/runbook.md).
+**Current status:** the accepted runtime has not yet implemented `/metrics`, the port 9464
+listener, or a metrics bearer token. The current P0 candidate implements the schema/API,
+listener lifecycle, local-factor foundations, and bounded HTTP/audit metrics; those candidate
+changes remain under review and are not deployed or accepted as complete until the full runtime,
+image, and browser gates pass. The metric names below are a candidate contract, not evidence
+that the accepted runtime serves them.
+Until implementation and verification, use the container, database and application logs in
+the [runbook](../05-operations/runbook.md).
+
+The finite structured log `msg` values are `http.request`, `auth.failure`,
+`database.failure`, `jobs.failure`, `audit.write_failure`, `plugins.failure`,
+`observability.config_refresh_failure`, and `observability.listener_bind_failure`.
+Callers cannot supply arbitrary message text. The `route` field uses an actual registered
+method-and-template pair; a request that cannot be matched is recorded as the finite `unmatched`
+bucket rather than its raw path.
 
 **HTTP**
 ```

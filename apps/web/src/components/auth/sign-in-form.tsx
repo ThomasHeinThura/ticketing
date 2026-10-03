@@ -1,4 +1,5 @@
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema";
+import { useNavigate } from "@tanstack/react-router";
 import {
   Button,
   Form,
@@ -34,6 +35,7 @@ const signInSchema = z.object({
 
 export function SignInForm({ onSuccess, defaultEmail }: SignInFormProps) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const form = useForm<SignInFormValues>({
@@ -54,6 +56,11 @@ export function SignInForm({ onSuccess, defaultEmail }: SignInFormProps) {
 
       if (result.error) {
         toast.error(result.error.message || t("auth:signInForm.failedSignIn"));
+        return;
+      }
+
+      if (result.data?.twoFactorRedirect) {
+        await navigate({ to: "/auth/two-factor" });
         return;
       }
 

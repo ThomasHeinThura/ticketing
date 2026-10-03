@@ -24,6 +24,7 @@ import {
   stakeholderTable,
   stateTable,
   stateTemplateTable,
+  stepUpConfirmationTable,
   taskActivityTable,
   taskCommentTable,
   taskRelationTable,
@@ -32,6 +33,7 @@ import {
   teamMemberTable,
   teamTable,
   timeEntryTable,
+  twoFactorTable,
   userNotificationPreferenceTable,
   userNotificationWorkspaceProjectTable,
   userNotificationWorkspaceRuleTable,
@@ -53,6 +55,10 @@ import {
 
 export const userTableRelations = relations(userTable, ({ many, one }) => ({
   sessions: many(sessionTable),
+  twoFactor: one(twoFactorTable, {
+    fields: [userTable.id],
+    references: [twoFactorTable.userId],
+  }),
   accounts: many(accountTable),
   teamMembers: many(teamMemberTable),
   workspaceMemberships: many(workspaceUserTable),
@@ -75,6 +81,20 @@ export const sessionTableRelations = relations(sessionTable, ({ one }) => ({
   }),
 }));
 
+export const stepUpConfirmationTableRelations = relations(
+  stepUpConfirmationTable,
+  ({ one }) => ({
+    person: one(personTable, {
+      fields: [stepUpConfirmationTable.personId],
+      references: [personTable.id],
+    }),
+    session: one(sessionTable, {
+      fields: [stepUpConfirmationTable.sessionId],
+      references: [sessionTable.id],
+    }),
+  }),
+);
+
 export const accountTableRelations = relations(accountTable, ({ one }) => ({
   user: one(userTable, {
     fields: [accountTable.userId],
@@ -86,6 +106,13 @@ export const verificationTableRelations = relations(
   verificationTable,
   () => ({}),
 );
+
+export const twoFactorTableRelations = relations(twoFactorTable, ({ one }) => ({
+  user: one(userTable, {
+    fields: [twoFactorTable.userId],
+    references: [userTable.id],
+  }),
+}));
 
 export const workspaceTableRelations = relations(
   workspaceTable,
