@@ -30,8 +30,6 @@ import {
 } from "lucide-react";
 import { type FocusEvent, type MouseEvent, memo } from "react";
 import { useTranslation } from "react-i18next";
-import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
-import getWorkItem from "@/fetchers/work-item/get-work-item";
 import { formatDateShort } from "@/lib/format";
 import { getPriorityIcon } from "@/lib/priority";
 import {
@@ -181,10 +179,17 @@ function WorkItemList({
         params: { key },
       })
       .catch(() => {});
-    void loadWorkItemDetail().catch(() => {});
+    void import("@/components/work-item/load-work-item-detail")
+      .then(({ default: loadWorkItemDetail }) => loadWorkItemDetail())
+      .catch(() => {});
     void queryClient.prefetchQuery({
       queryKey: ["work-items", "detail", key],
-      queryFn: () => getWorkItem(key),
+      queryFn: async () => {
+        const { default: getWorkItem } = await import(
+          "@/fetchers/work-item/get-work-item"
+        );
+        return getWorkItem(key);
+      },
       staleTime: 5_000,
     });
   }
