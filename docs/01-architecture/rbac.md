@@ -351,10 +351,10 @@ Instance scope has one system role: `instance_admin`, holding `instance:*`. In t
 runtime, the existing Better Auth `user.role = 'admin'` field is the sole instance-admin
 authority source; identity resolution projects it to this instance-scope grant. The Better
 Auth admin plugin's HTTP endpoints are not mounted and are not a second grant path. The
-break-glass CLI recommendation in [auth-and-identity.md](auth-and-identity.md#recommended-p4-recovery-contract--pending-resolution)
+break-glass CLI contract in [auth-and-identity.md](auth-and-identity.md#p4-recovery-contract--orchestrator-decision)
 uses this same source; it does not create a membership, role row, or identity-provider grant.
-This clarification is an orchestrator recommendation pending P4 contract resolution, not
-an approved design decision.
+This is the orchestrator-selected implementation contract under the standing recommended-
+decision delegation. It does not claim Thomas's P4 design approval.
 
 ## The customer role is special
 

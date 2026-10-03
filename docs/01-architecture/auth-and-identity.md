@@ -570,11 +570,11 @@ past in a shared log is already dead ([runbook](../05-operations/runbook.md)). `
 optional override for **headless** installs (automation that cannot read a log) and is
 ignored once `setup_completed_at` is set.
 
-### Recommended P4 recovery contract — pending resolution
+### P4 recovery contract — orchestrator decision
 
-The following is an **orchestrator-recommended proposal**, not a Thomas-approved design or
-an implemented CLI. Resolve it before implementing issue #230. The operational command
-shape remains `grant-instance-admin <email>` inside the TaskDesk container.
+The following is the **orchestrator-selected implementation contract**, using Thomas's
+standing authorization to proceed with recommended decisions. It is not Thomas's P4 design
+approval and does not claim an implemented CLI. The operational command shape remains `grant-instance-admin <email>` inside the TaskDesk container.
 
 - The command is only for recovery on an already initialized instance. It requires a
   non-null `instance_setting.setup_completed_at`; it never substitutes for or reopens the
@@ -606,7 +606,8 @@ shape remains `grant-instance-admin <email>` inside the TaskDesk container.
   promotion (currently `pg_advisory_xact_lock(2026)`) before re-reading setup state, target
   identity, current administrators, and target role. This serializes concurrent recovery
   commands with each other and with first-user promotion. It locks the resolved target user
-  row before changing `user.role`. Every validly formed invocation that reaches the database
+  row and the eligible staff person row before changing `user.role`; concurrent identity
+  deactivation or side changes cannot race that eligibility read. Every validly formed invocation that reaches the database
   is audited, including refusal and operator cancellation; a missing target uses the
   singleton instance-settings row as its audit entity. The role update, append-only audit row, and
   durable in-app security notifications for a successful or already-admin result commit in
@@ -629,9 +630,11 @@ shape remains `grant-instance-admin <email>` inside the TaskDesk container.
   operator to notify recipients through the host's established incident channel. It never
   prints recipient addresses or secrets.
 
-Break-glass is loud by design. The proposed audit key is recorded in the pending row of
-the [audit action catalogue](../03-features/audit-trail.md#audit-action-catalogue) and
-remains unavailable to implementation until this contract is resolved.
+Break-glass is loud by design. The audit key is registered in the
+[audit action catalogue](../03-features/audit-trail.md#audit-action-catalogue). Before adding
+notification writers, register the finite security-alert payload and email template in the
+canonical notifications contract. Implementation and its tests receive bulk independent
+authority/security review; human P4 design acceptance remains outstanding.
 
 ## Threat notes
 

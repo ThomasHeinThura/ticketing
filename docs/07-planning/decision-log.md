@@ -5,6 +5,26 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+
+### 2026-10-03 · Resolve the P4 break-glass implementation contract
+
+**Decision:** the orchestrator selects the recommended recovery contract in
+`auth-and-identity.md` for issue #230 under Thomas's standing instruction to proceed with
+recommended decisions and implement complete batches. This is implementation authorization,
+not Thomas's P4 design approval, a gate waiver, or proof that a CLI exists.
+
+Use the existing `user.role = 'admin'` authority source, exactly one eligible active staff
+identity, a passwd-resolved service process identity with human attribution retained in host
+Docker audit records, TTY confirmation outside locks, and the shared promotion advisory lock.
+Revalidate displayed state and lock both target user and staff person before granting. Grant,
+append-only audit and durable security alerts are atomic; failure rolls back the grant.
+Already-admin use is authority-idempotent but audited. Email occurs after commit; failures
+report the committed state and aggregate delivery failure, with durable alerts retained.
+Register finite notification payloads/templates canonically before their writers. Existing MFA
+policy continues to apply; no IdP linking, user creation, activation, or parallel grant path is
+introduced. The complete CLI batch needs fresh independent authority/security review before
+protected acceptance. Human P4 acceptance remains outstanding.
+
 ### 2026-10-03 · Complete the existing cookie CSRF requirement in the P0 implementation batch
 
 **Decision:** implement security-model.md's existing Origin/Referer **and** double-submit
