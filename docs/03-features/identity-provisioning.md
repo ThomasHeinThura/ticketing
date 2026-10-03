@@ -68,8 +68,9 @@ watches both.
 `scim_connection`, `external_identity`, `scim_group_mapping`, `oidc_group_mapping`,
 `scim_group_member`, `membership_grant`, effective `membership`, and `provisioning_event`.
 The provenance-ledger/effective-membership contract is proposed in
-[ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md); Thomas's approval
-is required and has not been granted. These are target contracts, not implemented tables.
+[ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md). Its recommended
+implementation is authorized for the P3 batch; Thomas's integrated P4 design approval
+has not been granted. These are target contracts, not implemented tables.
 `person.active`, `session`, and `api_key.disabled_at` are the columns de-provisioning writes.
 
 ## Behaviour
@@ -132,7 +133,8 @@ is required and has not been granted. These are target contracts, not implemente
   DTO, exact permitted settings/mapping writes, shared parent-version CAS and dedicated
   `scim_admin_update` PA-15 binding are specified in
   [api-design.md](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).
-  This is a design contract, not a mounted runtime route; an implementation lacking the
+  The same route has one closed `attribute_mapping` replacement variant for profile-only
+  values, as specified in that API contract. This is a design contract, not a mounted runtime route; an implementation lacking the
   verifier still fails closed with `403 step_up_unavailable` and makes no mutation. OIDC
   mapping writes remain unconditionally elevated with separate operation bindings.
   Mapping to `instance:admin` or `sees_all` is not elevated — it is **impossible**: the
@@ -295,7 +297,14 @@ protocol code; only the credential check reuses the platform.
   `keep_memberships` remain dormant until the person is active.
 - `IP-17` Profile updates (`PATCH`/`PUT`) may change permitted attributes — name, email
   snapshot, `userName`, job title, locale — and can never alter organisation, portal scope,
-  role, reach or capabilities.
+  role, reach or capabilities. The version-1 `scim_connection.attribute_mapping` grammar,
+  deterministic email selection, mandatory-profile failure, optional-field omission and
+  future-write-only behavior are owned by the
+  [SCIM administration API contract](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).
+  Identity and authority selectors are fixed and cannot be mapped. A malformed persisted
+  non-null map fails SCIM user writes closed and surfaces configuration health; it does not
+  silently fall back to defaults. An administrator must save a valid map under the same
+  parent version and operation-bound proof before provisioning resumes.
 - `IP-31` **Tolerated Entra deviations.** `IP-14`'s strictness is about *authority*, not
   about spelling, and Entra's provisioning service sends three things a literal-minded
   validator rejects. All three are tolerated, and only these three: `op` values are matched
@@ -471,7 +480,8 @@ protocol code; only the credential check reuses the platform.
   authority-cache bound applies. This changes current effective authority after invalidation,
   not the validity of a still-live session. The proposed ledger/projection storage choice is
   in [ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md); this
-  transition invariant and matrix are owned here, pending Thomas's ADR approval.
+  transition invariant and matrix are owned here. The recommended P3 implementation may
+  proceed under the standing authorization; human ADR approval remains deferred to P4.
 - `IP-23` Nested-group resolution beyond what Entra sends directly is out of scope.
 - `IP-28` **OIDC group grants are re-derived on every validated login through that
   connection.** After `IP-7`/`IP-26` token validation and `IP-27` admission, resolve the
@@ -574,7 +584,7 @@ protocol code; only the credential check reuses the platform.
 | --- | --- | --- |
 | God Mode → Authentication (identity connections, agent scope) | `/agent/god-mode/authentication` | Existing rows; the list becomes "identity connections" |
 | Connection editor | `/agent/god-mode/authentication/{id}` | OIDC settings, JIT policy, domain bindings, OIDC object-id group mappings (selection/open state in URL), **SCIM panel** (endpoint URL, token create/rotate/revoke, allowed resources and distinct SCIM mappings, last sync), Test OIDC, Test SCIM |
-| God Mode → Organisations → detail → **Identity** | `/agent/god-mode/organisations/{id}/identity` | The customer-organisation connection: enable/disable portal SSO; provider type (Entra first); organisation-bound OIDC settings; SCIM endpoint info; token create/rotate; Test OIDC; Test SCIM; provisioning status and last sync; errors without secrets; attribute-mapping status only until its editor contract exists; group mapping (selection/open state in URL); audit history; **unmissable organisation-scope and portal-scope warnings** |
+| God Mode → Organisations → detail → **Identity** | `/agent/god-mode/organisations/{id}/identity` | The customer-organisation connection: enable/disable portal SSO; provider type (Entra first); organisation-bound OIDC settings; SCIM endpoint info; token create/rotate; Test OIDC; Test SCIM; provisioning status and last sync; errors without secrets; the closed profile-only attribute-mapping editor; group mapping (selection/open state in URL); audit history; **unmissable organisation-scope and portal-scope warnings** |
 
 ## API
 
@@ -740,8 +750,9 @@ reevaluation, grant-provenance, effective-role, SCIM global-deactivation, and co
 assertions above are subcases of these same 25 tests. Migration evidence must prove read-only
 classification of every legacy membership before any DDL, backfill, constraint, or
 projection; null or otherwise ambiguous `derived_from` must stop the whole migration
-without partial change. Prove owner-approved reconciliation, full transaction rollback on
-failure, and successful backfill only after all rows are classified. Duplicate-row migration
+without partial change. Prove per-row owner-approved reconciliation with source evidence
+and row digest, stale-manifest rejection, stable-snapshot cut-over, full transaction rollback
+on failure, and successful backfill only after all rows are classified. Duplicate-row migration
 rejection and provenance backfill evidence are required when the schema is implemented. This
 is planned coverage only; none of these subcases is implemented or claimed as run here.
 
@@ -774,9 +785,18 @@ The issue #561 SCIM administration DTO and PA-15 contract adds planned tests 09/
 for API-key/MCP/impersonation `403 session_required`, missing
 or unavailable proof, wrong OIDC/MFA/metrics operation, wrong connection, changed canonical
 body, stale parent version, expiry, replay and concurrent edit; failures make no mutation or
-grant change, and stale CAS rolls proof consumption back. Cover all three body variants,
+grant change, and stale CAS rolls proof consumption back. Cover all four body variants,
 forbidden role/scope, absent `groups`, independent-source preservation, SCIM history
 repair and later same-source re-evidence. The 25 named tests remain planned.
+
+The closed profile attribute-map variant adds subcases to tests 08/09/17/22: only the
+enumerated version-1 paths are accepted; each map is complete and bound to its own
+`scim_admin_update` body/version/proof; API-key and stale/replayed proof fail without
+mutation; malformed persisted maps fail provisioning closed; unique-primary versus
+ambiguous email selection is deterministic; required fields reject atomically; optional
+unmapped fields remain unchanged; a mapping edit changes future SCIM profile writes only
+and cannot alter identity, tenant, role, group grant, audit secrecy or current sessions.
+These remain planned subcases, not new acceptance-test names or passing claims.
 
 The shared IP-22 invariant adds planned subcases to the same named tests: 12 covers JIT
 disable/default-role change and re-enable evidence, stale/expanded lock-set retry (including a

@@ -5,6 +5,36 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-04 · Select P3 grant-provenance reconciliation and closed SCIM profile map
+
+**Decision:** under Thomas's standing authorization to implement documented recommended
+solutions before the integrated P4 human design review, select proposed
+[ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md) as the P3
+membership-grant implementation contract. The migration must classify every legacy
+membership from durable exact-source evidence and use an owner-approved, per-row
+reconciliation record for ambiguity. `derived_from IS NULL` is never a direct-grant
+inference. A changed row, missing evidence, duplicate without approved repair, or
+unresolved record stops the entire cut-over before DDL; final classification and the
+transactional cut-over share a stable database boundary. This selects an implementation
+recommendation, **not** Thomas's ADR approval or permission to guess a row's provenance.
+
+Close the SCIM attribute-mapping syntax in the existing
+[SCIM administration PATCH](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract):
+one version-1 profile-only map replacement variant with fixed enumerated source paths,
+the existing `scim_admin_update` PA-15 proof and parent `config_version` CAS. Identity,
+tenant and authority fields remain unconfigurable. This supersedes only the prior
+2026-10-04 decision's temporary exclusion of attribute mapping from that route; its
+settings/group-mapping and proof contracts otherwise stand. No new route, capability,
+operation key, schema column, event key or dependency is selected.
+
+The [P3 finding handoff](security-reviews/p3-identity-owning-findings-handoff.md)
+maps historical owning findings 81–82 to normative controls and the real acceptance
+proof still required. The author does not close either finding. Runtime implementation,
+migration execution, 25 tests, real Entra/browser verification, independent review, exact
+head checks and P4 human ADR/H1–H6 review remain unclaimed.
+
+**Recorded by:** GPT-6 Sol architecture author, 2026-10-04.
+
 ### 2026-10-04 · Select the bounded SCIM administration PATCH contract for #561
 
 **Decision:** under Thomas's explicit P0–P4 contract-authoring authorization, the existing

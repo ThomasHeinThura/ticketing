@@ -149,8 +149,10 @@ The most important screen. See [auth and identity](../01-architecture/auth-and-i
 - **Provisioning panel** per connection: OIDC group mappings use immutable group object ids
   with display-name snapshots; the separate SCIM panel holds endpoint URL, bearer token
   create / rotate / revoke (shown once; rotation invalidates the old token at once), allowed
-  resources, current attribute-mapping status and SCIM group mappings. The attribute-mapping
-  editor remains unavailable until its syntax and writer contract are specified. Every create/edit/enable validates
+  resources, the closed profile-only attribute-mapping editor and SCIM group mappings. Its
+  grammar and operation-bound writer are specified in the
+  [SCIM administration contract](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).
+  Every create/edit/enable validates
   the connection portal and persisted organisation, target scope ownership, role side/rank,
   and forbidden capabilities. Every OIDC mapping create/edit/enable/disable is elevated,
   session-only and audited; its separate connection-scoped API uses a five-minute,

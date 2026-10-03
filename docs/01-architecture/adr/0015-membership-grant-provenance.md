@@ -4,9 +4,10 @@
 - **Date:** 2026-10-01
 - **Deciders:** Thomas (approval required; not granted)
 
-> This ADR is a proposal only. It does not authorize schema, migration, API, policy, or
-> runtime implementation. Those changes require Thomas's approval and the normal review
-> gates. The identity-provisioning design and its 25 named acceptance tests remain unaccepted.
+> This ADR remains proposed for Thomas's integrated P4 design review. Thomas's standing
+> authorization permits implementation of the documented recommendation in a P3 batch;
+> it is not ADR approval, finding closure, or acceptance of the 25 named tests. The
+> migration must stop on any unresolved legacy row as specified below.
 
 ## Context
 
@@ -80,8 +81,9 @@ existing-session distinction are defined once in
 [IP-22](../../03-features/identity-provisioning.md); this proposal uses that invariant for
 effective grant selection. Role-priority edits reproject all affected holders even when no
 grant retires, and a ceiling increase never restores retired grant history without fresh
-evidence from the source that owns it. ADR-0015 remains proposed and does not authorize
-implementation.
+evidence from the source that owns it. ADR-0015 remains proposed for integrated P4 human
+review; the documented recommendation may be implemented under Thomas's standing P3
+authorization, subject to the legacy-row gate and all independent review gates.
 
 The effective row has a unique `(person_id, scope, scope_id)` key. Before adding that
 constraint, migration work audits duplicates and requires a deterministic,
@@ -105,6 +107,42 @@ read-only preflight against unchanged legacy data, then retries the complete mig
 existing lookup index remains.
 `membership.derived_from` stops being written and stays null during transition; remove it
 only in a documented forward migration after the grant ledger is authoritative.
+
+#### Legacy-row classification and reconciliation gate
+
+The preflight emits a private, deterministic inventory keyed by legacy `membership.id`,
+including person/scope/scope id/role/`sees_all`/`derived_from`, the row's current values,
+the exact evidence references and a digest of those values. It reads the entire legacy
+table and the durable invitation, external-identity, connection, SCIM-group-member,
+mapping and audit records needed for candidate sources. A classifier accepts a row only
+if **one** source has an unbroken identity, target, role, scope and time linkage to the
+row. An invitation is direct only when its accepted grant links the same inviter, person,
+scope and role; an invitation email or accepted state alone is insufficient. A JIT
+candidate needs a connection-bound external identity and a recorded default grant for
+that same target and role. A SCIM candidate needs the exact group-member/mapping/identity
+chain; a `derived_from` value alone is insufficient if that chain is broken. Historical
+OIDC data lacking a source-specific link cannot be inferred from a current group claim.
+Any zero-candidate, multiple-candidate, mismatched, duplicate or inconsistent row is
+ambiguous, even when `derived_from` is null. Classifying a source also validates all
+required target grant fields against the current canonical parents; an invalid target
+stops the cut-over rather than being silently omitted.
+
+For each ambiguous row, the owner supplies an explicit per-row reconciliation record:
+legacy membership id and preflight digest, selected source kind, every required source
+reference and direct origin/actor where applicable, the exact evidence and rationale,
+and an explicit disposition for duplicate effective keys. The owner may require a
+separate documented legacy-data correction before migration; a reconciliation cannot
+invent external-identity or group provenance. A direct `system_backfill` classification
+requires affirmative owner evidence that a direct administrative grant really existed;
+it is never the default for a null `derived_from`. Keep the approval record private and
+auditable; do not put identity payloads or email addresses in a migration log. The
+preflight validates each record against fresh database evidence and its digest; changed
+rows or stale records fail closed. It must account for every legacy row exactly once and
+for every duplicate-key repair explicitly before the write phase. Run the final preflight
+and transactional cut-over against one stable snapshot with writers blocked or an
+equivalent serializable boundary, so classification cannot become stale between the two.
+The migration cannot succeed with an unresolved inventory item; the operator receives a
+bounded count and private ids for reconciliation, not a partial migrated database.
 
 `scim_group_member` remains the SCIM group ledger. It points to its corresponding grant and
 to the effective membership when one exists; under an equal-rank conflict both membership

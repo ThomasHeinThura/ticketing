@@ -1,5 +1,17 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## P3 normative contract batch — 2026-10-04 UTC
+
+On the P3 design branch, the selected implementation recommendation now has a concrete
+ADR-0015 legacy-membership classification/reconciliation gate and a closed version-1
+SCIM profile attribute map on the existing elevated PATCH route. The author mapped owning
+security findings 81–82 to normative controls and required runtime/real-Entra/browser
+proof in `security-reviews/p3-identity-owning-findings-handoff.md`; neither finding is
+independently closed. This is documentation only. The proposed ADR has no human approval;
+ambiguous legacy rows still require actual owner-approved, per-row reconciliation. No P3
+schema, API, editor, migration, test, runtime or acceptance claim follows. Human review
+remains deferred to integrated P4; ordinary/Sol exact-head reviews and all gates remain.
+
 ## P3 SCIM administration design handoff — 2026-10-04 UTC
 
 The issue #561 owner contract is written on branch `codex/p3-scim-administration-contract`:
