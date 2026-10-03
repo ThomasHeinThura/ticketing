@@ -213,6 +213,7 @@ test("work-item list screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Customer cannot reset their password"),
   ).toBeVisible();
+  await expect(page.getByTestId("realtime-unavailable")).toBeVisible();
   await expect(page).toHaveScreenshot("work-item-list.png", {
     animations: "disabled",
     caret: "hide",
@@ -247,9 +248,8 @@ test("account security enrollment-ready screen @visual", async ({ page }) => {
   await expect(
     page.getByText("Set up an authenticator factor", { exact: true }),
   ).toBeVisible();
-  const password = page.locator("#factor-password");
-  await expect(password).toBeVisible();
-  await password.fill("visual-enrollment-password");
+  await expect(page.locator("#factor-password")).toBeVisible();
+  await page.locator("#factor-password").fill("visual-enrollment-password");
   await expect(
     page.getByRole("button", { name: "Set up authenticator" }),
   ).toBeEnabled();

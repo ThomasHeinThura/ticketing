@@ -12,11 +12,13 @@ dc() { docker compose -f compose.yml -f deploy/compose.prod.yml "$@"; }
 For local development, use `dc() { docker compose -f compose.yml -f deploy/compose.local.yml -f deploy/compose.traefik.yml "$@"; }`.
 The first-run `scripts/deploy.sh local` command sets up the local certificate and secrets.
 
-**Metrics endpoint status:** the architecture describes the intended Prometheus endpoint,
-but the current API image does not start a listener on port `9464` and does not serve
-`/metrics`. The metrics bearer-token setting is not usable yet. Use the container, database,
-and application logs below; do not export a `METRICS_TOKEN` or rely on the metrics commands
-until the endpoint is implemented and verified.
+**Metrics endpoint:** the serving API role starts a dedicated listener on port `9464` at
+`GET /metrics`. Scrapes require the current bearer token; the listener reads its SHA-256
+digest from PostgreSQL for each request. Rotate the token in God Mode → Observability and
+store the one-time response directly in the monitoring system's secret store. Never put the
+token in a command argument, log, ticket, or incident record. A missing or incorrect token
+returns `401`; a database credential-read failure returns `503`. The listener bind failure
+prevents API readiness. Migration and job roles do not start this listener.
 
 ## Audit-write failure alert (after instrumentation is deployed)
 
@@ -37,9 +39,12 @@ closed. Treat the result as a known audit gap, not as evidence that the append-o
 was altered. Record the affected time window and trace ids in the incident record without
 copying credentials or request bodies.
 
-The counter and log alert do not notify instance administrators. AU-14's durable
-administrator notification remains an implementation dependency; do not report the
-notification requirement as satisfied by this alert.
+AU-14 also writes an in-app notification for each current active instance administrator.
+The notification contains only the finite operation name and occurrence time. The notifier
+makes one bounded retry in a separate transaction after the audit savepoint has rolled back.
+If both writes fail, the counter and safe error log remain the operator signals. Check the
+administrators' in-app notifications alongside the matching metric and log record; neither
+signal means the underlying mutation was rolled back.
 
 ## Triage
 

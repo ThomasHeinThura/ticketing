@@ -116,7 +116,7 @@ export default function ProjectLayout({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <SidebarTrigger
-                    className="-ml-1 h-7 w-7 cursor-pointer text-foreground/85 hover:text-foreground"
+                    className="-ml-1 h-7 w-7 cursor-pointer text-foreground hover:text-foreground"
                     toggleLabel={t("common:a11y.toggleSidebar")}
                   />
                 </TooltipTrigger>
@@ -138,7 +138,7 @@ export default function ProjectLayout({
 
             <div className="hidden min-w-0 items-center gap-1 md:flex">
               <WorkspaceCrumbSelect />
-              <span className="text-foreground/30 text-xs">/</span>
+              <span className="text-foreground text-xs">/</span>
               <ProjectCrumbSelect
                 workspaceId={workspaceId}
                 projectId={projectId}

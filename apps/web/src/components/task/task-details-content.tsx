@@ -75,7 +75,7 @@ export default function TaskDetailsContent({
             </span>
           </button>
         )}
-        <p className="text-xs font-semibold text-foreground/70">
+        <p className="text-xs font-semibold text-foreground">
           {project?.slug}-{task?.number}
         </p>
         <TaskTitle taskId={taskId} />

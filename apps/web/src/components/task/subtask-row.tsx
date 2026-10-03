@@ -89,7 +89,7 @@ export default function SubtaskRow({
               onClick={onNavigate}
             >
               <span
-                className={`text-sm truncate block ${isCompleted ? "line-through text-muted-foreground" : "text-foreground/90"}`}
+                className={`text-sm truncate block ${isCompleted ? "line-through text-muted-foreground" : "text-foreground"}`}
               >
                 {task.title}
               </span>

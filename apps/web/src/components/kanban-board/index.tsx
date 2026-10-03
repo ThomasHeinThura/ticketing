@@ -228,7 +228,7 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
 
   if (!project?.columns) {
     return (
-      <div className="flex h-full w-full flex-col bg-linear-to-b from-muted/25 to-background">
+      <div className="flex h-full w-full flex-col bg-background">
         <header className="mb-6 mt-6 space-y-6 shrink-0 px-6">
           <div className="flex items-center justify-between">
             <div className="w-48 h-8 bg-muted/50 rounded-md animate-pulse" />
@@ -296,7 +296,7 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
       >
         <ContextMenuTrigger asChild>
           <div
-            className="flex h-full w-full flex-col bg-linear-to-b from-muted/20 to-background"
+            className="flex h-full w-full flex-col bg-background"
             onContextMenuCapture={setContextTaskFromEvent}
           >
             <div className="min-h-0 flex-1 overflow-x-auto [-webkit-overflow-scrolling:touch]">
