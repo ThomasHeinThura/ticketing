@@ -102,6 +102,7 @@ describe("TaskDesk Hono transport", () => {
 
     const response = await apiFetch(`${apiBaseUrl}/notification-preferences`, {
       method: "PUT",
+      redirect: "follow",
       body: JSON.stringify({ enabled: true }),
     });
 
@@ -110,6 +111,10 @@ describe("TaskDesk Hono transport", () => {
     expect(mutationRequests).toHaveLength(2);
     expect(mutationRequests[0]?.headers.get("x-taskdesk-csrf")).toBe("token-1");
     expect(mutationRequests[1]?.headers.get("x-taskdesk-csrf")).toBe("token-2");
+    expect(mutationRequests.map((request) => request.redirect)).toEqual([
+      "error",
+      "error",
+    ]);
     expect(await mutationRequests[1]?.text()).toBe(
       JSON.stringify({ enabled: true }),
     );
@@ -265,6 +270,7 @@ describe("TaskDesk Hono transport", () => {
     );
     const request = new Request(`${apiBaseUrl}/projects/project-1`, {
       method: "PATCH",
+      redirect: "follow",
       headers: {
         "x-request-context": "preserved",
         "x-taskdesk-csrf": "stale-token",
@@ -279,6 +285,7 @@ describe("TaskDesk Hono transport", () => {
     expect(response.status).toBe(200);
     expect(issuerCount).toBe(1);
     expect(mutationRequest?.method).toBe("PATCH");
+    expect(mutationRequest?.redirect).toBe("error");
     expect(mutationRequest?.headers.get("x-request-context")).toBe("preserved");
     expect(mutationRequest?.headers.get("x-init-context")).toBe(
       "also-preserved",
