@@ -1,9 +1,9 @@
 ## Independent review — P0 bulk candidate
 
-**Candidate:** `19a9bcbad8c0cc8b2af65fa4f6aa5606de37f855`  
-**Base:** `8ddb9de8d4d242a0832f6f91e12872300480a905`  
-**Original review:** `add896ebbce5c827d30f89d80fed5e48c87b3552`  
-**Branch:** `codex/p0-bulk-integration`  
+**Candidate:** `19a9bcbad8c0cc8b2af65fa4f6aa5606de37f855`
+**Base:** `8ddb9de8d4d242a0832f6f91e12872300480a905`
+**Original review:** `add896ebbce5c827d30f89d80fed5e48c87b3552`
+**Branch:** `codex/p0-bulk-integration`
 **Independence:** Fresh GPT-6 Luna reviewer context; I did not author or remediate this candidate.
 
 **Scoped verdict: APPROVE — no blocking or non-blocking findings** in the assigned web/shared-UI scope. This is not approval of unrelated candidate areas, hosted CI, security review, or P0 completion.

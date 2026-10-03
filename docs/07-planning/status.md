@@ -1,5 +1,13 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## P0 ordinary audit clearance and current image — 2026-10-03 18:51 UTC
+
+Fresh independent GPT-6 Luna auth delta review clears the complete lifecycle remediation on `37f8f46685db8dedf92a978692ff96928882c5a0`: one unit file / two tests and one real PostgreSQL file / six tests passed. The report is `security-reviews/579-luna-auth-delta-final.md`; it records the original finding disposition and execution limits. Runtime/web scope verdicts at `19a9...` remain historical; only the later auth/audit delta was rechecked. No required security clearance, hosted acceptance or phase completion is inferred.
+
+The exact audit-source image is `sha256:70956a1a90d33ea74b383c4ecca849ac738cbed8e88e6edae8a2d60b64b6c811`, labelled `37f8f46685db8dedf92a978692ff96928882c5a0`. Its 87 SQL hashes and accepted 80-row prefix match; UID is 10001, live/ready return 200, stale CAS and wrong-password/binding/replay are refused, token rotation works and the internal metrics matrix is 401/401/405/404/404/200/401 with current digest verification and no raw token in logs. Disposable containers/image/network are absent. Receipt: `/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/p0-runtime-proof/20261003T184453Z-37f8f466/result.json`. Subsequent changes are review/status Markdown only, not new shipping code.
+
+Fresh full independent GPT-6 Sol security review is next. Required hosted checks and G11 protection, protected merge/deployment, representative three actual source-bound UTC dates/cutover and the separate phase finalizer are still open. P1/P2 combined proof continues independently. No persistent environment or accepted main has changed.
+
 ## P0 bulk review and audit remediation — 2026-10-03 18:43 UTC
 
 Three fresh independent GPT-6 Luna contexts completed their scopes on `19a9bcbad8c0cc8b2af65fa4f6aa5606de37f855`. Runtime found no blockers and ran five files / 25 tests; web approved its scope, running 40 contrast regressions, the actual 418-pair numerical gate and three web files / 18 tests. Auth ran two unit files / four tests and three isolated PostgreSQL files / nine tests, but requested changes: registered step-up consumed/denied actions had no callers. Their original verdicts and actual execution limits are preserved in `security-reviews/579-luna-*-bulk-final.md`; none is relabelled approval of a later SHA.
