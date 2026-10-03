@@ -1,14 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@taskdesk/ui";
-import { useState } from "react";
+import { lazy, Suspense, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import CreateWorkItemDialog from "@/components/work-item/create-work-item-dialog";
 import WorkItemList from "@/components/work-item/work-item-list";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+
+const CreateWorkItemDialog = lazy(
+  () => import("@/components/work-item/create-work-item-dialog"),
+);
+
 import {
   parseWorkItemListSearch,
   type WorkItemListSearch,
@@ -80,24 +84,24 @@ function WorkItemsRouteComponent() {
   const isError =
     isWorkspaceError || isProjectsError || isWorkItemsError || projectNotFound;
 
-  function handleSortChange(
-    nextSort: WorkItemSortField,
-    nextDir: WorkItemSortDirection,
-  ) {
-    navigate({
-      search: (prev: WorkItemListSearch) => ({
-        ...prev,
-        sort: nextSort,
-        dir: nextDir,
-      }),
-      replace: true,
-    });
-  }
+  const handleSortChange = useCallback(
+    (nextSort: WorkItemSortField, nextDir: WorkItemSortDirection) => {
+      navigate({
+        search: (prev: WorkItemListSearch) => ({
+          ...prev,
+          sort: nextSort,
+          dir: nextDir,
+        }),
+        replace: true,
+      });
+    },
+    [navigate],
+  );
 
-  function handleRetry() {
+  const handleRetry = useCallback(() => {
     refetchProjects();
     if (project) refetchWorkItems();
-  }
+  }, [project, refetchProjects, refetchWorkItems]);
 
   return (
     <>
@@ -135,13 +139,15 @@ function WorkItemsRouteComponent() {
           onSortChange={handleSortChange}
           onRetry={handleRetry}
         />
-        {project ? (
-          <CreateWorkItemDialog
-            open={isCreateOpen}
-            onClose={() => setIsCreateOpen(false)}
-            projectId={project.id}
-            workspaceId={workspace?.id}
-          />
+        {project && isCreateOpen ? (
+          <Suspense fallback={null}>
+            <CreateWorkItemDialog
+              open
+              onClose={() => setIsCreateOpen(false)}
+              projectId={project.id}
+              workspaceId={workspace?.id}
+            />
+          </Suspense>
         ) : null}
       </div>
     </>

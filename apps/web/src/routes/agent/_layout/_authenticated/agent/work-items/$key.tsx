@@ -1,17 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useLayoutEffect } from "react";
+import { Alert, AlertDescription } from "@taskdesk/ui";
+import { lazy, Suspense, useLayoutEffect } from "react";
+import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import WorkItemDetail from "@/components/work-item/work-item-detail";
+import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
+import FullWorkItemDetail from "@/components/work-item/work-item-detail";
+import WorkItemDetailLoading from "@/components/work-item/work-item-detail-loading";
 import WorkItemJourney from "@/components/work-item/work-item-journey";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
-import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { HttpError } from "@/lib/http-error";
 import {
   parseWorkItemActivityFilter,
   type WorkItemActivityFilter,
 } from "@/lib/routes";
+
+const WorkItemDetail = lazy(loadWorkItemDetail);
 
 /**
  * `docs/02-design/screen-inventory.md` "Work item — full page" (P1),
@@ -40,17 +45,15 @@ function WorkItemDetailRouteComponent() {
   const { activity: searchActivity } = Route.useSearch();
   const activity: WorkItemActivityFilter = searchActivity ?? "all";
   const navigate = Route.useNavigate();
+  const { t } = useTranslation();
 
-  const { data: workspace } = useActiveWorkspace();
-  const { data: projects } = useGetProjects({
-    workspaceId: workspace?.id ?? "",
-  });
   const {
     data: item,
     isLoading,
     isError,
     error,
     refetch,
+    isRealtimeUnavailable,
   } = useGetWorkItem({ key });
 
   // `require-work-item-reach.ts` makes "not yours" and "not there" indistinguishable on
@@ -72,9 +75,6 @@ function WorkItemDetailRouteComponent() {
     }
   }, [isError, isNotFound, visibleItem]);
 
-  const project = visibleItem
-    ? projects?.find((candidate) => candidate.id === visibleItem.projectId)
-    : undefined;
   const projectDetails = useGetProject({
     id: visibleItem?.projectId ?? "",
     workspaceId: visibleItem?.workspaceId ?? "",
@@ -86,17 +86,40 @@ function WorkItemDetailRouteComponent() {
         title={visibleItem?.title ? `${visibleItem.title} · ${key}` : key}
       />
       <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
-        <WorkItemDetail
-          item={visibleItem}
-          workItemKey={key}
-          project={
-            project ? { name: project.name, slug: project.slug } : undefined
-          }
-          isLoading={isLoading}
-          isNotFound={isNotFound}
-          isError={isError && !isNotFound}
-          onRetry={refetch}
-        />
+        {visibleItem && isRealtimeUnavailable && (
+          <Alert
+            variant="warning"
+            role="status"
+            data-testid="realtime-unavailable"
+          >
+            <AlertDescription>
+              {t("workItems:detail.realtimeUnavailable")}
+            </AlertDescription>
+          </Alert>
+        )}
+        <Suspense fallback={<WorkItemDetailLoading />}>
+          {visibleItem ? (
+            <WorkItemDetailWithProject
+              item={visibleItem}
+              workItemKey={key}
+              isNotFound={false}
+              isError={isError && !isNotFound}
+              onRetry={refetch}
+            />
+          ) : !isNotFound && !isError ? (
+            <WorkItemDetailLoading />
+          ) : (
+            <FullWorkItemDetail
+              item={undefined}
+              workItemKey={key}
+              project={undefined}
+              isLoading={isLoading}
+              isNotFound={isNotFound}
+              isError={isError && !isNotFound}
+              onRetry={refetch}
+            />
+          )}
+        </Suspense>
         {visibleItem && (
           <WorkItemJourney
             key={visibleItem.key}
@@ -120,5 +143,36 @@ function WorkItemDetailRouteComponent() {
         )}
       </div>
     </>
+  );
+}
+
+function WorkItemDetailWithProject({
+  item,
+  workItemKey,
+  isNotFound,
+  isError,
+  onRetry,
+}: {
+  item: NonNullable<ReturnType<typeof useGetWorkItem>["data"]>;
+  workItemKey: string;
+  isNotFound: boolean;
+  isError: boolean;
+  onRetry: () => void;
+}) {
+  const { data: projects } = useGetProjects({ workspaceId: item.workspaceId });
+  const project = projects?.find(
+    (candidate) => candidate.id === item.projectId,
+  );
+
+  return (
+    <WorkItemDetail
+      item={item}
+      workItemKey={workItemKey}
+      project={project ? { name: project.name, slug: project.slug } : undefined}
+      isLoading={false}
+      isNotFound={isNotFound}
+      isError={isError}
+      onRetry={onRetry}
+    />
   );
 }

@@ -9258,6 +9258,9 @@
 						},
 						"partialNoticeDescription": {
 							"type": "string"
+						},
+						"realtimeUnavailable": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -9287,7 +9290,8 @@
 						"unavailable",
 						"unavailableFieldLabel",
 						"partialNoticeTitle",
-						"partialNoticeDescription"
+						"partialNoticeDescription",
+						"realtimeUnavailable"
 					]
 				},
 				"journey": {

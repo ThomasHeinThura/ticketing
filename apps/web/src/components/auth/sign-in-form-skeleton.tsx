@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 export function SignInFormSkeleton() {
   const { t } = useTranslation();
   return (
-    <div className="space-y-4 mt-6">
+    <div className="space-y-4 mt-6" data-testid="g13-sign-in-loading">
       <div className="flex flex-col gap-2">
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-9 w-full" />

@@ -9,9 +9,12 @@ import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { auth, portalAuth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp, createNodeServer } from "../../apps/api/src/index";
+import { recordWorkItemEvent } from "../../apps/api/src/work-item/native-event";
 import {
+  broadcastNativeWorkItemHint,
   broadcastToProject,
   broadcastToUser,
   initializeWebSocketAdapter,
@@ -38,6 +41,7 @@ interface TestSocket {
   ): TestSocket;
   once(event: "close", listener: (code: number) => void): TestSocket;
   off(event: "message", listener: () => void): TestSocket;
+  send(data: string): void;
   close(code?: number, reason?: string): void;
 }
 
@@ -109,7 +113,13 @@ function nextMessage(socket: TestSocket) {
 function rawGet(port: number, path: string) {
   return new Promise<{ status: number; body: string }>((resolve, reject) => {
     const request = httpRequest(
-      { host: "127.0.0.1", port, path, method: "GET" },
+      {
+        host: "127.0.0.1",
+        port,
+        path,
+        method: "GET",
+        headers: { host: "localhost:1337" },
+      },
       (response) => {
         let body = "";
         response.setEncoding("utf8");
@@ -145,7 +155,7 @@ function rawPost(
         path,
         method: "POST",
         headers: {
-          host: "localhost:5173",
+          host: "localhost:1337",
           origin,
           cookie,
           "content-type": "application/json",
@@ -260,7 +270,13 @@ function holdStreamingResponse(port: number) {
   const bodyComplete = deferred<string>();
   const responseInterrupted = deferred<void>();
   const request = httpRequest(
-    { host: "127.0.0.1", port, path: "/__shutdown/hold", method: "GET" },
+    {
+      host: "127.0.0.1",
+      port,
+      path: "/__shutdown/hold",
+      method: "GET",
+      headers: { host: "localhost:1337" },
+    },
     (response) => {
       let body = "";
       response.setEncoding("utf8");
@@ -306,13 +322,13 @@ function openUnresponsiveWebSocket(port: number, cookie: string) {
   socket.once("connect", () => {
     socket.write(
       [
-        "GET /api/ws/user HTTP/1.1",
-        "Host: localhost:5173",
+        "GET /api/ws HTTP/1.1",
+        "Host: localhost:1337",
         "Upgrade: websocket",
         "Connection: Upgrade",
         `Sec-WebSocket-Key: ${key}`,
         "Sec-WebSocket-Version: 13",
-        "Origin: http://localhost:5173",
+        "Origin: http://localhost:1337",
         `Cookie: ${cookie}`,
         "",
         "",
@@ -326,22 +342,26 @@ function createHeldHttpApp() {
   // Keep the SPA catch-all from a built web app from intercepting this held route.
   const staticRoot = mkdtempSync(join(tmpdir(), "taskdesk-held-http-static-"));
   heldHttpStaticRoots.add(staticRoot);
-  const { app } = createApp({ staticRoot });
   const releaseResponse = deferred<void>();
   const responseStarted = deferred<void>();
-  app.get("/__shutdown/hold", () => {
-    const body = new ReadableStream<Uint8Array>({
-      async start(controller) {
-        controller.enqueue(new TextEncoder().encode("response-start-"));
-        responseStarted.resolve();
-        await releaseResponse.promise;
-        controller.enqueue(new TextEncoder().encode("response-end"));
-        controller.close();
-      },
-    });
-    return new Response(body, {
-      headers: { "content-type": "text/plain" },
-    });
+  const { app } = createApp({
+    staticRoot,
+    registerAdditionalRoutes: (routes) => {
+      routes.get("/__shutdown/hold", () => {
+        const body = new ReadableStream<Uint8Array>({
+          async start(controller) {
+            controller.enqueue(new TextEncoder().encode("response-start-"));
+            responseStarted.resolve();
+            await releaseResponse.promise;
+            controller.enqueue(new TextEncoder().encode("response-end"));
+            controller.close();
+          },
+        });
+        return new Response(body, {
+          headers: { "content-type": "text/plain" },
+        });
+      });
+    },
   });
   return { app, releaseResponse, responseStarted };
 }
@@ -352,7 +372,6 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
 
   beforeEach(async () => {
     await resetTestDatabase();
-    process.env.TASKDESK_AGENT_URL = "http://localhost:5173";
     await initializeWebSocketAdapter();
   });
 
@@ -372,6 +391,153 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     }
   });
 
+  it("authorizes native topics and fans out only key-only hints to subscribed clients", async () => {
+    const member = await createWorkspaceMember();
+    const project = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const outsider = await createWorkspaceMember();
+    const foreignProject = await createProjectFixture({
+      workspaceId: outsider.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const headers = {
+      host: "localhost:1337",
+      origin: "http://localhost:1337",
+      cookie: "__Host-tdk_agent_session=integration-session",
+    };
+    const url = websocketUrl(node.server, "/api/ws");
+    expect(
+      await rejectHandshake(url, {
+        ...headers,
+        origin: "https://attacker.example",
+      }),
+    ).toBe(403);
+    expect(
+      await rejectHandshake(url, {
+        ...headers,
+        host: "attacker.example",
+      }),
+    ).toBe(404);
+    expect(
+      await rejectHandshake(url, {
+        host: headers.host,
+        cookie: headers.cookie,
+      }),
+    ).toBe(403);
+    const socket = await openSocket(url, headers);
+
+    const subscribed = nextMessage(socket);
+    socket.send(
+      JSON.stringify({
+        type: "subscribe",
+        topic: `project:${project.project.id}`,
+      }),
+    );
+    await expect(subscribed).resolves.toEqual({
+      type: "subscribed",
+      topic: `project:${project.project.id}`,
+    });
+
+    const deniedMissing = nextMessage(socket);
+    socket.send(
+      JSON.stringify({ type: "subscribe", topic: "project:missing-project" }),
+    );
+    await expect(deniedMissing).resolves.toEqual({
+      type: "subscription_denied",
+    });
+    const deniedForeign = nextMessage(socket);
+    socket.send(
+      JSON.stringify({
+        type: "subscribe",
+        topic: `project:${foreignProject.project.id}`,
+      }),
+    );
+    await expect(deniedForeign).resolves.toEqual({
+      type: "subscription_denied",
+    });
+
+    const hint = nextMessage(socket);
+    await broadcastNativeWorkItemHint({
+      projectId: project.project.id,
+      topics: [`project:${project.project.id}`, "work_item:SUP-1"],
+      eventId: "evt_native_test_1",
+      eventType: "work_item.updated",
+      at: "2026-10-03T00:00:00.000Z",
+      key: "SUP-1",
+      customerVisible: true,
+    });
+    await expect(hint).resolves.toEqual({
+      type: "work_item.updated",
+      topic: `project:${project.project.id}`,
+      eventId: "evt_native_test_1",
+      at: "2026-10-03T00:00:00.000Z",
+      payload: { key: "SUP-1" },
+    });
+
+    const closed = new Promise<void>((resolve) =>
+      socket.once("close", () => resolve()),
+    );
+    socket.close();
+    await closed;
+  });
+
+  it("persists native event envelopes with the mutation transaction and rolls them back with it", async () => {
+    const member = await createWorkspaceMember();
+    const project = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const input = {
+      kind: "work_item.updated" as const,
+      workItemId: "work-item-native-test",
+      key: "SUP-1",
+      workspaceId: member.workspace.id,
+      projectId: project.project.id,
+      actorId: member.user.id,
+      actorType: "person" as const,
+      customerVisible: false,
+      payload: { key: "SUP-1", url: "/agent/work-items/SUP-1" },
+    };
+
+    await expect(
+      db.transaction(async (tx) => {
+        await recordWorkItemEvent(tx, input);
+        throw new Error("force transaction rollback");
+      }),
+    ).rejects.toThrow("force transaction rollback");
+    expect(
+      await db
+        .select({ eventId: schema.outboxTable.eventId })
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.workspaceId, member.workspace.id)),
+    ).toEqual([]);
+
+    const committed = await db.transaction((tx) =>
+      recordWorkItemEvent(tx, input),
+    );
+    const [row] = await db
+      .select({
+        eventId: schema.outboxTable.eventId,
+        payload: schema.outboxTable.payload,
+      })
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.eventId, committed.id));
+    expect(row?.eventId).toBe(committed.id);
+    expect(row?.payload).toMatchObject({
+      id: committed.id,
+      kind: "work_item.updated",
+      scope: {
+        workspaceId: member.workspace.id,
+        projectId: project.project.id,
+      },
+      payload: input.payload,
+    });
+  });
+
   it("rejects unauthenticated upgrades before 101, then authenticates real cookie upgrades", async () => {
     const member = await createWorkspaceMember();
     const { app } = createApp();
@@ -379,32 +545,24 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     closeServer = node.close;
     await listening(node.server);
 
-    const headers = { host: "localhost:5173", origin: "http://localhost:5173" };
-    const url = websocketUrl(node.server, "/api/ws/user");
+    const headers = { host: "localhost:1337", origin: "http://localhost:1337" };
+    const url = websocketUrl(node.server, "/api/ws");
     expect(await rejectHandshake(url, headers)).toBe(401);
 
     mockAuthenticatedSession(member.user);
-    let serverSendSpy: ReturnType<typeof vi.spyOn> | undefined;
-    node.websocketServer.once("connection", (serverSocket) => {
-      serverSendSpy = vi.spyOn(serverSocket, "send");
-    });
     const socket = await openSocket(url, {
       ...headers,
       cookie: "__Host-tdk_agent_session=integration-session",
     });
-    const event = nextMessage(socket);
+    const denied = nextMessage(socket);
+    socket.send(
+      JSON.stringify({ type: "subscribe", topic: `user:${member.user.id}` }),
+    );
+    await expect(denied).resolves.toEqual({ type: "subscription_denied" });
     broadcastToUser(member.user.id, {
       type: "NOTIFICATION_CREATED",
       id: "notice-1",
     });
-    await expect(event).resolves.toEqual({
-      type: "NOTIFICATION_CREATED",
-      id: "notice-1",
-    });
-    if (!serverSendSpy) {
-      throw new Error("expected the real Node WebSocket connection callback");
-    }
-    expect(serverSendSpy).toHaveBeenCalledTimes(1);
 
     const closed = new Promise<void>((resolve) =>
       socket.once("close", () => resolve()),
@@ -412,12 +570,10 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     socket.close();
     await closed;
     await vi.waitFor(() => expect(node.websocketServer.clients.size).toBe(0));
-    serverSendSpy.mockClear();
     broadcastToUser(member.user.id, {
       type: "NOTIFICATION_CREATED",
       id: "after-close",
     });
-    expect(serverSendSpy).not.toHaveBeenCalled();
   });
 
   it("rejects session upgrades before 101 for missing, foreign, wrong-host, or wrong-portal boundaries", async () => {
@@ -427,15 +583,15 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const node = createNodeServer(app);
     closeServer = node.close;
     await listening(node.server);
-    const url = websocketUrl(node.server, "/api/ws/user");
+    const url = websocketUrl(node.server, "/api/ws");
     const cookie = "__Host-tdk_agent_session=integration-session";
 
-    expect(await rejectHandshake(url, { host: "localhost:5173", cookie })).toBe(
+    expect(await rejectHandshake(url, { host: "localhost:1337", cookie })).toBe(
       403,
     );
     expect(
       await rejectHandshake(url, {
-        host: "localhost:5173",
+        host: "localhost:1337",
         origin: "https://attacker.example",
         cookie,
       }),
@@ -443,30 +599,27 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     expect(
       await rejectHandshake(url, {
         host: "localhost:5174",
-        origin: "http://localhost:5173",
+        origin: "http://localhost:1337",
         cookie,
       }),
-    ).toBe(403);
+    ).toBe(404);
 
     mockAuthenticatedSession(member.user, { portal: "customer" });
     expect(
       await rejectHandshake(url, {
-        host: "localhost:5173",
-        origin: "http://localhost:5173",
+        host: "localhost:1337",
+        origin: "http://localhost:1337",
         cookie,
       }),
     ).toBe(403);
 
-    const portalSocket = await openSocket(url, {
-      host: "localhost:5174",
-      origin: "http://localhost:5174",
-      cookie: "__Host-tdk_portal_session=integration-session",
-    });
-    const closed = new Promise<void>((resolve) =>
-      portalSocket.once("close", () => resolve()),
-    );
-    portalSocket.close();
-    await closed;
+    expect(
+      await rejectHandshake(url, {
+        host: "portal.localhost:5174",
+        origin: "http://portal.localhost:5174",
+        cookie: "__Host-tdk_portal_session=integration-session",
+      }),
+    ).toBe(404);
   });
 
   it("does not let an invalid explicit credential fall back to a valid session cookie", async () => {
@@ -476,10 +629,10 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const node = createNodeServer(app);
     closeServer = node.close;
     await listening(node.server);
-    const url = websocketUrl(node.server, "/api/ws/user");
+    const url = websocketUrl(node.server, "/api/ws");
     const common = {
-      host: "localhost:5173",
-      origin: "http://localhost:5173",
+      host: "localhost:1337",
+      origin: "http://localhost:1337",
       cookie: "__Host-tdk_agent_session=integration-session",
     };
 
@@ -526,9 +679,9 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const node = createNodeServer(app);
     closeServer = node.close;
     await listening(node.server);
-    const url = websocketUrl(node.server, "/api/ws/user");
+    const url = websocketUrl(node.server, "/api/ws");
     const socket = await openSocket(url, {
-      host: "localhost:5173",
+      host: "localhost:1337",
       authorization: `Bearer ${rawKey}`,
     });
     const closed = new Promise<void>((resolve) =>
@@ -539,14 +692,14 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
 
     expect(
       await rejectHandshake(url, {
-        host: "localhost:5173",
+        host: "localhost:1337",
         origin: "https://attacker.example",
         authorization: `Bearer ${rawKey}`,
       }),
     ).toBe(403);
   });
 
-  it("binds live sessions to their issuing portal and rejects logout or expiry on reconnect", async () => {
+  it("keeps the portal edge disabled while its underlying auth instance binds sessions", async () => {
     const member = await createWorkspaceMember();
     await db.insert(schema.accountTable).values({
       id: `credential-${member.user.id}`,
@@ -561,21 +714,19 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     closeServer = node.close;
     await listening(node.server);
     const address = node.server.address() as AddressInfo;
-    const signIn = async (portal: "agent" | "customer" = "agent") => {
-      const origin =
-        portal === "agent" ? "http://localhost:5173" : "http://localhost:5174";
+    const signInAgent = async () => {
       const response = await rawPostToHost(
         address.port,
         "/api/auth/sign-in/email",
-        portal === "agent" ? "localhost:5173" : "localhost:5174",
-        origin,
+        "localhost:1337",
+        "http://localhost:1337",
         JSON.stringify({
           email: member.user.email,
           password: "Realtime-Test-Password-42!",
         }),
       );
       expect(response.status).toBe(200);
-      const cookieName = `__Host-tdk_${portal === "agent" ? "agent" : "portal"}_session=`;
+      const cookieName = "__Host-tdk_agent_session=";
       const setCookie = (response.headers["set-cookie"] ?? []).find((header) =>
         header.startsWith(cookieName),
       );
@@ -589,8 +740,49 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       return cookie as string;
     };
 
-    const firstCookie = await signIn();
-    const portalCookie = await signIn("customer");
+    const firstCookie = await signInAgent();
+    const portalSignInRequest = new Request(
+      "http://portal.localhost:5174/api/auth/sign-in/email",
+      {
+        method: "POST",
+        headers: {
+          origin: "http://portal.localhost:5174",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          email: member.user.email,
+          password: "Realtime-Test-Password-42!",
+        }),
+      },
+    );
+    const portalSignInResponse = await portalAuth.handler(portalSignInRequest);
+    expect(portalSignInResponse.status).toBe(200);
+    const portalSetCookie =
+      portalSignInResponse.headers.get("set-cookie") ?? "";
+    const portalCookie = portalSetCookie.match(
+      /__Host-tdk_portal_session=[^;,]+/,
+    )?.[0];
+    expect(portalCookie).toBeDefined();
+    expect(portalSetCookie).toMatch(/;\s*Path=\//i);
+    expect(portalSetCookie).toMatch(/;\s*Secure(?:;|$)/i);
+    expect(portalSetCookie).toMatch(/;\s*HttpOnly(?:;|$)/i);
+    expect(portalSetCookie).toMatch(/;\s*SameSite=Lax(?:;|$)/i);
+    expect(portalSetCookie).not.toMatch(/;\s*Domain=/i);
+
+    const portalEdgeSignIn = await rawPostToHost(
+      address.port,
+      "/api/auth/sign-in/email",
+      "portal.localhost:5174",
+      "http://portal.localhost:5174",
+      JSON.stringify({
+        email: member.user.email,
+        password: "Realtime-Test-Password-42!",
+      }),
+    );
+    expect(portalEdgeSignIn.status).toBe(404);
+    expect(portalEdgeSignIn.body).toBe('{"message":"Not Found"}');
+    expect(portalEdgeSignIn.headers["set-cookie"]).toBeUndefined();
+
     const currentSessions = await db
       .select()
       .from(schema.sessionTable)
@@ -602,17 +794,17 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       currentSessions.some((session) => session.portal === "customer"),
     ).toBe(true);
 
-    const url = websocketUrl(node.server, "/api/ws/user");
+    const url = websocketUrl(node.server, "/api/ws");
     expect(
       await rejectHandshake(url, {
-        host: "localhost:5173",
+        host: "localhost:1337",
         origin: "https://attacker.example",
         cookie: firstCookie,
       }),
     ).toBe(403);
     const liveSocket = await openSocket(url, {
-      host: "localhost:5173",
-      origin: "http://localhost:5173",
+      host: "localhost:1337",
+      origin: "http://localhost:1337",
       cookie: firstCookie,
     });
     const closed = new Promise<void>((resolve) =>
@@ -621,40 +813,55 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     liveSocket.close();
     await closed;
 
-    const portalSocket = await openSocket(url, {
-      host: "localhost:5174",
-      origin: "http://localhost:5174",
-      cookie: portalCookie,
-    });
-    const portalClosed = new Promise<void>((resolve) =>
-      portalSocket.once("close", () => resolve()),
-    );
-    portalSocket.close();
-    await portalClosed;
     expect(
       await rejectHandshake(url, {
-        host: "localhost:5173",
-        origin: "http://localhost:5173",
-        cookie: portalCookie,
+        host: "portal.localhost:5174",
+        origin: "http://portal.localhost:5174",
+        cookie: portalCookie as string,
+      }),
+    ).toBe(404);
+    expect(
+      await rawGetToHost(
+        address.port,
+        "/api/auth/get-session",
+        "portal.localhost:5174",
+        "http://portal.localhost:5174",
+        { cookie: portalCookie as string },
+      ),
+    ).toMatchObject({ status: 404, body: '{"message":"Not Found"}' });
+    const portalSession = await portalAuth.api.getSession({
+      headers: new Headers({ cookie: portalCookie as string }),
+    });
+    expect(portalSession?.session.portal).toBe("customer");
+    expect(
+      await auth.api.getSession({
+        headers: new Headers({ cookie: portalCookie as string }),
+      }),
+    ).toBeNull();
+    expect(
+      await rejectHandshake(url, {
+        host: "localhost:1337",
+        origin: "http://localhost:1337",
+        cookie: portalCookie as string,
       }),
     ).toBe(401);
 
     const copiedAgentCookie = `__Host-tdk_portal_session=${firstCookie.split("=", 2)[1]}`;
     expect(
       await rejectHandshake(url, {
-        host: "localhost:5174",
-        origin: "http://localhost:5174",
+        host: "portal.localhost:5174",
+        origin: "http://portal.localhost:5174",
         cookie: copiedAgentCookie,
       }),
-    ).toBe(403);
+    ).toBe(404);
     const crossPortalSession = await rawGetToHost(
       address.port,
       "/api/auth/get-session",
-      "localhost:5174",
-      "http://localhost:5174",
+      "portal.localhost:5174",
+      "http://portal.localhost:5174",
       { cookie: copiedAgentCookie },
     );
-    expect(crossPortalSession.status).toBe(403);
+    expect(crossPortalSession.status).toBe(404);
 
     const agentSession = currentSessions.find(
       (session) => session.portal === "agent",
@@ -667,16 +874,16 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       .where(eq(schema.sessionTable.id, agentSession.id));
     expect(
       await rejectHandshake(url, {
-        host: "localhost:5173",
-        origin: "http://localhost:5173",
+        host: "localhost:1337",
+        origin: "http://localhost:1337",
         cookie: firstCookie,
       }),
     ).toBe(403);
     const unboundSession = await rawGetToHost(
       address.port,
       "/api/auth/get-session",
-      "localhost:5173",
-      "http://localhost:5173",
+      "localhost:1337",
+      "http://localhost:1337",
       { cookie: firstCookie },
     );
     expect(unboundSession.status).toBe(403);
@@ -688,8 +895,8 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const invalidExplicitCredential = await rawPostToHost(
       address.port,
       "/api/auth/sign-out",
-      "localhost:5173",
-      "http://localhost:5173",
+      "localhost:1337",
+      "http://localhost:1337",
       "",
       { cookie: firstCookie, authorization: "Digest invalid-token" },
     );
@@ -697,8 +904,8 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const blankApiKey = await rawPostToHost(
       address.port,
       "/api/auth/sign-out",
-      "localhost:5173",
-      "http://localhost:5173",
+      "localhost:1337",
+      "http://localhost:1337",
       "",
       { cookie: firstCookie, "x-api-key": " " },
     );
@@ -706,21 +913,21 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const logout = await rawPostToHost(
       address.port,
       "/api/auth/sign-out",
-      "localhost:5173",
-      "http://localhost:5173",
+      "localhost:1337",
+      "http://localhost:1337",
       "{}",
       { cookie: firstCookie },
     );
     expect(logout.status).toBe(200);
     expect(
       await rejectHandshake(url, {
-        host: "localhost:5173",
-        origin: "http://localhost:5173",
+        host: "localhost:1337",
+        origin: "http://localhost:1337",
         cookie: firstCookie,
       }),
     ).toBe(401);
 
-    const expiredCookie = await signIn();
+    const expiredCookie = await signInAgent();
     const sessionsAfterReconnect = await db
       .select()
       .from(schema.sessionTable)
@@ -736,14 +943,14 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       .where(eq(schema.sessionTable.id, newSession.id));
     expect(
       await rejectHandshake(url, {
-        host: "localhost:5173",
-        origin: "http://localhost:5173",
+        host: "localhost:1337",
+        origin: "http://localhost:1337",
         cookie: expiredCookie,
       }),
     ).toBe(401);
   });
 
-  it("preserves project reach masking, windowId fanout, and real shutdown", async () => {
+  it("preserves legacy task project reach masking, window fanout, and shutdown", async () => {
     const member = await createWorkspaceMember();
     const stranger = await createWorkspaceMember();
     const { project } = await createProjectFixture({
@@ -760,8 +967,8 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     await listening(node.server);
 
     const headers = {
-      origin: "http://localhost:5173",
-      host: "localhost:5173",
+      origin: "http://localhost:1337",
+      host: "localhost:1337",
       cookie: "__Host-tdk_agent_session=integration-session",
     };
     const address = node.server.address() as AddressInfo;
@@ -797,11 +1004,10 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       slug: "real-listener-json-body",
     });
 
-    const base = websocketUrl(
-      node.server,
-      `/api/ws/${project.id}?windowId=window-7`,
+    const socket = await openSocket(
+      websocketUrl(node.server, `/api/ws/${project.id}?windowId=window-7`),
+      headers,
     );
-    const socket = await openSocket(base, headers);
     const observer = await openSocket(
       websocketUrl(node.server, `/api/ws/${project.id}?windowId=window-8`),
       headers,

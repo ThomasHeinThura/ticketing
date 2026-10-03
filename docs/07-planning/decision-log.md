@@ -5,6 +5,21 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-03 · Native work-item realtime uses one subscribed socket and key-only outbox hints (#570)
+
+**Decision:** P0 work-item subscriptions use `GET /api/ws` on the agent origin and explicit validated `subscribe` / `unsubscribe` frames for `project:{projectId}` and `work_item:{key}`. The separate legacy user socket continues to deliver notifications, and the legacy project socket continues to serve existing Task-model consumers; neither is the native work-item event path. The native server resolves topic resources from persisted project/work-item relationships and applies the same read capabilities and row/project reach as REST. Missing and unreadable topics have the same denial frame. Agent-host session Host/Origin/portal checks remain those in ADR 0004 and `realtime.md`.
+
+CP-19 takes precedence for the customer portal public edge in P0: every portal `/api` request and websocket upgrade is a generic 404 before auth/session/API-key lookup or other handler effects. This includes `/api/ws` and `/api/auth/*`. The separately configured `portalAuth` instance and its host-only cookie binding are not reachable through that edge and do not enable portal login or realtime. P0 tests the binding directly as an internal configuration property while separately proving the public portal edge stays denied. Portal socket availability requires the later reviewed P3 identity boundary and a corresponding CP-19 change.
+
+Every supported native work-item mutation writes one existing canonical event envelope to `outbox` in its mutation transaction. After commit, best-effort socket fan-out sends only `{type, topic, eventId, at, payload:{key}}`; domain payloads and internal-only comments/changes are never sent to customer subscriptions. Fan-out is an at-most-once invalidation hint, not a new replaying outbox consumer; reconnect refetch and 30-second foreground fallback repair missed messages. Existing event keys, outbox schema, capabilities, feature defaults, and polling assertions remain authoritative.
+
+This resolves the route, topic authorization, projection, deduplication, delete timing, and failure/recovery choices needed by #570. It does not close the owning architecture/feature review rows, claim independent review, or claim P0 completion. The reviewed spec and exact-head implementation still require the ordinary bulk panel and GPT-6 Sol security review.
+
+**Authorization and status:** the orchestrator authorized these bounded recommended defaults on 2026-10-03. This entry records implementation choices, not review or acceptance evidence.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-03.
+
+### 2026-10-02 · CAL-16 uses server-issued bidirectional tuple cursors (#513 review remediation)
 ### 2026-10-02 · CAL-16 uses server-issued bidirectional tuple cursors (#513 review remediation)
 
 **Decision:** CAL-16's paginated `GET /api/service-calendars` includes
@@ -281,6 +296,36 @@ The separate image is proposed to use `nginxinc/nginx-unprivileged:1.30.5-alpine
 **Authorization and status:** recorded under Thomas's standing recommended-decisions authorization. This entry does not assert that Thomas read the completed specification, grant H1–H6 approval, waive dependency/review gates, or establish implementation, deployment or stage completion. The proposed dependencies remain uninstalled.
 
 **Recorded by:** docs-site specification author, 2026-10-01.
+### 2026-10-01 · G11 failure evidence avoids timed DOM snapshots and raw network secrets
+
+**Decision:** G11's Playwright run retains failure traces with actions, screencast, source,
+and attachment data, but disables automatic DOM snapshots during timed samples. Playwright
+1.63 also leaves its trace network files empty in this mode. Each benchmark context therefore
+attaches a separate bounded, sanitized network summary containing only method, a closed
+known-safe benchmark route template (or the fixed label `unrecognized`), resource type,
+finite response status, and available finite timing. It may include a boolean request-failure
+flag. Dynamic path values are always replaced by fixed placeholders, independent of their
+contents; unknown path shapes retain no path detail. It retains no raw request or response
+objects, headers, cookies, bodies, full URLs, or query strings, and reports truncation.
+Explicit screenshots taken after measured actions and all functional assertions remain
+required.
+Playwright DOM snapshot serialization was observed
+inside hosted metric windows on exact source `13516958be469aa353d9b5f7e0b113880b31ed17`
+(run `36860954427`). This measurement change removes competing instrumentation without
+changing product budgets, marks, throttles, fixtures, retry policy, row/card counts, or the
+paint-visibility contract. Any resulting timing change requires a new hosted canonical run;
+the separate diagnostic profile is not acceptance evidence. Disabling DOM snapshots reduces
+DOM-state replay detail.
+
+**Why:** hosted source attribution showed Playwright DOM snapshot serialization executing
+inside the timed windows, including recursive document traversal. The separate sanitized
+network summary restores useful request evidence without copying query strings or credentials
+into a HAR. Closed route templates prevent opaque IDs, including all-letter bearer-like values,
+from being retained as path text. This changes how G11 measures rendering and is not evidence
+of an application speedup or a gate pass.
+
+**Recorded by:** task orchestrator under the bounded G11 measurement-repair assignment,
+2026-10-01.
 
 ### 2026-10-01 · P0 observability uses bounded internal metrics and operation-bound rotation
 

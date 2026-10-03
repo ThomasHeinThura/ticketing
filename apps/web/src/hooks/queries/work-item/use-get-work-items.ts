@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import getWorkItems from "@/fetchers/work-item/get-work-items";
+import { useNativeWorkItemRealtime } from "@/hooks/use-native-work-item-realtime";
 import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
 
 /**
@@ -38,15 +39,21 @@ function useGetWorkItems({
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
 }) {
-  return useQuery({
+  const { isUnavailable: isRealtimeUnavailable } = useNativeWorkItemRealtime(
+    projectId ? [`project:${projectId}`] : [],
+  );
+  const query = useQuery({
     queryKey: ["work-items", projectId, sort, dir],
     queryFn: () => getWorkItems(projectId as string, sort, dir),
     enabled: !!projectId,
+    refetchInterval: isRealtimeUnavailable ? 30_000 : false,
+    refetchIntervalInBackground: false,
     placeholderData: (
       previousData: WorkItemsResult | undefined,
       previousQuery,
     ) => (previousQuery?.queryKey[1] === projectId ? previousData : undefined),
   });
+  return { ...query, isRealtimeUnavailable };
 }
 
 export default useGetWorkItems;

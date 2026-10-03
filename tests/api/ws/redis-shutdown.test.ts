@@ -10,6 +10,8 @@ type FakeRedisClient = {
   publish: ReturnType<typeof vi.fn>;
   psubscribe: ReturnType<typeof vi.fn>;
   punsubscribe: ReturnType<typeof vi.fn>;
+  subscribe: ReturnType<typeof vi.fn>;
+  unsubscribe: ReturnType<typeof vi.fn>;
   quit: ReturnType<typeof vi.fn>;
 };
 
@@ -82,6 +84,8 @@ describe("Redis adapter shutdown lifecycle", () => {
       publish: vi.fn(() => publishGate.promise),
       psubscribe: vi.fn().mockResolvedValue(undefined),
       punsubscribe: vi.fn().mockResolvedValue(undefined),
+      subscribe: vi.fn().mockResolvedValue(undefined),
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
       quit: vi.fn().mockResolvedValue("OK"),
     });
     const clientFactory = makeFakeRedisFactory(makeClient, clients);
@@ -123,6 +127,8 @@ describe("Redis adapter shutdown lifecycle", () => {
       publish: vi.fn().mockResolvedValue(1),
       psubscribe: vi.fn().mockResolvedValue(undefined),
       punsubscribe: vi.fn(() => unsubscribeGate.promise),
+      subscribe: vi.fn().mockResolvedValue(undefined),
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
       quit: vi.fn().mockResolvedValue("OK"),
     });
     const clientFactory = makeFakeRedisFactory(makeClient, clients);
@@ -154,6 +160,8 @@ describe("Redis adapter shutdown lifecycle", () => {
       publish: vi.fn().mockResolvedValue(1),
       psubscribe: vi.fn().mockResolvedValue(undefined),
       punsubscribe: vi.fn().mockResolvedValue(undefined),
+      subscribe: vi.fn().mockResolvedValue(undefined),
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
       quit: vi.fn(() => quitGate.promise),
     });
     const clientFactory = makeFakeRedisFactory(makeClient, clients);

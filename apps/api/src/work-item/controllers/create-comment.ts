@@ -9,6 +9,7 @@ import {
   assertProjectStillLive,
   assertWorkItemStillLive,
 } from "../assert-work-item-live";
+import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 
 export type CreateCommentInput = {
   body: unknown;
@@ -54,33 +55,64 @@ export async function createComment(
   // this transaction finishes, closing the same reach-check-to-write race #276 closed for
   // `update-work-item.ts` -- read-only here (nothing about THIS row is written), so a
   // shared lock is enough.
-  const created = await db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select({
-        projectId: workItemTable.projectId,
-        deletedAt: workItemTable.deletedAt,
-        archivedAt: workItemTable.archivedAt,
-      })
-      .from(workItemTable)
-      .where(eq(workItemTable.id, workItemId))
-      .for("share");
-    assertWorkItemStillLive(locked);
-    await assertProjectStillLive(tx, locked.projectId);
+  const { created, realtimeEvent, projectId, key } = await db.transaction(
+    async (tx) => {
+      const [locked] = await tx
+        .select({
+          projectId: workItemTable.projectId,
+          key: workItemTable.key,
+          deletedAt: workItemTable.deletedAt,
+          archivedAt: workItemTable.archivedAt,
+        })
+        .from(workItemTable)
+        .where(eq(workItemTable.id, workItemId))
+        .for("share");
+      assertWorkItemStillLive(locked);
+      await assertProjectStillLive(tx, locked.projectId);
 
-    const [row] = await tx
-      .insert(commentTable)
-      .values({
-        workspaceId,
+      const [row] = await tx
+        .insert(commentTable)
+        .values({
+          workspaceId,
+          workItemId,
+          authorId: actorId,
+          actorType,
+          body: input.body,
+          visibility: input.visibility,
+        })
+        .returning();
+
+      if (!row)
+        return {
+          created: row,
+          realtimeEvent: undefined,
+          projectId: locked.projectId,
+          key: locked.key,
+        };
+      const realtimeEvent = await recordWorkItemEvent(tx, {
+        kind: "work_item.commented",
         workItemId,
-        authorId: actorId,
+        key: locked.key,
+        workspaceId,
+        projectId: locked.projectId,
+        actorId,
         actorType,
-        body: input.body,
-        visibility: input.visibility,
-      })
-      .returning();
-
-    return row;
-  });
+        customerVisible: row.visibility === "public",
+        payload: {
+          key: locked.key,
+          url: `/agent/work-items/${encodeURIComponent(locked.key)}`,
+          commentId: row.id,
+          visibility: row.visibility,
+        },
+      });
+      return {
+        created: row,
+        realtimeEvent,
+        projectId: locked.projectId,
+        key: locked.key,
+      };
+    },
+  );
 
   if (!created) {
     throw new HTTPException(500, { message: "Failed to create comment" });
@@ -99,6 +131,14 @@ export async function createComment(
     actorId,
     actorType,
   });
+  if (realtimeEvent) {
+    await publishWorkItemHint(realtimeEvent, {
+      kind: "work_item.commented",
+      key,
+      projectId,
+      customerVisible: created.visibility === "public",
+    });
+  }
 
   return created;
 }

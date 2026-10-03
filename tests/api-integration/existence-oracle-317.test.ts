@@ -457,8 +457,8 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     mockAuthenticatedSession(caller.user);
     const { app } = createApp();
     const headers = {
-      host: "localhost:5173",
-      origin: "http://localhost:5173",
+      host: "localhost:1337",
+      origin: "http://localhost:1337",
       Connection: "Upgrade",
       Upgrade: "websocket",
       "Sec-WebSocket-Version": "13",
@@ -484,8 +484,8 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     mockAuthenticatedSession(caller.user);
     const { app } = createApp();
     const headers = {
-      host: "localhost:5173",
-      origin: "http://localhost:5173",
+      host: "localhost:1337",
+      origin: "http://localhost:1337",
       Connection: "Upgrade",
       Upgrade: "websocket",
       "Sec-WebSocket-Version": "13",

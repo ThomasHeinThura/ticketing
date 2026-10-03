@@ -22,7 +22,8 @@ describe("portal-bound authentication configuration", () => {
 
   it("selects an auth instance only for its configured request host", () => {
     expect(authForHost("localhost:5173")).toBe(auth);
-    expect(authForHost("localhost:5174")).toBe(portalAuth);
+    expect(authForHost("portal.localhost:5174")).toBe(portalAuth);
+    expect(authForHost("localhost:5174")).toBeNull();
     expect(authForHost("localhost:5175")).toBeNull();
   });
 });

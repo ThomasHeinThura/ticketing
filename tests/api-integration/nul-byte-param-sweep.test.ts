@@ -85,8 +85,8 @@ describe("API integration: #281 NUL-byte sweep on raw param/query reads", () => 
       `/api/ws/${encodeURIComponent("\u0000x")}`,
       {
         headers: {
-          host: "localhost:5173",
-          origin: "http://localhost:5173",
+          host: "localhost:1337",
+          origin: "http://localhost:1337",
           Upgrade: "websocket",
           Connection: "Upgrade",
         },

@@ -143,7 +143,9 @@ describe("API integration: task image upload finalize", () => {
 
   it("falls back to deriving URL from the request when KANEO_API_URL is not set", async () => {
     delete process.env.KANEO_API_URL;
-    process.env.TASKDESK_AGENT_URL = "https://app.taskdesk.test";
+    const configuredAgentUrl = process.env.TASKDESK_AGENT_URL;
+    if (!configuredAgentUrl) throw new Error("Missing configured agent URL");
+    const agentOrigin = new URL(configuredAgentUrl).origin;
 
     const member = await createWorkspaceMember();
     const { project, columns } = await createProjectFixture({
@@ -173,13 +175,10 @@ describe("API integration: task image upload finalize", () => {
     const key = `workspace/${member.workspace.id}/project/${project.id}/task/${task.id}/descriptions/fallback-image.png`;
 
     const response = await app.request(
-      `https://app.taskdesk.test/api/task/image-upload/${task.id}/finalize`,
+      `${agentOrigin}/api/task/image-upload/${task.id}/finalize`,
       {
         method: "POST",
-        headers: {
-          host: "app.taskdesk.test",
-          "content-type": "application/json",
-        },
+        headers: { "content-type": "application/json" },
         body: JSON.stringify({
           key,
           filename: "fallback-image.png",
@@ -192,10 +191,7 @@ describe("API integration: task image upload finalize", () => {
 
     expect(response.status).toBe(200);
     const payload = (await response.json()) as { id: string; url: string };
-    expect(payload.url).toBe(
-      `https://app.taskdesk.test/api/asset/${payload.id}`,
-    );
-    expect(payload.url).not.toContain("localhost");
+    expect(payload.url).toBe(`${agentOrigin}/api/asset/${payload.id}`);
   });
 
   it("persists a new asset record with correct metadata", async () => {

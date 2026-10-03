@@ -27,6 +27,7 @@ import {
   projectNotDeletedClause,
 } from "../assert-work-item-live";
 import { resolveAssigneeEligibility } from "../assignee-eligibility";
+import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import {
   loadWorkflowTransitionContext,
   resolveActorRoleIds,
@@ -244,6 +245,7 @@ export async function transitionWorkItem(
       "This work item's type has no active workflow version",
     );
   }
+  const activeVersion = ctx.activeVersion;
 
   const actorRoleIds = await resolveActorRoleIds(
     personId,
@@ -313,6 +315,11 @@ export async function transitionWorkItem(
     }
   }
 
+  const realtimeEvents: {
+    kind: string;
+    event: Awaited<ReturnType<typeof recordWorkItemEvent>>;
+    customerVisible: boolean;
+  }[] = [];
   const result = await runTransactionCatchingDeadlock(fromStateId, () =>
     db.transaction(async (tx) => {
       // B1: lock the row FIRST, before deciding anything guard-shaped. Every fact below is
@@ -625,6 +632,54 @@ export async function transitionWorkItem(
         },
       });
 
+      const transitionRealtimeEvent = await recordWorkItemEvent(tx, {
+        kind: "work_item.transitioned",
+        workItemId: ctx.workItem.id,
+        key: updated.key,
+        workspaceId: ctx.workItem.workspaceId,
+        projectId: ctx.workItem.projectId,
+        actorId,
+        actorType,
+        customerVisible: true,
+        payload: {
+          key: updated.key,
+          url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
+          fromStateId,
+          toStateId,
+          workflowVersion: activeVersion.number,
+          ...(input.note !== undefined ? { note: input.note } : {}),
+        },
+      });
+      realtimeEvents.push({
+        kind: "work_item.transitioned",
+        event: transitionRealtimeEvent,
+        customerVisible: true,
+      });
+      if (
+        assigneeEventKind === "assigned" ||
+        assigneeEventKind === "unassigned"
+      ) {
+        const assigned = assigneeEventKind === "assigned";
+        const kind = assigned ? "work_item.assigned" : "work_item.unassigned";
+        const event = await recordWorkItemEvent(tx, {
+          kind,
+          workItemId: ctx.workItem.id,
+          key: updated.key,
+          workspaceId: ctx.workItem.workspaceId,
+          projectId: ctx.workItem.projectId,
+          actorId,
+          actorType,
+          customerVisible: true,
+          payload: {
+            key: updated.key,
+            url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
+            ...(assigned ? { assigneeId: updated.assigneeId } : {}),
+            previousAssigneeId: previousAssigneeId ?? null,
+          },
+        });
+        realtimeEvents.push({ kind, event, customerVisible: true });
+      }
+
       return {
         key: updated.key,
         stateId: toStateId,
@@ -670,6 +725,15 @@ export async function transitionWorkItem(
       previousAssigneeId: result.previousAssigneeId,
       actorId,
       actorType,
+    });
+  }
+
+  for (const realtimeEvent of realtimeEvents) {
+    await publishWorkItemHint(realtimeEvent.event, {
+      kind: realtimeEvent.kind as `work_item.${string}`,
+      key: result.key,
+      projectId: ctx.workItem.projectId,
+      customerVisible: realtimeEvent.customerVisible,
     });
   }
 
