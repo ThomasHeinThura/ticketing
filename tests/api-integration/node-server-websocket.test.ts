@@ -172,6 +172,79 @@ function rawPost(
   });
 }
 
+function rawRequestToHost(
+  port: number,
+  path: string,
+  method: "GET" | "POST",
+  host: string,
+  origin: string,
+  body: string,
+  extraHeaders: Record<string, string> = {},
+) {
+  return new Promise<{
+    status: number;
+    headers: IncomingMessage["headers"];
+    body: string;
+  }>((resolve, reject) => {
+    const request = httpRequest(
+      {
+        host: "127.0.0.1",
+        port,
+        path,
+        method,
+        headers: {
+          host,
+          origin,
+          ...(body
+            ? {
+                "content-type": "application/json",
+                "content-length": Buffer.byteLength(body),
+              }
+            : {}),
+          ...extraHeaders,
+        },
+      },
+      (response) => {
+        let responseBody = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk: string) => {
+          responseBody += chunk;
+        });
+        response.on("end", () =>
+          resolve({
+            status: response.statusCode ?? 0,
+            headers: response.headers,
+            body: responseBody,
+          }),
+        );
+      },
+    );
+    request.on("error", reject);
+    request.end(body);
+  });
+}
+
+function rawPostToHost(
+  port: number,
+  path: string,
+  host: string,
+  origin: string,
+  body: string,
+  extraHeaders: Record<string, string> = {},
+) {
+  return rawRequestToHost(port, path, "POST", host, origin, body, extraHeaders);
+}
+
+function rawGetToHost(
+  port: number,
+  path: string,
+  host: string,
+  origin: string,
+  extraHeaders: Record<string, string> = {},
+) {
+  return rawRequestToHost(port, path, "GET", host, origin, "", extraHeaders);
+}
+
 function deferred<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
   let reject!: (reason?: unknown) => void;
@@ -484,26 +557,28 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     });
 
     const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const address = node.server.address() as AddressInfo;
     const signIn = async (portal: "agent" | "customer" = "agent") => {
       const origin =
         portal === "agent" ? "http://localhost:5173" : "http://localhost:5174";
-      const response = await app.request("/api/auth/sign-in/email", {
-        method: "POST",
-        headers: {
-          host: portal === "agent" ? "localhost:5173" : "localhost:5174",
-          origin,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
+      const response = await rawPostToHost(
+        address.port,
+        "/api/auth/sign-in/email",
+        portal === "agent" ? "localhost:5173" : "localhost:5174",
+        origin,
+        JSON.stringify({
           email: member.user.email,
           password: "Realtime-Test-Password-42!",
         }),
-      });
+      );
       expect(response.status).toBe(200);
       const cookieName = `__Host-tdk_${portal === "agent" ? "agent" : "portal"}_session=`;
-      const setCookie = response.headers
-        .getSetCookie()
-        .find((header) => header.startsWith(cookieName));
+      const setCookie = (response.headers["set-cookie"] ?? []).find((header) =>
+        header.startsWith(cookieName),
+      );
       expect(setCookie).toMatch(/;\s*Path=\//i);
       expect(setCookie).toMatch(/;\s*Secure(?:;|$)/i);
       expect(setCookie).toMatch(/;\s*HttpOnly(?:;|$)/i);
@@ -527,9 +602,6 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       currentSessions.some((session) => session.portal === "customer"),
     ).toBe(true);
 
-    const node = createNodeServer(app);
-    closeServer = node.close;
-    await listening(node.server);
     const url = websocketUrl(node.server, "/api/ws/user");
     expect(
       await rejectHandshake(url, {
@@ -575,13 +647,13 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
         cookie: copiedAgentCookie,
       }),
     ).toBe(403);
-    const crossPortalSession = await app.request("/api/auth/get-session", {
-      headers: {
-        host: "localhost:5174",
-        origin: "http://localhost:5174",
-        cookie: copiedAgentCookie,
-      },
-    });
+    const crossPortalSession = await rawGetToHost(
+      address.port,
+      "/api/auth/get-session",
+      "localhost:5174",
+      "http://localhost:5174",
+      { cookie: copiedAgentCookie },
+    );
     expect(crossPortalSession.status).toBe(403);
 
     const agentSession = currentSessions.find(
@@ -600,47 +672,45 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
         cookie: firstCookie,
       }),
     ).toBe(403);
-    const unboundSession = await app.request("/api/auth/get-session", {
-      headers: {
-        host: "localhost:5173",
-        origin: "http://localhost:5173",
-        cookie: firstCookie,
-      },
-    });
+    const unboundSession = await rawGetToHost(
+      address.port,
+      "/api/auth/get-session",
+      "localhost:5173",
+      "http://localhost:5173",
+      { cookie: firstCookie },
+    );
     expect(unboundSession.status).toBe(403);
 
     await db
       .update(schema.sessionTable)
       .set({ portal: "agent" })
       .where(eq(schema.sessionTable.id, agentSession.id));
-    const invalidExplicitCredential = await app.request("/api/auth/sign-out", {
-      method: "POST",
-      headers: {
-        host: "localhost:5173",
-        origin: "http://localhost:5173",
-        cookie: firstCookie,
-        authorization: "Digest invalid-token",
-      },
-    });
+    const invalidExplicitCredential = await rawPostToHost(
+      address.port,
+      "/api/auth/sign-out",
+      "localhost:5173",
+      "http://localhost:5173",
+      "",
+      { cookie: firstCookie, authorization: "Digest invalid-token" },
+    );
     expect(invalidExplicitCredential.status).toBe(401);
-    const blankApiKey = await app.request("/api/auth/sign-out", {
-      method: "POST",
-      headers: {
-        host: "localhost:5173",
-        origin: "http://localhost:5173",
-        cookie: firstCookie,
-        "x-api-key": " ",
-      },
-    });
+    const blankApiKey = await rawPostToHost(
+      address.port,
+      "/api/auth/sign-out",
+      "localhost:5173",
+      "http://localhost:5173",
+      "",
+      { cookie: firstCookie, "x-api-key": " " },
+    );
     expect(blankApiKey.status).toBe(401);
-    const logout = await app.request("/api/auth/sign-out", {
-      method: "POST",
-      headers: {
-        host: "localhost:5173",
-        origin: "http://localhost:5173",
-        cookie: firstCookie,
-      },
-    });
+    const logout = await rawPostToHost(
+      address.port,
+      "/api/auth/sign-out",
+      "localhost:5173",
+      "http://localhost:5173",
+      "{}",
+      { cookie: firstCookie },
+    );
     expect(logout.status).toBe(200);
     expect(
       await rejectHandshake(url, {
