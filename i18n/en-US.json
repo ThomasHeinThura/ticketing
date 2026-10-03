@@ -2299,6 +2299,80 @@
 			"description": "The page could not be loaded. Try again."
 		}
 	},
+	"slaPolicies": {
+		"list": {
+			"title": "SLA policies",
+			"description": "Define response and resolution goals for work-item types and priorities.",
+			"label": "SLA policies",
+			"noDescription": "No description",
+			"loadErrorTitle": "Policies could not be loaded",
+			"loadErrorDescription": "Check your connection and workspace access, then try again.",
+			"new": "New SLA policy",
+			"loading": "Loading SLA policies",
+			"retry": "Retry",
+			"emptyTitle": "No SLA policies yet",
+			"emptyDescription": "Create and publish a policy to set service goals.",
+			"readOnlyTitle": "Read-only access",
+			"readOnlyDescription": "Your workspace role does not allow managing SLA policies.",
+			"active": "Active version {{version}}",
+			"draft": "Draft changes",
+			"unpublished": "Not published",
+			"next": "Next",
+			"previous": "Previous"
+		},
+		"editor": {
+			"title": "SLA policy",
+			"newTitle": "New SLA policy",
+			"detailsTitle": "Policy configuration",
+			"calendarPlaceholder": "Select a service calendar",
+			"typesHelp": "Included types must have eight goals before you can publish.",
+			"typesError": "Work-item types could not be loaded.",
+			"noTypes": "Select one or more work-item types to define goals.",
+			"targetUnit": "Target duration in covered working minutes. Leave a cell empty while drafting.",
+			"invalidTarget": "Enter a whole number from 1 to 2,147,483,647 minutes.",
+			"incomplete": "Complete every priority for both metrics before publishing.",
+			"readyToPublish": "All selected types have complete goal matrices.",
+			"back": "Back to SLA policies",
+			"name": "Policy name",
+			"description": "Description",
+			"calendar": "Service calendar",
+			"threshold": "At-risk threshold (%)",
+			"types": "Included work-item types",
+			"goals": "Goal matrix",
+			"metric": "Metric",
+			"firstResponse": "First response",
+			"resolution": "Resolution",
+			"priority": "Priority",
+			"targetMinutes": "Target minutes",
+			"save": "Save draft",
+			"saving": "Saving…",
+			"publish": "Publish version",
+			"publishing": "Publishing…",
+			"loading": "Loading policy",
+			"loadErrorTitle": "Policy could not be loaded",
+			"loadError": "The policy could not be loaded.",
+			"saveError": "The policy draft could not be saved.",
+			"publishError": "The policy draft could not be published. Check that every included type has all eight goals.",
+			"conflictTitle": "Policy changed",
+			"conflict": "This policy changed in another session. Your edits are still here; reload the latest version before saving again.",
+			"reload": "Reload latest",
+			"publishHelp": "Publishing requires at least one included type and all first-response and resolution goals for each priority.",
+			"draftHelp": "Drafts can be incomplete. Only published versions affect SLA evaluation.",
+			"saved": "Draft saved",
+			"published": "Policy version published",
+			"required": "This field is required",
+			"metrics": {
+				"first_response": "First response",
+				"resolution": "Resolution"
+			},
+			"priorities": {
+				"low": "Low",
+				"medium": "Medium",
+				"high": "High",
+				"urgent": "Urgent"
+			}
+		}
+	},
 	"serviceCalendars": {
 		"weekdays": {
 			"mon": "Monday",
@@ -2353,8 +2427,8 @@
 			"timezoneCount": "The affected open-item count is not available yet. The calendar usage count is not available yet. Confirm to continue without that count.",
 			"cancel": "Cancel",
 			"confirmSave": "Confirm and save",
-			"changesTitle": "Changes affect SLA deadlines immediately",
-			"changesDescription": "Editing cover or holidays recalculates SLA state on the next read. The affected-item count is not available in this slice because the usage endpoint depends on project calendar references (#437) and the sla_policy table.",
+			"changesTitle": "Calendar impact is not shown",
+			"changesDescription": "Affected-work-item counts are unavailable because this screen does not expose calendar usage.",
 			"zeroWeeklyTitle": "This calendar provides zero weekly cover",
 			"zeroWeeklyDescription": "With no windows, SLA clocks using this calendar never advance.",
 			"zeroTitle": "This calendar currently provides zero cover",
@@ -2386,7 +2460,7 @@
 			"weeklyHours": "hours of cover per week",
 			"annualHours": "hours in {{year}} after holidays",
 			"zeroCover": "This calendar has no cover windows.",
-			"calendar": "Calendar: {{name}}. Changes take effect immediately for SLAs that use it."
+			"calendar": "Calendar: {{name}}. Usage details are unavailable in this slice."
 		},
 		"weekly": {
 			"title": "Weekly cover",

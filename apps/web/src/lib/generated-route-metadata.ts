@@ -6,6 +6,8 @@ export const generatedRouteMetadata = {
     "/agent/projects/$projectKey/work",
     "/agent/settings/calendars",
     "/agent/settings/calendars/$id",
+    "/agent/settings/sla-policies",
+    "/agent/settings/sla-policies/$id",
     "/agent/work-items/$key",
     "/auth",
     "/auth/check-email",

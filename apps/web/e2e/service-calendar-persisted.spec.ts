@@ -120,6 +120,12 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
         .getByRole("region", { name: "Import holidays from an iCalendar file" })
         .getByRole("alert"),
     ).toContainText(/RRULE/);
+    await expect(
+      page.getByText("Must not partially import", { exact: true }),
+    ).not.toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Import holidays" }),
+    ).not.toBeVisible();
     const afterRejectedImport = await page.request.get(
       new URL(`/api/service-calendars/${calendarId}`, origin).toString(),
       { headers: { Origin: origin } },

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Holiday, ServiceCalendar } from "@/fetchers/service-calendar";
 import { useImportServiceCalendarHolidays } from "@/hooks/mutations/service-calendar/use-import-service-calendar-holidays";
+import { HttpError } from "@/lib/http-error";
 
 export function HolidayImportPanel({
   calendar,
@@ -101,6 +102,10 @@ export function HolidayImportPanel({
       setNames([]);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("import.error"));
+      if (cause instanceof HttpError && [400, 422].includes(cause.status)) {
+        setIcs(null);
+        setNames([]);
+      }
     }
   }
 

@@ -154,8 +154,8 @@ authoring miserable.
 ## API
 
 ```
-GET   /api/sla-policies                        sla_policy:read
-POST  /api/sla-policies                        sla_policy:manage
+GET   /api/sla-policies?workspaceId=…          sla_policy:read
+POST  /api/sla-policies?workspaceId=…          sla_policy:manage
 GET   /api/sla-policies/{id}                   sla_policy:read
 PATCH /api/sla-policies/{id}                   sla_policy:manage
 POST  /api/sla-policies/{id}/publish           sla_policy:manage
@@ -163,6 +163,76 @@ GET   /api/work-items/{key}/sla                work_item:read
 POST  /api/work-items/{key}/sla/pause          work_item:update
 POST  /api/work-items/{key}/sla/resume         work_item:update
 ```
+
+### Selected policy-authoring contract
+
+This contract is selected for implementation by the orchestrating session; it is not human
+P4 approval. It does not define SLA evaluation, work-item binding, project health, or
+calendar usage for projects.
+
+- A policy belongs to one explicitly selected workspace. Collection create/list requests
+  require reachable `workspaceId` query context; detail/update/publish resolve scope from
+  the policy row. JSON bodies cannot override workspace scope. Calendar and work-item-type
+  ids must resolve inside that workspace or the request is rejected without revealing
+  cross-workspace existence.
+- `POST /api/sla-policies?workspaceId=…` creates policy metadata and its first editable
+  draft in that reachable workspace. The body is
+  `{name, description, calendarId, atRiskThresholdPct, goals}`. The
+  `goals` array contains `{metric, workItemTypeId, priority, targetMinutes}` entries.
+  Bounds are: `name` 1–120 characters, `description` null or at most 2,000 characters,
+  `atRiskThresholdPct` integer 1–99, and `targetMinutes` an integer from 1 through
+  2,147,483,647.
+  The canonical priority values are `low`, `medium`, `high`, and `urgent`.
+- A goal matrix may omit a work-item type entirely, but a published version must include
+  at least one type. For each included type, it must contain exactly one goal for every
+  `(metric, priority)` pair: both metrics and all four priorities. Drafts may be empty or
+  incomplete while they are being edited.
+  Duplicate tuples, unknown metrics/priorities, non-positive targets, or cross-workspace
+  references are validation failures (`422`). A type omitted from the selected policy version has
+  no SLA goal; it does not borrow a lower-precedence policy's goal.
+- A newly created policy has no active published version and exactly one editable draft.
+  Each version snapshots its own `calendarId` and `atRiskThresholdPct` alongside its goal
+  matrix. Draft edits change these snapshot values; changing policy metadata never changes
+  an existing published version's evaluation. The first `PATCH` after publication creates
+  a draft by copying the active version's calendar, threshold, and full goal matrix; further
+  patches replace the draft configuration. A draft is never used to evaluate a work item.
+  There is at most one draft per policy. Its
+  monotonically increasing `number` is allocated when the draft is created under the
+  policy-row lock, after the highest existing number.
+- Published versions are immutable. `POST /api/sla-policies/{id}/publish` validates the
+  complete draft, sets `effective_from` from database time, and atomically moves
+  `active_version_id` to it.
+  Publishing when no draft exists returns `409`; an incomplete draft returns `422` and
+  remains editable. The initial publication creates the first active version. The active
+  pointer always names the newest published version; historical evaluation selects the
+  published version with the greatest `effective_from` not after `sla_started_at`. SLA-3
+  evaluates that version's own goals, calendar, and threshold snapshot. If no version was
+  effective then, the result is `none`.
+- Policy `version` is the optimistic-concurrency token. `GET` returns it and `PATCH` and
+  `publish` accept the shared optional `If-Match: "<version>"` precondition. When supplied,
+  a mismatch returns `409` with asserted and current versions and makes no change. Every
+  successful metadata, draft, or publish change increments it exactly once. The comparison
+  and write occur in one transaction under a policy-row lock; publish also promotes the
+  version pointer in that transaction.
+- `GET /api/sla-policies` takes required `workspaceId` (which must be in caller reach) plus
+  the shared `cursor` and `limit`
+  collection parameters (default 50, range 1–200), sorted by `(name ASC, id ASC)`. List
+  rows include the active published summary and whether a draft exists. Detail returns
+  policy metadata, concurrency version, active published version and goals, and draft
+  version and goals when present. Draft goal contents are visible only to callers with
+  `sla_policy:read` in that workspace.
+- Create, patch, and publish each write one audit row in the same transaction as the
+  policy change. The audit action identifiers are proposed as `sla_policy.created`,
+  `sla_policy.updated`, and `sla_policy.published`; they must be added to the audit action
+  catalogue before implementation. Audit snapshots contain policy/version ids, changed
+  field names, and safe scalar configuration, never raw request bodies. If the audit write
+  fails, the mutation still commits and AU-14 records the bounded failure signal and
+  notifies current instance administrators after commit. No SLA-policy domain event is
+  emitted by this slice; the canonical event catalogue currently defines only SLA outcome
+  events, and no policy-configuration event is needed for the documented lazy evaluation.
+- There is no direct policy `DELETE` route in this slice. The existing edge-case statement
+  that a policy in use cannot be deleted remains a required rule for a future deletion
+  operation; it does not authorize an unlisted endpoint.
 
 ## Edge cases
 
@@ -203,7 +273,11 @@ values the API reports.
 
 ## Open questions
 
-None.
+- Policy deletion and project-level policy binding are outside this slice; no route,
+  capability, identifier, or foreign key for either is introduced here.
+- The interaction between `CAL-8` live calendar changes and this contract's immutable
+  published-version calendar snapshots is unresolved. Calendar edits must not silently
+  select one behavior until the contracts are reconciled.
 
 ## Related
 

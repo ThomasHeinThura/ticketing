@@ -188,7 +188,7 @@ explicit import confirmation. Beside it, a server-calculated preview for the sel
 The coverage preview currently reflects the last saved settings; saving is required before it
 reflects editor changes. Changing an existing calendar's timezone opens a confirmation
 warning. The affected-item count is not shown because `/usage` is still blocked by #437 and
-the missing `sla_policy` table.
+the selected SLA-authoring slice does not define project or work-item policy binding.
 
 The preview matters. Without it, an administrator cannot tell whether they have configured
 what they meant, and calendar mistakes are silent and expensive.
@@ -241,9 +241,10 @@ presets, cloning, country holidays, and the remaining CAL behavior and acceptanc
 have not been completed. No Follow the sun window pattern is defined or
 inferred here.
 
-- `/usage` waits on project calendar references (tracked by #437) and the not-yet-created
-  `sla_policy` table. It must report real references before CAL-9 deletion protection can
-  be enforced.
+- `/usage` waits on project calendar references (tracked by #437). The selected
+  SLA-authoring slice does not add project or work-item policy binding, so this screen does
+  not claim an affected-work-item count. Usage must report real references before CAL-9
+  deletion protection can be enforced.
 - Country presets wait on an authoritative bundled dataset specification naming supported
   country codes, dataset provenance/version and refresh process. No jurisdiction list or
   source is inferred here.
@@ -292,7 +293,11 @@ file and confirms the persisted calendar did not change.
 
 ## Open questions
 
-None.
+- `CAL-8` says calendar changes immediately affect all SLAs, while the selected SLA
+  policy-authoring contract evaluates each published version against its immutable
+  calendar snapshot. The effect of editing a calendar referenced by a published version
+  is unresolved; neither live replacement nor snapshot rewriting is authorized by these
+  contracts.
 
 ## Related
 

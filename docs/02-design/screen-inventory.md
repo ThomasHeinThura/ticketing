@@ -118,8 +118,8 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Workspace — states | `/agent/settings/states` | route | P1 | ⬜ |
 | Workspace — workflows | `/agent/settings/workflows` | route | P2 | ⬜ |
 | Workflow editor | `/agent/settings/workflows/{id}` | route | P2 | ⬜ |
-| Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | ⬜ |
-| SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | ⬜ |
+| Workspace — SLA policies | `/agent/settings/sla-policies` | route | P2 | 🟡 |
+| SLA policy editor | `/agent/settings/sla-policies/{id}` | route | P2 | 🟡 |
 | Workspace — service calendars | `/agent/settings/calendars` | route | P2 | 🟡 |
 | Service calendar editor | `/agent/settings/calendars/{id}` | route | P2 | 🟡 |
 | Workspace — request types | `/agent/settings/request-types` | route | P2 | ⬜ |
