@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadLocalFactorState } from "../../apps/api/src/auth/local-factor-service";
 import {
@@ -422,6 +422,72 @@ describe("instance local-factor policy API", () => {
 
     const verificationNote =
       "Called the listed manager and verified the account recovery request.";
+    const nonceChallengeResponse = await app.request(
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target.id,
+          verificationNote,
+        }),
+      },
+    );
+    const nonceChallenge = (await nonceChallengeResponse.json()) as {
+      challengeId: string;
+      nonce: string;
+    };
+    const wrongNonce = await app.request("/api/me/step-up", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kind: "operation",
+        operation: "mfa_reset",
+        userId: target.id,
+        verificationNote,
+        challengeId: nonceChallenge.challengeId,
+        nonce: "A".repeat(43),
+        method: "password",
+        password: "test-password-credential",
+      }),
+    });
+    expect(wrongNonce.status).toBe(403);
+
+    const factorChallengeResponse = await app.request(
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target.id,
+          verificationNote,
+        }),
+      },
+    );
+    const factorChallenge = (await factorChallengeResponse.json()) as {
+      challengeId: string;
+      nonce: string;
+    };
+    const unavailableFactor = await app.request("/api/me/step-up", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kind: "operation",
+        operation: "mfa_reset",
+        userId: target.id,
+        verificationNote,
+        challengeId: factorChallenge.challengeId,
+        nonce: factorChallenge.nonce,
+        method: "totp",
+        code: "000000",
+      }),
+    });
+    expect(unavailableFactor.status).toBe(403);
+
     const challenge = await app.request("/api/me/step-up/challenges", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -492,6 +558,19 @@ describe("instance local-factor policy API", () => {
       }),
     ).toBe(200);
     const { token } = proofBody as { token: string };
+    const issuedAudit = await db
+      .select({ after: schema.auditLogTable.after })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.step_up_issued"));
+    expect(issuedAudit).toEqual([
+      {
+        after: {
+          bindingKind: "operation",
+          operation: "mfa_reset",
+          route: "POST /api/instance/users/{id}/reset-mfa",
+        },
+      },
+    ]);
 
     const wrongNote = await app.request(
       `/api/instance/users/${target.id}/reset-mfa`,
@@ -507,6 +586,13 @@ describe("instance local-factor policy API", () => {
       },
     );
     expect(wrongNote.status).toBe(403);
+    let deniedAudits = await db
+      .select({ after: schema.auditLogTable.after })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.step_up_denied"));
+    expect(deniedAudits).toHaveLength(3);
+    expect(JSON.stringify(deniedAudits)).not.toContain(verificationNote);
+    expect(JSON.stringify(deniedAudits)).not.toContain(token);
     expect(
       (
         await db
@@ -516,13 +602,96 @@ describe("instance local-factor policy API", () => {
       )[0]?.enabled,
     ).toBe(true);
 
-    const reset = await app.request(
+    await db
+      .update(schema.stepUpConfirmationTable)
+      .set({ tokenExpiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(schema.stepUpConfirmationTable.id, binding.challengeId));
+    const expired = await app.request(
       `/api/instance/users/${target.id}/reset-mfa`,
       {
         method: "POST",
         headers: {
           "content-type": "application/json",
           "x-taskdesk-step-up-token": token,
+        },
+        body: JSON.stringify({ verificationNote }),
+      },
+    );
+    expect(expired.status).toBe(403);
+    deniedAudits = await db
+      .select({ after: schema.auditLogTable.after })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.step_up_denied"));
+    expect(deniedAudits).toHaveLength(4);
+
+    const secondChallengeResponse = await app.request(
+      "/api/me/step-up/challenges",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "mfa_reset",
+          userId: target.id,
+          verificationNote,
+        }),
+      },
+    );
+    const secondChallenge = (await secondChallengeResponse.json()) as {
+      challengeId: string;
+      nonce: string;
+    };
+    const secondProof = await app.request("/api/me/step-up", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        kind: "operation",
+        operation: "mfa_reset",
+        userId: target.id,
+        verificationNote,
+        challengeId: secondChallenge.challengeId,
+        nonce: secondChallenge.nonce,
+        method: "password",
+        password: "test-password-credential",
+      }),
+    });
+    expect(secondProof.status).toBe(200);
+    const secondToken = ((await secondProof.json()) as { token: string }).token;
+
+    await db
+      .update(schema.userTable)
+      .set({ twoFactorEnabled: false })
+      .where(eq(schema.userTable.id, target.id));
+    const targetChanged = await app.request(
+      `/api/instance/users/${target.id}/reset-mfa`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": secondToken,
+        },
+        body: JSON.stringify({ verificationNote }),
+      },
+    );
+    expect(targetChanged.status).toBe(409);
+    expect(
+      await db
+        .select({ id: schema.auditLogTable.id })
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "auth.step_up_consumed")),
+    ).toHaveLength(0);
+    await db
+      .update(schema.userTable)
+      .set({ twoFactorEnabled: true })
+      .where(eq(schema.userTable.id, target.id));
+
+    const reset = await app.request(
+      `/api/instance/users/${target.id}/reset-mfa`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": secondToken,
         },
         body: JSON.stringify({ verificationNote }),
       },
@@ -564,6 +733,38 @@ describe("instance local-factor policy API", () => {
         .from(schema.notificationTable)
         .where(eq(schema.notificationTable.userId, target.id)),
     ).toEqual([{ type: "security_alert" }]);
+    const consumedAudit = await db
+      .select({ after: schema.auditLogTable.after })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.step_up_consumed"));
+    expect(consumedAudit).toEqual([
+      {
+        after: {
+          bindingKind: "operation",
+          operation: "mfa_reset",
+          route: "POST /api/instance/users/{id}/reset-mfa",
+        },
+      },
+    ]);
+    expect(JSON.stringify(consumedAudit)).not.toContain(verificationNote);
+    expect(JSON.stringify(consumedAudit)).not.toContain(secondToken);
+    const replay = await app.request(
+      `/api/instance/users/${target.id}/reset-mfa`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": secondToken,
+        },
+        body: JSON.stringify({ verificationNote }),
+      },
+    );
+    expect(replay.status).toBe(403);
+    deniedAudits = await db
+      .select({ after: schema.auditLogTable.after })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.step_up_denied"));
+    expect(deniedAudits).toHaveLength(6);
   });
 
   it("bounds repeated wrong step-up passwords and issues no reusable proof", async () => {
@@ -624,14 +825,21 @@ describe("instance local-factor policy API", () => {
           operation: "metrics_token_rotate",
           version: 1,
           challengeId: challenge.challengeId,
-          nonce: challenge.nonce,
+          nonce: attempt === 0 ? "A".repeat(43) : challenge.nonce,
           method: "password",
-          password: "wrong-password",
+          password: attempt === 0 ? "the-correct-password" : "wrong-password",
         }),
       });
       expect(proof.status).toBe(403);
       expect(await proof.text()).toBe("step_up_unavailable");
     }
+    const denialRows = await db
+      .select({ after: schema.auditLogTable.after })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.step_up_denied"));
+    expect(denialRows).toHaveLength(5);
+    expect(JSON.stringify(denialRows)).not.toContain("wrong-password");
+    expect(JSON.stringify(denialRows)).not.toContain("A".repeat(43));
 
     const limited = await app.request("/api/me/step-up/challenges", {
       method: "POST",
@@ -648,6 +856,11 @@ describe("instance local-factor policy API", () => {
       limit: 5,
       windowMinutes: 15,
     });
+    const afterLimitRows = await db
+      .select({ after: schema.auditLogTable.after })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.step_up_denied"));
+    expect(afterLimitRows).toHaveLength(6);
     const rows = await db
       .select({
         state: schema.stepUpConfirmationTable.state,
@@ -673,5 +886,158 @@ describe("instance local-factor policy API", () => {
         .from(schema.instanceSettingTable)
     )[0];
     expect(setting).toEqual({ version: 1, tokenHash: null });
+  });
+
+  it("audits rotation consumption transactionally and preserves AU-14 on SQL failure", async () => {
+    const now = new Date();
+    const [admin] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "step-up-audit-rotation-admin",
+        name: "Audit Rotation Admin",
+        email: "step-up-audit-rotation-admin@example.test",
+        role: "admin",
+      })
+      .returning();
+    if (!admin) throw new Error("rotation administrator was not created");
+    await ensureStaffPersonForUser(admin.id);
+    mockAuthenticatedSession(admin);
+    await db.insert(schema.sessionTable).values({
+      id: `session-${admin.id}`,
+      token: `token-${admin.id}`,
+      userId: admin.id,
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60_000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    await db.insert(schema.accountTable).values({
+      id: "step-up-audit-rotation-account",
+      accountId: admin.id,
+      providerId: "credential",
+      userId: admin.id,
+      password: await bcrypt.hash("rotation-test-password", 4),
+    });
+    const { app } = createApp();
+
+    const issueToken = async (version: number) => {
+      const challengeResponse = await app.request(
+        "/api/me/step-up/challenges",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            kind: "operation",
+            operation: "metrics_token_rotate",
+            version,
+          }),
+        },
+      );
+      expect(challengeResponse.status).toBe(200);
+      const challenge = (await challengeResponse.json()) as {
+        challengeId: string;
+        nonce: string;
+      };
+      const proof = await app.request("/api/me/step-up", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          kind: "operation",
+          operation: "metrics_token_rotate",
+          version,
+          challengeId: challenge.challengeId,
+          nonce: challenge.nonce,
+          method: "password",
+          password: "rotation-test-password",
+        }),
+      });
+      expect(proof.status).toBe(200);
+      return (await proof.json()) as { token: string };
+    };
+
+    const rotate = async (version: number, token: string) =>
+      app.request("/api/instance/observability/metrics-token/rotate", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-taskdesk-step-up-token": token,
+        },
+        body: JSON.stringify({ version }),
+      });
+
+    const firstToken = await issueToken(1);
+    const firstRotation = await rotate(1, firstToken.token);
+    expect(firstRotation.status).toBe(200);
+    const firstConsumed = await db
+      .select({ after: schema.auditLogTable.after })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.action, "auth.step_up_consumed"));
+    expect(firstConsumed).toEqual([
+      {
+        after: {
+          bindingKind: "operation",
+          operation: "metrics_token_rotate",
+          route: "POST /api/instance/observability/metrics-token/rotate",
+        },
+      },
+    ]);
+
+    const replay = await rotate(2, firstToken.token);
+    expect(replay.status).toBe(403);
+    expect(
+      await db
+        .select({ id: schema.auditLogTable.id })
+        .from(schema.auditLogTable)
+        .where(eq(schema.auditLogTable.action, "auth.step_up_denied")),
+    ).toHaveLength(1);
+
+    const secondToken = await issueToken(2);
+    await db.execute(sql`
+      CREATE FUNCTION fail_step_up_consumed_insert()
+      RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW.action = 'auth.step_up_consumed' THEN
+          RAISE EXCEPTION 'fixture audit insert failure';
+        END IF;
+        RETURN NEW;
+      END;
+      $$
+    `);
+    await db.execute(sql`
+      CREATE TRIGGER fail_step_up_consumed_insert
+      BEFORE INSERT ON audit_log
+      FOR EACH ROW EXECUTE FUNCTION fail_step_up_consumed_insert()
+    `);
+    try {
+      const secondRotation = await rotate(2, secondToken.token);
+      expect(secondRotation.status).toBe(200);
+      const [setting] = await db
+        .select({
+          version: schema.instanceSettingTable.observabilityConfigVersion,
+          tokenHash: schema.instanceSettingTable.metricsTokenHash,
+        })
+        .from(schema.instanceSettingTable);
+      expect(setting?.version).toBe(3);
+      expect(setting?.tokenHash).not.toBeNull();
+      expect(
+        await db
+          .select({ type: schema.notificationTable.type })
+          .from(schema.notificationTable)
+          .where(eq(schema.notificationTable.userId, admin.id)),
+      ).toContainEqual({ type: "audit_write_failed" });
+      expect(
+        await db
+          .select({ id: schema.auditLogTable.id })
+          .from(schema.auditLogTable)
+          .where(eq(schema.auditLogTable.action, "auth.step_up_consumed")),
+      ).toHaveLength(1);
+    } finally {
+      await db.execute(
+        sql`DROP TRIGGER IF EXISTS fail_step_up_consumed_insert ON audit_log`,
+      );
+      await db.execute(
+        sql`DROP FUNCTION IF EXISTS fail_step_up_consumed_insert()`,
+      );
+    }
   });
 });

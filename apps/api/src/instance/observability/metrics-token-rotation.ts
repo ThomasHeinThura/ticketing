@@ -4,6 +4,7 @@ import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import type { LocalFactorState } from "../../auth/local-factor-service";
 import { loadLocalFactorState } from "../../auth/local-factor-service";
+import { appendStepUpAudit } from "../../auth/step-up-audit";
 import { consumeRotationProof, sha256 } from "../../auth/step-up-service";
 import db, { schema } from "../../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../../openapi";
@@ -30,6 +31,8 @@ class VersionConflict extends Error {
     super("version_conflict");
   }
 }
+
+class StepUpPolicyDenied extends Error {}
 
 const rotateRoute = createRoute({
   method: "post",
@@ -90,14 +93,23 @@ const routes = apiRouter().openapi(rotateRoute, async (c) => {
         sessionId: session.id,
         version: input.version,
       });
-      if (!proof) return null;
+      if (!proof) {
+        await appendStepUpAudit(tx, {
+          action: "auth.step_up_denied",
+          actorId: c.get("userId"),
+          personId: factor.personId,
+          operation: "metrics_token_rotate",
+          traceId: c.req.header("x-request-id"),
+        });
+        return { kind: "denied" as const };
+      }
       if (
         (proof.authMethod === "password" &&
           (factor.required || factor.enabled)) ||
         ((proof.authMethod === "totp" || proof.authMethod === "backup_code") &&
           !factor.enabled)
       ) {
-        throw new HTTPException(403, { message: "step_up_unavailable" });
+        throw new StepUpPolicyDenied();
       }
       const updated = await tx
         .update(schema.instanceSettingTable)
@@ -129,9 +141,16 @@ const routes = apiRouter().openapi(rotateRoute, async (c) => {
           .limit(1);
         throw new VersionConflict(current?.version ?? input.version);
       }
-      return updated[0];
+      await appendStepUpAudit(tx, {
+        action: "auth.step_up_consumed",
+        actorId: c.get("userId"),
+        personId: factor.personId,
+        operation: "metrics_token_rotate",
+        traceId: c.req.header("x-request-id"),
+      });
+      return { kind: "success" as const, ...updated[0] };
     });
-    if (!result) {
+    if (result.kind === "denied") {
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "step_up_unavailable" });
     }
@@ -160,7 +179,25 @@ const routes = apiRouter().openapi(rotateRoute, async (c) => {
       200,
     );
   } catch (error) {
+    if (error instanceof StepUpPolicyDenied) {
+      await appendStepUpAudit(db, {
+        action: "auth.step_up_denied",
+        actorId: c.get("userId"),
+        personId: factor.personId,
+        operation: "metrics_token_rotate",
+        traceId: c.req.header("x-request-id"),
+      });
+      setShadowLegacyAuthorization(c, "denied");
+      throw new HTTPException(403, { message: "step_up_unavailable" });
+    }
     if (error instanceof VersionConflict) {
+      await appendStepUpAudit(db, {
+        action: "auth.step_up_denied",
+        actorId: c.get("userId"),
+        personId: factor.personId,
+        operation: "metrics_token_rotate",
+        traceId: c.req.header("x-request-id"),
+      });
       return c.json(
         { message: "version_conflict" as const, version: error.version },
         409,

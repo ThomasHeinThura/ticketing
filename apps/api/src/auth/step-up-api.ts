@@ -2,22 +2,17 @@ import bcrypt from "bcryptjs";
 import { and, eq, gt } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { appendAuditLog } from "../audit/audit-writer";
 import { auth } from "../auth";
 import db, { schema } from "../database";
-import {
-  isCurrentInstanceAdmin,
-  notifyCurrentInstanceAdminsOfAuditFailure,
-} from "../instance/observability/audit-failure-notifier";
-import { recordAuditWriteFailure } from "../instance/observability/runtime";
+import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
-import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
 import {
   type LocalFactorState,
   loadLocalFactorState,
 } from "./local-factor-service";
+import { appendStepUpAudit } from "./step-up-audit";
 import {
   createMfaResetChallenge,
   createRotationChallenge,
@@ -243,8 +238,16 @@ const routes = apiRouter()
         .from(schema.userTable)
         .where(eq(schema.userTable.id, input.userId))
         .limit(1);
-      if (!target?.enabled)
+      if (!target?.enabled) {
+        await appendStepUpAudit(db, {
+          action: "auth.step_up_denied",
+          actorId: c.get("userId"),
+          personId: actor.factor.personId,
+          operation: "mfa_reset",
+          traceId: c.req.header("x-request-id"),
+        });
         throw new HTTPException(409, { message: "factor_reset_unavailable" });
+      }
       let challenge: Awaited<ReturnType<typeof createMfaResetChallenge>>;
       try {
         challenge = await createMfaResetChallenge({
@@ -254,7 +257,14 @@ const routes = apiRouter()
           verificationNote: input.verificationNote,
         });
       } catch (error) {
-        if (error instanceof StepUpAttemptLimitError)
+        if (error instanceof StepUpAttemptLimitError) {
+          await appendStepUpAudit(db, {
+            action: "auth.step_up_denied",
+            actorId: c.get("userId"),
+            personId: actor.factor.personId,
+            operation: "mfa_reset",
+            traceId: c.req.header("x-request-id"),
+          });
           return c.json(
             {
               message: "step_up_attempt_limit" as const,
@@ -263,6 +273,7 @@ const routes = apiRouter()
             },
             429,
           );
+        }
         throw error;
       }
       setShadowLegacyAuthorization(c, "allowed");
@@ -285,6 +296,13 @@ const routes = apiRouter()
     if (!setting)
       throw new HTTPException(503, { message: "Step-up unavailable" });
     if (setting.version !== input.version) {
+      await appendStepUpAudit(db, {
+        action: "auth.step_up_denied",
+        actorId: c.get("userId"),
+        personId: actor.factor.personId,
+        operation: "metrics_token_rotate",
+        traceId: c.req.header("x-request-id"),
+      });
       return c.json(
         { message: "version_conflict" as const, version: setting.version },
         409,
@@ -302,7 +320,14 @@ const routes = apiRouter()
         version: input.version,
       });
     } catch (error) {
-      if (error instanceof StepUpAttemptLimitError)
+      if (error instanceof StepUpAttemptLimitError) {
+        await appendStepUpAudit(db, {
+          action: "auth.step_up_denied",
+          actorId: c.get("userId"),
+          personId: actor.factor.personId,
+          operation: "metrics_token_rotate",
+          traceId: c.req.header("x-request-id"),
+        });
         return c.json(
           {
             message: "step_up_attempt_limit" as const,
@@ -311,6 +336,7 @@ const routes = apiRouter()
           },
           429,
         );
+      }
       throw error;
     }
     setShadowLegacyAuthorization(c, "allowed");
@@ -402,28 +428,22 @@ const routes = apiRouter()
             verifyAuthentication,
           );
     if (!token) {
+      await appendStepUpAudit(db, {
+        action: "auth.step_up_denied",
+        actorId: c.get("userId"),
+        personId: actor.factor.personId,
+        operation: input.operation,
+        traceId: c.req.header("x-request-id"),
+      });
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "step_up_unavailable" });
     }
-    await appendAuditLog(db, {
+    await appendStepUpAudit(db, {
       action: "auth.step_up_issued",
       actorId: c.get("userId"),
-      actorType: "person",
-      traceId: normaliseTraceId(c.req.header("x-request-id")),
-      workspaceId: null,
-      entityType: "person",
-      entityId: authenticatedPersonId,
-      after: {
-        bindingKind: "operation",
-        operation: input.operation,
-        route:
-          input.operation === "mfa_reset"
-            ? "POST /api/instance/users/{id}/reset-mfa"
-            : "POST /api/instance/observability/metrics-token/rotate",
-      },
-    }).catch(async () => {
-      recordAuditWriteFailure("mutation");
-      await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+      personId: authenticatedPersonId,
+      operation: input.operation,
+      traceId: c.req.header("x-request-id"),
     });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json({ token: token.token, expiresAt: token.expiresAt }, 200);
