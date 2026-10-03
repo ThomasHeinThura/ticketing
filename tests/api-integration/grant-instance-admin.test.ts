@@ -12,8 +12,7 @@ import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal
 import { resetTestDatabase } from "./helpers/database";
 
 const sendBreakGlassAlertEmail = vi.hoisted(() => vi.fn());
-vi.mock("@taskdesk/email", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@taskdesk/email")>()),
+vi.mock("@taskdesk/email", () => ({
   sendBreakGlassAlertEmail,
 }));
 
