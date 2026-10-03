@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { totpForUri, withMfaCsrfApp } from "./helpers/mfa-csrf-app-fixture";
+import {
+  totpForUri,
+  withMfaCsrfApp,
+} from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 
 test.use({ trace: "off", video: "off", screenshot: "off" });
 
