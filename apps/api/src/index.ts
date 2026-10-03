@@ -98,10 +98,13 @@ import workflowRule from "./workflow-rule";
 import workspace from "./workspace";
 import {
   addConnection,
+  addNativeConnection,
   addUserConnection,
   forceShutdownWebSocketAdapter,
+  handleNativeFrame,
   initializeWebSocketAdapter,
   removeConnection,
+  removeNativeConnection,
   removeUserConnection,
   shutdownWebSocketAdapter,
 } from "./ws";
@@ -926,6 +929,16 @@ export function createApp(options: { staticRoot?: string } = {}) {
     // uninvoked arrow function, or authenticateApiRequest never runs and every
     // request through this guard succeeds unauthenticated.
     try {
+      if (c.req.path === "/api/ws" || c.req.path.startsWith("/api/ws/")) {
+        const hostResult = checkWebSocketOrigin({
+          host: c.req.header("Host") ?? null,
+          origin: null,
+          sessionPortal: null,
+          hasSession: false,
+        });
+        if (!hostResult.allowed)
+          throw new HTTPException(403, { message: "Forbidden" });
+      }
       await authenticateApiRequest(c);
       // Issue #8: refuses outright (never silently serves) a route below this guard that
       // has no entry at all in the declarative policy registry -- see
@@ -1072,6 +1085,87 @@ export function createApp(options: { staticRoot?: string } = {}) {
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
+  api.get(
+    "/ws",
+    upgradeWebSocket(async (c) => {
+      const host = c.req.header("Host") ?? null;
+      const hostResult = checkWebSocketOrigin({
+        host,
+        origin: null,
+        sessionPortal: null,
+        hasSession: false,
+      });
+      if (!hostResult.allowed)
+        throw new HTTPException(403, { message: "Forbidden" });
+      try {
+        await authenticateApiRequest(c);
+      } catch (error) {
+        if (error instanceof HTTPException) throw error;
+        console.error("API authentication failed:", error);
+        throw new HTTPException(500, { message: "Internal Server Error" });
+      }
+      const originResult = checkWebSocketOrigin({
+        host,
+        origin: c.req.header("Origin") ?? null,
+        sessionPortal: (
+          c.get("session") as (Session & { portal?: unknown }) | null
+        )?.portal,
+        hasSession: c.get("session") !== null,
+      });
+      if (!originResult.allowed)
+        throw new HTTPException(originResult.status, { message: "Forbidden" });
+
+      const readCredential = () => {
+        const apiKey = c.get("apiKey") as ApiKey | undefined;
+        const session = c.get("session") as
+          | (Session & { portal?: "agent" | "customer" })
+          | null;
+        return {
+          userId: c.get("userId") as string,
+          apiKeyId: apiKey?.id,
+          apiKeyPermissions: apiKey?.permissions,
+          portal: session?.portal ?? null,
+        };
+      };
+      let nativeConnection: ReturnType<typeof addNativeConnection> = null;
+      return {
+        onOpen(_event, ws) {
+          nativeConnection = addNativeConnection(
+            ws,
+            readCredential(),
+            async () => {
+              try {
+                await authenticateApiRequest(c);
+                const refreshed = readCredential();
+                if (!refreshed.userId) return null;
+                return refreshed;
+              } catch {
+                return null;
+              }
+            },
+          );
+        },
+        onMessage(event, ws) {
+          const raw =
+            typeof event.data === "string"
+              ? event.data
+              : Buffer.isBuffer(event.data)
+                ? event.data.toString()
+                : null;
+          if (!raw) {
+            ws.close(1007, "invalid frame");
+            return;
+          }
+          if (nativeConnection) void handleNativeFrame(nativeConnection, raw);
+        },
+        onClose() {
+          removeNativeConnection(nativeConnection);
+          nativeConnection = null;
+        },
+      };
+    }),
+  );
+
   api.get(
     "/ws/user",
     upgradeWebSocket(async (c) => {

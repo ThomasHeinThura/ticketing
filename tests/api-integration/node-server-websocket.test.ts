@@ -11,7 +11,9 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp, createNodeServer } from "../../apps/api/src/index";
+import { recordWorkItemEvent } from "../../apps/api/src/work-item/native-event";
 import {
+  broadcastNativeWorkItemHint,
   broadcastToProject,
   broadcastToUser,
   initializeWebSocketAdapter,
@@ -38,6 +40,7 @@ interface TestSocket {
   ): TestSocket;
   once(event: "close", listener: (code: number) => void): TestSocket;
   off(event: "message", listener: () => void): TestSocket;
+  send(data: string): void;
   close(code?: number, reason?: string): void;
 }
 
@@ -370,6 +373,153 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     } else {
       process.env.TASKDESK_AGENT_URL = originalAgentUrl;
     }
+  });
+
+  it("authorizes native topics and fans out only key-only hints to subscribed clients", async () => {
+    const member = await createWorkspaceMember();
+    const project = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const outsider = await createWorkspaceMember();
+    const foreignProject = await createProjectFixture({
+      workspaceId: outsider.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const headers = {
+      host: "localhost:5173",
+      origin: "http://localhost:5173",
+      cookie: "__Host-tdk_agent_session=integration-session",
+    };
+    const url = websocketUrl(node.server, "/api/ws");
+    expect(
+      await rejectHandshake(url, {
+        ...headers,
+        origin: "https://attacker.example",
+      }),
+    ).toBe(403);
+    expect(
+      await rejectHandshake(url, {
+        ...headers,
+        host: "attacker.example",
+      }),
+    ).toBe(403);
+    expect(
+      await rejectHandshake(url, {
+        host: headers.host,
+        cookie: headers.cookie,
+      }),
+    ).toBe(403);
+    const socket = await openSocket(url, headers);
+
+    const subscribed = nextMessage(socket);
+    socket.send(
+      JSON.stringify({
+        type: "subscribe",
+        topic: `project:${project.project.id}`,
+      }),
+    );
+    await expect(subscribed).resolves.toEqual({
+      type: "subscribed",
+      topic: `project:${project.project.id}`,
+    });
+
+    const deniedMissing = nextMessage(socket);
+    socket.send(
+      JSON.stringify({ type: "subscribe", topic: "project:missing-project" }),
+    );
+    await expect(deniedMissing).resolves.toEqual({
+      type: "subscription_denied",
+    });
+    const deniedForeign = nextMessage(socket);
+    socket.send(
+      JSON.stringify({
+        type: "subscribe",
+        topic: `project:${foreignProject.project.id}`,
+      }),
+    );
+    await expect(deniedForeign).resolves.toEqual({
+      type: "subscription_denied",
+    });
+
+    const hint = nextMessage(socket);
+    await broadcastNativeWorkItemHint({
+      projectId: project.project.id,
+      topics: [`project:${project.project.id}`, "work_item:SUP-1"],
+      eventId: "evt_native_test_1",
+      eventType: "work_item.updated",
+      at: "2026-10-03T00:00:00.000Z",
+      key: "SUP-1",
+      customerVisible: true,
+    });
+    await expect(hint).resolves.toEqual({
+      type: "work_item.updated",
+      topic: `project:${project.project.id}`,
+      eventId: "evt_native_test_1",
+      at: "2026-10-03T00:00:00.000Z",
+      payload: { key: "SUP-1" },
+    });
+
+    const closed = new Promise<void>((resolve) =>
+      socket.once("close", () => resolve()),
+    );
+    socket.close();
+    await closed;
+  });
+
+  it("persists native event envelopes with the mutation transaction and rolls them back with it", async () => {
+    const member = await createWorkspaceMember();
+    const project = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const input = {
+      kind: "work_item.updated" as const,
+      workItemId: "work-item-native-test",
+      key: "SUP-1",
+      workspaceId: member.workspace.id,
+      projectId: project.project.id,
+      actorId: member.user.id,
+      actorType: "person" as const,
+      customerVisible: false,
+      payload: { key: "SUP-1", url: "/agent/work-items/SUP-1" },
+    };
+
+    await expect(
+      db.transaction(async (tx) => {
+        await recordWorkItemEvent(tx, input);
+        throw new Error("force transaction rollback");
+      }),
+    ).rejects.toThrow("force transaction rollback");
+    expect(
+      await db
+        .select({ eventId: schema.outboxTable.eventId })
+        .from(schema.outboxTable)
+        .where(eq(schema.outboxTable.workspaceId, member.workspace.id)),
+    ).toEqual([]);
+
+    const committed = await db.transaction((tx) =>
+      recordWorkItemEvent(tx, input),
+    );
+    const [row] = await db
+      .select({
+        eventId: schema.outboxTable.eventId,
+        payload: schema.outboxTable.payload,
+      })
+      .from(schema.outboxTable)
+      .where(eq(schema.outboxTable.eventId, committed.id));
+    expect(row?.eventId).toBe(committed.id);
+    expect(row?.payload).toMatchObject({
+      id: committed.id,
+      kind: "work_item.updated",
+      scope: {
+        workspaceId: member.workspace.id,
+        projectId: project.project.id,
+      },
+      payload: input.payload,
+    });
   });
 
   it("rejects unauthenticated upgrades before 101, then authenticates real cookie upgrades", async () => {
