@@ -375,7 +375,7 @@ describe("API integration: work item watch/unwatch (#23 fourth slice)", () => {
     expect(body.watching).toBe(false);
   });
 
-  it("400s when the caller has no person profile", async () => {
+  it("fails closed before watch dispatch when the caller identity has no active person profile", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);
     const { app } = createApp();
@@ -396,7 +396,18 @@ describe("API integration: work item watch/unwatch (#23 fourth slice)", () => {
       .where(eq(schema.personTable.userId, creator.user.id));
 
     const response = await watchRequest(app, created.key);
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(503);
+    expect(await response.text()).toContain("factor_policy_unavailable");
+
+    const [workItem] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, created.key));
+    const watchers = await db
+      .select()
+      .from(schema.watcherTable)
+      .where(eq(schema.watcherTable.workItemId, workItem?.id ?? ""));
+    expect(watchers).toHaveLength(0);
   });
 
   it("404s on a nonexistent key", async () => {
