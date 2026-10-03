@@ -23,6 +23,13 @@
 		"screenshot": "work-item-list.png"
 	},
 	{
+		"name": "work-item-board",
+		"inventoryRoute": "/agent/projects/{key}/work?layout=board",
+		"applicationRoute": "/agent/projects/$projectKey/work",
+		"test": "work-item board screen @visual",
+		"screenshot": "work-item-board.png"
+	},
+	{
 		"name": "work-item-detail",
 		"inventoryRoute": "/agent/work-items/{key}",
 		"applicationRoute": "/agent/work-items/$key",

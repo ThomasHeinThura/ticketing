@@ -77,6 +77,25 @@ const workItem = {
   updatedAt: "2026-09-15T00:00:00.000Z",
 };
 
+const projectStates = [
+  {
+    id: "visual-backlog-state",
+    stateTemplateId: "visual-backlog-template",
+    name: "Backlog",
+    group: "backlog",
+    position: 0,
+    isDefault: true,
+  },
+  {
+    id: "visual-state",
+    stateTemplateId: "visual-started-template",
+    name: "In progress",
+    group: "started",
+    position: 1,
+    isDefault: false,
+  },
+];
+
 const serviceCalendar = {
   id: "visual-calendar",
   workspaceId: workspace.id,
@@ -131,7 +150,15 @@ async function installAuthenticatedFixture(page: Page) {
         },
       ];
     } else if (path.endsWith("/api/capabilities")) {
-      body = { createTasks: true, manageServiceCalendars: true };
+      body = {
+        createTasks: true,
+        transitionTasks: true,
+        rankTasks: true,
+        assignTasks: true,
+        manageServiceCalendars: true,
+      };
+    } else if (path.endsWith("/api/projects/visual-project/states")) {
+      body = projectStates;
     } else if (
       path.endsWith("/api/service-calendars/visual-calendar/preview")
     ) {
@@ -251,6 +278,27 @@ test("work-item list screen @visual", async ({ page }) => {
     page.getByText("Customer cannot reset their password"),
   ).toBeVisible();
   await expect(page).toHaveScreenshot("work-item-list.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("work-item board screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/projects/help/work?layout=board");
+  await expect(page.getByTestId("work-item-board")).toBeVisible();
+  await expect(
+    page.getByText("No work items in this state.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Customer cannot reset their password", { exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot("work-item-board.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,
