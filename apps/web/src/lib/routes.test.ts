@@ -5,6 +5,7 @@ import {
   DEFAULT_WORK_ITEM_LIST_SEARCH,
   parseGeneratedRouteUrl,
   parseServiceCalendarListSearchFromQueryString,
+  parseSlaPolicyListSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   routes,
@@ -181,6 +182,23 @@ describe("routes.serviceCalendars", () => {
   it("does not add search state when the year is not supplied", () => {
     expect(routes.serviceCalendarEditor.build({ id: "new" })).toBe(
       "/agent/settings/calendars/new",
+    );
+  });
+});
+
+describe("routes.slaPolicies", () => {
+  it("round-trips the list cursor and editor id through registered route builders", () => {
+    const url = routes.slaPolicies.build({ cursor: "opaque/a+b" });
+    expect(url).toBe("/agent/settings/sla-policies?cursor=opaque%2Fa%2Bb");
+    expect(
+      parseSlaPolicyListSearch({
+        cursor: new URL(url, "https://taskdesk.invalid").searchParams.get(
+          "cursor",
+        ),
+      }),
+    ).toEqual({ cursor: "opaque/a+b" });
+    expect(routes.slaPolicyEditor.build({ id: "policy/one" })).toBe(
+      "/agent/settings/sla-policies/policy%2Fone",
     );
   });
 });

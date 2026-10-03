@@ -14140,6 +14140,1436 @@
         }
       }
     },
+    "/sla-policies": {
+      "get": {
+        "operationId": "listSlaPolicies",
+        "tags": [
+          "SLA policies"
+        ],
+        "summary": "List SLA policies",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SLA policies in the workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "workspaceId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "activeVersion": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0
+                              },
+                              "calendarId": {
+                                "type": "string"
+                              },
+                              "atRiskThresholdPct": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 99
+                              },
+                              "effectiveFrom": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "goalCount": {
+                                "type": "integer",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "calendarId",
+                              "atRiskThresholdPct",
+                              "effectiveFrom",
+                              "goalCount"
+                            ]
+                          },
+                          "hasDraft": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "workspaceId",
+                          "name",
+                          "description",
+                          "version",
+                          "createdAt",
+                          "updatedAt",
+                          "activeVersion",
+                          "hasDraft"
+                        ]
+                      }
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "previousCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "previousCursor",
+                        "nextCursor",
+                        "hasMore"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "total"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid workspace, cursor, or limit",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSlaPolicy",
+        "tags": [
+          "SLA policies"
+        ],
+        "summary": "Create an SLA policy and its first draft",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 2000
+                  },
+                  "calendarId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "atRiskThresholdPct": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 99,
+                    "default": 75
+                  },
+                  "goals": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "metric": {
+                          "type": "string",
+                          "enum": [
+                            "first_response",
+                            "resolution"
+                          ]
+                        },
+                        "workItemTypeId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "medium",
+                            "high",
+                            "urgent"
+                          ]
+                        },
+                        "targetMinutes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 2147483647
+                        }
+                      },
+                      "required": [
+                        "metric",
+                        "workItemTypeId",
+                        "priority",
+                        "targetMinutes"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "default": []
+                  }
+                },
+                "required": [
+                  "name",
+                  "calendarId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created SLA policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "activeVersion": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "calendarId": {
+                          "type": "string"
+                        },
+                        "atRiskThresholdPct": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 99
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "goals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "metric": {
+                                "type": "string",
+                                "enum": [
+                                  "first_response",
+                                  "resolution"
+                                ]
+                              },
+                              "workItemTypeId": {
+                                "type": "string"
+                              },
+                              "priority": {
+                                "type": "string",
+                                "enum": [
+                                  "low",
+                                  "medium",
+                                  "high",
+                                  "urgent"
+                                ]
+                              },
+                              "targetMinutes": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2147483647
+                              }
+                            },
+                            "required": [
+                              "metric",
+                              "workItemTypeId",
+                              "priority",
+                              "targetMinutes"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "calendarId",
+                        "atRiskThresholdPct",
+                        "effectiveFrom",
+                        "goals"
+                      ]
+                    },
+                    "draftVersion": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "calendarId": {
+                          "type": "string"
+                        },
+                        "atRiskThresholdPct": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 99
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "goals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "metric": {
+                                "type": "string",
+                                "enum": [
+                                  "first_response",
+                                  "resolution"
+                                ]
+                              },
+                              "workItemTypeId": {
+                                "type": "string"
+                              },
+                              "priority": {
+                                "type": "string",
+                                "enum": [
+                                  "low",
+                                  "medium",
+                                  "high",
+                                  "urgent"
+                                ]
+                              },
+                              "targetMinutes": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2147483647
+                              }
+                            },
+                            "required": [
+                              "metric",
+                              "workItemTypeId",
+                              "priority",
+                              "targetMinutes"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "calendarId",
+                        "atRiskThresholdPct",
+                        "effectiveFrom",
+                        "goals"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workspaceId",
+                    "name",
+                    "description",
+                    "version",
+                    "createdAt",
+                    "updatedAt",
+                    "activeVersion",
+                    "draftVersion"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid policy request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Referenced calendar or work-item type is invalid",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sla-policies/{id}": {
+      "get": {
+        "operationId": "getSlaPolicy",
+        "tags": [
+          "SLA policies"
+        ],
+        "summary": "Get an SLA policy and its active and draft versions",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SLA policy details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "activeVersion": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "calendarId": {
+                          "type": "string"
+                        },
+                        "atRiskThresholdPct": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 99
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "goals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "metric": {
+                                "type": "string",
+                                "enum": [
+                                  "first_response",
+                                  "resolution"
+                                ]
+                              },
+                              "workItemTypeId": {
+                                "type": "string"
+                              },
+                              "priority": {
+                                "type": "string",
+                                "enum": [
+                                  "low",
+                                  "medium",
+                                  "high",
+                                  "urgent"
+                                ]
+                              },
+                              "targetMinutes": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2147483647
+                              }
+                            },
+                            "required": [
+                              "metric",
+                              "workItemTypeId",
+                              "priority",
+                              "targetMinutes"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "calendarId",
+                        "atRiskThresholdPct",
+                        "effectiveFrom",
+                        "goals"
+                      ]
+                    },
+                    "draftVersion": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "calendarId": {
+                          "type": "string"
+                        },
+                        "atRiskThresholdPct": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 99
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "goals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "metric": {
+                                "type": "string",
+                                "enum": [
+                                  "first_response",
+                                  "resolution"
+                                ]
+                              },
+                              "workItemTypeId": {
+                                "type": "string"
+                              },
+                              "priority": {
+                                "type": "string",
+                                "enum": [
+                                  "low",
+                                  "medium",
+                                  "high",
+                                  "urgent"
+                                ]
+                              },
+                              "targetMinutes": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2147483647
+                              }
+                            },
+                            "required": [
+                              "metric",
+                              "workItemTypeId",
+                              "priority",
+                              "targetMinutes"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "calendarId",
+                        "atRiskThresholdPct",
+                        "effectiveFrom",
+                        "goals"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workspaceId",
+                    "name",
+                    "description",
+                    "version",
+                    "createdAt",
+                    "updatedAt",
+                    "activeVersion",
+                    "draftVersion"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SLA policy not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateSlaPolicy",
+        "tags": [
+          "SLA policies"
+        ],
+        "summary": "Update policy metadata or its draft",
+        "description": "If-Match may contain the current quoted version. A mismatch returns 409 with asserted/current versions.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9]\\d*\"$"
+            },
+            "required": false,
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 2000
+                  },
+                  "calendarId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "atRiskThresholdPct": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 99
+                  },
+                  "goals": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "metric": {
+                          "type": "string",
+                          "enum": [
+                            "first_response",
+                            "resolution"
+                          ]
+                        },
+                        "workItemTypeId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "priority": {
+                          "type": "string",
+                          "enum": [
+                            "low",
+                            "medium",
+                            "high",
+                            "urgent"
+                          ]
+                        },
+                        "targetMinutes": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 2147483647
+                        }
+                      },
+                      "required": [
+                        "metric",
+                        "workItemTypeId",
+                        "priority",
+                        "targetMinutes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated SLA policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "activeVersion": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "calendarId": {
+                          "type": "string"
+                        },
+                        "atRiskThresholdPct": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 99
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "goals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "metric": {
+                                "type": "string",
+                                "enum": [
+                                  "first_response",
+                                  "resolution"
+                                ]
+                              },
+                              "workItemTypeId": {
+                                "type": "string"
+                              },
+                              "priority": {
+                                "type": "string",
+                                "enum": [
+                                  "low",
+                                  "medium",
+                                  "high",
+                                  "urgent"
+                                ]
+                              },
+                              "targetMinutes": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2147483647
+                              }
+                            },
+                            "required": [
+                              "metric",
+                              "workItemTypeId",
+                              "priority",
+                              "targetMinutes"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "calendarId",
+                        "atRiskThresholdPct",
+                        "effectiveFrom",
+                        "goals"
+                      ]
+                    },
+                    "draftVersion": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "calendarId": {
+                          "type": "string"
+                        },
+                        "atRiskThresholdPct": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 99
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "goals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "metric": {
+                                "type": "string",
+                                "enum": [
+                                  "first_response",
+                                  "resolution"
+                                ]
+                              },
+                              "workItemTypeId": {
+                                "type": "string"
+                              },
+                              "priority": {
+                                "type": "string",
+                                "enum": [
+                                  "low",
+                                  "medium",
+                                  "high",
+                                  "urgent"
+                                ]
+                              },
+                              "targetMinutes": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2147483647
+                              }
+                            },
+                            "required": [
+                              "metric",
+                              "workItemTypeId",
+                              "priority",
+                              "targetMinutes"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "calendarId",
+                        "atRiskThresholdPct",
+                        "effectiveFrom",
+                        "goals"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workspaceId",
+                    "name",
+                    "description",
+                    "version",
+                    "createdAt",
+                    "updatedAt",
+                    "activeVersion",
+                    "draftVersion"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid policy request",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SLA policy not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "SLA policy version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "assertedVersion": {
+                      "type": "integer"
+                    },
+                    "currentVersion": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Referenced calendar or work-item type is invalid",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sla-policies/{id}/publish": {
+      "post": {
+        "operationId": "publishSlaPolicy",
+        "tags": [
+          "SLA policies"
+        ],
+        "summary": "Publish the current SLA policy draft",
+        "description": "If-Match may contain the current quoted version. A mismatch returns 409 with asserted/current versions.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9]\\d*\"$"
+            },
+            "required": false,
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published SLA policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "activeVersion": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "calendarId": {
+                          "type": "string"
+                        },
+                        "atRiskThresholdPct": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 99
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "goals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "metric": {
+                                "type": "string",
+                                "enum": [
+                                  "first_response",
+                                  "resolution"
+                                ]
+                              },
+                              "workItemTypeId": {
+                                "type": "string"
+                              },
+                              "priority": {
+                                "type": "string",
+                                "enum": [
+                                  "low",
+                                  "medium",
+                                  "high",
+                                  "urgent"
+                                ]
+                              },
+                              "targetMinutes": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2147483647
+                              }
+                            },
+                            "required": [
+                              "metric",
+                              "workItemTypeId",
+                              "priority",
+                              "targetMinutes"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "calendarId",
+                        "atRiskThresholdPct",
+                        "effectiveFrom",
+                        "goals"
+                      ]
+                    },
+                    "draftVersion": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "calendarId": {
+                          "type": "string"
+                        },
+                        "atRiskThresholdPct": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 99
+                        },
+                        "effectiveFrom": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "goals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "metric": {
+                                "type": "string",
+                                "enum": [
+                                  "first_response",
+                                  "resolution"
+                                ]
+                              },
+                              "workItemTypeId": {
+                                "type": "string"
+                              },
+                              "priority": {
+                                "type": "string",
+                                "enum": [
+                                  "low",
+                                  "medium",
+                                  "high",
+                                  "urgent"
+                                ]
+                              },
+                              "targetMinutes": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2147483647
+                              }
+                            },
+                            "required": [
+                              "metric",
+                              "workItemTypeId",
+                              "priority",
+                              "targetMinutes"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "calendarId",
+                        "atRiskThresholdPct",
+                        "effectiveFrom",
+                        "goals"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workspaceId",
+                    "name",
+                    "description",
+                    "version",
+                    "createdAt",
+                    "updatedAt",
+                    "activeVersion",
+                    "draftVersion"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SLA policy not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "SLA policy version conflict or no draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "assertedVersion": {
+                      "type": "integer"
+                    },
+                    "currentVersion": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Draft needs at least one complete goal matrix",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/task-relation/{taskId}": {
       "get": {
         "operationId": "getTaskRelations",

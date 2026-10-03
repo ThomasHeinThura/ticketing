@@ -1690,8 +1690,8 @@ export const workItemTypeTable = pgTable(
     // existing "a referenced entity in active use cannot be deleted" convention
     // (`state.state_template_id`, `membership.role_id`).
     //
-    // `sla_policy` (§7) is still P5 scope and does not exist yet -- plain nullable
-    // column, no FK, unchanged from before.
+    // Policy persistence exists, but work-item policy binding is outside this slice --
+    // keep this nullable column without a foreign key until its binding contract lands.
     workflowId: text("workflow_id").references(
       (): AnyPgColumn => workflowTable.id,
       { onDelete: "restrict", onUpdate: "cascade" },
@@ -2947,6 +2947,150 @@ export const serviceCalendarTable = pgTable(
       table.workspaceId,
       table.name,
       table.id,
+    ),
+    unique("service_calendar_workspace_id_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+  ],
+);
+
+export const slaPolicyTable = pgTable(
+  "sla_policy",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    description: text("description"),
+    activeVersionId: text("active_version_id").references(
+      (): AnyPgColumn => slaPolicyVersionTable.id,
+      { onDelete: "restrict" },
+    ),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    unique("sla_policy_workspace_id_id_unique").on(table.workspaceId, table.id),
+    check("sla_policy_version_positive", sql`${table.version} > 0`),
+  ],
+);
+
+export const slaPolicyVersionTable = pgTable(
+  "sla_policy_version",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    policyId: text("policy_id").notNull(),
+    number: integer("number").notNull(),
+    calendarId: text("calendar_id").notNull(),
+    atRiskThresholdPct: integer("at_risk_threshold_pct").notNull(),
+    effectiveFrom: timestamp("effective_from", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "sla_policy_version_workspace_policy_fk",
+      columns: [table.workspaceId, table.policyId],
+      foreignColumns: [slaPolicyTable.workspaceId, slaPolicyTable.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "sla_policy_version_workspace_calendar_fk",
+      columns: [table.workspaceId, table.calendarId],
+      foreignColumns: [
+        serviceCalendarTable.workspaceId,
+        serviceCalendarTable.id,
+      ],
+    }).onDelete("restrict"),
+    unique("sla_policy_version_workspace_policy_id_unique").on(
+      table.workspaceId,
+      table.policyId,
+      table.id,
+    ),
+    unique("sla_policy_version_workspace_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    unique("sla_policy_version_policy_id_unique").on(table.policyId, table.id),
+    unique("sla_policy_version_policy_number_unique").on(
+      table.policyId,
+      table.number,
+    ),
+    uniqueIndex("sla_policy_version_one_draft_unique")
+      .on(table.policyId)
+      .where(sql`${table.effectiveFrom} is null`),
+    check("sla_policy_version_number_positive", sql`${table.number} > 0`),
+    check(
+      "sla_policy_version_threshold_allowed",
+      sql`${table.atRiskThresholdPct} between 1 and 99`,
+    ),
+  ],
+);
+
+export const slaGoalTable = pgTable(
+  "sla_goal",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    versionId: text("version_id").notNull(),
+    metric: text("metric", {
+      enum: ["first_response", "resolution"],
+    }).notNull(),
+    workItemTypeId: text("work_item_type_id").notNull(),
+    priority: text("priority", {
+      enum: ["low", "medium", "high", "urgent"],
+    }).notNull(),
+    targetMinutes: integer("target_minutes").notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "sla_goal_workspace_version_fk",
+      columns: [table.workspaceId, table.versionId],
+      foreignColumns: [
+        slaPolicyVersionTable.workspaceId,
+        slaPolicyVersionTable.id,
+      ],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "sla_goal_workspace_type_fk",
+      columns: [table.workspaceId, table.workItemTypeId],
+      foreignColumns: [workItemTypeTable.workspaceId, workItemTypeTable.id],
+    }).onDelete("restrict"),
+    unique("sla_goal_version_metric_type_priority_unique").on(
+      table.versionId,
+      table.metric,
+      table.workItemTypeId,
+      table.priority,
+    ),
+    check("sla_goal_target_minutes_positive", sql`${table.targetMinutes} > 0`),
+    check(
+      "sla_goal_metric_allowed",
+      sql`${table.metric} in ('first_response', 'resolution')`,
+    ),
+    check(
+      "sla_goal_priority_allowed",
+      sql`${table.priority} in ('low', 'medium', 'high', 'urgent')`,
     ),
   ],
 );

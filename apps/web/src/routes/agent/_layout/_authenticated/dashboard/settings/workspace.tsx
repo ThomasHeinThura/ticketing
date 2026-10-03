@@ -13,7 +13,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
 } from "@taskdesk/ui";
-import { CalendarDays, Settings, Shield, Tag } from "lucide-react";
+import { CalendarDays, Settings, Shield, Tag, Timer } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import SettingsSidebar from "@/components/SettingsSidebar";
@@ -87,6 +87,11 @@ function RouteComponent() {
       title: "Service calendars",
       url: "/agent/settings/calendars",
       icon: CalendarDays,
+    },
+    {
+      title: t("slaPolicies:list.title"),
+      url: "/agent/settings/sla-policies",
+      icon: Timer,
     },
   ];
   const isActivePath = (path: string) => location.pathname === path;
