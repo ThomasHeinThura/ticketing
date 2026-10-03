@@ -110,6 +110,10 @@ describe("WorkItemList", () => {
       to: "/agent/work-items/$key",
       params: { key: "PROJ-123" },
     });
+
+    mocks.navigate.mockClear();
+    fireEvent.click(link, { button: 0, metaKey: true });
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
   it("preloads detail code and data when a reachable row receives pointer intent", async () => {
@@ -125,7 +129,7 @@ describe("WorkItemList", () => {
     await waitFor(() => expect(mocks.preloadRoute).toHaveBeenCalled());
     mocks.preloadRoute.mockClear();
 
-    fireEvent.mouseEnter(
+    fireEvent.mouseOver(
       screen.getByText("PROJ-123").closest("a") as HTMLElement,
     );
 
