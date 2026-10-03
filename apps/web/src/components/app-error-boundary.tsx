@@ -1,6 +1,6 @@
 import { ErrorBoundary, type ErrorBoundaryFallbackProps } from "@taskdesk/ui";
 import type React from "react";
-import { ErrorDisplay } from "./ui/error-display";
+import { ErrorDisplay } from "./errors/error-display";
 
 function DefaultErrorFallback({
   error,

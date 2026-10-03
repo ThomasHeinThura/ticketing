@@ -44,7 +44,7 @@ export default function ProjectCrumbSelect({
         <span className="truncate text-left">
           {projectName || t("settings:projectSwitcher.selectProject")}
         </span>
-        <ChevronsUpDown className="size-3 text-foreground/70" />
+        <ChevronsUpDown className="size-3 text-foreground" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-72" align="start">
         <DropdownMenuGroup>

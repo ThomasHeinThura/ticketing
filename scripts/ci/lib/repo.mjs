@@ -123,7 +123,10 @@ export const ignoredDirectories = new Set([
 ]);
 
 /** Generated files that are checked in but are not hand-written source. */
-export const generatedFiles = new Set(["routeTree.gen.ts"]);
+export const generatedFiles = new Set([
+  "routeTree.agent.gen.ts",
+  "routeTree.portal.gen.ts",
+]);
 
 /**
  * Walk a directory, yielding every file path that survives the filters.

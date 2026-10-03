@@ -17,6 +17,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 import { raceProjectArchive } from "./helpers/race-soft-delete";
@@ -28,6 +29,13 @@ import { raceProjectArchive } from "./helpers/race-soft-delete";
  * already has one, exactly like `work-item-assign.test.ts`'s own `addPersonOnRoster`).
  */
 async function addPersonForUser(userId: string) {
+  const [existingPerson] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  if (existingPerson) return existingPerson;
+
   const organisation = await ensureInternalOrganisation();
   const now = new Date();
   return requireRow(
@@ -696,6 +704,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
         .returning(),
       "restricted user",
     );
+    await prepareAuthenticatedApiFixture(restrictedUser.id);
     await db.insert(schema.workspaceUserTable).values({
       workspaceId: workspace.id,
       userId: restrictedUser.id,

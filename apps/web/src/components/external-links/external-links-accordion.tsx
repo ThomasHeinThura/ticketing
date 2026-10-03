@@ -134,7 +134,7 @@ export function ExternalLinksAccordion({
               ) : (
                 <GithubIcon className="size-4 flex-shrink-0 text-muted-foreground" />
               )}
-              <span className="text-sm truncate flex-1 text-foreground/90 group-hover:text-foreground">
+              <span className="text-sm truncate flex-1 text-foreground group-hover:text-foreground">
                 {link.title || link.externalId}
                 {link.resourceType !== "branch" && (
                   <span className="text-muted-foreground ml-2">

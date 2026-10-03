@@ -41,6 +41,9 @@ vi.mock("@/hooks/queries/column/use-get-columns", () => ({
 vi.mock("@/hooks/queries/task-relation/use-get-task-relations", () => ({
   default: () => ({ data: [] }),
 }));
+vi.mock("@/hooks/queries/task/use-get-task", () => ({
+  default: () => ({ data: undefined }),
+}));
 vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
   default: () => ({ data: { id: "workspace-1" } }),
 }));

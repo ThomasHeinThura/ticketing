@@ -41,8 +41,8 @@ list entrance on every route change, which turns a 50 ms navigation into a 400 m
    is a Framer Motion transition object in motion.ts, because spring() is not valid CSS. */
 ```
 
-Arriving uses `ease-out` — fast start, gentle finish. Leaving uses `ease-in` — get out of
-the way. Moving uses `ease-in-out`.
+Arriving and leaving use `ease-out` — fast start, gentle finish. Moving uses
+`ease-in-out`. These are the two easing curves defined by the design system.
 
 ## What animates
 
@@ -57,7 +57,7 @@ the way. Moving uses `ease-in-out`.
 | Toast | normal | out | slide + fade |
 | Board card drop | normal | spring | transform |
 | Board reflow | normal | in-out | layout (`layoutId`) |
-| Row add / remove | normal | out / in | height + opacity |
+| Row add / remove | normal | out / out | height + opacity |
 | Route change | fast | out | opacity only |
 | Accordion | normal | in-out | height |
 | Skeleton → content | fast | out | opacity crossfade |
@@ -105,11 +105,12 @@ Tested: a Playwright project runs the whole E2E suite with
 
 The one place where motion is genuinely functional rather than decorative.
 
-- The dragged card lifts: `scale(1.02)` plus `--shadow-md`, at `--duration-fast`.
+- The dragged card lifts: `scale(1.02)` plus Tailwind's `shadow-md`, at `--duration-fast`.
 - The source position collapses; other cards reflow with `layoutId` at
   `--duration-normal`.
 - A drop indicator marks the insertion point — a 2 px accent line, no animation.
-- On drop, the card settles with `--ease-spring`.
+- On drop, the card settles with the Framer Motion `springSettle` transition from
+  `packages/ui/src/lib/motion.ts`.
 - On invalid drop, it returns to origin at `--duration-normal` with `--ease-in-out`, and a
   toast explains why. Never a silent snap-back.
 

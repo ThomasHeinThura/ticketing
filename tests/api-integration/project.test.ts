@@ -4,7 +4,11 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAnonymousSession, mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import {
+  createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
+  requireRow,
+} from "./helpers/fixtures";
 
 describe("API integration: project creation", () => {
   beforeEach(async () => {
@@ -109,6 +113,7 @@ describe("API integration: project creation", () => {
       "outsider",
     );
 
+    await prepareAuthenticatedApiFixture(outsider.id);
     mockAuthenticatedSession(outsider);
     const { app } = createApp();
 

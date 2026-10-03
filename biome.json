@@ -12,6 +12,7 @@
 			"!**/coverage",
 			"!**/tsconfig*.json",
 			"!**/routeTree.gen.ts",
+			"!**/routeTree.*.gen.ts",
 			"!**/dist",
 			"!**/storybook-static",
 			"!**/cache",
@@ -62,7 +63,6 @@
 	},
 	"overrides": [
 		{
-			"includes": ["release.config.js", "scripts/release/*.mjs"],
 			"linter": {
 				"rules": {
 					"suspicious": {

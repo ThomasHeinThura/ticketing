@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import useCreateTaskRelation from "@/hooks/mutations/task-relation/use-create-task-relation";
 import useDeleteTaskRelation from "@/hooks/mutations/task-relation/use-delete-task-relation";
 import useGetProject from "@/hooks/queries/project/use-get-project";
@@ -295,7 +295,7 @@ export default function TaskRelations({
         <CollapsibleContent>
           {Object.entries(groupedRelations).map(([type, items]) => (
             <div key={type} className="mt-1.5">
-              <span className="text-[11px] text-muted-foreground/70 px-2">
+              <span className="text-[11px] text-muted-foreground px-2">
                 {t(`tasks:relations.types.${type}`, {
                   defaultValue: type.replace(/_/g, " "),
                 })}
@@ -331,7 +331,7 @@ export default function TaskRelations({
                             onClick={() => handleNavigateToTask(item.task.id)}
                           >
                             <span
-                              className={`text-sm truncate block ${finalStatusSlugs.has(item.task.status) ? "line-through text-muted-foreground" : "text-foreground/90"}`}
+                              className={`text-sm truncate block ${finalStatusSlugs.has(item.task.status) ? "line-through text-muted-foreground" : "text-foreground"}`}
                             >
                               {item.task.title}
                             </span>
@@ -474,7 +474,7 @@ export default function TaskRelations({
                   {t("tasks:relations.blocks")}
                 </button>
               </div>
-              <span className="text-muted-foreground/60">
+              <span className="text-muted-foreground">
                 {t("tasks:relations.selectTask")}
               </span>
             </CommandFooter>

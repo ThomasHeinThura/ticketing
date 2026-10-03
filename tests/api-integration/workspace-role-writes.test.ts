@@ -22,6 +22,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { CAPABILITY_CHECKS } from "../../apps/api/src/capabilities/capability-checks";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpInstanceAdmin, signUpUser } from "./helpers/organization-http";
 import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
@@ -532,7 +533,8 @@ describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
       "editor",
     );
     const newcomer = await signUpUser(app);
-    const addAttempt = await app.request(
+    const addAttempt = await csrfRequest(
+      app,
       `/api/workspace/${workspaceId}/members`,
       {
         method: "POST",
@@ -542,6 +544,7 @@ describe("S7 update role (PATCH /api/workspace/{id}/roles/{roleId})", () => {
         },
         body: JSON.stringify({ userId: newcomer.user.id, role: "viewer" }),
       },
+      holder.cookie,
     );
     expect(addAttempt.status).toBe(403);
   });
@@ -870,19 +873,24 @@ describe("#108 a role name colliding with an Object.prototype key gets a clean d
       expect(body[name], `capability "${name}" should be denied`).toBe(false);
     }
 
-    const write = await app.request("/api/project", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        cookie: target.cookie,
+    const write = await csrfRequest(
+      app,
+      "/api/project",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          cookie: target.cookie,
+        },
+        body: JSON.stringify({
+          workspaceId,
+          name: "Should Not Be Created",
+          slug: "should-not-be-created",
+          icon: "Layout",
+        }),
       },
-      body: JSON.stringify({
-        workspaceId,
-        name: "Should Not Be Created",
-        slug: "should-not-be-created",
-        icon: "Layout",
-      }),
-    });
+      target.cookie,
+    );
     expect(write.status).toBe(403);
   });
 });

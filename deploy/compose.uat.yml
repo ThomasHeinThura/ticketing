@@ -32,12 +32,12 @@ services:
   taskdesk:
     environment:
       NODE_ENV: production
-      # Issue #8's cutover needs ~7 days of clean shadow-mode evidence from a
-      # real UAT deployment under real traffic (docs/05-operations/
-      # configuration-reference.md). UAT is where that evidence is supposed to
-      # come from, so it runs with shadow mode on by standing default, not as
-      # a one-off manual override — every future UAT deploy starts the clock
-      # without anyone having to remember to set this.
+      # P0 development and UAT verification uses three issue-free UTC date
+      # buckets with source-bound behavior/router coverage (see the runbook).
+      # This is not production go-live approval; production criteria apply only
+      # to an actual production promotion. UAT enables shadow mode by default.
+      # Do not infer a fresh window from a note-only/mechanical deploy that does
+      # not change the tested behavior.
       TASKDESK_POLICY_SHADOW: "on"
       # ---------------------------------------------------------------
       # MEASURED, not assumed. 2026-09-06.

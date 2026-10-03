@@ -331,6 +331,40 @@
 				"nameRequired": "O nome é obrigatório",
 				"nameShort": "O nome deve ter pelo menos 2 caracteres"
 			}
+		},
+		"accountSecurity": {
+			"codeError": "The authenticator code was not accepted. Check the current code and retry.",
+			"codeLabel": "Enter the six-digit code",
+			"description": "Manage your authenticator factor and backup codes.",
+			"enabled": "Authenticator factor enabled",
+			"enabledDescription": "Sign-ins require an authenticator or an unused backup code.",
+			"enrollmentDisabled": "Local factor enrollment is disabled by instance policy.",
+			"enrollmentStartError": "Factor enrollment could not start. Check your password and try again.",
+			"loading": "Loading security settings…",
+			"pageTitle": "Account security",
+			"required": "Instance policy requires you to enroll a factor before continuing.",
+			"saveCodes": "Save these backup codes now. They are shown once and cannot be retrieved later.",
+			"savedCodes": "I saved these codes",
+			"scanDescription": "Scan this URI with your authenticator app. Treat it as a secret and do not share it.",
+			"scanTitle": "Add TaskDesk to your authenticator",
+			"setupButton": "Set up authenticator",
+			"setupDescription": "Your password is required to begin enrollment. Backup codes are shown once after verification.",
+			"setupTitle": "Set up an authenticator factor",
+			"starting": "Starting…",
+			"unavailable": "Security settings are unavailable.",
+			"verify": "Verify and enable",
+			"verifying": "Verifying…"
+		},
+		"twoFactor": {
+			"authenticatorCode": "Authenticator code",
+			"backupCode": "Backup code",
+			"error": "The verification code was not accepted. Try again.",
+			"subtitle": "Enter a code from your authenticator app to finish signing in.",
+			"title": "Two-factor verification",
+			"useAuthenticatorCode": "Use authenticator code",
+			"useBackupCode": "Use a backup code",
+			"verify": "Verify and sign in",
+			"verifying": "Verifying…"
 		}
 	},
 	"settings": {
@@ -2197,7 +2231,8 @@
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below."
+			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
 		},
 		"list": {
 			"columnAssignee": "Assignee",
@@ -2255,6 +2290,20 @@
 			"typesLoading": "Loading types…",
 			"typesRetry": "Retry",
 			"close": "Close"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Portal do cliente indisponível",
+			"description": "O acesso para clientes ainda não está disponível. Entre em contato com o administrador do service desk."
+		},
+		"notFound": {
+			"title": "Página não encontrada",
+			"description": "Esta página não está disponível. Confira o endereço e tente novamente."
+		},
+		"error": {
+			"title": "Algo deu errado",
+			"description": "Não foi possível carregar a página. Tente novamente."
 		}
 	}
 }

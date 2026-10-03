@@ -30,6 +30,9 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   // Second factor enrolled; reset by an administrator (with the verification note).
   "auth.mfa_enrolled",
   "auth.mfa_reset",
+  "auth.step_up_issued",
+  "auth.step_up_consumed",
+  "auth.step_up_denied",
   // GM-7, GM-11.
   "impersonation.started",
   "impersonation.ended",
@@ -88,6 +91,8 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "audit.purged",
   // A restore completed (backup-and-restore.md).
   "instance.restored",
+  "instance.observability_changed",
+  "instance.local_factor_policy_changed",
   // The one pending-action transition that is not an event (PA-11).
   "pending_action.viewed",
 ]);

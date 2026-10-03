@@ -1,3 +1,4 @@
+import { csrfRequest } from "./csrf";
 import type { App } from "./organization-http";
 
 // HTTP helpers for the S7 NATIVE role list/write routes (issue #6, retrofit
@@ -26,11 +27,16 @@ export async function createWorkspaceRoleNative(
   workspaceId: string,
   body: { role?: unknown; permission?: unknown },
 ): Promise<Response> {
-  return app.request(`/api/workspace/${workspaceId}/roles`, {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify(body),
-  });
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}/roles`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify(body),
+    },
+    cookie,
+  );
 }
 
 export async function updateWorkspaceRoleNative(
@@ -40,11 +46,16 @@ export async function updateWorkspaceRoleNative(
   roleId: string,
   body: { permission?: unknown },
 ): Promise<Response> {
-  return app.request(`/api/workspace/${workspaceId}/roles/${roleId}`, {
-    method: "PATCH",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify(body),
-  });
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}/roles/${roleId}`,
+    {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify(body),
+    },
+    cookie,
+  );
 }
 
 export async function deleteWorkspaceRoleNative(
@@ -53,8 +64,13 @@ export async function deleteWorkspaceRoleNative(
   workspaceId: string,
   roleId: string,
 ): Promise<Response> {
-  return app.request(`/api/workspace/${workspaceId}/roles/${roleId}`, {
-    method: "DELETE",
-    headers: { cookie },
-  });
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}/roles/${roleId}`,
+    {
+      method: "DELETE",
+      headers: { cookie },
+    },
+    cookie,
+  );
 }

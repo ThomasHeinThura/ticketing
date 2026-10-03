@@ -202,7 +202,7 @@ export default function TaskLabelsPopover({
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
           placeholder={t("tasks:popover.labels.searchPlaceholder")}
-          className="border-none p-0 h-auto focus-visible:ring-0 shadow-none !bg-transparent"
+          className="border-none h-auto focus-visible:ring-0 shadow-none !bg-transparent"
         />
       </div>
 

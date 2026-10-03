@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { csrfRequest } from "./csrf";
 import type { App, SignedUpUser } from "./organization-http";
 import { nextClientIp, signUpUser } from "./organization-http";
 
@@ -31,15 +32,20 @@ export async function inviteWorkspaceMemberNative(
   body: { email?: unknown; role?: unknown; resend?: unknown },
   overrides?: { clientIp?: string },
 ): Promise<Response> {
-  return app.request(`/api/workspace/${workspaceId}/invitations`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      cookie,
-      "x-forwarded-for": overrides?.clientIp ?? nextClientIp(),
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}/invitations`,
+    {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        cookie,
+        "x-forwarded-for": overrides?.clientIp ?? nextClientIp(),
+      },
+      body: JSON.stringify(body),
     },
-    body: JSON.stringify(body),
-  });
+    cookie,
+  );
 }
 
 export async function acceptInvitationNative(
@@ -47,10 +53,15 @@ export async function acceptInvitationNative(
   cookie: string,
   invitationId: string,
 ): Promise<Response> {
-  return app.request(`/api/invitation/${invitationId}/accept`, {
-    method: "POST",
-    headers: { cookie },
-  });
+  return csrfRequest(
+    app,
+    `/api/invitation/${invitationId}/accept`,
+    {
+      method: "POST",
+      headers: { cookie },
+    },
+    cookie,
+  );
 }
 
 export async function rejectInvitationNative(
@@ -58,10 +69,15 @@ export async function rejectInvitationNative(
   cookie: string,
   invitationId: string,
 ): Promise<Response> {
-  return app.request(`/api/invitation/${invitationId}/reject`, {
-    method: "POST",
-    headers: { cookie },
-  });
+  return csrfRequest(
+    app,
+    `/api/invitation/${invitationId}/reject`,
+    {
+      method: "POST",
+      headers: { cookie },
+    },
+    cookie,
+  );
 }
 
 export async function cancelInvitationNative(
@@ -69,10 +85,15 @@ export async function cancelInvitationNative(
   cookie: string,
   invitationId: string,
 ): Promise<Response> {
-  return app.request(`/api/invitation/${invitationId}`, {
-    method: "DELETE",
-    headers: { cookie },
-  });
+  return csrfRequest(
+    app,
+    `/api/invitation/${invitationId}`,
+    {
+      method: "DELETE",
+      headers: { cookie },
+    },
+    cookie,
+  );
 }
 
 /**

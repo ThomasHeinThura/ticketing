@@ -13,8 +13,8 @@ import {
 import { Filter, PanelsTopLeft, Rows3, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import SortControl from "@/components/common/sort-control";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   type BoardFilters,
   DUE_DATE_FILTER_VALUES,
@@ -92,12 +92,12 @@ function ActiveFilterChip({
     <div className="inline-flex h-7 items-center rounded-md border border-border bg-background text-xs shadow-xs">
       <span className="px-2 font-medium text-foreground">{subject}</span>
       <span className="h-full w-px bg-border" />
-      <span className="px-2 text-foreground/80">{operator}</span>
+      <span className="px-2 text-foreground">{operator}</span>
       <span className="h-full w-px bg-border" />
       <span className="flex px-2 text-foreground">{value}</span>
       <span className="h-full w-px bg-border" />
       <button
-        className="inline-flex h-full w-7 items-center justify-center rounded-r-md text-foreground/70 hover:bg-accent/70 hover:text-foreground"
+        className="inline-flex h-full w-7 items-center justify-center rounded-r-md text-foreground hover:bg-accent/70 hover:text-foreground"
         onClick={onClear}
         type="button"
       >
@@ -286,7 +286,7 @@ export default function BoardToolbar({
                         className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                           selectedStatusIds.length === 0
                             ? "bg-accent text-accent-foreground"
-                            : "text-foreground/90 hover:bg-accent/60 hover:text-foreground"
+                            : "text-foreground hover:bg-accent/60 hover:text-foreground"
                         }`}
                         onClick={() => updateFilter("status", null)}
                         type="button"
@@ -300,7 +300,7 @@ export default function BoardToolbar({
                           className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                             selectedStatusIds.includes(column.id)
                               ? "bg-accent text-accent-foreground"
-                              : "text-foreground/90 hover:bg-accent/60 hover:text-foreground"
+                              : "text-foreground hover:bg-accent/60 hover:text-foreground"
                           }`}
                           onClick={() => toggleStatusFilter(column.id)}
                           type="button"
@@ -328,7 +328,7 @@ export default function BoardToolbar({
                         className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                           selectedPriorityIds.length === 0
                             ? "bg-accent text-accent-foreground"
-                            : "text-foreground/90 hover:bg-accent/60 hover:text-foreground"
+                            : "text-foreground hover:bg-accent/60 hover:text-foreground"
                         }`}
                         onClick={() => updateFilter("priority", null)}
                         type="button"
@@ -342,7 +342,7 @@ export default function BoardToolbar({
                           className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                             selectedPriorityIds.includes(priority)
                               ? "bg-accent text-accent-foreground"
-                              : "text-foreground/90 hover:bg-accent/60 hover:text-foreground"
+                              : "text-foreground hover:bg-accent/60 hover:text-foreground"
                           }`}
                           onClick={() => togglePriorityFilter(priority)}
                           type="button"
@@ -372,7 +372,7 @@ export default function BoardToolbar({
                         className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                           selectedAssigneeIds.length === 0
                             ? "bg-accent text-accent-foreground"
-                            : "text-foreground/90 hover:bg-accent/60 hover:text-foreground"
+                            : "text-foreground hover:bg-accent/60 hover:text-foreground"
                         }`}
                         onClick={() => updateFilter("assignee", null)}
                         type="button"
@@ -386,7 +386,7 @@ export default function BoardToolbar({
                           className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                             selectedAssigneeIds.includes(member.userId)
                               ? "bg-accent text-accent-foreground"
-                              : "text-foreground/90 hover:bg-accent/60 hover:text-foreground"
+                              : "text-foreground hover:bg-accent/60 hover:text-foreground"
                           }`}
                           onClick={() => toggleAssigneeFilter(member.userId)}
                           type="button"
@@ -424,7 +424,7 @@ export default function BoardToolbar({
                         className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                           selectedDueDateFilters.length === 0
                             ? "bg-accent text-accent-foreground"
-                            : "text-foreground/90 hover:bg-accent/60 hover:text-foreground"
+                            : "text-foreground hover:bg-accent/60 hover:text-foreground"
                         }`}
                         onClick={() => updateFilter("dueDate", null)}
                         type="button"
@@ -444,7 +444,7 @@ export default function BoardToolbar({
                           className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-left text-xs ${
                             selectedDueDateFilters.includes(dueDate)
                               ? "bg-accent text-accent-foreground"
-                              : "text-foreground/90 hover:bg-accent/60 hover:text-foreground"
+                              : "text-foreground hover:bg-accent/60 hover:text-foreground"
                           }`}
                           onClick={() => toggleDueDateFilter(dueDate)}
                           type="button"

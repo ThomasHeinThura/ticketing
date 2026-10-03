@@ -45,13 +45,14 @@ export default function TaskStatusPopover({
 
   const handleStatusChange = useCallback(
     async (newStatus: string) => {
+      setOpen(false);
       try {
         await updateTaskStatus({
           ...task,
           status: newStatus,
         });
-        setOpen(false);
       } catch (error) {
+        setOpen(true);
         toast.error(
           error instanceof Error
             ? error.message

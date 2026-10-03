@@ -8,6 +8,11 @@ link here; they do not restate the list. `outbox.kind`, `webhook.events[]` and
 `notification_preference.event_kind` all draw from the keys below, and a CI test asserts
 the enum in `packages/domain/src/events/` equals this table.
 
+Browser invalidation frames follow the transport and privacy projection in
+[realtime.md](realtime.md). They carry only the registered kind, authorized topic, outbox
+`eventId`, occurrence time, and work-item key. The domain payload below is never copied to
+a browser frame.
+
 Added 2026-09-05 because the three specs had drifted into three incompatible vocabularies —
 see [review-2026-09-05.md](../07-planning/review-2026-09-05.md).
 

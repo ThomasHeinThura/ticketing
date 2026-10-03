@@ -12,7 +12,7 @@ import useGetWorkspaceUsers from "@/hooks/queries/workspace-users/use-get-worksp
 import { formatDateMedium, formatRelativeTime } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
 import { getPriorityLabel, getStatusLabel } from "@/lib/i18n/domain";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../avatar";
 import CommentCard from "./comment-card";
 import { isCommentActivity } from "./utils";
 
@@ -474,7 +474,7 @@ function Activity({
       {showConnector && (
         <span className="-translate-x-1/2 absolute top-9 bottom-0 left-3 w-px bg-[color-mix(in_srgb,var(--foreground)_18%,transparent)] dark:bg-[color-mix(in_srgb,var(--foreground)_26%,transparent)]" />
       )}
-      <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground/80">
+      <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground">
         {activityIcon}
       </span>
       <ActorAvatar user={user || null} fallbackName={actorName} />
@@ -485,7 +485,7 @@ function Activity({
           workspaceUsers: workspaceUsers as WorkspaceUser[] | undefined,
           t,
         })}{" "}
-        <span className="whitespace-nowrap text-muted-foreground/70 text-xs">
+        <span className="whitespace-nowrap text-muted-foreground text-xs">
           {formatRelativeTime(activity.createdAt)}
         </span>
       </TimelineContent>

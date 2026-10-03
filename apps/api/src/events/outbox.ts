@@ -2,7 +2,7 @@ import type db from "../database";
 import { outboxTable } from "../database/schema";
 import { EVENT_KEYS } from "./event-keys";
 
-type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export type DomainEventEnvelope<Payload extends Record<string, unknown>> = {
   id: string;

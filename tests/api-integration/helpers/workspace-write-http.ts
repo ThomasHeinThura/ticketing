@@ -1,3 +1,4 @@
+import { csrfRequest } from "./csrf";
 import type { App } from "./organization-http";
 
 // HTTP helpers for the S4 NATIVE workspace write routes (issue #6, retrofit
@@ -21,14 +22,19 @@ export async function createWorkspaceNative(
   cookie: string,
   body: CreateWorkspaceBody = {},
 ): Promise<Response> {
-  return app.request("/api/workspace", {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify({
-      name: "Characterization Workspace",
-      ...body,
-    }),
-  });
+  return csrfRequest(
+    app,
+    "/api/workspace",
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify({
+        name: "Characterization Workspace",
+        ...body,
+      }),
+    },
+    cookie,
+  );
 }
 
 export async function updateWorkspaceNative(
@@ -37,11 +43,16 @@ export async function updateWorkspaceNative(
   workspaceId: string,
   body: Record<string, unknown>,
 ): Promise<Response> {
-  return app.request(`/api/workspace/${workspaceId}`, {
-    method: "PATCH",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify(body),
-  });
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}`,
+    {
+      method: "PATCH",
+      headers: { "content-type": "application/json", cookie },
+      body: JSON.stringify(body),
+    },
+    cookie,
+  );
 }
 
 export async function deleteWorkspaceNative(
@@ -49,8 +60,13 @@ export async function deleteWorkspaceNative(
   cookie: string,
   workspaceId: string,
 ): Promise<Response> {
-  return app.request(`/api/workspace/${workspaceId}`, {
-    method: "DELETE",
-    headers: { cookie },
-  });
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}`,
+    {
+      method: "DELETE",
+      headers: { cookie },
+    },
+    cookie,
+  );
 }

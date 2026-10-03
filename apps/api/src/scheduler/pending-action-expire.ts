@@ -3,6 +3,11 @@ import { sql } from "drizzle-orm";
 import { appendAuditLog } from "../audit/audit-writer";
 import db from "../database";
 import { enqueueOutboxEvent } from "../events/outbox";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
+import {
+  logTaskDesk,
+  recordAuditWriteFailure,
+} from "../instance/observability/runtime";
 import { withJobLease } from "./leader-lock";
 
 const JOB_NAME = "pending-action-expire";
@@ -40,14 +45,18 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
       let degraded = unsupported.rows[0]?.exists === true;
       let unsupportedLogged = false;
       if (degraded) {
-        console.error(
-          "pending-action-expire: due pending actions lack workspace scope; skipped",
-        );
+        logTaskDesk({
+          module: "jobs",
+          message: "jobs.failure",
+          level: "error",
+          result: "degraded",
+        });
         unsupportedLogged = true;
       }
       let cursor: { expiresAt: string; id: string } | undefined;
 
       while (scanned < MAX_ROWS_PER_RUN) {
+        let batchAuditFailures = 0;
         const batch = await db.transaction(async (tx) => {
           const afterCursor = cursor
             ? sql`AND (expires_at, id) > (${cursor.expiresAt}::timestamptz, ${cursor.id})`
@@ -90,9 +99,12 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
             if (!row) continue;
             if (!row.workspace_id) {
               if (!unsupportedLogged) {
-                console.error(
-                  "pending-action-expire: due pending actions lack workspace scope; skipped",
-                );
+                logTaskDesk({
+                  module: "jobs",
+                  message: "jobs.failure",
+                  level: "error",
+                  result: "degraded",
+                });
                 unsupportedLogged = true;
               }
               batchDegraded = true;
@@ -145,10 +157,10 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
                 before: { state: "pending" },
                 after: { state: "expired" },
               });
-            } catch (error) {
-              console.error("AU-14: pending-action expiry audit write failed", {
-                pendingActionId: row.id,
-                error,
+            } catch {
+              batchAuditFailures += 1;
+              recordAuditWriteFailure("pending_action_decision", {
+                log: false,
               });
               batchDegraded = true;
             }
@@ -160,6 +172,19 @@ export async function expirePendingActions(): Promise<PendingActionExpireOutcome
             scanned: candidates.rows.length,
           };
         });
+
+        if (batchAuditFailures > 0) {
+          logTaskDesk({
+            module: "audit",
+            message: "audit.write_failure",
+            level: "error",
+            result: "degraded",
+            auditOperation: "pending_action_decision",
+          });
+          await notifyCurrentInstanceAdminsOfAuditFailure(
+            "pending_action_decision",
+          );
+        }
 
         expired += batch.expired;
         scanned += batch.scanned;

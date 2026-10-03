@@ -5,6 +5,11 @@ const meta = {
   title: "Primitives/Textarea",
   component: Textarea,
   args: { "aria-label": "Description", placeholder: "Add a description" },
+  render: (args) => (
+    <div className="bg-background">
+      <Textarea {...args} />
+    </div>
+  ),
 } satisfies Meta<typeof Textarea>;
 
 export default meta;
