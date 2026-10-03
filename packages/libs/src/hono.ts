@@ -165,7 +165,10 @@ export function createApiFetch(
       target.pathname.startsWith(`${authBasePath}/`);
     const needsCsrf = !safeMethods.has(method) && !isBetterAuthRoute;
 
-    const request = requestWithHeaders(input, init, headers, "include");
+    const requestInit = needsCsrf
+      ? { ...init, redirect: "error" as const }
+      : init;
+    const request = requestWithHeaders(input, requestInit, headers, "include");
     if (!needsCsrf) return fetchImpl(request);
 
     // Keep the request body replayable for the single, narrowly-scoped retry.
