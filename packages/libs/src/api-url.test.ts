@@ -27,4 +27,10 @@ describe("resolveApiBaseUrl", () => {
       "http://localhost:1337/api",
     );
   });
+
+  it("preserves a long nonmatching slash run without suffix-regex backtracking", () => {
+    const base = `https://taskdesk.test${"/".repeat(100_000)}x`;
+
+    expect(resolveApiBaseUrl(base)).toBe(`${base}/api`);
+  });
 });
