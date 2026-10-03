@@ -62,7 +62,7 @@ export default function TaskLayout({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <SidebarTrigger
-                      className="-ml-1 h-7 w-7 cursor-pointer text-foreground/85 hover:text-foreground"
+                      className="-ml-1 h-7 w-7 cursor-pointer text-foreground hover:text-foreground"
                       toggleLabel={t("common:a11y.toggleSidebar")}
                     />
                   </TooltipTrigger>
@@ -95,7 +95,7 @@ export default function TaskLayout({
                 >
                   {project?.name || t("navigation:sidebar.projects")}
                 </button>
-                <span className="text-foreground/70 text-xs">/</span>
+                <span className="text-foreground text-xs">/</span>
                 <TaskCrumbSelect
                   projectId={projectId}
                   taskId={taskId}

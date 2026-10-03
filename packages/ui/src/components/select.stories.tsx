@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   Select,
+  SelectButton,
+  SelectGroup,
+  SelectGroupLabel,
   SelectItem,
   SelectPopup,
-  SelectTrigger,
-  SelectValue,
 } from "./select";
 
 const meta = {
@@ -23,12 +24,13 @@ export const Default: Story = {
         { value: "high", label: "High" },
       ]}
     >
-      <SelectTrigger aria-label="Priority">
-        <SelectValue placeholder="Choose priority" />
-      </SelectTrigger>
+      <SelectButton aria-label="Priority">Choose priority</SelectButton>
       <SelectPopup>
-        <SelectItem value="low">Low</SelectItem>
-        <SelectItem value="high">High</SelectItem>
+        <SelectGroup>
+          <SelectGroupLabel>Priority</SelectGroupLabel>
+          <SelectItem value="low">Low</SelectItem>
+          <SelectItem value="high">High</SelectItem>
+        </SelectGroup>
       </SelectPopup>
     </Select>
   ),

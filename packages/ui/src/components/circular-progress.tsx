@@ -30,7 +30,7 @@ export function CircularProgress({
         fill="none"
         stroke="currentColor"
         strokeWidth={strokeWidth}
-        className="text-border"
+        className="text-muted-foreground"
       />
       {total > 0 && (
         <circle

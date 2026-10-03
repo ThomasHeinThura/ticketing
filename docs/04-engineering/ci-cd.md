@@ -103,6 +103,37 @@ setup prerequisite before `pnpm check:tokens`; the check builds the stylesheet a
 the declared contrast pairs in that browser. The browser install is setup, not an independent
 quality gate: a missing browser makes `check:tokens` fail.
 
+The G3 source inventory covers every colored text occurrence, including semantic color
+utilities and foreground-only utilities. A foreground is measured against its nearest
+opaque surface in the same JSX tree, an imported shared component whose implementation
+establishes that surface, or an explicit occurrence contract that binds the current
+component and caller chain to the measured surface. Repeated identical foreground classes
+remain separate occurrences until their surface contexts are proven; only the resulting
+numeric color pairs may be deduplicated. Each manifest row represents one unique foreground,
+surface, foreground opacity, and theme measurement. Opacity-bearing foreground utilities
+retain their exact class in pair identity, and Chromium's computed foreground alpha is
+composited over the measured surface before contrast is calculated. Unsupported foreground
+color forms fail closed. A translucent ancestor surface is composited over the next painted
+ancestor, continuing through every source-bound translucent layer to the nearest opaque
+surface; state branches are measured separately, and competing backgrounds on one element
+are never treated as nested layers. Unsupported or ambiguous paint chains fail closed. Its
+occurrence list binds every use of that pair to its own
+source path, occurrence identity, and current surface proof; missing, duplicate, or stale
+bindings fail the check. Product components and Storybook stories are inventoried; unit-test
+renderers do not create additional product surface contexts. Generic form, dialog, select
+and sidebar content does not imply one default surface: current callers and component-owned
+surfaces are checked individually. Unsupported or changed caller chains fail closed. The
+page body background is a fallback only when the rendered chain establishes that no painted
+surface intervenes. Storybook stories use the semantic body fallback only when the preview
+imports its stylesheet and that stylesheet paints `#storybook-root` with `var(--background)`;
+nearer JSX or shared-component surfaces take precedence.
+
+The source inventory includes shipped product components and every Storybook story. Files
+ending exactly in `.test.tsx`, `.spec.tsx`, `.test.jsx`, or `.spec.jsx` are excluded from both
+surface inventory and runtime caller discovery; test harness renders cannot establish a
+shipped screen's painted surface. Checker regression tests remain active and verify the
+production/story scope boundary.
+
 `pnpm test:contract` regenerates and checks the committed OpenAPI document, runs Redocly's
 recommended lint rules, then runs `oasdiff breaking --fail-on WARN` against `origin/main`.
 Redocly currently reports 16 inherited findings in the generated contract; lint findings

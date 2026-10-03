@@ -1455,6 +1455,22 @@ function isVisibleAssertionStatement(statement) {
   return false;
 }
 
+function isEnrollmentReadinessStatement(statement) {
+  if (!ts.isExpressionStatement(statement)) return false;
+  const normalized = statement
+    .getText()
+    .replaceAll("'", '"')
+    .replace(/\s+/gu, " ")
+    .trim();
+  return (
+    normalized ===
+      'await page.locator("#factor-password").fill("visual-enrollment-password");' ||
+    /^await expect\( ?page\.getByRole\("button", \{ name: "Set up authenticator" \}\),? ?\)\.toBeEnabled\(\);$/u.test(
+      normalized,
+    )
+  );
+}
+
 function isExpectCallForSafeLocator(node) {
   return (
     ts.isCallExpression(node) &&
@@ -3296,7 +3312,9 @@ for (const screen of manifest) {
       if (
         screenshotIndex !== callbackBody.statements.length - 1 ||
         postNavigation.some(
-          (statement) => !isVisibleAssertionStatement(statement),
+          (statement) =>
+            !isVisibleAssertionStatement(statement) &&
+            !isEnrollmentReadinessStatement(statement),
         ) ||
         !postNavigation.some(isVisibleAssertionStatement) ||
         preNavigation.some(
