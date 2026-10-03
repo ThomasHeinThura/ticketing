@@ -4,7 +4,6 @@ import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import BulkAssignToolbar from "@/components/work-item/bulk-assign-toolbar";
-import WorkItemBoard from "@/components/work-item/work-item-board";
 import WorkItemList from "@/components/work-item/work-item-list";
 import useGetProjectStates from "@/hooks/queries/project/use-get-project-states";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -19,6 +18,9 @@ const CreateWorkItemDialog = lazy(
 );
 const WorkItemListRealtime = lazy(
   () => import("@/components/work-item/work-item-list-realtime"),
+);
+const WorkItemBoard = lazy(
+  () => import("@/components/work-item/work-item-board"),
 );
 
 import {
@@ -292,33 +294,35 @@ function WorkItemsRouteComponent() {
             }}
           />
         ) : project ? (
-          <WorkItemBoard
-            projectId={project.id}
-            states={projectStates.data}
-            statesError={projectStates.isError}
-            workItems={boardWorkItems}
-            isLoading={isLoading}
-            isError={isError}
-            onRetry={handleRetry}
-            hasMore={boardItemsQuery.hasNextPage ?? false}
-            isLoadingMore={boardItemsQuery.isFetchingNextPage}
-            onLoadMore={() => {
-              void boardItemsQuery.fetchNextPage();
-            }}
-            canSelect={canBulkAssign}
-            canTransition={!isCheckingPermissions && canTransitionTasks()}
-            canRank={!isCheckingPermissions && canRankTasks()}
-            selectedKeys={selectedKeys}
-            onSelectionChange={(key, checked) => {
-              setSelectedKeys((current) =>
-                checked
-                  ? current.includes(key)
-                    ? current
-                    : [...current, key]
-                  : current.filter((selected) => selected !== key),
-              );
-            }}
-          />
+          <Suspense fallback={null}>
+            <WorkItemBoard
+              projectId={project.id}
+              states={projectStates.data}
+              statesError={projectStates.isError}
+              workItems={boardWorkItems}
+              isLoading={isLoading}
+              isError={isError}
+              onRetry={handleRetry}
+              hasMore={boardItemsQuery.hasNextPage ?? false}
+              isLoadingMore={boardItemsQuery.isFetchingNextPage}
+              onLoadMore={() => {
+                void boardItemsQuery.fetchNextPage();
+              }}
+              canSelect={canBulkAssign}
+              canTransition={!isCheckingPermissions && canTransitionTasks()}
+              canRank={!isCheckingPermissions && canRankTasks()}
+              selectedKeys={selectedKeys}
+              onSelectionChange={(key, checked) => {
+                setSelectedKeys((current) =>
+                  checked
+                    ? current.includes(key)
+                      ? current
+                      : [...current, key]
+                    : current.filter((selected) => selected !== key),
+                );
+              }}
+            />
+          </Suspense>
         ) : null}
         {project && workspace && selectedKeys.length > 0 && canBulkAssign && (
           <BulkAssignToolbar

@@ -22,6 +22,16 @@ export interface ApiFetchOptions {
   apiBaseUrl?: string;
 }
 
+export function withTaskDeskRequestHeaders(
+  init: RequestInit = {},
+  id = windowId,
+): RequestInit {
+  const headers = new Headers(init.headers);
+  headers.set("Content-Type", "application/json");
+  headers.set("X-TaskDesk-Window-Id", id);
+  return { ...init, headers, credentials: "include" };
+}
+
 function resolvedUrl(input: RequestInfo | URL, baseUrl: URL): URL | undefined {
   try {
     const value = input instanceof Request ? input.url : input.toString();
@@ -153,9 +163,11 @@ export function createApiFetch(
       return fetchImpl(input, { ...init, headers, credentials: "omit" });
     }
 
-    const headers = mergeHeaders(input, init);
-    headers.set("Content-Type", "application/json");
-    headers.set("X-TaskDesk-Window-Id", windowId);
+    const headedInit = withTaskDeskRequestHeaders({
+      ...init,
+      headers: mergeHeaders(input, init),
+    });
+    const headers = new Headers(headedInit.headers);
     const method = (
       init?.method ?? (input instanceof Request ? input.method : "GET")
     ).toUpperCase();
@@ -166,8 +178,8 @@ export function createApiFetch(
     const needsCsrf = !safeMethods.has(method) && !isBetterAuthRoute;
 
     const requestInit = needsCsrf
-      ? { ...init, redirect: "error" as const }
-      : init;
+      ? { ...headedInit, redirect: "error" as const }
+      : headedInit;
     const request = requestWithHeaders(input, requestInit, headers, "include");
     if (!needsCsrf) return fetchImpl(request);
 

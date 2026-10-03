@@ -4,6 +4,7 @@ import { closeSync, existsSync, openSync } from "node:fs";
 import { chmod, mkdtemp } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -233,9 +234,7 @@ export async function withMfaCsrfApp<T>(
   let container: PostgreSqlContainerInstance | undefined;
   let apiProcess: ChildProcess | undefined;
   try {
-    const evidenceDir = await mkdtemp(
-      resolve(process.env.TMPDIR ?? "/tmp", "td-mfa-csrf-"),
-    );
+    const evidenceDir = await mkdtemp(resolve(tmpdir(), "td-mfa-csrf-"));
     await chmod(evidenceDir, 0o700);
     const databaseName = `mfa_csrf_${randomUUID().replaceAll("-", "")}`;
     container = await new PostgreSqlContainer("postgres:18-alpine")
@@ -258,7 +257,6 @@ export async function withMfaCsrfApp<T>(
     const password = randomPassword();
     const secret = randomBytes(48).toString("base64url");
     const bootstrapEnv: NodeJS.ProcessEnv = {
-      ...process.env,
       NODE_ENV: "test",
       TASKDESK_AUTH_SECRET: secret,
       TASKDESK_AGENT_URL: origin,
