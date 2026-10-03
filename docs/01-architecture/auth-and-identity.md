@@ -82,7 +82,7 @@ registered in [inherited-features.md](inherited-features.md).
 | `emailOTP` | inherited — kept | `auth.email-otp` |
 | `genericOAuth` | inherited — kept | the protocol implementation every `auth.oidc` connection is built on |
 | `apiKey` | inherited — kept | the credential only; our `api_key` table owns everything else |
-| `admin` | inherited — kept **as a session primitive only** | its HTTP routes are **not mounted**, `user.role` is **never read**, and `POST /api/instance/users/{id}/impersonate` ([rbac.md](rbac.md)) does the authority check and sets `impersonatedBy`. Using the plugin's own endpoints would reintroduce the second authority source the identity-resolution rule forbids |
+| `admin` | inherited — kept **as a session primitive only** | its HTTP routes are **not mounted**. The application's identity resolver reads the stored `user.role = 'admin'` field as the current source for the instance-scope `instance_admin` grant; authority does not come from a plugin endpoint. `POST /api/instance/users/{id}/impersonate` ([rbac.md](rbac.md)) does the authority check and sets `impersonatedBy` |
 | `openAPI` | **removed at fork** | listed here as *"kept — development only"* until 2026-09-07. It mounts an unauthenticated `/api/auth/reference` that pulls an **unpinned** `cdn.jsdelivr.net/npm/@scalar/api-reference` bundle into the API's own cookie origin — **H19** of the [#13 security review](../07-planning/security-reviews/13-kaneo-import.md), which put it on issue #6's removal list. Removed in #6's inherited-defaults slice. The API's **own** OpenAPI document is `@hono/zod-openapi` at `GET /api/openapi` and is untouched by this |
 | `lastLoginMethod` | inherited — kept | |
 | `anonymous` | **removed at fork** | guest sign-in, on by default in kaneo. An ephemeral-identity surface does not ship dormant |
@@ -561,8 +561,8 @@ the first instance administrator and requires verified MFA enrollment before rec
 completion in `instance_setting.setup_completed_at`. The P0 candidate implements
 factor enrollment but has not changed the existing bootstrap marker sequence to wait for
 verified enrollment; bootstrap MFA completion is still residual and must not be claimed.
-The zero-admin bootstrap race (#231) also remains open.
-— a durable marker, so the page can never be re-opened by deleting user rows. The setup
+The zero-admin bootstrap race (#231) also remains open. `setup_completed_at` is a durable
+marker, so the page can never be re-opened by deleting user rows. The setup
 token expires after one hour or one use, and **while `setup_completed_at` is null every
 container start prints a fresh token and invalidates the previous one** — so an operator who
 missed the log line restarts the container rather than hunting for it, and a token scrolled
@@ -570,10 +570,68 @@ past in a shared log is already dead ([runbook](../05-operations/runbook.md)). `
 optional override for **headless** installs (automation that cannot read a log) and is
 ignored once `setup_completed_at` is set.
 
-If every administrator is locked out, recovery is the CLI (`grant-instance-admin`,
-[runbook](../05-operations/runbook.md)), which must be run **inside the container**, writes
-an audit row with `actor_type = 'system'`, and emails every existing administrator that it
-was used. Break-glass is loud by design.
+### Recommended P4 recovery contract — pending resolution
+
+The following is an **orchestrator-recommended proposal**, not a Thomas-approved design or
+an implemented CLI. Resolve it before implementing issue #230. The operational command
+shape remains `grant-instance-admin <email>` inside the TaskDesk container.
+
+- The command is only for recovery on an already initialized instance. It requires a
+  non-null `instance_setting.setup_completed_at`; it never substitutes for or reopens the
+  first-run setup flow.
+- The process must run in the `taskdesk` container as its configured service UID and resolve
+  that effective UID through the container's passwd database. It must not infer an operator
+  from environment variables, command-line actor fields, or the target email. The CLI can
+  attest only to the container process identity; host Docker access records remain the
+  source for identifying the human operator.
+- Recovery is interactive and requires a TTY. Before mutation, the operator must attest
+  that all current instance administrators are unable to recover access and that the target
+  person's identity was verified through the deployment's independent operator process.
+  The CLI resolves and displays the single target, then requires the operator to type the
+  fixed phrase `GRANT INSTANCE ADMIN`. In a short transaction after confirmation, it takes
+  the shared promotion lock and re-reads setup state, target identity and the set of current
+  admin user ids. If that state differs from what was displayed, it refuses and asks the
+  operator to restart the command and verify again. It never holds database locks while
+  waiting for input. There is no unattended mode in this contract.
+- `<email>` is an exact match against the stored email of one existing, non-anonymous,
+  unbanned user. That user must have exactly one active `person` row with `side = 'staff'`;
+  missing, inactive, customer-side, banned, or ambiguous identity resolution fails closed
+  with no authority change. The CLI does not create or relink a user or person, alter
+  account status, or change local-factor enrollment. Existing MFA policy continues to gate
+  protected use.
+- The grant uses the existing `user.role = 'admin'` source only. It does not create a new
+  identity-provider grant, membership, role row, or parallel authority source. Identity
+  resolution projects that existing source to the RBAC `instance_admin` grant.
+- The command acquires the same transaction-scoped PostgreSQL advisory lock as first-user
+  promotion (currently `pg_advisory_xact_lock(2026)`) before re-reading setup state, target
+  identity, current administrators, and target role. This serializes concurrent recovery
+  commands with each other and with first-user promotion. It locks the resolved target user
+  row before changing `user.role`. Every validly formed invocation that reaches the database
+  is audited, including refusal and operator cancellation; a missing target uses the
+  singleton instance-settings row as its audit entity. The role update, append-only audit row, and
+  durable in-app security notifications for a successful or already-admin result commit in
+  one database transaction. If any required write fails, the whole transaction rolls back;
+  in particular, audit failure means no grant. A database outage means the command fails
+  closed and cannot claim an audit record was written.
+- The command is idempotent with respect to authority: an already-admin target remains
+  unchanged. Each invocation that reaches the database is a separate audited use. A new
+  grant produces one durable in-app `security_alert` for every user whose
+  `role = 'admin'` at the transaction's locked read, plus the target; recipients are
+  deduplicated by user id. An already-admin target is already in that recipient set. A
+  refused or cancelled command writes its audit outcome but creates no alert. The append
+  uses `actor_type = 'system'`, null `actor_id`, the target user as the entity when resolved
+  (otherwise the singleton instance settings row), and records the effective container UID
+  and passwd name; it never stores the supplied email, credentials, or secret material. The
+  host operator is not misrepresented as the container's service account.
+- Email notices are attempted only after the transaction commits. SMTP failure never rolls
+  back a committed grant or durable in-app notice. The command reports only aggregate
+  delivery success/failure counts, exits nonzero when any email fails, and instructs the
+  operator to notify recipients through the host's established incident channel. It never
+  prints recipient addresses or secrets.
+
+Break-glass is loud by design. The proposed audit key is recorded in the pending row of
+the [audit action catalogue](../03-features/audit-trail.md#audit-action-catalogue) and
+remains unavailable to implementation until this contract is resolved.
 
 ## Threat notes
 
