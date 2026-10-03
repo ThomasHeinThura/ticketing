@@ -185,6 +185,41 @@ describe("G3 contrast inventory and math", () => {
     }
   });
 
+  it("follows inline lazy imports when binding shipped caller surfaces", async () => {
+    const suffix = `-${process.pid}`;
+    const route = `apps/web/src/.contrast-lazy-route${suffix}.tsx`;
+    const component = `apps/web/src/.contrast-lazy-component${suffix}.tsx`;
+    try {
+      await Promise.all([
+        writeFile(
+          route,
+          `import { lazy, Suspense } from "react";\nconst Deferred = lazy(\n  () => import("@/.contrast-lazy-component${suffix}"),\n);\nexport function Route(){ return <main className="bg-background"><Suspense fallback={null}><Deferred /></Suspense></main>; }`,
+        ),
+        writeFile(
+          component,
+          'export default function Deferred(){ return <p className="text-muted-foreground">Deferred</p>; }',
+        ),
+      ]);
+      const result = observeInheritedForegroundSurfaces(
+        [route, component],
+        new Set(["muted-foreground", "background"]),
+      );
+      assert.ok(
+        [...result.pairs].some((pair) =>
+          pair.startsWith(
+            "--color-muted-foreground|--color-background|bg-background|light",
+          ),
+        ),
+        "the lazily imported foreground inherits its real route surface",
+      );
+      assert.equal(result.unresolved.size, 0);
+    } finally {
+      await Promise.all(
+        [route, component].map((file) => rm(file, { force: true })),
+      );
+    }
+  });
+
   it("fails closed for a colored text node without a supported surface context", async () => {
     const fixture = `scripts/ci/.contrast-unresolved-${process.pid}.tsx`;
     await writeFile(fixture, '<p className="text-destructive">Invalid</p>');
