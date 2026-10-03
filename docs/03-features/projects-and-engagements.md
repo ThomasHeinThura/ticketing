@@ -176,6 +176,7 @@ activity — and nothing else.
 GET    /api/projects                                          project:read
 POST   /api/projects                                          project:create
 GET    /api/projects/{projectId}                              project:read
+GET    /api/projects/{projectId}/states                       project:read + project reach — active concrete states ordered by position, id; includes empty columns and states whose template is archived
 PATCH  /api/projects/{projectId}                              project:manage_settings  — never parent_id or owner_team_id
 PATCH  /api/projects/{projectId}/ownership                    project:manage_members   — parent_id and/or owner_team_id only; re-parenting requires it on both the child and the prospective parent
 POST   /api/projects/{projectId}/archive                      project:archive
@@ -202,6 +203,13 @@ DELETE /api/projects/{projectId}/document-links/{id}          project:update  �
 GET    /api/projects/{projectId}/health                       project:read
 PATCH  /api/projects/{projectId}/health                       project:update
 ```
+
+`GET /api/projects/{projectId}/states` returns an array of
+`{id, stateTemplateId, name, group, position, isDefault}`. `name` and `group` come from
+the mapped workspace state template; `position` and `isDefault` come from the concrete
+project state. The route applies the normal non-disclosing project reach guard. This is
+the board's column catalogue; it does not grant transitions, which remain item-specific
+server offers through the work-item transition API.
 
 ## Edge cases
 

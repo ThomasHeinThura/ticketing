@@ -432,7 +432,9 @@ function BoardCard({
                 >
                   <SelectValue
                     placeholder={t("workItems:board.chooseStatePlaceholder")}
-                  />
+                  >
+                    {chosen?.toStateName}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {offered.map((offer) => (

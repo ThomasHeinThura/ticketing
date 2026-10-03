@@ -391,7 +391,9 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
     }
     if (path === "/api/work-items/WLP-1" && request.method() === "PATCH") {
       const headers = await request.allHeaders();
-      expect(headers["if-match"], JSON.stringify(headers)).toBe('"1"');
+      expect(headers["if-match"], JSON.stringify(headers)).toBe(
+        `"${item.version}"`,
+      );
       const body = request.postDataJSON() as Record<string, unknown>;
       expect(body.description).toBe("Initial notes");
       item = {
@@ -553,8 +555,13 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(page.getByTestId("work-item-board-column")).toHaveCount(2);
   await page.getByRole("button", { name: "Change state" }).click();
   const stateSelect = page.getByTestId("work-item-state-select");
-  await stateSelect.click();
-  await page.getByRole("option", { name: "Ready" }).click();
+  await tabTo(page, stateSelect);
+  await page.keyboard.press("Space");
+  const offeredState = page.getByRole("option", { name: "Ready" });
+  await expect(offeredState).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(stateSelect).toContainText("Ready");
   const moveState = page.getByRole("button", { name: "Move" });
   await tabTo(page, moveState);
   await page.keyboard.press("Enter");
@@ -592,6 +599,20 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(page.getByLabel("Default comment visibility")).toBeEnabled();
   await page.goto("/agent/work-items/WLP-1");
   await expect(page.getByTestId("work-item-detail")).toBeVisible();
+  await expect(page.getByTestId("realtime-unavailable")).toBeVisible();
+  await expect(page.getByText("Activity", { exact: true })).toBeVisible();
+  await expect(page.getByText("Tiptap note", { exact: true })).toBeVisible();
+  const detailJourney = page.getByTestId("work-item-journey");
+  const journeyBounds = await detailJourney.boundingBox();
+  if (!journeyBounds)
+    throw new Error("Loaded activity region was not measurable");
+  await page.setViewportSize({
+    width: 1280,
+    height: Math.max(
+      720,
+      Math.ceil(journeyBounds.y + journeyBounds.height + 24),
+    ),
+  });
   await page.evaluate(
     () =>
       new Promise<void>((resolve) =>
@@ -631,9 +652,10 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   }
   expect(detailShift).toBeLessThanOrEqual(0.1);
   await expect(page).toHaveScreenshot("work-item-detail.png", {
-    fullPage: true,
+    fullPage: false,
     animations: "disabled",
   });
+  await page.setViewportSize({ width: 1280, height: 720 });
   const editButton = page.getByRole("button", { name: "Edit", exact: true });
   await tabTo(page, editButton);
   await page.keyboard.press("Enter");
@@ -642,7 +664,7 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await page.keyboard.press("ControlOrMeta+A");
   await page.keyboard.type("First report edited");
   await expect(titleInput).toHaveValue("First report edited");
-  const saveButton = page.getByRole("button", { name: "Save changes" });
+  const saveButton = page.getByRole("button", { name: "Save changes" }).first();
   await tabTo(page, saveButton);
   await page.keyboard.press("Enter");
   await expect(
