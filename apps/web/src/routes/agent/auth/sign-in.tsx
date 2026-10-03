@@ -206,7 +206,7 @@ function SignIn() {
             : t("auth:signIn.subtitle")
         }
       >
-        <div className="mt-6">
+        <div className="mt-6" data-testid="g13-sign-in-content">
           {search.error && (
             <Alert variant="error" className="mb-4">
               <AlertDescription>
