@@ -97,6 +97,7 @@ import {
   transitionWorkItemBody,
   updateWorkItemBody,
   workItemKeyParam,
+  workItemTreeQuery,
   workspaceIdParam,
 } from "./schema";
 
@@ -550,17 +551,17 @@ const getWorkItemTreeRoute = createRoute({
   tags: ["Work items"],
   summary: "Get work item hierarchy tree",
   description:
-    "The full hierarchy tree containing this work item -- its true root and every " +
-    "descendant beneath it, with the requested item's own node flagged `isCurrent`. " +
-    "Capped in total size (`truncated: true` when the real subtree is larger than the " +
-    "response returned) -- see `get-work-item-tree.ts`'s own doc comment.",
+    "A cursor-paginated page of this work item's direct children. Each child reports " +
+    "whether it has children; request that child's key to load the next level. " +
+    "Ordering is position ascending then id ascending.",
   middleware: [
     requireWorkItemReach(),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
-  request: { params: workItemKeyParam },
+  request: { params: workItemKeyParam, query: workItemTreeQuery },
   responses: {
     200: jsonResponse("The hierarchy tree", workItemTreeResponseSchema),
+    400: errorResponse("Invalid limit or malformed/parent-mismatched cursor"),
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
     ),
@@ -1129,8 +1130,9 @@ const workItem = apiRouter<
   })
   .openapi(getWorkItemTreeRoute, async (c) => {
     const { key } = c.req.valid("param");
+    const query = c.req.valid("query");
     const workspaceId = c.get("workspaceId");
-    const tree = await getWorkItemTree(key, workspaceId);
+    const tree = await getWorkItemTree(key, workspaceId, query);
     return c.json(tree, 200);
   })
   .openapi(deleteWorkItemRoute, async (c) => {

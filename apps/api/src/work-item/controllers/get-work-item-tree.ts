@@ -1,12 +1,16 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, inArray, notInArray, or } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
-import { workItemTable } from "../../database/schema";
 import {
-  findTreeRoot,
-  type HierarchyNodeRow,
-  loadSubtreeRows,
-} from "../hierarchy";
+  stateTable,
+  stateTemplateTable,
+  workItemTable,
+} from "../../database/schema";
+import { ancestorChain } from "../hierarchy";
+import { DEFAULT_WORK_ITEM_LIST_LIMIT } from "../list-query";
+import type { WorkItemTreeQuery } from "../schema";
+
+type TreeCursor = { parentId: string; position: string; id: string };
 
 export type WorkItemTreeNode = {
   id: string;
@@ -15,63 +19,78 @@ export type WorkItemTreeNode = {
   stateName: string;
   stateCategory: string;
   isCurrent: boolean;
+  hasChildren: boolean;
   children: WorkItemTreeNode[];
 };
 
 export type WorkItemTreeResult = {
   root: WorkItemTreeNode;
-  /**
-   * Ordinary-review finding on this PR: `relations-and-hierarchy.md`'s edge-cases table
-   * says "200 children on one parent -- The list paginates". `true` means
-   * `loadSubtreeRows` hit `MAX_TREE_NODES` (`../hierarchy.ts`) and this tree is a PREFIX,
-   * not the whole subtree -- some real descendants are missing from `root`. Real,
-   * per-node pagination is deferred (see this file's own doc comment); this flag is the
-   * interim signal a client needs to not render a partial tree as if it were complete.
-   * Follow-up: issue #434.
-   */
   truncated: boolean;
+  page: { nextCursor: string | null; hasMore: boolean };
 };
 
+function encodeTreeCursor(cursor: TreeCursor): string {
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+}
+
+function invalidCursor(): never {
+  throw new HTTPException(400, {
+    message: "cursor: malformed or for another parent",
+  });
+}
+
+function decodeTreeCursor(raw: string, parentId: string): TreeCursor {
+  let candidate: unknown;
+  try {
+    candidate = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+  } catch {
+    return invalidCursor();
+  }
+
+  if (typeof candidate !== "object" || candidate === null)
+    return invalidCursor();
+  const value = candidate as Record<string, unknown>;
+  if (
+    value.parentId !== parentId ||
+    typeof value.id !== "string" ||
+    value.id.length === 0 ||
+    value.id.length > 64 ||
+    value.id.includes("\u0000") ||
+    typeof value.position !== "string" ||
+    value.position.length > 32 ||
+    !/^-?\d+(?:\.\d+)?$/.test(value.position)
+  ) {
+    return invalidCursor();
+  }
+
+  return { parentId, id: value.id, position: value.position };
+}
+
 /**
- * `GET /api/work-items/{key}/tree` (`work_item:read` -- `relations-and-hierarchy.md` §
- * Permissions). `require-work-item-reach.ts` has already resolved `key` to a row and
- * confirmed workspace reach on it, the same middleware `get-work-item.ts` relies on.
- *
- * "The tree of parent and children renders inline, with the current item highlighted"
- * (§ Screens): this finds the TRUE ROOT of `key`'s tree (walking up, `findTreeRoot`) and
- * returns the whole subtree from there down (`loadSubtreeRows`), with `isCurrent: true`
- * on the one node matching `key` -- "rooted at (or containing) this work item", per the
- * spec's own API table wording, means the caller sees the item in the context of its
- * FULL tree, not merely its own direct children.
- *
- * NO SEPARATE RE-SCOPING NEEDED: every row `loadSubtreeRows` can reach shares the root's
- * own `project_id` (`RH-6`'s composite self-FK on `work_item.parent_id`, `schema.ts`,
- * guarantees this at the database layer), and the root itself was reached by walking
- * UP from a row this route's own reach middleware already confirmed is in the caller's
- * workspace -- so the whole tree is inherently within the one project/workspace the
- * caller was already authorized against. This is what makes the route's reach check a
- * real, sufficient scoping mechanism for the entire response, not just its root node.
- *
- * RESPONSE SIZE (ordinary-review finding on this PR): the spec's own edge-cases table
- * says "200 children on one parent -- The list paginates; roll-up is computed in SQL."
- * `RH-7` bounds depth, not breadth, so a wide subtree could otherwise make this route
- * return an unbounded payload. `loadSubtreeRows` (`../hierarchy.ts`) now caps the total
- * row count (`MAX_TREE_NODES`, see its own comment for the exact number and why) and
- * reports `truncated: true` when it had to cut the walk short. DEFERRED, not implemented
- * here: real per-node pagination (independently paginating each parent's own children,
- * the way the spec's edge case literally describes) doesn't translate cleanly onto a
- * nested tree the way cursor pagination does onto `list-work-items.ts`'s flat list --
- * that is real, separate-scope work, filed as issue #434 rather than attempted in this
- * PR. The hard cap plus `truncated` flag is the interim fix: never an unbounded response,
- * and never a silently partial one either.
+ * Preserves the root-to-requested-item path and pages only the requested item's
+ * direct children. Each returned child can be expanded by requesting this endpoint
+ * with that child's key. The cursor is keyset-bound to the requested item and
+ * `(position, id)` order, so it cannot be replayed for another sibling collection.
  */
 export async function getWorkItemTree(
   key: string,
   workspaceId: string,
+  query: WorkItemTreeQuery,
 ): Promise<WorkItemTreeResult> {
-  const [item] = await db
-    .select({ id: workItemTable.id })
+  const [parent] = await db
+    .select({
+      id: workItemTable.id,
+      key: workItemTable.key,
+      title: workItemTable.title,
+      stateName: stateTemplateTable.name,
+      stateCategory: stateTemplateTable.group,
+    })
     .from(workItemTable)
+    .innerJoin(stateTable, eq(workItemTable.stateId, stateTable.id))
+    .innerJoin(
+      stateTemplateTable,
+      eq(stateTable.stateTemplateId, stateTemplateTable.id),
+    )
     .where(
       and(
         eq(workItemTable.key, key),
@@ -80,64 +99,161 @@ export async function getWorkItemTree(
     )
     .limit(1);
 
-  if (!item) {
+  if (!parent) {
     throw new HTTPException(404, { message: "Work item not found" });
   }
 
-  const rootId = await findTreeRoot(db, item.id);
-  const { rows, truncated } = await loadSubtreeRows(db, rootId);
+  const chainIds = await ancestorChain(db, parent.id);
+  const pathRows = await db
+    .select({
+      id: workItemTable.id,
+      key: workItemTable.key,
+      title: workItemTable.title,
+      stateName: stateTemplateTable.name,
+      stateCategory: stateTemplateTable.group,
+    })
+    .from(workItemTable)
+    .innerJoin(stateTable, eq(workItemTable.stateId, stateTable.id))
+    .innerJoin(
+      stateTemplateTable,
+      eq(stateTable.stateTemplateId, stateTemplateTable.id),
+    )
+    .where(inArray(workItemTable.id, chainIds));
+  const pathById = new Map(pathRows.map((row) => [row.id, row]));
+  const path = [...chainIds]
+    .reverse()
+    .map((id) => pathById.get(id))
+    .filter((row) => row !== undefined);
+  if (path.length !== chainIds.length) {
+    throw new HTTPException(404, { message: "Work item not found" });
+  }
+  const ancestorIds = path.slice(0, -1).map((node) => node.id);
+  const pathChildIds = path.slice(1).map((node) => node.id);
+  const omittedAncestorBranch =
+    ancestorIds.length > 0
+      ? await db
+          .select({ id: workItemTable.id })
+          .from(workItemTable)
+          .where(
+            and(
+              inArray(workItemTable.parentId, ancestorIds),
+              notInArray(workItemTable.id, pathChildIds),
+            ),
+          )
+          .limit(1)
+      : [];
 
-  return { root: buildTree(rows, rootId, item.id), truncated };
-}
+  const limit = query.limit ?? DEFAULT_WORK_ITEM_LIST_LIMIT;
+  const cursor = query.cursor
+    ? decodeTreeCursor(query.cursor, parent.id)
+    : null;
+  const conditions = [eq(workItemTable.parentId, parent.id)];
+  if (cursor) {
+    const afterCursor = or(
+      gt(workItemTable.position, cursor.position),
+      and(
+        eq(workItemTable.position, cursor.position),
+        gt(workItemTable.id, cursor.id),
+      ),
+    );
+    if (!afterCursor)
+      throw new Error("tree cursor condition unexpectedly empty");
+    conditions.push(afterCursor);
+  }
 
-/**
- * Assembles the flat, breadth-first `HierarchyNodeRow[]` `loadSubtreeRows` returns into a
- * nested tree, rooted at `rootId`. Every row's `parentId` either points at another row in
- * the same set (an internal node) or is absent from the set entirely (`rootId` itself,
- * whose own parent -- if any -- was deliberately not fetched; only the subtree FROM the
- * root down is loaded).
- */
-function buildTree(
-  rows: readonly HierarchyNodeRow[],
-  rootId: string,
-  currentId: string,
-): WorkItemTreeNode {
-  const nodes = new Map<string, WorkItemTreeNode>(
-    rows.map((row) => [
-      row.id,
-      {
-        id: row.id,
-        key: row.key,
-        title: row.title,
-        stateName: row.stateName,
-        stateCategory: row.stateCategory,
-        isCurrent: row.id === currentId,
-        children: [],
-      },
-    ]),
+  const rows = await db
+    .select({
+      id: workItemTable.id,
+      key: workItemTable.key,
+      title: workItemTable.title,
+      position: workItemTable.position,
+      stateName: stateTemplateTable.name,
+      stateCategory: stateTemplateTable.group,
+    })
+    .from(workItemTable)
+    .innerJoin(stateTable, eq(workItemTable.stateId, stateTable.id))
+    .innerJoin(
+      stateTemplateTable,
+      eq(stateTable.stateTemplateId, stateTemplateTable.id),
+    )
+    .where(and(...conditions))
+    .orderBy(workItemTable.position, workItemTable.id)
+    .limit(limit + 1);
+
+  const hasMore = rows.length > limit;
+  const pageRows = hasMore ? rows.slice(0, limit) : rows;
+  const childIds = pageRows.map((row) => row.id);
+  const childParents =
+    childIds.length === 0
+      ? []
+      : await db
+          .selectDistinct({ parentId: workItemTable.parentId })
+          .from(workItemTable)
+          .where(inArray(workItemTable.parentId, childIds));
+  const hasChildrenIds = new Set(
+    childParents.flatMap((row) => (row.parentId ? [row.parentId] : [])),
   );
-
-  for (const row of rows) {
-    if (row.parentId === null || row.id === rootId) {
-      continue;
-    }
-    const parentNode = nodes.get(row.parentId);
-    const node = nodes.get(row.id);
-    if (parentNode && node) {
-      parentNode.children.push(node);
-    }
+  const last = pageRows.at(-1);
+  let currentHasChildren = pageRows.length > 0 || hasMore;
+  if (!currentHasChildren && cursor) {
+    const [remainingChild] = await db
+      .select({ id: workItemTable.id })
+      .from(workItemTable)
+      .where(eq(workItemTable.parentId, parent.id))
+      .limit(1);
+    currentHasChildren = remainingChild !== undefined;
   }
 
-  const root = nodes.get(rootId);
-  if (!root) {
-    // `loadSubtreeRows(db, rootId)` always includes `rootId` itself as its first row --
-    // reaching this would mean that row vanished between the two queries above (a
-    // concurrent hard delete of the resolved root, which nothing in this codebase does
-    // today). Fail loudly rather than return a malformed partial tree.
+  const nodes: WorkItemTreeNode[] = path.map((row) => ({
+    ...row,
+    isCurrent: row.id === parent.id,
+    hasChildren: false,
+    children: [],
+  }));
+  const currentNode = nodes.at(-1);
+  if (!currentNode) {
     throw new HTTPException(404, { message: "Work item not found" });
   }
+  currentNode.children = pageRows.map((row) => ({
+    id: row.id,
+    key: row.key,
+    title: row.title,
+    stateName: row.stateName,
+    stateCategory: row.stateCategory,
+    isCurrent: false,
+    hasChildren: hasChildrenIds.has(row.id),
+    children: [],
+  }));
+  currentNode.hasChildren = currentHasChildren;
+  for (let index = 0; index < nodes.length - 1; index += 1) {
+    const node = nodes[index];
+    const next = nodes[index + 1];
+    if (!node || !next) continue;
+    node.children = [next];
+    node.hasChildren = true;
+  }
+  const root = nodes[0];
+  if (!root) throw new HTTPException(404, { message: "Work item not found" });
 
-  return root;
+  return {
+    root,
+    truncated:
+      omittedAncestorBranch.length > 0 ||
+      cursor !== null ||
+      hasMore ||
+      pageRows.some((row) => hasChildrenIds.has(row.id)),
+    page: {
+      hasMore,
+      nextCursor:
+        hasMore && last
+          ? encodeTreeCursor({
+              parentId: parent.id,
+              position: last.position,
+              id: last.id,
+            })
+          : null,
+    },
+  };
 }
 
 export default getWorkItemTree;

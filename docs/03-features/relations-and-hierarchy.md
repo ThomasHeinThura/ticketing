@@ -108,6 +108,25 @@ DELETE /api/work-items/{key}/parent            work_item:update (both ends) — 
 GET    /api/work-items/{key}/tree               work_item:read
 ```
 
+The tree endpoint is loaded one parent at a time. `{key}` identifies the current item;
+the response keeps `root` as its true hierarchy root and includes the ancestry path to
+`{key}`. Ancestor nodes contain only the next node on that path. The requested node has
+one cursor page of direct children, not a recursively expanded subtree. Children carry
+`hasChildren` so a client can request the next level by using that child's key, and
+`root.isCurrent` retains the highlight for `{key}`. The response's `page` applies only
+to `{key}`'s direct children.
+
+The endpoint accepts the shared collection parameters `cursor` and `limit` (default 50,
+maximum 200). Children are ordered by `position ASC, id ASC`; the opaque keyset cursor is
+bound to the parent and its last `(position, id)` pair. A cursor from another parent is
+rejected. The parent is authorized through the route's normal work-item reach check, and
+the database's same-project parent constraint keeps its children in that same project.
+The response is bounded to at most the depth-5 ancestry path plus 200 children regardless
+of subtree size; clients load each child node independently as needed. `truncated` remains
+true whenever the response omits any sibling branch from the ancestry path, any child page,
+or a descendant level; it is false only when the response contains the complete tree
+rooted at the requested item.
+
 ## Edge cases
 
 | Case | Behaviour |
@@ -117,7 +136,7 @@ GET    /api/work-items/{key}/tree               work_item:read
 | Both directions of a directional relation added | The second is recognised as the inverse and rejected as a duplicate |
 | Self-relation | Rejected at 422 |
 | Parent set to a descendant | Rejected — cycle detection |
-| 200 children on one parent | The list paginates; roll-up is computed in SQL |
+| 200 children on one parent | Direct children use cursor pagination; roll-up is computed in SQL |
 | Cross-project relation, project later moved to another workspace | Cannot happen: `project.workspace_id` is set at creation and no route changes it — a project never moves between workspaces. Relations only ever cross projects within the workspace they share (`RH-3`) |
 
 ## Out of scope

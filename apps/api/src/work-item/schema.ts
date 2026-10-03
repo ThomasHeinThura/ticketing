@@ -486,3 +486,13 @@ export const listWorkItemActivityQuery = z.object({
     .optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
 });
+
+// Per-node hierarchy collection pagination follows `api-design.md`'s shared
+// cursor/limit convention. The parent key is the route parameter, so a cursor can
+// never select a different parent implicitly.
+export const workItemTreeQuery = z.object({
+  cursor: noNulByte("cursor").max(2048).optional(),
+  limit: limitQueryParam,
+});
+
+export type WorkItemTreeQuery = z.infer<typeof workItemTreeQuery>;
