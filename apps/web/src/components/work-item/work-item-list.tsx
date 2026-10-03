@@ -28,13 +28,7 @@ import {
   ListTodo,
   TriangleAlert,
 } from "lucide-react";
-import {
-  type FocusEvent,
-  type MouseEvent,
-  memo,
-  useEffect,
-  useRef,
-} from "react";
+import { type FocusEvent, type MouseEvent, memo } from "react";
 import { useTranslation } from "react-i18next";
 import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
 import getWorkItem from "@/fetchers/work-item/get-work-item";
@@ -154,7 +148,6 @@ function WorkItemList({
 }: WorkItemListProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const preloadedDetailKey = useRef<string | null>(null);
   const { t } = useTranslation();
   const noPriorityLabel = t("workItems:list.noPriority");
   const noDueDateLabel = t("workItems:list.noDueDate");
@@ -172,25 +165,6 @@ function WorkItemList({
     priorityLabels.set(priority, label);
     return label;
   }
-
-  useEffect(() => {
-    const firstReachableItem = workItems?.find(
-      (item) => !item.unavailableFields.includes("key"),
-    );
-    if (
-      !firstReachableItem ||
-      preloadedDetailKey.current === firstReachableItem.key
-    )
-      return;
-
-    preloadedDetailKey.current = firstReachableItem.key;
-    void router
-      .preloadRoute({
-        to: routes.workItemDetail.path,
-        params: { key: firstReachableItem.key },
-      })
-      .catch(() => {});
-  }, [router, workItems]);
 
   function handleHeaderClick(field: WorkItemSortField) {
     if (field === sort) {

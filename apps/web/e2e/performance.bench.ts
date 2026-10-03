@@ -1666,7 +1666,9 @@ async function collectBoardDragFrameP95(page: Page) {
     await page.waitForTimeout(16);
   }
   await page.mouse.up();
-  await page.waitForTimeout(250);
+  await expect
+    .poll(() => versionedWriteResults.length, { timeout: 30_000 })
+    .toBe(100);
 
   const movedCardColumn = await page
     .locator('[data-task-id="legacy-task-1"]')
@@ -1689,7 +1691,7 @@ async function collectBoardDragFrameP95(page: Page) {
   const ordered = [...frameTimes].sort((left, right) => left - right);
   const frameP95 = ordered[Math.ceil(ordered.length * 0.95) - 1];
 
-  expect(versionedWriteRequests).toBeGreaterThan(0);
+  expect(versionedWriteRequests).toBe(100);
   expect(csrfIssuerRequests).toBeGreaterThan(0);
   expect(csrfIssuerResponses).toBe(csrfIssuerRequests);
   expect(versionedWriteResults).toHaveLength(versionedWriteRequests);

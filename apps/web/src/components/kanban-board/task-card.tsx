@@ -23,8 +23,9 @@ import {
   GitPullRequest,
   SquareCheck,
 } from "lucide-react";
-import { type CSSProperties, useMemo } from "react";
+import { type CSSProperties, memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useShallow } from "zustand/react/shallow";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
 import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
@@ -68,9 +69,24 @@ function TaskCard({
     transition,
     isDragging,
   } = useSortable({ id: task.id, disabled: disableDragDrop });
-  const { project } = useProjectStore();
-  const taskIsCompleted = isTaskCompleted(task.status, project?.columns);
+  const { hasProject, projectSlug, taskIsCompleted } = useProjectStore(
+    useShallow((state) => ({
+      hasProject: state.project !== undefined,
+      projectSlug: state.project?.slug,
+      taskIsCompleted: isTaskCompleted(task.status, state.project?.columns),
+    })),
+  );
   const navigate = useNavigate();
+  const preferences = useUserPreferencesStore(
+    useShallow((state) => ({
+      showAssignees: state.showAssignees,
+      showPriority: state.showPriority,
+      showDueDates: state.showDueDates,
+      showLabels: state.showLabels,
+      showTaskNumbers: state.showTaskNumbers,
+      showTaskItemCounts: state.showTaskItemCounts,
+    })),
+  );
   const {
     showAssignees,
     showPriority,
@@ -78,16 +94,15 @@ function TaskCard({
     showLabels,
     showTaskNumbers,
     showTaskItemCounts,
-  } = useUserPreferencesStore();
-  const toggleSelection = useBulkSelectionStore(
-    (state) => state.toggleSelection,
-  );
-  const isTaskSelected = useBulkSelectionStore((state) =>
-    state.selectedTaskIds.has(task.id),
-  );
-  const isTaskFocused = useBulkSelectionStore(
-    (state) => state.focusedTaskId === task.id,
-  );
+  } = preferences;
+  const { toggleSelection, isTaskSelected, isTaskFocused } =
+    useBulkSelectionStore(
+      useShallow((state) => ({
+        toggleSelection: state.toggleSelection,
+        isTaskSelected: state.selectedTaskIds.has(task.id),
+        isTaskFocused: state.focusedTaskId === task.id,
+      })),
+    );
   const taskItemStats = useMemo(
     () => getTaskItemStats(task.description),
     [task.description],
@@ -144,7 +159,7 @@ function TaskCard({
   function handleTaskCardClick(
     e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>,
   ) {
-    if (!project || !task || !workspaceId) return;
+    if (!hasProject || !task || !workspaceId) return;
 
     if ((e as React.MouseEvent).metaKey || (e as React.KeyboardEvent).ctrlKey) {
       toggleSelection(task.id);
@@ -206,7 +221,7 @@ function TaskCard({
       >
         {showTaskNumbers && (
           <div className="mb-2 text-[10px] font-mono text-muted-foreground/90">
-            {project?.slug}-{task.number}
+            {projectSlug}-{task.number}
           </div>
         )}
 
@@ -455,4 +470,4 @@ export function TaskCardDeleteConfirmation({
   );
 }
 
-export default TaskCard;
+export default memo(TaskCard);
