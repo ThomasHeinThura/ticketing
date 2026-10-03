@@ -9,6 +9,7 @@
  * (@theme inline) --color-foreground -> text-foreground.
  */
 @theme inline {
+  --breakpoint-app: 56.25rem;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --animate-skeleton: skeleton 2s -1s infinite linear;

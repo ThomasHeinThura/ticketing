@@ -12,7 +12,7 @@
 | Styling | Tailwind CSS v4, CSS variables |
 | Variants | class-variance-authority |
 | Icons | lucide-react — the only icon source |
-| Typography | Geist Variable / Geist Mono Variable |
+| Typography | Locally bundled Geist Variable / Geist Mono Variable (`@fontsource-variable`) |
 | Motion | Framer Motion, tokenised |
 | Catalogue | Storybook 10 |
 | Charting | Recharts (Thomas, 2026-09-23 — see [decision log](../07-planning/decision-log.md)) |
@@ -212,7 +212,7 @@ Taken from kaneo unchanged.
 
 **Agent** — collapsible sidebar with workspace switcher, primary navigation and project
 list; topbar with breadcrumb, search, notification bell and user menu; command palette on
-`⌘K`. Below 900 px the sidebar becomes an icon rail.
+`⌘K`. Below the shared `app` breakpoint (900 px), the sidebar becomes an icon rail.
 
 **Portal** — the same shell, dramatically simplified: a short navigation list, no
 workspace switcher, no command palette by default. Same components, less of them.

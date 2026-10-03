@@ -322,7 +322,11 @@ well as a colour.
 
 ## Typography
 
-Geist Variable, Geist Mono Variable for keys, IDs and code.
+Geist Variable and Geist Mono Variable for keys, IDs and code. `apps/web` imports the
+fonts from the installed `@fontsource-variable/geist` packages; they are bundled locally,
+with no runtime font CDN request. The fallback stack is `ui-sans-serif, system-ui,
+sans-serif` for body text and `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+"Liberation Mono", "Courier New", monospace` for keys and code.
 
 Weights: 400 body, 500 emphasis, 600 headings. Nothing heavier — kaneo does not use bold
 type for hierarchy, it uses size and colour.
@@ -336,12 +340,13 @@ type scale… deleted" above) rather than a bespoke `--text-*` token set.
 ## Breakpoints
 
 ```
-sm   640px    md   768px    lg  1024px    xl  1280px    2xl 1536px
+sm   640px    md  768px    app 900px    lg  1024px    xl  1280px    2xl 1536px
 ```
 
-The meaningful application breakpoint is **900 px**, below which the agent sidebar
-collapses to an icon rail and the portal switches to a bottom bar. Inherited from v1,
-which got this right after its redesign.
+The meaningful application breakpoint is **900 px** (`app:` / `--breakpoint-app`), below
+which the agent sidebar collapses to an icon rail and the portal switches to a bottom bar.
+It is defined in `packages/ui/src/styles/theme.css` so responsive compositions use one
+shared breakpoint.
 
 ## Enforcement
 

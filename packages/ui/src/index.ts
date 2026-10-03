@@ -551,4 +551,5 @@ export {
   TooltipTrigger,
 } from "./components/tooltip";
 export { cn } from "./lib/cn";
+export { springSettle } from "./lib/motion";
 export { useIsMobile } from "./lib/use-mobile";
