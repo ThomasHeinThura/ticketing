@@ -2,10 +2,22 @@
 
 **Authoring status (2026-10-04):** This maps the historical security review's numbered
 findings [81–82](../reviews/2026-09-05/security.md) to written controls and required
-implementation evidence. It is **not** an independent finding disposition, ADR approval,
-test result, or phase acceptance. The owning findings remain open until fresh independent
-review verifies the implemented exact head. PR [#544](https://github.com/ThomasHeinThura/ticketing/pull/544)
-is merged; its design reviews do not prove the unimplemented runtime.
+implementation evidence. The independent ordinary and Sol contract reviews of exact head
+`09ace3548ed15fa886ef7a5634571da94948fde6` found no specification blockers; the owner has
+therefore dispositioned both findings as **specified to begin implementation only**. This is
+not a runtime finding closure, ADR approval, test result, or phase acceptance. Both findings
+remain open for independent verification of the implemented exact head. PR
+[#544](https://github.com/ThomasHeinThura/ticketing/pull/544) is merged; its older design
+reviews do not prove the runtime.
+
+**Review provenance:** Reviewer A's exact-delta report and Reviewer B's complete two-commit
+report are private under `/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/p3-scim-owner-contract/`.
+The fresh independent Sol execution record identifies the reviewed source, full-contract
+scope and verdict: no specification blockers; sufficiently specified to begin implementation.
+The CLI overwrote the reviewer's 34-line report with its final response, so the execution
+transcript and final verdict are retained, but detailed reviewer prose is not. No prose is
+reconstructed or claimed. Those reviews did not run runtime tests, builds, migrations, browser
+checks, or real-Entra verification.
 
 | Owning finding | Normative contract selected | Required independent verification |
 | --- | --- | --- |
@@ -37,7 +49,7 @@ is merged; its design reviews do not prove the unimplemented runtime.
    migration inventory outcomes and source-bound counts. Apply ordinary and independent
    Sol security reviews to the frozen exact candidate, then GitHub required checks.
 
-**Boundary:** This authoring packet changes documentation only. No schema, migration,
-route, editor, test or real-provider behavior is claimed present. Ambiguous legacy data
-still needs actual owner-approved per-row reconciliation; P4 human ADR/spec/H1–H6 review
-is deferred, not waived.
+**Boundary:** The contract-writing batch changed documentation only. It did not implement a
+schema, migration, route, editor, test, or real-provider behavior. Ambiguous legacy data still
+needs actual owner-approved per-row reconciliation; P4 human ADR/spec/H1–H6 review is deferred,
+not waived. These remain runtime and acceptance obligations for the implementation batch.
