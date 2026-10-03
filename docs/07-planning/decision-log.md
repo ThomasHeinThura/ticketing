@@ -5,6 +5,18 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-03 · Native work-item realtime uses one subscribed socket and key-only outbox hints (#570)
+
+**Decision:** browser subscriptions use `GET /api/ws` and explicit validated `subscribe` / `unsubscribe` frames for `project:{projectId}` and `work_item:{key}`. Existing `/api/ws/user` and `/api/ws/{projectId}` routes are removed after the client is migrated. The server resolves topic resources from persisted project/work-item relationships and applies the same read capabilities and row/project reach as REST. Missing and unreadable topics have the same denial frame. Session Host/Origin/portal checks remain those in ADR 0004 and `realtime.md`.
+
+Every supported native work-item mutation writes one existing canonical event envelope to `outbox` in its mutation transaction. After commit, best-effort socket fan-out sends only `{type, topic, eventId, at, payload:{key}}`; domain payloads and internal-only comments/changes are never sent to customer subscriptions. Fan-out is an at-most-once invalidation hint, not a new replaying outbox consumer; reconnect refetch and 30-second foreground fallback repair missed messages. Existing event keys, outbox schema, capabilities, feature defaults, and polling assertions remain authoritative.
+
+This resolves the route, topic authorization, projection, deduplication, delete timing, and failure/recovery choices needed by #570. It does not close the owning architecture/feature review rows, claim independent review, or claim P0 completion. The reviewed spec and exact-head implementation still require the ordinary bulk panel and GPT-6 Sol security review.
+
+**Authorization and status:** the orchestrator authorized these bounded recommended defaults on 2026-10-03. This entry records implementation choices, not review or acceptance evidence.
+
+**Recorded by:** GPT-6 Luna implementation lane, 2026-10-03.
+
 ### 2026-10-01 · Keep the P0 portal origin disabled until portal identity exists
 
 **Decision:** the two-entry P0 server selects the agent or portal app only from a

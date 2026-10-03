@@ -17,6 +17,7 @@ import {
 } from "../assert-work-item-live";
 import { ancestorChain, descendantDepth } from "../hierarchy";
 import { WORK_ITEM_HIERARCHY_LOCK_NAMESPACE } from "../hierarchy-lock";
+import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 import { runWithParentWriteDeadlockRetry } from "../parent-write-deadlock-retry";
 
 /**
@@ -102,7 +103,7 @@ export async function setWorkItemParent(
     throw new HTTPException(404, { message: "Work item not found" });
   }
 
-  const { updated, oldParentId } = await runWithParentWriteDeadlockRetry(() =>
+  const transactionResult = await runWithParentWriteDeadlockRetry(() =>
     db.transaction(async (tx) => {
       await tx.execute(
         sql`SELECT pg_advisory_xact_lock(${WORK_ITEM_HIERARCHY_LOCK_NAMESPACE}, hashtext(${pre.projectId}))`,
@@ -230,9 +231,40 @@ export async function setWorkItemParent(
         },
       ]);
 
-      return { updated: updatedRow, oldParentId: item.parentId };
+      const realtimeEvent = await recordWorkItemEvent(tx, {
+        kind: "work_item.updated",
+        workItemId: updatedRow.id,
+        key: updatedRow.key,
+        workspaceId: updatedRow.workspaceId,
+        projectId: updatedRow.projectId,
+        actorId,
+        actorType,
+        customerVisible: false,
+        payload: {
+          key: updatedRow.key,
+          url: `/agent/work-items/${encodeURIComponent(updatedRow.key)}`,
+          changes: [
+            {
+              field: "parent",
+              from: item.parentId,
+              to: updatedRow.parentId,
+              visibility: "internal",
+            },
+          ],
+        },
+      });
+
+      return { updated: updatedRow, oldParentId: item.parentId, realtimeEvent };
     }),
   );
+  const { updated, oldParentId, realtimeEvent } = transactionResult;
+
+  await publishWorkItemHint(realtimeEvent, {
+    kind: "work_item.updated",
+    key: updated.key,
+    projectId: updated.projectId,
+    customerVisible: false,
+  });
 
   await publishEvent("work_item.updated", {
     workItemId: updated.id,

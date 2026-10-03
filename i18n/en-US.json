@@ -2247,7 +2247,8 @@
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below."
+			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
 		}
 	},
 	"portal": {

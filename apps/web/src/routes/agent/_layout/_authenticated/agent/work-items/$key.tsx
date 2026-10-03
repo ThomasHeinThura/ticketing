@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Alert, AlertDescription } from "@taskdesk/ui";
 import { lazy, Suspense } from "react";
+import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
 import WorkItemDetailLoading from "@/components/work-item/work-item-detail-loading";
@@ -29,6 +31,7 @@ export const Route = createFileRoute(
 
 function WorkItemDetailRouteComponent() {
   const { key } = Route.useParams();
+  const { t } = useTranslation();
 
   const {
     data: item,
@@ -36,6 +39,7 @@ function WorkItemDetailRouteComponent() {
     isError,
     error,
     refetch,
+    isRealtimeUnavailable,
   } = useGetWorkItem({ key });
 
   // `require-work-item-reach.ts` makes "not yours" and "not there" indistinguishable on
@@ -46,6 +50,17 @@ function WorkItemDetailRouteComponent() {
     <>
       <PageTitle title={item?.title ? `${item.title} · ${key}` : key} />
       <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
+        {item && isRealtimeUnavailable && (
+          <Alert
+            variant="warning"
+            role="status"
+            data-testid="realtime-unavailable"
+          >
+            <AlertDescription>
+              {t("workItems:detail.realtimeUnavailable")}
+            </AlertDescription>
+          </Alert>
+        )}
         <Suspense fallback={<WorkItemDetailLoading />}>
           {item ? (
             <WorkItemDetailWithProject
