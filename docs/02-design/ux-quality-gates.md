@@ -218,6 +218,12 @@ makes for the terminology overlay — previously an ADR promise with no gate beh
 
 ## Human — at pull request review
 
+For P0–P3, human H1–H6 review is deferred until the integrated P4 review; it is not an
+early implementation or pull-request prerequisite. Record the status as deferred, never as
+approved. The questions below remain the review criteria when that integrated human review
+occurs. Automated accessibility, behavioral, and browser checks continue on the normal
+implementation schedule.
+
 ### H1 · Does it look like kaneo?
 
 The comparison has an artefact: a **kaneo reference screenshot set** captured at P0 (the same
@@ -230,7 +236,7 @@ a memory test.
 
 Open kaneo. Open this. Would they sit next to each other without one looking wrong?
 
-This is the primary question and it is asked every time.
+This is the primary question for the integrated human review at P4.
 
 ### H2 · Progressive disclosure
 

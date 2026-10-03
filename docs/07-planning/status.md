@@ -1,5 +1,103 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## Current delivery and remaining P0 work — 2026-10-03 01:57 UTC
+
+- **UAT refreshed:** the live v2 UAT app now uses signed accepted source
+  `ad1d5238b02532f0a814b3fa586175a7e660f657`, digest
+  `sha256:9c97ce586b4d7b5d1a9bbfaf0a52a789e3a2d83001b287bddc10bcde0ce495a6`.
+  Final encrypted database/attachment/environment snapshots were taken with the app stopped;
+  archive validation, migration exit 0, all 80 journal hashes, UID 10001 and four agent/portal
+  certificate-validated HTTPS health probes passed. Shadow remains on. No production deployment,
+  live database restore, authenticated UAT business smoke, or three-day clean result is claimed.
+- **Recovery proven:** the prior preliminary clone rehearsal completed exit 0; accepted and
+  signed prior-source fallback both booted against the same migrated schema. Exact clone
+  resource cleanup and unchanged live app were verified afterward. Evidence lives under
+  `/Users/heinthura/.codex/taskdesk-evidence/2026-10-02/uat-restore-rehearsal/`, correcting the
+  temporary-path reference in the earlier snapshot. Upgrade receipts are under
+  `/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/uat-upgrade/run-20261003t015443z/`.
+  A first live attempt failed before migration and safely restarted the original app; its
+  encrypted backups and failure/recovery evidence remain preserved.
+- **Complete-batch implementation:** #577 implements host-selected authentication, stored
+  session portal and Origin/cookie boundaries; #578 implements shared Avatar, app composition
+  relocation, density and contrast enforcement. Remaining CI/runtime/browser gaps are being
+  fixed together before final bulk review. These are drafts, not accepted security closure.
+- **Performance:** #525's local candidate tree, now committed at `cce8f703`, passed 19/22
+  unchanged canonical cases versus 9/22 on accepted-main source. Detail first paint
+  521.6/300 ms, palette open 306.1/200 ms and palette navigation 304.9/200 ms still fail.
+  This is local measured progress, not hosted G11 acceptance; G11 remains disabled on main.
+- **Priorities:** finish the remaining P0 features and meaningful checks, then review frozen
+  implementation batches. Early human spec/design review remains deferred to P4; do not
+  fabricate approvals. Three issue-free development/UAT days replace the previous seven-day
+  wait. Real remaining failures, native realtime integration and the Sol finalizer remain open.
+
+## Blocked — 2026-10-02 15:29 UTC
+
+- **Isolated UAT restore rehearsal:** preliminary restore/migrate and accepted-image plus
+  signed-fallback boot passed against the same clone at schema 80. Both ran as UID 10001;
+  health and safe public status returned 200, and no internal ports were published. Receipts:
+  `/private/tmp/uat-restore-rehearsal/run-20261002t152937z-c011d8f0ebdd`. Cleanup is finishing;
+  the runner has not exited. This is not a live-UAT replacement, domain-authenticated read,
+  or point-consistent snapshot; no source-bound soak has started.
+
+## Blocked — 2026-10-02 15:25 UTC
+
+- **Human review timing:** user direction removes early Thomas spec-read/design/H1–H6
+  prerequisites for P0–P3. Implement the full related feature set before integrated bulk
+  review; documented user-authorized recommendations, including #573, may be implemented now.
+  Human review is deferred to P4, not approved; no H1 approval is inferred. This deferral does
+  not block technical P0–P3 closure when all other applicable criteria, including the stage
+  GPT-6 Sol finalizer, pass.
+- **P0/UAT shadow:** three issue-free UTC date buckets apply, not a seven-day UAT wait.
+  Current 68-request evidence is nonrepresentative and source/OCI identity is unknown;
+  authenticated missing/foreign-Origin WebSockets returned 101 and the hosted performance
+  run failed 8/22. No clean three-day result is established. Production/go-live criteria apply
+  only at actual production promotion and remain separate.
+
+## Blocked — 2026-10-02 15:10 UTC
+
+- **Development/P0 shadow cadence:** user direction now sets three issue-free UTC date buckets
+  with source-bound behavior/router coverage; representative matching evidence may count, and
+  note-only/mechanical changes do not restart it. Run ready performance, unit, integration,
+  and browser checks immediately. Production/go-live criteria remain unchanged. See the newest
+  [decision](decision-log.md).
+- **No clean three-day result:** the existing 68-request shadow record remains
+  nonrepresentative and tied to the older source with unknown OCI identity. Authenticated
+  missing/foreign-Origin WebSockets still returned 101, and the latest hosted performance run
+  failed 8 of 22 budgets. These are not clean development evidence or acceptance.
+
+## Blocked — 2026-10-02 15:03 UTC
+
+- **Accepted main/runtime:** `main` remains `8ddb9de8` (#574); the #572 marker is accepted.
+  OrbStack remains healthy on image `sha256:7b8f74750b41e5e6551cd17611eba5c9ff518c4f76bf5276829e15b074b78bfd`
+  (OCI `b80ff7c3`, UID 10001). This is not current browser acceptance.
+- **UAT/restore:** read-only 13:43 UAT is old source `c463`, OCI unknown; 77 applied hashes
+  bind to that source and 77–79 remain pending. Signed image `9c97` (source `ad1`) and prior
+  `4b2c` (source `13c`) were verified, not deployed. Backup/restore runner is preparing the
+  full findings batch; none executed and no source-bound soak started.
+- **P0 performance (#575/#525/#558):** #575 head `1e9d13a8c468cf57b582a01c6143a18a2ec46554`
+  is based on older `a8b33755`; reviewed source `aee`. One private source/fresh-build-bound
+  capture exited 0 at 13:58:54 and cleanup was privately verified; this is not G11. Hosted
+  run `37017909532` completed 14/22 budgets, failing eight in the same classes. PostgreSQL
+  job `110873255782` passed 128 files / 1,596 tests / 5 tasks on the older `a8b33755` parent,
+  not current main's 1,600-test result.
+  The third minimal modal route-subscription trial measured route 497.9 → 511.0 ms, palette
+  299.8 → 284.1 ms, keyboard 320.7 → 309.7 ms; all three budgets failed. Rejected; its two
+  owned files were restored clean at `a8b33755` before bulk refresh. Two earlier trials were
+  also rejected. Private raw evidence and failed ledgers are preserved; no speed improvement
+  is established. #549 is closed as superseded by #575, branch preserved; #558's separate
+  cold diagnostic remains failed and unchanged.
+- **Other P0 obligations:** #573 head `11affd07` is spec-only; two Luna reviews, Sol review
+  and 17 checks are clear. Thomas's finished-spec read remains pending; no human read is
+  inferred. This is not implementation or #560 closure. Chrome extension UI still blocks
+  manual browser verification. H1, the P0 Sol phase finalizer and other P0 exit obligations
+  remain open. No stage acceptance, waiver or cutover is claimed.
+- **Review cadence:** the user's 2026-10-02 direction applies: implement related approved
+  work and known findings in substantial batches, test during implementation, then review the
+  frozen bulk candidate at its applicable tier. Do not review small/mechanical edits or
+  speculative trials. Existing tiers, exact-head requirements and protected-merge gates
+  remain. See [AGENTS.md](../../AGENTS.md#bulk-implementation-and-review-cadence) and the
+  newest [decision-log entry](decision-log.md).
+
 ## Blocked — 2026-10-02 07:00 UTC
 
 - **P0 authorization shadow soak (#8):** the dated route-outcome audit at 03:26:35 UTC covered 68 requests across 2026-09-28–30: 46 outcomes agreed and 22 were unevaluated (18 delegated WebSocket outcomes and four legacy self-GET outcomes unknown). The 04:57:08 route-coverage aggregate remained 68 requests but did not establish date coverage. These observations do not establish current Oct 1–2 traffic or representative eligible-router exercise. The required representative soak and reviewed cutover remain open.

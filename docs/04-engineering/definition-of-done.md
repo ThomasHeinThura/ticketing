@@ -56,7 +56,7 @@ why, if it does not — never delete it. An unticked, unmarked box is a blocker,
 - [ ] Screen added to the [screen inventory](../02-design/screen-inventory.md)
 - [ ] Every screen in this change opened and used; listed in the pull request's
       `## Screens opened` section
-- [ ] **Does it look like kaneo?** (H1) — answered honestly in the pull request
+- [ ] **Does it look like kaneo?** (H1) — for P0–P3 record `Deferred to integrated P4 human review; no approval claimed`; complete the integrated human review at P4
 
 ---
 
@@ -135,7 +135,10 @@ they stop colliding with the delivery-stage numbering (`P0`–`P5+`) used everyw
 - [ ] Every feature in the stage meets its Definition of Done
 - [ ] Screen review — every new screen walked through against
       [design principles](../02-design/design-principles.md), signed off in the stage
-      review note (PG1)
+      review note (PG1). For P0–P3, record the human design signoff as deferred to the
+      integrated P4 review; this deferral does not block technical stage closure and is not
+      approval. Automated and required behavioral/browser checks, every other applicable
+      stage criterion, and the stage-level GPT-6 Sol finalizer still apply.
 - [ ] Every screen ✅ in the [screen inventory](../02-design/screen-inventory.md)
 - [ ] Full E2E suite green, agent and portal
 - [ ] Full E2E suite green with reduced motion
