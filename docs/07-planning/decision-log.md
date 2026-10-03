@@ -5,6 +5,58 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-02 · G11 first-visible route proxy requires a surviving clipped region
+
+**Clarification:** the shared WLP-1 route marker's supported geometry is one finite,
+positive-area, axis-aligned target rectangle after intersection with the current viewport
+and each effective ancestor overflow or paint-containment clip. Ancestor clips use their
+inner padding/scrollport box and are applied per physical axis. Connection and CSS
+visibility/opacity checks remain synchronous at both existing probe points. The existing
+in-flow route therefore continues to qualify when any positive part of its loading/detail
+box intersects its scrollport.
+
+The probe fails closed for transformed or out-of-flow geometry, fragmented boxes,
+nonrectangular clips/masks, nondefault overflow-clip margins, and rounded overflow clips.
+This is a bounded potentially paintable rectangle proxy. It does not prove unobscured
+pixels, legibility, exact glyph paint, or paint at the exact timestamp. The additional
+geometry reads are included in the already reported probe count and duration without
+subtraction or compensation; a 0.0 ms rounded reading still does not imply zero observer
+effect. This correction does not alter route start, the two-frame endpoint, selectors,
+fixture, actions, throttling, thresholds, retry policy, or canonical case count. A new
+exact-source baseline remains required; prior measurements are not comparable.
+
+**Authorization and status:** bounded structural remediation of the G11 first-visible
+contract. No hosted diagnostic capture or derived-report publication before fresh ordinary
+review and the independent full GPT-6 Sol privacy/security review on the exact source.
+
+**Recorded by:** bounded P0 diagnostic-remediation author, 2026-10-02.
+
+### 2026-10-02 · G11 route-paint marks require visible detail at the two-frame endpoint
+
+**Decision:** the canonical work-list-to-detail route marker accepts its existing
+two-animation-frame endpoint only while the existing detail-loading or detail node is
+connected, visible through CSS visibility/opacity, and has a non-zero layout box. The mark
+records only the bounded target kind (`loading` or `detail`); it captures no node content.
+The generated cold diagnostic uses this same recorder. Its report separately includes the
+`performance.now()`-bracketed probe duration/count, rounds measured durations upward to
+0.1 ms, and states that a 0.0 ms reading is below report resolution and does not establish
+zero observer effect.
+
+The route-start event, two-frame endpoint, selectors, WLP-1 click, 500-row fixture, detail
+and URL assertions, viewport, throttling, budgets, retry policy, and 22 canonical acceptance
+cases remain unchanged. A separate browser regression proves that a connected hidden or
+zero-box WLP-1 detail node does not mark until it becomes visible. The marker semantics
+changed, so a fresh exact-source canonical G11 baseline is required before any comparison;
+historical presence-marker timings cannot establish a like-for-like improvement. The cold
+recording remains diagnostic-only and cannot establish G11 acceptance.
+
+**Authorization and status:** implements the owning G11 first-visible contract under
+Thomas's standing recommended-decision authorization and the bounded 2026-10-01 visibility
+amendment. No hosted capture or report publication is authorized before fresh ordinary
+review and the independent full GPT-6 Sol privacy/security review on the exact source.
+
+**Recorded by:** bounded P0 diagnostic-remediation author, 2026-10-02.
+
 ### 2026-10-02 · P0 production advisory floors for ip-address and fast-uri (#557)
 
 **Decision:** raise only the existing pnpm override floors for `ip-address` to `^10.7.1`
@@ -137,6 +189,7 @@ The separate image is proposed to use `nginxinc/nginx-unprivileged:1.30.5-alpine
 **Authorization and status:** recorded under Thomas's standing recommended-decisions authorization. This entry does not assert that Thomas read the completed specification, grant H1–H6 approval, waive dependency/review gates, or establish implementation, deployment or stage completion. The proposed dependencies remain uninstalled.
 
 **Recorded by:** docs-site specification author, 2026-10-01.
+
 ### 2026-10-01 · G11 failure evidence avoids timed DOM snapshots and raw network secrets
 
 **Decision:** G11's Playwright run retains failure traces with actions, screencast, source,

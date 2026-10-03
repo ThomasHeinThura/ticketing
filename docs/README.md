@@ -45,6 +45,8 @@ docs/
 └── 08-docs-site/       The public documentation website
 ```
 
+Engineering contracts: [Hosted cold-recording diagnostic](04-engineering/cold-recording-diagnostic.md).
+
 ## Non-negotiables
 
 These are the rules that, if broken, mean v2 repeats v1's failure. They are enforced in

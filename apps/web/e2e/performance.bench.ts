@@ -6,6 +6,7 @@ import {
 } from "../../../scripts/ci/lib/performance-budget.mjs";
 import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
 import { attachPerformanceNetworkCapture } from "./helpers/performance-network-summary";
+import { installRoutePaintRecorder } from "./helpers/route-paint-recorder";
 import { createVersionedTaskFixture } from "./helpers/versioned-task-fixture";
 
 const G13_TRANSITIONS = [
@@ -36,6 +37,10 @@ type BrowserMetrics = {
   interactionPaint: number;
   routeStart: number;
   routePaint: number;
+  routePaintTarget: "" | "loading" | "detail";
+  routeVisibilityProbeCount: number;
+  routeVisibilityProbeTotalMs: number;
+  routeVisibilityProbeMaxMs: number;
   documentStart: number;
   listPaint: number;
   boardPaint: number;
@@ -501,6 +506,7 @@ async function installPerformanceApiFixture(
     return json({ message: "Not found in the G11 browser fixture" }, 404);
   });
 
+  await page.addInitScript(installRoutePaintRecorder);
   await page.addInitScript((observeG13Windows: boolean) => {
     const metrics: BrowserMetrics = {
       lcp: 0,
@@ -509,6 +515,10 @@ async function installPerformanceApiFixture(
       interactionPaint: 0,
       routeStart: 0,
       routePaint: 0,
+      routePaintTarget: "",
+      routeVisibilityProbeCount: 0,
+      routeVisibilityProbeTotalMs: 0,
+      routeVisibilityProbeMaxMs: 0,
       documentStart: performance.now(),
       listPaint: 0,
       boardPaint: 0,
@@ -751,54 +761,39 @@ async function installPerformanceApiFixture(
     };
     if (observeG13Windows) attachG13Observer();
 
-    const responseIsVisible = (kind: "interaction" | "route") => {
-      if (kind === "interaction") {
-        return (
-          (document.querySelector(
-            '[data-testid="create-work-item-submit"][aria-busy="true"]',
-          ) as HTMLButtonElement | null) !== null
-        );
-      }
+    const responseIsVisible = () => {
       return (
-        document.querySelector(
-          '[data-testid="work-item-detail-loading"], [data-testid="work-item-detail"]',
-        ) !== null
+        (document.querySelector(
+          '[data-testid="create-work-item-submit"][aria-busy="true"]',
+        ) as HTMLButtonElement | null) !== null
       );
     };
-    const paintPending = { interaction: false, route: false };
-    const recordAfterPaint = (kind: "interaction" | "route") => {
-      const start =
-        kind === "interaction" ? metrics.interactionStart : metrics.routeStart;
-      const paint =
-        kind === "interaction" ? metrics.interactionPaint : metrics.routePaint;
+    let interactionPaintPending = false;
+    const recordAfterPaint = () => {
+      const start = metrics.interactionStart;
       if (
         start <= 0 ||
-        paint > 0 ||
-        paintPending[kind] ||
-        !responseIsVisible(kind)
+        metrics.interactionPaint > 0 ||
+        interactionPaintPending ||
+        !responseIsVisible()
       )
         return;
-      paintPending[kind] = true;
+      interactionPaintPending = true;
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          if (!responseIsVisible(kind)) {
-            paintPending[kind] = false;
+          if (!responseIsVisible()) {
+            interactionPaintPending = false;
             return;
           }
           const elapsed = performance.now() - start;
-          if (kind === "interaction") metrics.interactionPaint = elapsed;
-          else metrics.routePaint = elapsed;
+          metrics.interactionPaint = elapsed;
         }),
       );
     };
-    const watchForPaint = (kind: "interaction" | "route") => {
+    const watchForPaint = () => {
       const poll = () => {
-        const paint =
-          kind === "interaction"
-            ? metrics.interactionPaint
-            : metrics.routePaint;
-        if (paint > 0) return;
-        recordAfterPaint(kind);
+        if (metrics.interactionPaint > 0) return;
+        recordAfterPaint();
         requestAnimationFrame(poll);
       };
       requestAnimationFrame(poll);
@@ -811,7 +806,7 @@ async function installPerformanceApiFixture(
         const label = button?.textContent?.trim();
         if (label === "Create") {
           metrics.interactionStart = performance.now();
-          watchForPaint("interaction");
+          watchForPaint();
         }
         if (label === "Sign In") {
           metrics.signInStart = performance.now();
@@ -894,15 +889,6 @@ async function installPerformanceApiFixture(
             );
           };
           requestAnimationFrame(record);
-        }
-        if (
-          target
-            ?.closest("a[href]")
-            ?.getAttribute("href")
-            ?.includes("/agent/work-items/" + "WLP-1")
-        ) {
-          metrics.routeStart = performance.now();
-          watchForPaint("route");
         }
       },
       { capture: true },
