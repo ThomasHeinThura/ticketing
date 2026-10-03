@@ -82,9 +82,26 @@ export type ScimPersonAttributes = {
   userName?: string;
   email?: string;
   active?: boolean;
+  displayName?: string;
   name?: { givenName?: string; familyName?: string; formatted?: string };
   title?: string;
   preferredLanguage?: string;
+  locale?: string;
+};
+
+export type ScimProfileAttributeMapping = {
+  version: 1;
+  name: "displayName" | "name.formatted";
+  email: "emails.primary.value" | "userName";
+  jobTitle: "title" | "unmapped";
+  locale: "preferredLanguage" | "locale" | "unmapped";
+};
+
+export type ScimProfile = {
+  name: string;
+  email: string;
+  jobTitle?: string;
+  locale?: string;
 };
 
 export type ScimResult<T> =

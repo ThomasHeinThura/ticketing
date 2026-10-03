@@ -610,6 +610,20 @@
 			"when": 1791006362154,
 			"tag": "0086_eager_toad_men",
 			"breakpoints": true
+		},
+		{
+			"idx": 87,
+			"version": "7",
+			"when": 1791063764922,
+			"tag": "0087_unique_the_stranger",
+			"breakpoints": true
+		},
+		{
+			"idx": 88,
+			"version": "7",
+			"when": 1791063845024,
+			"tag": "0088_whole_mojo",
+			"breakpoints": true
 		}
 	]
 }

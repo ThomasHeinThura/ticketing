@@ -1657,6 +1657,500 @@ export const membershipTable = pgTable(
   ],
 );
 
+export const identityConnectionTable = pgTable(
+  "identity_connection",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    providerType: text("provider_type").notNull(),
+    portalScope: text("portal_scope").notNull(),
+    organisationId: text("organisation_id").references(
+      () => organisationTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    displayName: text("display_name").notNull(),
+    issuer: text("issuer").notNull(),
+    tenantId: text("tenant_id"),
+    clientId: text("client_id").notNull(),
+    clientSecret: bytea("client_secret").notNull(),
+    redirectUri: text("redirect_uri").notNull(),
+    scopes: text("scopes").array().notNull(),
+    claimMapping: jsonb("claim_mapping").notNull(),
+    domainBindings: text("domain_bindings")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    jitPolicy: jsonb("jit_policy").notNull(),
+    maxRoleRank: integer("max_role_rank"),
+    mfaUpstreamMode: text("mfa_upstream_mode").notNull().default("off"),
+    enabled: boolean("enabled").notNull().default(false),
+    configVersion: integer("config_version").notNull().default(1),
+    healthState: text("health_state").notNull().default("unknown"),
+    healthCheckedAt: timestamp("health_checked_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    createdBy: text("created_by").references(() => personTable.id, {
+      onDelete: "set null",
+    }),
+    updatedBy: text("updated_by").references(() => personTable.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "identity_connection_provider_type_check",
+      sql`${table.providerType} in ('entra')`,
+    ),
+    check(
+      "identity_connection_portal_scope_check",
+      sql`${table.portalScope} in ('agent', 'customer')`,
+    ),
+    check(
+      "identity_connection_portal_organisation_check",
+      sql`(${table.portalScope} = 'customer' and ${table.organisationId} is not null) or (${table.portalScope} = 'agent' and ${table.organisationId} is null)`,
+    ),
+    check(
+      "identity_connection_rank_check",
+      sql`(${table.portalScope} = 'customer' and ${table.maxRoleRank} is null) or (${table.portalScope} = 'agent' and ${table.maxRoleRank} >= 0)`,
+    ),
+    check(
+      "identity_connection_config_version_check",
+      sql`${table.configVersion} >= 1`,
+    ),
+    check(
+      "identity_connection_mfa_mode_check",
+      sql`${table.mfaUpstreamMode} in ('claim', 'static', 'off')`,
+    ),
+    check(
+      "identity_connection_health_state_check",
+      sql`${table.healthState} in ('unknown', 'healthy', 'degraded', 'invalid')`,
+    ),
+    uniqueIndex("identity_connection_organisation_unique")
+      .on(table.organisationId)
+      .where(sql`${table.organisationId} is not null`),
+    index("identity_connection_portal_enabled_idx").on(
+      table.portalScope,
+      table.enabled,
+    ),
+  ],
+);
+
+export const scimConnectionTable = pgTable(
+  "scim_connection",
+  {
+    identityConnectionId: text("identity_connection_id")
+      .primaryKey()
+      .references(() => identityConnectionTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    tokenHash: bytea("token_hash"),
+    tokenPrefix: text("token_prefix"),
+    tokenCreatedAt: timestamp("token_created_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    tokenRotatedAt: timestamp("token_rotated_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    allowedResources: text("allowed_resources")
+      .array()
+      .notNull()
+      .default(sql`ARRAY['users']::text[]`),
+    attributeMapping: jsonb("attribute_mapping"),
+    lifecyclePolicy: text("lifecycle_policy")
+      .notNull()
+      .default("end_memberships"),
+    enabled: boolean("enabled").notNull().default(false),
+    lastSyncAt: timestamp("last_sync_at", { mode: "date", withTimezone: true }),
+    lastSyncOutcome: text("last_sync_outcome"),
+    lastFailure: jsonb("last_failure"),
+  },
+  (table) => [
+    check(
+      "scim_connection_token_hash_shape",
+      sql`${table.tokenHash} is null or octet_length(${table.tokenHash}) = 32`,
+    ),
+    check(
+      "scim_connection_token_pair_shape",
+      sql`(${table.tokenHash} is null and ${table.tokenPrefix} is null) or (${table.tokenHash} is not null and ${table.tokenPrefix} is not null)`,
+    ),
+    check(
+      "scim_connection_enabled_token_check",
+      sql`not ${table.enabled} or ${table.tokenHash} is not null`,
+    ),
+    check(
+      "scim_connection_allowed_resources_check",
+      sql`'users' = any(${table.allowedResources}) and ${table.allowedResources} <@ ARRAY['users', 'groups']::text[]`,
+    ),
+    check(
+      "scim_connection_lifecycle_policy_check",
+      sql`${table.lifecyclePolicy} in ('end_memberships', 'keep_memberships')`,
+    ),
+  ],
+);
+
+export const externalIdentityTable = pgTable(
+  "external_identity",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    identityConnectionId: text("identity_connection_id")
+      .notNull()
+      .references(() => identityConnectionTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    userId: text("user_id").references(() => userTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    issuer: text("issuer").notNull(),
+    subject: text("subject").notNull(),
+    scimExternalId: text("scim_external_id"),
+    userNameSnapshot: text("user_name_snapshot"),
+    emailSnapshot: text("email_snapshot"),
+    active: boolean("active").notNull().default(true),
+    provisionedVia: text("provisioned_via").notNull(),
+    firstSeenAt: timestamp("first_seen_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+    lastLoginAt: timestamp("last_login_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    deactivatedAt: timestamp("deactivated_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+  },
+  (table) => [
+    check(
+      "external_identity_provisioned_via_check",
+      sql`${table.provisionedVia} in ('jit', 'scim', 'invite')`,
+    ),
+    uniqueIndex("external_identity_connection_subject_unique").on(
+      table.identityConnectionId,
+      table.subject,
+    ),
+    uniqueIndex("external_identity_connection_scim_external_id_unique")
+      .on(table.identityConnectionId, table.scimExternalId)
+      .where(sql`${table.scimExternalId} is not null`),
+    index("external_identity_person_active_idx").on(
+      table.personId,
+      table.active,
+    ),
+  ],
+);
+
+export const oidcGroupMappingTable = pgTable(
+  "oidc_group_mapping",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    identityConnectionId: text("identity_connection_id")
+      .notNull()
+      .references(() => identityConnectionTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    externalGroupId: text("external_group_id").notNull(),
+    externalGroupNameSnapshot: text("external_group_name_snapshot"),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roleTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdBy: text("created_by").references(() => personTable.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "oidc_group_mapping_scope_check",
+      sql`${table.scope} in ('organisation', 'workspace')`,
+    ),
+    unique("oidc_group_mapping_connection_group_unique").on(
+      table.identityConnectionId,
+      table.externalGroupId,
+    ),
+    index("oidc_group_mapping_role_idx").on(table.roleId),
+  ],
+);
+
+export const scimGroupMappingTable = pgTable(
+  "scim_group_mapping",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    scimConnectionId: text("scim_connection_id")
+      .notNull()
+      .references(() => scimConnectionTable.identityConnectionId, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    externalGroupId: text("external_group_id").notNull(),
+    externalGroupNameSnapshot: text("external_group_name_snapshot"),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roleTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    createdBy: text("created_by").references(() => personTable.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "scim_group_mapping_scope_check",
+      sql`${table.scope} in ('organisation', 'workspace')`,
+    ),
+    unique("scim_group_mapping_connection_group_unique").on(
+      table.scimConnectionId,
+      table.externalGroupId,
+    ),
+    index("scim_group_mapping_role_idx").on(table.roleId),
+  ],
+);
+
+export const membershipGrantTable = pgTable(
+  "membership_grant",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    membershipId: text("membership_id").references(() => membershipTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    personId: text("person_id")
+      .notNull()
+      .references(() => personTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    scope: text("scope").notNull(),
+    scopeId: text("scope_id").notNull(),
+    roleId: text("role_id")
+      .notNull()
+      .references(() => roleTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    sourceKind: text("source_kind").notNull(),
+    externalIdentityId: text("external_identity_id").references(
+      () => externalIdentityTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    identityConnectionId: text("identity_connection_id").references(
+      () => identityConnectionTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    oidcGroupMappingId: text("oidc_group_mapping_id").references(
+      () => oidcGroupMappingTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    scimGroupMappingId: text("scim_group_mapping_id").references(
+      () => scimGroupMappingTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    seesAll: boolean("sees_all").notNull().default(false),
+    directOrigin: text("direct_origin"),
+    grantedByPersonId: text("granted_by_person_id").references(
+      () => personTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastConfirmedAt: timestamp("last_confirmed_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    revokedAt: timestamp("revoked_at", { mode: "date", withTimezone: true }),
+    revocationReason: text("revocation_reason"),
+  },
+  (table) => [
+    check(
+      "membership_grant_source_kind_check",
+      sql`${table.sourceKind} in ('direct', 'jit_default', 'oidc_group', 'scim_group')`,
+    ),
+    check(
+      "membership_grant_direct_origin_check",
+      sql`${table.directOrigin} is null or ${table.directOrigin} in ('admin', 'system_backfill')`,
+    ),
+    check(
+      "membership_grant_revocation_reason_check",
+      sql`${table.revocationReason} is null or ${table.revocationReason} in ('claim_removed', 'claim_missing', 'claim_overage', 'admission_failed', 'mapping_disabled', 'mapping_changed', 'role_deleted', 'connection_disabled', 'scim_group_removed', 'scim_deactivated', 'direct_removed')`,
+    ),
+    check(
+      "membership_grant_source_shape_check",
+      sql`(${table.sourceKind} = 'direct' and ${table.directOrigin} is not null and ((${table.directOrigin} = 'admin' and ${table.grantedByPersonId} is not null) or (${table.directOrigin} = 'system_backfill' and ${table.grantedByPersonId} is null)) and ${table.externalIdentityId} is null and ${table.identityConnectionId} is null and ${table.oidcGroupMappingId} is null and ${table.scimGroupMappingId} is null)
+        or (${table.sourceKind} = 'jit_default' and ${table.directOrigin} is null and ${table.grantedByPersonId} is null and ${table.externalIdentityId} is not null and ${table.identityConnectionId} is not null and ${table.oidcGroupMappingId} is null and ${table.scimGroupMappingId} is null and ${table.seesAll} = false)
+        or (${table.sourceKind} = 'oidc_group' and ${table.directOrigin} is null and ${table.grantedByPersonId} is null and ${table.externalIdentityId} is not null and ${table.identityConnectionId} is not null and ${table.oidcGroupMappingId} is not null and ${table.scimGroupMappingId} is null and ${table.seesAll} = false)
+        or (${table.sourceKind} = 'scim_group' and ${table.directOrigin} is null and ${table.grantedByPersonId} is null and ${table.externalIdentityId} is not null and ${table.identityConnectionId} is not null and ${table.oidcGroupMappingId} is null and ${table.scimGroupMappingId} is not null and ${table.seesAll} = false)`,
+    ),
+    index("membership_grant_person_scope_idx")
+      .on(table.personId, table.scope, table.scopeId)
+      .where(sql`${table.revokedAt} is null`),
+    uniqueIndex("membership_grant_direct_active_unique")
+      .on(table.personId, table.scope, table.scopeId)
+      .where(
+        sql`${table.revokedAt} is null and ${table.sourceKind} = 'direct'`,
+      ),
+    uniqueIndex("membership_grant_jit_active_unique")
+      .on(table.externalIdentityId, table.scope, table.scopeId)
+      .where(
+        sql`${table.revokedAt} is null and ${table.sourceKind} = 'jit_default'`,
+      ),
+    uniqueIndex("membership_grant_oidc_active_unique")
+      .on(table.externalIdentityId, table.oidcGroupMappingId)
+      .where(
+        sql`${table.revokedAt} is null and ${table.sourceKind} = 'oidc_group'`,
+      ),
+    uniqueIndex("membership_grant_scim_active_unique")
+      .on(table.externalIdentityId, table.scimGroupMappingId)
+      .where(
+        sql`${table.revokedAt} is null and ${table.sourceKind} = 'scim_group'`,
+      ),
+    index("membership_grant_connection_active_idx")
+      .on(table.identityConnectionId)
+      .where(sql`${table.revokedAt} is null`),
+    index("membership_grant_role_idx").on(table.roleId),
+  ],
+);
+
+export const scimGroupMemberTable = pgTable(
+  "scim_group_member",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    scimGroupMappingId: text("scim_group_mapping_id")
+      .notNull()
+      .references(() => scimGroupMappingTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    externalIdentityId: text("external_identity_id")
+      .notNull()
+      .references(() => externalIdentityTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    membershipId: text("membership_id").references(() => membershipTable.id, {
+      onDelete: "set null",
+      onUpdate: "cascade",
+    }),
+    membershipGrantId: text("membership_grant_id")
+      .notNull()
+      .unique()
+      .references(() => membershipGrantTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    revokedAt: timestamp("revoked_at", { mode: "date", withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("scim_group_member_active_unique")
+      .on(table.externalIdentityId, table.scimGroupMappingId)
+      .where(sql`${table.revokedAt} is null`),
+    index("scim_group_member_mapping_active_idx").on(
+      table.scimGroupMappingId,
+      table.revokedAt,
+    ),
+  ],
+);
+
+export const provisioningEventTable = pgTable(
+  "provisioning_event",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    identityConnectionId: text("identity_connection_id")
+      .notNull()
+      .references(() => identityConnectionTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    scimConnectionId: text("scim_connection_id").references(
+      () => scimConnectionTable.identityConnectionId,
+      { onDelete: "set null", onUpdate: "cascade" },
+    ),
+    externalIdentityId: text("external_identity_id").references(
+      () => externalIdentityTable.id,
+      { onDelete: "set null", onUpdate: "cascade" },
+    ),
+    kind: text("kind").notNull(),
+    outcome: text("outcome").notNull(),
+    detail: jsonb("detail").notNull().default(sql`'{}'::jsonb`),
+    actorType: text("actor_type").notNull(),
+    traceId: text("trace_id"),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    check(
+      "provisioning_event_kind_check",
+      sql`${table.kind} in ('user.created', 'user.updated', 'user.deactivated', 'user.reactivated', 'group.mapping_changed', 'group.member_added', 'group.member_removed', 'request.denied', 'auth.failed', 'token.rotated', 'token.revoked', 'connection.changed', 'sync.failed')`,
+    ),
+    index("provisioning_event_connection_created_idx").on(
+      table.identityConnectionId,
+      table.createdAt.desc(),
+    ),
+    index("provisioning_event_scim_created_idx").on(
+      table.scimConnectionId,
+      table.createdAt.desc(),
+    ),
+  ],
+);
+
 // ── #23's first slice: work_item, work_item_type, state_template, state, ──────────
 // work_item_key_alias, watcher (data-model.md §3-§4, decision log 2026-09-17 "#23's
 // first slice is narrower than 'all of #23'"). Purely additive: references nothing in
