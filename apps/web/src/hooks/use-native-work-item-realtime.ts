@@ -80,6 +80,7 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
       const nextSocket = new WebSocket(realtimeUrl());
       socket = nextSocket;
       socketRef.current = nextSocket;
+      setIsUnavailable(true);
 
       nextSocket.onopen = () => {
         if (isDisposed) return;
