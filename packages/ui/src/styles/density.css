@@ -4,7 +4,7 @@
   padding-block: calc(var(--spacing) * 3);
 }
 
-.td-density-field {
+.td-density-field > [data-slot="input"] {
   padding-block: calc(var(--spacing) * 2);
 }
 
@@ -27,7 +27,7 @@ html.compact-mode .td-density-row > [data-slot="table-head"] {
   padding-block: calc(var(--spacing) * 2);
 }
 
-html.compact-mode .td-density-field {
+html.compact-mode .td-density-field > [data-slot="input"] {
   padding-block: calc(var(--spacing) * 1.5);
 }
 

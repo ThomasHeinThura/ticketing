@@ -82,8 +82,8 @@ exact context appears in the ruleset.
 │ pnpm test:mcp            tool → route parity     │
 ├─ Build ──────────────────────────────────────────┤
 │ pnpm build               all apps and packages   │
-│ check:bundle-purity      G12 — portal is clean   │
-│ check:bundle-size        G11 — size budgets      │
+│ pnpm check:bundle-purity G12 — portal is clean   │
+│ pnpm check:bundle-size   G11 — size budgets      │
 │ helm lint + helm template   charts/taskdesk      │
 └──────────────────────────────────────────────────┘
 ```
@@ -185,9 +185,9 @@ registered in generated route metadata and to have a screenshot case and baselin
 generated route is also parsed and built through the route helpers, including inherited
 routes that are outside the active v2 inventory. A registered inventory route group with no
 in-progress or complete row also fails, so adding a screen requires its route, status,
-fixture and baseline together. The current inventory has 139 screen rows, including 124
-route rows: three are in progress and have G8 cases; the other 121 route rows remain
-planned (113 distinct canonical planned URLs after query variants are collapsed). The generated agent and portal trees contain 38 canonical routes; 35 are inherited
+fixture and baseline together. The current inventory has 138 screen rows, including 123
+route rows: three are in progress and have G8 cases; the other 120 route rows remain
+planned (112 distinct canonical planned URLs after query variants are collapsed). The generated agent and portal trees contain 38 canonical routes; 35 are inherited
 or otherwise outside the active v2 inventory. Future-stage screens become required as they
 move to in progress. The current
 `/auth/sign-in` screen is also snapshotted as a documented legacy route while the inventory's
@@ -659,8 +659,9 @@ main                    always deployable, protected
 Release versions are supplied explicitly when a maintainer dispatches the Release workflow.
 The workflow validates SemVer, builds and scans the selected `main` SHA, publishes and signs
 its image, then creates the matching `v<version>` tag and GitHub release at that SHA. It does
-not make a version-bump commit or rewrite project version files. The existing semantic-release
-configuration is not invoked by the release workflow.
+not make a version-bump commit or rewrite project version files. The unused inherited
+semantic-release configuration and dependency family are removed; the signed manual Release
+workflow is authoritative.
 
 ## Release notes
 

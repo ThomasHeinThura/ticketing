@@ -56,9 +56,12 @@ and later never came.
 - The spec exists, has numbered behaviour rules, and its **Open questions section is
   empty**.
 - The feature's section in [reviews/2026-09-05/](../07-planning/reviews/2026-09-05/) is
-  **empty** — the ~300 medium/low audit findings close here, feature by feature, and a
-  feature may not enter step 3 while any remain. Reviewers check this box, not the
-  author.
+  checked for known findings. Applicable findings are mapped to evidence and addressed in
+  the authorized implementation batch; preserve the historical review text and do not
+  self-close it. Independent reviewers verify the mapping and record disposition before
+  merge or a phase claim. A remaining finding is not silently ignored or waived. Behavior
+  questions that the written contract does not settle still block that decision path until
+  an authorized contract resolves them.
 - For P0–P3, human spec/design review is deferred until the integrated P4 human review; it is
   not an implementation prerequisite. A committed documented recommendation explicitly
   authorized by the user is sufficient to build against, including the current #573 contract.

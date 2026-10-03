@@ -210,7 +210,7 @@ build if it drifts.
 | P4 Governance | 29 |
 | P5 Insight & agile | 28 |
 | P6 Import | 2 |
-| **Total** | **139** |
+| **Total** | **138** |
 
 For comparison, v1 had roughly 25 screens, each at perhaps 60% quality. The target here is
 more screens at 100%, delivered a stage at a time — see

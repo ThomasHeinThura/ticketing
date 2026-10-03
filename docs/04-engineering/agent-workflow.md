@@ -87,6 +87,10 @@ panel and any required Sol review before merge. Fix findings together and review
 delta at its required tier without automatic comfort rounds. Tiny urgent fixes may join the
 next batch unless the user explicitly requests isolated delivery. The detailed canonical rule
 is in [AGENTS.md § Bulk implementation and review cadence](../../AGENTS.md#bulk-implementation-and-review-cadence).
+Keep the review ledger's historical wording intact: the implementation author maps and fixes
+applicable known findings, while independent reviewers verify evidence and record disposition.
+Do not self-close a ledger row. A behavior decision absent from the authorized contract remains
+a blocker for that decision path.
 
 For P0–P3, implement the full related feature set before its integrated bulk review; do not
 block implementation on Thomas's spec read or H1–H6 review. Documented recommendations

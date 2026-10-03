@@ -200,10 +200,10 @@ const manifest = [
     note: "G12 checks every static and dynamic chunk reachable from the portal entry against bundler-emitted module graph metadata.",
   },
   {
-    gate: "check:bundle-size",
+    gate: "pnpm check:bundle-size",
     stage: "fast",
-    run: null,
-    why: "G11's performance thresholds are defined, but the app still has one combined web bundle and no seeded work-list/detail journeys to measure.",
+    run: ["pnpm", "check:bundle-size"],
+    note: "G11 checks independent agent and portal entry budgets against emitted production bundles.",
   },
   {
     gate: "helm lint + helm template",

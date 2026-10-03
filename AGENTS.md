@@ -233,6 +233,12 @@ Never:
 
 Implement the full related feature set first, using approved contracts or documented
 recommendations explicitly authorized by the user, then conduct one integrated bulk review.
+Known findings in the owning review section are inputs to that implementation batch: map each
+applicable finding to source/spec evidence and address it before freezing the candidate.
+Preserve the historical review text; authors do not mark their own findings closed. Independent
+reviewers verify the mapping and record disposition before merge and before any phase claim.
+An unresolved behavior decision is still a blocker for that decision path and must be written
+into an authorized contract before implementation proceeds; it is never bypassed or waived.
 For P0–P3, human spec/design/H1 review is deferred to the integrated P4 human review; do not
 make it an early implementation prerequisite. The current documented recommendations,
 including #573, are authorized for implementation. Record human review as deferred, never as
@@ -393,7 +399,7 @@ Process friction is not the same as safety.
 12. Delete anything without a **pending action** where the architecture requires it.
 13. Invent an MCP permission, SCIM-only tenancy rule, or any path by which identity-provider data grants `instance:admin` or `sees_all`.
 14. Keep, flag or "leave for later" an inherited kaneo integration router that the inherited-features register says is deleted at fork.
-15. Start building a feature while its owning review section in `docs/07-planning/reviews/2026-09-05/` is non-empty.
+15. Implement without addressing applicable known findings in the same authorized feature batch, or erase/relabel historical findings as their author. Findings must be mapped and independently dispositioned before merge/phase claim; unresolved behavior decisions still block the affected implementation path.
 16. Commit, push or merge outside the flow above. A report is not approval; the flow is the standing approval.
 17. Guess at behaviour. If the spec does not say, stop that decision path and get the answer written into the spec.
 18. Claim something works without running it; every screen touched is opened and listed.

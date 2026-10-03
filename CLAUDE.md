@@ -138,6 +138,10 @@ implement the full related P0–P3 feature set first against approved or explici
 user-authorized documented contracts, then freeze and review the integrated bulk candidate at
 its required independent Luna/Sol tiers before merge. Human spec/design/H1 review is deferred
 until the integrated P4 review; record the deferral and never claim unperformed approval.
+Map and fix applicable known findings in that implementation batch while preserving historical
+review text; independent reviewers verify the evidence and record disposition before merge or
+phase claim. Do not self-close findings, bypass unresolved behavior decisions, or treat them as
+waived.
 Do not open standalone review passes for small/mechanical edits or speculative trials. Fix
 findings as a batch and review the changed candidate at the applicable tier, with no automatic
 comfort rounds. Reviewer counts, exact-head discipline, security scope, stage finalizers,

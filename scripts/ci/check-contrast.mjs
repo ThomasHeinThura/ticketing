@@ -527,18 +527,26 @@ async function main() {
     cwd: repoRoot,
     stdio: "inherit",
   });
-  const assetDir = path.join(repoRoot, "apps/web/dist/assets");
-  const cssFiles = (await readdir(assetDir)).filter((name) =>
-    name.endsWith(".css"),
+  const assetDirs = ["agent", "portal"].map((entry) =>
+    path.join(repoRoot, "apps/web/dist", entry, "assets"),
   );
+  const cssFiles = (
+    await Promise.all(
+      assetDirs.map(async (assetDir) =>
+        (
+          await readdir(assetDir)
+        )
+          .filter((name) => name.endsWith(".css"))
+          .map((name) => path.join(assetDir, name)),
+      ),
+    )
+  ).flat();
   if (cssFiles.length === 0)
     throw new Error(
       "Web build produced no CSS assets for the G3 computed-style check.",
     );
   const css = (
-    await Promise.all(
-      cssFiles.map((name) => readFile(path.join(assetDir, name), "utf8")),
-    )
+    await Promise.all(cssFiles.map((file) => readFile(file, "utf8")))
   ).join("\n");
   const { chromium } = requireFromWeb("@playwright/test");
   const browser = await chromium.launch({ headless: true });
@@ -667,12 +675,13 @@ async function main() {
     }
     const density = await page.evaluate(() => {
       document.body.innerHTML =
-        '<table><tr class="td-density-row"><td data-slot="table-cell">row</td></tr></table><div id="field" class="td-density-field">field</div><div id="card" class="td-density-card">card</div><div data-slot="card"><div data-slot="card-header"></div><div id="card-no-header-border" data-slot="card-panel" class="td-density-card"></div></div><div data-slot="card"><div data-slot="card-header" class="border-b"></div><div id="card-header-border" data-slot="card-panel" class="td-density-card"></div><div data-slot="card-footer"></div></div><div data-slot="card"><div data-slot="card-panel" id="card-no-footer-border" class="td-density-card"></div><div data-slot="card-footer"></div></div><div data-slot="card"><div data-slot="card-panel" id="card-footer-border" class="td-density-card"></div><div data-slot="card-footer" class="border-t"></div></div>';
+        '<table><tr class="td-density-row"><td data-slot="table-cell">row</td></tr></table><span id="field" class="td-density-field" style="display:inline-flex"><input data-slot="input" style="height:32px"></span><div id="card" class="td-density-card">card</div><div data-slot="card"><div data-slot="card-header"></div><div id="card-no-header-border" data-slot="card-panel" class="td-density-card"></div></div><div data-slot="card"><div data-slot="card-header" class="border-b"></div><div id="card-header-border" data-slot="card-panel" class="td-density-card"></div><div data-slot="card-footer"></div></div><div data-slot="card"><div data-slot="card-panel" id="card-no-footer-border" class="td-density-card"></div><div data-slot="card-footer"></div></div><div data-slot="card"><div data-slot="card-panel" id="card-footer-border" class="td-density-card"></div><div data-slot="card-footer" class="border-t"></div></div>';
       const measure = () => ({
         row: getComputedStyle(document.querySelector("[data-slot=table-cell]"))
           .paddingBlockStart,
-        field: getComputedStyle(document.querySelector("#field"))
+        field: getComputedStyle(document.querySelector("#field > input"))
           .paddingBlockStart,
+        fieldControl: `${getComputedStyle(document.querySelector("#field")).paddingBlockStart}/${document.querySelector("#field").getBoundingClientRect().height}px`,
         card: getComputedStyle(document.querySelector("#card"))
           .paddingBlockStart,
         cardNoHeaderBorder: getComputedStyle(
@@ -697,6 +706,7 @@ async function main() {
     for (const [name, expected] of Object.entries({
       row: ["12px", "8px"],
       field: ["8px", "6px"],
+      fieldControl: ["0px/32px", "0px/32px"],
       card: ["16px", "12px"],
       cardNoHeaderBorder: ["0px", "0px"],
       cardHeaderBorder: ["16px", "12px"],
