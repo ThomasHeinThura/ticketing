@@ -62,11 +62,20 @@ export const sessionTable = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => userTable.id, { onDelete: "cascade" }),
+    // Set by the host-selected Better Auth instance at issuance; nullable only so
+    // pre-migration sessions fail closed until the user signs in again.
+    portal: text("portal", { enum: ["agent", "customer"] }),
     activeOrganizationId: text("active_organization_id"),
     activeTeamId: text("active_team_id"),
     impersonatedBy: text("impersonated_by"),
   },
-  (table) => [index("session_userId_idx").on(table.userId)],
+  (table) => [
+    index("session_userId_idx").on(table.userId),
+    check(
+      "session_portal_allowed",
+      sql`${table.portal} is null or ${table.portal} in ('agent', 'customer')`,
+    ),
+  ],
 );
 
 export const accountTable = pgTable(

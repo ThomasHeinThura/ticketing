@@ -561,6 +561,20 @@
 			"when": 1790821787590,
 			"tag": "0079_task_version",
 			"breakpoints": true
+		},
+		{
+			"idx": 80,
+			"version": "7",
+			"when": 1790955000954,
+			"tag": "0080_cuddly_elektra",
+			"breakpoints": true
+		},
+		{
+			"idx": 81,
+			"version": "7",
+			"when": 1790956366722,
+			"tag": "0081_easy_tempest",
+			"breakpoints": true
 		}
 	]
 }

@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import type { ClientRequest, IncomingMessage } from "node:http";
 import { request as httpRequest } from "node:http";
@@ -7,7 +7,9 @@ import type { AddressInfo, Socket } from "node:net";
 import { createConnection } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import db, { schema } from "../../apps/api/src/database";
 import { createApp, createNodeServer } from "../../apps/api/src/index";
 import {
   broadcastToProject,
@@ -48,6 +50,9 @@ const apiRequire = createRequire(
   new URL("../../apps/api/package.json", import.meta.url),
 );
 const WebSocket = apiRequire("ws") as TestWebSocketConstructor;
+const bcrypt = apiRequire("bcryptjs") as {
+  hash(value: string, rounds: number): Promise<string>;
+};
 const heldHttpStaticRoots = new Set<string>();
 
 function listening(server: ReturnType<typeof createNodeServer>["server"]) {
@@ -121,6 +126,125 @@ function rawGet(port: number, path: string) {
   });
 }
 
+function rawPost(
+  port: number,
+  path: string,
+  origin: string,
+  cookie: string,
+  body: string,
+) {
+  return new Promise<{
+    status: number;
+    headers: IncomingMessage["headers"];
+    body: string;
+  }>((resolve, reject) => {
+    const request = httpRequest(
+      {
+        host: "127.0.0.1",
+        port,
+        path,
+        method: "POST",
+        headers: {
+          host: "localhost:5173",
+          origin,
+          cookie,
+          "content-type": "application/json",
+          "content-length": Buffer.byteLength(body),
+        },
+      },
+      (response) => {
+        let responseBody = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk: string) => {
+          responseBody += chunk;
+        });
+        response.on("end", () =>
+          resolve({
+            status: response.statusCode ?? 0,
+            headers: response.headers,
+            body: responseBody,
+          }),
+        );
+      },
+    );
+    request.on("error", reject);
+    request.end(body);
+  });
+}
+
+function rawRequestToHost(
+  port: number,
+  path: string,
+  method: "GET" | "POST",
+  host: string,
+  origin: string,
+  body: string,
+  extraHeaders: Record<string, string> = {},
+) {
+  return new Promise<{
+    status: number;
+    headers: IncomingMessage["headers"];
+    body: string;
+  }>((resolve, reject) => {
+    const request = httpRequest(
+      {
+        host: "127.0.0.1",
+        port,
+        path,
+        method,
+        headers: {
+          host,
+          origin,
+          ...(body
+            ? {
+                "content-type": "application/json",
+                "content-length": Buffer.byteLength(body),
+              }
+            : {}),
+          ...extraHeaders,
+        },
+      },
+      (response) => {
+        let responseBody = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk: string) => {
+          responseBody += chunk;
+        });
+        response.on("end", () =>
+          resolve({
+            status: response.statusCode ?? 0,
+            headers: response.headers,
+            body: responseBody,
+          }),
+        );
+      },
+    );
+    request.on("error", reject);
+    request.end(body);
+  });
+}
+
+function rawPostToHost(
+  port: number,
+  path: string,
+  host: string,
+  origin: string,
+  body: string,
+  extraHeaders: Record<string, string> = {},
+) {
+  return rawRequestToHost(port, path, "POST", host, origin, body, extraHeaders);
+}
+
+function rawGetToHost(
+  port: number,
+  path: string,
+  host: string,
+  origin: string,
+  extraHeaders: Record<string, string> = {},
+) {
+  return rawRequestToHost(port, path, "GET", host, origin, "", extraHeaders);
+}
+
 function deferred<T = void>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
   let reject!: (reason?: unknown) => void;
@@ -183,7 +307,7 @@ function openUnresponsiveWebSocket(port: number, cookie: string) {
     socket.write(
       [
         "GET /api/ws/user HTTP/1.1",
-        `Host: 127.0.0.1:${port}`,
+        "Host: localhost:5173",
         "Upgrade: websocket",
         "Connection: Upgrade",
         `Sec-WebSocket-Key: ${key}`,
@@ -255,7 +379,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     closeServer = node.close;
     await listening(node.server);
 
-    const headers = { origin: "http://localhost:5173" };
+    const headers = { host: "localhost:5173", origin: "http://localhost:5173" };
     const url = websocketUrl(node.server, "/api/ws/user");
     expect(await rejectHandshake(url, headers)).toBe(401);
 
@@ -266,7 +390,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     });
     const socket = await openSocket(url, {
       ...headers,
-      cookie: "taskdesk.session_token=integration-session",
+      cookie: "__Host-tdk_agent_session=integration-session",
     });
     const event = nextMessage(socket);
     broadcastToUser(member.user.id, {
@@ -296,6 +420,329 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     expect(serverSendSpy).not.toHaveBeenCalled();
   });
 
+  it("rejects session upgrades before 101 for missing, foreign, wrong-host, or wrong-portal boundaries", async () => {
+    const member = await createWorkspaceMember();
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const url = websocketUrl(node.server, "/api/ws/user");
+    const cookie = "__Host-tdk_agent_session=integration-session";
+
+    expect(await rejectHandshake(url, { host: "localhost:5173", cookie })).toBe(
+      403,
+    );
+    expect(
+      await rejectHandshake(url, {
+        host: "localhost:5173",
+        origin: "https://attacker.example",
+        cookie,
+      }),
+    ).toBe(403);
+    expect(
+      await rejectHandshake(url, {
+        host: "localhost:5174",
+        origin: "http://localhost:5173",
+        cookie,
+      }),
+    ).toBe(403);
+
+    mockAuthenticatedSession(member.user, { portal: "customer" });
+    expect(
+      await rejectHandshake(url, {
+        host: "localhost:5173",
+        origin: "http://localhost:5173",
+        cookie,
+      }),
+    ).toBe(403);
+
+    const portalSocket = await openSocket(url, {
+      host: "localhost:5174",
+      origin: "http://localhost:5174",
+      cookie: "__Host-tdk_portal_session=integration-session",
+    });
+    const closed = new Promise<void>((resolve) =>
+      portalSocket.once("close", () => resolve()),
+    );
+    portalSocket.close();
+    await closed;
+  });
+
+  it("does not let an invalid explicit credential fall back to a valid session cookie", async () => {
+    const member = await createWorkspaceMember();
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const url = websocketUrl(node.server, "/api/ws/user");
+    const common = {
+      host: "localhost:5173",
+      origin: "http://localhost:5173",
+      cookie: "__Host-tdk_agent_session=integration-session",
+    };
+
+    expect(
+      await rejectHandshake(url, {
+        ...common,
+        authorization: "Bearer invalid-token",
+      }),
+    ).toBe(401);
+    expect(
+      await rejectHandshake(url, {
+        ...common,
+        authorization: "Digest invalid-token",
+      }),
+    ).toBe(401);
+    expect(
+      await rejectHandshake(url, { ...common, "x-api-key": "invalid-api-key" }),
+    ).toBe(401);
+  });
+
+  it("preserves the API-key Origin omission exception and validates supplied Origins", async () => {
+    const member = await createWorkspaceMember();
+    const rawKey = `taskdesk_test_${randomBytes(16).toString("hex")}`;
+    const hashedKey = createHash("sha256")
+      .update(rawKey)
+      .digest()
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    const now = new Date();
+    await db.insert(schema.apikeyTable).values({
+      referenceId: member.user.id,
+      userId: member.user.id,
+      key: hashedKey,
+      name: "realtime handshake",
+      start: rawKey.slice(0, 12),
+      prefix: "taskdesk",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const url = websocketUrl(node.server, "/api/ws/user");
+    const socket = await openSocket(url, {
+      host: "localhost:5173",
+      authorization: `Bearer ${rawKey}`,
+    });
+    const closed = new Promise<void>((resolve) =>
+      socket.once("close", () => resolve()),
+    );
+    socket.close();
+    await closed;
+
+    expect(
+      await rejectHandshake(url, {
+        host: "localhost:5173",
+        origin: "https://attacker.example",
+        authorization: `Bearer ${rawKey}`,
+      }),
+    ).toBe(403);
+  });
+
+  it("binds live sessions to their issuing portal and rejects logout or expiry on reconnect", async () => {
+    const member = await createWorkspaceMember();
+    await db.insert(schema.accountTable).values({
+      id: `credential-${member.user.id}`,
+      accountId: member.user.id,
+      providerId: "credential",
+      userId: member.user.id,
+      password: await bcrypt.hash("Realtime-Test-Password-42!", 4),
+    });
+
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const address = node.server.address() as AddressInfo;
+    const signIn = async (portal: "agent" | "customer" = "agent") => {
+      const origin =
+        portal === "agent" ? "http://localhost:5173" : "http://localhost:5174";
+      const response = await rawPostToHost(
+        address.port,
+        "/api/auth/sign-in/email",
+        portal === "agent" ? "localhost:5173" : "localhost:5174",
+        origin,
+        JSON.stringify({
+          email: member.user.email,
+          password: "Realtime-Test-Password-42!",
+        }),
+      );
+      expect(response.status).toBe(200);
+      const cookieName = `__Host-tdk_${portal === "agent" ? "agent" : "portal"}_session=`;
+      const setCookie = (response.headers["set-cookie"] ?? []).find((header) =>
+        header.startsWith(cookieName),
+      );
+      expect(setCookie).toMatch(/;\s*Path=\//i);
+      expect(setCookie).toMatch(/;\s*Secure(?:;|$)/i);
+      expect(setCookie).toMatch(/;\s*HttpOnly(?:;|$)/i);
+      expect(setCookie).toMatch(/;\s*SameSite=Lax(?:;|$)/i);
+      expect(setCookie).not.toMatch(/;\s*Domain=/i);
+      const cookie = setCookie?.split(";", 1)[0];
+      expect(cookie).toBeDefined();
+      return cookie as string;
+    };
+
+    const firstCookie = await signIn();
+    const portalCookie = await signIn("customer");
+    const currentSessions = await db
+      .select()
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, member.user.id));
+    expect(currentSessions.some((session) => session.portal === "agent")).toBe(
+      true,
+    );
+    expect(
+      currentSessions.some((session) => session.portal === "customer"),
+    ).toBe(true);
+
+    const url = websocketUrl(node.server, "/api/ws/user");
+    expect(
+      await rejectHandshake(url, {
+        host: "localhost:5173",
+        origin: "https://attacker.example",
+        cookie: firstCookie,
+      }),
+    ).toBe(403);
+    const liveSocket = await openSocket(url, {
+      host: "localhost:5173",
+      origin: "http://localhost:5173",
+      cookie: firstCookie,
+    });
+    const closed = new Promise<void>((resolve) =>
+      liveSocket.once("close", () => resolve()),
+    );
+    liveSocket.close();
+    await closed;
+
+    const portalSocket = await openSocket(url, {
+      host: "localhost:5174",
+      origin: "http://localhost:5174",
+      cookie: portalCookie,
+    });
+    const portalClosed = new Promise<void>((resolve) =>
+      portalSocket.once("close", () => resolve()),
+    );
+    portalSocket.close();
+    await portalClosed;
+    expect(
+      await rejectHandshake(url, {
+        host: "localhost:5173",
+        origin: "http://localhost:5173",
+        cookie: portalCookie,
+      }),
+    ).toBe(401);
+
+    const copiedAgentCookie = `__Host-tdk_portal_session=${firstCookie.split("=", 2)[1]}`;
+    expect(
+      await rejectHandshake(url, {
+        host: "localhost:5174",
+        origin: "http://localhost:5174",
+        cookie: copiedAgentCookie,
+      }),
+    ).toBe(403);
+    const crossPortalSession = await rawGetToHost(
+      address.port,
+      "/api/auth/get-session",
+      "localhost:5174",
+      "http://localhost:5174",
+      { cookie: copiedAgentCookie },
+    );
+    expect(crossPortalSession.status).toBe(403);
+
+    const agentSession = currentSessions.find(
+      (session) => session.portal === "agent",
+    );
+    if (!agentSession)
+      throw new Error("agent sign-in did not persist a session");
+    await db
+      .update(schema.sessionTable)
+      .set({ portal: null })
+      .where(eq(schema.sessionTable.id, agentSession.id));
+    expect(
+      await rejectHandshake(url, {
+        host: "localhost:5173",
+        origin: "http://localhost:5173",
+        cookie: firstCookie,
+      }),
+    ).toBe(403);
+    const unboundSession = await rawGetToHost(
+      address.port,
+      "/api/auth/get-session",
+      "localhost:5173",
+      "http://localhost:5173",
+      { cookie: firstCookie },
+    );
+    expect(unboundSession.status).toBe(403);
+
+    await db
+      .update(schema.sessionTable)
+      .set({ portal: "agent" })
+      .where(eq(schema.sessionTable.id, agentSession.id));
+    const invalidExplicitCredential = await rawPostToHost(
+      address.port,
+      "/api/auth/sign-out",
+      "localhost:5173",
+      "http://localhost:5173",
+      "",
+      { cookie: firstCookie, authorization: "Digest invalid-token" },
+    );
+    expect(invalidExplicitCredential.status).toBe(401);
+    const blankApiKey = await rawPostToHost(
+      address.port,
+      "/api/auth/sign-out",
+      "localhost:5173",
+      "http://localhost:5173",
+      "",
+      { cookie: firstCookie, "x-api-key": " " },
+    );
+    expect(blankApiKey.status).toBe(401);
+    const logout = await rawPostToHost(
+      address.port,
+      "/api/auth/sign-out",
+      "localhost:5173",
+      "http://localhost:5173",
+      "{}",
+      { cookie: firstCookie },
+    );
+    expect(logout.status).toBe(200);
+    expect(
+      await rejectHandshake(url, {
+        host: "localhost:5173",
+        origin: "http://localhost:5173",
+        cookie: firstCookie,
+      }),
+    ).toBe(401);
+
+    const expiredCookie = await signIn();
+    const sessionsAfterReconnect = await db
+      .select()
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.userId, member.user.id));
+    const newSession = sessionsAfterReconnect.find(
+      (session) => session.portal === "agent",
+    );
+    expect(newSession?.portal).toBe("agent");
+    if (!newSession) throw new Error("sign-in did not persist its session");
+    await db
+      .update(schema.sessionTable)
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(schema.sessionTable.id, newSession.id));
+    expect(
+      await rejectHandshake(url, {
+        host: "localhost:5173",
+        origin: "http://localhost:5173",
+        cookie: expiredCookie,
+      }),
+    ).toBe(401);
+  });
+
   it("preserves project reach masking, windowId fanout, and real shutdown", async () => {
     const member = await createWorkspaceMember();
     const stranger = await createWorkspaceMember();
@@ -314,7 +761,8 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
 
     const headers = {
       origin: "http://localhost:5173",
-      cookie: "taskdesk.session_token=integration-session",
+      host: "localhost:5173",
+      cookie: "__Host-tdk_agent_session=integration-session",
     };
     const address = node.server.address() as AddressInfo;
     const httpBase = `http://127.0.0.1:${address.port}`;
@@ -328,25 +776,22 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     });
     expect(foreignOrigin.headers.get("access-control-allow-origin")).toBeNull();
 
-    const created = await fetch(`${httpBase}/api/project`, {
-      method: "POST",
-      headers: {
-        ...headers,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
+    const created = await rawPost(
+      address.port,
+      "/api/project",
+      headers.origin,
+      headers.cookie,
+      JSON.stringify({
         workspaceId: member.workspace.id,
         name: "Real listener JSON body",
         icon: "FolderKanban",
         slug: "real-listener-json-body",
       }),
-    });
-    expect(created.status).toBe(200);
-    expect(created.headers.get("access-control-allow-origin")).toBe(
-      headers.origin,
     );
-    expect(created.headers.get("content-type")).toContain("application/json");
-    await expect(created.json()).resolves.toMatchObject({
+    expect(created.status).toBe(200);
+    expect(created.headers["access-control-allow-origin"]).toBe(headers.origin);
+    expect(created.headers["content-type"]).toContain("application/json");
+    expect(JSON.parse(created.body)).toMatchObject({
       workspaceId: member.workspace.id,
       name: "Real listener JSON body",
       slug: "real-listener-json-body",
