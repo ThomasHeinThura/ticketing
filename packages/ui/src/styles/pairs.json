@@ -1,0 +1,757 @@
+[
+	{
+		"fg": "--color-destructive-foreground",
+		"bg": "--color-destructive",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-foreground",
+		"backgroundClass": {
+			"dark": "dark:bg-destructive/16"
+		}
+	},
+	{
+		"fg": "--color-destructive-foreground",
+		"bg": "--color-destructive",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-foreground",
+		"backgroundClass": {
+			"dark": "data-pressed:bg-destructive/4"
+		}
+	},
+	{
+		"fg": "--color-destructive-foreground",
+		"bg": "--color-destructive",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-foreground",
+		"backgroundClass": {
+			"dark": "hover:bg-destructive/4"
+		}
+	},
+	{
+		"fg": "--color-destructive-foreground",
+		"bg": "--color-destructive",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-foreground",
+		"backgroundClass": {
+			"light": "bg-destructive/8"
+		}
+	},
+	{
+		"fg": "--color-destructive-foreground",
+		"bg": "--color-destructive",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-foreground",
+		"backgroundClass": {
+			"light": "data-pressed:bg-destructive/4"
+		}
+	},
+	{
+		"fg": "--color-destructive-foreground",
+		"bg": "--color-destructive",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-foreground",
+		"backgroundClass": {
+			"light": "hover:bg-destructive/4"
+		}
+	},
+	{
+		"fg": "--color-destructive-foreground",
+		"bg": "--color-input",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-foreground",
+		"backgroundClass": {
+			"dark": "dark:bg-input/32"
+		}
+	},
+	{
+		"fg": "--color-destructive-foreground",
+		"bg": "--color-popover",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-foreground",
+		"backgroundClass": {
+			"light": "bg-popover"
+		}
+	},
+	{
+		"fg": "--color-destructive-strong-foreground",
+		"bg": "--color-destructive-strong",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-strong-foreground",
+		"backgroundClass": {
+			"dark": "bg-destructive-strong"
+		}
+	},
+	{
+		"fg": "--color-destructive-strong-foreground",
+		"bg": "--color-destructive-strong",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-strong-foreground",
+		"backgroundClass": {
+			"dark": "data-pressed:bg-destructive-strong/90"
+		}
+	},
+	{
+		"fg": "--color-destructive-strong-foreground",
+		"bg": "--color-destructive-strong",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-strong-foreground",
+		"backgroundClass": {
+			"dark": "hover:bg-destructive-strong/90"
+		}
+	},
+	{
+		"fg": "--color-destructive-strong-foreground",
+		"bg": "--color-destructive-strong",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-strong-foreground",
+		"backgroundClass": {
+			"light": "bg-destructive-strong"
+		}
+	},
+	{
+		"fg": "--color-destructive-strong-foreground",
+		"bg": "--color-destructive-strong",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-strong-foreground",
+		"backgroundClass": {
+			"light": "data-pressed:bg-destructive-strong/90"
+		}
+	},
+	{
+		"fg": "--color-destructive-strong-foreground",
+		"bg": "--color-destructive-strong",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-strong-foreground",
+		"backgroundClass": {
+			"light": "hover:bg-destructive-strong/90"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-accent",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"dark": "data-pressed:bg-accent"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-accent",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"dark": "hover:bg-accent"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-accent",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"light": "data-pressed:bg-accent"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-accent",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"light": "data-pressed:bg-accent/50"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-accent",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"light": "hover:bg-accent"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-accent",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"light": "hover:bg-accent/50"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-background",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"light": "bg-background"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-foreground",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/input.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"dark": "dark:has-autofill:bg-foreground/8"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-foreground",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/input.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"light": "has-autofill:bg-foreground/4"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-input",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"dark": "dark:bg-input/32"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-input",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"dark": "dark:data-pressed:bg-input/64"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-input",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"dark": "dark:hover:bg-input/64"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-popover",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"light": "bg-popover"
+		}
+	},
+	{
+		"fg": "--color-info-foreground",
+		"bg": "--color-info",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-info-foreground",
+		"backgroundClass": {
+			"dark": "dark:bg-info/16"
+		}
+	},
+	{
+		"fg": "--color-info-foreground",
+		"bg": "--color-info",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-info-foreground",
+		"backgroundClass": {
+			"light": "bg-info/8"
+		}
+	},
+	{
+		"fg": "--color-primary-foreground",
+		"bg": "--color-primary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-primary-foreground",
+		"backgroundClass": {
+			"dark": "bg-primary"
+		}
+	},
+	{
+		"fg": "--color-primary-foreground",
+		"bg": "--color-primary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-primary-foreground",
+		"backgroundClass": {
+			"dark": "data-pressed:bg-primary/90"
+		}
+	},
+	{
+		"fg": "--color-primary-foreground",
+		"bg": "--color-primary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-primary-foreground",
+		"backgroundClass": {
+			"dark": "hover:bg-primary/90"
+		}
+	},
+	{
+		"fg": "--color-primary-foreground",
+		"bg": "--color-primary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-primary-foreground",
+		"backgroundClass": {
+			"light": "bg-primary"
+		}
+	},
+	{
+		"fg": "--color-primary-foreground",
+		"bg": "--color-primary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-primary-foreground",
+		"backgroundClass": {
+			"light": "data-pressed:bg-primary/90"
+		}
+	},
+	{
+		"fg": "--color-primary-foreground",
+		"bg": "--color-primary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-primary-foreground",
+		"backgroundClass": {
+			"light": "hover:bg-primary/90"
+		}
+	},
+	{
+		"fg": "--color-secondary-foreground",
+		"bg": "--color-secondary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-secondary-foreground",
+		"backgroundClass": {
+			"dark": "bg-secondary"
+		}
+	},
+	{
+		"fg": "--color-secondary-foreground",
+		"bg": "--color-secondary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-secondary-foreground",
+		"backgroundClass": {
+			"dark": "data-pressed:bg-secondary/90"
+		}
+	},
+	{
+		"fg": "--color-secondary-foreground",
+		"bg": "--color-secondary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-secondary-foreground",
+		"backgroundClass": {
+			"dark": "hover:bg-secondary/90"
+		}
+	},
+	{
+		"fg": "--color-secondary-foreground",
+		"bg": "--color-secondary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-secondary-foreground",
+		"backgroundClass": {
+			"light": "bg-secondary"
+		}
+	},
+	{
+		"fg": "--color-secondary-foreground",
+		"bg": "--color-secondary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-secondary-foreground",
+		"backgroundClass": {
+			"light": "data-pressed:bg-secondary/90"
+		}
+	},
+	{
+		"fg": "--color-secondary-foreground",
+		"bg": "--color-secondary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-secondary-foreground",
+		"backgroundClass": {
+			"light": "hover:bg-secondary/90"
+		}
+	},
+	{
+		"fg": "--color-success-foreground",
+		"bg": "--color-success",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-success-foreground",
+		"backgroundClass": {
+			"dark": "dark:bg-success/16"
+		}
+	},
+	{
+		"fg": "--color-success-foreground",
+		"bg": "--color-success",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-success-foreground",
+		"backgroundClass": {
+			"light": "bg-success/8"
+		}
+	},
+	{
+		"fg": "--color-warning-foreground",
+		"bg": "--color-warning",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-warning-foreground",
+		"backgroundClass": {
+			"dark": "dark:bg-warning/16"
+		}
+	},
+	{
+		"fg": "--color-warning-foreground",
+		"bg": "--color-warning",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-warning-foreground",
+		"backgroundClass": {
+			"light": "bg-warning/8"
+		}
+	},
+	{
+		"fg": "--color-secondary-foreground",
+		"bg": "--color-secondary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light", "dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-secondary-foreground",
+		"backgroundClass": {
+			"light": "[:active,[data-pressed]]:bg-secondary/80",
+			"dark": "[:active,[data-pressed]]:bg-secondary/80"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-destructive",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"light": "hover:bg-destructive/4"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-destructive",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"dark": "hover:bg-destructive/4"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-destructive",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"light": "data-pressed:bg-destructive/4"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-destructive",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/button.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"dark": "data-pressed:bg-destructive/4"
+		}
+	},
+	{
+		"fg": "--color-primary-foreground",
+		"bg": "--color-primary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-primary-foreground",
+		"backgroundClass": {
+			"light": "[button&,a&]:hover:bg-primary/90"
+		}
+	},
+	{
+		"fg": "--color-primary-foreground",
+		"bg": "--color-primary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-primary-foreground",
+		"backgroundClass": {
+			"dark": "[button&,a&]:hover:bg-primary/90"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-accent",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"light": "[button&,a&]:hover:bg-accent/50"
+		}
+	},
+	{
+		"fg": "--color-foreground",
+		"bg": "--color-input",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-foreground",
+		"backgroundClass": {
+			"dark": "dark:[button&,a&]:hover:bg-input/48"
+		}
+	},
+	{
+		"fg": "--color-secondary-foreground",
+		"bg": "--color-secondary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-secondary-foreground",
+		"backgroundClass": {
+			"light": "[button&,a&]:hover:bg-secondary/90"
+		}
+	},
+	{
+		"fg": "--color-secondary-foreground",
+		"bg": "--color-secondary",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-secondary-foreground",
+		"backgroundClass": {
+			"dark": "[button&,a&]:hover:bg-secondary/90"
+		}
+	},
+	{
+		"fg": "--color-destructive-strong-foreground",
+		"bg": "--color-destructive-strong",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["light"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-strong-foreground",
+		"backgroundClass": {
+			"light": "[button&,a&]:hover:bg-destructive-strong/90"
+		}
+	},
+	{
+		"fg": "--color-destructive-strong-foreground",
+		"bg": "--color-destructive-strong",
+		"category": "body",
+		"minRatio": 4.5,
+		"themes": ["dark"],
+		"usage": "packages/ui/src/components/badge.tsx",
+		"backdrop": "--color-background",
+		"foregroundClass": "text-destructive-strong-foreground",
+		"backgroundClass": {
+			"dark": "[button&,a&]:hover:bg-destructive-strong/90"
+		}
+	}
+]

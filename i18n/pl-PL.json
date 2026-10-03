@@ -2204,7 +2204,8 @@
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below."
+			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
 		},
 		"list": {
 			"columnAssignee": "Assignee",
@@ -2262,6 +2263,20 @@
 			"typesLoading": "Loading types…",
 			"typesRetry": "Retry",
 			"close": "Close"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Portal klienta jest niedostępny",
+			"description": "Dostęp dla klientów nie jest jeszcze dostępny. Skontaktuj się z administratorem service desk."
+		},
+		"notFound": {
+			"title": "Nie znaleziono strony",
+			"description": "Ta strona jest niedostępna. Sprawdź adres i spróbuj ponownie."
+		},
+		"error": {
+			"title": "Coś poszło nie tak",
+			"description": "Nie udało się wczytać strony. Spróbuj ponownie."
 		}
 	}
 }

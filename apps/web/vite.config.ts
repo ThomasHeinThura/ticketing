@@ -20,13 +20,13 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             item.facadeModuleId
               ?.replaceAll("\\", "/")
               .endsWith(
-                "/routes/_layout/_authenticated/agent/projects/$projectKey/work.tsx?tsr-split=component",
+                "/routes/agent/_layout/_authenticated/agent/projects/$projectKey/work.tsx?tsr-split=component",
               ) === true,
         );
         const html = bundle["index.html"];
         if (!routeChunk || !html || html.type !== "asset")
           throw new Error(
-            "G11 work-route preload could not resolve its route chunk or index.html.",
+            "G11 work-route preload could not resolve its agent route chunk or index.html.",
           );
 
         const files = new Set<string>();
@@ -56,15 +56,12 @@ function preloadWorkRouteForDirectVisits(): Plugin {
             "G11 work-route preload could not resolve locale assets.",
           );
 
-        // Keep the generated, hashed module graph out of the initial agent bundle
-        // on every screen. A tiny parser-time hint requests it only for direct work
-        // list URLs, before the app's 46 static modulepreloads finish.
         const script = `(()=>{if(!/^\\/agent\\/projects\\/[^/]+\\/work\\/?$/.test(location.pathname))return;const routeFiles=${JSON.stringify([...files].map((file) => `/${file}`))};const locales=${JSON.stringify(Object.fromEntries(localeAssets))};const candidates=[navigator.language,navigator.languages?.[0]].filter(Boolean).map(value=>value.toLowerCase());let locale="en-US";for(const candidate of candidates){const exact=Object.keys(locales).find(value=>value.toLowerCase()===candidate);if(exact){locale=exact;break}const language=Object.keys(locales).find(value=>value.toLowerCase().split("-")[0]===candidate.split("-")[0]);if(language){locale=language;break}}for(const file of routeFiles){const link=document.createElement("link");link.rel="modulepreload";link.href=file;link.crossOrigin="anonymous";document.head.append(link)}const localeLink=document.createElement("link");localeLink.rel="modulepreload";localeLink.href=locales[locale];localeLink.crossOrigin="anonymous";localeLink.fetchPriority="high";document.head.append(localeLink)})();`;
         const source = String(html.source);
         const head = source.match(/<head(?:\s[^>]*)?>/i)?.[0];
         if (!head)
           throw new Error(
-            "G11 work-route preload could not find the HTML head.",
+            "G11 work-route preload could not find the agent HTML head.",
           );
         html.source = source.replace(head, `${head}<script>${script}</script>`);
       },
@@ -72,58 +69,109 @@ function preloadWorkRouteForDirectVisits(): Plugin {
   };
 }
 
-export default defineConfig({
-  define: {
-    __APP_VERSION__: JSON.stringify(packageJson.version),
-  },
-  base: "/",
-  plugins: [
-    tanstackRouter({
-      autoCodeSplitting: true,
-      // Keep co-located route tests out of the generated route tree.
-      routeFileIgnorePattern: "\\.test\\.tsx?$",
-    }),
-    preloadWorkRouteForDirectVisits(),
-    tailwindcss(),
-    react(),
-    babel({ presets: [reactCompilerPreset()] }),
-  ],
-  server: {
-    host: true,
-    hmr: true,
-    port: 5173,
-  },
-  optimizeDeps: {
-    // Pre-scan lazy route modules so route-to-route browser tests do not restart Vite
-    // mid-run when a later screen first imports one of their dependencies.
-    entries: ["index.html", "src/routes/**/*.tsx"],
-    exclude: ["better-auth"],
-  },
-  ssr: {
-    noExternal: ["better-auth"],
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-      "@i18n": path.resolve(__dirname, "../../i18n"),
+function portalModuleGraphMetadata(): Plugin {
+  return {
+    name: "taskdesk:portal-module-graph-metadata",
+    apply: "build",
+    generateBundle(_options, bundle) {
+      const chunks = Object.values(bundle)
+        .filter((item) => item.type === "chunk")
+        .map((chunk) => ({
+          file: chunk.fileName,
+          imports: chunk.imports,
+          dynamicImports: chunk.dynamicImports,
+          modules: Object.keys(chunk.modules),
+        }));
+      this.emitFile({
+        type: "asset",
+        fileName: ".vite/module-graph.json",
+        source: JSON.stringify({ version: 1, chunks }, null, 2),
+      });
     },
-  },
-  build: {
-    manifest: true,
-    // "hidden" emits source maps but does not reference them from the bundle,
-    // so they are built for local debugging and never served to end users.
-    // kaneo needed them for Sentry symbolication; that consumer is gone, and
-    // hidden remains the right default because it leaks nothing.
-    sourcemap: "hidden",
-    rolldownOptions: {
-      output: {
-        codeSplitting: { groups: [] },
+  };
+}
+
+export default defineConfig(({ mode }) => {
+  const isPortal = mode === "portal";
+  const root = isPortal ? path.resolve(__dirname, "portal") : __dirname;
+  const routeTree = isPortal
+    ? path.resolve(__dirname, "src/routeTree.portal.gen.ts")
+    : path.resolve(__dirname, "src/routeTree.agent.gen.ts");
+  const routesDirectory = path.resolve(
+    __dirname,
+    isPortal ? "src/routes/portal" : "src/routes/agent",
+  );
+  const outDir = path.resolve(
+    __dirname,
+    isPortal ? "dist/portal" : "dist/agent",
+  );
+
+  return {
+    root,
+    // The visual suite starts agent and portal Vite servers in the same workspace.
+    // Keep their optimizer manifests isolated so one server cannot invalidate the
+    // other's optimized-dependency URLs during startup.
+    cacheDir: path.resolve(
+      __dirname,
+      isPortal ? "node_modules/.vite-portal" : "node_modules/.vite-agent",
+    ),
+    publicDir: path.resolve(__dirname, "public"),
+    define: {
+      __APP_VERSION__: JSON.stringify(packageJson.version),
+    },
+    base: "/",
+    plugins: [
+      tanstackRouter({
+        routesDirectory,
+        generatedRouteTree: routeTree,
+        autoCodeSplitting: true,
+        routeFileIgnorePattern: "\\.test\\.tsx?$",
+      }),
+      ...(!isPortal ? [preloadWorkRouteForDirectVisits()] : []),
+      ...(isPortal ? [portalModuleGraphMetadata()] : []),
+      tailwindcss(),
+      react(),
+      babel({ presets: [reactCompilerPreset()] }),
+    ],
+    server: {
+      host: true,
+      hmr: true,
+      port: isPortal ? 5174 : 5173,
+    },
+    optimizeDeps: {
+      entries: [
+        "index.html",
+        isPortal
+          ? "../src/routes/portal/**/*.tsx"
+          : "src/routes/agent/**/*.tsx",
+      ],
+      exclude: ["better-auth"],
+    },
+    ssr: {
+      noExternal: ["better-auth"],
+    },
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+        "@i18n": path.resolve(__dirname, "../../i18n"),
       },
     },
-    commonjsOptions: {
-      include: [/better-auth/, /node_modules/],
-      transformMixedEsModules: true,
+    build: {
+      outDir,
+      emptyOutDir: true,
+      manifest: true,
+      sourcemap: "hidden",
+      rolldownOptions: {
+        input: path.resolve(root, "index.html"),
+        output: {
+          codeSplitting: { groups: [] },
+        },
+      },
+      commonjsOptions: {
+        include: [/better-auth/, /node_modules/],
+        transformMixedEsModules: true,
+      },
+      target: "esnext",
     },
-    target: "esnext",
-  },
+  };
 });

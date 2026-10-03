@@ -2183,7 +2183,8 @@
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below."
+			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
 		},
 		"list": {
 			"columnAssignee": "Assignee",
@@ -2241,6 +2242,20 @@
 			"typesLoading": "Loading types…",
 			"typesRetry": "Retry",
 			"close": "Close"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Cổng thông tin khách hàng không khả dụng",
+			"description": "Quyền truy cập dành cho khách hàng chưa khả dụng. Hãy liên hệ quản trị viên bộ phận hỗ trợ để được trợ giúp."
+		},
+		"notFound": {
+			"title": "Không tìm thấy trang",
+			"description": "Trang này không khả dụng. Hãy kiểm tra địa chỉ và thử lại."
+		},
+		"error": {
+			"title": "Đã xảy ra lỗi",
+			"description": "Không thể tải trang. Hãy thử lại."
 		}
 	}
 }

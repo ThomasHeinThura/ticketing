@@ -130,6 +130,10 @@ whether it is an epic, and which custom fields apply.
   columns: archiving does not start the 30-day purge timer, and an item need not be
   archived before it can be deleted. The default list/board/search filters exclude rows
   where either is set; an explicit filter reveals archived or deleted items.
+- `WI-21a` A native realtime deletion hint is emitted only after the approved soft-delete
+  transaction commits. Requesting, denying, expiring, cancelling, or invalidating a pending
+  deletion emits no `work_item.deleted` hint. Socket delivery follows the key-only
+  projection in [realtime.md](../01-architecture/realtime.md); REST remains authoritative.
 - `WI-22` Deleting a parent orphans its children rather than cascading. The user is told.
 - `WI-23` Deletion requires `work_item:delete` and goes through a **pending action**
   ([pending-actions.md](../01-architecture/pending-actions.md)): `DELETE` returns `202`,

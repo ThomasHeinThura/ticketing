@@ -2190,7 +2190,8 @@
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below."
+			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
 		},
 		"list": {
 			"columnAssignee": "Assignee",
@@ -2248,6 +2249,20 @@
 			"typesLoading": "Loading types…",
 			"typesRetry": "Retry",
 			"close": "Close"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "ग्राहक पोर्टल उपलब्ध नहीं है",
+			"description": "ग्राहक पहुँच अभी उपलब्ध नहीं है। सहायता के लिए अपने सर्विस डेस्क प्रशासक से संपर्क करें।"
+		},
+		"notFound": {
+			"title": "पृष्ठ नहीं मिला",
+			"description": "यह पृष्ठ उपलब्ध नहीं है। पता जाँचें और फिर प्रयास करें।"
+		},
+		"error": {
+			"title": "कुछ गलत हुआ",
+			"description": "पृष्ठ लोड नहीं हो सका। फिर प्रयास करें।"
 		}
 	}
 }

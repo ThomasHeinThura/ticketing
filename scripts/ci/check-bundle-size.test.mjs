@@ -165,3 +165,69 @@ test("G11: manifest cannot measure files outside the web build", async () => {
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+test("G11: independently built agent and portal roots are measured from separate manifests", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "g11-two-roots-"));
+  const agentDir = path.join(root, "agent");
+  const portalDir = path.join(root, "portal");
+  const agentManifestPath = path.join(agentDir, ".vite", "manifest.json");
+  const portalManifestPath = path.join(portalDir, ".vite", "manifest.json");
+  try {
+    await mkdir(path.dirname(agentManifestPath), { recursive: true });
+    await mkdir(path.dirname(portalManifestPath), { recursive: true });
+    const workKey = `src${WORK_LIST_COMPONENT_SUFFIX}`;
+    await writeFile(
+      agentManifestPath,
+      JSON.stringify({
+        "src/main.tsx": {
+          file: "assets/agent.js",
+          isEntry: true,
+          imports: ["chunks/shared.js"],
+          css: ["assets/agent.css"],
+        },
+        "chunks/shared.js": { file: "assets/shared.js" },
+        [workKey]: { file: "assets/work.js", imports: ["chunks/shared.js"] },
+        "../../i18n/en-US.json": { file: "assets/en-US.js" },
+      }),
+    );
+    await writeFile(
+      portalManifestPath,
+      JSON.stringify({
+        "src/main.portal.tsx": {
+          file: "assets/portal.js",
+          isEntry: true,
+          css: ["assets/portal.css"],
+        },
+      }),
+    );
+    for (const [directory, files] of [
+      [
+        agentDir,
+        [
+          "assets/agent.js",
+          "assets/agent.css",
+          "assets/shared.js",
+          "assets/work.js",
+          "assets/en-US.js",
+        ],
+      ],
+      [portalDir, ["assets/portal.js", "assets/portal.css"]],
+    ]) {
+      await mkdir(path.join(directory, "assets"), { recursive: true });
+      await Promise.all(
+        files.map((file) => writeFile(path.join(directory, file), file)),
+      );
+    }
+    const results = await checkBundleSizes({
+      manifestPath: agentManifestPath,
+      portalManifestPath,
+    });
+    assert.deepEqual(
+      results.map(({ role }) => role),
+      ["agent", "agent-work-list", "portal"],
+    );
+    assert.ok(results.every(({ bytes }) => bytes > 0));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

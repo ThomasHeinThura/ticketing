@@ -98,6 +98,11 @@ export const platformPolicies = {
 
   // The websocket surface. The upgrade handler authenticates the request itself before the
   // socket opens; there is no Hono response for a policy middleware to shape.
+  "GET /api/ws": {
+    delegated: "websocket",
+    reason:
+      "native subscription upgrade authenticates first and authorizes every topic against persisted reach",
+  },
   "GET /api/ws/user": {
     delegated: "websocket",
     reason:

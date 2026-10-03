@@ -233,7 +233,12 @@ test("source walk includes build, out and generated route trees and rejects syml
   }
   const libs = await packageAt("packages/libs", "@taskdesk/libs");
   await packageAt("apps/api", "@taskdesk/api");
-  for (const relative of ["build/edge.ts", "out/edge.ts", "routeTree.gen.ts"]) {
+  for (const relative of [
+    "build/edge.ts",
+    "out/edge.ts",
+    "routeTree.agent.gen.ts",
+    "routeTree.portal.gen.ts",
+  ]) {
     const sourceFile = path.join(libs, "src", relative);
     await mkdir(path.dirname(sourceFile), { recursive: true });
     await writeFile(sourceFile, 'import { x } from "@taskdesk/api";');
@@ -244,7 +249,8 @@ test("source walk includes build, out and generated route trees and rejects syml
   const { files, violations } = await analyzeDependencies(root);
   assert.ok(files.some((file) => file.endsWith("src/build/edge.ts")));
   assert.ok(files.some((file) => file.endsWith("src/out/edge.ts")));
-  assert.ok(files.some((file) => file.endsWith("src/routeTree.gen.ts")));
+  assert.ok(files.some((file) => file.endsWith("src/routeTree.agent.gen.ts")));
+  assert.ok(files.some((file) => file.endsWith("src/routeTree.portal.gen.ts")));
   assert.match(
     violations.join("\n"),
     /linked\.ts.*symbolic links under workspace src are rejected/s,
@@ -254,10 +260,10 @@ test("source walk includes build, out and generated route trees and rejects syml
       ...violations
         .join("\n")
         .matchAll(
-          /packages\/libs\/src\/(?:build\/edge\.ts|out\/edge\.ts|routeTree\.gen\.ts)\n\s+line \d+ imports .* from apps\/\*\*/g,
+          /packages\/libs\/src\/(?:build\/edge\.ts|out\/edge\.ts|routeTree\.(?:agent|portal)\.gen\.ts)\n\s+line \d+ imports .* from apps\/\*\*/g,
         ),
     ].length,
-    3,
+    4,
   );
 });
 

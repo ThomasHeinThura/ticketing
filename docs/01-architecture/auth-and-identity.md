@@ -367,9 +367,12 @@ code; only the credential check reuses the platform. Budget it as such.
   with `__Host-` and with `SameSite=Lax`, and the API is served on each portal's own origin,
   which `/api/portal/*` already implies
   ([decision-log.md](../07-planning/decision-log.md) — environment surface).
-- Every `session` row carries `portal` (`agent` | `customer`), set at issue time. The
-  portal-boundary middleware compares `session.portal` to the request host — that column
-  is the data the check runs on.
+- New `session` rows carry `portal` (`agent` | `customer`), set by the host-selected
+  Better Auth instance at issue time. The additive migration leaves existing rows unbound
+  (`NULL`) rather than infer their origin from identity-side data; those sessions fail
+  closed during authenticated request resolution and at the realtime boundary, requiring
+  a fresh sign-in. The selected host's portal must match `session.portal` even if a cookie
+  value is copied into the other portal's cookie name.
 - **Server-side sessions in Postgres, and this is the honest revocation SLA.**
   better-auth's `session.cookieCache` is **disabled** at the fork — kaneo enables it for
   five minutes, which serves a session from a signed cookie with no database read. Every
