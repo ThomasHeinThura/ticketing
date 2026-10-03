@@ -7,7 +7,10 @@ import { repoRoot } from "./lib/repo.mjs";
 
 const manifestPath = "apps/web/e2e/visual-screens.json";
 const inventoryPath = "docs/02-design/screen-inventory.md";
-const routeTreePath = "apps/web/src/routeTree.gen.ts";
+const routeTreePaths = [
+  "apps/web/src/routeTree.agent.gen.ts",
+  "apps/web/src/routeTree.portal.gen.ts",
+];
 const rootPackagePath = "package.json";
 const webPackagePath = "apps/web/package.json";
 const baseConfigPath = "apps/web/playwright.config.ts";
@@ -19,7 +22,12 @@ const manifest = JSON.parse(
   await readFile(path.join(repoRoot, manifestPath), "utf8"),
 );
 const inventory = await readFile(path.join(repoRoot, inventoryPath), "utf8");
-const routeTree = await readFile(path.join(repoRoot, routeTreePath), "utf8");
+const routeTrees = await Promise.all(
+  routeTreePaths.map((routeTreePath) =>
+    readFile(path.join(repoRoot, routeTreePath), "utf8"),
+  ),
+);
+const routeTreeLabel = routeTreePaths.join(" and ");
 const rootPackage = JSON.parse(
   await readFile(path.join(repoRoot, rootPackagePath), "utf8"),
 );
@@ -451,6 +459,52 @@ function hasExpectedWebServer(config, storybook) {
       "http://127.0.0.1:4178",
       ts.isStringLiteral,
     )
+  );
+}
+
+function hasExpectedPortalVisualServer(config) {
+  const [value] = propertyValues(config, "webServer");
+  if (
+    !value ||
+    !ts.isArrayLiteralExpression(value) ||
+    value.elements.length !== 2
+  )
+    return false;
+  let [agentServer, portalServer] = value.elements;
+  if (agentServer && ts.isNonNullExpression(agentServer))
+    agentServer = agentServer.expression;
+  if (
+    !agentServer ||
+    !ts.isPropertyAccessExpression(agentServer) ||
+    !ts.isIdentifier(agentServer.expression) ||
+    agentServer.expression.text !== "base" ||
+    agentServer.name.text !== "webServer" ||
+    !portalServer ||
+    !ts.isObjectLiteralExpression(portalServer)
+  )
+    return false;
+  const env = objectProperty(portalServer, "env");
+  return (
+    hasExactObjectKeys(portalServer, [
+      "command",
+      "url",
+      "reuseExistingServer",
+      "env",
+    ]) &&
+    hasLiteralProperty(
+      portalServer,
+      "command",
+      "pnpm dev:portal --host 127.0.0.1 --port 4179 --strictPort",
+      ts.isStringLiteral,
+    ) &&
+    hasLiteralProperty(
+      portalServer,
+      "url",
+      "http://127.0.0.1:4179/",
+      ts.isStringLiteral,
+    ) &&
+    hasBooleanProperty(portalServer, "reuseExistingServer", false) &&
+    hasExactObjectKeys(env, [])
   );
 }
 
@@ -1659,16 +1713,25 @@ function navigationMatchesApplicationRoute(
   navigation,
   applicationRoute,
   inventoryRoute,
+  origin,
 ) {
   // Visual route tests use a concrete path through Playwright's configured base
   // URL. Require that the path itself is the app route; an alias or redirect
   // must be declared explicitly in the manifest instead of silently standing in
   // for the screen being measured.
-  if (!navigation.startsWith("/") || navigation.startsWith("//")) {
-    return false;
+  let actualUrl;
+  if (origin === "portal") {
+    try {
+      actualUrl = new URL(navigation);
+    } catch {
+      return false;
+    }
+    if (actualUrl.origin !== "http://127.0.0.1:4179") return false;
+  } else {
+    if (!navigation.startsWith("/") || navigation.startsWith("//"))
+      return false;
+    actualUrl = new URL(navigation, "http://visual.invalid");
   }
-
-  const actualUrl = new URL(navigation, "http://visual.invalid");
   const expectedUrl = new URL(
     inventoryRoute ?? applicationRoute,
     "http://visual.invalid",
@@ -2799,7 +2862,19 @@ const activeInventoryRows = inventoryRows.filter(({ status }) =>
   /[🟡✅]/u.test(status),
 );
 const appRoutes = new Set(
-  [...routeTree.matchAll(/fullPath: '([^']+)'/g)].map(([, route]) => route),
+  routeTrees.flatMap((routeTree) => {
+    const paths = [...routeTree.matchAll(/fullPath: '([^']+)'/gu)].map(
+      ([, route]) => route,
+    );
+    const fullPaths = routeTree.match(
+      /export interface FileRouteTypes \{[\s\S]*?\n\s*fullPaths:\s*([\s\S]*?)\n\s*fileRoutesByTo:/u,
+    )?.[1];
+    if (fullPaths)
+      paths.push(
+        ...[...fullPaths.matchAll(/'([^']+)'/gu)].map(([, route]) => route),
+      );
+    return paths;
+  }),
 );
 const registeredInventoryRouteGroups = new Map();
 for (const row of inventoryRows) {
@@ -2958,6 +3033,7 @@ try {
           "testIgnore",
           "testMatch",
           "updateSnapshots",
+          "webServer",
         ],
         {
           index: 0,
@@ -2991,6 +3067,7 @@ try {
       ) ||
       !visualTestIgnores ||
       visualTestIgnores.length !== 0 ||
+      !hasExpectedPortalVisualServer(visualConfig) ||
       propertyValues(visualConfig, "testDir").length !== 0
     ) {
       failures.push(
@@ -3123,6 +3200,12 @@ if (findDisabledSuite(visualSourceFile)) {
 let mappedPageNavigations = 0;
 let mappedScreenshotAssertions = 0;
 for (const screen of manifest) {
+  if (screen.origin !== undefined && screen.origin !== "portal")
+    failures.push(`${screen.name} has an unsupported visual origin`);
+  if (screen.origin === "portal" && screen.applicationRoute !== "/")
+    failures.push(
+      `${screen.name} portal visual route must use the independent root path`,
+    );
   if (seenTests.has(screen.test))
     failures.push(`duplicate test name: ${screen.test}`);
   seenTests.add(screen.test);
@@ -3177,6 +3260,7 @@ for (const screen of manifest) {
         evidence.directNavigations[0]?.url ?? "",
         screen.applicationRoute,
         screen.inventoryRoute,
+        screen.origin,
       )
     ) {
       failures.push(
@@ -3277,7 +3361,7 @@ for (const screen of manifest) {
     }
   }
   if (!appRoutes.has(screen.applicationRoute)) {
-    failures.push(`${screen.name} route is missing from ${routeTreePath}`);
+    failures.push(`${screen.name} route is missing from ${routeTreeLabel}`);
   }
   const baseline = path.join(
     repoRoot,
@@ -3322,7 +3406,7 @@ for (const { name, route } of activeInventoryRows) {
   const applicationRoute = canonicalInventoryRoute(route);
   if (!appRoutes.has(applicationRoute)) {
     failures.push(
-      `in-progress or complete inventory route ${name} (${route}) is missing from ${routeTreePath}`,
+      `in-progress or complete inventory route ${name} (${route}) is missing from ${routeTreeLabel}`,
     );
   }
   if (!seenInventoryRoutes.has(route)) {

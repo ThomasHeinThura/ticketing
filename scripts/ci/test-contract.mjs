@@ -434,7 +434,7 @@ export function hasStableV2Tag(tagNames) {
 
 /**
  * Whether a stable v2.0.0+ release tag exists on `origin`, looked up live rather than from
- * any local file — `package.json`'s version tracks `semantic-release`/kaneo history, not
+ * any local file — `package.json`'s version tracks inherited kaneo history, not
  * this milestone, and after #331 a release is a git tag the manual Release workflow
  * creates, not a version-bump commit.
  *

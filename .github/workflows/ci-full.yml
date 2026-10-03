@@ -6,7 +6,8 @@
 #
 # The E2E job runs the logged-out redirect smoke. G8 snapshots cover every exported UI
 # Storybook story and deterministic fixtures for implemented inventory routes; future
-# inventory routes activate their baseline when their route is introduced.
+# inventory routes activate their baseline when their route is introduced. G11 measures
+# the seeded work-item list journeys and initial bundle.
 
 name: CI - full
 
@@ -135,10 +136,23 @@ jobs:
           retention-days: 7
 
   performance:
-    name: NOT ENABLED - performance budgets (G11)
-    if: false
-    # Blocked by: G11's thresholds are defined, but the app still has one combined
-    # web bundle and no seeded P1 work-list/detail journeys to measure.
+    name: performance - budgets (G11)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - run: exit 1
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: ./.github/actions/setup
+      - name: Build the web app and workspace dependencies
+        run: pnpm build
+      - name: Install Chromium
+        run: apps/web/node_modules/.bin/playwright install --with-deps chromium
+      - name: Measure G11 performance budgets
+        run: pnpm test:perf
+      - name: Upload performance browser evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-performance
+          path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7

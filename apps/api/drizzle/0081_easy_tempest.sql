@@ -1,0 +1,1 @@
+ALTER TABLE "session" ADD CONSTRAINT "session_portal_allowed" CHECK ("session"."portal" is null or "session"."portal" in ('agent', 'customer'));

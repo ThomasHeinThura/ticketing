@@ -59,12 +59,16 @@ runtime by instance branding.
 | `--color-secondary` | `bg-secondary` | `--alpha(black / 4%)` | `--alpha(white / 4%)` |
 | `--color-accent` | `bg-accent` | `--alpha(black / 4%)` | `--alpha(white / 4%)` |
 | `--color-destructive` | `bg-destructive` | `--color-red-500` | `color-mix(red-500 90%, white)` |
+| `--color-destructive-strong` | `bg-destructive-strong` | `--color-red-700` | `--color-red-700` |
+| `--color-destructive-strong-foreground` | `text-destructive-strong-foreground` | `--color-white` | `--color-white` |
 
 There is **no `--color-danger`** — kaneo's breach/error role is `--destructive`. Every
 colour above also has a `-foreground` counterpart for text placed on it
 (`--destructive-foreground`, `--accent-foreground`, `--muted-foreground`, `--card-foreground`,
 `--popover-foreground`, `--primary-foreground`, `--secondary-foreground`), listed once here
-rather than doubled in the table.
+rather than doubled in the table. Destructive action fills use the additional authored,
+provisional `--color-destructive-strong` / `--color-destructive-strong-foreground` pair so a
+solid destructive button can pass AA independently of the softer status color.
 
 ### Status colours
 
@@ -81,8 +85,10 @@ see the semantic table above. There is no separate `--danger` token.)
 
 ### Chart series
 
-`--chart-1` … `--chart-5`, used by any chart primitive so `G3` contrast applies to series
-colours. **Different in light and dark** — copy both, do not average them:
+`--chart-1` … `--chart-5` are reserved for chart primitives. **Different in light and
+dark** — copy both, do not average them. G3 contrast coverage begins only when chart-series
+pairs are registered in the bounded inventory; current automated coverage is limited to
+shared Button, Badge, and Input variants:
 
 | Token | Light | Dark |
 | --- | --- | --- |
@@ -217,9 +223,26 @@ maintain or drift from kaneo. If a real need for a semantic layout token
 (`--sidebar-width`, `--detail-pane-width`) is found during extraction, add it here with a
 value at that point — do not carry the old placeholder numbers forward.
 
-Density-aware spacing (comfortable/compact) is still a real requirement — it stays as a
-follow-up: whatever mechanism is chosen (semantic spacing tokens or a density class) is
-recorded here once decided, rather than pre-populated with unverified numbers.
+Density-aware spacing uses three shared classes in `packages/ui/src/styles/density.css`:
+`td-density-row` defaults to `py-3` and becomes `py-2` under the existing
+`html.compact-mode`; `td-density-field` defaults to `py-2` and becomes `py-1.5`; and
+`td-density-card` defaults to `p-4` and becomes `p-3`. These are Tailwind built-in values,
+not a new spacing-token layer. Apply them only to registered repeated rows, field controls,
+and shared card content panels. The `compact-mode` root class remains the
+existing persisted user preference. G2 rejects direct vertical padding/gap utilities on a
+registered slot; ordinary layout spacing remains unrestricted.
+
+### Density slot inventory (G2)
+
+| Class | Declared use | Comfortable | Compact |
+|---|---|---|---|
+| `td-density-row` | Repeated data rows in shared list/table compositions | `py-3` | `py-2` |
+| `td-density-field` | Shared form field control/label group | `py-2` | `py-1.5` |
+| `td-density-card` | Shared card content panels (`CardPanel`) | `p-4` | `p-3` |
+
+This is the P0/P1 starter inventory; additions require updating this table and the checker in
+the same implementation batch. Colors and visual matching remain provisional for Thomas's
+P4 H1–H6 review; the numeric contrast gate is still required before then.
 
 ### Motion
 
@@ -254,23 +277,56 @@ produce a contrast ratio directly. The checker must:
 2. Evaluate `--alpha()` and `color-mix()` by **compositing the translucent token over its
    effective backdrop** (the surface it is actually painted on in that pair), not in
    isolation.
-3. Check every pair declared in `pairs.json` in both themes and fail on a violation.
+3. Check every manifest entry in its declared theme(s) and fail on a violation. Theme-specific
+   interaction classes may be represented by separate entries.
 
-`pairs.json` schema:
+`packages/ui/src/styles/pairs.json` is the machine-readable inventory for shared Button,
+Badge, and Input variant declarations. This is a bounded source inventory, not a scan of all
+application compositions. Adding a source owner requires registering it in the checker and
+adding its actual pairs in the same change. Each entry records
+`fg`, `bg`, `category` (`body`, `large-text`, or `non-text`), `minRatio`, its declared
+`themes` (one or both; interaction variants may have theme-specific entries),
+`usage` (the real component/story/screen owner), `foregroundClass`, `backgroundClass` (the
+actual surface class for each theme, including alpha/interaction modifiers), and `backdrop`
+when either computed color is translucent. The current source-coverage inventory registers
+the shared Button, Badge, and Input variant declarations; adding a new styled component to
+that inventory requires adding its source and actual pairs to the same gate batch. Example:
 
 ```json
-{ "fg": "--color-muted-foreground", "bg": "--color-card", "minRatio": 4.5, "themes": ["light", "dark"] }
+{
+  "fg": "--color-foreground",
+  "bg": "--color-background",
+  "category": "body",
+  "minRatio": 4.5,
+  "themes": ["light", "dark"],
+  "usage": "packages/ui/src/components/button.tsx",
+  "foregroundClass": "text-foreground",
+  "backgroundClass": { "light": "bg-background", "dark": "bg-background" },
+  "backdrop": "--color-background"
+}
 ```
 
-One entry per declared pair; `minRatio` is `4.5` for body text and `3` for large text and
-non-text indicators.
+The inventory lists actual combinations, not every theoretical cross-product. The gate
+compares observed declared pairs in the registered Button, Badge, and Input sources against
+the manifest; new or unclassified use in those sources fails until it has an explicit entry.
+Other component sources are not covered until explicitly registered in the gate. The runner builds and loads the
+web CSS in Chromium, resolves the computed colors in each theme and interaction state,
+composites alpha over the recorded opaque backdrop, then computes WCAG 2.1 contrast. For
+autofill, only the built `:has(:autofill)` selector is substituted with a probe attribute
+because headless Chromium cannot synthesize autofill; its production class, declaration,
+variables, and cascade are still measured. Body text uses 4.5:1; large text
+and non-text indicators use 3:1.
 
 Status must never be conveyed by colour alone. An SLA badge carries an icon and a label as
 well as a colour.
 
 ## Typography
 
-Geist Variable, Geist Mono Variable for keys, IDs and code.
+Geist Variable and Geist Mono Variable for keys, IDs and code. `apps/web` imports the
+fonts from the installed `@fontsource-variable/geist` packages; they are bundled locally,
+with no runtime font CDN request. The fallback stack is `ui-sans-serif, system-ui,
+sans-serif` for body text and `ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+"Liberation Mono", "Courier New", monospace` for keys and code.
 
 Weights: 400 body, 500 emphasis, 600 headings. Nothing heavier — kaneo does not use bold
 type for hierarchy, it uses size and colour.
@@ -284,12 +340,13 @@ type scale… deleted" above) rather than a bespoke `--text-*` token set.
 ## Breakpoints
 
 ```
-sm   640px    md   768px    lg  1024px    xl  1280px    2xl 1536px
+sm   640px    md  768px    app 900px    lg  1024px    xl  1280px    2xl 1536px
 ```
 
-The meaningful application breakpoint is **900 px**, below which the agent sidebar
-collapses to an icon rail and the portal switches to a bottom bar. Inherited from v1,
-which got this right after its redesign.
+The meaningful application breakpoint is **900 px** (`app:` / `--breakpoint-app`), below
+which the agent sidebar collapses to an icon rail and the portal switches to a bottom bar.
+It is defined in `packages/ui/src/styles/theme.css` so responsive compositions use one
+shared breakpoint.
 
 ## Enforcement
 
@@ -297,9 +354,9 @@ which got this right after its redesign.
 
 - A hex colour, `rgb()`, `hsl()`, `oklch()`, `color-mix(` or `--alpha(` outside
   `packages/ui/src/styles/`
-- An arbitrary Tailwind value for colour, spacing, radius or z-index outside `packages/ui`
-- A declared foreground/background pair (from `pairs.json`) failing contrast in either
-  theme, per the compositing rule above
+- A fixed vertical padding/gap utility on a registered `td-density-*` slot
+- A used foreground/background combination missing from `pairs.json` or a declared pair
+  failing contrast in either theme, per the Chromium compositing rule above
 - A token referenced but not defined
 
 ## Adding a token

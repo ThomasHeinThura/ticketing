@@ -2204,7 +2204,8 @@
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below."
+			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
 		},
 		"list": {
 			"columnAssignee": "Assignee",
@@ -2262,6 +2263,20 @@
 			"typesLoading": "Loading types…",
 			"typesRetry": "Retry",
 			"close": "Close"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Портал клієнтів недоступний",
+			"description": "Доступ для клієнтів поки недоступний. Зверніться по допомогу до адміністратора служби підтримки."
+		},
+		"notFound": {
+			"title": "Сторінку не знайдено",
+			"description": "Ця сторінка недоступна. Перевірте адресу та спробуйте ще раз."
+		},
+		"error": {
+			"title": "Щось пішло не так",
+			"description": "Не вдалося завантажити сторінку. Спробуйте ще раз."
 		}
 	}
 }

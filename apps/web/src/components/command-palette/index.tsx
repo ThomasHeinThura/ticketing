@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import {
   Command,
   CommandCollection,
@@ -18,18 +18,35 @@ import {
   KbdGroup,
 } from "@taskdesk/ui";
 import { ArrowDownIcon, ArrowUpIcon, CornerDownLeftIcon } from "lucide-react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
-import SearchCommandMenu from "@/components/search-command-menu";
-import CreateTaskModal from "@/components/shared/modals/create-task-modal";
-import CreateWorkspaceModal from "@/components/shared/modals/create-workspace-modal";
 import { shortcuts } from "@/constants/shortcuts";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { authClient } from "@/lib/auth-client";
 import { useUserPreferencesStore } from "@/store/user-preferences";
-import CreateProjectModal from "../shared/modals/create-project-modal";
+
+const SearchCommandMenu = lazy(
+  () => import("@/components/search-command-menu"),
+);
+const CreateTaskModal = lazy(
+  () => import("@/components/shared/modals/create-task-modal"),
+);
+const CreateWorkspaceModal = lazy(
+  () => import("@/components/shared/modals/create-workspace-modal"),
+);
+const CreateProjectModal = lazy(
+  () => import("../shared/modals/create-project-modal"),
+);
 
 type PaletteActionItem = {
   value: string;
@@ -48,7 +65,7 @@ function CommandPalette() {
   const { t } = useTranslation();
   const { setTheme } = useUserPreferencesStore();
   const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
   const { data: workspace } = useActiveWorkspace();
   const { data: session } = authClient.useSession();
   const { data: config } = useGetConfig();
@@ -56,15 +73,68 @@ function CommandPalette() {
   const canCreateWorkspace =
     isAdmin || (config !== undefined && !config.disableWorkspaceCreation);
   const [open, setOpen] = useState(false);
+  const [keepPaletteMounted, setKeepPaletteMounted] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
-  const projectIdFromRoute =
-    location.pathname.match(/\/project\/([^/]+)/)?.[1] ?? undefined;
-  const isBacklogView = location.pathname.endsWith("/backlog");
+  useEffect(() => {
+    let idleCallbackId: number | undefined;
+    let frameId: number | undefined;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (idleWindow.requestIdleCallback) {
+      idleCallbackId = idleWindow.requestIdleCallback(() => {
+        setKeepPaletteMounted(true);
+      });
+    } else {
+      frameId = requestAnimationFrame(() => setKeepPaletteMounted(true));
+    }
+    return () => {
+      if (idleCallbackId !== undefined)
+        idleWindow.cancelIdleCallback?.(idleCallbackId);
+      if (frameId !== undefined) cancelAnimationFrame(frameId);
+    };
+  }, []);
+
+  const preloadProjectsPage = useCallback(() => {
+    if (!workspace?.id) return;
+    // TanStack's auto-split route component and its nested React.lazy page are
+    // separate chunks; warm both as soon as keyboard or pointer intent is clear.
+    void router
+      .preloadRoute({
+        to: "/dashboard/workspace/$workspaceId",
+        params: { workspaceId: workspace.id },
+      })
+      .catch(() => {});
+    void import("@/components/project-list/projects-page").catch(() => {});
+  }, [router, workspace?.id]);
+
+  const handleItemHighlighted = useCallback(
+    (value: unknown, { reason }: { reason: string }) => {
+      const highlightedValue =
+        typeof value === "object" && value !== null && "value" in value
+          ? value.value
+          : value;
+      if (
+        highlightedValue === "projects" &&
+        (reason === "keyboard" || reason === "pointer")
+      ) {
+        // Load the route after explicit destination intent. This keeps route
+        // work off the palette's opening path and lets keyboard/pointer users
+        // warm the route before activating the highlighted command.
+        preloadProjectsPage();
+      }
+    },
+    [preloadProjectsPage],
+  );
 
   useRegisterShortcuts({
+    shortcuts: {
+      [shortcuts.search.prefix]: () => setIsSearchOpen(true),
+    },
     // No entry for `shortcuts.help.key` ("?") here: `KeyboardShortcutsHelp`
     // already listens for the real "?" keydown directly and opens its own
     // dialog (apps/web/src/components/keyboard-shortcuts-help.tsx). A
@@ -265,9 +335,17 @@ function CommandPalette() {
   return (
     <>
       <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandDialogPopup instant>
-          <Command items={groupedItems}>
+        <CommandDialogPopup
+          instant
+          keepMounted={keepPaletteMounted}
+          blurBackdrop={false}
+        >
+          <Command
+            items={groupedItems}
+            onItemHighlighted={handleItemHighlighted}
+          >
             <CommandInput
+              autoFocus={false}
               placeholder={t("navigation:commandPalette.inputPlaceholder")}
             />
             <CommandPanel>
@@ -335,22 +413,42 @@ function CommandPalette() {
         </CommandDialogPopup>
       </CommandDialog>
 
-      <SearchCommandMenu open={isSearchOpen} setOpen={setIsSearchOpen} />
-      <CreateTaskModal
-        open={isCreateTaskOpen}
-        projectId={projectIdFromRoute}
-        status={isBacklogView ? "planned" : undefined}
-        onClose={() => setIsCreateTaskOpen(false)}
-      />
-      <CreateWorkspaceModal
-        open={isCreateWorkspaceOpen}
-        onClose={() => setIsCreateWorkspaceOpen(false)}
-      />
-      <CreateProjectModal
-        open={isCreateProjectOpen}
-        onClose={() => setIsCreateProjectOpen(false)}
-      />
+      <Suspense fallback={null}>
+        {isSearchOpen ? (
+          <SearchCommandMenu open setOpen={setIsSearchOpen} />
+        ) : null}
+        {isCreateTaskOpen ? (
+          <CreateTaskRouteModal onClose={() => setIsCreateTaskOpen(false)} />
+        ) : null}
+        {isCreateWorkspaceOpen ? (
+          <CreateWorkspaceModal
+            open
+            onClose={() => setIsCreateWorkspaceOpen(false)}
+          />
+        ) : null}
+        {isCreateProjectOpen ? (
+          <CreateProjectModal
+            open
+            onClose={() => setIsCreateProjectOpen(false)}
+          />
+        ) : null}
+      </Suspense>
     </>
+  );
+}
+
+function CreateTaskRouteModal({ onClose }: { onClose: () => void }) {
+  const { pathname } = useLocation();
+  const projectId = pathname.match(/\/project\/([^/]+)/)?.[1] ?? undefined;
+  const status = pathname.endsWith("/backlog") ? "planned" : undefined;
+
+  return (
+    <CreateTaskModal
+      open
+      projectId={projectId}
+      status={status}
+      onClose={onClose}
+    />
   );
 }
 

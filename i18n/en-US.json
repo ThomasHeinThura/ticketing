@@ -2247,7 +2247,22 @@
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below."
+			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Customer portal unavailable",
+			"description": "Customer access is not available yet. Contact your service desk administrator for help."
+		},
+		"notFound": {
+			"title": "Page not found",
+			"description": "This page isn't available. Check the address and try again."
+		},
+		"error": {
+			"title": "Something went wrong",
+			"description": "The page could not be loaded. Try again."
 		}
 	}
 }

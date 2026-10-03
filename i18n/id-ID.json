@@ -2183,7 +2183,8 @@
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below."
+			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
 		},
 		"list": {
 			"columnAssignee": "Assignee",
@@ -2241,6 +2242,20 @@
 			"typesLoading": "Loading types…",
 			"typesRetry": "Retry",
 			"close": "Close"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Portal pelanggan tidak tersedia",
+			"description": "Akses pelanggan belum tersedia. Hubungi administrator service desk Anda untuk bantuan."
+		},
+		"notFound": {
+			"title": "Halaman tidak ditemukan",
+			"description": "Halaman ini tidak tersedia. Periksa alamat lalu coba lagi."
+		},
+		"error": {
+			"title": "Terjadi kesalahan",
+			"description": "Halaman tidak dapat dimuat. Coba lagi."
 		}
 	}
 }

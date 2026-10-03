@@ -114,9 +114,12 @@ In the target schema better-auth owns `user`, `session`, `account`, `verificatio
 are not enabled by the current API plugin configuration. The `identity_connection.mfa_upstream_mode`
 field below is also a target setting; current source does not enforce it. better-auth is
 used for **authentication only** — its organisation plugin is
-**not** used; the directory below is ours. We add, via better-auth's `additionalFields`,
-`session.portal` (`agent`\|`customer`), set at issue time and compared to the request host
-by the portal-boundary middleware ([auth-and-identity.md](auth-and-identity.md)).
+**not** used; the directory below is ours. The session table has a nullable `portal`
+column (`agent`\|`customer`) set by the host-selected Better Auth instance at issue time
+and compared to the request host during Better Auth dispatch, session-backed API auth and
+WebSocket upgrades. The additive migration leaves pre-existing sessions unbound; no portal
+is inferred from identity-side data, and those sessions require a fresh sign-in
+([auth-and-identity.md](auth-and-identity.md)).
 Step-up `auth_method` values `totp`, `backup_code`, and `sso_prompt_login` are planned
 adapter values; they do not mean those proof methods are available in current source.
 

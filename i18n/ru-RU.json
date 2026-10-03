@@ -2260,7 +2260,8 @@
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below."
+			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
 		},
 		"list": {
 			"columnAssignee": "Assignee",
@@ -2318,6 +2319,20 @@
 			"typesLoading": "Loading types…",
 			"typesRetry": "Retry",
 			"close": "Close"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Портал клиентов недоступен",
+			"description": "Доступ для клиентов пока недоступен. Обратитесь за помощью к администратору службы поддержки."
+		},
+		"notFound": {
+			"title": "Страница не найдена",
+			"description": "Эта страница недоступна. Проверьте адрес и попробуйте ещё раз."
+		},
+		"error": {
+			"title": "Что-то пошло не так",
+			"description": "Не удалось загрузить страницу. Попробуйте ещё раз."
 		}
 	}
 }

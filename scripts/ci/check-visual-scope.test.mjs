@@ -384,7 +384,8 @@ async function runVisualScope({
   );
 
   write(dir, "docs/02-design/screen-inventory.md", inventory);
-  write(dir, "apps/web/src/routeTree.gen.ts", routeTree(routes));
+  write(dir, "apps/web/src/routeTree.agent.gen.ts", routeTree(routes));
+  write(dir, "apps/web/src/routeTree.portal.gen.ts", routeTree(["/"]));
   write(dir, "apps/web/e2e/visual-screens.json", JSON.stringify(screens));
   write(
     dir,

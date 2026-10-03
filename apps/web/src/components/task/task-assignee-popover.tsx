@@ -8,7 +8,7 @@ import {
 import { Check } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { useUpdateTaskAssignee } from "@/hooks/mutations/task/use-update-task-assignee";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useNumberedShortcuts } from "@/hooks/use-numbered-shortcuts";
@@ -52,13 +52,19 @@ export default function TaskAssigneePopover({
 
   const handleAssigneeChange = useCallback(
     async (newUserId: string) => {
+      setOpen(false);
       try {
+        const selectedUser = workspaceUsers?.members?.find(
+          (member) => member.userId === newUserId,
+        );
         await updateTaskAssignee({
           ...task,
           userId: newUserId,
+          assigneeId: newUserId || null,
+          assigneeName: selectedUser?.user?.name ?? null,
         });
-        setOpen(false);
       } catch (error) {
+        setOpen(true);
         toast.error(
           error instanceof Error
             ? error.message
@@ -66,7 +72,7 @@ export default function TaskAssigneePopover({
         );
       }
     },
-    [t, task, updateTaskAssignee],
+    [t, task, updateTaskAssignee, workspaceUsers],
   );
 
   const shortcutOptions = useMemo(() => {

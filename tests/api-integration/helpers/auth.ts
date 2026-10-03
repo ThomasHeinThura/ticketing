@@ -1,11 +1,11 @@
 import type { Session, User } from "better-auth/types";
 import { vi } from "vitest";
-import { auth } from "../../../apps/api/src/auth";
+import { auth, portalAuth } from "../../../apps/api/src/auth";
 
 function createSession(
   userId: string,
-  overrides: { impersonatedBy?: string } = {},
-): Session & { impersonatedBy?: string } {
+  overrides: { impersonatedBy?: string; portal?: "agent" | "customer" } = {},
+): Session & { impersonatedBy?: string; portal: "agent" | "customer" } {
   const now = new Date();
 
   return {
@@ -17,6 +17,7 @@ function createSession(
     updatedAt: now,
     ipAddress: null,
     userAgent: null,
+    portal: overrides.portal ?? "agent",
     ...overrides,
   };
 }
@@ -34,14 +35,22 @@ type MockSessionUser = User & { role?: string | null };
 
 export function mockAuthenticatedSession(
   user: MockSessionUser,
-  sessionOverrides: { impersonatedBy?: string } = {},
+  sessionOverrides: {
+    impersonatedBy?: string;
+    portal?: "agent" | "customer";
+  } = {},
 ) {
-  return vi.spyOn(auth.api, "getSession").mockResolvedValue({
+  const result = {
     session: createSession(user.id, sessionOverrides),
     user,
-  });
+  };
+  const agentMock = vi.spyOn(auth.api, "getSession").mockResolvedValue(result);
+  vi.spyOn(portalAuth.api, "getSession").mockResolvedValue(result);
+  return agentMock;
 }
 
 export function mockAnonymousSession() {
-  return vi.spyOn(auth.api, "getSession").mockResolvedValue(null);
+  const agentMock = vi.spyOn(auth.api, "getSession").mockResolvedValue(null);
+  vi.spyOn(portalAuth.api, "getSession").mockResolvedValue(null);
+  return agentMock;
 }

@@ -13,8 +13,8 @@ import {
 import { Filter, PanelsTopLeft, Rows3, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import SortControl from "@/components/common/sort-control";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   type BoardFilters,
   DUE_DATE_FILTER_VALUES,

@@ -2190,7 +2190,8 @@
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below."
+			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
 		},
 		"list": {
 			"columnAssignee": "Assignee",
@@ -2248,6 +2249,20 @@
 			"typesLoading": "Loading types…",
 			"typesRetry": "Retry",
 			"close": "Close"
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Порталот за клиенти не е достапен",
+			"description": "Пристапот за клиенти сè уште не е достапен. Обратете се кај администраторот на сервисниот центар."
+		},
+		"notFound": {
+			"title": "Страницата не е пронајдена",
+			"description": "Оваа страница не е достапна. Проверете ја адресата и обидете се повторно."
+		},
+		"error": {
+			"title": "Се појави проблем",
+			"description": "Страницата не можеше да се вчита. Обидете се повторно."
 		}
 	}
 }
