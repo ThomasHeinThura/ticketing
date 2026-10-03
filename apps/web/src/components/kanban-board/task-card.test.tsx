@@ -1,5 +1,13 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { CSS } from "@dnd-kit/utilities";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import useProjectStore from "@/store/project";
 import type Task from "@/types/task";
 import TaskCard from "./task-card";
 
@@ -10,6 +18,7 @@ const mocks = vi.hoisted(() => ({
 
 afterEach(() => {
   cleanup();
+  useProjectStore.getState().setProject(undefined);
   vi.clearAllMocks();
 });
 
@@ -25,7 +34,7 @@ vi.mock("@dnd-kit/sortable", () => ({
 }));
 
 vi.mock("@dnd-kit/utilities", () => ({
-  CSS: { Transform: { toString: () => undefined } },
+  CSS: { Transform: { toString: vi.fn(() => undefined) } },
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -68,12 +77,6 @@ vi.mock("@/store/bulk-selection", () => ({
       selectedTaskIds: new Set(),
       focusedTaskId: null,
     }),
-}));
-
-vi.mock("@/store/project", () => ({
-  default: () => ({
-    project: { id: "project-1", slug: "PRJ", columns: [] },
-  }),
 }));
 
 vi.mock("@/store/user-preferences", () => ({
@@ -138,5 +141,36 @@ describe("TaskCard keyboard context menu", () => {
     fireEvent.keyDown(card as HTMLElement, { key: "ContextMenu" });
 
     expect(mocks.openContextMenu).toHaveBeenCalledExactlyOnceWith("task-1");
+  });
+
+  it("ignores unrelated project replacements but responds to project slug changes", async () => {
+    const project = {
+      id: "project-1",
+      name: "Project",
+      slug: "PRJ",
+      icon: null,
+      description: null,
+      workspaceId: "workspace-1",
+      columns: [],
+      archivedTasks: [],
+      plannedTasks: [],
+    } as NonNullable<ReturnType<typeof useProjectStore.getState>["project"]>;
+    useProjectStore.getState().setProject(project);
+    const transformToString = vi.mocked(CSS.Transform.toString);
+    transformToString.mockClear();
+
+    renderTaskCard();
+    expect(transformToString).toHaveBeenCalledOnce();
+
+    transformToString.mockClear();
+    act(() =>
+      useProjectStore.getState().setProject({ ...project, columns: [] }),
+    );
+    expect(transformToString).not.toHaveBeenCalled();
+
+    act(() =>
+      useProjectStore.getState().setProject({ ...project, slug: "NEW" }),
+    );
+    expect(transformToString).toHaveBeenCalledOnce();
   });
 });
