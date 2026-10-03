@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense } from "react";
 import PageTitle from "@/components/page-title";
 import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
 import WorkItemDetailLoading from "@/components/work-item/work-item-detail-loading";
@@ -55,6 +55,11 @@ function WorkItemDetailRouteComponent() {
               isError={isError && !isNotFound}
               onRetry={refetch}
             />
+          ) : !isNotFound && !isError ? (
+            // The data query is the only reason this screen is waiting. Render
+            // its light loading shape directly instead of loading/evaluating
+            // the full detail module just to have it return that same shape.
+            <WorkItemDetailLoading />
           ) : (
             <WorkItemDetail
               item={undefined}
@@ -73,67 +78,6 @@ function WorkItemDetailRouteComponent() {
 }
 
 function WorkItemDetailWithProject({
-  item,
-  workItemKey,
-  isNotFound,
-  isError,
-  onRetry,
-}: {
-  item: NonNullable<ReturnType<typeof useGetWorkItem>["data"]>;
-  workItemKey: string;
-  isNotFound: boolean;
-  isError: boolean;
-  onRetry: () => void;
-}) {
-  const [resolveProject, setResolveProject] = useState(false);
-
-  useEffect(() => {
-    let idleCallbackId: number | undefined;
-    let frameId: number | undefined;
-    const idleWindow = window as Window & {
-      requestIdleCallback?: (callback: IdleRequestCallback) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-    if (idleWindow.requestIdleCallback) {
-      idleCallbackId = idleWindow.requestIdleCallback(() => {
-        setResolveProject(true);
-      });
-    } else {
-      frameId = requestAnimationFrame(() => setResolveProject(true));
-    }
-    return () => {
-      if (idleCallbackId !== undefined)
-        idleWindow.cancelIdleCallback?.(idleCallbackId);
-      if (frameId !== undefined) cancelAnimationFrame(frameId);
-    };
-  }, []);
-
-  if (!resolveProject) {
-    return (
-      <WorkItemDetail
-        item={item}
-        workItemKey={workItemKey}
-        project={undefined}
-        isLoading={false}
-        isNotFound={isNotFound}
-        isError={isError}
-        onRetry={onRetry}
-      />
-    );
-  }
-
-  return (
-    <WorkItemDetailProject
-      item={item}
-      workItemKey={workItemKey}
-      isNotFound={isNotFound}
-      isError={isError}
-      onRetry={onRetry}
-    />
-  );
-}
-
-function WorkItemDetailProject({
   item,
   workItemKey,
   isNotFound,
