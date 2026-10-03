@@ -40,4 +40,36 @@ describe("useGetTask cancellation", () => {
     expect(signal.aborted).toBe(true);
     queryClient.clear();
   });
+
+  it("keeps a selected field stable when unrelated task fields change", async () => {
+    mocks.getTask.mockResolvedValue({
+      id: "task-1",
+      title: "Stable title",
+      status: "todo",
+      userId: null,
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    const { result } = renderHook(
+      () => useGetTask("task-1", (task) => task.title),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.data).toBe("Stable title"));
+    await act(async () => {
+      queryClient.setQueryData(["task", "task-1"], {
+        id: "task-1",
+        title: "Stable title",
+        status: "in-progress",
+        userId: "assignee-2",
+      });
+    });
+
+    expect(result.current.data).toBe("Stable title");
+    queryClient.clear();
+  });
 });

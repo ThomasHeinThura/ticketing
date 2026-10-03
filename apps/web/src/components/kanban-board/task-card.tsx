@@ -143,6 +143,10 @@ function TaskCard({
       (member) => member.userId === task.userId,
     );
   }, [workspaceUsers, task.userId]);
+  const dueDate = showDueDates && task.dueDate ? new Date(task.dueDate) : null;
+  const dueDateStatus = dueDate
+    ? getDueDateStatus(dueDate, taskIsCompleted)
+    : null;
 
   function handleTaskCardClick(
     e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>,
@@ -283,19 +287,19 @@ function TaskCard({
             </span>
           )}
 
-          {showDueDates && task.dueDate && (
+          {dueDateStatus && dueDate && (
             <div
-              className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded h-5.5 ${dueDateStatusColors[getDueDateStatus(task.dueDate, taskIsCompleted)]}`}
+              className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded h-5.5 ${dueDateStatusColors[dueDateStatus]}`}
             >
-              {getDueDateStatus(task.dueDate, taskIsCompleted) ===
-                "overdue" && <CalendarX className="w-3 h-3" />}
-              {getDueDateStatus(task.dueDate, taskIsCompleted) ===
-                "due-soon" && <CalendarClock className="w-3 h-3" />}
-              {(getDueDateStatus(task.dueDate, taskIsCompleted) ===
-                "far-future" ||
-                getDueDateStatus(task.dueDate, taskIsCompleted) ===
-                  "no-due-date") && <Calendar className="w-3 h-3" />}
-              <span>{format(new Date(task.dueDate), "MMM d")}</span>
+              {dueDateStatus === "overdue" && <CalendarX className="w-3 h-3" />}
+              {dueDateStatus === "due-soon" && (
+                <CalendarClock className="w-3 h-3" />
+              )}
+              {(dueDateStatus === "far-future" ||
+                dueDateStatus === "no-due-date") && (
+                <Calendar className="w-3 h-3" />
+              )}
+              <span>{format(dueDate, "MMM d")}</span>
             </div>
           )}
 

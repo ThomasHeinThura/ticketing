@@ -3,8 +3,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useEffect } from "react";
-import { isTaskCompleted } from "@/lib/due-date-status";
+import { useEffect, useMemo } from "react";
 import type { ProjectWithTasks } from "@/types/project";
 import TaskCard, {
   type TaskCardDisplayPreferences,
@@ -40,6 +39,15 @@ export function ColumnDropzone({
   workspaceUsers,
   onContextMenuTask,
 }: ColumnDropzoneProps) {
+  const columnCompletionBySlug = useMemo(() => {
+    const completionBySlug = new Map<string, boolean>();
+    for (const item of projectColumns) {
+      if (!completionBySlug.has(item.slug)) {
+        completionBySlug.set(item.slug, item.isFinal);
+      }
+    }
+    return completionBySlug;
+  }, [projectColumns]);
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
     data: {
@@ -64,7 +72,11 @@ export function ColumnDropzone({
               key={task.id}
               task={task}
               projectSlug={projectSlug}
-              taskIsCompleted={isTaskCompleted(task.status, projectColumns)}
+              taskIsCompleted={
+                projectColumns.length > 0
+                  ? (columnCompletionBySlug.get(task.status) ?? false)
+                  : task.status === "done" || task.status === "archived"
+              }
               displayPreferences={displayPreferences}
               isTaskSelected={selectedTaskIds.has(task.id)}
               isTaskFocused={focusedTaskId === task.id}
