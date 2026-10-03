@@ -45,6 +45,29 @@ afterEach(() => {
 });
 
 describe("TaskDesk API OpenAPI spec", () => {
+  it("serves the document on the configured agent host only", async () => {
+    const configuredAgentUrl = process.env.TASKDESK_AGENT_URL;
+    const configuredPortalUrl = process.env.TASKDESK_PORTAL_URL;
+    if (!configuredAgentUrl || !configuredPortalUrl) {
+      throw new Error("The integration host fixtures are not configured.");
+    }
+
+    const agentOrigin = new URL(configuredAgentUrl);
+    const portalOrigin = new URL(configuredPortalUrl);
+    const { app } = createApp();
+    const agentResponse = await app.request(
+      new URL("/api/openapi", agentOrigin).toString(),
+      { headers: { host: agentOrigin.host } },
+    );
+    const portalResponse = await app.request(
+      new URL("/api/openapi", portalOrigin).toString(),
+      { headers: { host: portalOrigin.host } },
+    );
+
+    expect(agentResponse.status).toBe(200);
+    expect(portalResponse.status).toBe(404);
+  });
+
   it("keeps runtime clients on the same origin when no API URL is configured", async () => {
     vi.stubEnv("KANEO_API_URL", undefined);
 
