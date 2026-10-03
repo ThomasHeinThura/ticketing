@@ -8,6 +8,7 @@ type TaskDetailsSkeletonProps = {
 export function TaskDetailsSkeleton({ className }: TaskDetailsSkeletonProps) {
   return (
     <div
+      data-testid="g13-legacy-task-loading"
       className={cn(
         "mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col gap-2 px-3 pb-16 pt-3 sm:px-4 xl:pb-20 xl:pt-8",
         className,

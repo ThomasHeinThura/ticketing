@@ -118,6 +118,9 @@
           "manageProjects": {
             "type": "boolean"
           },
+          "manageProjectSettings": {
+            "type": "boolean"
+          },
           "createProjects": {
             "type": "boolean"
           },
@@ -128,6 +131,12 @@
             "type": "boolean"
           },
           "updateTasks": {
+            "type": "boolean"
+          },
+          "transitionTasks": {
+            "type": "boolean"
+          },
+          "rankTasks": {
             "type": "boolean"
           },
           "createTasks": {
@@ -162,14 +171,26 @@
           },
           "removeMembers": {
             "type": "boolean"
+          },
+          "createPublicComments": {
+            "type": "boolean"
+          },
+          "createInternalComments": {
+            "type": "boolean"
+          },
+          "manageServiceCalendars": {
+            "type": "boolean"
           }
         },
         "required": [
           "manageProjects",
+          "manageProjectSettings",
           "createProjects",
           "updateProjects",
           "deleteProjects",
           "updateTasks",
+          "transitionTasks",
+          "rankTasks",
           "createTasks",
           "deleteTasks",
           "assignTasks",
@@ -180,7 +201,10 @@
           "deleteWorkspace",
           "inviteUsers",
           "manageTeam",
-          "removeMembers"
+          "removeMembers",
+          "createPublicComments",
+          "createInternalComments",
+          "manageServiceCalendars"
         ]
       },
       "MalformedMembershipRole": {
@@ -531,6 +555,13 @@
               "null"
             ]
           },
+          "defaultCommentVisibility": {
+            "type": "string",
+            "enum": [
+              "public",
+              "internal"
+            ]
+          },
           "createdAt": {
             "type": "string",
             "format": "date-time"
@@ -575,6 +606,7 @@
           "icon",
           "name",
           "description",
+          "defaultCommentVisibility",
           "createdAt",
           "archivedAt",
           "deletedAt",
@@ -754,6 +786,44 @@
           "title",
           "customerVisible",
           "createdAt"
+        ]
+      },
+      "ProjectState": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "stateTemplateId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string",
+            "enum": [
+              "backlog",
+              "unstarted",
+              "started",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "position": {
+            "type": "integer"
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "stateTemplateId",
+          "name",
+          "group",
+          "position",
+          "isDefault"
         ]
       },
       "BoardResponse": {
@@ -2236,6 +2306,25 @@
           "title",
           "createdAt",
           "relevanceScore"
+        ]
+      },
+      "ServiceCalendarVersionConflict": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "assertedVersion": {
+            "type": "integer"
+          },
+          "currentVersion": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "message",
+          "assertedVersion",
+          "currentVersion"
         ]
       },
       "TaskRelationWithTasks": {
@@ -4337,6 +4426,9 @@
           "toStateTemplateId": {
             "type": "string"
           },
+          "toStateName": {
+            "type": "string"
+          },
           "toStateId": {
             "type": "string"
           },
@@ -4377,6 +4469,7 @@
         "required": [
           "transitionId",
           "toStateTemplateId",
+          "toStateName",
           "toStateId",
           "notePolicy",
           "noteVisibility",
@@ -4979,7 +5072,7 @@
           "Capabilities"
         ],
         "summary": "Get the caller's capabilities in a workspace",
-        "description": "One call replacing the 16-way has-permission fan-out the client made against the organization() plugin's /organization/has-permission (apps/web/src/hooks/use-workspace-permission.ts). Computed over hasWorkspacePermission -- the same TaskDesk-native authorization check every other route already uses.",
+        "description": "One call replacing the organization() plugin permission fan-out. It includes TaskDesk-native checks, canonical comment and project-settings capabilities, and the exact sla_policy:manage check used to gate service-calendar authoring.",
         "parameters": [
           {
             "schema": {
@@ -5248,7 +5341,7 @@
           "Projects"
         ],
         "summary": "Update project",
-        "description": "Replace a project's name, icon, slug, description, and visibility.",
+        "description": "Replace a project's name, icon, slug, and description; optionally configure its default comment visibility.",
         "parameters": [
           {
             "schema": {
@@ -5277,6 +5370,13 @@
                   },
                   "description": {
                     "type": "string"
+                  },
+                  "defaultCommentVisibility": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "internal"
+                    ]
                   }
                 },
                 "required": [
@@ -6827,6 +6927,64 @@
           },
           "404": {
             "description": "Project or document link not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{projectId}/states": {
+      "get": {
+        "operationId": "listProjectStates",
+        "tags": [
+          "Projects"
+        ],
+        "summary": "List a project's active states",
+        "description": "Returns every active concrete project state, including empty board columns, in project order. An archived state template remains represented while its concrete project state is active.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "projectId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The project's active states",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectState"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown project, or its workspace could not be determined",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing project:read permission",
             "content": {
               "text/plain": {
                 "schema": {
@@ -12137,6 +12295,1986 @@
         }
       }
     },
+    "/service-calendars": {
+      "get": {
+        "operationId": "listServiceCalendars",
+        "tags": [
+          "Service calendars"
+        ],
+        "summary": "List service calendars",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "workspaceId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Calendars in the workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "timezone": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "windows": {
+                            "type": "object",
+                            "properties": {
+                              "sun": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 1439
+                                    },
+                                    "to": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 1440
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to"
+                                  ]
+                                }
+                              },
+                              "mon": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 1439
+                                    },
+                                    "to": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 1440
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to"
+                                  ]
+                                }
+                              },
+                              "tue": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 1439
+                                    },
+                                    "to": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 1440
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to"
+                                  ]
+                                }
+                              },
+                              "wed": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 1439
+                                    },
+                                    "to": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 1440
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to"
+                                  ]
+                                }
+                              },
+                              "thu": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 1439
+                                    },
+                                    "to": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 1440
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to"
+                                  ]
+                                }
+                              },
+                              "fri": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 1439
+                                    },
+                                    "to": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 1440
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to"
+                                  ]
+                                }
+                              },
+                              "sat": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 1439
+                                    },
+                                    "to": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 1440
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to"
+                                  ]
+                                }
+                              }
+                            }
+                          },
+                          "holidays": {
+                            "type": "array",
+                            "items": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "date": {
+                                      "type": "string",
+                                      "format": "date"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "date"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "from": {
+                                      "type": "string",
+                                      "format": "date"
+                                    },
+                                    "to": {
+                                      "type": "string",
+                                      "format": "date"
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "from",
+                                    "to"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "recurs": {
+                                      "type": "string",
+                                      "enum": [
+                                        "annually"
+                                      ]
+                                    },
+                                    "month": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 12
+                                    },
+                                    "day": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 31
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "recurs",
+                                    "month",
+                                    "day"
+                                  ]
+                                }
+                              ]
+                            }
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "workspaceId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 1
+                          }
+                        },
+                        "required": [
+                          "timezone",
+                          "windows",
+                          "holidays",
+                          "id",
+                          "workspaceId",
+                          "name",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ]
+                      }
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "previousCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "previousCursor",
+                        "nextCursor",
+                        "hasMore"
+                      ]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "total"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page",
+                    "meta"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid calendar list query or cursor",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createServiceCalendar",
+        "tags": [
+          "Service calendars"
+        ],
+        "summary": "Create service calendar",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "timezone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "windows": {
+                    "type": "object",
+                    "properties": {
+                      "sun": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "mon": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "tue": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "wed": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "thu": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "fri": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "sat": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "holidays": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "date": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "date"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "to": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "recurs": {
+                              "type": "string",
+                              "enum": [
+                                "annually"
+                              ]
+                            },
+                            "month": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 12
+                            },
+                            "day": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 31
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "recurs",
+                            "month",
+                            "day"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "workspaceId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  }
+                },
+                "required": [
+                  "timezone",
+                  "windows",
+                  "holidays",
+                  "workspaceId",
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created calendar",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "timezone": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "windows": {
+                      "type": "object",
+                      "properties": {
+                        "sun": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "mon": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "tue": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "wed": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "thu": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "fri": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "sat": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "holidays": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "date"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "to": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "recurs": {
+                                "type": "string",
+                                "enum": [
+                                  "annually"
+                                ]
+                              },
+                              "month": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 12
+                              },
+                              "day": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 31
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "recurs",
+                              "month",
+                              "day"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "required": [
+                    "timezone",
+                    "windows",
+                    "holidays",
+                    "id",
+                    "workspaceId",
+                    "name",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid calendar data",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/service-calendars/{id}": {
+      "get": {
+        "operationId": "getServiceCalendar",
+        "tags": [
+          "Service calendars"
+        ],
+        "summary": "Get service calendar",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Calendar details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "timezone": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "windows": {
+                      "type": "object",
+                      "properties": {
+                        "sun": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "mon": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "tue": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "wed": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "thu": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "fri": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "sat": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "holidays": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "date"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "to": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "recurs": {
+                                "type": "string",
+                                "enum": [
+                                  "annually"
+                                ]
+                              },
+                              "month": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 12
+                              },
+                              "day": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 31
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "recurs",
+                              "month",
+                              "day"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "required": [
+                    "timezone",
+                    "windows",
+                    "holidays",
+                    "id",
+                    "workspaceId",
+                    "name",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service calendar not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateServiceCalendar",
+        "tags": [
+          "Service calendars"
+        ],
+        "summary": "Update service calendar",
+        "description": "If-Match may contain the current quoted version. A mismatch returns 409 with asserted/current versions.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9]\\d*\"$"
+            },
+            "required": false,
+            "name": "if-match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "timezone": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "windows": {
+                    "type": "object",
+                    "properties": {
+                      "sun": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "mon": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "tue": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "wed": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "thu": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "fri": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      },
+                      "sat": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 1439
+                            },
+                            "to": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 1440
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "holidays": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "date": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "date"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "to": {
+                              "type": "string",
+                              "format": "date"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "recurs": {
+                              "type": "string",
+                              "enum": [
+                                "annually"
+                              ]
+                            },
+                            "month": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 12
+                            },
+                            "day": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 31
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "recurs",
+                            "month",
+                            "day"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated calendar",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "timezone": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "windows": {
+                      "type": "object",
+                      "properties": {
+                        "sun": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "mon": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "tue": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "wed": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "thu": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "fri": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        },
+                        "sat": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 1439
+                              },
+                              "to": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 1440
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          }
+                        }
+                      }
+                    },
+                    "holidays": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "date"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "to": {
+                                "type": "string",
+                                "format": "date"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "from",
+                              "to"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "recurs": {
+                                "type": "string",
+                                "enum": [
+                                  "annually"
+                                ]
+                              },
+                              "month": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 12
+                              },
+                              "day": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 31
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "recurs",
+                              "month",
+                              "day"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  },
+                  "required": [
+                    "timezone",
+                    "windows",
+                    "holidays",
+                    "id",
+                    "workspaceId",
+                    "name",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid calendar data",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:manage permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service calendar not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Calendar version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceCalendarVersionConflict"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/service-calendars/{id}/preview": {
+      "get": {
+        "operationId": "previewServiceCalendar",
+        "tags": [
+          "Service calendars"
+        ],
+        "summary": "Preview calendar cover",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9998
+            },
+            "required": true,
+            "name": "year",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Calendar cover totals",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "calendarId": {
+                      "type": "string"
+                    },
+                    "year": {
+                      "type": "integer"
+                    },
+                    "weeklyCoverMinutes": {
+                      "type": "integer"
+                    },
+                    "annualCoverMinutes": {
+                      "type": "integer"
+                    },
+                    "hasCover": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "calendarId",
+                    "year",
+                    "weeklyCoverMinutes",
+                    "annualCoverMinutes",
+                    "hasCover"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Missing sla_policy:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service calendar not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/task-relation/{taskId}": {
       "get": {
         "operationId": "getTaskRelations",
@@ -15307,6 +17445,7 @@
               "type": "string",
               "enum": [
                 "key",
+                "position",
                 "title",
                 "priority",
                 "dueDate"
@@ -17301,6 +19440,1625 @@
           },
           "401": {
             "description": "Missing or invalid credentials"
+          }
+        }
+      }
+    },
+    "/me/security/factors": {
+      "get": {
+        "operationId": "getLocalFactorStatus",
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get local factor status",
+        "description": "Returns the current user's local factor enrollment state and whether instance policy requires a factor. Never returns factor secrets or recovery codes.",
+        "responses": {
+          "200": {
+            "description": "Current local factor state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "policyMode": {
+                      "type": "string",
+                      "enum": [
+                        "off",
+                        "optional",
+                        "required_staff",
+                        "required_role",
+                        "required_everyone"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "enabled",
+                    "required",
+                    "policyMode"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "503": {
+            "description": "Factor policy could not be validated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/csrf-token": {
+      "get": {
+        "operationId": "getSessionCsrfToken",
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Get the current session's CSRF token",
+        "description": "Returns a short-lived session- and origin-bound token for same-origin unsafe API requests. The matching token is also stored in an HttpOnly cookie.",
+        "responses": {
+          "200": {
+            "description": "Current session CSRF token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "expiresAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Issuer origin rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "enum": [
+                        "csrf_origin_invalid"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/step-up/challenges": {
+      "post": {
+        "operationId": "createOperationStepUpChallenge",
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Create an operation-bound authentication challenge",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "metrics_token_rotate"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "mfa_reset"
+                        ]
+                      },
+                      "userId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "verificationNote": {
+                        "type": "string",
+                        "minLength": 12,
+                        "maxLength": 1000
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "userId",
+                      "verificationNote"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Single-use step-up challenge",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "challengeId": {
+                      "type": "string"
+                    },
+                    "nonce": {
+                      "type": "string",
+                      "minLength": 43,
+                      "maxLength": 43
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "challengeId",
+                    "nonce",
+                    "expiresAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Challenge unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Configuration changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "enum": [
+                        "version_conflict"
+                      ]
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Step-up attempts are temporarily limited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "enum": [
+                        "step_up_attempt_limit"
+                      ]
+                    },
+                    "limit": {
+                      "type": "number"
+                    },
+                    "windowMinutes": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "limit",
+                    "windowMinutes"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/step-up": {
+      "post": {
+        "operationId": "issueOperationStepUpToken",
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Verify fresh authentication and issue a single-use token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "metrics_token_rotate"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "password"
+                        ]
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "password"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "metrics_token_rotate"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "totp"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$/u"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "metrics_token_rotate"
+                        ]
+                      },
+                      "version": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "backup_code"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "version",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "mfa_reset"
+                        ]
+                      },
+                      "userId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "verificationNote": {
+                        "type": "string",
+                        "minLength": 12,
+                        "maxLength": 1000
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "password"
+                        ]
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "userId",
+                      "verificationNote",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "password"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "mfa_reset"
+                        ]
+                      },
+                      "userId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "verificationNote": {
+                        "type": "string",
+                        "minLength": 12,
+                        "maxLength": 1000
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "totp"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$/u"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "userId",
+                      "verificationNote",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "mfa_reset"
+                        ]
+                      },
+                      "userId": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "verificationNote": {
+                        "type": "string",
+                        "minLength": 12,
+                        "maxLength": 1000
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "backup_code"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "userId",
+                      "verificationNote",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Single-use operation token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "minLength": 43,
+                      "maxLength": 43
+                    },
+                    "expiresAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "expiresAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Authentication unavailable or invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/observability": {
+      "get": {
+        "operationId": "getInstanceObservability",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Get observability settings",
+        "responses": {
+          "200": {
+            "description": "Safe observability settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "logLevels": {
+                      "type": "object",
+                      "properties": {
+                        "default": {
+                          "type": "string",
+                          "enum": [
+                            "error",
+                            "warn",
+                            "info",
+                            "debug"
+                          ]
+                        },
+                        "modules": {
+                          "type": "object",
+                          "properties": {
+                            "http": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            },
+                            "auth": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            },
+                            "database": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            },
+                            "jobs": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            },
+                            "audit": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            },
+                            "plugins": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "default",
+                        "modules"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "metricsTokenConfigured": {
+                      "type": "boolean"
+                    },
+                    "metricsTokenRotatedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "logLevels",
+                    "metricsTokenConfigured",
+                    "metricsTokenRotatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Settings unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patchInstanceObservability",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Update observability log levels",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "logLevels": {
+                    "type": "object",
+                    "properties": {
+                      "default": {
+                        "type": "string",
+                        "enum": [
+                          "error",
+                          "warn",
+                          "info",
+                          "debug"
+                        ]
+                      },
+                      "modules": {
+                        "type": "object",
+                        "properties": {
+                          "http": {
+                            "type": "string",
+                            "enum": [
+                              "error",
+                              "warn",
+                              "info",
+                              "debug"
+                            ]
+                          },
+                          "auth": {
+                            "type": "string",
+                            "enum": [
+                              "error",
+                              "warn",
+                              "info",
+                              "debug"
+                            ]
+                          },
+                          "database": {
+                            "type": "string",
+                            "enum": [
+                              "error",
+                              "warn",
+                              "info",
+                              "debug"
+                            ]
+                          },
+                          "jobs": {
+                            "type": "string",
+                            "enum": [
+                              "error",
+                              "warn",
+                              "info",
+                              "debug"
+                            ]
+                          },
+                          "audit": {
+                            "type": "string",
+                            "enum": [
+                              "error",
+                              "warn",
+                              "info",
+                              "debug"
+                            ]
+                          },
+                          "plugins": {
+                            "type": "string",
+                            "enum": [
+                              "error",
+                              "warn",
+                              "info",
+                              "debug"
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "default",
+                      "modules"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "version",
+                  "logLevels"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated safe settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "logLevels": {
+                      "type": "object",
+                      "properties": {
+                        "default": {
+                          "type": "string",
+                          "enum": [
+                            "error",
+                            "warn",
+                            "info",
+                            "debug"
+                          ]
+                        },
+                        "modules": {
+                          "type": "object",
+                          "properties": {
+                            "http": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            },
+                            "auth": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            },
+                            "database": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            },
+                            "jobs": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            },
+                            "audit": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            },
+                            "plugins": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "default",
+                        "modules"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "metricsTokenConfigured": {
+                      "type": "boolean"
+                    },
+                    "metricsTokenRotatedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "logLevels",
+                    "metricsTokenConfigured",
+                    "metricsTokenRotatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "enum": [
+                        "version_conflict"
+                      ]
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Settings unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/observability/metrics-token/rotate": {
+      "post": {
+        "operationId": "rotateMetricsToken",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Rotate the metrics scrape token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "version"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New metrics token, returned once",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    },
+                    "token": {
+                      "type": "string",
+                      "minLength": 43,
+                      "maxLength": 43
+                    },
+                    "metricsTokenRotatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "token",
+                    "metricsTokenRotatedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Step-up unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Version conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "enum": [
+                        "version_conflict"
+                      ]
+                    },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "version"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/local-factor-policy": {
+      "get": {
+        "operationId": "getLocalFactorPolicy",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Get instance local-factor policy",
+        "responses": {
+          "200": {
+            "description": "Local-factor policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "policy": {
+                      "type": "object",
+                      "properties": {
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "optional",
+                            "required_staff",
+                            "required_role",
+                            "required_everyone"
+                          ]
+                        },
+                        "requiredRoleId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "mode",
+                        "requiredRoleId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "policy"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Policy unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patchLocalFactorPolicy",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Update instance local-factor policy",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "off",
+                      "optional",
+                      "required_staff",
+                      "required_role",
+                      "required_everyone"
+                    ]
+                  },
+                  "requiredRoleId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "mode",
+                  "requiredRoleId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated local-factor policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "policy": {
+                      "type": "object",
+                      "properties": {
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "off",
+                            "optional",
+                            "required_staff",
+                            "required_role",
+                            "required_everyone"
+                          ]
+                        },
+                        "requiredRoleId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ],
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "mode",
+                        "requiredRoleId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "policy"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid policy or unknown role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Policy unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/users/{id}/reset-mfa": {
+      "post": {
+        "operationId": "resetUserMfa",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "Reset a user's local MFA factor",
+        "description": "Requires an elevated browser session and a recorded identity-verification note. Revokes the affected user's sessions and API keys.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "x-taskdesk-step-up-token",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "verificationNote": {
+                    "type": "string",
+                    "minLength": 12,
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "verificationNote"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Factor reset; notification delivery result included",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reset": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "notificationEmailSent": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "reset",
+                    "notificationEmailSent"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Required email service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
           }
         }
       }

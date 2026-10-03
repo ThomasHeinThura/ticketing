@@ -5,8 +5,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useWorkspacePermission } from "./use-workspace-permission";
 
 // S3 (issue #6, retrofit plan §3): rewritten against GET /api/capabilities,
-// which replaces the 16-way authClient.organization.hasPermission() fan-out
-// this test used to mock. The mocked payload's 16 keys are copied verbatim
+// which replaces the authClient.organization.hasPermission() fan-out
+// this test used to mock. The mocked payload's keys are copied verbatim
 // from apps/api/src/capabilities/response.ts's capabilitiesResponseSchema --
 // not invented -- so a key renamed or dropped on either side of the wire
 // shows up here as a real assertion failure, not a passing test that never
@@ -43,17 +43,19 @@ function createWrapper() {
   };
 }
 
-// One full CapabilityMap, matching capabilitiesResponseSchema's 16 keys
+// One full CapabilityMap, matching capabilitiesResponseSchema's keys
 // exactly. Callers below start from this and only flip the keys a given
 // test cares about, so an accidental typo in an unrelated key still
 // produces a real (defined) boolean rather than `undefined`.
 function fullCapabilityMap(overrides: Partial<Record<string, boolean>> = {}) {
   return {
     manageProjects: false,
+    manageProjectSettings: false,
     createProjects: false,
     updateProjects: false,
     deleteProjects: false,
     updateTasks: false,
+    transitionTasks: false,
     createTasks: false,
     deleteTasks: false,
     assignTasks: false,
@@ -65,6 +67,9 @@ function fullCapabilityMap(overrides: Partial<Record<string, boolean>> = {}) {
     inviteUsers: false,
     manageTeam: false,
     removeMembers: false,
+    createPublicComments: false,
+    createInternalComments: false,
+    manageServiceCalendars: false,
     ...overrides,
   };
 }
@@ -81,6 +86,7 @@ describe("useWorkspacePermission", () => {
         fullCapabilityMap({
           createTasks: true,
           updateTasks: true,
+          transitionTasks: true,
           deleteTasks: false,
           createLabels: true,
           updateLabels: true,
@@ -98,6 +104,7 @@ describe("useWorkspacePermission", () => {
 
     expect(result.current.canCreateTasks()).toBe(true);
     expect(result.current.canUpdateTasks()).toBe(true);
+    expect(result.current.canTransitionTasks()).toBe(true);
     expect(result.current.canDeleteTasks()).toBe(false);
     expect(result.current.canCreateLabels()).toBe(true);
     expect(result.current.canUpdateLabels()).toBe(true);
@@ -124,7 +131,7 @@ describe("useWorkspacePermission", () => {
     });
   });
 
-  it("exposes every one of the 16 capabilitiesResponseSchema keys, not a subset", async () => {
+  it("exposes every capabilitiesResponseSchema key, not a subset", async () => {
     capabilitiesGet.mockResolvedValue({
       ok: true,
       json: async () =>
@@ -135,6 +142,10 @@ describe("useWorkspacePermission", () => {
           inviteUsers: true,
           manageTeam: true,
           removeMembers: true,
+          createPublicComments: true,
+          createInternalComments: false,
+          manageServiceCalendars: true,
+          transitionTasks: true,
         }),
     });
 
@@ -147,6 +158,7 @@ describe("useWorkspacePermission", () => {
     });
 
     expect(result.current.canManageProjects()).toBe(true);
+    expect(result.current.canManageProjectSettings()).toBe(false);
     expect(result.current.canCreateProjects()).toBe(false);
     expect(result.current.canUpdateProjects()).toBe(false);
     expect(result.current.canDeleteProjects()).toBe(false);
@@ -156,6 +168,10 @@ describe("useWorkspacePermission", () => {
     expect(result.current.canInviteUsers()).toBe(true);
     expect(result.current.canManageTeam()).toBe(true);
     expect(result.current.canRemoveMembers()).toBe(true);
+    expect(result.current.canCreatePublicComments()).toBe(true);
+    expect(result.current.canCreateInternalComments()).toBe(false);
+    expect(result.current.canManageServiceCalendars()).toBe(true);
+    expect(result.current.canTransitionTasks()).toBe(true);
   });
 
   it("defaults every capability to false while the request is pending, never undefined", () => {
@@ -167,7 +183,11 @@ describe("useWorkspacePermission", () => {
 
     expect(result.current.isCheckingPermissions).toBe(true);
     expect(result.current.canManageProjects()).toBe(false);
+    expect(result.current.canManageProjectSettings()).toBe(false);
     expect(result.current.canRemoveMembers()).toBe(false);
+    expect(result.current.canCreatePublicComments()).toBe(false);
+    expect(result.current.canCreateInternalComments()).toBe(false);
+    expect(result.current.canManageServiceCalendars()).toBe(false);
   });
 
   it("surfaces isOwner/isAdmin from the resolved active member's role", async () => {

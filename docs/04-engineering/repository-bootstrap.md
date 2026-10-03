@@ -92,7 +92,7 @@ writing and the fork gets a verdict here before it travels.
 | `plans/` | Copy → `docs/02-design/motion/` | motion specs |
 | `pnpm-lock.yaml` | Copy | keeps the audited dependency graph; regenerated only after the removals |
 | `pnpm-workspace.yaml` | Copy | |
-| `release.config.js` | Copied from kaneo, retained but not invoked | The manual Release workflow is authoritative; it never commits version-file changes. |
+| `release.config.js` | Removed | The signed manual Release workflow is authoritative; semantic-release is not used. |
 | `scripts/i18n/` | Copy | `check/report/schema/shared.mjs` — the root `i18n:check` scripts and the CI i18n job call them |
 | `scripts/release/` | Do not copy | kaneo's release plumbing |
 | `scripts/provision-sentry-alerts.sh`, `scripts/provision-sentry-dashboards.sh` | Do not copy | Sentry is removed |

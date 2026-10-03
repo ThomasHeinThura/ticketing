@@ -23,6 +23,7 @@ type TaskDetailsContentProps = {
   projectId: string;
   workspaceId: string;
   className?: string;
+  dataTestId?: string;
 };
 
 export default function TaskDetailsContent({
@@ -30,6 +31,7 @@ export default function TaskDetailsContent({
   projectId,
   workspaceId,
   className,
+  dataTestId,
 }: TaskDetailsContentProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -49,7 +51,7 @@ export default function TaskDetailsContent({
   if (!taskId) return null;
 
   return (
-    <div className={`${className} gap-4`}>
+    <div className={`${className} gap-4`} data-testid={dataTestId}>
       <div className="flex flex-col gap-2.5">
         {parentTask && (
           <button

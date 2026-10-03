@@ -28,11 +28,17 @@ import {
   policyShadowTallyTable,
 } from "../../apps/api/src/permissions/shadow-schema";
 import { seedInternalOrganisationAndStaffPersons } from "../../apps/api/src/utils/seed-internal-organisation";
+import { withConfiguredAgentAuthority } from "./helpers/agent-authority";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
 } from "./helpers/fixtures";
+
+// This file resets the complete app module graph to test the import-time shadow
+// switch. Avoid the shared createApp mock here so each fresh graph retains its
+// own auth module instance; adapt only the app's in-process request boundary.
+vi.unmock("../../apps/api/src/index");
 
 /**
  * `resolveIdentity` requires a `person` row (#315 S7 — the real backfill runs once, at
@@ -71,9 +77,18 @@ async function createAppWithShadow(value: "on" | "off"): Promise<FreshApp> {
   const indexModule = await import("../../apps/api/src/index");
   const authModule: AuthModule = await import("../../apps/api/src/auth");
   const databaseModule: DbModule = await import("../../apps/api/src/database");
+  const app = indexModule.createApp().app;
+  const request = app.request.bind(app);
+  app.request = (input, init, env, executionCtx) => {
+    if (typeof input === "string") {
+      const normalized = withConfiguredAgentAuthority(input, init);
+      return request(normalized.input, normalized.init, env, executionCtx);
+    }
+    return request(input, init, env, executionCtx);
+  };
 
   return {
-    app: indexModule.createApp().app,
+    app,
     db: databaseModule.default,
     schema: databaseModule.schema,
     mockUser: (user) => {
@@ -87,6 +102,7 @@ async function createAppWithShadow(value: "on" | "off"): Promise<FreshApp> {
           updatedAt: new Date(),
           ipAddress: null,
           userAgent: null,
+          portal: "agent",
         },
         // Mirrors mockAuthenticatedSession's own MockSessionUser widening
         // (tests/api-integration/helpers/auth.ts) — `role` is a plain userTable column, not

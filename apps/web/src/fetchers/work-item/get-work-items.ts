@@ -24,6 +24,7 @@ export type WorkItemsResult = {
    * dropped -- a future paging slice reads it instead of re-deriving it.
    */
   hasMore: boolean;
+  nextCursor?: string | null;
 };
 
 /**
@@ -54,10 +55,16 @@ async function getWorkItems(
   projectId: string,
   sort: WorkItemSortField,
   dir: WorkItemSortDirection,
+  options: { cursor?: string; limit?: number } = {},
 ): Promise<WorkItemsResult> {
   const response = await client.projects[":projectId"]["work-items"].$get({
     param: { projectId },
-    query: { sort, dir },
+    query: {
+      sort,
+      dir,
+      ...(options.cursor ? { cursor: options.cursor } : {}),
+      ...(options.limit ? { limit: String(options.limit) } : {}),
+    },
   });
 
   if (!response.ok) {
@@ -70,7 +77,12 @@ async function getWorkItems(
     (item) => item.unavailableFields.length > 0,
   );
 
-  return { items, hasPartialFailure, hasMore: page.hasMore };
+  return {
+    items,
+    hasPartialFailure,
+    hasMore: page.hasMore,
+    nextCursor: page.nextCursor,
+  };
 }
 
 export default getWorkItems;

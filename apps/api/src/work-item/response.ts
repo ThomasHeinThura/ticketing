@@ -424,6 +424,7 @@ export const workItemTransitionOfferSchema = z
   .object({
     transitionId: z.string(),
     toStateTemplateId: z.string(),
+    toStateName: z.string(),
     toStateId: z.string(),
     notePolicy: z.enum(["none", "optional", "required"]),
     noteVisibility: z.enum(["public", "internal"]),

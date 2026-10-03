@@ -6,7 +6,7 @@ import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { useTranslation } from "react-i18next";
 import getProject from "@/fetchers/project/get-project";
 import getTask from "@/fetchers/task/get-task";
-import { escapeHtml, isValidUrl } from "./url-safety";
+import { escapeHtml, isAppRelativeUrl, isSafeLinkUrl } from "./url-safety";
 
 function parseTaskRouteFromUrl(url: string) {
   try {
@@ -71,8 +71,8 @@ function TaskDeskIssueLinkView({ node }: NodeViewProps) {
     taskRoute?.workspaceId && taskRoute?.projectId && task?.id
       ? `/dashboard/workspace/${taskRoute.workspaceId}/project/${taskRoute.projectId}/task/${task.id}`
       : url;
-  const isInternal = resolvedHref.startsWith("/");
-  const href = isInternal || isValidUrl(resolvedHref) ? resolvedHref : "";
+  const isInternal = isAppRelativeUrl(resolvedHref);
+  const href = isSafeLinkUrl(resolvedHref) ? resolvedHref : "";
 
   return (
     <NodeViewWrapper as="span" className="taskdesk-issue-link-node">

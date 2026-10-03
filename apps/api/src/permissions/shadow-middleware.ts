@@ -167,8 +167,7 @@ async function writeErrorRecord(args: {
  *
  * `assertRouteIsClassified` (the guard) runs FROM INSIDE the auth guard's own middleware
  * body, so `c.req.matchedRoutes` always includes at least the guard's own entry, plus
- * CORS, compress, and (in a production layout with `apps/web/dist` present) the
- * static-serving fallback — none of these is a feature route, and none should ever need
+ * host routing, CORS, compression and origin-selected static serving — none of these is a feature route, and none should ever need
  * a policy-registry entry of its own. Something has to tell "real feature route" apart
  * from "reviewed infrastructure middleware" — B1/B3/F4 each tried a different PREDICTION
  * (method is not `ALL`; stop at the first non-`ALL` entry; …) and each prediction had a
@@ -179,9 +178,9 @@ async function writeErrorRecord(args: {
  * `.all("*")` at the same key would be exempted the same way the two real middlewares are.
  *
  * **Fix: identity, not prediction.** `createApp()` (`apps/api/src/index.ts`) calls
- * `declareCatchAllMiddleware` on the EXACT function reference for each of its four
- * reviewed catch-all registrations (CORS, compress, the conditional static-serving
- * fallback, the auth guard itself) at the moment it creates each one, before passing it to
+ * `declareCatchAllMiddleware` on the EXACT function reference for each of its five
+ * reviewed catch-all registrations (Host guard, CORS, compression, origin-selected static
+ * serving, and the auth guard itself) at the moment it creates each one, before passing it to
  * `.use()`. A matched entry is exempted only when `r.handler` is one of those exact
  * function references — identity, which `app.route("/api", api)` preserves (the mounted
  * sub-app has its own `onError` but the middleware function objects themselves are never
@@ -197,9 +196,9 @@ const declaredCatchAllHandlers = new Set<unknown>();
 /**
  * Called once per catch-all middleware, at its own registration call site in
  * `apps/api/src/index.ts`, immediately before that middleware is passed to `.use()`.
- * Never called for anything conditional, route-specific, or added after this module has
- * already started serving requests -- there are exactly two call sites, both inside
- * `createApp()`, both for the two entries `DECLARED_ROUTER_MIDDLEWARE` already declares.
+ * Never called for anything route-specific or added after this module has
+ * already started serving requests -- there are exactly five call sites, all inside
+ * `createApp()`, all matching the `DECLARED_ROUTER_MIDDLEWARE` declarations.
  * Takes `unknown`, not Hono's own handler type: this is an identity token, never invoked
  * here, and matched against `RouterRoute["handler"]`, whose exact generic shape depends on
  * the router instance's own type parameters -- coupling to it would make this module

@@ -1,5 +1,164 @@
 # Status — a POINT-IN-TIME SNAPSHOT
 
+## Bulk verification checkpoint — 2026-10-03 07:57 UTC
+
+All known P0 implementation corrections are composed at `7a7df849526435657209e4a8f26f86aa0784431a` before this status-only checkpoint. Accepted main remains `8ddb9de8d4d242a0832f6f91e12872300480a905`. The combined branch now enters whole-source verification; no independent review, protected merge, or phase completion is claimed.
+
+- **Full G8 passed:** seven application screenshot cases and 142 Storybook stories passed in pinned Linux. Author source `64ec7026abe15e2885213fe1d45958e71883262c` includes the three new safe MFA/observability cases. Private evidence: `/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/p0-mfa-visual`. The canonical design-tokens review section has nine finding rows; the earlier PR #578 count of 18 included placeholders and is corrected in the evidence packet. Actual row dispositions await independent bulk review.
+- **Real MFA/CSRF journey passed:** one 11.1-second built-app journey exercised workspace onboarding, factor enrollment, session rotation, TOTP and backup-code challenges, settings mutation/restore, and missing/mismatched/foreign-origin CSRF rejection with saved state/version unchanged. The run used root source `41b55f7e` plus the journey working tree; `69e61dd56c18bdbb90149f470d9a6615a9d28272` followed a formatting delta. Final combined E2E still runs on the frozen source. Evidence: `/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/p0-mfa-csrf-journey`. The fixture uses localhost's secure-cookie handling; production cookie flags were preserved.
+- **Initialized authenticated fixture batch completed:** helper/local constructors now model the singleton and active identity required by the real factor guard. Author source `b4eb0aee` passed 58 final work-item tests, 120 direct-fixture regressions and 26 factor/bootstrap preservation tests. No authorization status expectations were changed; deliberately empty, inactive and missing-person cases remain. Full integration verification follows once on the combined source.
+- **Shipping verification prepared:** accepted main has 80 journal entries (last index 79); candidate has 87 (last index 86), with the accepted journal prefix unchanged. A disposable source-bound image proof will verify all hashes, upgrade, UID 10001, health, trusted TLS, internal-only metrics, CAS and operation-proof/rotation negatives. No candidate image/runtime result is claimed yet.
+- **Remaining acceptance:** whole-candidate suites and canonical G11, image/runtime proof, one independent bulk Luna panel then Sol security review, required hosted checks and live G11 protection, protected merge/deployment, representative three-date observation/cutover, and the separate Sol P0 finalizer. P4-owned bootstrap MFA and operator recovery CLI gaps (#229/#230), and disclosed nonblocking dual-bootstrap liveness race #231, are not claimed resolved by this batch.
+
+## Implementation checkpoint — 2026-10-03 07:29 UTC
+
+The combined P0 implementation is pushed at `72b88c7650e92609e68d75bf2b2cca191042520f`; accepted main remains `8ddb9de8d4d242a0832f6f91e12872300480a905`. This is an implementation checkpoint, not protected acceptance or phase completion.
+
+- **Previously missing security/runtime features are implemented:** local TOTP enrollment and backup-code login, runtime factor policy, operation-bound step-up, administrator MFA reset, signed session-bound cookie CSRF with central client transport, runtime Pino logging, finite Prometheus metrics, the internal authenticated listener, settings version CAS, token rotation, and durable administrator audit-failure alerts are composed. The earlier 06:15 enrollment-cookie mismatch was corrected and the actual enrollment/login lifecycle passed. Subsequent pending-action audit ordering and fail-closed corrections are still being completed in the same implementation batch.
+- **Focused author verification:** combined CSRF/factor-policy concurrency/notifier integration passed four files / 11 tests; factor lifecycle passed five tests; scheduler/notifier passed two files / 13 tests. API/web typecheck, inventory, vocabulary, locale checks and route-policy tests (14 files / 88 tests) passed on the auth checkpoint. These counts do not substitute for final whole-candidate verification. One route-policy attempt failed because ignored generated web output was present; removing only that output and rerunning passed.
+- **Screen and real-browser checks are underway:** the pinned Linux G8 application screen sub-suite passed seven cases, including the three new safe MFA/observability cases; Storybook visual verification is still running. The separate disposable real-API MFA/CSRF journey is implemented and its typecheck/discovery pass, but browser execution has not yet occurred. Secret-bearing enrollment/recovery material is excluded from screenshots, traces and public output.
+- **Final work remains concrete:** complete the pending-action correction and browser journey, run the whole-source suites, unchanged canonical G11, image migration/boot and runtime checks, then freeze one bulk candidate for the independent Luna panel and Sol security review. Activate G11 as a required live context through the normal reviewed flow. Deploy the accepted source and establish the three real issue-free development/UAT dates plus authorization cutover and the independent Sol phase finalizer. Human design review remains deferred to P4. No seven-day waiting period, fabricated traffic, gate waiver, or new independent review is claimed.
+
+## Implementation checkpoint — 2026-10-03 06:15 UTC
+
+P0 is still in implementation. The combined branch is pushed at `01a4487f22ef8bc06e68a863a189680403fdd4ad`; accepted main remains `8ddb9de8d4d242a0832f6f91e12872300480a905`. No protected acceptance, new independent panel or phase-finalizer result is claimed.
+
+- **Performance implementation passed:** the performance author’s working tree passed the unchanged canonical suite **22/22** before the final formatting and defensive workspace guard included in `7402c011`, which is normally merged into the combined branch. Typecheck and focused palette tests passed after that small delta; the full run is not claimed bit-for-bit bound to the committed head. Medians were LCP 2,356 ms, detail first paint 65.2 ms, palette opening 69.1 ms and keyboard navigation 50.5 ms. The structural fixes preserve ESM execution order, decouple the heavy palette and realtime imports from first paint, and correct genuine hidden-palette mounting and resource discovery. Budgets, measurement clocks and dataset sizes were not relaxed. Evidence is private at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/g11-lazy-palette-focused/full22.log`. This result precedes the final MFA/CSRF composition; that final source still needs its integrated run and hosted G11 acceptance. G11 is unconditional in the combined workflow but not yet a required live ruleset context.
+- **UI implementation passed:** source `bab81015729b624e706a5204927eec0250bfbcbf` passed the pinned Linux visual run for 142 Storybook cases and four actual app screens. Expected density, contrast and outage-state baselines were checked against the implementation. New MFA screens remain part of the ongoing batch and need their own actual browser evidence.
+- **Observability core implemented:** safe finite-event Pino logging, finite-label metrics and the internal authenticated listener are composed, with focused core tests passing 18/18 and the additional registered-route logger tests passing 5/5. Runtime wiring, settings CAS, token rotation, audit-failure notification and local factors are being completed by the sole auth/schema owner. Dependency installation and pure-module tests alone do not close those runtime features.
+- **Remaining actual implementation defects:** the real TOTP enrollment test enabled the factor but subsequent password sign-in did not yet enter the expected second-factor challenge; the author is investigating that behavior. The required Origin/Referer plus double-submit protection is also absent from custom cookie-authenticated Hono mutations. Session-only authorization does not satisfy CSRF. The full batch now includes a signed session-bound double-submit contract, server enforcement and centralized client plumbing, with resolved nonambient credentials exempted as specified. These are concrete unfinished P0 security controls, not review paperwork or a seven-day wait.
+- **Acceptance sequence:** finish the related implementation and real positive/negative journeys, run the combined shipping and browser checks, then review one frozen bulk candidate. Human design review remains deferred to P4. Three source-bound issue-free development/UAT dates apply; historical traffic is not retroactively attributed to this new source.
+
+## Implementation checkpoint — 2026-10-03 05:00 UTC
+
+P0 remains open. Complete implementation batches are in progress; no new independent review, protected merge, or phase-finalizer result is claimed. Accepted main remains `8ddb9de8d4d242a0832f6f91e12872300480a905`.
+
+- **Performance:** the actual composed dual-entry source at `045115c6` measured 19/22 before further structural changes. Preserving ESM execution order, keeping lightweight parent route wrappers eager, and pre-mounting the genuinely hidden command palette resolved the focused opening/navigation/detail failures: one unchanged focused run measured 82.5/64.3/73.4 ms. LCP still failed its strict 2,500 ms limit at 2,512 ms. A subsequent early font-preload trial regressed LCP to 2,656 ms and is being removed. These are author-run focused diagnostics of uncommitted implementation; no final 22/22 or hosted G11 acceptance exists.
+- **P1/P2 work-item journey:** frozen source `d835e0c30b9ec5e59fa979af5115ec0d533c3c48` passed a real built-app journey: sign-in with a distinct disposable administrator, open `/agent/work-items/P1J-1`, choose the server-offered Done transition, save, reload, and verify persisted state/activity, with zero page errors. The shared select initially displayed the transition identifier; the author fixed the label to the server state name and added a regression assertion before that proof. Focused component tests passed 13/13, PostgreSQL integration passed 2 files/23 tests, permissions passed 14 files/88 tests, and web typecheck, OpenAPI and locale/inventory checks passed. Evidence: `/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/p1-512/`. The candidate services, disposable database/volume and candidate credential file were removed. Normal composition with P0 source `cf1bf006` is now clean and pushed at `4634ea4757218f661d9f8696a0ce8304fb2b090b`, with web typecheck, locale sync and 13 focused tests passing. This is implementation evidence, not P1/P2 acceptance.
+- **Local credential incident resolved:** a failed browser selector action emitted the saved local administrator password into a tool output. The orchestrator rotated that persistent account through the normal account API, requested other-session revocation, confirmed the old password returns 401 and the replacement signs in with 200, and saved the replacement privately in the existing credential file. No database-role credential was changed. The old immutable tool output cannot be erased; its password is invalidated. Evidence: `/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/credential-rotation/persistent-local-admin-proof.json`. Do not copy passwords into reports or browser action logs. The later candidate proof used a separate disposable account.
+- **Remaining P0 runtime batch:** the sole schema owner applied the exact additive calendar/default-visibility migrations 0082/0083 and generated the local-factor/observability/step-up migration 0084 after them. MFA screens and settings CAS routes compile; full factor enforcement, operation-bound proof, durable audit-failure notification and listener integration are still being completed. A separate Luna implementation lane owns only the pure logger/finite metrics/internal-listener modules, enabling implementation in parallel without shared-file edits. Package installation, a generated migration and compiling routes alone do not close those features.
+
+
+
+## Blocked — 2026-10-03 04:18 UTC
+
+- **P0 is not complete, and the remaining work is broader than two timing checks.** The composed auth/realtime/UI/entry batch is implemented and locally validated, but required final performance, production shipping proof, bulk independent reviews, protected acceptance and the Sol phase finalizer remain. The specified P0 runtime observability and local TOTP/backup-code adapters are also genuine unfinished implementation, not satisfied by their earlier specification PRs or by health probes. Those implementations are now authorized and running; passkeys and fresh upstream SSO remain separate target work.
+- **Performance:** the earlier single-entry candidate's unchanged full benchmark finished 20/22, failing LCP (3,476 ms against 2,500) and keyboard navigation (1,800.2 ms against 200). That is directional evidence only. The performance lane has now normally composed frozen P0 source `1ffcfa9b` into its branch at `045115c6`, retaining real route pending views, the palette object-selection preload correction, dual entries and native outage handling. It is building this actual combined source before the next full benchmark. No combined 22/22 or enabled/required G11 acceptance is claimed.
+- **Production browser defect:** P1's real production browser exposed a circular ESM initialization caused by the explicit initial-chunk grouping; Base UI read an uninitialized collapsible enum and the sign-in page was blank. Removing that grouping restored actual sign-in/list/detail in P1. The performance owner is incorporating the same fix into both P0 entry builds; production image and screen proof for the final composed P0 source wait for that fix, rather than building the known broken graph.
+- **Authorization observation:** remote UAT has been upgraded to the accepted signed source described below, but its post-upgrade shadow baseline still contains only 68 historical Sep 28–30 requests (46 agreed, 22 unevaluated). This does not establish three clean dates on the new auth source, representative route exercise, or cutover. Thomas changed the development/UAT requirement to three clean dates; no seven-day wait is required and other implementation continues.
+
+## 2026-10-03 implementation and deployment snapshot — accepted main remains `8ddb9de8d4d242a0832f6f91e12872300480a905`
+
+**Implementation cadence:** Thomas instructed full related feature implementation before bulk review, with human product/specification gates deferred to P4 and three issue-free development/UAT dates replacing seven days. The composed policy records those decisions. They do not permit fabricated traffic, missing independent/security review, red required checks, branch-protection bypass, or premature phase completion.
+
+**Frozen composed P0 source:** `codex/p0-bulk-integration` at `1ffcfa9b58494437c2446749fb30f7e33368be17` contains shared Avatar/density/contrast enforcement, separate agent/portal outputs, stored session-portal and Host/Origin controls, native authorized work-item invalidation/outbox seams, and the bulk implementation cadence. CP-19 keeps the P0 portal root unavailable and its API/auth/WebSocket edge generic-404; underlying portal authentication binding tests do not claim a live customer portal. The common in-process integration helper synthesizes Host only for relative strings and exact configured-agent-origin absolute strings when no explicit Host exists; wrong-origin strings, explicit Host and Request objects remain unchanged. Real Node handshake negatives still exercise the production guard.
+
+On this frozen source the author ran lint, typecheck, unit (12 workspace tasks), isolated PostgreSQL integration (129 files / 1,608 tests), permissions (14 files / 88 tests with generated dist absent), route-policy, build, bundle-size and bundle-purity successfully. Unit suite counts were libs 2/5, MCP 7/31, permissions 13/262, domain 12/570, email 6/16, API 75/577, UI 60/303 and web 86/371. Gzip graph sizes were agent 251.7 KB, work-list 299.5 KB and portal 147 KB against 350/350/200 KB limits. Generated web output caused the permissions suite's deliberate clean-source assertion to fail in two different command orders; clearing ignored build output and rerunning permissions passed. That environment-sensitive failure is retained in the original logs. Evidence: `/tmp/taskdesk-p0-final-verification.log`. This is implementation validation, not independent review, hosted acceptance or final production-browser proof.
+
+**Missing P0 runtime batch:** Thomas explicitly approved Pino and prom-client on Oct 3. Exact pins, licence notices and that authorization are committed on `codex/p0-observability-core`, normally composed with `1ffcfa9b` at `c8ca5ff704f1b5e5583d1c677c26cfad6630df71`. Production dependency audit returned zero vulnerabilities and `check:deps` passed. Runtime listener, finite metrics, safe settings/version CAS, real operation-bound local-password proof, local factor enrollment/login and factor step-up are being implemented as a full batch; package installation alone closes none of them. The agent ownership packets are private implementation inputs under `/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/p0-observability-batch/`.
+
+**Remote UAT deployment completed:** only `taskdesk-v2-uat` was upgraded to signed accepted source `ad1d5238b02532f0a814b3fa586175a7e660f657`, digest `sha256:9c97ce586b4d7b5d1a9bbfaf0a52a789e3a2d83001b287bddc10bcde0ce495a6`. Exact release identity/issuer and source annotations were verified before pull; migration exited 0, all 80 journal hashes matched, runtime UID was 10001, app/data read-write checks passed, the app was healthy, and certificate-validated agent/portal live/ready probes returned 200. Shadow mode and proxy hops remained unchanged; v1 was untouched. App-stopped encrypted DB/attachments/environment snapshots exist for this upgrade, with temporary local custody; this is not a permanent offsite DR claim. A first attempt stopped on a runner syntax error before migration, restored the environment and old app, then the repaired run completed successfully. Originals are preserved. Evidence: `/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/uat-upgrade/run-20261003t015443z` and the post-upgrade shadow baseline in that evidence directory. Public update: issue #8 comment 5964364149. No authenticated remote business journey or strict authorization cutover is claimed.
+
+**Parallel feature work:** P1 recovery retains its real work-item and calendar migration tests, actual production list/detail/edit/comment journeys, and is adding server-legal state transition choices plus the capability signal consistently. P2 workflow integration can be implemented in that batch while phase acceptance remains separate. P1–P7 remain open. No new protected merge, bulk independent acceptance, human P4 approval or phase-finalizer result is claimed here. Earlier dated snapshots remain historical.
+
+## Current delivery and remaining P0 work — 2026-10-03 01:57 UTC
+
+- **UAT refreshed:** the live v2 UAT app now uses signed accepted source
+  `ad1d5238b02532f0a814b3fa586175a7e660f657`, digest
+  `sha256:9c97ce586b4d7b5d1a9bbfaf0a52a789e3a2d83001b287bddc10bcde0ce495a6`.
+  Final encrypted database/attachment/environment snapshots were taken with the app stopped;
+  archive validation, migration exit 0, all 80 journal hashes, UID 10001 and four agent/portal
+  certificate-validated HTTPS health probes passed. Shadow remains on. No production deployment,
+  live database restore, authenticated UAT business smoke, or three-day clean result is claimed.
+- **Recovery proven:** the prior preliminary clone rehearsal completed exit 0; accepted and
+  signed prior-source fallback both booted against the same migrated schema. Exact clone
+  resource cleanup and unchanged live app were verified afterward. Evidence lives under
+  `/Users/heinthura/.codex/taskdesk-evidence/2026-10-02/uat-restore-rehearsal/`, correcting the
+  temporary-path reference in the earlier snapshot. Upgrade receipts are under
+  `/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/uat-upgrade/run-20261003t015443z/`.
+  A first live attempt failed before migration and safely restarted the original app; its
+  encrypted backups and failure/recovery evidence remain preserved.
+- **Complete-batch implementation:** #577 implements host-selected authentication, stored
+  session portal and Origin/cookie boundaries; #578 implements shared Avatar, app composition
+  relocation, density and contrast enforcement. Remaining CI/runtime/browser gaps are being
+  fixed together before final bulk review. These are drafts, not accepted security closure.
+- **Performance:** #525's local candidate tree, now committed at `cce8f703`, passed 19/22
+  unchanged canonical cases versus 9/22 on accepted-main source. Detail first paint
+  521.6/300 ms, palette open 306.1/200 ms and palette navigation 304.9/200 ms still fail.
+  This is local measured progress, not hosted G11 acceptance; G11 remains disabled on main.
+- **Priorities:** finish the remaining P0 features and meaningful checks, then review frozen
+  implementation batches. Early human spec/design review remains deferred to P4; do not
+  fabricate approvals. Three issue-free development/UAT days replace the previous seven-day
+  wait. Real remaining failures, native realtime integration and the Sol finalizer remain open.
+
+## Blocked — 2026-10-02 15:29 UTC
+
+- **Isolated UAT restore rehearsal:** preliminary restore/migrate and accepted-image plus
+  signed-fallback boot passed against the same clone at schema 80. Both ran as UID 10001;
+  health and safe public status returned 200, and no internal ports were published. Receipts:
+  `/private/tmp/uat-restore-rehearsal/run-20261002t152937z-c011d8f0ebdd`. Cleanup is finishing;
+  the runner has not exited. This is not a live-UAT replacement, domain-authenticated read,
+  or point-consistent snapshot; no source-bound soak has started.
+
+## Blocked — 2026-10-02 15:25 UTC
+
+- **Human review timing:** user direction removes early Thomas spec-read/design/H1–H6
+  prerequisites for P0–P3. Implement the full related feature set before integrated bulk
+  review; documented user-authorized recommendations, including #573, may be implemented now.
+  Human review is deferred to P4, not approved; no H1 approval is inferred. This deferral does
+  not block technical P0–P3 closure when all other applicable criteria, including the stage
+  GPT-6 Sol finalizer, pass.
+- **P0/UAT shadow:** three issue-free UTC date buckets apply, not a seven-day UAT wait.
+  Current 68-request evidence is nonrepresentative and source/OCI identity is unknown;
+  authenticated missing/foreign-Origin WebSockets returned 101 and the hosted performance
+  run failed 8/22. No clean three-day result is established. Production/go-live criteria apply
+  only at actual production promotion and remain separate.
+
+## Blocked — 2026-10-02 15:10 UTC
+
+- **Development/P0 shadow cadence:** user direction now sets three issue-free UTC date buckets
+  with source-bound behavior/router coverage; representative matching evidence may count, and
+  note-only/mechanical changes do not restart it. Run ready performance, unit, integration,
+  and browser checks immediately. Production/go-live criteria remain unchanged. See the newest
+  [decision](decision-log.md).
+- **No clean three-day result:** the existing 68-request shadow record remains
+  nonrepresentative and tied to the older source with unknown OCI identity. Authenticated
+  missing/foreign-Origin WebSockets still returned 101, and the latest hosted performance run
+  failed 8 of 22 budgets. These are not clean development evidence or acceptance.
+
+## Blocked — 2026-10-02 15:03 UTC
+
+- **Accepted main/runtime:** `main` remains `8ddb9de8` (#574); the #572 marker is accepted.
+  OrbStack remains healthy on image `sha256:7b8f74750b41e5e6551cd17611eba5c9ff518c4f76bf5276829e15b074b78bfd`
+  (OCI `b80ff7c3`, UID 10001). This is not current browser acceptance.
+- **UAT/restore:** read-only 13:43 UAT is old source `c463`, OCI unknown; 77 applied hashes
+  bind to that source and 77–79 remain pending. Signed image `9c97` (source `ad1`) and prior
+  `4b2c` (source `13c`) were verified, not deployed. Backup/restore runner is preparing the
+  full findings batch; none executed and no source-bound soak started.
+- **P0 performance (#575/#525/#558):** #575 head `1e9d13a8c468cf57b582a01c6143a18a2ec46554`
+  is based on older `a8b33755`; reviewed source `aee`. One private source/fresh-build-bound
+  capture exited 0 at 13:58:54 and cleanup was privately verified; this is not G11. Hosted
+  run `37017909532` completed 14/22 budgets, failing eight in the same classes. PostgreSQL
+  job `110873255782` passed 128 files / 1,596 tests / 5 tasks on the older `a8b33755` parent,
+  not current main's 1,600-test result.
+  The third minimal modal route-subscription trial measured route 497.9 → 511.0 ms, palette
+  299.8 → 284.1 ms, keyboard 320.7 → 309.7 ms; all three budgets failed. Rejected; its two
+  owned files were restored clean at `a8b33755` before bulk refresh. Two earlier trials were
+  also rejected. Private raw evidence and failed ledgers are preserved; no speed improvement
+  is established. #549 is closed as superseded by #575, branch preserved; #558's separate
+  cold diagnostic remains failed and unchanged.
+- **Other P0 obligations:** #573 head `11affd07` is spec-only; two Luna reviews, Sol review
+  and 17 checks are clear. Thomas's finished-spec read remains pending; no human read is
+  inferred. This is not implementation or #560 closure. Chrome extension UI still blocks
+  manual browser verification. H1, the P0 Sol phase finalizer and other P0 exit obligations
+  remain open. No stage acceptance, waiver or cutover is claimed.
+- **Review cadence:** the user's 2026-10-02 direction applies: implement related approved
+  work and known findings in substantial batches, test during implementation, then review the
+  frozen bulk candidate at its applicable tier. Do not review small/mechanical edits or
+  speculative trials. Existing tiers, exact-head requirements and protected-merge gates
+  remain. See [AGENTS.md](../../AGENTS.md#bulk-implementation-and-review-cadence) and the
+  newest [decision-log entry](decision-log.md).
+
 ## Blocked — 2026-10-02 07:00 UTC
 
 - **P0 authorization shadow soak (#8):** the dated route-outcome audit at 03:26:35 UTC covered 68 requests across 2026-09-28–30: 46 outcomes agreed and 22 were unevaluated (18 delegated WebSocket outcomes and four legacy self-GET outcomes unknown). The 04:57:08 route-coverage aggregate remained 68 requests but did not establish date coverage. These observations do not establish current Oct 1–2 traffic or representative eligible-router exercise. The required representative soak and reviewed cutover remain open.

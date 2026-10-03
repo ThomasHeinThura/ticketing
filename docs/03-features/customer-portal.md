@@ -158,6 +158,34 @@ misconfigured away through the role editor.
   into the sequence unannounced; appending it after the highest-numbered rule makes it
   legible as exactly that — a later addition — without invalidating every existing
   citation.)*
+- `CP-19` **Before portal identity exists, the portal origin is disabled and isolated.**
+  In P0, `GET` and `HEAD /` serve a localized unavailable notice built with
+  `packages/ui`; the page has no login form, provider list, session probe, external
+  redirect or credential submission. Every `/api` path and websocket upgrade on the
+  portal origin returns the same generic 404 before auth, session/API-key resolution,
+  database, audit, event or websocket handling, except plain `GET` and `HEAD` requests
+  for exactly `/api/health`, `/api/public/health/live` and
+  `/api/public/health/ready`. Those existing health handlers remain independent of which
+  origin received the request. A syntactically valid unknown Host is accepted only for
+  these exact `GET`/`HEAD` health requests, preserving loopback Docker and deploy readiness
+  probes; malformed, missing, duplicate, or upgraded authorities are rejected, and `HEAD`
+  returns the matching status and headers without a body. The portal serves files only from its own output root; a missing asset
+  is 404, unmatched portal paths are 404, and it never falls back to agent files or the
+  agent SPA. If the selected output root or its `index.html` is missing, that origin
+  returns 503. The request authority selects one configured origin only after strict
+  validation: exactly one raw Host (or a consistent HTTP/2 `:authority` and Host),
+  normalized using the configured public scheme and its default port. DNS names are
+  case- and IDNA-normalized; malformed authorities and unknown hosts are rejected.
+  Forwarded headers and the backend transport scheme do not select the application.
+  Host selection and portal-path denial run before CORS, compression, auth, API, static,
+  SPA or websocket handling. The agent origin keeps its existing URLs and behavior.
+  P3 may replace the disabled outcome only after the independently reviewed per-host
+  auth instances, host-only cookies, portal session checks, callback/provider binding
+  and explicit portal API policy exist. Enabling `feature.customer_portal` alone never
+  exposes agent handlers on the portal origin. This interim contract adds no customer
+  identity, API permission, capability, database field, environment variable or feature
+  flag. See [ADR 0004](../01-architecture/adr/0004-two-portals-two-origins.md) and the
+  [P0 acceptance matrix](../07-planning/phases.md#p0-two-entry-host-and-static-acceptance).
 
 ## Permissions
 

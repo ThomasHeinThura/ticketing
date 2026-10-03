@@ -30,7 +30,7 @@ async function originHeaderFor(requestOrigin: string) {
 describe("API integration: CORS origin policy", () => {
   it("refuses unconfigured cross-origin requests in production", async () => {
     process.env.NODE_ENV = "production";
-    delete process.env.TASKDESK_AGENT_URL;
+    process.env.TASKDESK_AGENT_URL = "http://localhost:1337";
     delete process.env.CORS_ORIGINS;
 
     expect(await originHeaderFor("https://attacker.example")).toBeNull();
@@ -45,7 +45,7 @@ describe("API integration: CORS origin policy", () => {
   // actually broken.
   it("refuses unconfigured cross-origin requests when NODE_ENV is unset", async () => {
     delete process.env.NODE_ENV;
-    delete process.env.TASKDESK_AGENT_URL;
+    process.env.TASKDESK_AGENT_URL = "http://localhost:1337";
     delete process.env.CORS_ORIGINS;
 
     expect(await originHeaderFor("https://attacker.example")).toBeNull();
@@ -53,7 +53,7 @@ describe("API integration: CORS origin policy", () => {
 
   it("refuses unconfigured cross-origin requests under any unexpected NODE_ENV", async () => {
     process.env.NODE_ENV = "staging";
-    delete process.env.TASKDESK_AGENT_URL;
+    process.env.TASKDESK_AGENT_URL = "http://localhost:1337";
     delete process.env.CORS_ORIGINS;
 
     expect(await originHeaderFor("https://attacker.example")).toBeNull();
@@ -61,11 +61,11 @@ describe("API integration: CORS origin policy", () => {
 
   it("still reflects the origin in development", async () => {
     process.env.NODE_ENV = "development";
-    delete process.env.TASKDESK_AGENT_URL;
+    process.env.TASKDESK_AGENT_URL = "http://localhost:1337";
     delete process.env.CORS_ORIGINS;
 
-    expect(await originHeaderFor("http://localhost:5173")).toBe(
-      "http://localhost:5173",
+    expect(await originHeaderFor("http://localhost:1337")).toBe(
+      "http://localhost:1337",
     );
   });
 
@@ -82,7 +82,7 @@ describe("API integration: CORS origin policy", () => {
 
   it("honours a comma-separated CORS_ORIGINS allowlist", async () => {
     process.env.NODE_ENV = "production";
-    delete process.env.TASKDESK_AGENT_URL;
+    process.env.TASKDESK_AGENT_URL = "http://localhost:1337";
     process.env.CORS_ORIGINS = "https://a.example, https://b.example";
 
     expect(await originHeaderFor("https://b.example")).toBe(

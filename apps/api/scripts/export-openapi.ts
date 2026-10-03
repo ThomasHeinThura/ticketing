@@ -5,7 +5,13 @@ import { createApp } from "../src/index";
 process.env.KANEO_API_URL = "https://taskdesk.bimats.com";
 
 const { app } = createApp();
-const response = await app.request("/api/openapi");
+const agentOrigin = new URL(
+  process.env.TASKDESK_AGENT_URL || "http://localhost:5173",
+);
+const response = await app.request(
+  new URL("/api/openapi", agentOrigin).toString(),
+  { headers: { host: agentOrigin.host } },
+);
 
 if (!response.ok) {
   throw new Error(`OpenAPI export failed with status ${response.status}`);

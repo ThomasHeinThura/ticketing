@@ -3171,6 +3171,18 @@
 						"descriptionPlaceholder": {
 							"type": "string"
 						},
+						"defaultCommentVisibilityLabel": {
+							"type": "string"
+						},
+						"defaultCommentVisibilityHint": {
+							"type": "string"
+						},
+						"commentVisibilityInternal": {
+							"type": "string"
+						},
+						"commentVisibilityPublic": {
+							"type": "string"
+						},
 						"dangerZone": {
 							"type": "string"
 						},
@@ -3254,6 +3266,10 @@
 						"descriptionLabel",
 						"descriptionHint",
 						"descriptionPlaceholder",
+						"defaultCommentVisibilityLabel",
+						"defaultCommentVisibilityHint",
+						"commentVisibilityInternal",
+						"commentVisibilityPublic",
 						"dangerZone",
 						"dangerZoneSubtitle",
 						"deleteProject",
@@ -9242,6 +9258,9 @@
 						},
 						"partialNoticeDescription": {
 							"type": "string"
+						},
+						"realtimeUnavailable": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -9271,11 +9290,874 @@
 						"unavailable",
 						"unavailableFieldLabel",
 						"partialNoticeTitle",
-						"partialNoticeDescription"
+						"partialNoticeDescription",
+						"realtimeUnavailable"
+					]
+				},
+				"journey": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"editHeading": {
+							"type": "string"
+						},
+						"edit": {
+							"type": "string"
+						},
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"startDate": {
+							"type": "string"
+						},
+						"dueDate": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"saveAttention": {
+							"type": "string"
+						},
+						"editConflict": {
+							"type": "string"
+						},
+						"saveError": {
+							"type": "string"
+						},
+						"assignmentHeading": {
+							"type": "string"
+						},
+						"assignee": {
+							"type": "string"
+						},
+						"assigneePlaceholder": {
+							"type": "string"
+						},
+						"loadingPeople": {
+							"type": "string"
+						},
+						"peopleError": {
+							"type": "string"
+						},
+						"unnamedPerson": {
+							"type": "string"
+						},
+						"confirmReassign": {
+							"type": "string"
+						},
+						"confirmReassignDescription": {
+							"type": "string"
+						},
+						"assignmentConflict": {
+							"type": "string"
+						},
+						"assignmentError": {
+							"type": "string"
+						},
+						"unassignmentError": {
+							"type": "string"
+						},
+						"assign": {
+							"type": "string"
+						},
+						"unassign": {
+							"type": "string"
+						},
+						"confirmAssignment": {
+							"type": "string"
+						},
+						"activityHeading": {
+							"type": "string"
+						},
+						"loadingActivity": {
+							"type": "string"
+						},
+						"activityError": {
+							"type": "string"
+						},
+						"activityFilters": {
+							"type": "string"
+						},
+						"filterAll": {
+							"type": "string"
+						},
+						"filterComments": {
+							"type": "string"
+						},
+						"filterPublic": {
+							"type": "string"
+						},
+						"noFilteredActivity": {
+							"type": "string"
+						},
+						"commentVisibility": {
+							"type": "string"
+						},
+						"commentEditor": {
+							"type": "string"
+						},
+						"commentPlaceholder": {
+							"type": "string"
+						},
+						"commentSend": {
+							"type": "string"
+						},
+						"commentSending": {
+							"type": "string"
+						},
+						"commentForbidden": {
+							"type": "string"
+						},
+						"commentError": {
+							"type": "string"
+						},
+						"noActivity": {
+							"type": "string"
+						},
+						"comment": {
+							"type": "string"
+						},
+						"internal": {
+							"type": "string"
+						},
+						"public": {
+							"type": "string"
+						},
+						"visibilityUnavailable": {
+							"type": "string"
+						},
+						"commentDeleted": {
+							"type": "string"
+						},
+						"assignToMe": {
+							"type": "string"
+						},
+						"loadOlderActivity": {
+							"type": "string"
+						},
+						"loadingOlderActivity": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"editHeading",
+						"edit",
+						"title",
+						"description",
+						"startDate",
+						"dueDate",
+						"save",
+						"saving",
+						"cancel",
+						"saveAttention",
+						"editConflict",
+						"saveError",
+						"assignmentHeading",
+						"assignee",
+						"assigneePlaceholder",
+						"loadingPeople",
+						"peopleError",
+						"unnamedPerson",
+						"confirmReassign",
+						"confirmReassignDescription",
+						"assignmentConflict",
+						"assignmentError",
+						"unassignmentError",
+						"assign",
+						"unassign",
+						"confirmAssignment",
+						"activityHeading",
+						"loadingActivity",
+						"activityError",
+						"activityFilters",
+						"filterAll",
+						"filterComments",
+						"filterPublic",
+						"noFilteredActivity",
+						"commentVisibility",
+						"commentEditor",
+						"commentPlaceholder",
+						"commentSend",
+						"commentSending",
+						"commentForbidden",
+						"commentError",
+						"noActivity",
+						"comment",
+						"internal",
+						"public",
+						"visibilityUnavailable",
+						"commentDeleted",
+						"assignToMe",
+						"loadOlderActivity",
+						"loadingOlderActivity"
 					]
 				}
 			},
-			"required": ["list", "create", "detail"]
+			"required": ["list", "create", "detail", "journey"]
+		},
+		"serviceCalendars": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"weekdays": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"mon": {
+							"type": "string"
+						},
+						"tue": {
+							"type": "string"
+						},
+						"wed": {
+							"type": "string"
+						},
+						"thu": {
+							"type": "string"
+						},
+						"fri": {
+							"type": "string"
+						},
+						"sat": {
+							"type": "string"
+						},
+						"sun": {
+							"type": "string"
+						}
+					},
+					"required": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+				},
+				"list": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"new": {
+							"type": "string"
+						},
+						"readOnlyTitle": {
+							"type": "string"
+						},
+						"readOnlyDescription": {
+							"type": "string"
+						},
+						"toolsTitle": {
+							"type": "string"
+						},
+						"toolsDescription": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"label": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"create": {
+							"type": "string"
+						},
+						"weeklyHours": {
+							"type": "string"
+						},
+						"manualHolidays": {
+							"type": "string"
+						},
+						"manualHolidays_zero": {
+							"type": "string"
+						},
+						"manualHolidays_one": {
+							"type": "string"
+						},
+						"manualHolidays_two": {
+							"type": "string"
+						},
+						"manualHolidays_few": {
+							"type": "string"
+						},
+						"manualHolidays_many": {
+							"type": "string"
+						},
+						"manualHolidays_other": {
+							"type": "string"
+						},
+						"usageUnavailable": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"new",
+						"readOnlyTitle",
+						"readOnlyDescription",
+						"toolsTitle",
+						"toolsDescription",
+						"loading",
+						"loadErrorTitle",
+						"loadErrorDescription",
+						"retry",
+						"label",
+						"emptyTitle",
+						"emptyDescription",
+						"create",
+						"weeklyHours",
+						"usageUnavailable"
+					]
+				},
+				"editor": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"pageTitle": {
+							"type": "string"
+						},
+						"newTitle": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"back": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"create": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						},
+						"conflictTitle": {
+							"type": "string"
+						},
+						"conflictDescription": {
+							"type": "string"
+						},
+						"conflictRefreshing": {
+							"type": "string"
+						},
+						"conflictRefreshFailed": {
+							"type": "string"
+						},
+						"discardReload": {
+							"type": "string"
+						},
+						"keepDraft": {
+							"type": "string"
+						},
+						"readOnlyTitle": {
+							"type": "string"
+						},
+						"readOnlyDescription": {
+							"type": "string"
+						},
+						"timezoneTitle": {
+							"type": "string"
+						},
+						"timezoneDescription": {
+							"type": "string"
+						},
+						"timezoneCount": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"confirmSave": {
+							"type": "string"
+						},
+						"changesTitle": {
+							"type": "string"
+						},
+						"changesDescription": {
+							"type": "string"
+						},
+						"zeroWeeklyTitle": {
+							"type": "string"
+						},
+						"zeroWeeklyDescription": {
+							"type": "string"
+						},
+						"zeroTitle": {
+							"type": "string"
+						},
+						"zeroDescription": {
+							"type": "string"
+						},
+						"limitedTitle": {
+							"type": "string"
+						},
+						"limitedDescription": {
+							"type": "string"
+						},
+						"allCalendars": {
+							"type": "string"
+						},
+						"editableLegend": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"pageTitle",
+						"newTitle",
+						"loading",
+						"loadErrorTitle",
+						"loadErrorDescription",
+						"retry",
+						"back",
+						"save",
+						"create",
+						"saving",
+						"conflictTitle",
+						"conflictDescription",
+						"conflictRefreshing",
+						"conflictRefreshFailed",
+						"discardReload",
+						"keepDraft",
+						"readOnlyTitle",
+						"readOnlyDescription",
+						"timezoneTitle",
+						"timezoneDescription",
+						"timezoneCount",
+						"cancel",
+						"confirmSave",
+						"changesTitle",
+						"changesDescription",
+						"zeroWeeklyTitle",
+						"zeroWeeklyDescription",
+						"zeroTitle",
+						"zeroDescription",
+						"limitedTitle",
+						"limitedDescription",
+						"allCalendars",
+						"editableLegend"
+					]
+				},
+				"details": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"timezone": {
+							"type": "string"
+						},
+						"timezonePlaceholder": {
+							"type": "string"
+						},
+						"timezoneHelp": {
+							"type": "string"
+						},
+						"nameRequired": {
+							"type": "string"
+						},
+						"timezoneRequired": {
+							"type": "string"
+						},
+						"timezoneInvalid": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"name",
+						"timezone",
+						"timezonePlaceholder",
+						"timezoneHelp",
+						"nameRequired",
+						"timezoneRequired",
+						"timezoneInvalid"
+					]
+				},
+				"preview": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"year": {
+							"type": "string"
+						},
+						"yearHelp": {
+							"type": "string"
+						},
+						"saveToCalculate": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"weeklyHours": {
+							"type": "string"
+						},
+						"annualHours": {
+							"type": "string"
+						},
+						"zeroCover": {
+							"type": "string"
+						},
+						"calendar": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"year",
+						"yearHelp",
+						"saveToCalculate",
+						"unavailable",
+						"retry",
+						"weeklyHours",
+						"annualHours",
+						"zeroCover",
+						"calendar"
+					]
+				},
+				"weekly": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"none": {
+							"type": "string"
+						},
+						"add": {
+							"type": "string"
+						},
+						"addOn": {
+							"type": "string"
+						},
+						"windowInvalid": {
+							"type": "string"
+						},
+						"chooseWorkspace": {
+							"type": "string"
+						},
+						"created": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"saveFailed": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"none",
+						"add",
+						"addOn",
+						"windowInvalid",
+						"chooseWorkspace",
+						"created",
+						"saved",
+						"saveFailed"
+					]
+				},
+				"window": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"timeline": {
+							"type": "string"
+						},
+						"label": {
+							"type": "string"
+						},
+						"label_zero": {
+							"type": "string"
+						},
+						"label_one": {
+							"type": "string"
+						},
+						"label_two": {
+							"type": "string"
+						},
+						"label_few": {
+							"type": "string"
+						},
+						"label_many": {
+							"type": "string"
+						},
+						"label_other": {
+							"type": "string"
+						},
+						"move": {
+							"type": "string"
+						},
+						"starts": {
+							"type": "string"
+						},
+						"ends": {
+							"type": "string"
+						},
+						"endBoundary": {
+							"type": "string"
+						},
+						"endBoundaryLabel": {
+							"type": "string"
+						},
+						"remove": {
+							"type": "string"
+						},
+						"removeWindow": {
+							"type": "string"
+						},
+						"startLabel": {
+							"type": "string"
+						},
+						"endLabel": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"timeline",
+						"move",
+						"starts",
+						"ends",
+						"endBoundary",
+						"endBoundaryLabel",
+						"remove",
+						"removeWindow",
+						"startLabel",
+						"endLabel"
+					]
+				},
+				"holidays": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"pastWarning": {
+							"type": "string"
+						},
+						"add": {
+							"type": "string"
+						},
+						"none": {
+							"type": "string"
+						},
+						"item": {
+							"type": "string"
+						},
+						"item_zero": {
+							"type": "string"
+						},
+						"item_one": {
+							"type": "string"
+						},
+						"item_two": {
+							"type": "string"
+						},
+						"item_few": {
+							"type": "string"
+						},
+						"item_many": {
+							"type": "string"
+						},
+						"item_other": {
+							"type": "string"
+						},
+						"pattern": {
+							"type": "string"
+						},
+						"date": {
+							"type": "string"
+						},
+						"range": {
+							"type": "string"
+						},
+						"annual": {
+							"type": "string"
+						},
+						"dateLabel": {
+							"type": "string"
+						},
+						"from": {
+							"type": "string"
+						},
+						"through": {
+							"type": "string"
+						},
+						"month": {
+							"type": "string"
+						},
+						"day": {
+							"type": "string"
+						},
+						"nameOptional": {
+							"type": "string"
+						},
+						"remove": {
+							"type": "string"
+						},
+						"removeHoliday": {
+							"type": "string"
+						},
+						"removeHoliday_zero": {
+							"type": "string"
+						},
+						"removeHoliday_one": {
+							"type": "string"
+						},
+						"removeHoliday_two": {
+							"type": "string"
+						},
+						"removeHoliday_few": {
+							"type": "string"
+						},
+						"removeHoliday_many": {
+							"type": "string"
+						},
+						"removeHoliday_other": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"pastWarning",
+						"add",
+						"none",
+						"pattern",
+						"date",
+						"range",
+						"annual",
+						"dateLabel",
+						"from",
+						"through",
+						"month",
+						"day",
+						"nameOptional",
+						"remove"
+					]
+				}
+			},
+			"required": [
+				"weekdays",
+				"list",
+				"editor",
+				"details",
+				"preview",
+				"weekly",
+				"window",
+				"holidays"
+			]
+		},
+		"portal": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"unavailable": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						}
+					},
+					"required": ["title", "description"]
+				},
+				"notFound": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						}
+					},
+					"required": ["title", "description"]
+				},
+				"error": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						}
+					},
+					"required": ["title", "description"]
+				}
+			},
+			"required": ["unavailable", "notFound", "error"]
 		}
 	},
 	"required": [
@@ -9290,6 +10172,8 @@
 		"workspace",
 		"team",
 		"publicProject",
-		"workItems"
+		"workItems",
+		"serviceCalendars",
+		"portal"
 	]
 }

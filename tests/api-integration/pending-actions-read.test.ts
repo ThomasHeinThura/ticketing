@@ -9,6 +9,7 @@ import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 
 beforeEach(async () => {
   await resetTestDatabase();
+  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
 });
 
 function hashApiKeyForTest(key: string): string {
@@ -449,6 +450,10 @@ describe("GET /api/me/pending-actions", () => {
   it("does not return a summary when its viewed audit write fails", async () => {
     const { user, workspace } = await createWorkspaceMember();
     await createPersonFor(user.id, workspace.organisationId);
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, user.id));
     const pending = await createPendingAction(user.id, {
       id: "pa-audit-failure",
       payloadSummary: { secret: "SUMMARY_MUST_NOT_ESCAPE" },
@@ -482,6 +487,14 @@ describe("GET /api/me/pending-actions", () => {
       );
       expect(response.status).toBe(500);
       expect(await response.text()).not.toContain("SUMMARY_MUST_NOT_ESCAPE");
+      const alerts = await db
+        .select({ eventData: schema.notificationTable.eventData })
+        .from(schema.notificationTable)
+        .where(eq(schema.notificationTable.type, "audit_write_failed"));
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]?.eventData).toMatchObject({
+        operation: "pending_action_self_read",
+      });
     } finally {
       await db.execute(
         sql.raw(

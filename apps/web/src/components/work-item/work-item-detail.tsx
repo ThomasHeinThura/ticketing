@@ -13,7 +13,6 @@ import {
   EmptyHeader,
   EmptyTitle,
   Separator,
-  Skeleton,
 } from "@taskdesk/ui";
 import { ChevronDown, Info, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -25,6 +24,7 @@ import {
   type WorkItemDetailField,
   type WorkItemDetailRow,
 } from "@/types/work-item";
+import WorkItemDetailLoading from "./work-item-detail-loading";
 
 export type WorkItemDetailProps = {
   item: WorkItemDetailRow | undefined;
@@ -118,7 +118,7 @@ function WorkItemDetail({
     );
   }
 
-  if (isError) {
+  if (isError && !item) {
     return (
       <Alert variant="error" data-testid="work-item-detail-error">
         <TriangleAlert />
@@ -134,24 +134,7 @@ function WorkItemDetail({
   }
 
   if (isLoading || !item) {
-    return (
-      <div
-        className="flex flex-col gap-3"
-        data-testid="work-item-detail-loading"
-        aria-busy="true"
-        aria-live="polite"
-      >
-        <span className="sr-only">{t("workItems:detail.loading")}</span>
-        <Skeleton className="h-5 w-24" />
-        <Skeleton className="h-9 w-2/3" />
-        <div className="flex flex-wrap gap-2">
-          <Skeleton className="h-6 w-24" />
-          <Skeleton className="h-6 w-24" />
-          <Skeleton className="h-6 w-28" />
-        </div>
-        <Skeleton className="h-32 w-full" />
-      </div>
-    );
+    return <WorkItemDetailLoading />;
   }
 
   const description = extractDescription(item.description);
@@ -169,6 +152,18 @@ function WorkItemDetail({
 
   return (
     <div className="flex flex-col gap-6" data-testid="work-item-detail">
+      {isError && (
+        <Alert variant="warning" data-testid="work-item-detail-stale-error">
+          <TriangleAlert />
+          <AlertTitle>{t("workItems:detail.errorTitle")}</AlertTitle>
+          <AlertDescription>
+            <p>{t("workItems:detail.errorDescription")}</p>
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              {t("workItems:detail.retry")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
       {hasPartialFailure && (
         <Alert variant="warning" data-testid="work-item-detail-partial-notice">
           <Info />
