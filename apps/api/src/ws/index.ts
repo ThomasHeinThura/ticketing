@@ -16,6 +16,7 @@ import { deliverNativeBroadcast } from "./native-work-item-realtime";
 export {
   addNativeConnection,
   handleNativeFrame,
+  reauthorizeNativeConnection,
   removeNativeConnection,
 } from "./native-work-item-realtime";
 

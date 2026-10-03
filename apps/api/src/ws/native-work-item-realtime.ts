@@ -170,7 +170,7 @@ export function addNativeConnection(
     topics: new Map(),
     frameTimes: [],
     reauthTimer: setInterval(() => {
-      void reauthorizeConnection(connection);
+      void reauthorizeNativeConnection(connection);
     }, REAUTH_INTERVAL_MS),
   };
   nativeConnections.add(connection);
@@ -235,7 +235,9 @@ export async function handleNativeFrame(
   send(connection, { type: "subscribed", topic: parsed.data.topic });
 }
 
-async function reauthorizeConnection(connection: NativeConnection) {
+export async function reauthorizeNativeConnection(
+  connection: NativeConnection,
+) {
   try {
     const credential = await connection.reauthenticate();
     if (
