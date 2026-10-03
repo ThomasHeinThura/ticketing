@@ -5,6 +5,25 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+
+### 2026-10-03 · P0 structured logging and metrics dependencies authorized
+
+**Decision:** Thomas explicitly approved adding Pino and prom-client in this chat on
+2026-10-03. The P0 runtime implementation uses exact pins `pino` 10.4.0 (MIT) and
+`prom-client` 15.1.3 (Apache-2.0), verified against the npm registry and the projects'
+official release records. Node 24 satisfies the metrics client's declared engine range.
+The registry marks prom-client deprecated in favor of its renamed successor
+`@prometheus-io/client`; this entry authorizes the explicitly approved package, and does
+not silently add another dependency. Runtime APIs, singleton configuration, labels, token
+handling and listener boundaries follow observability.md and api-design.md.
+
+**Scope:** these dependencies support the still-missing P0 logging and metrics runtime.
+Installing them alone does not establish instrumentation, a usable metrics listener,
+durable AU-14 administrator alerts, acceptance, deployment or phase completion. The full
+implementation is batched before independent review.
+
+**Decided by:** Thomas, explicit dependency-approval reply; recorded by the orchestrator.
+
 ### 2026-10-03 · Native work-item realtime uses one subscribed socket and key-only outbox hints (#570)
 
 **Decision:** browser subscriptions use `GET /api/ws` and explicit validated `subscribe` / `unsubscribe` frames for `project:{projectId}` and `work_item:{key}`. Existing `/api/ws/user` and `/api/ws/{projectId}` routes are removed after the client is migrated. The server resolves topic resources from persisted project/work-item relationships and applies the same read capabilities and row/project reach as REST. Missing and unreadable topics have the same denial frame. Session Host/Origin/portal checks remain those in ADR 0004 and `realtime.md`.
