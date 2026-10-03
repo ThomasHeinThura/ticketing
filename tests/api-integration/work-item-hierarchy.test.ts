@@ -22,6 +22,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 import { raceWorkItemSoftDelete } from "./helpers/race-soft-delete";
 
@@ -85,6 +86,8 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     })
     .returning();
   if (!user) throw new Error("addWorkspaceMember: user insert returned no row");
+
+  await prepareAuthenticatedApiFixture(user.id);
 
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,

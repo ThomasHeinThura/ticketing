@@ -19,6 +19,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -92,6 +93,8 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     "addWorkspaceMember: user",
   );
 
+  await prepareAuthenticatedApiFixture(user.id);
+
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
     userId: user.id,
@@ -120,34 +123,54 @@ async function addNamedPersonOnRoster({
   projectId,
   roleName = "Project Member",
   roleRank = 10,
+  linkedUserId,
 }: {
   name: string;
   projectId: string;
   roleName?: string;
   roleRank?: number;
+  linkedUserId?: string;
 }) {
   const organisation = await ensureInternalOrganisation();
-  const userId = `user-${randomUUID()}`;
   const now = new Date();
-  await db.insert(schema.userTable).values({
-    id: userId,
-    email: `${userId}@example.com`,
-    emailVerified: true,
-    name,
-  });
-  const person = requireRow(
+  let userId = linkedUserId;
+  let person: typeof schema.personTable.$inferSelect;
+  if (linkedUserId) {
+    userId = linkedUserId;
     await db
-      .insert(schema.personTable)
-      .values({
-        userId,
-        organisationId: organisation.id,
-        side: "staff",
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning(),
-    "addNamedPersonOnRoster: person",
-  );
+      .update(schema.userTable)
+      .set({ name })
+      .where(eq(schema.userTable.id, linkedUserId));
+    person = requireRow(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, linkedUserId))
+        .limit(1),
+      "addNamedPersonOnRoster: linked person",
+    );
+  } else {
+    userId = `user-${randomUUID()}`;
+    await db.insert(schema.userTable).values({
+      id: userId,
+      email: `${userId}@example.com`,
+      emailVerified: true,
+      name,
+    });
+    person = requireRow(
+      await db
+        .insert(schema.personTable)
+        .values({
+          userId,
+          organisationId: organisation.id,
+          side: "staff",
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning(),
+      "addNamedPersonOnRoster: person",
+    );
+  }
   const role = requireRow(
     await db
       .insert(schema.roleTable)
@@ -333,11 +356,8 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     const memberPerson = await addNamedPersonOnRoster({
       name: "Mia Member",
       projectId: project.id,
+      linkedUserId: memberUser.id,
     });
-    await db
-      .update(schema.personTable)
-      .set({ userId: memberUser.id })
-      .where(eq(schema.personTable.id, memberPerson.person.id));
     await addNamedPersonOnRoster({
       name: "Someone Else",
       projectId: project.id,
@@ -371,16 +391,11 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
   it("a viewer who IS on the roster and linked to a user still sees NOTHING (F2: the filter is the capability, not the person row)", async () => {
     const { workspace, project } = await setup();
     const viewer = await addWorkspaceMember(workspace.id, "viewer");
-    const viewerPerson = await addNamedPersonOnRoster({
+    await addNamedPersonOnRoster({
       name: "Vera Viewer",
       projectId: project.id,
+      linkedUserId: viewer.id,
     });
-    // Link the person row to the viewer's user -- the exact shape the earlier filter
-    // mistook for "may assign themselves".
-    await db
-      .update(schema.personTable)
-      .set({ userId: viewer.id })
-      .where(eq(schema.personTable.id, viewerPerson.person.id));
 
     mockAuthenticatedSession(viewer);
     const { app } = createApp();
@@ -549,14 +564,9 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     const now = new Date();
     const customerPerson = requireRow(
       await db
-        .insert(schema.personTable)
-        .values({
-          userId: memberUser.id,
-          organisationId: organisation.id,
-          side: "customer",
-          createdAt: now,
-          updatedAt: now,
-        })
+        .update(schema.personTable)
+        .set({ side: "customer", organisationId: organisation.id, updatedAt: now })
+        .where(eq(schema.personTable.userId, memberUser.id))
         .returning(),
       "L4 customer person",
     );
