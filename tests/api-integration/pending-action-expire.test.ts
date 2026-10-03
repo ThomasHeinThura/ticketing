@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { decideOwnPendingAction } from "../../apps/api/src/pending-action/service";
 import { expirePendingActions } from "../../apps/api/src/scheduler/pending-action-expire";
+import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 
@@ -187,7 +188,22 @@ describe("PA-8 pending-action expiry", () => {
 
   it("commits state and event when the nested AU-14 audit append fails", async () => {
     const action = await makePendingAction(new Date(Date.now() - 60_000));
-    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const secondAction = await insertPendingAction(
+      new Date(Date.now() - 60_000),
+      action.person.id,
+      action.workspace,
+    );
+    const [admin] = await db
+      .insert(schema.userTable)
+      .values({
+        id: `expiry-admin-${randomUUID()}`,
+        name: "Expiry Admin",
+        email: `expiry-admin-${randomUUID()}@example.test`,
+        role: "admin",
+      })
+      .returning();
+    if (!admin) throw new Error("expiry admin was not created");
+    await ensureStaffPersonForUser(admin.id);
     await db.execute(
       sql.raw(`
       CREATE OR REPLACE FUNCTION fail_pending_action_expiry_audit_insert()
@@ -205,14 +221,22 @@ describe("PA-8 pending-action expiry", () => {
     );
     try {
       const result = await expirePendingActions();
-      expect(result).toMatchObject({ expired: 1, degraded: true });
+      expect(result).toMatchObject({ expired: 2, degraded: true });
       const [row] = await db
         .select({ state: schema.pendingActionTable.state })
         .from(schema.pendingActionTable)
         .where(eq(schema.pendingActionTable.id, action.row.id));
       expect(row?.state).toBe("expired");
       expect(await decisions(action.row.id)).toHaveLength(1);
-      expect(log).toHaveBeenCalled();
+      expect(await decisions(secondAction.id)).toHaveLength(1);
+      const alerts = await db
+        .select({ eventData: schema.notificationTable.eventData })
+        .from(schema.notificationTable)
+        .where(eq(schema.notificationTable.type, "audit_write_failed"));
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]?.eventData).toMatchObject({
+        operation: "pending_action_decision",
+      });
     } finally {
       await db.execute(
         sql.raw(
@@ -224,7 +248,6 @@ describe("PA-8 pending-action expiry", () => {
           "DROP FUNCTION IF EXISTS fail_pending_action_expiry_audit_insert()",
         ),
       );
-      log.mockRestore();
     }
   });
 

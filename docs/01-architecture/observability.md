@@ -135,13 +135,19 @@ taskdesk_http_in_flight
 taskdesk_audit_write_failures_total{operation}
 ```
 
-`operation` is a closed label enum: `mutation`, `pending_action_decision`, or
-`pending_action_self_read`. Do not add route, id, actor, exception text, or trace id labels.
+`operation` is a closed label enum: `mutation`, `pending_action_decision`,
+`pending_action_self_read`, or `audit_read`. Do not add route, id, actor, exception text, or
+trace id labels. `audit_read` covers the best-effort AU-13 audit-row append after an audit-log
+read; it is separate from pending-action self-read auditing.
 The counter increment and its safe error-level log line happen outside any rolled-back audit
 savepoint. They do not change AU-14's successful mutation behavior or the separately
 fail-closed pending-action self-read contract. A positive five-minute increase is an urgent,
-page-worthy alert for the affected instance. Until it is implemented, AU-14 reporting and
-administrator notification remain unfinished.
+page-worthy alert for the affected instance. Background pending-action expiry groups the
+administrator notification and safe log by degraded batch while counting every failed append.
+
+The counter and durable administrator notification are implemented in the current candidate;
+the integrated image/runtime and independent review gates are still pending. A positive
+five-minute increase is an urgent, page-worthy alert for the affected instance.
 
 **Business** — instance-wide aggregate targets, never per-tenant or per-resource series
 ```
@@ -277,8 +283,9 @@ the panels depend on instrumentation that is also planned.
 
 ## Alerts
 
-The audit failure alert is part of the P0 contract but is not currently implemented or
-activated. The remaining conditions are candidates for later monitoring work. Every alert
+The audit failure alert is implemented in the current candidate with a durable instance
+notification to currently-authorized administrators; integrated runtime and review gates are
+still pending. The remaining conditions are candidates for later monitoring work. Every alert
 must be actionable; anything that fires and is routinely ignored gets deleted rather than
 muted.
 

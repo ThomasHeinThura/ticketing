@@ -1889,6 +1889,7 @@ const {
   observabilityApi,
   metricsTokenRotationApi,
   localFactorPolicyApi,
+  resetMfaApi,
   invitationApi,
   invitationPublicApi,
   oauthApi,

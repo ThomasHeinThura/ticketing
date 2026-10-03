@@ -1,5 +1,7 @@
 import { eq } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as auditWriter from "../../apps/api/src/audit/audit-writer";
+import { writeAuditRead } from "../../apps/api/src/audit/controllers/audit-read-common";
 import db, { schema } from "../../apps/api/src/database";
 import {
   isCurrentInstanceAdmin,
@@ -10,11 +12,45 @@ import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal
 import { resetTestDatabase } from "./helpers/database";
 
 beforeEach(async () => {
+  vi.restoreAllMocks();
   await resetTestDatabase();
   await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
 });
 
 describe("AU-14 durable audit-failure notification", () => {
+  it("turns a failed audit-read append into a durable audit_read admin alert", async () => {
+    const [admin] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "au14-audit-read-admin",
+        name: "Audit Read Admin",
+        email: "audit-read-admin@example.test",
+        role: "admin",
+      })
+      .returning();
+    if (!admin) throw new Error("audit-read admin was not created");
+    await ensureStaffPersonForUser(admin.id);
+    vi.spyOn(auditWriter, "appendAuditLog").mockRejectedValueOnce(
+      new Error("sensitive database failure detail"),
+    );
+    const context = {
+      get: (key: string) => (key === "userId" ? admin.id : undefined),
+    };
+
+    await expect(
+      writeAuditRead(context as never, { workspaceId: null }),
+    ).resolves.toBeUndefined();
+
+    const [alert] = await db
+      .select({ eventData: schema.notificationTable.eventData })
+      .from(schema.notificationTable)
+      .where(eq(schema.notificationTable.type, "audit_write_failed"));
+    expect(alert?.eventData).toMatchObject({ operation: "audit_read" });
+    expect(JSON.stringify(alert?.eventData)).not.toContain(
+      "sensitive database failure detail",
+    );
+  });
+
   it("delivers only to active instance administrators and hides alerts after authority is revoked", async () => {
     const [activeAdmin, inactiveAdmin, laterRevokedAdmin, ordinaryUser] =
       await db

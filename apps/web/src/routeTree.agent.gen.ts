@@ -27,6 +27,7 @@ import { Route as InvitationAcceptInviteIdRouteImport } from './routes/agent/inv
 import { Route as LayoutAuthenticatedDashboardIndexRouteImport } from './routes/agent/_layout/_authenticated/dashboard/index'
 import { Route as LayoutAuthenticatedDashboardInvitationsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/invitations'
 import { Route as LayoutAuthenticatedDashboardSettingsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings'
+import { Route as LayoutAuthenticatedGodModeObservabilityRouteImport } from './routes/agent/_layout/_authenticated/god-mode/observability'
 import { Route as LayoutAuthenticatedAgentWorkItemsKeyRouteImport } from './routes/agent/_layout/_authenticated/agent/work-items/$key'
 import { Route as LayoutAuthenticatedDashboardSettingsAccountRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/account'
 import { Route as LayoutAuthenticatedDashboardSettingsProjectsRouteImport } from './routes/agent/_layout/_authenticated/dashboard/settings/projects'
@@ -149,6 +150,12 @@ const LayoutAuthenticatedDashboardSettingsRoute =
     id: '/settings',
     path: '/settings',
     getParentRoute: () => LayoutAuthenticatedDashboardRoute,
+  } as any)
+const LayoutAuthenticatedGodModeObservabilityRoute =
+  LayoutAuthenticatedGodModeObservabilityRouteImport.update({
+    id: '/god-mode/observability',
+    path: '/god-mode/observability',
+    getParentRoute: () => LayoutAuthenticatedRoute,
   } as any)
 const LayoutAuthenticatedAgentWorkItemsKeyRoute =
   LayoutAuthenticatedAgentWorkItemsKeyRouteImport.update({
@@ -345,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/invitation/accept/$inviteId': typeof InvitationAcceptInviteIdRoute
   '/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
+  '/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
   '/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
@@ -388,6 +396,7 @@ export interface FileRoutesByTo {
   '/invitation/accept/$inviteId': typeof InvitationAcceptInviteIdRoute
   '/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
+  '/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/dashboard': typeof LayoutAuthenticatedDashboardIndexRoute
   '/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
@@ -434,6 +443,7 @@ export interface FileRoutesById {
   '/invitation/accept/$inviteId': typeof InvitationAcceptInviteIdRoute
   '/_layout/_authenticated/dashboard/invitations': typeof LayoutAuthenticatedDashboardInvitationsRoute
   '/_layout/_authenticated/dashboard/settings': typeof LayoutAuthenticatedDashboardSettingsRouteWithChildren
+  '/_layout/_authenticated/god-mode/observability': typeof LayoutAuthenticatedGodModeObservabilityRoute
   '/_layout/_authenticated/dashboard/': typeof LayoutAuthenticatedDashboardIndexRoute
   '/_layout/_authenticated/agent/work-items/$key': typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   '/_layout/_authenticated/dashboard/settings/account': typeof LayoutAuthenticatedDashboardSettingsAccountRouteWithChildren
@@ -480,6 +490,7 @@ export interface FileRouteTypes {
     | '/invitation/accept/$inviteId'
     | '/dashboard/invitations'
     | '/dashboard/settings'
+    | '/god-mode/observability'
     | '/dashboard/'
     | '/agent/work-items/$key'
     | '/dashboard/settings/account'
@@ -523,6 +534,7 @@ export interface FileRouteTypes {
     | '/invitation/accept/$inviteId'
     | '/dashboard/invitations'
     | '/dashboard/settings'
+    | '/god-mode/observability'
     | '/dashboard'
     | '/agent/work-items/$key'
     | '/dashboard/settings/account'
@@ -568,6 +580,7 @@ export interface FileRouteTypes {
     | '/invitation/accept/$inviteId'
     | '/_layout/_authenticated/dashboard/invitations'
     | '/_layout/_authenticated/dashboard/settings'
+    | '/_layout/_authenticated/god-mode/observability'
     | '/_layout/_authenticated/dashboard/'
     | '/_layout/_authenticated/agent/work-items/$key'
     | '/_layout/_authenticated/dashboard/settings/account'
@@ -732,6 +745,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/settings'
       preLoaderRoute: typeof LayoutAuthenticatedDashboardSettingsRouteImport
       parentRoute: typeof LayoutAuthenticatedDashboardRoute
+    }
+    '/_layout/_authenticated/god-mode/observability': {
+      id: '/_layout/_authenticated/god-mode/observability'
+      path: '/god-mode/observability'
+      fullPath: '/god-mode/observability'
+      preLoaderRoute: typeof LayoutAuthenticatedGodModeObservabilityRouteImport
+      parentRoute: typeof LayoutAuthenticatedRoute
     }
     '/_layout/_authenticated/agent/work-items/$key': {
       id: '/_layout/_authenticated/agent/work-items/$key'
@@ -1076,6 +1096,7 @@ interface LayoutAuthenticatedRouteChildren {
   LayoutAuthenticatedInvitationsRoute: typeof LayoutAuthenticatedInvitationsRoute
   LayoutAuthenticatedOnboardingRoute: typeof LayoutAuthenticatedOnboardingRoute
   LayoutAuthenticatedProfileSetupRoute: typeof LayoutAuthenticatedProfileSetupRoute
+  LayoutAuthenticatedGodModeObservabilityRoute: typeof LayoutAuthenticatedGodModeObservabilityRoute
   LayoutAuthenticatedAgentWorkItemsKeyRoute: typeof LayoutAuthenticatedAgentWorkItemsKeyRoute
   LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute: typeof LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute
 }
@@ -1086,6 +1107,8 @@ const LayoutAuthenticatedRouteChildren: LayoutAuthenticatedRouteChildren = {
   LayoutAuthenticatedInvitationsRoute: LayoutAuthenticatedInvitationsRoute,
   LayoutAuthenticatedOnboardingRoute: LayoutAuthenticatedOnboardingRoute,
   LayoutAuthenticatedProfileSetupRoute: LayoutAuthenticatedProfileSetupRoute,
+  LayoutAuthenticatedGodModeObservabilityRoute:
+    LayoutAuthenticatedGodModeObservabilityRoute,
   LayoutAuthenticatedAgentWorkItemsKeyRoute:
     LayoutAuthenticatedAgentWorkItemsKeyRoute,
   LayoutAuthenticatedAgentProjectsProjectKeyWorkRoute:

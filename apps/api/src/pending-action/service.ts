@@ -59,8 +59,13 @@ export async function createPendingAction(input: CreatePendingActionInput) {
   const id = createId();
   const traceId = createId();
   const conflictTargetIds = [...input.targetIds].sort();
+  let requestAuditFailure = false;
   let created:
-    | { confirmation: ConfirmationKind; summary: Record<string, unknown> }
+    | {
+        confirmation: ConfirmationKind;
+        summary: Record<string, unknown>;
+        auditFailure: boolean;
+      }
     | undefined;
 
   if (input.targetVersions !== undefined && input.targetVersions !== null) {
@@ -174,13 +179,22 @@ export async function createPendingAction(input: CreatePendingActionInput) {
               expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
             },
           });
-        } catch (error) {
-          console.error("AU-14: pending-action audit write failed", error);
+        } catch {
+          requestAuditFailure = true;
         }
-        return { confirmation, summary: scope.summary };
+        return {
+          confirmation,
+          summary: scope.summary,
+          auditFailure: requestAuditFailure,
+        };
       });
       break;
     } catch (error) {
+      if (requestAuditFailure) {
+        recordAuditWriteFailure("mutation");
+        await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+        requestAuditFailure = false;
+      }
       if (!isUniqueViolation(error)) throw error;
 
       const [existing] = await db
@@ -205,6 +219,10 @@ export async function createPendingAction(input: CreatePendingActionInput) {
   }
 
   if (!created) throw new Error("Pending action request did not commit");
+  if (created.auditFailure) {
+    recordAuditWriteFailure("mutation");
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  }
 
   return {
     pendingActionId: id,
@@ -488,19 +506,24 @@ async function auditViewed(
   actorId: string,
   auditContext: { apiKeyId: string | null; traceId: string },
 ) {
-  await appendAuditLog(db, {
-    actorId,
-    actorType: auditContext.apiKeyId === null ? "person" : "api_key",
-    apiKeyId: auditContext.apiKeyId,
-    traceId: auditContext.traceId,
-    workspaceId: row.workspaceId,
-    projectId: row.projectId,
-    organisationId: row.organisationId,
-    action: "pending_action.viewed",
-    entityType: "pending_action",
-    entityId: id,
-    after: { rendered: true },
-  });
+  try {
+    await appendAuditLog(db, {
+      actorId,
+      actorType: auditContext.apiKeyId === null ? "person" : "api_key",
+      apiKeyId: auditContext.apiKeyId,
+      traceId: auditContext.traceId,
+      workspaceId: row.workspaceId,
+      projectId: row.projectId,
+      organisationId: row.organisationId,
+      action: "pending_action.viewed",
+      entityType: "pending_action",
+      entityId: id,
+      after: { rendered: true },
+    });
+  } catch {
+    recordAuditWriteFailure("pending_action_self_read");
+    await notifyCurrentInstanceAdminsOfAuditFailure("pending_action_self_read");
+  }
 }
 
 type PendingActionCursor = {

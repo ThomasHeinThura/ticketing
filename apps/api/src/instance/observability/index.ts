@@ -1,15 +1,12 @@
 import { and, eq, sql } from "drizzle-orm";
-import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db, { schema } from "../../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../../openapi";
 import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
 import { normaliseTraceId } from "../../permissions/shadow-middleware";
-import {
-  isCurrentInstanceAdmin,
-  notifyCurrentInstanceAdminsOfAuditFailure,
-} from "./audit-failure-notifier";
+import { requireCurrentInstanceAdmin } from "../require-instance-admin";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "./audit-failure-notifier";
 import { applyRuntimeLogLevels, recordAuditWriteFailure } from "./runtime";
 import type { LogLevels } from "./settings";
 import { isLogLevelsEqual, logLevelsSchema, parseLogLevels } from "./settings";
@@ -21,12 +18,6 @@ const currentSettingsSchema = z.object({
   metricsTokenConfigured: z.boolean(),
   metricsTokenRotatedAt: z.string().datetime().nullable(),
 });
-
-async function requireAdmin(c: Context) {
-  if (!(await isCurrentInstanceAdmin(c.get("userId")))) {
-    throw new HTTPException(403, { message: "Forbidden" });
-  }
-}
 
 async function readSettings() {
   const [row] = await db
@@ -112,13 +103,17 @@ const patchRoute = createRoute({
 
 const routes = apiRouter()
   .openapi(getRoute, async (c) => {
-    await requireAdmin(c);
+    await requireCurrentInstanceAdmin(c, "GET", "/api/instance/observability");
     setShadowLegacyAuthorization(c, "allowed");
     c.header("Cache-Control", "no-store");
     return c.json(await readSettings(), 200);
   })
   .openapi(patchRoute, async (c) => {
-    await requireAdmin(c);
+    await requireCurrentInstanceAdmin(
+      c,
+      "PATCH",
+      "/api/instance/observability",
+    );
     c.header("Cache-Control", "no-store");
     const input = c.req.valid("json");
     const requested = parseLogLevels(input.logLevels);

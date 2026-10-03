@@ -1,6 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { apiFetch } from "@taskdesk/libs";
-import { Alert, AlertDescription, Button, Input } from "@taskdesk/ui";
+import {
+  Alert,
+  AlertDescription,
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@taskdesk/ui";
 import { useCallback, useEffect, useState } from "react";
 import PageTitle from "@/components/page-title";
 import { getApiUrl } from "@/fetchers/get-api-url";
@@ -240,41 +250,49 @@ function ObservabilitySettings() {
                 Require verified TOTP or one-use backup codes for the selected
                 audience. Unsupported upstream MFA is not accepted as proof.
               </p>
-              <label className="flex items-center justify-between gap-4">
-                Required audience
-                <select
-                  className="rounded-md border bg-background px-3 py-2"
+              <div className="flex items-center justify-between gap-4">
+                <span>Required audience</span>
+                <Select
                   value={factorPolicy?.mode ?? "optional"}
-                  onChange={(event) =>
+                  onValueChange={(value) => {
+                    if (!value) return;
                     setFactorPolicy((current) =>
                       current
                         ? {
                             ...current,
-                            mode: event.target.value as FactorPolicy["mode"],
+                            mode: value as FactorPolicy["mode"],
                             requiredRoleId:
-                              event.target.value === "required_role"
+                              value === "required_role"
                                 ? current.requiredRoleId
                                 : null,
                           }
                         : current,
-                    )
-                  }
+                    );
+                  }}
                 >
-                  {(
-                    [
-                      ["off", "Disabled"],
-                      ["optional", "Optional"],
-                      ["required_staff", "All staff"],
-                      ["required_role", "Selected role"],
-                      ["required_everyone", "Everyone"],
-                    ] as const
-                  ).map(([value, label]) => (
-                    <option value={value} key={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <SelectTrigger
+                    aria-label="Required audience"
+                    className="w-56"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(
+                      [
+                        ["off", "Disabled"],
+                        ["optional", "Optional"],
+                        ["required_staff", "All staff"],
+                        ["required_role", "Selected role"],
+                        ["required_everyone", "Everyone"],
+                      ] as const
+                    ).map(([value, label]) => (
+                      <SelectItem value={value} key={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               {factorPolicy?.mode === "required_role" ? (
                 <label
                   className="block space-y-2 text-sm font-medium"
@@ -305,38 +323,50 @@ function ObservabilitySettings() {
             </section>
             <section className="space-y-4 rounded-md border p-4">
               <h2 className="text-lg font-medium">Structured log levels</h2>
-              <label className="flex items-center justify-between gap-4">
-                Default level
-                <select
-                  className="rounded-md border bg-background px-3 py-2"
+              <div className="flex items-center justify-between gap-4">
+                <span>Default level</span>
+                <Select
                   value={settings.logLevels.default}
-                  onChange={(event) =>
-                    changeLevel("default", event.target.value as Level)
+                  onValueChange={(value) =>
+                    value && changeLevel("default", value as Level)
                   }
                 >
-                  {levels.map((level) => (
-                    <option key={level}>{level}</option>
-                  ))}
-                </select>
-              </label>
+                  <SelectTrigger aria-label="Default level" className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {levels.map((level) => (
+                      <SelectItem value={level} key={level}>
+                        {level}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               {modules.map((module) => (
-                <label
+                <div
                   className="flex items-center justify-between gap-4 capitalize"
                   key={module}
                 >
-                  {module}
-                  <select
-                    className="rounded-md border bg-background px-3 py-2"
+                  <span>{module}</span>
+                  <Select
                     value={settings.logLevels.modules[module]}
-                    onChange={(event) =>
-                      changeLevel(module, event.target.value as Level)
+                    onValueChange={(value) =>
+                      value && changeLevel(module, value as Level)
                     }
                   >
-                    {levels.map((level) => (
-                      <option key={level}>{level}</option>
-                    ))}
-                  </select>
-                </label>
+                    <SelectTrigger aria-label={module} className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {levels.map((level) => (
+                        <SelectItem value={level} key={level}>
+                          {level}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               ))}
               <Button disabled={pending} onClick={() => void saveLogLevels()}>
                 {pending ? "Saving…" : "Save log levels"}
