@@ -35,7 +35,7 @@ export default function TaskDetailsContent({
 }: TaskDetailsContentProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data: task } = useGetTask(taskId ?? "");
+  const { data: taskNumber } = useGetTask(taskId ?? "", (task) => task.number);
   const { data: project } = useGetProject({ id: projectId, workspaceId });
   const { data: activities = [] } = useGetActivitiesByTaskId(taskId ?? "");
   const { data: externalLinks = [], isLoading: isLoadingExternalLinks } =
@@ -76,7 +76,7 @@ export default function TaskDetailsContent({
           </button>
         )}
         <p className="text-xs font-semibold text-foreground">
-          {project?.slug}-{task?.number}
+          {project?.slug}-{taskNumber}
         </p>
         <TaskTitle taskId={taskId} />
         <TaskDescription taskId={taskId} />
@@ -90,12 +90,11 @@ export default function TaskDetailsContent({
         </div>
       )}
       <div className="mt-4">
-        {task && (
+        {taskId && (
           <TaskSubtasks
             taskId={taskId}
             projectId={projectId}
             workspaceId={workspaceId}
-            parentStatus={task.status}
           />
         )}
       </div>

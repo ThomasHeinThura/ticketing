@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Form, FormField } from "@taskdesk/ui";
 import { useCallback, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
@@ -7,6 +8,7 @@ import { useUpdateTaskTitle } from "@/hooks/mutations/task/use-update-task-title
 import useGetTask from "@/hooks/queries/task/use-get-task";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import debounce from "@/lib/debounce";
+import type Task from "@/types/task";
 
 type TaskTitleProps = {
   taskId: string;
@@ -14,18 +16,19 @@ type TaskTitleProps = {
 
 export default function TaskTitle({ taskId }: TaskTitleProps) {
   const { t } = useTranslation();
-  const { data: task } = useGetTask(taskId);
+  const { data: title } = useGetTask(taskId, (task) => task.title);
+  const queryClient = useQueryClient();
   const { mutateAsync: updateTaskTitle } = useUpdateTaskTitle();
   const { canUpdateTasks } = useWorkspacePermission();
   const canEdit = canUpdateTasks();
   const isInitializedRef = useRef(false);
-  const taskRef = useRef(task);
+  const taskIdRef = useRef(taskId);
   const updateTaskRef = useRef(updateTaskTitle);
 
   useEffect(() => {
-    taskRef.current = task;
+    taskIdRef.current = taskId;
     updateTaskRef.current = updateTaskTitle;
-  }, [task, updateTaskTitle]);
+  }, [taskId, updateTaskTitle]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: taskId is not needed here
   useEffect(() => {
@@ -36,19 +39,22 @@ export default function TaskTitle({ taskId }: TaskTitleProps) {
     title: string;
   }>({
     values: {
-      title: task?.title || "",
+      title: title || "",
     },
   });
 
   useEffect(() => {
-    if (task?.title !== undefined) isInitializedRef.current = true;
-  }, [task?.title]);
+    if (title !== undefined) isInitializedRef.current = true;
+  }, [title]);
 
   const debouncedUpdate = useCallback(
     debounce(async (title: string) => {
       if (!isInitializedRef.current) return;
 
-      const currentTask = taskRef.current;
+      const currentTask = queryClient.getQueryData<Task>([
+        "task",
+        taskIdRef.current,
+      ]);
       const updateTaskFn = updateTaskRef.current;
 
       if (!currentTask || !updateTaskFn) return;
