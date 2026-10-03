@@ -101,6 +101,35 @@ async function createDefaultState(workspaceId: string, projectId: string) {
   });
 }
 
+async function createCustomerIdentity(organisationId: string) {
+  const user = requireRow(
+    await db
+      .insert(schema.userTable)
+      .values({
+        id: `customer-${randomUUID()}`,
+        email: `customer-${randomUUID()}@example.com`,
+        emailVerified: true,
+        name: "Customer test identity",
+      })
+      .returning(),
+    "strict runtime customer user",
+  );
+  const person = requireRow(
+    await db
+      .insert(schema.personTable)
+      .values({
+        userId: user.id,
+        organisationId,
+        side: "customer",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning(),
+    "strict runtime customer person",
+  );
+  return { user, person };
+}
+
 async function grantProjectReach(
   userId: string,
   workspaceId: string,
@@ -413,5 +442,68 @@ describe("strict policy runtime enforcement against the production API graph", (
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.key, key));
     expect(after?.assigneeId).toBeNull();
+  });
+
+  it("limits private work-item participant visibility to customers, not staff", async () => {
+    const staff = await createWorkspaceMember({ role: "admin" });
+    const { project } = await createProjectFixture({
+      workspaceId: staff.workspace.id,
+    });
+    await grantProjectReach(staff.user.id, staff.workspace.id, project.id);
+    const type = await createWorkItemType(staff.workspace.id);
+    await createDefaultState(staff.workspace.id, project.id);
+
+    const organisation = requireRow(
+      await db
+        .insert(schema.organisationTable)
+        .values({
+          key: `customer-org-${randomUUID()}`,
+          name: "Private visibility customer organisation",
+          isInternal: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning(),
+      "strict runtime customer organisation",
+    );
+    await db
+      .update(schema.workspaceTable)
+      .set({ organisationId: organisation.id })
+      .where(eq(schema.workspaceTable.id, staff.workspace.id));
+    const participant = await createCustomerIdentity(organisation.id);
+    mockAuthenticatedSession(staff.user);
+    const { app } = createApp();
+    const createResponse = await app.request(
+      `/api/projects/${project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          typeId: type.id,
+          title: "Private customer item",
+        }),
+      },
+    );
+    expect(createResponse.status, await createResponse.clone().text()).toBe(
+      200,
+    );
+    const { key } = (await createResponse.json()) as { key: string };
+    await db
+      .update(schema.workItemTable)
+      .set({
+        requesterId: participant.person.id,
+        customerVisibility: "private",
+      })
+      .where(eq(schema.workItemTable.key, key));
+
+    // Staff has persisted project membership but is neither requester nor watcher.
+    mockAuthenticatedSession(staff.user);
+    const staffResponse = await app.request(`/api/work-items/${key}`);
+    expect(staffResponse.status, await staffResponse.clone().text()).toBe(200);
+
+    // CP-19 keeps the customer portal origin disabled, so this route does not emulate a
+    // customer portal journey. Participant/nonparticipant reach is tested in the shared
+    // evaluator against the documented customer identity contract.
+    expect(participant.person.organisationId).toBe(organisation.id);
   });
 });

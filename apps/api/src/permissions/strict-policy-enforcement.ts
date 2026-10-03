@@ -313,7 +313,13 @@ async function projectReach(
       ) {
         refuse(500);
       }
-      if (workItem.customerVisibility === "private") {
+      // Customer privacy is an audience boundary, not a staff visibility filter.
+      // Staff with project reach must still be able to handle private submissions;
+      // only customer identities are limited to the requester and participants.
+      if (
+        identity.side === "customer" &&
+        workItem.customerVisibility === "private"
+      ) {
         const watchers = await db
           .select({ personId: schema.watcherTable.personId })
           .from(schema.watcherTable)

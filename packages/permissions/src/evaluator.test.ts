@@ -394,7 +394,7 @@ describe("reach", () => {
     expect(reaches(identity({ memberships: [] }), project)).toBe(false);
   });
 
-  it("keeps a private record out of a colleague's reach inside the right organisation", () => {
+  it("limits a private record to its requester or participants inside the right organisation", () => {
     const customer = identity({
       personId: "colleague",
       side: "customer",
@@ -402,9 +402,14 @@ describe("reach", () => {
       memberships: [],
       reach: { kind: "organisation", ids: ["org-customer"] },
     });
+    const privateProject = {
+      ...project,
+      visibleToPersonIds: ["requester", "participant"],
+    };
+    expect(reaches(customer, privateProject)).toBe(false);
     expect(
-      reaches(customer, { ...project, visibleToPersonIds: ["requester"] }),
-    ).toBe(false);
+      reaches({ ...customer, personId: "participant" }, privateProject),
+    ).toBe(true);
   });
 
   it("never consults authority — sees_all grants reach, roles do not", () => {
