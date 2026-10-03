@@ -1,4 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { getApiUrl } from "@/fetchers/get-api-url";
 import { authClient } from "@/lib/auth-client";
 
 // protects all child routes, must be logged in
@@ -34,6 +35,36 @@ export const Route = createFileRoute("/_layout/_authenticated")({
           redirect: location.href,
         },
       });
+    }
+    if (
+      session &&
+      location.pathname !== "/dashboard/settings/account/security"
+    ) {
+      let enrollmentRequired = false;
+      try {
+        const response = await fetch(getApiUrl("me/security/factors"), {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (response.ok) {
+          const factor = (await response.json()) as {
+            required: boolean;
+            enabled: boolean;
+          };
+          if (factor.required && !factor.enabled) {
+            enrollmentRequired = true;
+          }
+        }
+      } catch {
+        // The API is the enforcement authority; a transient status lookup
+        // must not prevent rendering the recovery/enrollment entry point.
+      }
+      if (enrollmentRequired) {
+        throw redirect({
+          to: "/dashboard/settings/account/security",
+          search: { enrollmentRequired: true },
+        });
+      }
     }
     return { session, sessionError };
   },

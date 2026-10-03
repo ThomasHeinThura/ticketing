@@ -86,7 +86,7 @@ export type DeclaredRouterMiddleware = {
  * The only entries `isMiddlewareEntry` ever excludes from coverage.
  *
  * Reviewed by hand; growing this list is a decision, not an inference. Today it accounts for
- * the API's four global middleware registrations (`hostRoutingGuard`, CORS, compression,
+ * the API's five global middleware registrations (request metrics, `hostRoutingGuard`, CORS, compression,
  * static serving; all `ALL /*`) and `api.use("*", <auth guard>)` (`ALL /api/*`, recorded
  * under the `/api` mount). These are registered unconditionally so route coverage is stable
  * whether or not either web output exists on disk.
@@ -94,8 +94,8 @@ export type DeclaredRouterMiddleware = {
 export const DECLARED_ROUTER_MIDDLEWARE: readonly DeclaredRouterMiddleware[] = [
   {
     key: "ALL /*",
-    registrations: 4,
-    note: "apps/api/src/index.ts — host guard, CORS, compression and origin-selected static serving",
+    registrations: 5,
+    note: "apps/api/src/index.ts — request metrics, host guard, CORS, compression and origin-selected static serving",
   },
   {
     key: "ALL /api/*",

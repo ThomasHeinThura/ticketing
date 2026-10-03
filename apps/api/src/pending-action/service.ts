@@ -14,6 +14,8 @@ import {
   workspaceTable,
 } from "../database/schema";
 import { enqueueOutboxEvent } from "../events/outbox";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
+import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
@@ -468,8 +470,11 @@ export async function decideOwnPendingAction(input: {
         before: { state: "pending" },
         after: { state: outcome },
       });
-    } catch (error) {
-      console.error("AU-14: pending-action decision audit write failed", error);
+    } catch {
+      recordAuditWriteFailure("pending_action_decision");
+      await notifyCurrentInstanceAdminsOfAuditFailure(
+        "pending_action_decision",
+      );
     }
     return updated;
   });

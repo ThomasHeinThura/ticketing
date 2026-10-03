@@ -22,8 +22,8 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | --- | --- | --- | --- | :-: |
 | Sign in | `/agent/sign-in` | route | P0 | ⬜ |
 | Sign-in — provider chooser | `/agent/sign-in` | section | P0 | ⬜ |
-| MFA challenge | `/agent/sign-in/mfa` | route | P0 | ⬜ |
-| MFA enrolment | `/agent/sign-in/mfa/enrol` | route | P0 | ⬜ |
+| MFA challenge | `/auth/two-factor` | route | P0 | 🟡 |
+| MFA enrolment | `/dashboard/settings/account/security` | route | P0 | 🟡 |
 | Accept invitation | `/agent/invite` | route | P3 | ⬜ |
 | Workspace home (default dashboard) | `/agent` | route | P1 | ⬜ |
 | Inbox | `/agent/inbox` | route | P1 | ⬜ |
@@ -166,7 +166,7 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | Feature flags | `/agent/god-mode/features` | route | P4 | ⬜ |
 | Jobs | `/agent/god-mode/jobs` | route | P4 | ⬜ |
 | Plugins | `/agent/god-mode/plugins` | route | P4 | ⬜ |
-| Observability | `/agent/god-mode/observability` | route | P4 | ⬜ |
+| Observability and instance MFA policy | `/god-mode/observability` | route | P0 | 🟡 |
 | MCP usage | `/agent/god-mode/mcp` | route | P4 | ⬜ |
 | Audit log | `/agent/god-mode/audit` | route | P2 | ⬜ |
 | Import runs | `/agent/god-mode/import` | route | P6 | ⬜ |

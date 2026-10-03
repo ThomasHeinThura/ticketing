@@ -219,7 +219,7 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | Audit-only action | Written when |
 | --- | --- |
 | `auth.sign_in_succeeded` · `auth.sign_in_failed` · `auth.sign_out` · `auth.session_revoked` | Authentication lifecycle, with the provider used |
-| `auth.mfa_enrolled` · `auth.mfa_reset` | Planned audit events for second-factor enrollment and administrator reset (with verification note); current source has no MFA factor adapter and does not emit these events |
+| `auth.mfa_enrolled` · `auth.mfa_reset` | Second-factor enrollment and administrator reset (with the required verification note); never record the secret, TOTP, backup codes, or proof |
 | `auth.step_up_issued` · `auth.step_up_consumed` · `auth.step_up_denied` | A single-use step-up confirmation is issued, consumed, or denied; record binding kind and fixed operation key/route where applicable, never proof, nonce, token, hash or request body |
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
@@ -228,6 +228,7 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | `plugin.changed` · `plugin.tested` · `secrets.rekeyed` | Plugin configuration (keys only, never values), a `test()` call even when unsaved, key rotation |
 | `feature_flag.changed` | Any level |
 | `instance.observability_changed` | Log-level keys or the metrics-token setting changed; record changed key names only, never values, token, hash, or arbitrary before/after documents |
+| `instance.local_factor_policy_changed` | Instance local-factor policy changed; record only the selected mode and configured role identifier |
 | `permission.denied` | A 403 or an out-of-reach 404 on a scoped route |
 | `work_item.exported` · `report.exported` · `attachment.downloaded` · `config.exported` · `instance.exported` | Data leaving through a person's hands |
 | `bulk.performed` | One summary row per bulk operation (plus one per item) |
