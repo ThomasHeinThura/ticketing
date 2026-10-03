@@ -32,6 +32,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resolveMembershipRole } from "../../apps/api/src/utils/workspace-member-roles";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import {
   plantLegacyMembershipRole,
@@ -126,16 +127,21 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
     );
 
     // Control: as a genuine admin, the member may create a project.
-    const allowed = await app.request("/api/project", {
-      method: "POST",
-      headers: { "content-type": "application/json", cookie: member.cookie },
-      body: JSON.stringify({
-        workspaceId: workspace.id,
-        name: `Project ${randomUUID()}`,
-        slug: `p-${randomUUID().slice(0, 8)}`,
-        icon: "Layout",
-      }),
-    });
+    const allowed = await csrfRequest(
+      app,
+      "/api/project",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: member.cookie },
+        body: JSON.stringify({
+          workspaceId: workspace.id,
+          name: `Project ${randomUUID()}`,
+          slug: `p-${randomUUID().slice(0, 8)}`,
+          icon: "Layout",
+        }),
+      },
+      member.cookie,
+    );
     expect([200, 201]).toContain(allowed.status);
 
     // Corrupt the row to a value whose comma-split CONTAINS the very role that just
@@ -163,29 +169,39 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
       problem: "multi-valued",
     });
 
-    const refused = await app.request("/api/project", {
-      method: "POST",
-      headers: { "content-type": "application/json", cookie: member.cookie },
-      body: JSON.stringify({
-        workspaceId: workspace.id,
-        name: `Project ${randomUUID()}`,
-        slug: `p-${randomUUID().slice(0, 8)}`,
-        icon: "Layout",
-      }),
-    });
+    const refused = await csrfRequest(
+      app,
+      "/api/project",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: member.cookie },
+        body: JSON.stringify({
+          workspaceId: workspace.id,
+          name: `Project ${randomUUID()}`,
+          slug: `p-${randomUUID().slice(0, 8)}`,
+          icon: "Layout",
+        }),
+      },
+      member.cookie,
+    );
     expect(refused.status).toBe(403);
 
     // And the owner is untouched -- the refusal is per-membership, not per-workspace.
-    const ownerStillWorks = await app.request("/api/project", {
-      method: "POST",
-      headers: { "content-type": "application/json", cookie: owner.cookie },
-      body: JSON.stringify({
-        workspaceId: workspace.id,
-        name: `Project ${randomUUID()}`,
-        slug: `p-${randomUUID().slice(0, 8)}`,
-        icon: "Layout",
-      }),
-    });
+    const ownerStillWorks = await csrfRequest(
+      app,
+      "/api/project",
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: owner.cookie },
+        body: JSON.stringify({
+          workspaceId: workspace.id,
+          name: `Project ${randomUUID()}`,
+          slug: `p-${randomUUID().slice(0, 8)}`,
+          icon: "Layout",
+        }),
+      },
+      owner.cookie,
+    );
     expect([200, 201]).toContain(ownerStillWorks.status);
   });
 
@@ -241,11 +257,16 @@ describe("#82 §2 -- requireWorkspaceRoleAuthority applies the same rule to an i
       .where(eq(schema.userTable.id, member.user.id));
 
     // Control: as an instance admin with a coherent workspace role, the rename succeeds.
-    const before = await app.request(`/api/workspace/${workspace.id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json", cookie: member.cookie },
-      body: JSON.stringify({ name: "Renamed By Instance Admin" }),
-    });
+    const before = await csrfRequest(
+      app,
+      `/api/workspace/${workspace.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json", cookie: member.cookie },
+        body: JSON.stringify({ name: "Renamed By Instance Admin" }),
+      },
+      member.cookie,
+    );
     expect(before.status).toBe(200);
 
     await plantLegacyMembershipRole(
@@ -254,11 +275,16 @@ describe("#82 §2 -- requireWorkspaceRoleAuthority applies the same rule to an i
       "owner,admin",
     );
 
-    const after = await app.request(`/api/workspace/${workspace.id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json", cookie: member.cookie },
-      body: JSON.stringify({ name: "Renamed Again" }),
-    });
+    const after = await csrfRequest(
+      app,
+      `/api/workspace/${workspace.id}`,
+      {
+        method: "PATCH",
+        headers: { "content-type": "application/json", cookie: member.cookie },
+        body: JSON.stringify({ name: "Renamed Again" }),
+      },
+      member.cookie,
+    );
     expect(after.status).toBe(403);
 
     const [row] = await db

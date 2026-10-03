@@ -28,19 +28,24 @@ import {
   policyShadowTallyTable,
 } from "../../apps/api/src/permissions/shadow-schema";
 import { seedInternalOrganisationAndStaffPersons } from "../../apps/api/src/utils/seed-internal-organisation";
+import { withConfiguredAgentAuthority } from "./helpers/agent-authority";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
+
+// This file resets the complete app module graph to test the import-time shadow
+// switch. Avoid the shared createApp mock here so each fresh graph retains its
+// own auth module instance; adapt only the app's in-process request boundary.
+vi.unmock("../../apps/api/src/index");
 
 /**
  * `resolveIdentity` requires a `person` row (#315 S7 — the real backfill runs once, at
- * boot). `createWorkspaceMember()` only inserts `user`/`workspace_member` rows, so every
- * test below calls this immediately after creating its fixtures, the same way
- * `tests/api-integration/resolve-identity.test.ts` does — otherwise every shadow comparison
- * in this file would itself demonstrate S7's own "unevaluated: missing_identity" case
- * instead of the scenario each test is actually about.
+ * boot). `createWorkspaceMember()` now provisions an ordinary active identity; this
+ * backfill remains for direct user rows this file creates so shadow comparisons exercise
+ * their intended scenario instead of S7's `missing_identity` case.
  */
 async function backfillPersons(): Promise<void> {
   await seedInternalOrganisationAndStaffPersons();
@@ -71,9 +76,18 @@ async function createAppWithShadow(value: "on" | "off"): Promise<FreshApp> {
   const indexModule = await import("../../apps/api/src/index");
   const authModule: AuthModule = await import("../../apps/api/src/auth");
   const databaseModule: DbModule = await import("../../apps/api/src/database");
+  const app = indexModule.createApp().app;
+  const request = app.request.bind(app);
+  app.request = (input, init, env, executionCtx) => {
+    if (typeof input === "string") {
+      const normalized = withConfiguredAgentAuthority(input, init);
+      return request(normalized.input, normalized.init, env, executionCtx);
+    }
+    return request(input, init, env, executionCtx);
+  };
 
   return {
-    app: indexModule.createApp().app,
+    app,
     db: databaseModule.default,
     schema: databaseModule.schema,
     mockUser: (user) => {
@@ -87,6 +101,7 @@ async function createAppWithShadow(value: "on" | "off"): Promise<FreshApp> {
           updatedAt: new Date(),
           ipAddress: null,
           userAgent: null,
+          portal: "agent",
         },
         // Mirrors mockAuthenticatedSession's own MockSessionUser widening
         // (tests/api-integration/helpers/auth.ts) — `role` is a plain userTable column, not
@@ -151,6 +166,116 @@ afterEach(async () => {
 
 const UPDATE_LABEL_ROUTE_KEY = "PUT /api/label/{id}";
 const LIST_PROJECTS_ROUTE_KEY = "GET /api/project";
+const LIST_NOTIFICATIONS_ROUTE_KEY = "GET /api/notification";
+const GET_NOTIFICATION_PREFERENCES_ROUTE_KEY =
+  "GET /api/notification-preferences";
+const DELETE_NOTIFICATION_WORKSPACE_RULE_ROUTE_KEY =
+  "DELETE /api/notification-preferences/workspaces/{workspaceId}";
+
+describe("successful authentication is recorded as the legacy self-policy decision", () => {
+  it("compares notification and preference reads as authenticated self routes", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+
+    const notifications = await fresh.app.request("/api/notification");
+    const preferences = await fresh.app.request(
+      "/api/notification-preferences",
+    );
+    expect(notifications.status).toBe(200);
+    expect(preferences.status).toBe(200);
+
+    const notificationRows = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(LIST_NOTIFICATIONS_ROUTE_KEY);
+      return rows.length ? rows : undefined;
+    });
+    const preferenceRows = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(
+        GET_NOTIFICATION_PREFERENCES_ROUTE_KEY,
+      );
+      return rows.length ? rows : undefined;
+    });
+
+    expect(notificationRows).toContainEqual(
+      expect.objectContaining({ outcome: "agree", reasonCode: null }),
+    );
+    expect(preferenceRows).toContainEqual(
+      expect.objectContaining({ outcome: "agree", reasonCode: null }),
+    );
+  });
+
+  it("does not shadow an authentication denial as an allowed request", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const response = await fresh.app.request("/api/notification");
+
+    expect(response.status).toBe(401);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(await shadowTalliesFor(LIST_NOTIFICATIONS_ROUTE_KEY)).toEqual([]);
+  });
+
+  it("keeps an authenticated comparison when a handler fails", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(member.user);
+    vi.spyOn(
+      fresh.db.query.userNotificationPreferenceTable,
+      "findFirst",
+    ).mockRejectedValueOnce(new Error("injected preference read failure"));
+
+    const response = await fresh.app.request("/api/notification-preferences");
+    expect(response.status).toBe(500);
+
+    const rows = await waitForShadowEvidence(async () => {
+      const tallies = await shadowTalliesFor(
+        GET_NOTIFICATION_PREFERENCES_ROUTE_KEY,
+      );
+      return tallies.length ? tallies : undefined;
+    });
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        outcome: "unevaluated",
+        reasonCode: "legacy_outcome_unknown",
+      }),
+    );
+  });
+
+  it("leaves an unrelated inline workspace denial unknown", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const other = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const response = await fresh.app.request(
+      `/api/notification-preferences/workspaces/${other.workspace.id}`,
+      { method: "DELETE" },
+    );
+    expect(response.status).toBe(403);
+
+    const rows = await waitForShadowEvidence(async () => {
+      const tallies = await shadowTalliesFor(
+        DELETE_NOTIFICATION_WORKSPACE_RULE_ROUTE_KEY,
+      );
+      return tallies.length ? tallies : undefined;
+    });
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        outcome: "unevaluated",
+        reasonCode: "legacy_outcome_unknown",
+      }),
+    );
+  });
+});
 
 async function createLabelFixture(
   fresh: FreshApp,
@@ -536,6 +661,7 @@ describe("#324 — denied param workspace scope is checked against a verified ro
       role: "admin",
     };
     await fresh.db.insert(fresh.schema.userTable).values(instanceAdminUser);
+    await prepareAuthenticatedApiFixture(instanceAdminUser.id);
     await backfillPersons();
     fresh.mockUser(instanceAdminUser);
     const untrustedWorkspaceId = `attacker-${"x".repeat(6_000)}`;

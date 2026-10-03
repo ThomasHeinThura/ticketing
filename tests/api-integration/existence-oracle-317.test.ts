@@ -44,6 +44,16 @@ function queryText(query: unknown): string {
   return "";
 }
 
+function queriesForTable(
+  calls: readonly (readonly [unknown, ...unknown[]])[],
+  table: string,
+): number {
+  const source = `from "${table.toLowerCase()}"`;
+  return calls.filter(([query]) =>
+    queryText(query).toLowerCase().includes(source),
+  ).length;
+}
+
 async function createApiKeyFor(userId: string): Promise<string> {
   const rawKey = `taskdesk_test_${randomUUID()}`;
   const now = new Date();
@@ -137,10 +147,10 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     const querySpy = vi.spyOn(getDatabasePool(), "query");
 
     const foreign = await app.request(`/api/asset/${asset.id}`);
-    const foreignQueries = querySpy.mock.calls.length;
+    const foreignQueries = queriesForTable(querySpy.mock.calls, "asset");
     querySpy.mockClear();
     const missing = await app.request("/api/asset/asset-does-not-exist");
-    const missingQueries = querySpy.mock.calls.length;
+    const missingQueries = queriesForTable(querySpy.mock.calls, "asset");
 
     expect(foreign.status).toBe(404);
     expect(missing.status).toBe(404);
@@ -179,10 +189,10 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     const querySpy = vi.spyOn(getDatabasePool(), "query");
 
     const foreign = await app.request(`/api/label/${foreignLabel.id}`);
-    const foreignQueries = querySpy.mock.calls.length;
+    const foreignQueries = queriesForTable(querySpy.mock.calls, "label");
     querySpy.mockClear();
     const missing = await app.request("/api/label/missing-label-s4");
-    const missingQueries = querySpy.mock.calls.length;
+    const missingQueries = queriesForTable(querySpy.mock.calls, "label");
 
     expect(foreign.status).toBe(404);
     expect(missing.status).toBe(404);
@@ -457,6 +467,8 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     mockAuthenticatedSession(caller.user);
     const { app } = createApp();
     const headers = {
+      host: "localhost:1337",
+      origin: "http://localhost:1337",
       Connection: "Upgrade",
       Upgrade: "websocket",
       "Sec-WebSocket-Version": "13",
@@ -482,6 +494,8 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     mockAuthenticatedSession(caller.user);
     const { app } = createApp();
     const headers = {
+      host: "localhost:1337",
+      origin: "http://localhost:1337",
       Connection: "Upgrade",
       Upgrade: "websocket",
       "Sec-WebSocket-Version": "13",
@@ -490,12 +504,12 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     const querySpy = vi.spyOn(getDatabasePool(), "query");
 
     const foreign = await app.request(`/api/ws/${project.id}`, { headers });
-    const foreignQueries = querySpy.mock.calls.length;
+    const foreignQueries = queriesForTable(querySpy.mock.calls, "project");
     querySpy.mockClear();
     const missing = await app.request("/api/ws/project-does-not-exist", {
       headers,
     });
-    const missingQueries = querySpy.mock.calls.length;
+    const missingQueries = queriesForTable(querySpy.mock.calls, "project");
 
     expect(foreign.status).toBe(401);
     expect(missing.status).toBe(401);

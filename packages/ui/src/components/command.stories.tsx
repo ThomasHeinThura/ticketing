@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
+import { Button } from "./button";
 import {
   Command,
+  CommandDialog,
+  CommandDialogPopup,
   CommandEmpty,
   CommandInput,
   CommandItem,
@@ -10,6 +14,56 @@ import {
 } from "./command";
 
 const items = ["Create work item", "Go to inbox", "Open settings"];
+
+function KeepMountedCommandDialog() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Open command palette</Button>
+      <CommandDialog open={open} onOpenChange={setOpen}>
+        <CommandDialogPopup instant keepMounted>
+          <Command items={["Projects", "Search", "Members"]}>
+            <CommandInput aria-label="Search commands" />
+            <CommandList>
+              {(item: string) => (
+                <CommandItem key={item} value={item}>
+                  {item}
+                </CommandItem>
+              )}
+            </CommandList>
+          </Command>
+        </CommandDialogPopup>
+      </CommandDialog>
+    </>
+  );
+}
+
+function NoBackdropBlurCommandDialog() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>
+        Open low-cost command palette
+      </Button>
+      <CommandDialog open={open} onOpenChange={setOpen}>
+        <CommandDialogPopup instant keepMounted blurBackdrop={false}>
+          <Command items={["Projects", "Search", "Members"]}>
+            <CommandInput aria-label="Search commands" />
+            <CommandList>
+              {(item: string) => (
+                <CommandItem key={item} value={item}>
+                  {item}
+                </CommandItem>
+              )}
+            </CommandList>
+          </Command>
+        </CommandDialogPopup>
+      </CommandDialog>
+    </>
+  );
+}
 
 const meta = {
   title: "Primitives/Command",
@@ -54,4 +108,12 @@ export const Empty: Story = {
       </Command>
     </div>
   ),
+};
+
+export const NoBackdropBlur: Story = {
+  render: () => <NoBackdropBlurCommandDialog />,
+};
+
+export const KeepMountedDialog: Story = {
+  render: () => <KeepMountedCommandDialog />,
 };

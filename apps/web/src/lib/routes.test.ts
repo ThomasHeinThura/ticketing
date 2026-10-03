@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { generatedRouteMetadata } from "./generated-route-metadata";
 import {
+  buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
+  parseGeneratedRouteUrl,
   parseServiceCalendarListSearchFromQueryString,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
@@ -96,6 +99,44 @@ describe("routes.workItemList", () => {
       expect(toggleWorkItemSortDirection("asc")).toBe("desc");
       expect(toggleWorkItemSortDirection("desc")).toBe("asc");
     });
+  });
+});
+
+describe("G5 route metadata", () => {
+  it("keeps agent and portal routes sourced from their independent generated trees", () => {
+    expect(generatedRouteMetadata.agent).toContain(
+      "/agent/projects/$projectKey/work",
+    );
+    expect(generatedRouteMetadata.portal).toEqual(["/"]);
+  });
+
+  it("round-trips the portal root URL through its route helper", () => {
+    const url = new URL(
+      routes.portalHome.build(),
+      "https://portal.example.test",
+    );
+    expect(routes.portalHome.parse(url.pathname)).toBe(
+      routes.portalHome.build(),
+    );
+    expect(routes.portalHome.parse("/unmatched")).toBeUndefined();
+  });
+
+  it("builds and parses every generated agent and portal route template", () => {
+    for (const surface of ["agent", "portal"] as const) {
+      for (const template of generatedRouteMetadata[surface]) {
+        const names = [...template.matchAll(/\$([A-Za-z0-9_]+)/gu)].map(
+          (match) => match[1],
+        );
+        const params = Object.fromEntries(
+          names.map((name) => [name, `value/${name} part`]),
+        );
+        const url = buildGeneratedRouteUrl(surface, template, params);
+        expect(parseGeneratedRouteUrl(surface, template, url)).toEqual({
+          pathname: url,
+          params,
+        });
+      }
+    }
   });
 });
 

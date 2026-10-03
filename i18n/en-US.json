@@ -264,6 +264,40 @@
 			"creatingAccount": "Creating Account...",
 			"createAccount": "Create Account"
 		},
+		"twoFactor": {
+			"title": "Two-factor verification",
+			"subtitle": "Enter a code from your authenticator app to finish signing in.",
+			"authenticatorCode": "Authenticator code",
+			"backupCode": "Backup code",
+			"verify": "Verify and sign in",
+			"verifying": "Verifying…",
+			"useBackupCode": "Use a backup code",
+			"useAuthenticatorCode": "Use authenticator code",
+			"error": "The verification code was not accepted. Try again."
+		},
+		"accountSecurity": {
+			"pageTitle": "Account security",
+			"description": "Manage your authenticator factor and backup codes.",
+			"required": "Instance policy requires you to enroll a factor before continuing.",
+			"unavailable": "Security settings are unavailable.",
+			"enabled": "Authenticator factor enabled",
+			"enabledDescription": "Sign-ins require an authenticator or an unused backup code.",
+			"saveCodes": "Save these backup codes now. They are shown once and cannot be retrieved later.",
+			"savedCodes": "I saved these codes",
+			"setupTitle": "Set up an authenticator factor",
+			"setupDescription": "Your password is required to begin enrollment. Backup codes are shown once after verification.",
+			"setupButton": "Set up authenticator",
+			"starting": "Starting…",
+			"scanTitle": "Add TaskDesk to your authenticator",
+			"scanDescription": "Scan this URI with your authenticator app. Treat it as a secret and do not share it.",
+			"codeLabel": "Enter the six-digit code",
+			"verify": "Verify and enable",
+			"verifying": "Verifying…",
+			"enrollmentDisabled": "Local factor enrollment is disabled by instance policy.",
+			"enrollmentStartError": "Factor enrollment could not start. Check your password and try again.",
+			"codeError": "The authenticator code was not accepted. Check the current code and retry.",
+			"loading": "Loading security settings…"
+		},
 		"invitation": {
 			"pageTitleAccept": "Accept Invitation",
 			"pageTitleError": "Invitation Error",
@@ -2247,7 +2281,22 @@
 			"unavailable": "Unavailable",
 			"unavailableFieldLabel": "{{field}} unavailable",
 			"partialNoticeTitle": "Some details are missing",
-			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below."
+			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
+			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
+		}
+	},
+	"portal": {
+		"unavailable": {
+			"title": "Customer portal unavailable",
+			"description": "Customer access is not available yet. Contact your service desk administrator for help."
+		},
+		"notFound": {
+			"title": "Page not found",
+			"description": "This page isn't available. Check the address and try again."
+		},
+		"error": {
+			"title": "Something went wrong",
+			"description": "The page could not be loaded. Try again."
 		}
 	},
 	"serviceCalendars": {

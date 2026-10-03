@@ -1,18 +1,29 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { ProjectWithTasks } from "@/types/project";
+import type { TaskCardProps } from "../task-card";
 import { ColumnDropzone } from "./column-dropzone";
 import { ColumnHeader } from "./column-header";
 
 type ColumnProps = {
   column: ProjectWithTasks["columns"][number];
   disableDragDrop?: boolean;
+  workspaceId?: string;
+  workspaceUsers: TaskCardProps["workspaceUsers"];
+  onContextMenuTask: TaskCardProps["onContextMenuTask"];
 };
 
-function Column({ column, disableDragDrop = false }: ColumnProps) {
+function Column({
+  column,
+  disableDragDrop = false,
+  workspaceId,
+  workspaceUsers,
+  onContextMenuTask,
+}: ColumnProps) {
   const [isDropzoneOver, setIsDropzoneOver] = useState(false);
 
   return (
     <div
+      data-column-id={column.id}
       className={`group relative flex h-full min-h-0 w-full flex-col rounded-xl border transition-colors duration-150 ${
         isDropzoneOver
           ? "border-ring/40 bg-accent/60 shadow-md ring-2 ring-ring/30"
@@ -27,10 +38,13 @@ function Column({ column, disableDragDrop = false }: ColumnProps) {
           column={column}
           disableDragDrop={disableDragDrop}
           onIsOverChange={setIsDropzoneOver}
+          workspaceId={workspaceId}
+          workspaceUsers={workspaceUsers}
+          onContextMenuTask={onContextMenuTask}
         />
       </div>
     </div>
   );
 }
 
-export default Column;
+export default memo(Column);

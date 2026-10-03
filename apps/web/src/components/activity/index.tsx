@@ -12,7 +12,7 @@ import useGetWorkspaceUsers from "@/hooks/queries/workspace-users/use-get-worksp
 import { formatDateMedium, formatRelativeTime } from "@/lib/format";
 import { getInitials } from "@/lib/get-initials";
 import { getPriorityLabel, getStatusLabel } from "@/lib/i18n/domain";
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "../avatar";
 import CommentCard from "./comment-card";
 import { isCommentActivity } from "./utils";
 

@@ -1,5 +1,5 @@
 {
-	"id": "90ac928d-194f-4a7a-bfbd-f476e67bf436",
+	"id": "945c882c-b74c-4dae-96b7-39ed6bb1874d",
 	"prevId": "b965c525-cb30-4dd4-a75e-221ac9f86f1e",
 	"version": "7",
 	"dialect": "postgresql",
@@ -4172,114 +4172,6 @@
 			},
 			"isRLSEnabled": false
 		},
-		"public.service_calendar": {
-			"name": "service_calendar",
-			"schema": "",
-			"columns": {
-				"id": {
-					"name": "id",
-					"type": "text",
-					"primaryKey": true,
-					"notNull": true
-				},
-				"workspace_id": {
-					"name": "workspace_id",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"name": {
-					"name": "name",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"timezone": {
-					"name": "timezone",
-					"type": "text",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"windows": {
-					"name": "windows",
-					"type": "jsonb",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"holidays": {
-					"name": "holidays",
-					"type": "jsonb",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"version": {
-					"name": "version",
-					"type": "integer",
-					"primaryKey": false,
-					"notNull": true,
-					"default": 1
-				},
-				"created_at": {
-					"name": "created_at",
-					"type": "timestamp with time zone",
-					"primaryKey": false,
-					"notNull": true,
-					"default": "now()"
-				},
-				"updated_at": {
-					"name": "updated_at",
-					"type": "timestamp with time zone",
-					"primaryKey": false,
-					"notNull": true,
-					"default": "now()"
-				}
-			},
-			"indexes": {
-				"service_calendar_workspace_name_id_idx": {
-					"name": "service_calendar_workspace_name_id_idx",
-					"columns": [
-						{
-							"expression": "workspace_id",
-							"isExpression": false,
-							"asc": true,
-							"nulls": "last"
-						},
-						{
-							"expression": "name",
-							"isExpression": false,
-							"asc": true,
-							"nulls": "last"
-						},
-						{
-							"expression": "id",
-							"isExpression": false,
-							"asc": true,
-							"nulls": "last"
-						}
-					],
-					"isUnique": false,
-					"concurrently": false,
-					"method": "btree",
-					"with": {}
-				}
-			},
-			"foreignKeys": {
-				"service_calendar_workspace_id_workspace_id_fk": {
-					"name": "service_calendar_workspace_id_workspace_id_fk",
-					"tableFrom": "service_calendar",
-					"tableTo": "workspace",
-					"columnsFrom": ["workspace_id"],
-					"columnsTo": ["id"],
-					"onDelete": "cascade",
-					"onUpdate": "cascade"
-				}
-			},
-			"compositePrimaryKeys": {},
-			"uniqueConstraints": {},
-			"policies": {},
-			"checkConstraints": {},
-			"isRLSEnabled": false
-		},
 		"public.session": {
 			"name": "session",
 			"schema": "",
@@ -4332,6 +4224,12 @@
 					"type": "text",
 					"primaryKey": false,
 					"notNull": true
+				},
+				"portal": {
+					"name": "portal",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": false
 				},
 				"active_organization_id": {
 					"name": "active_organization_id",

@@ -103,10 +103,10 @@ repeats every year (`CAL-12`).
   count of affected items.
 - `CAL-14` Creating or updating a calendar writes one `audit_log` row in the same
   database transaction as the calendar mutation. If the audit insert fails, the calendar
-  mutation still commits (`AU-14`) and the failure is written to the error log. The
-  required alerting metric and notification to every instance administrator are not
-  available in this slice; audit-failure reporting is not acceptance-complete until those
-  AU-14 integrations exist. Calendar configuration has no secrets; audit before/after
+  mutation still commits (`AU-14`). The bounded `mutation` audit-failure metric is
+  recorded, and every active instance administrator receives a separate durable
+  notification after the calendar transaction commits. Logs and notifications contain no
+  raw error or calendar data. Calendar configuration has no secrets; audit before/after
   values contain only the calendar's name, timezone, windows and holidays. The work-item
   `activity` journal does not apply: its authoritative schema requires a `work_item_id`
   composite foreign key, and a calendar has no work item.
@@ -196,8 +196,9 @@ response shape to replace in the main-to-PR OpenAPI comparison.
 
 The persisted create/update/list/detail and annual preview routes are implemented. Create
 and update write audit records and durable event envelopes in their mutation transactions;
-an audit insert failure is isolated to its savepoint and logged while the mutation and
-outbox event commit. The preview uses the shared `packages/domain/src/calendar/`
+an audit insert failure is isolated to its savepoint, records the `mutation` failure metric,
+and notifies active instance administrators after commit while the mutation and outbox event
+commit. The preview uses the shared `packages/domain/src/calendar/`
 calculations. The remaining routes are not implemented in this slice:
 
 This slice also does not seed workspace calendars with named presets or implement calendar

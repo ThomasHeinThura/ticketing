@@ -35,6 +35,7 @@ import { activityPolicies } from "./activity/policy";
 import { assetPolicies } from "./asset/policy";
 import { attachmentPolicies } from "./attachment/policy";
 import { auditPolicies } from "./audit/policy";
+import { factorStatusPolicies } from "./auth/factor-status-policy";
 import { cannedResponsePolicies } from "./canned-response/policy";
 import { capabilitiesPolicies } from "./capabilities/policy";
 import { columnPolicies } from "./column/policy";
@@ -99,6 +100,11 @@ export const platformPolicies = {
 
   // The websocket surface. The upgrade handler authenticates the request itself before the
   // socket opens; there is no Hono response for a policy middleware to shape.
+  "GET /api/ws": {
+    delegated: "websocket",
+    reason:
+      "native subscription upgrade authenticates first and authorizes every topic against persisted reach",
+  },
   "GET /api/ws/user": {
     delegated: "websocket",
     reason:
@@ -282,6 +288,10 @@ export const POLICY_SOURCES = [
   },
   { name: "apps/api/src/search/policy.ts", policies: searchPolicies },
   { name: "apps/api/src/user/policy.ts", policies: userPolicies },
+  {
+    name: "apps/api/src/auth/factor-status-policy.ts",
+    policies: factorStatusPolicies,
+  },
   {
     name: "apps/api/src/pending-action/policy.ts",
     policies: pendingActionPolicies,

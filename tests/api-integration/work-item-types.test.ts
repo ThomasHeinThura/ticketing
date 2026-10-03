@@ -12,7 +12,11 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
+import {
+  createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
+  requireRow,
+} from "./helpers/fixtures";
 
 async function makeType(
   workspaceId: string,
@@ -67,6 +71,8 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     "addWorkspaceMember: user",
   );
 
+  await prepareAuthenticatedApiFixture(user.id);
+
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
     userId: user.id,
@@ -109,6 +115,8 @@ async function addWorkspaceMemberWithoutGenuineRow(
       .returning(),
     "addWorkspaceMemberWithoutGenuineRow: user",
   );
+
+  await prepareAuthenticatedApiFixture(user.id);
 
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,

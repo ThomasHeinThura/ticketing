@@ -89,12 +89,15 @@ export default function CommentInput({ taskId }: CommentInputProps) {
                   variant="default"
                   onClick={handleSubmit}
                   disabled={isPending || !content.trim()}
+                  aria-busy={isPending}
+                  data-testid="comment-submit"
                   className={cn(
                     isPending ||
                       (!content.trim() && "opacity-50 cursor-not-allowed"),
                     content.trim().length > 0 &&
                       "bg-primary text-primary-foreground",
                   )}
+                  aria-label={t("activity:comment.submitShortcut")}
                 >
                   <ArrowUp className="size-3.5" />
                 </Button>

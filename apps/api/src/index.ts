@@ -1,10 +1,11 @@
 import { statSync } from "node:fs";
-import type { Server as HttpServer } from "node:http";
+import type { Server as HttpServer, IncomingMessage } from "node:http";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { serve, upgradeWebSocket } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { OpenAPIHono } from "@hono/zod-openapi";
+import { normaliseRouteKey } from "@taskdesk/permissions";
 import type { Session, User } from "better-auth/types";
 import { and, eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
@@ -17,7 +18,15 @@ import { WebSocketServer } from "ws";
 import activity from "./activity";
 import attachment from "./attachment";
 import audit from "./audit";
-import { auth } from "./auth";
+import {
+  assertCookieDomainIsNotConfiguredForHostIsolation,
+  authForHost,
+  portalForHost,
+} from "./auth";
+import csrfToken from "./auth/csrf-token-api";
+import factorStatus from "./auth/factor-status-api";
+import { loadLocalFactorState } from "./auth/local-factor-service";
+import stepUp from "./auth/step-up-api";
 import cannedResponse from "./canned-response";
 import capabilities from "./capabilities";
 import column from "./column";
@@ -38,6 +47,17 @@ import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
+import localFactorPolicy from "./instance/local-factor-policy";
+import observability from "./instance/observability";
+import metricsTokenRotation from "./instance/observability/metrics-token-rotation";
+import {
+  beginObservedRequest,
+  logTaskDesk,
+  observeRequest,
+  startObservabilityRuntime,
+  stopObservabilityRuntime,
+} from "./instance/observability/runtime";
+import resetMfa from "./instance/reset-mfa";
 import { ensureSetupToken } from "./instance/setup-token";
 import invitation from "./invitation";
 import label from "./label";
@@ -77,16 +97,24 @@ import timeEntry from "./time-entry";
 import user from "./user";
 import getAvatar from "./user/controllers/get-avatar";
 import { buildAuthRequest } from "./utils/auth-request";
-import { authenticateApiRequest } from "./utils/authenticate-api-request";
+import {
+  authenticateApiRequest,
+  hasInvalidExplicitCredential,
+} from "./utils/authenticate-api-request";
 import { loadReachableAsset } from "./utils/authorize-asset-access";
 import { backfillWorkspaceAndProjectDefaults } from "./utils/backfill-workspace-project-defaults";
 import { getInvitationDetails } from "./utils/check-registration-allowed";
+import { csrfProtectionMiddleware } from "./utils/csrf-protection";
 import { migrateApiKeyReferenceId } from "./utils/migrate-apikey-reference-id";
 import { migrateNotificationPreferencesSchema } from "./utils/migrate-notification-preferences-schema";
 import { migrateSessionColumn } from "./utils/migrate-session-column";
 import { migrateWorkspaceUserEmail } from "./utils/migrate-workspace-user-email";
 import { normalizeApiServerUrl } from "./utils/openapi-spec";
 import { rejectNulByte } from "./utils/reject-nul-byte";
+import {
+  parseConfiguredOrigins,
+  selectOriginFromContext,
+} from "./utils/request-origin";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
@@ -96,13 +124,17 @@ import workflowRule from "./workflow-rule";
 import workspace from "./workspace";
 import {
   addConnection,
+  addNativeConnection,
   addUserConnection,
   forceShutdownWebSocketAdapter,
+  handleNativeFrame,
   initializeWebSocketAdapter,
   removeConnection,
+  removeNativeConnection,
   removeUserConnection,
   shutdownWebSocketAdapter,
 } from "./ws";
+import { checkWebSocketOrigin } from "./ws/origin-policy";
 
 type ApiKey = {
   id: string;
@@ -112,11 +144,13 @@ type ApiKey = {
 };
 
 type AppVariables = {
+  Bindings: { incoming?: IncomingMessage & { authority?: string } };
   Variables: {
     user: User | null;
     session: Session | null;
     userId: string;
     apiKey?: ApiKey;
+    appOrigin: "agent" | "portal" | "unknown";
   };
 };
 
@@ -129,6 +163,23 @@ type ApiVariables = {
     apiKey?: ApiKey;
   };
 };
+
+async function enforceLocalFactorEnrollment(c: Context<ApiVariables>) {
+  if (c.req.path === "/api/me/security/factors") return;
+  const userId = c.get("userId");
+  const session = c.get("session") as (Session & { portal?: string }) | null;
+  if (!userId || !session || session.portal !== "agent") return;
+
+  let state: Awaited<ReturnType<typeof loadLocalFactorState>>;
+  try {
+    state = await loadLocalFactorState(userId);
+  } catch {
+    throw new HTTPException(503, { message: "factor_policy_unavailable" });
+  }
+  if (state.required && !state.enabled) {
+    throw new HTTPException(403, { message: "mfa_enrollment_required" });
+  }
+}
 
 const SAFE_INLINE_ASSET_TYPES = new Set([
   "image/apng",
@@ -183,11 +234,11 @@ function buildContentDisposition(filename: string, inline: boolean) {
  * Both candidates are checked in order; the first that looks like a real
  * build (a directory containing `index.html`) wins.
  */
-function defaultStaticRootCandidates(): string[] {
+function defaultStaticRootCandidates(surface: "agent" | "portal"): string[] {
   const currentDir = dirname(fileURLToPath(import.meta.url));
   return [
-    join(currentDir, "../../../public"),
-    join(currentDir, "../../web/dist"),
+    join(currentDir, "../../../public", surface),
+    join(currentDir, `../../web/dist/${surface}`),
   ];
 }
 
@@ -199,7 +250,7 @@ function defaultStaticRootCandidates(): string[] {
  * having been built.
  */
 export function resolveStaticRoot(
-  candidates: string[] = defaultStaticRootCandidates(),
+  candidates: string[] = defaultStaticRootCandidates("agent"),
 ): string | undefined {
   return candidates.find((candidate) => {
     try {
@@ -215,6 +266,37 @@ export function resolveStaticRoot(
 
 function isApiRequestPath(path: string): boolean {
   return path === "/api" || path.startsWith("/api/");
+}
+
+function authForRequest(c: Context) {
+  const selected = authForHost(c.req.header("Host"));
+  if (!selected) throw new HTTPException(403, { message: "Forbidden" });
+  return selected;
+}
+
+async function handleAuthRequest(c: Context, headers?: Headers) {
+  if (
+    hasInvalidExplicitCredential(
+      c.req.header("Authorization"),
+      c.req.header("x-api-key"),
+    )
+  ) {
+    throw new HTTPException(401, { message: "Unauthorized" });
+  }
+
+  const host = c.req.header("Host");
+  const portal = portalForHost(host);
+  const selected = authForRequest(c);
+  if (!portal) throw new HTTPException(403, { message: "Forbidden" });
+
+  const session = await selected.api.getSession({
+    headers: c.req.raw.headers,
+  });
+  if (session?.session && session.session.portal !== portal) {
+    throw new HTTPException(403, { message: "Forbidden" });
+  }
+
+  return selected.handler(buildAuthRequest(c, headers));
 }
 
 /**
@@ -238,35 +320,47 @@ function isApiRequestPath(path: string): boolean {
  * `apps/web/dist` present, or this registration voids that declaration for CORS/compress too
  * (issue #165 — see `tests/permissions/README.md` and `docs/04-engineering/ci-cd.md`).
  */
+function resolveStaticRoots(options: {
+  agent?: string;
+  portal?: string;
+}): Record<"agent" | "portal", string | undefined> {
+  return {
+    agent: resolveStaticRoot(
+      options.agent ? [options.agent] : defaultStaticRootCandidates("agent"),
+    ),
+    portal: resolveStaticRoot(
+      options.portal ? [options.portal] : defaultStaticRootCandidates("portal"),
+    ),
+  };
+}
+
+function denyByHost(c: Context<AppVariables>) {
+  if (isApiRequestPath(c.req.path)) {
+    return c.req.method === "HEAD"
+      ? c.body(null, 404, { "content-type": "application/json" })
+      : c.json({ message: "Not Found" }, 404);
+  }
+  return c.body(null, 404);
+}
+
+/**
+ * Serves the separate built app selected by the validated request authority.
+ * A missing selected root returns 503; it never falls back across origins.
+ */
 function registerStaticServing(
   app: Hono<AppVariables>,
-  staticRootOverride?: string,
+  staticRoots: Record<"agent" | "portal", string | undefined>,
 ) {
-  // An override still goes through the same "is this actually a build"
-  // check as the real candidates, rather than being trusted blindly — a
-  // test (or a future caller) that passes a directory with no `index.html`
-  // gets the same graceful skip as the no-override, nothing-found case.
-  const staticRoot = staticRootOverride
-    ? resolveStaticRoot([staticRootOverride])
-    : resolveStaticRoot();
-
-  if (!staticRoot) {
+  if (!staticRoots.agent && !staticRoots.portal) {
     console.warn(
-      "[static] No built web app found (checked the production /app/public location and apps/web/dist) — the API will not serve the web UI. Expected whenever only the API is running, e.g. before `pnpm --filter @taskdesk/web build` in local development.",
+      "[static] No built web apps found; both origin roots return 503 for document requests until their builds exist.",
     );
-    return;
+  }
+  for (const [surface, staticRoot] of Object.entries(staticRoots)) {
+    if (staticRoot)
+      console.log(`[static] Serving the ${surface} app from ${staticRoot}`);
   }
 
-  console.log(`[static] Serving the built web app from ${staticRoot}`);
-
-  const serveAsset = serveStatic({ root: staticRoot });
-  const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
-
-  // Named (not inline in `.use()`) so its exact function reference can be declared to
-  // `permissions/shadow-middleware.ts` (Opus delta F5) as reviewed catch-all
-  // infrastructure -- the classification guard runs from inside a DIFFERENT catch-all
-  // (the auth guard, below) and would otherwise have no way to tell this middleware's own
-  // matched entry apart from a real, unclassified feature route sharing the same key.
   const serveStaticOrSpaShell = async (
     c: Context<AppVariables>,
     next: Next,
@@ -278,37 +372,71 @@ function registerStaticServing(
       return next();
     }
 
-    // `serveStatic`'s own "not found" signal is calling its `next` argument
-    // (typed to return `void`, not a `Response`), so the decision below
-    // can't be made from inside that callback's return value — it just
-    // flags that no file matched, and the real branching happens after.
+    const surface = c.get("appOrigin");
+    if (surface !== "agent" && surface !== "portal") return next();
+    const staticRoot = staticRoots[surface];
+    if (!staticRoot) {
+      return c.req.method === "HEAD"
+        ? c.body(null, 503, { "content-type": "application/json" })
+        : c.json({ message: "Service Unavailable" }, 503);
+    }
+
+    const serveAsset = serveStatic({ root: staticRoot });
+    const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
     let assetMissing = false;
     const result = await serveAsset(c, async () => {
       assetMissing = true;
     });
+    if (!assetMissing) return result;
 
-    if (!assetMissing) {
-      return result;
-    }
-
-    // No matching file. A request whose last path segment has an extension
-    // (".js", ".png", a stray ".env", ...) is a genuinely missing asset and
-    // must stay a 404 — silently returning the SPA shell for it would turn
-    // a broken or typo'd asset URL into a "successful" HTML response
-    // instead of a loud failure. Anything else is a client-side route and
-    // gets the SPA shell.
     const lastSegment = c.req.path.split("/").pop() ?? "";
-    if (lastSegment.includes(".")) {
-      return next();
-    }
+    if (lastSegment.includes(".")) return next();
+    if (surface === "portal") return c.notFound();
     return serveIndex(c, next);
   };
   declareCatchAllMiddleware(serveStaticOrSpaShell);
   app.use("*", serveStaticOrSpaShell);
 }
 
-export function createApp(options: { staticRoot?: string } = {}) {
+export function createApp(
+  options: {
+    staticRoot?: string;
+    portalStaticRoot?: string;
+    registerAdditionalRoutes?: (app: Hono<AppVariables>) => void;
+  } = {},
+) {
+  assertCookieDomainIsNotConfiguredForHostIsolation();
   const app = new Hono<AppVariables>();
+
+  const requestMetricsMiddleware = async (
+    c: Context<AppVariables>,
+    next: Next,
+  ) => {
+    const startedAt = performance.now();
+    const release = beginObservedRequest();
+    try {
+      await next();
+    } finally {
+      release();
+      const routePath = c.req.routePath;
+      let registeredRoute: string | undefined;
+      if (routePath) {
+        try {
+          registeredRoute = normaliseRouteKey(`${c.req.method} ${routePath}`);
+        } catch {
+          registeredRoute = undefined;
+        }
+      }
+      observeRequest({
+        method: c.req.method,
+        route: registeredRoute,
+        status: c.res.status,
+        durationMs: Math.max(0, performance.now() - startedAt),
+      });
+    }
+  };
+  declareCatchAllMiddleware(requestMetricsMiddleware);
+  app.use("*", requestMetricsMiddleware);
 
   app.onError((err, c) => {
     if (err instanceof HTTPException) {
@@ -319,6 +447,52 @@ export function createApp(options: { staticRoot?: string } = {}) {
     }
     return c.json({ message: "Internal Server Error" }, 500);
   });
+  const staticRoots = resolveStaticRoots({
+    agent: options.staticRoot,
+    portal: options.portalStaticRoot,
+  });
+  const origins = parseConfiguredOrigins(
+    process.env.TASKDESK_AGENT_URL,
+    process.env.TASKDESK_PORTAL_URL,
+  );
+  const hostRoutingGuard = async (c: Context<AppVariables>, next: Next) => {
+    const selected = selectOriginFromContext(c, origins);
+    const isHealthPath =
+      c.req.path === "/api/health" ||
+      c.req.path === "/api/public/health/live" ||
+      c.req.path === "/api/public/health/ready";
+    const isHealthRequest =
+      isHealthPath && (c.req.method === "GET" || c.req.method === "HEAD");
+    const upgrade = c.req.header("upgrade")?.toLowerCase();
+    const connection = c.req.header("connection")?.toLowerCase() ?? "";
+    const isWebSocketUpgrade =
+      upgrade === "websocket" && connection.includes("upgrade");
+
+    if (selected === "invalid") return denyByHost(c);
+    if (isWebSocketUpgrade && (selected !== "agent" || isHealthPath))
+      return denyByHost(c);
+    if (isHealthRequest) {
+      c.set("appOrigin", selected === "unknown" ? "unknown" : selected);
+      await next();
+      if (c.req.method === "HEAD")
+        return new Response(null, {
+          status: c.res.status,
+          statusText: c.res.statusText,
+          headers: c.res.headers,
+        });
+      return;
+    }
+    if (selected === "unknown") return denyByHost(c);
+    c.set("appOrigin", selected);
+    if (selected === "portal") {
+      if (isApiRequestPath(c.req.path)) return denyByHost(c);
+      if (c.req.method !== "GET" && c.req.method !== "HEAD")
+        return denyByHost(c);
+    }
+    return next();
+  };
+  declareCatchAllMiddleware(hostRoutingGuard);
+  app.use("*", hostRoutingGuard);
   const corsOriginSource = [
     process.env.CORS_ORIGINS,
     process.env.TASKDESK_AGENT_URL,
@@ -446,7 +620,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
         },
       },
     }),
-    async (c) => auth.handler(buildAuthRequest(c)),
+    async (c) => handleAuthRequest(c),
   );
 
   api.openapi(
@@ -855,7 +1029,7 @@ export function createApp(options: { staticRoot?: string } = {}) {
         }
         return c.redirect(deviceUrl.toString(), 302);
       }
-      return auth.handler(buildAuthRequest(c));
+      return authForRequest(c).handler(buildAuthRequest(c));
     },
   );
 
@@ -865,24 +1039,15 @@ export function createApp(options: { staticRoot?: string } = {}) {
     const bearerToken = authHeader?.match(/^Bearer\s+(\S+)$/i)?.[1];
 
     if (bearerToken && !apiKeyHeader) {
-      const session = await auth.api.getSession({
-        headers: c.req.raw.headers,
-      });
-
-      // Preserve Better Auth bearer session tokens on auth routes.
-      if (session?.session && session.user) {
-        return auth.handler(buildAuthRequest(c));
-      }
-
       const headers = new Headers(c.req.raw.headers);
 
       // Better Auth API key plugin validates from x-api-key by default.
       headers.set("x-api-key", bearerToken);
 
-      return auth.handler(buildAuthRequest(c, headers));
+      return handleAuthRequest(c, headers);
     }
 
-    return auth.handler(buildAuthRequest(c));
+    return handleAuthRequest(c);
   });
 
   // Named (not inline in `.use()`) so its exact function reference can be declared to
@@ -901,7 +1066,20 @@ export function createApp(options: { staticRoot?: string } = {}) {
     // uninvoked arrow function, or authenticateApiRequest never runs and every
     // request through this guard succeeds unauthenticated.
     try {
+      if (c.req.path === "/api/ws" || c.req.path.startsWith("/api/ws/")) {
+        const hostResult = checkWebSocketOrigin({
+          host: c.req.header("Host") ?? null,
+          origin: null,
+          sessionPortal: null,
+          hasSession: false,
+        });
+        if (!hostResult.allowed)
+          throw new HTTPException(403, { message: "Forbidden" });
+      }
       await authenticateApiRequest(c);
+      await enforceLocalFactorEnrollment(c);
+      const csrfResponse = await csrfProtectionMiddleware()(c, async () => {});
+      if (csrfResponse instanceof Response) return csrfResponse;
       // Issue #8: refuses outright (never silently serves) a route below this guard that
       // has no entry at all in the declarative policy registry -- see
       // `route-classification-guard.ts`'s own doc comment for exactly what this does and
@@ -923,7 +1101,12 @@ export function createApp(options: { staticRoot?: string } = {}) {
       );
     } catch (error) {
       if (!(error instanceof HTTPException)) {
-        console.error("API authentication failed:", error);
+        logTaskDesk({
+          module: "auth",
+          message: "auth.failure",
+          level: "error",
+          result: "failed",
+        });
         throw new HTTPException(500, { message: "Internal Server Error" });
       }
       throw error;
@@ -1045,20 +1228,133 @@ export function createApp(options: { staticRoot?: string } = {}) {
   const workItemApi = api.route("/", workItem);
   const attachmentApi = api.route("/", attachment);
   const userApi = api.route("/user", user);
+  const factorStatusApi = api.route("/me", factorStatus);
+  const csrfTokenApi = api.route("/me", csrfToken);
+  const stepUpApi = api.route("/me", stepUp);
+  const observabilityApi = api.route("/instance", observability);
+  const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
+  const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
+  const resetMfaApi = api.route("/instance", resetMfa);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
+  api.get(
+    "/ws",
+    upgradeWebSocket(async (c) => {
+      const host = c.req.header("Host") ?? null;
+      const hostResult = checkWebSocketOrigin({
+        host,
+        origin: null,
+        sessionPortal: null,
+        hasSession: false,
+      });
+      if (!hostResult.allowed)
+        throw new HTTPException(403, { message: "Forbidden" });
+      try {
+        await authenticateApiRequest(c);
+        await enforceLocalFactorEnrollment(c);
+      } catch (error) {
+        if (error instanceof HTTPException) throw error;
+        logTaskDesk({
+          module: "auth",
+          message: "auth.failure",
+          level: "error",
+          result: "failed",
+        });
+        throw new HTTPException(500, { message: "Internal Server Error" });
+      }
+      const originResult = checkWebSocketOrigin({
+        host,
+        origin: c.req.header("Origin") ?? null,
+        sessionPortal: (
+          c.get("session") as (Session & { portal?: unknown }) | null
+        )?.portal,
+        hasSession: c.get("session") !== null,
+      });
+      if (!originResult.allowed)
+        throw new HTTPException(originResult.status, { message: "Forbidden" });
+
+      const readCredential = () => {
+        const apiKey = c.get("apiKey") as ApiKey | undefined;
+        const session = c.get("session") as
+          | (Session & { portal?: "agent" | "customer" })
+          | null;
+        return {
+          userId: c.get("userId") as string,
+          apiKeyId: apiKey?.id,
+          apiKeyPermissions: apiKey?.permissions,
+          portal: session?.portal ?? null,
+        };
+      };
+      let nativeConnection: ReturnType<typeof addNativeConnection> = null;
+      return {
+        onOpen(_event, ws) {
+          nativeConnection = addNativeConnection(
+            ws,
+            readCredential(),
+            async () => {
+              try {
+                await authenticateApiRequest(c);
+                await enforceLocalFactorEnrollment(c);
+                const refreshed = readCredential();
+                if (!refreshed.userId) return null;
+                return refreshed;
+              } catch {
+                return null;
+              }
+            },
+          );
+        },
+        onMessage(event, ws) {
+          const raw =
+            typeof event.data === "string"
+              ? event.data
+              : Buffer.isBuffer(event.data)
+                ? event.data.toString()
+                : null;
+          if (!raw) {
+            ws.close(1007, "invalid frame");
+            return;
+          }
+          if (nativeConnection) void handleNativeFrame(nativeConnection, raw);
+        },
+        onClose() {
+          removeNativeConnection(nativeConnection);
+          nativeConnection = null;
+        },
+      };
+    }),
+  );
+
   api.get(
     "/ws/user",
     upgradeWebSocket(async (c) => {
       try {
         await authenticateApiRequest(c);
+        await enforceLocalFactorEnrollment(c);
       } catch (error) {
         if (error instanceof HTTPException) {
           throw error;
         }
-        console.error("API authentication failed:", error);
+        logTaskDesk({
+          module: "auth",
+          message: "auth.failure",
+          level: "error",
+          result: "failed",
+        });
         throw new HTTPException(500, { message: "Internal Server Error" });
+      }
+
+      const originResult = checkWebSocketOrigin({
+        host: c.req.header("Host") ?? null,
+        origin: c.req.header("Origin") ?? null,
+        sessionPortal: (
+          c.get("session") as (Session & { portal?: unknown }) | null
+        )?.portal,
+        hasSession: c.get("session") !== null,
+      });
+      if (!originResult.allowed) {
+        throw new HTTPException(originResult.status, { message: "Forbidden" });
       }
 
       const userId = c.get("userId");
@@ -1104,12 +1400,30 @@ export function createApp(options: { staticRoot?: string } = {}) {
 
       try {
         await authenticateApiRequest(c);
+        await enforceLocalFactorEnrollment(c);
       } catch (error) {
         if (error instanceof HTTPException) {
           throw error;
         }
-        console.error("API authentication failed:", error);
+        logTaskDesk({
+          module: "auth",
+          message: "auth.failure",
+          level: "error",
+          result: "failed",
+        });
         throw new HTTPException(500, { message: "Internal Server Error" });
+      }
+
+      const originResult = checkWebSocketOrigin({
+        host: c.req.header("Host") ?? null,
+        origin: c.req.header("Origin") ?? null,
+        sessionPortal: (
+          c.get("session") as (Session & { portal?: unknown }) | null
+        )?.portal,
+        hasSession: c.get("session") !== null,
+      });
+      if (!originResult.allowed) {
+        throw new HTTPException(originResult.status, { message: "Forbidden" });
       }
 
       const userId = c.get("userId");
@@ -1187,7 +1501,8 @@ export function createApp(options: { staticRoot?: string } = {}) {
   );
 
   app.route("/api", api);
-  registerStaticServing(app, options.staticRoot);
+  options.registerAdditionalRoutes?.(app);
+  registerStaticServing(app, staticRoots);
 
   return {
     app,
@@ -1201,6 +1516,13 @@ export function createApp(options: { staticRoot?: string } = {}) {
     commentApi,
     configApi,
     externalLinkApi,
+    factorStatusApi,
+    csrfTokenApi,
+    stepUpApi,
+    observabilityApi,
+    metricsTokenRotationApi,
+    localFactorPolicyApi,
+    resetMfaApi,
     invitationApi,
     invitationPublicApi,
     oauthApi,
@@ -1342,6 +1664,7 @@ export async function runApiBootTasks(): Promise<void> {
   initializePlugins();
   initializeScheduler();
   await initializeWebSocketAdapter();
+  await startObservabilityRuntime();
 }
 
 const DEFAULT_PORT = 5173;
@@ -1532,6 +1855,7 @@ export async function startServer(port = DEFAULT_PORT) {
 
     console.log("🛑 Shutting down gracefully...");
     shutdownScheduler();
+    await stopObservabilityRuntime();
     const result = await close();
     if (result === "graceful") {
       console.log("✅ API shutdown completed gracefully");
@@ -1562,6 +1886,13 @@ const {
   commentApi,
   configApi,
   externalLinkApi,
+  factorStatusApi,
+  csrfTokenApi,
+  stepUpApi,
+  observabilityApi,
+  metricsTokenRotationApi,
+  localFactorPolicyApi,
+  resetMfaApi,
   invitationApi,
   invitationPublicApi,
   oauthApi,
@@ -1638,6 +1969,13 @@ export type AppType =
   | typeof serviceCalendarApi
   | typeof taskRelationApi
   | typeof externalLinkApi
+  | typeof factorStatusApi
+  | typeof csrfTokenApi
+  | typeof stepUpApi
+  | typeof observabilityApi
+  | typeof metricsTokenRotationApi
+  | typeof localFactorPolicyApi
+  | typeof resetMfaApi
   | typeof workflowApi
   | typeof workflowRuleApi
   | typeof workItemApi

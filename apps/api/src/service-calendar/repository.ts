@@ -14,6 +14,8 @@ import {
   workspaceTable,
 } from "../database/schema";
 import { enqueueOutboxEvent } from "../events/outbox";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
+import { recordAuditWriteFailure } from "../instance/observability/runtime";
 
 type CalendarActor = {
   actorId: string;
@@ -30,13 +32,14 @@ async function appendCalendarAudit(
   try {
     // An audit failure rolls back only this savepoint; the calendar write still commits.
     await tx.transaction(async (auditTx) => appendAuditLog(auditTx, input));
-  } catch (error) {
-    console.error("AU-14: service-calendar audit write failed", {
-      action: input.action,
-      entityId: input.entityId,
-      error,
-    });
+  } catch {
+    // The calendar mutation commits independently from its audit savepoint. Record
+    // the bounded operational signal here, then notify admins after the outer
+    // calendar transaction commits. Never log audit input or the raw error.
+    recordAuditWriteFailure("mutation");
+    return true;
   }
+  return false;
 }
 
 async function appendCalendarEvent(
@@ -302,7 +305,7 @@ export async function createCalendar(input: {
   holidays: unknown;
   actor: CalendarActor;
 }) {
-  return db.transaction(async (tx) => {
+  const outcome = await db.transaction(async (tx) => {
     const [row] = await tx
       .insert(serviceCalendarTable)
       .values({
@@ -314,7 +317,7 @@ export async function createCalendar(input: {
       })
       .returning();
     if (!row) throw new Error("Calendar insert returned no row");
-    await appendCalendarAudit(tx, {
+    const auditFailed = await appendCalendarAudit(tx, {
       ...input.actor,
       workspaceId: input.workspaceId,
       action: "service_calendar.created",
@@ -327,8 +330,12 @@ export async function createCalendar(input: {
       calendar: row,
       actor: input.actor,
     });
-    return row;
+    return { row, auditFailed };
   });
+  if (outcome.auditFailed) {
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  }
+  return outcome.row;
 }
 export class ServiceCalendarVersionConflictError extends Error {
   constructor(
@@ -354,7 +361,7 @@ export async function updateCalendar(
   assertedVersion: number | undefined,
   actor: CalendarActor,
 ) {
-  return db.transaction(async (tx) => {
+  const outcome = await db.transaction(async (tx) => {
     const [before] = await tx
       .select()
       .from(serviceCalendarTable)
@@ -388,7 +395,7 @@ export async function updateCalendar(
       )
       .returning();
     if (!row) return undefined;
-    await appendCalendarAudit(tx, {
+    const auditFailed = await appendCalendarAudit(tx, {
       ...actor,
       workspaceId,
       action: "service_calendar.updated",
@@ -403,6 +410,10 @@ export async function updateCalendar(
       actor,
       changedFields: changedCalendarFields(before, row),
     });
-    return { before, row };
+    return { value: { before, row }, auditFailed };
   });
+  if (outcome?.auditFailed) {
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  }
+  return outcome?.value;
 }

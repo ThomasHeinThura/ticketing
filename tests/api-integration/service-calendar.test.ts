@@ -595,7 +595,11 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
 
   it("CAL-14: keeps calendar writes when audit inserts fail and withholds deletion", async () => {
     const creator = await createWorkspaceMember({ role: "admin" });
-    mockAuthenticatedSession(creator.user);
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, creator.user.id));
+    mockAuthenticatedSession({ ...creator.user, role: "admin" });
     const { app } = createApp();
     const body = {
       workspaceId: creator.workspace.id,
@@ -605,9 +609,6 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
       holidays: [],
     };
 
-    const auditErrorLog = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
     await armAuditInsertFailure();
     const createResponse = await app.request("/api/service-calendars", {
       method: "POST",
@@ -617,12 +618,19 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
     expect(createResponse.status).toBe(200);
     const created = (await createResponse.json()) as { id: string };
     expect(await db.select().from(schema.serviceCalendarTable)).toHaveLength(1);
-    expect(auditErrorLog).toHaveBeenCalledWith(
-      "AU-14: service-calendar audit write failed",
-      expect.objectContaining({
-        action: "service_calendar.created",
-        entityId: created.id,
-      }),
+    const firstAlerts = await db
+      .select({ eventData: schema.notificationTable.eventData })
+      .from(schema.notificationTable)
+      .where(
+        and(
+          eq(schema.notificationTable.userId, creator.user.id),
+          eq(schema.notificationTable.type, "audit_write_failed"),
+        ),
+      );
+    expect(firstAlerts).toHaveLength(1);
+    expect(firstAlerts[0]?.eventData).toMatchObject({ operation: "mutation" });
+    expect(JSON.stringify(firstAlerts[0]?.eventData)).not.toContain(
+      "injected audit insert failure",
     );
     await disarmAuditInsertFailure();
 
@@ -648,13 +656,22 @@ describe("API integration: service calendars (CAL-1–CAL-16)", () => {
       .from(schema.serviceCalendarTable)
       .where(eq(schema.serviceCalendarTable.id, calendar.id));
     expect(afterFailedUpdate?.name).toBe("Update survives audit failure");
-    expect(auditErrorLog).toHaveBeenCalledWith(
-      "AU-14: service-calendar audit write failed",
-      expect.objectContaining({
-        action: "service_calendar.updated",
-        entityId: calendar.id,
-      }),
-    );
+    const alertsAfterUpdate = await db
+      .select({ eventData: schema.notificationTable.eventData })
+      .from(schema.notificationTable)
+      .where(
+        and(
+          eq(schema.notificationTable.userId, creator.user.id),
+          eq(schema.notificationTable.type, "audit_write_failed"),
+        ),
+      );
+    expect(alertsAfterUpdate).toHaveLength(2);
+    expect(
+      alertsAfterUpdate.every(
+        (alert) =>
+          (alert.eventData as { operation?: string }).operation === "mutation",
+      ),
+    ).toBe(true);
     expect(
       await db
         .select()
