@@ -5,6 +5,121 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-03 · Select the bounded P2 holiday-import profile
+
+**Decision:** complete calendar holiday import in a separate full P2 implementation batch
+under Thomas's standing authorization for recommended decisions. Record the profile and
+API DTO in `service-calendars.md` before implementation. The initial profile accepts UTF-8
+RFC 5545 VCALENDAR version 2.0 containing finite all-day VEVENTs. DTSTART is required with
+`VALUE=DATE`; optional DATE DTEND is exclusive and defaults to the next day. Preserve an
+inclusive stored range after converting that exclusive endpoint. SUMMARY is optional plain
+text, with RFC unfolding/escaping and safe rendering. Require syntactically valid UID and
+DTSTAMP metadata; they confer no authority. This is a holiday-file importer, not scheduling:
+reject timed/TZID values, recurrence/exception properties, DURATION, non-VEVENT/nested
+components and malformed or unsupported properties with an actionable error. Permit only
+the documented safe calendar/event metadata allowlist; never fetch URLs or execute data.
+No partial successful import, silently dropped event or invented recurrence interpretation.
+Reference: [RFC 5545](https://www.rfc-editor.org/rfc/rfc5545.html), sections 3.1, 3.3.4,
+3.3.11 and 3.6.1. The supported subset and resource limits below are product decisions.
+
+Bound decoded input to 256 KiB UTF-8, 1,000 events, 8 KiB per unfolded content line,
+120 characters per holiday name and 366 covered dates per finite event. Reject an empty
+file/event set and out-of-range real dates; reuse canonical calendar date bounds. Preserve
+existing holidays. Deduplicate exact canonical holiday identities (shape/date or range or
+annual tuple plus normalized name); report added and duplicate counts. Different named
+holidays on the same day remain legitimate. Identical retries are no-op imports: do not
+advance version or emit mutation effects for zero additions. A supplied If-Match must still
+be validated under the row lock before reporting a no-op.
+
+Use existing `POST /api/service-calendars/{id}/holidays/import`, `sla_policy:manage` and
+workspace reach, with JSON `{ics: string}` and optional canonical If-Match. Register the
+response `{calendar, importedCount, duplicateCount}` using the existing safe calendar DTO.
+Parse/validate before mutation, then recheck reach/concurrency and append under the existing
+calendar lock, audit-savepoint, durable event and administrator-alert behavior. Reuse the
+registered calendar-update action/event; no new identifier, dependency, migration, external
+service or direct deletion is selected. Finish shared-UI file selection, confirmation/preview,
+error/partial-input refusal, translations, cache refresh and real persisted browser/API
+proof. Keep unavailable impact counts truthful under the existing CAL-13 limitation.
+Country presets and the other documented calendar dependencies remain distinct work.
+This selection is not independent review, protected acceptance or phase completion.
+
+
+### 2026-10-03 · Select the P1 concrete project-state read contract
+
+**Decision:** complete the v2 board's existing `VW-8` requirement in the full P1
+implementation batch under Thomas's standing authorization to proceed with recommended
+solutions. Register authenticated `GET /api/projects/{projectId}/states` in the canonical
+project API spec before code. Require `project:read` plus the existing project reach guard,
+with the established non-disclosing denial behavior. Return the project's active concrete
+states, including states with zero work items, ordered by `position ASC, id ASC`. The bounded
+DTO is `{id, stateTemplateId, name, group, position, isDefault}`; name/group come from the
+mapped workspace state template, position/default from the concrete state. An archived
+template remains referenceable by already-adopted active concrete states; it is not an
+excuse to drop a board column. No new table, migration, capability or environment setting
+is needed. Use existing canonical types/serialization conventions.
+
+The catalogue lists columns, never grants a transition. Cross-column moves use each item's
+server-returned legal offers and the existing transition endpoint; within-column reordering
+uses rank. Preserve `WI-4` default-state creation semantics. Publish the OpenAPI response,
+policy coverage, reach/empty-column/order regression proofs and full URL/keyboard/browser
+journey as one completed batch. This is implementation contract selection, not review,
+acceptance, a gate waiver or a human design approval.
+
+
+### 2026-10-03 · Select serialized P4 bootstrap admission for #231
+
+**Decision:** under Thomas's standing instruction to implement recommended solutions in
+parallel before bulk review, complete #231 in the isolated P4 bootstrap/recovery branch.
+Write the selected contract in its authoritative auth/data-model documents before code.
+The product invariant is one successful local first-user bootstrap admission and exactly
+one pending administrator when valid token and headless-email signups race. A losing signup
+must be refused without leaving another committed ordinary user. Validate authorization
+from trusted server credential handling; never accept a client role/flag or IdP grant.
+Serialize the first-user admission against authoritative database state using the existing
+promotion lock, and make user creation plus administrator grant atomic; an in-memory lock
+or a separately committed before-hook check is insufficient. Recheck stale/expired state
+inside that boundary. If the adapter needs a bounded database guard, document the mechanism
+and identifiers before generating its migration. No dependency is authorized here.
+
+Preserve #229: the setup-completed marker remains unset until actual verified TOTP, pending
+bootstrap requires enrollment even when policy is off, and additional registration is closed.
+Preserve initialized installation/provider behavior and the initialized-only #230 recovery
+CLI. Real concurrent distinct-credential regressions must prove no zero-admin/two-user
+result, including loser rollback; record image/browser and bulk independent acceptance
+honestly. P0 has priority over this lane's heavy test/build work. This selects implementation
+behavior, not a gate waiver, human design approval or phase-completion claim.
+
+### 2026-10-03 · Select the bounded P4 bootstrap-factor contract
+
+**Decision:** the orchestrator selects the recommended #229 contract under Thomas's standing
+instruction to proceed with recommended decisions and full implementation before bulk review.
+Record the canonical contract in the isolated P4 branch before implementation. This changes
+neither the P0 candidate's runtime nor the timing of Thomas's P4 design review.
+
+Keep the setup-completed marker unset until the exact first bootstrap administrator verifies
+its real TOTP enrollment. While that bootstrap remains pending, require enrollment regardless
+of the configured factor-policy mode, restrict that session to the documented authentication
+and enrollment surfaces, and return the existing `mfa_enrollment_required` from protected
+custom APIs. Finalize under the existing promotion lock after rechecking the first admin,
+active staff person and verified factor; clear setup-token fields then and preserve the stored
+policy. Apply the same ordering to headless bootstrap. The initial zero-user creation
+channel is local credential sign-up; enforce it on the server, including OAuth callbacks
+and email-OTP auto-creation, so initial TOTP enrollment has a real local credential and
+identity-provider data never supplies an administrator grant. Existing initialized provider
+behavior remains. Issue setup tokens only while there
+are zero users; refuse additional registrations after the first user exists until setup is
+complete. Never reopen an initialized marker. Do not invent a schema field, new role source,
+identity-provider administrator grant or repair of the separately disclosed #231 race.
+
+Existing credential recovery remains available. A first administrator losing both password
+and email access before enrollment needs a separately documented operator recovery contract;
+prepare that recommendation before implementing a new credential-reset or database-repair
+path. This decision does not claim that recovery scenario complete. The initialized-only
+#230 CLI contract remains intact. Image/TTY proofs, independent bulk reviews and protected
+acceptance remain required; no human approval or gate waiver is recorded here.
+
+
+
 
 ### 2026-10-03 · Select complete P2 SLA-policy and P4 recovery implementation contracts
 
