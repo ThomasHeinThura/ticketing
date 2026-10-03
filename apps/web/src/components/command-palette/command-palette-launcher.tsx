@@ -55,15 +55,42 @@ export default function CommandPaletteLauncher() {
   }, []);
 
   useEffect(() => {
-    // The layout commits the Outlet and this launcher together. Waiting for
-    // two browser frames lets that real route content paint before the closed
-    // palette is warmed and mounted; this is lifecycle scheduling, not a timer.
+    // On the heavy work and board screens, wait for their real primary content
+    // commit before warming the closed palette. This avoids competing with the
+    // list/board's first render while retaining immediate shortcut intent.
+    const path = window.location.pathname;
+    const waitsForPrimaryContent =
+      (path.includes("/agent/projects/") && path.endsWith("/work")) ||
+      path.endsWith("/board");
     let firstFrame: number | undefined;
     let secondFrame: number | undefined;
-    firstFrame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(() => setKeepMounted(true));
-    });
+    let observer: MutationObserver | undefined;
+    let cancelled = false;
+    const mountAfterCommit = () => {
+      if (cancelled || firstFrame !== undefined || secondFrame !== undefined)
+        return;
+      firstFrame = requestAnimationFrame(() => {
+        secondFrame = requestAnimationFrame(() => setKeepMounted(true));
+      });
+    };
+    if (waitsForPrimaryContent) {
+      if (document.querySelector("[data-primary-content-ready='true']")) {
+        mountAfterCommit();
+      } else {
+        observer = new MutationObserver(() => {
+          if (document.querySelector("[data-primary-content-ready='true']")) {
+            observer?.disconnect();
+            mountAfterCommit();
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+      }
+    } else {
+      mountAfterCommit();
+    }
     return () => {
+      cancelled = true;
+      observer?.disconnect();
       if (firstFrame !== undefined) cancelAnimationFrame(firstFrame);
       if (secondFrame !== undefined) cancelAnimationFrame(secondFrame);
     };

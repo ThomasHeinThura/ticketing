@@ -1,13 +1,5 @@
-import { CSS } from "@dnd-kit/utilities";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-} from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import useProjectStore from "@/store/project";
 import type Task from "@/types/task";
 import TaskCard from "./task-card";
 
@@ -18,7 +10,6 @@ const mocks = vi.hoisted(() => ({
 
 afterEach(() => {
   cleanup();
-  useProjectStore.getState().setProject(undefined);
   vi.clearAllMocks();
 });
 
@@ -31,10 +22,6 @@ vi.mock("@dnd-kit/sortable", () => ({
     transition: undefined,
     isDragging: false,
   }),
-}));
-
-vi.mock("@dnd-kit/utilities", () => ({
-  CSS: { Transform: { toString: vi.fn(() => undefined) } },
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -65,29 +52,52 @@ vi.mock("@/hooks/mutations/task/use-delete-task", () => ({
 }));
 
 vi.mock("@/store/bulk-selection", () => ({
-  default: (
-    selector: (state: {
-      toggleSelection: typeof mocks.toggleSelection;
-      selectedTaskIds: Set<string>;
-      focusedTaskId: string | null;
-    }) => unknown,
-  ) =>
-    selector({
-      toggleSelection: mocks.toggleSelection,
-      selectedTaskIds: new Set(),
-      focusedTaskId: null,
-    }),
+  default: Object.assign(
+    (
+      selector: (state: {
+        toggleSelection: typeof mocks.toggleSelection;
+        selectedTaskIds: Set<string>;
+        focusedTaskId: string | null;
+      }) => unknown,
+    ) => {
+      const state = {
+        toggleSelection: mocks.toggleSelection,
+        selectedTaskIds: new Set<string>(),
+        focusedTaskId: null,
+      };
+      return selector(state);
+    },
+    {
+      getState: () => ({
+        toggleSelection: mocks.toggleSelection,
+        selectedTaskIds: new Set<string>(),
+        focusedTaskId: null,
+      }),
+    },
+  ),
 }));
 
 vi.mock("@/store/user-preferences", () => ({
-  useUserPreferencesStore: () => ({
-    showAssignees: false,
-    showPriority: false,
-    showDueDates: false,
-    showLabels: false,
-    showTaskNumbers: false,
-    showTaskItemCounts: false,
-  }),
+  useUserPreferencesStore: Object.assign(
+    () => ({
+      showAssignees: false,
+      showPriority: false,
+      showDueDates: false,
+      showLabels: false,
+      showTaskNumbers: false,
+      showTaskItemCounts: false,
+    }),
+    {
+      getState: () => ({
+        showAssignees: false,
+        showPriority: false,
+        showDueDates: false,
+        showLabels: false,
+        showTaskNumbers: false,
+        showTaskItemCounts: false,
+      }),
+    },
+  ),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -116,6 +126,12 @@ function renderTaskCard() {
   render(
     <TaskCard
       task={task}
+      projectSlug="PRJ"
+      taskIsCompleted={false}
+      displayPreferences={displayPreferences}
+      isTaskSelected={false}
+      isTaskFocused={false}
+      toggleSelection={mocks.toggleSelection}
       workspaceId="workspace-1"
       workspaceUsers={undefined}
       onContextMenuTask={mocks.openContextMenu}
@@ -123,6 +139,15 @@ function renderTaskCard() {
   );
   return screen.getByText("Keyboard task").closest('[role="button"]');
 }
+
+const displayPreferences = {
+  showAssignees: false,
+  showPriority: false,
+  showDueDates: false,
+  showLabels: false,
+  showTaskNumbers: false,
+  showTaskItemCounts: false,
+};
 
 describe("TaskCard keyboard context menu", () => {
   it("G10: opens the focused card menu with Shift+F10", () => {
@@ -143,34 +168,27 @@ describe("TaskCard keyboard context menu", () => {
     expect(mocks.openContextMenu).toHaveBeenCalledExactlyOnceWith("task-1");
   });
 
-  it("ignores unrelated project replacements but responds to project slug changes", async () => {
-    const project = {
-      id: "project-1",
-      name: "Project",
-      slug: "PRJ",
-      icon: null,
-      description: null,
+  it("renders board-owned selection state supplied by the parent", () => {
+    const props = {
+      task,
+      taskIsCompleted: false,
       workspaceId: "workspace-1",
-      columns: [],
-      archivedTasks: [],
-      plannedTasks: [],
-    } as NonNullable<ReturnType<typeof useProjectStore.getState>["project"]>;
-    useProjectStore.getState().setProject(project);
-    const transformToString = vi.mocked(CSS.Transform.toString);
-    transformToString.mockClear();
+      workspaceUsers: undefined,
+      onContextMenuTask: mocks.openContextMenu,
+      displayPreferences,
+      isTaskSelected: false,
+      isTaskFocused: false,
+      toggleSelection: mocks.toggleSelection,
+      projectSlug: "PRJ",
+    };
+    const { rerender } = render(<TaskCard {...props} />);
+    expect(
+      screen.getByText("Keyboard task").closest('[role="button"]'),
+    ).not.toHaveAttribute("data-task-selected", "true");
 
-    renderTaskCard();
-    expect(transformToString).toHaveBeenCalledOnce();
-
-    transformToString.mockClear();
-    act(() =>
-      useProjectStore.getState().setProject({ ...project, columns: [] }),
-    );
-    expect(transformToString).not.toHaveBeenCalled();
-
-    act(() =>
-      useProjectStore.getState().setProject({ ...project, slug: "NEW" }),
-    );
-    expect(transformToString).toHaveBeenCalledOnce();
+    rerender(<TaskCard {...props} isTaskSelected />);
+    expect(
+      screen.getByText("Keyboard task").closest('[role="button"]'),
+    ).toHaveAttribute("data-task-selected", "true");
   });
 });
