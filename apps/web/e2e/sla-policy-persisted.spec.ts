@@ -1,4 +1,3 @@
-import { chmod, mkdir } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 
@@ -6,7 +5,7 @@ test.use({ trace: "off", video: "off", screenshot: "off" });
 
 test("SLA policy publishes and reloads its persisted eight-goal snapshot", async ({
   page,
-}) => {
+}, testInfo) => {
   test.setTimeout(120_000);
   page.setDefaultTimeout(10_000);
   await withMfaCsrfApp(async ({ origin, email, password }) => {
@@ -147,12 +146,9 @@ test("SLA policy publishes and reloads its persisted eight-goal snapshot", async
     });
     expect(persistedPolicy.activeVersion.goals).toHaveLength(8);
 
-    const evidenceDir =
-      "/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/p2-domain-integration";
-    await mkdir(evidenceDir, { recursive: true, mode: 0o700 });
-    await chmod(evidenceDir, 0o700);
-    const screenshot = `${evidenceDir}/sla-policy-published-persisted.png`;
+    const screenshot = testInfo.outputPath(
+      "sla-policy-published-persisted.png",
+    );
     await page.screenshot({ path: screenshot, fullPage: true });
-    await chmod(screenshot, 0o600);
   });
 });

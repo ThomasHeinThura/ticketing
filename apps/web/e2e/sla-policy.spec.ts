@@ -1,4 +1,3 @@
-import { chmod, mkdir } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 
 const workspaceId = "workspace-sla-e2e";
@@ -29,7 +28,7 @@ const session = {
 
 test("SLA policy editor saves an incomplete draft and publishes a complete snapshot", async ({
   page,
-}) => {
+}, testInfo) => {
   const now = "2026-10-03T00:00:00.000Z";
   const calendar = {
     id: calendarId,
@@ -342,11 +341,6 @@ test("SLA policy editor saves an incomplete draft and publishes a complete snaps
     page.getByRole("button", { name: "Publish version" }),
   ).toHaveCount(0);
 
-  const evidenceDir =
-    "/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/p2-domain-integration";
-  await mkdir(evidenceDir, { recursive: true, mode: 0o700 });
-  await chmod(evidenceDir, 0o700);
-  const screenshot = `${evidenceDir}/sla-policy-published.png`;
+  const screenshot = testInfo.outputPath("sla-policy-published.png");
   await page.screenshot({ path: screenshot, fullPage: true });
-  await chmod(screenshot, 0o600);
 });

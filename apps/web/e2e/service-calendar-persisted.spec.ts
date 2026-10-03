@@ -1,4 +1,3 @@
-import { chmod, mkdir } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { withMfaCsrfApp } from "../../../tests/e2e/helpers/mfa-csrf-app-fixture";
 
@@ -6,7 +5,7 @@ test.use({ trace: "off", video: "off", screenshot: "off" });
 
 test("CAL-17 imports holidays through the editor and reads them back from PostgreSQL", async ({
   page,
-}) => {
+}, testInfo) => {
   test.setTimeout(90_000);
   page.setDefaultTimeout(8_000);
   await withMfaCsrfApp(async ({ origin, email, password }) => {
@@ -133,12 +132,7 @@ test("CAL-17 imports holidays through the editor and reads them back from Postgr
       holidays: [{ date: "2026-12-25", name: "Browser proof holiday" }],
     });
 
-    const evidenceDir =
-      "/Users/heinthura/.codex/taskdesk-evidence/2026-10-03/p2-holiday-import";
-    await mkdir(evidenceDir, { recursive: true, mode: 0o700 });
-    await chmod(evidenceDir, 0o700);
-    const screenshot = `${evidenceDir}/calendar-import-persisted.png`;
+    const screenshot = testInfo.outputPath("calendar-import-persisted.png");
     await page.screenshot({ path: screenshot, fullPage: true });
-    await chmod(screenshot, 0o600);
   });
 });
