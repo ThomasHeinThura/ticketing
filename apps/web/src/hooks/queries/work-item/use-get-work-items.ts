@@ -35,17 +35,19 @@ function useGetWorkItems({
   sort,
   dir,
   realtimeStatus = "connecting",
+  enabled = true,
 }: {
   projectId: string | undefined;
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
   /** Stay on the conservative foreground polling fallback until list realtime is ready. */
   realtimeStatus?: WorkItemRealtimeStatus;
+  enabled?: boolean;
 }) {
   const query = useQuery({
     queryKey: ["work-items", projectId, sort, dir],
     queryFn: () => getWorkItems(projectId as string, sort, dir),
-    enabled: !!projectId,
+    enabled: !!projectId && enabled,
     refetchInterval: realtimeStatus === "available" ? false : 30_000,
     refetchIntervalInBackground: false,
     placeholderData: (

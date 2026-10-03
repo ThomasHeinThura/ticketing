@@ -63,6 +63,20 @@ describe("routes.workItemList", () => {
   });
 
   describe("parseWorkItemListSearch", () => {
+    it("preserves board layout through URL parsing", () => {
+      const url = routes.workItemList.build(
+        { projectKey: "PROJ" },
+        { layout: "board", sort: "key", dir: "asc" },
+      );
+      expect(parseWorkItemListSearchFromQueryString(url.split("?")[1])).toEqual(
+        {
+          layout: "board",
+          sort: "key",
+          dir: "asc",
+        },
+      );
+    });
+
     it("falls back to the default for missing fields", () => {
       expect(parseWorkItemListSearch({})).toEqual(
         DEFAULT_WORK_ITEM_LIST_SEARCH,
@@ -75,7 +89,7 @@ describe("routes.workItemList", () => {
     it("never throws on malformed input, and falls back per-field", () => {
       expect(
         parseWorkItemListSearch({
-          layout: "board", // not built yet -- falls back to list
+          layout: "kanban", // unknown layouts fall back to list
           sort: "not-a-real-field",
           dir: "sideways",
         }),

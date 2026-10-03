@@ -3,8 +3,12 @@ import { Alert, AlertDescription, Button } from "@taskdesk/ui";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import BulkAssignToolbar from "@/components/work-item/bulk-assign-toolbar";
+import WorkItemBoard from "@/components/work-item/work-item-board";
 import WorkItemList from "@/components/work-item/work-item-list";
+import useGetProjectStates from "@/hooks/queries/project/use-get-project-states";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
+import useGetBoardWorkItems from "@/hooks/queries/work-item/use-get-board-work-items";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
@@ -45,9 +49,10 @@ export const Route = createFileRoute(
 function WorkItemsRouteComponent() {
   const { t } = useTranslation();
   const { projectKey } = Route.useParams();
-  const { sort, dir } = Route.useSearch();
+  const { layout, sort, dir } = Route.useSearch();
   const navigate = Route.useNavigate();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [realtimeProjectId, setRealtimeProjectId] = useState<string>();
   const [realtimeStatus, setRealtimeStatus] = useState<{
     projectId: string;
@@ -59,7 +64,13 @@ function WorkItemsRouteComponent() {
   // `work_item:create` signal for a UI does not exist yet -- that is #8's runtime wiring
   // -- so this is the live signal, called as a helper; the server stays the authority,
   // and a 403 from the create call is handled explicitly inside the dialog.
-  const { canCreateTasks, isCheckingPermissions } = useWorkspacePermission();
+  const {
+    canCreateTasks,
+    canAssignTasks,
+    canTransitionTasks,
+    canRankTasks,
+    isCheckingPermissions,
+  } = useWorkspacePermission();
 
   const {
     data: workspace,
@@ -88,19 +99,41 @@ function WorkItemsRouteComponent() {
     projectId: project?.id,
     sort,
     dir,
+    enabled: layout === "list",
     realtimeStatus:
       realtimeStatus && realtimeStatus.projectId === project?.id
         ? realtimeStatus.status
         : "connecting",
   });
-  const workItems = workItemsResult?.items;
+  const boardItemsQuery = useGetBoardWorkItems({
+    projectId: project?.id,
+    realtimeStatus:
+      realtimeStatus && realtimeStatus.projectId === project?.id
+        ? realtimeStatus.status
+        : "connecting",
+    enabled: layout === "board",
+  });
+  const projectStates = useGetProjectStates(project?.id, layout === "board");
+  const boardWorkItems = boardItemsQuery.data?.pages.flatMap(
+    (page) => page.items,
+  );
+  const workItems =
+    layout === "board" ? boardWorkItems : workItemsResult?.items;
 
   const isLoading =
     isWorkspaceLoading ||
     isProjectsLoading ||
-    (!!project && isWorkItemsLoading);
+    (!!project &&
+      (layout === "board"
+        ? boardItemsQuery.isLoading || projectStates.isLoading
+        : isWorkItemsLoading));
   const isError =
-    isWorkspaceError || isProjectsError || isWorkItemsError || projectNotFound;
+    isWorkspaceError ||
+    isProjectsError ||
+    projectNotFound ||
+    (layout === "board"
+      ? boardItemsQuery.isError || projectStates.isError
+      : isWorkItemsError);
 
   useEffect(() => {
     if (!projectId || isLoading) return;
@@ -132,8 +165,28 @@ function WorkItemsRouteComponent() {
 
   const handleRetry = useCallback(() => {
     refetchProjects();
-    if (project) refetchWorkItems();
-  }, [project, refetchProjects, refetchWorkItems]);
+    if (project) {
+      if (layout === "board") {
+        void boardItemsQuery.refetch();
+        void projectStates.refetch();
+      } else {
+        void refetchWorkItems();
+      }
+    }
+  }, [
+    boardItemsQuery,
+    layout,
+    project,
+    projectStates,
+    refetchProjects,
+    refetchWorkItems,
+  ]);
+
+  useEffect(() => {
+    if (projectKey) setSelectedKeys([]);
+  }, [projectKey]);
+
+  const canBulkAssign = !isCheckingPermissions && canAssignTasks();
 
   return (
     <>
@@ -152,15 +205,47 @@ function WorkItemsRouteComponent() {
             {project ? project.name : projectKey} ·{" "}
             {t("workItems:list.heading")}
           </h1>
-          {project && !isCheckingPermissions && canCreateTasks() ? (
+          <div className="flex items-center gap-2">
             <Button
+              variant={layout === "board" ? "secondary" : "outline"}
               size="sm"
-              onClick={() => setIsCreateOpen(true)}
-              data-testid="create-work-item-trigger"
+              aria-pressed={layout === "board"}
+              onClick={() =>
+                navigate({
+                  search: (prev: WorkItemListSearch) => ({
+                    ...prev,
+                    layout: "board",
+                  }),
+                })
+              }
             >
-              {t("workItems:create.trigger")}
+              {t("workItems:list.boardLayout")}
             </Button>
-          ) : null}
+            <Button
+              variant={layout === "list" ? "secondary" : "outline"}
+              size="sm"
+              aria-pressed={layout === "list"}
+              onClick={() =>
+                navigate({
+                  search: (prev: WorkItemListSearch) => ({
+                    ...prev,
+                    layout: "list",
+                  }),
+                })
+              }
+            >
+              {t("workItems:list.listLayout")}
+            </Button>
+            {project && !isCheckingPermissions && canCreateTasks() ? (
+              <Button
+                size="sm"
+                onClick={() => setIsCreateOpen(true)}
+                data-testid="create-work-item-trigger"
+              >
+                {t("workItems:create.trigger")}
+              </Button>
+            ) : null}
+          </div>
         </div>
         {project &&
         realtimeStatus?.projectId === project.id &&
@@ -175,15 +260,78 @@ function WorkItemsRouteComponent() {
             </AlertDescription>
           </Alert>
         ) : null}
-        <WorkItemList
-          workItems={workItems}
-          isLoading={isLoading}
-          isError={isError}
-          sort={sort}
-          dir={dir}
-          onSortChange={handleSortChange}
-          onRetry={handleRetry}
-        />
+        {layout === "list" ? (
+          <WorkItemList
+            workItems={workItems}
+            isLoading={isLoading}
+            isError={isError}
+            sort={sort}
+            dir={dir}
+            onSortChange={handleSortChange}
+            onRetry={handleRetry}
+            selectedKeys={selectedKeys}
+            canBulkAssign={canBulkAssign}
+            onSelectionChange={(key, checked) => {
+              setSelectedKeys((current) =>
+                checked
+                  ? current.includes(key)
+                    ? current
+                    : [...current, key]
+                  : current.filter((selected) => selected !== key),
+              );
+            }}
+            onSelectAll={(checked) => {
+              const keys = (workItems ?? [])
+                .filter((item) => !item.unavailableFields.includes("key"))
+                .map((item) => item.key);
+              setSelectedKeys((current) =>
+                checked
+                  ? [...new Set([...current, ...keys])]
+                  : current.filter((key) => !keys.includes(key)),
+              );
+            }}
+          />
+        ) : project ? (
+          <WorkItemBoard
+            projectId={project.id}
+            states={projectStates.data}
+            statesError={projectStates.isError}
+            workItems={boardWorkItems}
+            isLoading={isLoading}
+            isError={isError}
+            onRetry={handleRetry}
+            hasMore={boardItemsQuery.hasNextPage ?? false}
+            isLoadingMore={boardItemsQuery.isFetchingNextPage}
+            onLoadMore={() => {
+              void boardItemsQuery.fetchNextPage();
+            }}
+            canSelect={canBulkAssign}
+            canTransition={!isCheckingPermissions && canTransitionTasks()}
+            canRank={!isCheckingPermissions && canRankTasks()}
+            selectedKeys={selectedKeys}
+            onSelectionChange={(key, checked) => {
+              setSelectedKeys((current) =>
+                checked
+                  ? current.includes(key)
+                    ? current
+                    : [...current, key]
+                  : current.filter((selected) => selected !== key),
+              );
+            }}
+          />
+        ) : null}
+        {project && workspace && selectedKeys.length > 0 && canBulkAssign && (
+          <BulkAssignToolbar
+            projectId={project.id}
+            workspaceId={workspace.id}
+            selectedKeys={selectedKeys}
+            onAssigned={(succeeded) =>
+              setSelectedKeys((current) =>
+                current.filter((key) => !succeeded.includes(key)),
+              )
+            }
+          />
+        )}
         {project && !isLoading && realtimeProjectId === project.id ? (
           <Suspense fallback={null}>
             <WorkItemListRealtime

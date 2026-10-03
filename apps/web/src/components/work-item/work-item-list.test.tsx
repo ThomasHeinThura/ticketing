@@ -31,7 +31,14 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, options?: string | Record<string, unknown>) => {
+      if (typeof options === "string") return options;
+      const fallback = options?.defaultValue;
+      if (typeof fallback === "string") {
+        return fallback.replace("{{key}}", String(options?.key ?? ""));
+      }
+      return key;
+    },
   }),
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
@@ -91,6 +98,25 @@ const workItem = {
 };
 
 describe("WorkItemList", () => {
+  it("WI-24: exposes row selection for authorized bulk assignment", () => {
+    const onSelectionChange = vi.fn();
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+        canBulkAssign
+        selectedKeys={[]}
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: "Select PROJ-123" });
+    fireEvent.click(checkbox);
+    expect(onSelectionChange).toHaveBeenCalledWith("PROJ-123", true);
+  });
+
   it("keeps real detail URLs and uses client navigation for an unmodified click", () => {
     renderWithQueryClient(
       <WorkItemList

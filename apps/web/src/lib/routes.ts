@@ -77,6 +77,7 @@ export function parseGeneratedRouteUrl(
 
 export const WORK_ITEM_SORT_FIELDS = [
   "key",
+  "position",
   "title",
   "priority",
   "dueDate",
@@ -103,13 +104,8 @@ export function parseWorkItemActivityFilter(
     : "all";
 }
 
-// The screen inventory names three `layout` values on this one route
-// (`/agent/projects/{key}/work?layout=board|list|table`). Only `list` is built by this
-// slice -- board and table are separate, not-yet-built P1 rows in
-// `docs/02-design/screen-inventory.md`. `layout` is still parsed from the URL (not
-// hardcoded) so a bookmark/link naming a future layout degrades to `list` today instead
-// of 404ing, and starts working once that layout ships without changing the URL contract.
-export const WORK_ITEM_LIST_LAYOUTS = ["list"] as const;
+// Board and list share the project work URL; each layout remains explicit URL state.
+export const WORK_ITEM_LIST_LAYOUTS = ["list", "board"] as const;
 export type WorkItemListLayout = (typeof WORK_ITEM_LIST_LAYOUTS)[number];
 
 export type WorkItemListSearch = {

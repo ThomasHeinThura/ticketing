@@ -148,6 +148,11 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
         body: JSON.stringify(body),
       });
     if (path.endsWith("/auth/get-session")) return json(session);
+    if (path === "/api/me/csrf-token" && request.method() === "GET")
+      return json({
+        token: "journey-csrf",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      });
     if (path === "/api/workspace" && request.method() === "GET")
       return json([
         {
@@ -234,9 +239,11 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
         updateProjects: true,
         deleteProjects: false,
         updateTasks: permissioned,
+        transitionTasks: permissioned,
         createTasks: true,
         deleteTasks: false,
         assignTasks: permissioned,
+        rankTasks: permissioned,
         createLabels: false,
         updateLabels: false,
         deleteLabels: false,
@@ -259,8 +266,8 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
           ? [
               {
                 ...item,
-                stateName: "Backlog",
-                stateCategory: "backlog",
+                stateName: item.stateName,
+                stateCategory: item.stateCategory,
                 assigneeName: item.assigneeName,
               },
             ]
@@ -273,6 +280,64 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
       request.method() === "POST"
     ) {
       created = true;
+      return json(item);
+    }
+    if (path === `/api/projects/${projectId}/states`)
+      return json([
+        {
+          id: "state-e2e",
+          stateTemplateId: "template-backlog",
+          name: "Backlog",
+          group: "backlog",
+          position: 0,
+          isDefault: true,
+        },
+        {
+          id: "state-ready",
+          stateTemplateId: "template-ready",
+          name: "Ready",
+          group: "unstarted",
+          position: 1,
+          isDefault: false,
+        },
+      ]);
+    if (
+      path === "/api/work-items/WLP-1/transitions" &&
+      request.method() === "GET"
+    ) {
+      const toReady = item.stateId === "state-e2e";
+      return json([
+        {
+          transitionId: toReady ? "transition-ready" : "transition-backlog",
+          toStateTemplateId: toReady ? "template-ready" : "template-backlog",
+          toStateName: toReady ? "Ready" : "Backlog",
+          toStateId: toReady ? "state-ready" : "state-e2e",
+          notePolicy: "none",
+          noteVisibility: "internal",
+          requiresApproval: false,
+          requiresCab: false,
+          isReopen: false,
+          available: true,
+          blockedBy: [],
+        },
+      ]);
+    }
+    if (
+      path === "/api/work-items/WLP-1/transition" &&
+      request.method() === "POST"
+    ) {
+      const body = request.postDataJSON() as { toStateTemplateId: string };
+      const toReady = body.toStateTemplateId === "template-ready";
+      expect(body.toStateTemplateId).toBe(
+        toReady ? "template-ready" : "template-backlog",
+      );
+      item = {
+        ...item,
+        stateId: toReady ? "state-ready" : "state-e2e",
+        stateName: toReady ? "Ready" : "Backlog",
+        stateCategory: toReady ? "unstarted" : "backlog",
+        version: item.version + 1,
+      };
       return json(item);
     }
     if (path === `/api/task/tasks/${projectId}` && request.method() === "GET")
@@ -367,6 +432,16 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
           openWorkCount: 0,
         },
       ]);
+    if (path === "/api/work-items/bulk" && request.method() === "POST") {
+      expect(request.postDataJSON()).toEqual({
+        workspaceId,
+        workItemKeys: ["WLP-1"],
+        assigneeId,
+        operation: "assign",
+      });
+      assigned = true;
+      return json({ succeeded: ["WLP-1"], failed: [] });
+    }
     if (
       path === "/api/work-items/WLP-1/comments" &&
       request.method() === "POST"
@@ -465,12 +540,43 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
     page.getByTestId("create-work-item-trigger"),
     JSON.stringify(routeCalls),
   ).toBeVisible({ timeout: 5000 });
-  await page.getByTestId("create-work-item-trigger").click();
+  await tabTo(page, page.getByTestId("create-work-item-trigger"));
+  await page.keyboard.press("Enter");
   await page.getByLabel("Type").click();
   await page.getByRole("option", { name: "Task" }).click();
   await page.getByLabel("Title", { exact: true }).fill("First report");
-  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByLabel("Title", { exact: true }).press("Enter");
   await expect(page.getByRole("link", { name: /First report/ })).toBeVisible();
+  await page.getByRole("button", { name: "Board" }).click();
+  await expect(page).toHaveURL(/layout=board/);
+  await expect(page.getByRole("region", { name: "Ready" })).toBeVisible();
+  await expect(page.getByTestId("work-item-board-column")).toHaveCount(2);
+  await page.getByRole("button", { name: "Change state" }).click();
+  const stateSelect = page.getByTestId("work-item-state-select");
+  await stateSelect.click();
+  await page.getByRole("option", { name: "Ready" }).click();
+  const moveState = page.getByRole("button", { name: "Move" });
+  await tabTo(page, moveState);
+  await page.keyboard.press("Enter");
+  await expect.poll(() => item.stateId).toBe("state-ready");
+  expect(routeCalls).toContain("POST /api/work-items/WLP-1/transition");
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Ready" })).toBeVisible();
+  await page
+    .getByTestId("work-item-board-card")
+    .dragTo(page.getByRole("region", { name: "Backlog" }));
+  await expect.poll(() => item.stateId).toBe("state-e2e");
+  await page.getByLabel("Select WLP-1").click();
+  await page.getByLabel("Choose a project member").click();
+  await page.getByRole("option", { name: /Casey Agent/ }).click();
+  await page.getByRole("button", { name: "Assign selected" }).click();
+  await expect.poll(() => assigned).toBe(true);
+  await expect(page.getByTestId("bulk-assign-toolbar")).toHaveCount(0);
+  await page.screenshot({
+    path: test.info().outputPath("p1-board-journey.png"),
+  });
+  await page.getByRole("button", { name: "List" }).click();
+  await expect(page).toHaveURL(/layout=list/);
   await page.goto("/dashboard/settings/projects/project-e2e/general");
   await expect(
     page.getByRole("heading", { name: "General Settings" }),

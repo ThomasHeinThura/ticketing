@@ -6,6 +6,7 @@ import {
   AlertTitle,
   Badge,
   Button,
+  Checkbox,
   Empty,
   EmptyContent,
   EmptyDescription,
@@ -56,6 +57,10 @@ export type WorkItemListProps = {
   dir: WorkItemSortDirection;
   onSortChange: (sort: WorkItemSortField, dir: WorkItemSortDirection) => void;
   onRetry: () => void;
+  selectedKeys?: string[];
+  onSelectionChange?: (key: string, checked: boolean) => void;
+  onSelectAll?: (checked: boolean) => void;
+  canBulkAssign?: boolean;
 };
 
 const SORT_COLUMNS: Array<{ field: WorkItemSortField; labelKey: string }> = [
@@ -151,6 +156,10 @@ function WorkItemList({
   dir,
   onSortChange,
   onRetry,
+  selectedKeys = [],
+  onSelectionChange = () => {},
+  onSelectAll = () => {},
+  canBulkAssign = false,
 }: WorkItemListProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -349,6 +358,19 @@ function WorkItemList({
       >
         <TableHeader>
           <TableRow>
+            {canBulkAssign && (
+              <TableHead>
+                <Checkbox
+                  aria-label={t("workItems:bulk.selectAll", {
+                    defaultValue: "Select all work items",
+                  })}
+                  checked={workItems.every((item) =>
+                    selectedKeys.includes(item.key),
+                  )}
+                  onCheckedChange={(checked) => onSelectAll(Boolean(checked))}
+                />
+              </TableHead>
+            )}
             {SORT_COLUMNS.map(({ field, labelKey }) => (
               <TableHead
                 key={field}
@@ -372,6 +394,21 @@ function WorkItemList({
         <TableBody>
           {workItems.map((item) => (
             <TableRow key={item.id}>
+              {canBulkAssign && (
+                <TableCell>
+                  <Checkbox
+                    aria-label={t("workItems:bulk.selectItem", {
+                      key: item.key,
+                      defaultValue: `Select ${item.key}`,
+                    })}
+                    checked={selectedKeys.includes(item.key)}
+                    disabled={item.unavailableFields.includes("key")}
+                    onCheckedChange={(checked) =>
+                      onSelectionChange(item.key, Boolean(checked))
+                    }
+                  />
+                </TableCell>
+              )}
               <TableCell>
                 {item.unavailableFields.includes("key") ? (
                   <UnavailableField field="key" t={t} />

@@ -28,6 +28,7 @@ export const CAPABILITY_CHECKS = {
   deleteProjects: { project: ["delete"] },
   updateTasks: { work_item: ["update"] },
   transitionTasks: { work_item: ["transition"] },
+  rankTasks: { work_item: ["rank"] },
   createTasks: { work_item: ["create"] },
   deleteTasks: { work_item: ["delete"] },
   assignTasks: { work_item: ["assign"] },

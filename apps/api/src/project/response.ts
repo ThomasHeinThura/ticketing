@@ -63,6 +63,23 @@ export const projectListItemSchema = projectSchema
 
 export const projectListSchema = z.array(projectListItemSchema);
 
+export const projectStateSchema = z
+  .object({
+    id: z.string(),
+    stateTemplateId: z.string(),
+    name: z.string(),
+    group: z.enum([
+      "backlog",
+      "unstarted",
+      "started",
+      "completed",
+      "cancelled",
+    ]),
+    position: z.number().int(),
+    isDefault: z.boolean(),
+  })
+  .openapi("ProjectState");
+
 // Issue #25's bounded slice.
 export const milestoneSchema = z
   .object({
