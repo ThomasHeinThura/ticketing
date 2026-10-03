@@ -19,6 +19,7 @@ export const AUDIT_FAILURE_OPERATIONS = [
   "mutation",
   "pending_action_decision",
   "pending_action_self_read",
+  "audit_read",
 ] as const;
 export type AuditFailureOperation = (typeof AUDIT_FAILURE_OPERATIONS)[number];
 

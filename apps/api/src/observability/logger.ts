@@ -1,5 +1,7 @@
 import pino, { type DestinationStream, type Logger } from "pino";
 import {
+  AUDIT_FAILURE_OPERATIONS,
+  type AuditFailureOperation,
   type RegisteredHttpRoute,
   registeredRouteKey,
   UNMATCHED_ROUTE,
@@ -41,6 +43,7 @@ export interface TaskDeskLogEvent {
   statusClass?: HttpStatusClass;
   durationMs?: number;
   route?: RegisteredHttpRoute | typeof UNMATCHED_ROUTE;
+  auditOperation?: AuditFailureOperation;
 }
 
 export interface TaskDeskLogger {
@@ -59,8 +62,10 @@ const allowedEventKeys = new Set([
   "statusClass",
   "durationMs",
   "route",
+  "auditOperation",
 ]);
 const validModules = new Set<string>(OBSERVABILITY_MODULES);
+const validAuditOperations = new Set<string>(AUDIT_FAILURE_OPERATIONS);
 const validMessages = new Set<string>(LOG_MESSAGES);
 const validLevels = new Set<string>(LOG_LEVELS);
 const validResults = new Set<string>(LOG_RESULTS);
@@ -122,6 +127,12 @@ function validateEvent(
     event.route !== undefined &&
     event.route !== UNMATCHED_ROUTE &&
     (!isRegisteredRoute(event.route) || !registeredRoutes.has(event.route))
+  ) {
+    throw new TypeError("Invalid structured log event");
+  }
+  if (
+    event.auditOperation !== undefined &&
+    !validAuditOperations.has(event.auditOperation)
   ) {
     throw new TypeError("Invalid structured log event");
   }
@@ -209,6 +220,8 @@ export function createTaskDeskLogger(
         fields.statusClass = event.statusClass;
       if (event.durationMs !== undefined) fields.durationMs = event.durationMs;
       if (event.route !== undefined) fields.route = event.route;
+      if (event.auditOperation !== undefined)
+        fields.auditOperation = event.auditOperation;
       logger[event.level](fields, event.message);
     },
   };

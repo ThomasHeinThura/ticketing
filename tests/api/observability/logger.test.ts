@@ -35,6 +35,7 @@ describe("allowlisted structured logger", () => {
       statusClass: "2xx",
       durationMs: 17,
       route: workspacesRoute,
+      auditOperation: "pending_action_decision",
     });
     logger.setLogLevels({ default: "info", modules: { http: "error" } });
     logger.log({
@@ -63,6 +64,7 @@ describe("allowlisted structured logger", () => {
       statusClass: "2xx",
       durationMs: 17,
       route: "GET /api/workspaces",
+      auditOperation: "pending_action_decision",
     });
     expect(Object.keys(record).sort()).toEqual(
       [
@@ -78,6 +80,7 @@ describe("allowlisted structured logger", () => {
         "statusClass",
         "durationMs",
         "route",
+        "auditOperation",
       ].sort(),
     );
   });
@@ -142,6 +145,35 @@ describe("allowlisted structured logger", () => {
     expect(sink.lines).toHaveLength(1);
     expect(sink.lines[0]).toContain('"route":"unmatched"');
     expect(sink.lines.join("\n")).not.toContain("sk_live_do_not_log_7f2a");
+  });
+
+  it("accepts only canonical audit operation labels", () => {
+    const sink = capture();
+    const logger = createTaskDeskLogger(
+      defaultLogLevels(),
+      registeredRoutes,
+      sink.stream,
+    );
+    logger.log({
+      module: "audit",
+      message: "audit.write_failure",
+      level: "error",
+      result: "failed",
+      auditOperation: "audit_read",
+    });
+    expect(sink.lines).toHaveLength(1);
+    expect(sink.lines[0]).toContain('"auditOperation":"audit_read"');
+
+    expect(() =>
+      logger.log({
+        module: "audit",
+        message: "audit.write_failure",
+        level: "error",
+        auditOperation: "raw-audit-id" as never,
+      }),
+    ).toThrow("Invalid structured log event");
+    expect(sink.lines).toHaveLength(1);
+    expect(sink.lines.join("\n")).not.toContain("raw-audit-id");
   });
 
   it("rejects malformed route sets before creating a logger", () => {
