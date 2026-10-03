@@ -5,6 +5,26 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+
+### 2026-10-04 · Resolve live calendar evaluation with immutable SLA policy versions
+
+**Decision:** under Thomas's standing authorization to implement recommended decisions,
+resolve CAL-8 and SLA's published-version calendar wording as follows: a published
+`sla_policy_version` immutably pins its `calendar_id`, goals and threshold; it does not
+copy the referenced `service_calendar` definition. On every SLA evaluation, resolve that
+pinned calendar ID to the current same-workspace calendar row and pass its current
+timezone, windows and holidays to `packages/domain`'s pure evaluator. A calendar edit
+therefore immediately affects all SLAs whose effective policy version references that
+calendar, without updating any published SLA version. Drafts and published versions
+continue to store only the selected calendar ID. Record this rule in both owning feature
+specifications before implementing the evaluator adapter and its persisted regressions.
+No new table, endpoint, migration or dependency is selected by this resolution. Timer,
+scan, cache-writer and event delivery integration still need their own specified complete
+implementation; this decision and adapter do not claim those mechanisms or P2 complete.
+Human design review remains deferred to integrated P4; independent acceptance remains
+required after the implementation batch.
+
+
 ### 2026-10-04 · Implement opt-in per-policy-source strict enforcement for #8
 
 **Decision:** complete the production request-path ALLOW/DENY integration for issue #8 in
