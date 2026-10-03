@@ -7,6 +7,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -426,6 +427,7 @@ describe("API integration: task image upload finalize", () => {
         .returning(),
       "outsider",
     );
+    await prepareAuthenticatedApiFixture(outsider.id);
 
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
