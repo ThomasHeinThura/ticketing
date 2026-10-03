@@ -1,5 +1,10 @@
 import pino, { type DestinationStream, type Logger } from "pino";
 import {
+  type RegisteredHttpRoute,
+  registeredRouteKey,
+  UNMATCHED_ROUTE,
+} from "./metrics.js";
+import {
   LOG_LEVELS,
   type LogLevel,
   type LogLevels,
@@ -35,6 +40,7 @@ export interface TaskDeskLogEvent {
   result?: LogResult;
   statusClass?: HttpStatusClass;
   durationMs?: number;
+  route?: RegisteredHttpRoute | typeof UNMATCHED_ROUTE;
 }
 
 export interface TaskDeskLogger {
@@ -52,6 +58,7 @@ const allowedEventKeys = new Set([
   "result",
   "statusClass",
   "durationMs",
+  "route",
 ]);
 const validModules = new Set<string>(OBSERVABILITY_MODULES);
 const validMessages = new Set<string>(LOG_MESSAGES);
@@ -60,7 +67,26 @@ const validResults = new Set<string>(LOG_RESULTS);
 const validStatusClasses = new Set<string>(HTTP_STATUS_CLASSES);
 const safeTraceId = /^[A-Za-z0-9._:-]{1,128}$/;
 
-function validateEvent(event: TaskDeskLogEvent): void {
+function isRegisteredRoute(value: unknown): value is RegisteredHttpRoute {
+  if (typeof value !== "string") return false;
+  const separator = value.indexOf(" ");
+  if (separator < 0) return false;
+  try {
+    return (
+      registeredRouteKey(
+        value.slice(0, separator),
+        value.slice(separator + 1),
+      ) === value
+    );
+  } catch {
+    return false;
+  }
+}
+
+function validateEvent(
+  event: TaskDeskLogEvent,
+  registeredRoutes: ReadonlySet<RegisteredHttpRoute>,
+): void {
   if (!event || typeof event !== "object" || Array.isArray(event)) {
     throw new TypeError("Invalid structured log event");
   }
@@ -92,6 +118,13 @@ function validateEvent(event: TaskDeskLogEvent): void {
   ) {
     throw new TypeError("Invalid structured log event");
   }
+  if (
+    event.route !== undefined &&
+    event.route !== UNMATCHED_ROUTE &&
+    (!isRegisteredRoute(event.route) || !registeredRoutes.has(event.route))
+  ) {
+    throw new TypeError("Invalid structured log event");
+  }
 }
 
 /**
@@ -100,9 +133,20 @@ function validateEvent(event: TaskDeskLogEvent): void {
  */
 export function createTaskDeskLogger(
   initialLevels: unknown,
+  trustedRoutes: ReadonlySet<RegisteredHttpRoute>,
   destination: DestinationStream = process.stdout,
 ): TaskDeskLogger {
   let levels: LogLevels = validateLogLevels(initialLevels);
+  const registeredRoutes = new Set<RegisteredHttpRoute>();
+  if (!trustedRoutes || typeof trustedRoutes[Symbol.iterator] !== "function") {
+    throw new TypeError("Invalid registered HTTP routes");
+  }
+  for (const route of trustedRoutes) {
+    if (!isRegisteredRoute(route) || registeredRoutes.has(route)) {
+      throw new TypeError("Invalid registered HTTP routes");
+    }
+    registeredRoutes.add(route);
+  }
   const root: Logger = pino(
     {
       level: "trace",
@@ -144,7 +188,7 @@ export function createTaskDeskLogger(
       applyLevels(next);
     },
     log(event) {
-      validateEvent(event);
+      validateEvent(event, registeredRoutes);
       let logger = moduleLoggers.get(event.module);
       if (!logger) {
         logger = root.child(
@@ -164,6 +208,7 @@ export function createTaskDeskLogger(
       if (event.statusClass !== undefined)
         fields.statusClass = event.statusClass;
       if (event.durationMs !== undefined) fields.durationMs = event.durationMs;
+      if (event.route !== undefined) fields.route = event.route;
       logger[event.level](fields, event.message);
     },
   };
