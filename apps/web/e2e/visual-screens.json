@@ -28,5 +28,26 @@
 		"applicationRoute": "/agent/work-items/$key",
 		"test": "work-item detail screen @visual",
 		"screenshot": "work-item-detail.png"
+	},
+	{
+		"name": "account-security",
+		"inventoryRoute": "/dashboard/settings/account/security",
+		"applicationRoute": "/dashboard/settings/account/security",
+		"test": "account security enrollment-ready screen @visual",
+		"screenshot": "account-security-setup.png"
+	},
+	{
+		"name": "two-factor-challenge",
+		"inventoryRoute": "/auth/two-factor",
+		"applicationRoute": "/auth/two-factor",
+		"test": "two-factor authenticator challenge screen @visual",
+		"screenshot": "two-factor-authenticator.png"
+	},
+	{
+		"name": "observability-settings",
+		"inventoryRoute": "/god-mode/observability",
+		"applicationRoute": "/god-mode/observability",
+		"test": "observability settings screen @visual",
+		"screenshot": "observability-settings.png"
 	}
 ]
