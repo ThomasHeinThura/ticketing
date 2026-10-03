@@ -5,6 +5,19 @@ import { authClient } from "@/lib/auth-client";
 // protects all child routes, must be logged in
 export const Route = createFileRoute("/_layout/_authenticated")({
   beforeLoad: async ({ location }) => {
+    const checkFactors =
+      location.pathname !== "/dashboard/settings/account/security";
+    let factorsRequest: Promise<Response | null> | null = null;
+    if (checkFactors) {
+      // Start the independent enforcement read alongside session refresh. Its
+      // result is consumed only after session resolution, so redirect
+      // precedence remains unchanged for logged-out users.
+      factorsRequest = fetch(getApiUrl("me/security/factors"), {
+        credentials: "include",
+        cache: "no-store",
+      }).catch(() => null);
+    }
+
     let session = null;
     let sessionError = false;
     try {
@@ -13,9 +26,8 @@ export const Route = createFileRoute("/_layout/_authenticated")({
     } catch (error) {
       sessionError = true;
       if (import.meta.env.DEV) console.warn("getSession failed", error);
-      // getSession() rejected (e.g. network error) — session state is
-      // unknown. Don't conflate with "no session" (unauthenticated): let
-      // children decide whether to skip active-organization mutations.
+      // getSession() rejected (e.g. network error) — treat the session as
+      // unknown and let child routes decide whether mutations are safe.
     }
     if (!session && !sessionError) {
       // `location.search` is the router's *parsed* search object (built with
@@ -36,17 +48,20 @@ export const Route = createFileRoute("/_layout/_authenticated")({
         },
       });
     }
-    if (
-      session &&
-      location.pathname !== "/dashboard/settings/account/security"
-    ) {
+    if (session && factorsRequest) {
       let enrollmentRequired = false;
       try {
-        const response = await fetch(getApiUrl("me/security/factors"), {
-          credentials: "include",
-          cache: "no-store",
-        });
-        if (response.ok) {
+        let response = await factorsRequest;
+        // A session refresh may rotate the cookie after the parallel factor
+        // request was sent. Retry once with the now-current cookie before
+        // deciding whether enrollment is required.
+        if (response?.status === 401) {
+          response = await fetch(getApiUrl("me/security/factors"), {
+            credentials: "include",
+            cache: "no-store",
+          }).catch(() => null);
+        }
+        if (response?.ok) {
           const factor = (await response.json()) as {
             required: boolean;
             enabled: boolean;

@@ -4,11 +4,21 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useEffect } from "react";
+import { isTaskCompleted } from "@/lib/due-date-status";
 import type { ProjectWithTasks } from "@/types/project";
-import TaskCard, { type TaskCardProps } from "../task-card";
+import TaskCard, {
+  type TaskCardDisplayPreferences,
+  type TaskCardProps,
+} from "../task-card";
 
 type ColumnDropzoneProps = {
   column: ProjectWithTasks["columns"][number];
+  projectSlug: string;
+  projectColumns: ProjectWithTasks["columns"];
+  displayPreferences: TaskCardDisplayPreferences;
+  selectedTaskIds: Set<string>;
+  focusedTaskId: string | null;
+  toggleSelection: TaskCardProps["toggleSelection"];
   disableDragDrop?: boolean;
   onIsOverChange?: (isOver: boolean) => void;
   workspaceId?: string;
@@ -18,6 +28,12 @@ type ColumnDropzoneProps = {
 
 export function ColumnDropzone({
   column,
+  projectSlug,
+  projectColumns,
+  displayPreferences,
+  selectedTaskIds,
+  focusedTaskId,
+  toggleSelection,
   disableDragDrop = false,
   onIsOverChange,
   workspaceId,
@@ -47,6 +63,12 @@ export function ColumnDropzone({
             <TaskCard
               key={task.id}
               task={task}
+              projectSlug={projectSlug}
+              taskIsCompleted={isTaskCompleted(task.status, projectColumns)}
+              displayPreferences={displayPreferences}
+              isTaskSelected={selectedTaskIds.has(task.id)}
+              isTaskFocused={focusedTaskId === task.id}
+              toggleSelection={toggleSelection}
               disableDragDrop={disableDragDrop}
               workspaceId={workspaceId}
               workspaceUsers={workspaceUsers}

@@ -150,7 +150,10 @@ function WorkItemsRouteComponent() {
         }
       />
       <div className="flex h-full flex-col gap-4 overflow-y-auto p-6">
-        <div className="flex items-center justify-between gap-3">
+        <div
+          className="flex items-center justify-between gap-3"
+          data-primary-content-ready={project ? "true" : undefined}
+        >
           <h1 className="font-semibold text-lg">
             {project ? project.name : projectKey} ·{" "}
             {t("workItems:list.heading")}

@@ -1,11 +1,17 @@
 import { memo, useState } from "react";
 import type { ProjectWithTasks } from "@/types/project";
-import type { TaskCardProps } from "../task-card";
+import type { TaskCardDisplayPreferences, TaskCardProps } from "../task-card";
 import { ColumnDropzone } from "./column-dropzone";
 import { ColumnHeader } from "./column-header";
 
 type ColumnProps = {
   column: ProjectWithTasks["columns"][number];
+  projectSlug: string;
+  projectColumns: ProjectWithTasks["columns"];
+  displayPreferences: TaskCardDisplayPreferences;
+  selectedTaskIds: Set<string>;
+  focusedTaskId: string | null;
+  toggleSelection: TaskCardProps["toggleSelection"];
   disableDragDrop?: boolean;
   workspaceId?: string;
   workspaceUsers: TaskCardProps["workspaceUsers"];
@@ -14,6 +20,12 @@ type ColumnProps = {
 
 function Column({
   column,
+  projectSlug,
+  projectColumns,
+  displayPreferences,
+  selectedTaskIds,
+  focusedTaskId,
+  toggleSelection,
   disableDragDrop = false,
   workspaceId,
   workspaceUsers,
@@ -36,6 +48,12 @@ function Column({
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-1 [-webkit-overflow-scrolling:touch]">
         <ColumnDropzone
           column={column}
+          projectSlug={projectSlug}
+          projectColumns={projectColumns}
+          displayPreferences={displayPreferences}
+          selectedTaskIds={selectedTaskIds}
+          focusedTaskId={focusedTaskId}
+          toggleSelection={toggleSelection}
           disableDragDrop={disableDragDrop}
           onIsOverChange={setIsDropzoneOver}
           workspaceId={workspaceId}
