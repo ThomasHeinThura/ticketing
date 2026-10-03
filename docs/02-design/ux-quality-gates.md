@@ -56,8 +56,9 @@ theme, any used pair missing from the manifest, or a stale manifest entry with n
 source use. The source inventory currently registers shared Button, Badge, and Input variants;
 it does not claim repository-wide composition coverage.
 `packages/ui/src/styles/pairs.json` records token roles, category/threshold, theme coverage,
-usage owner, actual background class by theme, and effective opaque backdrop. `pnpm
-check:tokens` runs the token/density checks and builds the web stylesheet, then loads that
+usage owner, actual background class by theme, and effective opaque backdrop. The checker
+scans styled TSX/JSX sources under `packages/ui/src` and `apps/web/src`, so an unlisted used
+pair fails the gate. `pnpm check:tokens` runs the token/density checks and builds the web stylesheet, then loads that
 stylesheet in Chromium, reads computed colours, composites transparent layers over the
 declared effective backdrop, and checks 4.5:1 body text or 3:1 large text/non-text
 indicators in light and dark themes. It activates hover and pressed attributes on the probe;

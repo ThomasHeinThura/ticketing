@@ -409,7 +409,7 @@ function RouteComponent() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-4 w-4 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
+                      className="h-4 w-4 p-0 ml-1 hover:bg-destructive-strong hover:text-destructive-strong-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
                         updateFilter("priority", null);
@@ -435,7 +435,7 @@ function RouteComponent() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-4 w-4 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
+                      className="h-4 w-4 p-0 ml-1 hover:bg-destructive-strong hover:text-destructive-strong-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
                         updateFilter("assignee", null);
@@ -469,7 +469,7 @@ function RouteComponent() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-4 w-4 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
+                      className="h-4 w-4 p-0 ml-1 hover:bg-destructive-strong hover:text-destructive-strong-foreground"
                       onClick={(e) => {
                         e.stopPropagation();
                         updateFilter("dueDate", null);
@@ -515,7 +515,7 @@ function RouteComponent() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-4 w-4 p-0 ml-1 hover:bg-destructive hover:text-destructive-foreground"
+                          className="h-4 w-4 p-0 ml-1 hover:bg-destructive-strong hover:text-destructive-strong-foreground"
                           onClick={(e) => {
                             e.stopPropagation();
                             toggleLabelGroup(label);

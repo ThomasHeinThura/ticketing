@@ -280,10 +280,10 @@ produce a contrast ratio directly. The checker must:
 3. Check every manifest entry in its declared theme(s) and fail on a violation. Theme-specific
    interaction classes may be represented by separate entries.
 
-`packages/ui/src/styles/pairs.json` is the machine-readable inventory for shared Button,
-Badge, and Input variant declarations. This is a bounded source inventory, not a scan of all
-application compositions. Adding a source owner requires registering it in the checker and
-adding its actual pairs in the same change. Each entry records
+`packages/ui/src/styles/pairs.json` is the machine-readable inventory for styled TSX/JSX
+sources under `packages/ui/src` and `apps/web/src`, including shared primitives and
+application compositions. The checker fails when a newly observed pair has no inventory
+entry. Each entry records
 `fg`, `bg`, `category` (`body`, `large-text`, or `non-text`), `minRatio`, its declared
 `themes` (one or both; interaction variants may have theme-specific entries),
 `usage` (the real component/story/screen owner), `foregroundClass`, `backgroundClass` (the
@@ -307,9 +307,8 @@ that inventory requires adding its source and actual pairs to the same gate batc
 ```
 
 The inventory lists actual combinations, not every theoretical cross-product. The gate
-compares observed declared pairs in the registered Button, Badge, and Input sources against
-the manifest; new or unclassified use in those sources fails until it has an explicit entry.
-Other component sources are not covered until explicitly registered in the gate. The runner builds and loads the
+compares observed declared pairs across the full styled source set against the manifest;
+new or unclassified use fails until it has an explicit entry. The runner builds and loads the
 web CSS in Chromium, resolves the computed colors in each theme and interaction state,
 composites alpha over the recorded opaque backdrop, then computes WCAG 2.1 contrast. For
 autofill, only the built `:has(:autofill)` selector is substituted with a probe attribute
