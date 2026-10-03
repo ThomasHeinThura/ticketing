@@ -7,7 +7,9 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * not constrain any route here.
  *
  * **All five routes are `self`, kind 2 — every one of them reads or writes only the CALLING
- * session's own notification rows, and none names another person.** `apps/api/src/notification/
+ * session's own notification rows, and none names another person.** Instance-resource
+ * rows add a controller-level current-admin visibility check; this does not let a caller
+ * name or read another user's notification. `apps/api/src/notification/
  * index.ts` carries no `workspaceAccess`/`requireWorkspacePermission` middleware at all; every
  * controller (`apps/api/src/notification/controllers/*`) takes `userId` as a plain function
  * argument and every call site passes `c.get("userId")` — the resolved caller's own id, never
@@ -20,7 +22,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * exactly this reasoning: the policy KIND follows from what the route actually reads/writes,
  * not from its path):
  *
- * - `GET /api/notification` (`getNotifications`) — `WHERE notificationTable.userId = userId`.
+ * - `GET /api/notification` (`getNotifications`) — `WHERE notificationTable.userId = userId`;
+ *   instance-resource rows are returned only while the caller remains a current admin.
  * - `POST /api/notification` (`createNotification`) — inserts `userId: c.get("userId")`;
  *   `createNotificationBody` (`./schema.ts`) has no `userId` field at all, so there is no way
  *   for a caller to target anyone else even in principle — confirmed from the Zod schema, not

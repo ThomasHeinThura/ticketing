@@ -574,7 +574,8 @@ ignored once `setup_completed_at` is set.
 
 The following is the **orchestrator-selected implementation contract**, using Thomas's
 standing authorization to proceed with recommended decisions. It is not Thomas's P4 design
-approval and does not claim an implemented CLI. The operational command shape remains `grant-instance-admin <email>` inside the TaskDesk container.
+approval. The operational command shape is `grant-instance-admin <email>` inside the TaskDesk
+container.
 
 - The command is only for recovery on an already initialized instance. It requires a
   non-null `instance_setting.setup_completed_at`; it never substitutes for or reopens the
@@ -586,7 +587,8 @@ approval and does not claim an implemented CLI. The operational command shape re
   source for identifying the human operator.
 - Recovery is interactive and requires a TTY. Before mutation, the operator must attest
   that all current instance administrators are unable to recover access and that the target
-  person's identity was verified through the deployment's independent operator process.
+  person's identity was verified through the deployment's independent operator process;
+  the operator types `YES` to attest.
   The CLI resolves and displays the single target, then requires the operator to type the
   fixed phrase `GRANT INSTANCE ADMIN`. In a short transaction after confirmation, it takes
   the shared promotion lock and re-reads setup state, target identity and the set of current

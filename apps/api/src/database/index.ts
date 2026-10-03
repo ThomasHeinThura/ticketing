@@ -284,6 +284,16 @@ export function getDatabase(): DatabaseInstance {
   return dbInstance;
 }
 
+/** Close the application pool for one-shot command-line processes. */
+export async function closeDatabasePool(): Promise<void> {
+  if (pool) {
+    const toClose = pool;
+    pool = undefined;
+    dbInstance = undefined;
+    await toClose.end();
+  }
+}
+
 // --- migration/owner connection (issue #296) -------------------------------
 //
 // A separate pool, from a separate connection string

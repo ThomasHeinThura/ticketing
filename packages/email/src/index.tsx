@@ -1,4 +1,5 @@
 export {
+  sendBreakGlassAlertEmail,
   sendMagicLinkEmail,
   sendNotificationEmail,
   sendOtpEmail,

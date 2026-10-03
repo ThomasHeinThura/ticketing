@@ -366,6 +366,7 @@ reach sources are:
 | `pending_action` | `pending_action.requested`, `pending_action.executed` | Pending-action id; require requester ownership. `requested` is supported only for `api`/`mcp` origins and `executed` only on failure; an unresolved requester fails closed. |
 | `identity_connection` | `identity.deprovisioned`, `identity.request_denied`, `identity_connection.changed` | Identity-connection id from the event payload; require current `instance:admin`. Do not expose identity-provider payloads or person data in the notification. |
 | `instance` | `audit_write_failed` (instance operational notification type; not a domain-event key) | The fixed id `singleton`; the current instance-admin capability is rechecked on every list/read operation. Payload contains only the closed audit operation and occurrence time. |
+| `instance` | `security_alert` for `auth.break_glass_used` outcomes `granted` or `already_admin` | The fixed id `singleton`; visible only to current instance administrators, rechecked on every list/read operation. The closed payload is `{ kind: "break_glass_used", outcome: "granted" | "already_admin" }`; it contains no target identity, operator identity, note, credential, or secret. One row is inserted per deduplicated recipient in the same transaction as the grant and audit append. |
 | `person` | `security_alert` (private account-security notice; not a domain-event key) | The affected user's own notification row; read only by that user. Payload is a closed kind with no credentials, factor material, or administrator note. |
 
 `audit_write_failed` is the AU-14 operational notification. It is inserted only after the
@@ -378,6 +379,15 @@ mutation. Instance-resource notification rows are returned only while the recipi
 has current instance-admin authority and an active staff person; losing or revoking that
 authority hides the row immediately. They cannot be cleared or read through a caller-chosen
 user id. The event has no external email delivery in this batch.
+
+`auth.break_glass_used` uses the instance `security_alert` mapping above. Its email
+template uses fixed subject, title, and message copy in the recipient's supported locale
+(English fallback), and asks administrators to review the instance audit log. It contains
+no recipient or target email, user name, UID, or supplied command argument. Email is attempted only
+after the grant/audit/in-app-alert transaction commits. Delivery failure cannot roll back
+the durable records; the CLI reports aggregate counts and directs the operator to the
+established host incident channel. This template is registered for the P4 recovery CLI;
+it does not define a general notification-email mechanism.
 
 These mappings name supported event classes; they do not grant permission. The event's
 recipient rule and current resource reach must both pass. Set the discriminator and id from

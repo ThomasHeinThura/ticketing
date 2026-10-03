@@ -1,4 +1,4 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or } from "drizzle-orm";
 import db from "../../database";
 import {
   notificationTable,
@@ -14,7 +14,10 @@ async function getNotifications(userId: string) {
     ? eq(notificationTable.userId, userId)
     : and(
         eq(notificationTable.userId, userId),
-        ne(notificationTable.type, "audit_write_failed"),
+        or(
+          isNull(notificationTable.resourceType),
+          ne(notificationTable.resourceType, "instance"),
+        ),
       );
   const rows = await db
     .select({

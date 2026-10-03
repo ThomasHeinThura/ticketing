@@ -30,6 +30,8 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   // Second factor enrolled; reset by an administrator (with the verification note).
   "auth.mfa_enrolled",
   "auth.mfa_reset",
+  // P4 break-glass recovery command.
+  "auth.break_glass_used",
   "auth.step_up_issued",
   "auth.step_up_consumed",
   "auth.step_up_denied",

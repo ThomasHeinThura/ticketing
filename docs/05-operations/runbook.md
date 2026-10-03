@@ -175,6 +175,13 @@ Requires database access. Every step is audited.
 dc exec taskdesk node dist/cli.js grant-instance-admin you@example.com
 ```
 
+Run it from an interactive terminal as the container's configured `taskdesk` service user;
+the command refuses non-TTY or host-side execution and does not fall back to an
+unconfigured local database. It works only after first-run setup is complete. Confirm the
+recovery attestations and target in the prompt. A committed grant remains in effect if
+SMTP is unavailable; the command reports aggregate delivery counts and directs the
+operator to the host incident channel for any failed notices.
+
 The CLI is a build target of the image (`apps/api/src/cli.ts` → `dist/cli.js`,
 [container-image.md](container-image.md)). Every command writes an audit row with
 `actor_type = 'system'` and the invoking OS user. Commands:

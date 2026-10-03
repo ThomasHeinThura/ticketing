@@ -6,14 +6,14 @@ import { isCurrentInstanceAdmin } from "../../instance/observability/audit-failu
 
 async function markNotificationAsRead(id: string, userId: string) {
   const [existing] = await db
-    .select({ type: notificationTable.type })
+    .select({ resourceType: notificationTable.resourceType })
     .from(notificationTable)
     .where(
       and(eq(notificationTable.id, id), eq(notificationTable.userId, userId)),
     )
     .limit(1);
   if (
-    existing?.type === "audit_write_failed" &&
+    existing?.resourceType === "instance" &&
     !(await isCurrentInstanceAdmin(userId))
   ) {
     throw new HTTPException(404, { message: "Notification not found" });
