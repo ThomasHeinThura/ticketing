@@ -144,7 +144,7 @@ describe("CommandPalette (#407)", () => {
     expect(() => unmount()).not.toThrow();
   });
 
-  it("preloads the Projects page chunk on explicit keyboard destination intent", async () => {
+  it("preloads the default destination on open and keeps keyboard intent warm", async () => {
     render(
       <KeyboardShortcutsProvider>
         <CommandPalette />
@@ -153,13 +153,15 @@ describe("CommandPalette (#407)", () => {
 
     fireEvent.keyDown(document, { key: "k", ctrlKey: true });
     expect(screen.getByTestId("command-dialog")).toBeInTheDocument();
-    expect(mocks.projectsPageModule).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(mocks.projectsPageModule).toHaveBeenCalledOnce();
+      expect(mocks.preloadRoute).toHaveBeenCalledOnce();
+    });
 
     fireEvent.click(screen.getByTestId("highlight-project-command"));
 
-    await vi.waitFor(() =>
-      expect(mocks.projectsPageModule).toHaveBeenCalledOnce(),
-    );
+    expect(mocks.projectsPageModule).toHaveBeenCalledOnce();
+    expect(mocks.preloadRoute).toHaveBeenCalledOnce();
     expect(mocks.preloadRoute).toHaveBeenCalledWith({
       to: "/dashboard/workspace/$workspaceId",
       params: { workspaceId: "w1" },
