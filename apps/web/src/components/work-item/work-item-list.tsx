@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { memo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
 import getWorkItem from "@/fetchers/work-item/get-work-item";
 import { formatDateShort } from "@/lib/format";
 import { getPriorityIcon } from "@/lib/priority";
@@ -194,6 +195,7 @@ function WorkItemList({
   }
 
   function prefetchDetail(key: string) {
+    void loadWorkItemDetail().catch(() => {});
     void queryClient.prefetchQuery({
       queryKey: ["work-items", "detail", key],
       queryFn: () => getWorkItem(key),

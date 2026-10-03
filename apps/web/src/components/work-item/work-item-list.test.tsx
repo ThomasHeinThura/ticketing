@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemField } from "@/types/work-item";
 import WorkItemList from "./work-item-list";
@@ -32,6 +38,18 @@ const baseProps = {
   onSortChange: vi.fn(),
   onRetry: vi.fn(),
 };
+
+const mocks = vi.hoisted(() => ({
+  loadDetail: vi.fn().mockResolvedValue({ default: () => null }),
+  getWorkItem: vi.fn().mockResolvedValue({}),
+}));
+
+vi.mock("@/components/work-item/load-work-item-detail", () => ({
+  default: mocks.loadDetail,
+}));
+vi.mock("@/fetchers/work-item/get-work-item", () => ({
+  default: mocks.getWorkItem,
+}));
 
 function renderWithQueryClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({
@@ -74,6 +92,31 @@ const workItem = {
 };
 
 describe("WorkItemList", () => {
+  it("preloads detail code and data when a reachable row receives pointer intent", async () => {
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    fireEvent.mouseEnter(
+      screen.getByText("PROJ-123").closest("a") as HTMLElement,
+    );
+
+    await waitFor(() => expect(mocks.loadDetail).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.getWorkItem).toHaveBeenCalledOnce());
+
+    fireEvent.focus(
+      screen.getByText("Fix the thing").closest("a") as HTMLElement,
+    );
+
+    await waitFor(() => expect(mocks.loadDetail).toHaveBeenCalledTimes(2));
+    expect(mocks.getWorkItem).toHaveBeenCalledOnce();
+  });
+
   it("renders the loading skeleton state", () => {
     renderWithQueryClient(
       <WorkItemList

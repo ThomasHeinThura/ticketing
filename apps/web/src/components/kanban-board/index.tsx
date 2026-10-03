@@ -17,7 +17,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { produce } from "immer";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
@@ -79,10 +79,10 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
     setContextMenuTaskId(taskCard.dataset.taskId ?? null);
   };
 
-  const openContextMenuForTask = (taskId: string) => {
+  const openContextMenuForTask = useCallback((taskId: string) => {
     setContextMenuTaskId(taskId);
     setIsContextMenuOpen(true);
-  };
+  }, []);
 
   useEffect(() => {
     if (project?.columns) {

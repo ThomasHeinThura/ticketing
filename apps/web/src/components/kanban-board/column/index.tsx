@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { ProjectWithTasks } from "@/types/project";
 import type { TaskCardProps } from "../task-card";
 import { ColumnDropzone } from "./column-dropzone";
@@ -47,4 +47,4 @@ function Column({
   );
 }
 
-export default Column;
+export default memo(Column);

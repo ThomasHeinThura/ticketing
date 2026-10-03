@@ -1,15 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import PageTitle from "@/components/page-title";
+import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
 import WorkItemDetailLoading from "@/components/work-item/work-item-detail-loading";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { HttpError } from "@/lib/http-error";
 
-const WorkItemDetail = lazy(
-  () => import("@/components/work-item/work-item-detail"),
-);
+const WorkItemDetail = lazy(loadWorkItemDetail);
 
 /**
  * `docs/02-design/screen-inventory.md` "Work item — full page" (P1),
