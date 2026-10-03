@@ -1,6 +1,6 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import CommandPalette from "./index";
+import CommandPaletteLauncher from "./command-palette-launcher";
 
 /**
  * Issue #294: pressing "?" used to recurse forever. `CommandPalette`
@@ -109,7 +109,7 @@ afterEach(() => {
 
 describe("CommandPalette help shortcut (#294)", () => {
   it("dispatches at most once per '?' keypress, with no recursive dispatchEvent", () => {
-    render(<CommandPalette />);
+    render(<CommandPaletteLauncher />);
 
     const helpHandler = capturedConfig?.shortcuts?.["?"];
 

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { KeyboardShortcutsProvider } from "@/hooks/use-keyboard-shortcuts";
-import CommandPalette from "./index";
+import CommandPaletteLauncher from "./command-palette-launcher";
 
 const mocks = vi.hoisted(() => ({
   projectsPageModule: vi.fn(),
@@ -124,7 +124,7 @@ describe("CommandPalette (#407)", () => {
   it("mounts inside the real KeyboardShortcutsProvider without hanging or OOMing", () => {
     render(
       <KeyboardShortcutsProvider>
-        <CommandPalette />
+        <CommandPaletteLauncher />
       </KeyboardShortcutsProvider>,
     );
     // Closed by default -- proves the tree actually finished rendering
@@ -135,7 +135,7 @@ describe("CommandPalette (#407)", () => {
   it("unmounts cleanly, unregistering its shortcuts", () => {
     const { unmount } = render(
       <KeyboardShortcutsProvider>
-        <CommandPalette />
+        <CommandPaletteLauncher />
       </KeyboardShortcutsProvider>,
     );
     expect(() => unmount()).not.toThrow();
@@ -144,12 +144,14 @@ describe("CommandPalette (#407)", () => {
   it("preloads the Projects page chunk on explicit keyboard destination intent", async () => {
     render(
       <KeyboardShortcutsProvider>
-        <CommandPalette />
+        <CommandPaletteLauncher />
       </KeyboardShortcutsProvider>,
     );
 
     fireEvent.keyDown(document, { key: "k", ctrlKey: true });
-    expect(screen.getByTestId("command-dialog")).toBeInTheDocument();
+    await vi.waitFor(() =>
+      expect(screen.getByTestId("command-dialog")).toBeInTheDocument(),
+    );
     expect(mocks.projectsPageModule).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByTestId("highlight-project-command"));

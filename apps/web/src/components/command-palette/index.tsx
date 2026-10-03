@@ -25,13 +25,13 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { shortcuts } from "@/constants/shortcuts";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { authClient } from "@/lib/auth-client";
 import { useUserPreferencesStore } from "@/store/user-preferences";
 
@@ -61,7 +61,32 @@ type PaletteGroup = {
   items: PaletteActionItem[];
 };
 
-function CommandPalette() {
+export type CommandPaletteIntent =
+  | "open"
+  | "close"
+  | "search"
+  | "projects"
+  | "create-project"
+  | "create-task"
+  | "create-workspace";
+export type CommandPaletteRequest = {
+  id: number;
+  intent: CommandPaletteIntent;
+};
+
+export function CommandPalette({
+  open,
+  onOpenChange,
+  request,
+  onRequestHandled,
+  keepMounted,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  request: CommandPaletteRequest | null;
+  onRequestHandled: (id: number) => void;
+  keepMounted: boolean;
+}) {
   const { t } = useTranslation();
   const { setTheme } = useUserPreferencesStore();
   const navigate = useNavigate();
@@ -72,32 +97,61 @@ function CommandPalette() {
   const isAdmin = session?.user?.role === "admin";
   const canCreateWorkspace =
     isAdmin || (config !== undefined && !config.disableWorkspaceCreation);
-  const [open, setOpen] = useState(false);
-  const [keepPaletteMounted, setKeepPaletteMounted] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
+  const handledRequest = useRef<number | null>(null);
   useEffect(() => {
-    let idleCallbackId: number | undefined;
-    let frameId: number | undefined;
-    const idleWindow = window as Window & {
-      requestIdleCallback?: (callback: IdleRequestCallback) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-    if (idleWindow.requestIdleCallback) {
-      idleCallbackId = idleWindow.requestIdleCallback(() => {
-        setKeepPaletteMounted(true);
-      });
-    } else {
-      frameId = requestAnimationFrame(() => setKeepPaletteMounted(true));
+    if (!request || handledRequest.current === request.id) return;
+    if (
+      request.intent === "create-workspace" &&
+      !canCreateWorkspace &&
+      config === undefined &&
+      !isAdmin
+    )
+      return;
+    if (request.intent === "projects" && !workspace?.id) return;
+    handledRequest.current = request.id;
+    switch (request.intent) {
+      case "open":
+        onOpenChange(true);
+        break;
+      case "close":
+        onOpenChange(false);
+        break;
+      case "search":
+        setIsSearchOpen(true);
+        break;
+      case "projects":
+        if (workspace?.id) {
+          navigate({
+            to: "/dashboard/workspace/$workspaceId",
+            params: { workspaceId: workspace.id },
+          });
+        }
+        break;
+      case "create-project":
+        setIsCreateProjectOpen(true);
+        break;
+      case "create-task":
+        setIsCreateTaskOpen(true);
+        break;
+      case "create-workspace":
+        if (canCreateWorkspace) setIsCreateWorkspaceOpen(true);
+        break;
     }
-    return () => {
-      if (idleCallbackId !== undefined)
-        idleWindow.cancelIdleCallback?.(idleCallbackId);
-      if (frameId !== undefined) cancelAnimationFrame(frameId);
-    };
-  }, []);
+    onRequestHandled(request.id);
+  }, [
+    request,
+    canCreateWorkspace,
+    config,
+    isAdmin,
+    workspace?.id,
+    navigate,
+    onOpenChange,
+    onRequestHandled,
+  ]);
 
   const preloadProjectsPage = useCallback(() => {
     if (!workspace?.id) return;
@@ -131,56 +185,13 @@ function CommandPalette() {
     [preloadProjectsPage],
   );
 
-  useRegisterShortcuts({
-    shortcuts: {
-      [shortcuts.search.prefix]: () => setIsSearchOpen(true),
+  const runCommand = useCallback(
+    (command: () => void) => {
+      command();
+      onOpenChange(false);
     },
-    // No entry for `shortcuts.help.key` ("?") here: `KeyboardShortcutsHelp`
-    // already listens for the real "?" keydown directly and opens its own
-    // dialog (apps/web/src/components/keyboard-shortcuts-help.tsx). A
-    // registered "?" handler that re-dispatched a synthetic "?" keydown used
-    // to live here, but `KeyboardShortcutsProvider`'s single document-level
-    // listener picks up that synthetic event too, finds "?" registered
-    // again, and calls the handler again -- infinite recursion
-    // (RangeError: Maximum call stack size exceeded, #294). The
-    // "keyboard-shortcuts" palette item below still dispatches a synthetic
-    // "?" on demand (needed for a mouse/Enter selection, which has no real
-    // keydown to piggyback on) -- that one-shot dispatch isn't itself
-    // listening for "?", so it doesn't recurse.
-    modifierShortcuts: {
-      [shortcuts.palette.prefix]: {
-        [shortcuts.palette.open]: () => {
-          setOpen((prev) => !prev);
-        },
-      },
-    },
-    sequentialShortcuts: {
-      [shortcuts.project.prefix]: {
-        [shortcuts.project.list]: () => {
-          if (!workspace?.id) return;
-          navigate({
-            to: "/dashboard/workspace/$workspaceId",
-            params: { workspaceId: workspace.id },
-          });
-        },
-        [shortcuts.project.create]: () => setIsCreateProjectOpen(true),
-      },
-      [shortcuts.task.prefix]: {
-        [shortcuts.task.create]: () => setIsCreateTaskOpen(true),
-      },
-      [shortcuts.workspace.prefix]: {
-        [shortcuts.workspace.create]: () => {
-          if (!canCreateWorkspace) return;
-          setIsCreateWorkspaceOpen(true);
-        },
-      },
-    },
-  });
-
-  const runCommand = useCallback((command: () => void) => {
-    command();
-    setOpen(false);
-  }, []);
+    [onOpenChange],
+  );
 
   const groupedItems = useMemo<PaletteGroup[]>(
     () => [
@@ -334,10 +345,10 @@ function CommandPalette() {
 
   return (
     <>
-      <CommandDialog open={open} onOpenChange={setOpen}>
+      <CommandDialog open={open} onOpenChange={onOpenChange}>
         <CommandDialogPopup
           instant
-          keepMounted={keepPaletteMounted}
+          keepMounted={keepMounted}
           blurBackdrop={false}
         >
           <Command

@@ -13,6 +13,12 @@ type NativeFrame = {
 const MAX_SEEN_EVENTS = 512;
 const seenEventIds = new Set<string>();
 
+export type WorkItemRealtimeStatus =
+  | "connecting"
+  | "available"
+  | "unavailable"
+  | "idle";
+
 function hasSeenEvent(eventId: string) {
   if (seenEventIds.has(eventId)) return true;
   seenEventIds.add(eventId);
@@ -30,22 +36,34 @@ function realtimeUrl() {
 export function useNativeWorkItemRealtime(topics: readonly string[]) {
   const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
-  const [isUnavailable, setIsUnavailable] = useState(false);
+  const [connection, setConnection] = useState<{
+    connectionKey: string;
+    status: WorkItemRealtimeStatus;
+  }>({ connectionKey: "", status: "connecting" });
   const socketRef = useRef<WebSocket | null>(null);
   const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const retriesRef = useRef(0);
   const topicKey = topics.join("\u0000");
+  const connectionKey = `${session?.user?.id ?? ""}\u0001${topicKey}`;
+  const status =
+    connection.connectionKey === connectionKey
+      ? connection.status
+      : "connecting";
 
   useEffect(() => {
     if (!session?.user?.id || topics.length === 0) {
-      setIsUnavailable(false);
+      setConnection({ connectionKey, status: "idle" });
       return;
     }
     const selectedTopics = topicKey.split("\u0000");
-    const unacknowledgedTopics = new Set(selectedTopics);
+    let hasOutage = false;
     let isDisposed = false;
     let socket: WebSocket | null = null;
+
+    function setStatus(nextStatus: WorkItemRealtimeStatus) {
+      setConnection({ connectionKey, status: nextStatus });
+    }
 
     function stopPing() {
       if (pingTimerRef.current) {
@@ -77,10 +95,11 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
 
     function connect() {
       if (isDisposed) return;
+      const unacknowledgedTopics = new Set(selectedTopics);
       const nextSocket = new WebSocket(realtimeUrl());
       socket = nextSocket;
       socketRef.current = nextSocket;
-      setIsUnavailable(true);
+      if (!hasOutage) setStatus("connecting");
 
       nextSocket.onopen = () => {
         if (isDisposed) return;
@@ -106,11 +125,15 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         }
         if (frame.type === "subscribed") {
           if (frame.topic) unacknowledgedTopics.delete(frame.topic);
-          setIsUnavailable(unacknowledgedTopics.size > 0);
+          if (unacknowledgedTopics.size === 0) {
+            hasOutage = false;
+            setStatus("available");
+          }
           return;
         }
         if (frame.type === "subscription_denied") {
-          setIsUnavailable(true);
+          hasOutage = true;
+          setStatus("unavailable");
           void queryClient.invalidateQueries({ queryKey: ["work-items"] });
           return;
         }
@@ -118,12 +141,16 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
         invalidateAffected(frame);
       };
 
-      nextSocket.onerror = () => setIsUnavailable(true);
+      nextSocket.onerror = () => {
+        hasOutage = true;
+        setStatus("unavailable");
+      };
       nextSocket.onclose = () => {
         stopPing();
         if (socketRef.current === nextSocket) socketRef.current = null;
-        setIsUnavailable(true);
         if (isDisposed) return;
+        hasOutage = true;
+        setStatus("unavailable");
         const ceiling = Math.min(30_000, 1_000 * 2 ** retriesRef.current);
         retriesRef.current += 1;
         const delay = Math.floor(ceiling * (0.5 + Math.random() * 0.5));
@@ -140,7 +167,10 @@ export function useNativeWorkItemRealtime(topics: readonly string[]) {
       if (socketRef.current === socket) socketRef.current = null;
       socket?.close();
     };
-  }, [session?.user?.id, topicKey, queryClient, topics.length]);
+  }, [connectionKey, session?.user?.id, topicKey, queryClient, topics.length]);
 
-  return { isUnavailable };
+  return {
+    status,
+    isUnavailable: status === "unavailable",
+  };
 }
