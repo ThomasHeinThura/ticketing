@@ -9,6 +9,10 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-04 · Require complete source-bound contrast records before utility matching
+
+The G3 occurrence-summary invariant applies to every pair. Both arrays must exist, be nonempty and correctly typed; detailed records must obey the closed schema/context values. A missing or malformed detail array must not fall back to utility-only acceptance. Preserve intentionally repeated detailed contexts and enforce the first-seen ordered distinct summary. Fix the entire absent/malformed class and its regressions in one completed batch, with the risk-sized current-head independent Luna/Sol review rather than per-edit comfort rounds. No pair colors, thresholds, source contexts or runtime behavior change; no gate waiver is introduced.
+
 ### 2026-10-04 · Enforce contrast occurrence summaries structurally
 
 The contrast registry summary is the first-seen ordered distinct projection of detailed occurrence IDs; detailed records may repeat an ID for different surface contexts. Correct the eight stale summaries together and enforce this invariant across every pair with missing/extra/order regressions. Preserve pair identity, detailed contexts, colors, ratios and thresholds. Review this completed bounded checker pass/fail change with one strong independent Luna delta pass and the required full independent Sol pass, using earlier genuine UI bulk reviews as history rather than claiming current-head clearance. This applies the standing risk-sized review and complete-batch cadence; it waives no gate.
