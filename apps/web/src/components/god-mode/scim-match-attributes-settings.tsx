@@ -15,6 +15,7 @@ import {
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getApiUrl } from "@/fetchers/get-api-url";
+import { ScimTokenSettings } from "./scim-token-settings";
 
 const REQUIRED_MATCH_ATTRIBUTES = ["externalId", "userName"] as const;
 const OPTIONAL_MATCH_ATTRIBUTES = [
@@ -142,6 +143,18 @@ export function ScimMatchAttributesSettings({
   const changed = Boolean(
     settings && hasChanged(settings.data.matchAttributes, draft),
   );
+
+  function recordTokenMutation(configVersion: number, enabled: boolean) {
+    setSettings((current) =>
+      current
+        ? {
+            ...current,
+            configVersion,
+            data: { ...current.data, enabled },
+          }
+        : current,
+    );
+  }
 
   function toggleOptional(attribute: OptionalMatchAttribute, checked: boolean) {
     setDraft((current) => {
@@ -362,6 +375,14 @@ export function ScimMatchAttributesSettings({
           </span>
         </div>
       </form>
+
+      <ScimTokenSettings
+        configVersion={settings.configVersion}
+        connectionId={connectionId}
+        enabled={settings.data.enabled}
+        onConfigurationChanged={recordTokenMutation}
+        onReload={() => void refresh()}
+      />
     </section>
   );
 }
