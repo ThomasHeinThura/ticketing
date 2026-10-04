@@ -46,9 +46,10 @@ import {
   type CredentialKind,
   evaluatePolicy,
   isCapabilityPolicy,
+  isSelfPolicy,
   normaliseRouteKey,
 } from "@taskdesk/permissions";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import db, { schema } from "../database";
 import { policyRegistry } from "../policy-registry";
@@ -319,6 +320,9 @@ async function runShadowEvaluation(
   const projectIdFromRequest =
     (c.get("projectIdFromRequest") as string | undefined) ?? null;
   const workItemId = (c.get("workItemId") as string | undefined) ?? null;
+  const nativeReachDenialEvidence = c.get("nativeReachDenialEvidence") as
+    | { readonly resource: string; readonly id: string }
+    | undefined;
   const apiKey = c.get("apiKey") as ApiKeyContextValue;
   const userId = (c.get("userId") as string | undefined) || undefined;
   const credential = credentialKindFor(apiKey);
@@ -376,6 +380,33 @@ async function runShadowEvaluation(
         })
       : null;
 
+    let workspaceMembership: boolean | undefined;
+    if (
+      userId &&
+      workspaceId &&
+      entry !== undefined &&
+      isSelfPolicy(entry.policy) &&
+      entry.policy.workspaceMembership === true
+    ) {
+      const memberships = await db
+        .select({ userId: schema.workspaceUserTable.userId })
+        .from(schema.workspaceUserTable)
+        .innerJoin(
+          schema.workspaceTable,
+          eq(schema.workspaceTable.id, schema.workspaceUserTable.workspaceId),
+        )
+        .where(
+          and(
+            eq(schema.workspaceUserTable.userId, userId),
+            eq(schema.workspaceUserTable.workspaceId, workspaceId),
+          ),
+        )
+        .limit(2);
+      // Membership is an active row in an existing workspace. Duplicate rows are
+      // ambiguous and do not satisfy this self-policy condition.
+      workspaceMembership = memberships.length === 1;
+    }
+
     policySide = buildShadowPolicySide({
       entry,
       identity,
@@ -384,6 +415,8 @@ async function runShadowEvaluation(
       projectId,
       projectIdFromRequest,
       workItemId,
+      workspaceMembership,
+      nativeReachDenialEvidence,
     });
   } catch (error) {
     await writeErrorRecord({

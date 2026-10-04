@@ -6,6 +6,35 @@ dependency choices, convention changes, scope calls, gate waivers.
 Newest first.
 
 
+### 2026-10-04 · Bound observer-only provenance reads for shadowed native read denials
+
+**Decision:** under the standing authorization to implement recommended P0 resolutions, a
+shadow-enabled native read may perform one additional observer-only lookup when its typed,
+reach-filtered resource lookup returns no row. The lookup is limited to the exact resource
+kind and identifier selected by that route's typed lookup middleware and to a matched,
+registered row-scoped capability policy. It must use persisted containment and the native
+resource's liveness rules. Only a live row whose denial by the same native reach predicate
+is established may supply row scope and an explicit legacy-denied marker. Missing, inactive,
+ambiguous, or unavailable rows remain unknown/error. The result stays in request context,
+never the response, log, or audit. Shadow-off performs no observer query. Mutation routes
+and post-mutation state are excluded. This resolves the #8 evidence gap without changing
+native authority or masked responses; details are in [RBAC § Shadow evidence for native read
+denials](../01-architecture/rbac.md#shadow-evidence-for-native-read-denials).
+
+**Limits:** this observer evidence does not make a missing policy or incomplete identity
+facts evaluable. Project hierarchy, team ownership, private-item visibility, public-route
+placement, and delegated protocol behavior remain governed by their existing contracts.
+Implementation evidence and source-bound traffic are still required; no clean date or
+cutover is established by this decision.
+
+For the same #8 batch, `/api/capabilities` is explicitly self-introspection, not a
+capability-gated read: a session with one unambiguous persisted membership in the requested
+workspace may receive its own boolean map, including all-false results for an unknown role.
+The self policy's `workspaceMembership: true` condition requires that exact membership and
+does not accept instance-admin reach as a substitute. Nonmembers remain denied; no write or
+other capability check is relaxed. See [RBAC § Route policies](../01-architecture/rbac.md#route-policies--the-anti-v1-mechanism).
+
+
 ### 2026-10-04 · Pin SLA policy provenance at work-item creation
 
 **Decision:** implement the recommended SLA-1/SLA-3 provenance contract under Thomas's

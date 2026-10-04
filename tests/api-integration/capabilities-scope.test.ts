@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { defaultRolePayloads } from "@taskdesk/permissions";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CAPABILITY_CHECKS } from "../../apps/api/src/capabilities/capability-checks";
 import db, { schema } from "../../apps/api/src/database";
@@ -50,6 +51,18 @@ async function addMembership(
     role,
     joinedAt: new Date(),
   });
+  if (Object.hasOwn(defaultRolePayloads, role)) {
+    await db.insert(schema.workspaceRoleTable).values({
+      workspaceId,
+      role,
+      permission: JSON.stringify(
+        defaultRolePayloads[role as keyof typeof defaultRolePayloads],
+      ),
+      isSystem: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
 }
 
 beforeEach(async () => {

@@ -20,7 +20,7 @@ import {
   workspaceScopeFromRequest,
   workspaceScopeFromRow,
 } from "@taskdesk/permissions";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
@@ -473,6 +473,25 @@ async function buildContext(
   if (entry.kind === "self") {
     if (!isSelfPolicy(policy)) refuse(500);
     const personParam = policy.personParam;
+    let workspaceMembership: boolean | undefined;
+    if (policy.workspaceMembership === true) {
+      if (!evidence.workspaceId) refuse(500);
+      const rows = await db
+        .select({ userId: schema.workspaceUserTable.userId })
+        .from(schema.workspaceUserTable)
+        .innerJoin(
+          schema.workspaceTable,
+          eq(schema.workspaceTable.id, schema.workspaceUserTable.workspaceId),
+        )
+        .where(
+          and(
+            eq(schema.workspaceUserTable.userId, c.get("userId") as string),
+            eq(schema.workspaceUserTable.workspaceId, evidence.workspaceId),
+          ),
+        )
+        .limit(2);
+      workspaceMembership = rows.length === 1;
+    }
     return {
       identity,
       target: {},
@@ -480,6 +499,7 @@ async function buildContext(
         typeof personParam === "string"
           ? (c.req.param(personParam) ?? null)
           : NO_PERSON_PARAMETER,
+      ...(workspaceMembership === undefined ? {} : { workspaceMembership }),
     };
   }
   if (entry.kind === "portal") {

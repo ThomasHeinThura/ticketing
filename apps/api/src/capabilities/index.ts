@@ -8,14 +8,10 @@ import {
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { requireSessionOnly } from "../utils/require-session-only";
-import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { callerMembershipResolution } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import getCapabilitiesCtrl from "./controllers/get-capabilities";
-import {
-  capabilitiesResponseSchema,
-  malformedMembershipResponseSchema,
-} from "./response";
+import { capabilitiesResponseSchema } from "./response";
 import { workspaceIdQuery } from "./schema";
 
 const getCapabilitiesRoute = createRoute({
@@ -25,7 +21,7 @@ const getCapabilitiesRoute = createRoute({
   tags: ["Capabilities"],
   summary: "Get the caller's capabilities in a workspace",
   description:
-    "One call replacing the 16-way has-permission fan-out the client made against the organization() plugin's /organization/has-permission (apps/web/src/hooks/use-workspace-permission.ts). Computed over hasWorkspacePermission -- the same TaskDesk-native authorization check every other route already uses.",
+    "One call replacing the 16-way has-permission fan-out. A session member may inspect their own map, including an all-false map for an unknown or malformed role; this endpoint grants no capability by doing so.",
   middleware: [requireSessionOnly(), workspaceAccess.fromQuery()] as const,
   request: { query: workspaceIdQuery },
   responses: {
@@ -35,49 +31,22 @@ const getCapabilitiesRoute = createRoute({
     ),
     400: errorResponse("Workspace ID could not be determined"),
     403: errorResponse("No access to the workspace"),
-    409: jsonResponse(
-      "The caller's membership row does not hold exactly one role, so no capability answer can be computed from it (issue #82)",
-      malformedMembershipResponseSchema,
-    ),
   },
 });
 
 const capabilities = apiRouter<
   BaseVariables & { workspaceId: string }
 >().openapi(getCapabilitiesRoute, async (c) => {
-  // Issue #82. Asked BEFORE the sixteen checks, and asked through the evaluator's own
-  // resolution rather than a second reading of the same rows, so this endpoint cannot
-  // disagree with `hasWorkspacePermission` about what the row means -- a second reading
-  // that drifts is the precise defect #82 is about.
-  //
-  // Only `malformed-role` is reported this way. `no-membership` is already the route's 403
-  // (the `workspaceAccess` middleware refuses first), and `ambiguous-rows` -- two rows for
-  // one pair -- is issue #88's subject, whose remedy is a UNIQUE constraint rather than a
-  // response shape; it keeps today's all-denied answer here deliberately, so this change
-  // does not quietly re-decide a question another issue owns.
+  // Resolve the same exact membership shape as the sixteen capability checks. A single
+  // malformed role still receives its own introspection response: each capability check
+  // returns false, and no authority is granted. Missing and duplicate rows are denied.
   const membership = await callerMembershipResolution(c);
-  if (membership?.ok === false && membership.reason === "malformed-role") {
-    return c.json(
-      {
-        error: "MALFORMED_MEMBERSHIP_ROLE" as const,
-        message:
-          "This workspace membership does not hold exactly one role, so no capability can be granted from it. An administrator must reassign a single role to this member.",
-        problem: membership.problem,
-      },
-      409,
-    );
-  }
-  try {
-    await assertCallerHasCapability(
-      c.get("workspaceId"),
-      c.get("userId"),
-      "workspace:read",
-    );
-  } catch (error) {
-    if (error instanceof HTTPException && error.status === 403) {
-      setShadowLegacyAuthorization(c, "denied");
-    }
-    throw error;
+  if (
+    !membership ||
+    (!membership.ok && membership.reason !== "malformed-role")
+  ) {
+    setShadowLegacyAuthorization(c, "denied");
+    throw new HTTPException(403, { message: "No access to the workspace" });
   }
   setShadowLegacyAuthorization(c, "allowed");
   return c.json(await getCapabilitiesCtrl(c), 200);

@@ -1,7 +1,12 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, not } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { policyShadowEnabled } from "../permissions/shadow-config";
+import {
+  hasMatchedRowScopedCapabilityPolicy,
+  setShadowLegacyAuthorization,
+} from "../permissions/shadow-context";
 import { resolveAssetBearerOrCookie } from "./authenticate-api-request";
 import { reachableWorkspacePredicate } from "./workspace-access-middleware";
 
@@ -70,6 +75,41 @@ export async function loadReachableAsset(
     .limit(1);
 
   if (!asset) {
+    if (policyShadowEnabled && (await hasMatchedRowScopedCapabilityPolicy(c))) {
+      // Evidence-only lookup for this exact asset route. Keep the native 404
+      // unless a live, non-orphaned row is proven to have failed the same reach
+      // predicate used by the primary load above.
+      try {
+        const [deniedAsset] = await db
+          .select({ workspaceId: schema.assetTable.workspaceId })
+          .from(schema.assetTable)
+          .innerJoin(
+            schema.projectTable,
+            eq(schema.assetTable.projectId, schema.projectTable.id),
+          )
+          .where(
+            and(
+              eq(schema.assetTable.id, id),
+              isNull(schema.projectTable.deletedAt),
+              not(
+                reachableWorkspacePredicate(
+                  schema.projectTable.workspaceId,
+                  userId,
+                  apiKeyId,
+                ),
+              ),
+            ),
+          )
+          .limit(1);
+        if (deniedAsset) {
+          setShadowLegacyAuthorization(c, "denied");
+          c.set("workspaceId", deniedAsset.workspaceId);
+          c.set("workspaceIdSource", "row");
+        }
+      } catch {
+        // Observer failure leaves the native masked response untouched.
+      }
+    }
     throw new HTTPException(404, { message: "Asset not found" });
   }
 

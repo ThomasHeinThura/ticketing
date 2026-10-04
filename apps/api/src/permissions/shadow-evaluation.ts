@@ -135,6 +135,14 @@ export function buildShadowPolicySide(args: {
   /** Set only on routes whose existing middleware already resolved a work-item row (today:
    *  `requireWorkItemReach`). See `require-work-item-reach.ts`. */
   readonly workItemId?: string | null;
+  /** Exact persisted membership evidence for a membership-constrained self policy. */
+  readonly workspaceMembership?: boolean;
+  /** A typed observer result proving that the native row lookup excluded this same
+   * resource with its persisted reach predicate. It can establish negative reach only. */
+  readonly nativeReachDenialEvidence?: {
+    readonly resource: string;
+    readonly id: string;
+  };
 }):
   | { readonly context: PolicyContext; readonly entry: RegistryEntry }
   | UnevaluatedReasonCode {
@@ -143,6 +151,8 @@ export function buildShadowPolicySide(args: {
     identity,
     workspaceId,
     workspaceIdSource,
+    workspaceMembership,
+    nativeReachDenialEvidence,
     projectId = null,
     projectIdFromRequest = null,
     workItemId = null,
@@ -190,7 +200,12 @@ export function buildShadowPolicySide(args: {
     ) {
       return {
         entry,
-        context: { identity, target: {}, targetPersonId: NO_PERSON_PARAMETER },
+        context: {
+          identity,
+          target: {},
+          targetPersonId: NO_PERSON_PARAMETER,
+          ...(workspaceMembership === undefined ? {} : { workspaceMembership }),
+        },
       };
     }
     return "self_target_unavailable";
@@ -287,7 +302,14 @@ export function buildShadowPolicySide(args: {
   if (reachExempt) {
     inReach = NO_SINGLE_RESOURCE;
   } else if (reach === "required") {
-    if (policy.scope === "workspace") {
+    const observerProvesSameResourceDenied =
+      nativeReachDenialEvidence !== undefined &&
+      policy.scope === "work_item" &&
+      nativeReachDenialEvidence.id === workItemId &&
+      nativeReachDenialEvidence.resource === "task";
+    if (observerProvesSameResourceDenied) {
+      inReach = false;
+    } else if (policy.scope === "workspace") {
       inReach = workspaceInReach(identity, workspaceId as string);
     } else if (identity.reach.kind === "all") {
       // Instance-wide reach is sufficient for any concrete scope and needs no

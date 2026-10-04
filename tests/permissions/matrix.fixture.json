@@ -1484,36 +1484,36 @@
 		},
 		"GET /api/capabilities": {
 			"instance_admin": {
-				"inReach": "403 forbidden",
-				"outOfReach": "404 not_found"
+				"inReach": "allow",
+				"outOfReach": "403 forbidden"
 			},
 			"owner": {
 				"inReach": "allow",
-				"outOfReach": "404 not_found"
+				"outOfReach": "403 forbidden"
 			},
 			"admin": {
 				"inReach": "allow",
-				"outOfReach": "404 not_found"
+				"outOfReach": "403 forbidden"
 			},
 			"manager": {
 				"inReach": "allow",
-				"outOfReach": "404 not_found"
+				"outOfReach": "403 forbidden"
 			},
 			"lead": {
 				"inReach": "allow",
-				"outOfReach": "404 not_found"
+				"outOfReach": "403 forbidden"
 			},
 			"member": {
 				"inReach": "allow",
-				"outOfReach": "404 not_found"
+				"outOfReach": "403 forbidden"
 			},
 			"viewer": {
 				"inReach": "allow",
-				"outOfReach": "404 not_found"
+				"outOfReach": "403 forbidden"
 			},
 			"customer": {
-				"inReach": "403 forbidden",
-				"outOfReach": "404 not_found"
+				"inReach": "allow",
+				"outOfReach": "403 forbidden"
 			}
 		},
 		"GET /api/column/{projectId}": {

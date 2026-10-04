@@ -169,8 +169,22 @@ const LIST_PROJECTS_ROUTE_KEY = "GET /api/project";
 const LIST_NOTIFICATIONS_ROUTE_KEY = "GET /api/notification";
 const GET_NOTIFICATION_PREFERENCES_ROUTE_KEY =
   "GET /api/notification-preferences";
+const GET_TASK_ROUTE_KEY = "GET /api/task/{id}";
 const DELETE_NOTIFICATION_WORKSPACE_RULE_ROUTE_KEY =
   "DELETE /api/notification-preferences/workspaces/{workspaceId}";
+
+function postgresStatement(query: unknown): string {
+  if (typeof query === "string") return query;
+  if (
+    typeof query === "object" &&
+    query !== null &&
+    "text" in query &&
+    typeof query.text === "string"
+  ) {
+    return query.text;
+  }
+  return "";
+}
 
 describe("successful authentication is recorded as the legacy self-policy decision", () => {
   it("compares notification and preference reads as authenticated self routes", {
@@ -389,6 +403,205 @@ describe("request-sourced scope is evaluated with request provenance", () => {
   });
 });
 
+describe("observer-only provenance for masked native read denials", () => {
+  it("compares a real foreign work item using its persisted row scope while preserving the masked 404", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Observer scope fixture",
+        description: "",
+        status: "to-do",
+        priority: "medium",
+        columnId: columns.todo.id,
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task) throw new Error("observer fixture task insert returned no row");
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const response = await fresh.app.request(`/api/task/${task.id}`);
+    expect(response.status).toBe(404);
+
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(GET_TASK_ROUTE_KEY);
+      return rows.length ? rows : undefined;
+    });
+    expect(tally).toMatchObject([{ outcome: "agree", reasonCode: null }]);
+    expect(
+      await shadowEventsFor(GET_TASK_ROUTE_KEY, "legacy_allow_policy_deny"),
+    ).toEqual([]);
+  });
+
+  it("keeps a missing work-item id unevaluated instead of manufacturing row scope", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const response = await fresh.app.request(
+      "/api/task/missing-shadow-row?workspaceId=caller-controlled",
+    );
+    expect(response.status).toBe(404);
+    const rows = await waitForShadowEvidence(async () => {
+      const events = await shadowEventsFor(GET_TASK_ROUTE_KEY, "unevaluated");
+      return events.length ? events : undefined;
+    });
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        outcome: "unevaluated",
+        reasonCode: "row_scope_unavailable",
+        workspaceId: null,
+      }),
+    );
+  });
+
+  it("keeps a soft-deleted containing project unknown for a nonmember read", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Soft-deleted project fixture",
+        description: "",
+        status: "to-do",
+        priority: "medium",
+        columnId: columns.todo.id,
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task) throw new Error("observer fixture task insert returned no row");
+    await fresh.db
+      .update(fresh.schema.projectTable)
+      .set({ deletedAt: new Date() })
+      .where(eq(fresh.schema.projectTable.id, project.id));
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const response = await fresh.app.request(`/api/task/${task.id}`);
+    expect(response.status).toBe(404);
+    const rows = await waitForShadowEvidence(async () => {
+      const events = await shadowEventsFor(GET_TASK_ROUTE_KEY, "unevaluated");
+      return events.length ? events : undefined;
+    });
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        outcome: "unevaluated",
+        reasonCode: "row_scope_unavailable",
+        workspaceId: null,
+      }),
+    );
+  });
+
+  it("preserves the masked response and records unknown when the observer query fails", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Observer failure fixture",
+        description: "",
+        status: "to-do",
+        priority: "medium",
+        columnId: columns.todo.id,
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task)
+      throw new Error("observer failure fixture insert returned no row");
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const pool = fresh.db.$client;
+    const originalQuery = pool.query.bind(pool);
+    let taskQueries = 0;
+    const selectSpy = vi.spyOn(pool, "query").mockImplementation((...args) => {
+      const statement = postgresStatement(args[0]);
+      if (/from\s+"task"/i.test(statement) && ++taskQueries === 2) {
+        return Promise.reject(new Error("observer read unavailable"));
+      }
+      return originalQuery(...args);
+    });
+    const response = await fresh.app.request(`/api/task/${task.id}`);
+    selectSpy.mockRestore();
+    expect(response.status).toBe(404);
+    const rows = await waitForShadowEvidence(async () => {
+      const events = await shadowEventsFor(GET_TASK_ROUTE_KEY, "unevaluated");
+      return events.length ? events : undefined;
+    });
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        outcome: "unevaluated",
+        reasonCode: "row_scope_unavailable",
+        workspaceId: null,
+      }),
+    );
+  });
+
+  it("does not issue an observer read when shadow mode is off", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("off");
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Shadow off observer fixture",
+        description: "",
+        status: "to-do",
+        priority: "medium",
+        columnId: columns.todo.id,
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task) throw new Error("shadow-off fixture insert returned no row");
+    fresh.mockUser(caller.user);
+    const querySpy = vi.spyOn(fresh.db.$client, "query");
+    const response = await fresh.app.request(`/api/task/${task.id}`);
+    const taskQueries = querySpy.mock.calls.filter(([query]) => {
+      const statement = postgresStatement(query);
+      return /from\s+"task"/i.test(statement);
+    });
+    querySpy.mockRestore();
+    expect(response.status).toBe(404);
+    expect(taskQueries).toHaveLength(1);
+  });
+});
+
 describe("instance-admin reach does not bypass workspace capability authority", () => {
   it("refuses a nonmember instance admin and records agreement with the declared capability", {
     timeout: 60_000,
@@ -529,6 +742,39 @@ describe("instance-admin reach does not bypass workspace capability authority", 
     expect(allowed.map((response) => response.status)).toEqual([
       200, 200, 200, 200, 200, 200,
     ]);
+  });
+
+  it("lets a member inspect an unknown role as an all-false map without granting access", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember({ role: "viewer" });
+    await fresh.db
+      .update(fresh.schema.workspaceUserTable)
+      .set({ role: "toString" })
+      .where(
+        and(
+          eq(fresh.schema.workspaceUserTable.workspaceId, member.workspace.id),
+          eq(fresh.schema.workspaceUserTable.userId, member.user.id),
+        ),
+      );
+    await backfillPersons();
+    fresh.mockUser(member.user);
+
+    const response = await fresh.app.request(
+      `/api/capabilities?workspaceId=${member.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+    const capabilityMap = (await response.json()) as Record<string, boolean>;
+    expect(Object.values(capabilityMap).every((allowed) => !allowed)).toBe(
+      true,
+    );
+
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor("GET /api/capabilities");
+      return rows.find((row) => row.outcome === "agree");
+    });
+    expect(tally.outcome).toBe("agree");
   });
 
   it("records a controller-level bulk membership denial after earlier gates allowed", {

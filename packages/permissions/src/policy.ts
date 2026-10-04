@@ -184,6 +184,8 @@ export type SelfPolicy = {
    * statement that the route names none.
    */
   readonly personParam: PersonParam;
+  /** Require one verified persisted membership in the route's named workspace. */
+  readonly workspaceMembership?: true;
 };
 
 /** Kind 3 — a customer session on `/api/portal/*`, scoped by predicate. */

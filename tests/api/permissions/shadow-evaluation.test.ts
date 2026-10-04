@@ -251,6 +251,43 @@ describe("buildShadowPolicySide", () => {
     expect(result).toBe("reach_unavailable");
   });
 
+  it("uses only matched persisted observer evidence to evaluate a native reach denial", () => {
+    const workItemEntry: RegistryEntry = {
+      ...CAPABILITY_ENTRY,
+      routeKey: "GET /api/task/{id}",
+      policy: {
+        ...CAPABILITY_ENTRY.policy,
+        scope: "work_item",
+      } as never,
+    };
+    const result = buildShadowPolicySide({
+      entry: workItemEntry,
+      identity: identity(),
+      workspaceId: "ws_foreign",
+      workspaceIdSource: "row",
+      projectId: "project_foreign",
+      workItemId: "task_foreign",
+      nativeReachDenialEvidence: { resource: "task", id: "task_foreign" },
+    });
+    if (typeof result === "string") throw new Error("expected a context");
+    expect(result.context.inReach).toBe(false);
+    expect(evaluatePolicy(result.entry.policy, result.context)).toMatchObject({
+      allowed: false,
+      status: 404,
+    });
+
+    const mismatched = buildShadowPolicySide({
+      entry: workItemEntry,
+      identity: identity(),
+      workspaceId: "ws_foreign",
+      workspaceIdSource: "row",
+      projectId: "project_foreign",
+      workItemId: "task_foreign",
+      nativeReachDenialEvidence: { resource: "task", id: "different-task" },
+    });
+    expect(mismatched).toBe("reach_unavailable");
+  });
+
   it("can evaluate a project reach when the resolved identity has instance-wide reach", () => {
     const projectEntry: RegistryEntry = {
       ...CAPABILITY_ENTRY,

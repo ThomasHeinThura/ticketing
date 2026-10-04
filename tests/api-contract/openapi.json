@@ -183,33 +183,6 @@
           "removeMembers"
         ]
       },
-      "MalformedMembershipRole": {
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "string",
-            "enum": [
-              "MALFORMED_MEMBERSHIP_ROLE"
-            ]
-          },
-          "message": {
-            "type": "string"
-          },
-          "problem": {
-            "type": "string",
-            "enum": [
-              "empty",
-              "multi-valued",
-              "untrimmed"
-            ]
-          }
-        },
-        "required": [
-          "error",
-          "message",
-          "problem"
-        ]
-      },
       "ProjectListItem": {
         "allOf": [
           {
@@ -4979,7 +4952,7 @@
           "Capabilities"
         ],
         "summary": "Get the caller's capabilities in a workspace",
-        "description": "One call replacing the 16-way has-permission fan-out the client made against the organization() plugin's /organization/has-permission (apps/web/src/hooks/use-workspace-permission.ts). Computed over hasWorkspacePermission -- the same TaskDesk-native authorization check every other route already uses.",
+        "description": "One call replacing the 16-way has-permission fan-out. A session member may inspect their own map, including an all-false map for an unknown or malformed role; this endpoint grants no capability by doing so.",
         "parameters": [
           {
             "schema": {
@@ -5020,16 +4993,6 @@
               "text/plain": {
                 "schema": {
                   "type": "string"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "The caller's membership row does not hold exactly one role, so no capability answer can be computed from it (issue #82)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MalformedMembershipRole"
                 }
               }
             }

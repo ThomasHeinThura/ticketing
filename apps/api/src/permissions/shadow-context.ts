@@ -32,3 +32,26 @@ export function setShadowLegacyAuthorization(
 ): void {
   c.set("legacyAuthorization", result);
 }
+
+/**
+ * Whether this exact matched GET route may use the typed observer-only row lookup. Public,
+ * self, portal, delegated, write, and unmatched routes are deliberately excluded.
+ */
+export async function hasMatchedRowScopedCapabilityPolicy(
+  c: Context,
+): Promise<boolean> {
+  if (c.req.method !== "GET") return false;
+  const [{ attributedRouteKey }, { policyRegistry }, permissions] =
+    await Promise.all([
+      import("./shadow-middleware"),
+      import("../policy-registry"),
+      import("@taskdesk/permissions"),
+    ]);
+  const routeKey = attributedRouteKey(c);
+  const entry = routeKey ? policyRegistry.get(routeKey) : undefined;
+  return Boolean(
+    entry?.kind === "capability" &&
+      permissions.isCapabilityPolicy(entry.policy) &&
+      entry.policy.scopeSource === "row",
+  );
+}

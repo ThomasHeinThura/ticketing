@@ -1,8 +1,19 @@
-import { and, eq, inArray, type SQLWrapper, sql } from "drizzle-orm";
+import {
+  and,
+  eq,
+  inArray,
+  isNull,
+  not,
+  type SQL,
+  type SQLWrapper,
+  sql,
+} from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { policyShadowEnabled } from "../permissions/shadow-config";
 import {
+  hasMatchedRowScopedCapabilityPolicy,
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
@@ -112,6 +123,11 @@ type WorkspaceIdSource =
 
 type WorkspaceAccessMiddlewareConfig = {
   sources: WorkspaceIdSource[];
+};
+
+type ShadowResourceAnchor = {
+  readonly resource: Extract<WorkspaceIdSource, { type: "lookup" }>["resource"];
+  readonly id: string;
 };
 
 type PolicyScopeResource =
@@ -232,6 +248,48 @@ export function workspaceAccessMiddleware(
             userId,
             apiKeyId,
           );
+          if (
+            !resolved &&
+            policyShadowEnabled &&
+            c.req.method === "GET" &&
+            (await hasMatchedRowScopedCapabilityPolicy(c))
+          ) {
+            // This observer-only query never feeds the native authorization path. The
+            // typed lookup configuration selects both resource kind and id. A row is
+            // eligible only when it is still live and the ordinary reach-filtered lookup
+            // above excluded it; its persisted scope lets the post-response policy check
+            // explain a masked denial without revealing existence to the caller.
+            const anchor: ShadowResourceAnchor = {
+              resource: source.resource,
+              id,
+            };
+            const observerRow = await lookupWorkspaceId(
+              anchor.resource,
+              anchor.id,
+              userId,
+              apiKeyId,
+              { observerOnly: true },
+            );
+            if (observerRow) {
+              setShadowLegacyAuthorization(c, "denied");
+              c.set("workspaceId", observerRow.workspaceId);
+              c.set("workspaceIdSource", "row");
+              if (observerRow.projectId) {
+                c.set("projectId", observerRow.projectId);
+              }
+              if (observerRow.workItemId) {
+                c.set("workItemId", observerRow.workItemId);
+              }
+              c.set("policyScopeResource", source.resource);
+              // The exact legacy reach predicate was part of the observer query as
+              // `NOT predicate`. Carry that narrowly typed fact to shadow evaluation;
+              // it is not caller-controlled scope and never affects the native response.
+              c.set("nativeReachDenialEvidence", {
+                resource: anchor.resource,
+                id: anchor.id,
+              });
+            }
+          }
           if (resolved) {
             policyScopeResource =
               source.resource === "task" ||
@@ -385,25 +443,26 @@ export function reachableWorkspacePredicate(
   workspaceId: SQLWrapper,
   userId: string,
   apiKeyId?: string,
-) {
+): SQL {
   const reach = sql`(
-    EXISTS (
-      SELECT 1 FROM ${schema.userTable}
-      WHERE ${schema.userTable.id} = ${userId}
-        AND ${schema.userTable.role} = 'admin'
-    )
-    OR EXISTS (
-      SELECT 1 FROM ${schema.workspaceUserTable}
-      WHERE ${schema.workspaceUserTable.userId} = ${userId}
-        AND ${schema.workspaceUserTable.workspaceId} = ${workspaceId}
-    )
-  )`;
+        EXISTS (
+          SELECT 1 FROM ${schema.userTable}
+          WHERE ${schema.userTable.id} = ${userId}
+            AND ${schema.userTable.role} = 'admin'
+        )
+        OR EXISTS (
+          SELECT 1 FROM ${schema.workspaceUserTable}
+          WHERE ${schema.workspaceUserTable.userId} = ${userId}
+            AND ${schema.workspaceUserTable.workspaceId} = ${workspaceId}
+        )
+      )`;
 
   if (!apiKeyId) return reach;
 
-  return and(
-    reach,
-    sql`EXISTS (
+  return (
+    and(
+      reach,
+      sql`EXISTS (
       SELECT 1 FROM ${schema.apikeyTable}
       WHERE ${schema.apikeyTable.id} = ${apiKeyId}
         AND (
@@ -412,6 +471,7 @@ export function reachableWorkspacePredicate(
         )
         AND ${schema.apikeyTable.enabled} = true
     )`,
+    ) ?? sql`false`
   );
 }
 
@@ -430,7 +490,19 @@ async function lookupWorkspaceId(
   id: string,
   userId: string,
   apiKeyId?: string,
+  options: { readonly observerOnly?: boolean } = {},
 ): Promise<WorkspaceRowScope | null> {
+  const reach = (workspaceId: SQLWrapper) => {
+    const nativePredicate = reachableWorkspacePredicate(
+      workspaceId,
+      userId,
+      apiKeyId,
+    );
+    // Observer queries recover scope only when the same production reach predicate
+    // used by the native lookup evaluates false. They never make an allowed request
+    // appear denied because of a race between two differently filtered lookups.
+    return options.observerOnly ? not(nativePredicate) : nativePredicate;
+  };
   try {
     switch (resource) {
       case "project": {
@@ -443,11 +515,10 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.projectTable.id, id),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -471,11 +542,10 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.taskTable.id, id),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -495,11 +565,7 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.labelTable.id, id),
-              reachableWorkspacePredicate(
-                schema.labelTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.labelTable.workspaceId),
             ),
           )
           .limit(1);
@@ -525,11 +591,10 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.timeEntryTable.id, id),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -561,11 +626,10 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.taskActivityTable.id, id),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -598,11 +662,10 @@ async function lookupWorkspaceId(
             and(
               eq(schema.taskActivityTable.id, id),
               eq(schema.taskActivityTable.type, "comment"),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -629,11 +692,10 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.columnTable.id, id),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -656,11 +718,10 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.workflowRuleTable.id, id),
-              reachableWorkspacePredicate(
-                schema.projectTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.projectTable.workspaceId),
+              ...(options.observerOnly
+                ? [isNull(schema.projectTable.deletedAt)]
+                : []),
             ),
           )
           .limit(1);
@@ -680,11 +741,7 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.workflowTable.id, id),
-              reachableWorkspacePredicate(
-                schema.workflowTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.workflowTable.workspaceId),
             ),
           )
           .limit(1);
@@ -706,11 +763,7 @@ async function lookupWorkspaceId(
           .where(
             and(
               eq(schema.workflowVersionTable.id, id),
-              reachableWorkspacePredicate(
-                schema.workflowTable.workspaceId,
-                userId,
-                apiKeyId,
-              ),
+              reach(schema.workflowTable.workspaceId),
             ),
           )
           .limit(1);
@@ -723,6 +776,11 @@ async function lookupWorkspaceId(
         return null;
     }
   } catch (error) {
+    if (options.observerOnly) {
+      // The native masked response is authoritative. An observer read failure leaves
+      // scope unavailable and must not turn that response into a 503 or log row data.
+      return null;
+    }
     // Fail CLOSED. This used to `return null`, which is indistinguishable from
     // "the row does not exist" — and several sources (fromTask, fromTaskId,
     // fromLabel, fromComment, fromColumn, fromTimeEntry, fromActivity,

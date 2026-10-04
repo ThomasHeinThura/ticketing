@@ -207,6 +207,32 @@ role: it grants only what it itself declares, never the built-in's set.
 
 Detail and screens: [Roles and permissions UI](../03-features/roles-and-permissions-ui.md).
 
+## Shadow evidence for native read denials
+
+Issue #8 shadow evidence compares the declarative policy with an explicit decision made by
+the native authorization path. It never derives a legacy allow or denial from HTTP status.
+When shadow mode is enabled, a native **read** route whose typed resource lookup folds
+existence and reach into one query may perform one additional read-only observer lookup after
+that query returns no row. The observer lookup is permitted only for the resource kind and id
+already selected by that route's typed lookup middleware, and only when the exact matched
+route has a registered row-scoped capability policy. It uses the route's authoritative
+containment joins and excludes resources the native path considers deleted, archived, or
+otherwise inactive. It does not inspect raw paths to infer a table or id.
+
+If this lookup proves that the same live persisted row exists but the native reach predicate
+excluded it, the middleware may expose that row's scope to the shadow evaluator and record the
+native result as denied. A missing row, inactive row, unavailable lookup, or ambiguous
+containment remains unknown (or an evaluator error); none is converted to an authorization
+denial. Observer facts stay request-local and are never returned, logged, or audited. The
+extra lookup is disabled with shadow mode, and is never run for mutation routes or after a
+mutation may have changed or removed the row. The native response, handler reachability, and
+authorization decision are unchanged.
+
+This evidence is diagnostic only. The shadow evaluator still applies the registered policy
+to a row scope built from persisted facts and does not grant authority to the legacy caller.
+Where the existing identity adapter lacks a required hierarchy/team/private-item fact, the
+comparison remains unevaluated until that fact can be loaded from authoritative data.
+
 ### Target membership projection from provenance grants — Proposed ADR 0015
 
 The target `membership` row remains the one effective role for a person and scope. The
@@ -265,21 +291,28 @@ divergence it guarded against cannot occur through a route that no longer exists
 
 | Where | What it does |
 | --- | --- |
-| `require-workspace-permission.ts`, `require-workspace-role-authority.ts` | refuse the read, by name, through one shared resolution; `GET /api/capabilities` reports it as a distinguishable **409** |
+| `require-workspace-permission.ts`, `require-workspace-role-authority.ts` | refuse authorization through one shared resolution; writes never gain a capability from a malformed value |
 | migration `0050` | repairs rows that have only one meaning, refuses to guess at genuine unions, and adds a `CHECK` constraint |
+
+`GET /api/capabilities` is the narrow introspection exception: an authenticated member with
+one membership row may inspect their own map even when that row's role value is malformed.
+Every entry is false because malformed membership grants nothing. This endpoint does not
+authorize any other read or write. Duplicate membership rows and missing membership remain
+403. Its `workspaceMembership: true` self-policy condition requires that exact persisted
+membership; instance-admin reach alone does not satisfy it.
 
 The `CHECK` constraint is the durable backstop: it makes a NEW comma-joined write
 unreachable regardless of which route attempts it, native or otherwise, so this invariant
 does not depend on enumerating every write path the way the deleted guard had to.
 
-**The 409 above is scoped to the workspace named in the request, not to the caller globally
+**The membership decision is scoped to the workspace named in the request, not to the caller globally
 — corrected here at S10.** Before the plugin unmounted, `organizationPluginRoleGuard`'s read
 half additionally refused every non-exempt `/organization/*` action from a caller holding a
 malformed row in *any* workspace, even one naming a different, healthy workspace — a
 cross-workspace scope that guard alone provided, keyed on `user_id` rather than on the
 request's own `workspaceId`. That guard is deleted along with the plugin routes it policed.
 What remains — `require-workspace-permission.ts` / `require-workspace-role-authority.ts`,
-and `GET /api/capabilities`'s **409** — resolves the caller's role **for the workspace named
+and `GET /api/capabilities`'s membership-scoped introspection — resolves the caller's role **for the workspace named
 in the request** (`resolveMembershipRole(workspaceId, userId)`) and refuses only when that
 one resolution is malformed. A caller with a malformed row in workspace A is refused there,
 but a request naming a different, healthy workspace B is decided on B's own row, not
@@ -454,7 +487,7 @@ kinds — the specs may use no other form, and the route-coverage test rejects a
 type Policy =
   | ({ capability: Capability; scope: Scope; scopeSource: ScopeSource;     // 1. capability, optionally satisfied by an owner or self-target branch
       reach: ReachRequirement; orOwner?: OwnerBranch; orSelfTarget?: SelfTargetBranch } & Flags)
-  | ({ authenticated: true; self: true; personParam: PersonParam } & Flags) // 2. the caller's own records only (/api/me/*)
+  | ({ authenticated: true; self: true; personParam: PersonParam; workspaceMembership?: true } & Flags) // 2. the caller's own records only (/api/me/*)
   | ({ portal: 'customer'; predicate: PortalPredicate } & Flags)           // 3. a customer session on /api/portal/*, scoped by predicate
   | ({ public: true; reason: string } & PublicFlags)                       // 4. unauthenticated, with a stated reason
   | ({ delegated: 'better-auth' | 'websocket' | 'metrics' | 'scim'; reason: string } & Flags); // 5. mounts outside the session model
@@ -481,6 +514,9 @@ type PublicFlags =
 // say "not applicable", and it has to be said out loud, with a reason.
 type ReachRequirement = 'required' | { exempt: 'no_single_resource'; reason: string };
 type PersonParam = string | { exempt: 'no_person_parameter'; reason: string };
+// `workspaceMembership: true` is a self-policy condition: the caller must have one
+// unambiguous persisted membership in the active workspace named by this route. It is not
+// satisfied by instance-admin reach, a role-name hint, or another workspace membership.
 
 type Scope = 'instance' | 'workspace' | 'project' | 'work_item' | 'organisation';
 // Where the scope id must legitimately come from. "row" — a route addressing one resource by
@@ -498,6 +534,15 @@ type OwnerPredicate = 'row.person_id === identity.personId' | 'row.created_by ==
 type BodyPredicate = 'body.assigneeId === identity.personId';
 type PortalPredicate = 'own_request' | 'own_organisation' | 'addressed_approval' | 'own_submission' | 'self';
 ```
+
+`GET /api/capabilities` is a self-introspection route. Its caller may read the boolean map
+for a workspace where they have one unambiguous persisted membership; the endpoint does not
+require any individual capability merely to report which capabilities are false. This keeps
+the response useful when a stored role is unknown or malformed, without granting that role
+any capability. Its self policy declares `workspaceMembership: true`; the native route also
+checks membership, so instance-admin global reach without a workspace membership is not
+enough. The strict shadow evaluator requires verified membership evidence from the exact
+requested workspace. Writes and all other routes keep their normal capability checks.
 
 Three fields in that block were tightened while the registry was built (#7, #21), because the
 document contradicted itself in each place:
@@ -682,7 +727,6 @@ answer. See [Security model](security-model.md).
 | Out of reach | **404** — the resource does not exist, as far as you are concerned |
 | In reach, insufficient capability | **403** — with the missing capability named |
 | Capability held, but the workflow has no legal transition for this actor | **409** — illegal transition, with the reason |
-| The caller's own membership row is malformed, so no authority can be read from it | **409** — `MALFORMED_MEMBERSHIP_ROLE`, with the `problem` (issue #82) |
 | Not authenticated | **401** |
 
 Returning `403` for out-of-reach would confirm that a record exists, which is a tenant

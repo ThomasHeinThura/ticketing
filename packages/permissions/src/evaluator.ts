@@ -820,6 +820,8 @@ export type PolicyContext = {
    * `NO_PERSON_PARAMETER` marker when the policy's `personParam` says none applies.
    */
   readonly targetPersonId?: string | NoPersonParameter | null;
+  /** Persisted membership in the exact workspace named by a self policy. */
+  readonly workspaceMembership?: boolean;
   /** For a kind-3 policy: whether the portal predicate scoped the query to this caller. A
    *  portal policy names a predicate in every case, so there is no "not applicable" to
    *  declare — an omitted or non-boolean value is refused, never allowed. */
@@ -990,6 +992,25 @@ export function evaluatePolicy(
         "targetPersonId",
         "This self route does not declare personParam — declare the parameter name or the no_person_parameter exemption",
       );
+    }
+    if (policy.workspaceMembership === true) {
+      if (
+        context.workspaceMembership !== true &&
+        context.workspaceMembership !== false
+      ) {
+        return DENY_CONTEXT_INCOMPLETE(
+          "workspaceMembership",
+          "This self route requires verified workspace membership, and the context did not supply it",
+        );
+      }
+      if (context.workspaceMembership === false) {
+        return {
+          allowed: false,
+          status: 403,
+          code: "forbidden",
+          reason: "Workspace membership is required",
+        };
+      }
     }
     return { allowed: true, requiresElevation };
   }
