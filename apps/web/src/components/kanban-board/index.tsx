@@ -19,9 +19,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { produce } from "immer";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
+import CreateTaskModal from "@/components/shared/modals/create-task-modal";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
@@ -61,7 +62,7 @@ type KanbanBoardProps = {
 function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { setProject } = useProjectStore();
+  const setProject = useProjectStore((state) => state.setProject);
   const displayPreferences = useUserPreferencesStore(
     useShallow((state) => ({
       showAssignees: state.showAssignees,
@@ -97,6 +98,8 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
   );
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
+  const [createTaskStatus, setCreateTaskStatus] = useState<string | null>(null);
+  const createTaskTriggerRef = useRef<HTMLButtonElement | null>(null);
   const { data: workspace } = useActiveWorkspace();
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
     workspace?.id ?? "",
@@ -126,6 +129,21 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
     },
     [navigate],
   );
+  const handleCreateTask = useCallback(
+    (status: string, trigger: HTMLButtonElement) => {
+      createTaskTriggerRef.current = trigger;
+      setCreateTaskStatus(status);
+    },
+    [],
+  );
+  const handleCloseCreateTask = useCallback(() => {
+    setCreateTaskStatus(null);
+    window.requestAnimationFrame(() => {
+      if (createTaskTriggerRef.current?.isConnected) {
+        createTaskTriggerRef.current.focus();
+      }
+    });
+  }, []);
   const allTasks = useMemo(
     () => project.columns?.flatMap((column) => column.tasks) ?? [],
     [project.columns],
@@ -397,6 +415,7 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                       workspaceUsersById={workspaceUsersById}
                       onContextMenuTask={openContextMenuForTask}
                       onOpenTask={handleOpenTask}
+                      onCreateTask={handleCreateTask}
                       t={t}
                     />
                   </div>
@@ -446,6 +465,12 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
       </DragOverlay>
 
       <BulkToolbar />
+      <CreateTaskModal
+        open={createTaskStatus !== null}
+        onClose={handleCloseCreateTask}
+        projectId={project.id}
+        status={createTaskStatus ?? undefined}
+      />
       {deleteTaskId ? (
         <TaskCardDeleteConfirmation
           taskId={deleteTaskId}
