@@ -43,6 +43,8 @@ export const generatedRouteMetadata = {
     "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
     "/dashboard/workspace/$workspaceId/search",
     "/dashboard/workspace/create",
+    "/god-mode/authentication",
+    "/god-mode/authentication/$id",
     "/god-mode/observability",
     "/invitation/accept/$inviteId",
     "/invitations",

@@ -224,6 +224,16 @@ export const routes = {
     build: (params: { id: string }) =>
       `/agent/settings/sla-policies/${encodeURIComponent(params.id)}`,
   },
+  /** `docs/03-features/identity-provisioning.md` God Mode connection settings. */
+  identityConnections: {
+    path: "/god-mode/authentication" as const,
+    build: () => "/god-mode/authentication",
+  },
+  identityConnectionSettings: {
+    path: "/god-mode/authentication/$id" as const,
+    build: (params: { id: string }) =>
+      `/god-mode/authentication/${encodeURIComponent(params.id)}`,
+  },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {
     path: "/agent/projects/$projectKey/work" as const,

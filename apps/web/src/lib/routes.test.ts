@@ -202,3 +202,18 @@ describe("routes.slaPolicies", () => {
     );
   });
 });
+
+describe("routes.identityConnections", () => {
+  it("keeps the God Mode list and connection editor directly addressable", () => {
+    expect(routes.identityConnections.build()).toBe("/god-mode/authentication");
+    expect(
+      routes.identityConnectionSettings.build({ id: "connection/a" }),
+    ).toBe("/god-mode/authentication/connection%2Fa");
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.identityConnections.path,
+    );
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.identityConnectionSettings.path,
+    );
+  });
+});
