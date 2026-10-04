@@ -24,6 +24,10 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
+vi.mock("./work-item-attachments", () => ({
+  default: () => null,
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, fallback?: string) => fallback ?? key,

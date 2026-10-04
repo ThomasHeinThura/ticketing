@@ -24,6 +24,7 @@ import {
   type WorkItemDetailField,
   type WorkItemDetailRow,
 } from "@/types/work-item";
+import WorkItemAttachments from "./work-item-attachments";
 import WorkItemDetailLoading from "./work-item-detail-loading";
 
 export type WorkItemDetailProps = {
@@ -250,6 +251,13 @@ function WorkItemDetail({
           </p>
         )}
       </section>
+
+      <Separator />
+
+      <WorkItemAttachments
+        workItemKey={item.key}
+        workspaceId={item.workspaceId}
+      />
 
       <Separator />
 
