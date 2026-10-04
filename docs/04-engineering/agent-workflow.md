@@ -233,6 +233,13 @@ pnpm test:e2e -- <relevant> # if the UI changed
 And then **actually open the screen** and use it. Automated checks are necessary and not
 sufficient.
 
+For long local suites, retain the complete output in a private evidence file before
+summarizing file/test counts. Tool-output truncation is not a reason to repeat an entire
+suite. Recover its retained report or failed-result cache; rerun only the unresolved failed
+files to diagnose them. After the complete remediation batch, run the verification required
+by its actual risk and the protected CI gates. Never weaken assertions or omit a required
+gate to reduce round trips.
+
 ---
 
 ## Skills
