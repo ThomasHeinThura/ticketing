@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   KbdSequence,
@@ -97,7 +96,6 @@ export default function TaskPropertiesSidebar({
   compact = false,
 }: TaskPropertiesSidebarProps) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const { data: fetchedTask } = useGetTask(
     taskId ?? "",
     selectTaskPropertiesSummary,
@@ -108,9 +106,6 @@ export default function TaskPropertiesSidebar({
     workspaceId,
   });
   const task = providedTask ?? fetchedTask;
-  const taskForMutation =
-    providedTask ??
-    (task ? queryClient.getQueryData<Task>(["task", task.id]) : undefined);
   const project = providedProject ?? fetchedProject;
   const {
     data: columns = [],
@@ -218,7 +213,7 @@ export default function TaskPropertiesSidebar({
 
             <TaskPropertiesControls
               task={task}
-              taskForMutation={taskForMutation}
+              taskForMutation={providedTask}
               columns={columns}
               workspaceUsers={workspaceUsers}
               compact
@@ -343,7 +338,7 @@ export default function TaskPropertiesSidebar({
 
             <TaskPropertiesControls
               task={task}
-              taskForMutation={taskForMutation}
+              taskForMutation={providedTask}
               columns={columns}
               workspaceUsers={workspaceUsers}
               compact={false}

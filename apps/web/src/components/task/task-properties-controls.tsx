@@ -9,6 +9,7 @@ import TaskPriorityPopover from "@/components/task/task-priority-popover";
 import TaskStartDatePopover from "@/components/task/task-start-date-popover";
 import TaskStatusPopover from "@/components/task/task-status-popover";
 import type { useGetColumns } from "@/hooks/queries/column/use-get-columns";
+import useGetTask from "@/hooks/queries/task/use-get-task";
 import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { cn } from "@/lib/cn";
 import { getColumnIcon } from "@/lib/column";
@@ -71,8 +72,14 @@ export default function TaskPropertiesControls({
     (key: string) => (ready ? t(key, { lng: language }) : key),
     [t, ready, language],
   );
+  const { data: fetchedTask } = useGetTask(
+    task?.id ?? "",
+    undefined,
+    Boolean(task?.id),
+  );
+  const latestTask = fetchedTask ?? taskForMutation;
   const taskRef = useRef(taskForMutation);
-  taskRef.current = taskForMutation;
+  taskRef.current = latestTask;
   const taskId = task?.id;
   const status = task?.status;
   const priority = task?.priority;
@@ -239,7 +246,7 @@ export default function TaskPropertiesControls({
     );
   }, [taskId, dueDate, status, columns, compact, startDate, translate]);
 
-  if (!task || !taskForMutation) return null;
+  if (!task || !latestTask) return null;
 
   return (
     <div
