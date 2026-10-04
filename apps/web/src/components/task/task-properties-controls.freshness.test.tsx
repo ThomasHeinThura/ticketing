@@ -173,10 +173,10 @@ function mount(currentTask: Task) {
   });
   queryClient.setQueryData(["task", currentTask.id], currentTask);
   mocks.getTask.mockResolvedValue(currentTask);
-  const controls = (value: Task) => (
+  const controls = (taskId: string) => (
     <>
       <TaskPropertiesControls
-        task={value}
+        taskId={taskId}
         columns={[]}
         workspaceUsers={{ members: [] }}
         compact={false}
@@ -188,7 +188,7 @@ function mount(currentTask: Task) {
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
-  const view = render(controls(currentTask), { wrapper });
+  const view = render(controls(currentTask.id), { wrapper });
   return { queryClient, controls, ...view };
 }
 
@@ -199,6 +199,30 @@ function startDateButton(buttons: Array<HTMLElement>) {
 }
 
 describe("WI-7a: task property mutation freshness", () => {
+  it("updates the controls from their focused property subscription", async () => {
+    const { queryClient } = mount(task);
+    await screen.findByRole("button", { name: "backlog" });
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["task", task.id])?.fetchStatus).toBe(
+        "idle",
+      ),
+    );
+
+    await act(async () => {
+      queryClient.setQueryData(["task", task.id], {
+        ...task,
+        status: "in-progress",
+        version: 2,
+      });
+    });
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "in-progress" }),
+      ).toBeInTheDocument(),
+    );
+  });
+
   it("uses the full task cache version after an omitted description update", async () => {
     const { queryClient } = mount(task);
     const dateButtons = await screen.findAllByRole("button", {
@@ -251,7 +275,7 @@ describe("WI-7a: task property mutation freshness", () => {
     };
     queryClient.setQueryData(["task", nextTask.id], nextTask);
     mocks.getTask.mockResolvedValue(nextTask);
-    rerender(controls(nextTask));
+    rerender(controls(nextTask.id));
 
     fireEvent.click(
       startDateButton(

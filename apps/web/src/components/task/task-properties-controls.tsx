@@ -43,6 +43,7 @@ type TaskPropertiesSummary = Pick<
 >;
 
 type TaskPropertiesControlsProps = {
+  taskId?: string;
   task?: TaskPropertiesSummary;
   taskForMutation?: Task;
   columns: ColumnData;
@@ -55,9 +56,22 @@ type TaskPropertiesControlsProps = {
 const buttonClass = (compact: boolean) =>
   cn("justify-start h-7 px-1.5 gap-1.5", !compact && "lg:w-full");
 
-const selectTaskId = (currentTask: Task) => currentTask.id;
+const selectTaskPropertiesSummary = (currentTask: Task) => ({
+  id: currentTask.id,
+  projectId: currentTask.projectId,
+  number: currentTask.number,
+  title: currentTask.title,
+  status: currentTask.status,
+  priority: currentTask.priority,
+  userId: currentTask.userId,
+  assigneeId: currentTask.assigneeId,
+  assigneeName: currentTask.assigneeName,
+  startDate: currentTask.startDate,
+  dueDate: currentTask.dueDate,
+});
 
 export default function TaskPropertiesControls({
+  taskId: taskIdProp,
   task,
   taskForMutation,
   columns,
@@ -75,14 +89,19 @@ export default function TaskPropertiesControls({
     (key: string) => (ready ? t(key, { lng: language }) : key),
     [t, ready, language],
   );
-  useGetTask(task?.id ?? "", selectTaskId, Boolean(task?.id));
+  const taskId = task?.id ?? taskIdProp ?? taskForMutation?.id;
+  const { data: queriedTask } = useGetTask(
+    taskId ?? "",
+    selectTaskPropertiesSummary,
+    Boolean(taskId) && !task,
+  );
+  const propertiesTask = task ?? queriedTask;
   const queryClient = useQueryClient();
-  const taskRef = useRef(taskForMutation);
-  const taskId = task?.id;
+  const taskRef = useRef(taskForMutation ?? (task as Task | undefined));
   const cachedTask = taskId
     ? queryClient.getQueryData<Task>(["task", taskId])
     : undefined;
-  taskRef.current = cachedTask ?? taskForMutation;
+  taskRef.current = cachedTask ?? taskForMutation ?? (task as Task | undefined);
 
   useEffect(() => {
     if (!taskId) return;
@@ -102,12 +121,12 @@ export default function TaskPropertiesControls({
       }
     });
   }, [queryClient, taskId]);
-  const status = task?.status;
-  const priority = task?.priority;
-  const userId = task?.userId;
-  const assigneeName = task?.assigneeName;
-  const startDate = task?.startDate;
-  const dueDate = task?.dueDate;
+  const status = propertiesTask?.status;
+  const priority = propertiesTask?.priority;
+  const userId = propertiesTask?.userId;
+  const assigneeName = propertiesTask?.assigneeName;
+  const startDate = propertiesTask?.startDate;
+  const dueDate = propertiesTask?.dueDate;
   const statusControl = useMemo(() => {
     const latestTask = taskRef.current;
     if (!taskId || !latestTask) return null;
@@ -267,7 +286,7 @@ export default function TaskPropertiesControls({
     );
   }, [taskId, dueDate, status, columns, compact, startDate, translate]);
 
-  if (!task || !taskRef.current) return null;
+  if (!propertiesTask || !taskRef.current) return null;
 
   return (
     <div
