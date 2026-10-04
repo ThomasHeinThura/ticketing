@@ -19,7 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { produce } from "immer";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import CreateTaskModal from "@/components/shared/modals/create-task-modal";
@@ -483,4 +483,4 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
   );
 }
 
-export default KanbanBoard;
+export default memo(KanbanBoard);

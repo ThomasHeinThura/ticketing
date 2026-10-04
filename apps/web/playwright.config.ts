@@ -3,6 +3,9 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
+  // Real-runtime journeys create and tear down Testcontainers networks. Keep
+  // those network mutations isolated from mock-only browser tests on this host.
+  workers: 1,
   testIgnore: ["visual.spec.ts", "storybook-visual.spec.ts"],
   forbidOnly: true,
   retries: 0,

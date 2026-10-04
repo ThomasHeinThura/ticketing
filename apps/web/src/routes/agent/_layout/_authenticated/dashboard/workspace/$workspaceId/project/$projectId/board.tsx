@@ -167,6 +167,12 @@ function RouteComponent() {
     window.requestAnimationFrame(() => boardSearchInput?.focus());
   }, [isBoardSearchMounted, boardSearchInput]);
 
+  // The query result is renderable before the effect synchronizes the shared
+  // project store. Use it for first paint when the store has no project (or a
+  // different route's project), while retaining same-project optimistic edits.
+  const queriedProject = data?.id === projectId ? data : undefined;
+  const boardSourceProject =
+    project?.id === projectId ? project : queriedProject;
   const {
     filters,
     updateFilter,
@@ -174,7 +180,11 @@ function RouteComponent() {
     filteredProject,
     hasActiveFilters,
     clearFilters,
-  } = useTaskFiltersWithLabelsSupport(project, projectId, boardSearchQuery);
+  } = useTaskFiltersWithLabelsSupport(
+    boardSourceProject,
+    projectId,
+    boardSearchQuery,
+  );
 
   const sortedProject = useMemo(() => {
     if (!filteredProject || sort.field === "position") return filteredProject;

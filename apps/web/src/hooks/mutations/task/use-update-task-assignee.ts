@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import updateTaskAssignee from "@/fetchers/task/update-task-assignee";
 import type Task from "@/types/task";
+import { invalidateTaskFieldQueries } from "./invalidate-task-field-queries";
 import {
   isCurrentTaskFieldMutationVersion,
   nextTaskFieldMutationVersion,
@@ -63,20 +64,11 @@ export function useUpdateTaskAssignee() {
       );
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["tasks", variables.projectId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["notifications"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["projects"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["activities", variables.id],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["task-relations"],
+      invalidateTaskFieldQueries(queryClient, {
+        projectId: variables.projectId,
+        taskId: variables.id,
+        // Assignment does not affect project-level completion statistics.
+        projectStatisticsChanged: false,
       });
     },
     onSettled: (_data, _error, task) => {
