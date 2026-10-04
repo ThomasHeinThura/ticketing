@@ -22,6 +22,12 @@ import {
   type WorkItemSortField,
 } from "@/lib/routes";
 
+function preloadCreateWorkItemDialog() {
+  void import("@/components/work-item/create-work-item-dialog").catch(
+    () => undefined,
+  );
+}
+
 /**
  * `docs/02-design/screen-inventory.md` "Work — list" (P1), the first v2 work-item
  * screen -- decision log "2026-09-23 · P1's UI path: new v2 work-item screens on the new
@@ -157,6 +163,8 @@ function WorkItemsRouteComponent() {
           {project && !isCheckingPermissions && canCreateTasks() ? (
             <Button
               size="sm"
+              onPointerEnter={preloadCreateWorkItemDialog}
+              onFocus={preloadCreateWorkItemDialog}
               onClick={() => setIsCreateOpen(true)}
               data-testid="create-work-item-trigger"
             >
