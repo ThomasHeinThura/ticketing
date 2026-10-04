@@ -11,6 +11,7 @@ import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { invalidateNativeAuthorization } from "../ws";
 import {
   isCurrentInstanceAdmin,
   notifyCurrentInstanceAdminsOfAuditFailure,
@@ -189,6 +190,8 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
   if (transactionResult.kind === "denied")
     throw new HTTPException(403, { message: "step_up_unavailable" });
   const wasEnabled = transactionResult.wasEnabled;
+
+  await invalidateNativeAuthorization({ userId: id });
 
   await appendAuditLog(db, {
     action: "auth.mfa_reset",

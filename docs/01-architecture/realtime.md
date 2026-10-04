@@ -206,6 +206,18 @@ replica also polls the relevant `config_version` every 10 s, so a deployment wit
 converges within the poll interval rather than silently diverging
 ([auth-runtime-reconfiguration.md](auth-runtime-reconfiguration.md)).
 
+`identity.invalidate` is a private control message used by native work-item WebSockets after
+committed authority changes. Its strict payload is `{ type: "identity.invalidate", userId?,
+workspaceId?, projectId? }`; at least one target is required. Identifiers are internal routing
+keys only and are never forwarded to browser sockets or logged. `userId` causes connections for
+that person to reauthenticate immediately; `workspaceId` and `projectId` cause matching topic
+subscriptions to be reauthorized and denied topics to be dropped. Publishers emit it only
+after the corresponding session, membership, role, or project mutation commits. A control
+message received before the mutation is visible is harmless because authorization is re-read
+from PostgreSQL, and the 60-second refresh remains the recovery floor if publication is lost.
+The in-memory adapter delivers within one process; the Valkey adapter uses `taskdesk:control`
+for cross-replica delivery. This is control traffic, not a domain event or durable outbox row.
+
 ## Connection management
 
 | Concern | Handling |

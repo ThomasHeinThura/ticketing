@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable } from "../../database/schema";
+import { invalidateNativeAuthorization } from "../../ws";
 
 async function unarchiveProject(id: string, workspaceId: string) {
   const [existingProject] = await db
@@ -37,6 +38,8 @@ async function unarchiveProject(id: string, workspaceId: string) {
       message: "Failed to unarchive project",
     });
   }
+
+  await invalidateNativeAuthorization({ projectId: id });
 
   return unarchivedProject;
 }

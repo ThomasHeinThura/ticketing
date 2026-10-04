@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import type { ClientRequest, IncomingMessage } from "node:http";
 import { request as httpRequest } from "node:http";
@@ -12,6 +12,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { auth, portalAuth } from "../../apps/api/src/auth";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp, createNodeServer } from "../../apps/api/src/index";
+import archiveProject from "../../apps/api/src/project/controllers/archive-project";
+import { createWorkItem } from "../../apps/api/src/work-item/controllers/create-work-item";
 import { recordWorkItemEvent } from "../../apps/api/src/work-item/native-event";
 import {
   broadcastNativeWorkItemHint,
@@ -20,6 +22,7 @@ import {
   initializeWebSocketAdapter,
   shutdownWebSocketAdapter,
 } from "../../apps/api/src/ws";
+import { authorizeNativeTopic } from "../../apps/api/src/ws/native-work-item-realtime";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
@@ -27,7 +30,12 @@ import {
   createProjectFixture,
   createWorkspaceMember,
   prepareAuthenticatedApiFixture,
+  requireRow,
 } from "./helpers/fixtures";
+import { signUpUser } from "./helpers/organization-http";
+import { inviteAndAcceptAsNewMemberNative } from "./helpers/workspace-invitation-write-http";
+import { removeWorkspaceMemberNative } from "./helpers/workspace-membership-write-http";
+import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 interface TestSocket {
   readyState: number;
@@ -397,6 +405,160 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     } else {
       process.env.TASKDESK_AGENT_URL = originalAgentUrl;
     }
+  });
+
+  it("denies native project and work-item topics after their project is archived", async () => {
+    const member = await createWorkspaceMember();
+    const project = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    const type = requireRow(
+      await db
+        .insert(schema.workItemTypeTable)
+        .values({
+          workspaceId: member.workspace.id,
+          key: `realtime-${randomUUID()}`,
+          name: "Realtime test item",
+          category: "service",
+        })
+        .returning(),
+      "native realtime archived project type",
+    );
+    const template = requireRow(
+      await db
+        .insert(schema.stateTemplateTable)
+        .values({
+          workspaceId: member.workspace.id,
+          key: `realtime-state-${randomUUID()}`,
+          name: "Open",
+          group: "backlog",
+        })
+        .returning(),
+      "native realtime archived project state template",
+    );
+    await db.insert(schema.stateTable).values({
+      projectId: project.project.id,
+      stateTemplateId: template.id,
+      isDefault: true,
+    });
+    const item = await createWorkItem({
+      projectId: project.project.id,
+      workspaceId: member.workspace.id,
+      typeId: type.id,
+      title: "Realtime archive guard",
+      actorId: member.user.id,
+      actorType: "person",
+    });
+    const credential = {
+      userId: member.user.id,
+      portal: "agent" as const,
+    };
+
+    await expect(
+      authorizeNativeTopic(credential, `project:${project.project.id}`),
+    ).resolves.not.toBeNull();
+    await expect(
+      authorizeNativeTopic(credential, `work_item:${item.key}`),
+    ).resolves.not.toBeNull();
+
+    await archiveProject(project.project.id, member.workspace.id);
+
+    await expect(
+      authorizeNativeTopic(credential, `project:${project.project.id}`),
+    ).resolves.toBeNull();
+    await expect(
+      authorizeNativeTopic(credential, `work_item:${item.key}`),
+    ).resolves.toBeNull();
+  });
+
+  it("drops an archived project subscription on its committed invalidation", async () => {
+    const member = await createWorkspaceMember();
+    const project = await createProjectFixture({
+      workspaceId: member.workspace.id,
+    });
+    mockAuthenticatedSession(member.user);
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const socket = await openSocket(websocketUrl(node.server, "/api/ws"), {
+      host: "localhost:1337",
+      origin: "http://localhost:1337",
+      cookie: "__Host-tdk_agent_session=integration-session",
+    });
+    const subscribed = nextMessage(socket);
+    socket.send(
+      JSON.stringify({
+        type: "subscribe",
+        topic: `project:${project.project.id}`,
+      }),
+    );
+    await expect(subscribed).resolves.toEqual({
+      type: "subscribed",
+      topic: `project:${project.project.id}`,
+    });
+
+    const denied = nextMessage(socket);
+    await archiveProject(project.project.id, member.workspace.id);
+    await expect(denied).resolves.toEqual({ type: "subscription_denied" });
+
+    const closed = new Promise<void>((resolve) =>
+      socket.once("close", () => resolve()),
+    );
+    socket.close();
+    await closed;
+  });
+
+  it("drops a removed member's native topic after the committed membership change", async () => {
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const owner = await signUpUser(app);
+    const workspaceResponse = await createWorkspaceNative(app, owner.cookie, {
+      name: "Realtime membership invalidation",
+    });
+    expect(workspaceResponse.status).toBe(200);
+    const workspace = (await workspaceResponse.json()) as { id: string };
+    const member = await inviteAndAcceptAsNewMemberNative(
+      app,
+      owner.cookie,
+      workspace.id,
+      "member",
+    );
+    const project = await createProjectFixture({ workspaceId: workspace.id });
+    const socket = await openSocket(websocketUrl(node.server, "/api/ws"), {
+      host: "localhost:1337",
+      origin: "http://localhost:1337",
+      cookie: member.cookie,
+    });
+    const subscribed = nextMessage(socket);
+    socket.send(
+      JSON.stringify({
+        type: "subscribe",
+        topic: `project:${project.project.id}`,
+      }),
+    );
+    await expect(subscribed).resolves.toEqual({
+      type: "subscribed",
+      topic: `project:${project.project.id}`,
+    });
+
+    const denied = nextMessage(socket);
+    const removed = await removeWorkspaceMemberNative(
+      app,
+      owner.cookie,
+      workspace.id,
+      member.user.id,
+    );
+    expect(removed.status).toBe(200);
+    await expect(denied).resolves.toEqual({ type: "subscription_denied" });
+
+    const closed = new Promise<void>((resolve) =>
+      socket.once("close", () => resolve()),
+    );
+    socket.close();
+    await closed;
   });
 
   it("authorizes native topics and fans out only key-only hints to subscribed clients", async () => {
@@ -1056,11 +1218,9 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       origin: "http://localhost:1337",
       cookie: firstCookie,
     });
-    const closed = new Promise<void>((resolve) =>
+    const liveSocketClosed = new Promise<void>((resolve) =>
       liveSocket.once("close", () => resolve()),
     );
-    liveSocket.close();
-    await closed;
 
     expect(
       await rejectHandshake(url, {
@@ -1168,6 +1328,7 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       { cookie: firstCookie },
     );
     expect(logout.status).toBe(200);
+    await expect(liveSocketClosed).resolves.toBeUndefined();
     expect(
       await rejectHandshake(url, {
         host: "localhost:1337",

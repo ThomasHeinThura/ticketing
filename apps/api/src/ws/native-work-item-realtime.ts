@@ -2,9 +2,13 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { WSContext } from "hono/ws";
 import { z } from "zod";
 import db, { schema } from "../database";
+import { logTaskDesk } from "../instance/observability/runtime";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
-import type { NativeBroadcastMessage } from "./broadcast-adapter";
+import type {
+  NativeAuthorizationInvalidation,
+  NativeBroadcastMessage,
+} from "./broadcast-adapter";
 
 type NativeCredential = {
   userId: string;
@@ -17,7 +21,10 @@ type NativeConnection = {
   ws: WSContext;
   credential: NativeCredential;
   reauthenticate: () => Promise<NativeCredential | null>;
-  topics: Map<string, { projectId: string; customerVisible: boolean }>;
+  topics: Map<
+    string,
+    { projectId: string; workspaceId: string; customerVisible: boolean }
+  >;
   frameTimes: number[];
   reauthTimer: ReturnType<typeof setInterval>;
 };
@@ -34,6 +41,20 @@ const clientFrameSchema = z.discriminatedUnion("type", [
   unsubscribeSchema,
   pingSchema,
 ]);
+const authorizationInvalidationSchema = z
+  .object({
+    type: z.literal("identity.invalidate"),
+    userId: z.string().min(1).max(256).optional(),
+    workspaceId: z.string().min(1).max(256).optional(),
+    projectId: z.string().min(1).max(256).optional(),
+  })
+  .strict()
+  .refine(
+    (message) =>
+      message.userId !== undefined ||
+      message.workspaceId !== undefined ||
+      message.projectId !== undefined,
+  );
 const nativeConnections = new Set<NativeConnection>();
 const MAX_FRAME_BYTES = 8 * 1024;
 const MAX_TOPICS = 50;
@@ -53,8 +74,13 @@ function send(connection: NativeConnection, message: Record<string, unknown>) {
       return;
     }
     connection.ws.send(JSON.stringify(message));
-  } catch (error) {
-    console.error("Failed to send realtime frame:", error);
+  } catch {
+    logTaskDesk({
+      module: "realtime",
+      message: "realtime.failure",
+      level: "error",
+      result: "failed",
+    });
     connection.ws.close(1011, "realtime delivery failed");
   }
 }
@@ -62,7 +88,11 @@ function send(connection: NativeConnection, message: Record<string, unknown>) {
 export async function authorizeNativeTopic(
   credential: NativeCredential,
   topic: string,
-): Promise<{ projectId: string; customerVisible: boolean } | null> {
+): Promise<{
+  projectId: string;
+  workspaceId: string;
+  customerVisible: boolean;
+} | null> {
   if (!credential.userId) return null;
   if (topic.startsWith("project:")) {
     const projectId = topic.slice("project:".length);
@@ -101,7 +131,11 @@ export async function authorizeNativeTopic(
       !credential.apiKeyPermissions.work_item?.includes("read")
     )
       return null;
-    return { projectId, customerVisible: true };
+    return {
+      projectId,
+      workspaceId: project.workspaceId,
+      customerVisible: true,
+    };
   }
 
   if (topic.startsWith("work_item:")) {
@@ -123,6 +157,7 @@ export async function authorizeNativeTopic(
           isNull(schema.workItemTable.archivedAt),
           isNull(schema.workItemTable.deletedAt),
           isNull(schema.projectTable.deletedAt),
+          isNull(schema.projectTable.archivedAt),
         ),
       )
       .limit(1);
@@ -146,7 +181,11 @@ export async function authorizeNativeTopic(
       !credential.apiKeyPermissions.work_item?.includes("read")
     )
       return null;
-    return { projectId: item.projectId, customerVisible: true };
+    return {
+      projectId: item.projectId,
+      workspaceId: item.workspaceId,
+      customerVisible: true,
+    };
   }
   return null;
 }
@@ -259,10 +298,37 @@ export async function reauthorizeNativeConnection(
         connection.topics.set(topic, authorized);
       }
     }
-  } catch (error) {
-    console.error("Realtime authorization refresh failed:", error);
+  } catch {
+    logTaskDesk({
+      module: "realtime",
+      message: "realtime.failure",
+      level: "error",
+      result: "failed",
+    });
     connection.ws.close(1008, "session expired");
     removeNativeConnection(connection);
+  }
+}
+
+export async function handleNativeAuthorizationInvalidation(
+  input: unknown,
+): Promise<void> {
+  const parsed = authorizationInvalidationSchema.safeParse(input);
+  if (!parsed.success) return;
+  const message: NativeAuthorizationInvalidation = parsed.data;
+  for (const connection of nativeConnections) {
+    if (message.userId && connection.credential.userId !== message.userId) {
+      continue;
+    }
+    if (message.workspaceId || message.projectId) {
+      const matches = [...connection.topics.values()].some(
+        (topic) =>
+          (!message.workspaceId || topic.workspaceId === message.workspaceId) &&
+          (!message.projectId || topic.projectId === message.projectId),
+      );
+      if (!matches) continue;
+    }
+    await reauthorizeNativeConnection(connection);
   }
 }
 

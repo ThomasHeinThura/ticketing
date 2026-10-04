@@ -95,7 +95,7 @@ requires fresh session-only operation-bound step-up. The route registry, OpenAPI
 permission matrix, and implementation tests must agree. The candidate includes the `/god-mode/observability` screen for log levels, local-factor policy, and metrics-token rotation; browser evidence and integrated acceptance remain pending.
 
 Per-module levels are a closed document with `default` and `modules` only. Initial module
-keys are `http`, `auth`, `database`, `jobs`, `audit`, and `plugins`; each level is one of
+keys are `http`, `auth`, `database`, `jobs`, `audit`, `plugins`, and `realtime`; each level is one of
 `error`, `warn`, `info`, or `debug`. All modules start at `info`, which keeps production
 debug logging off. Validate on write and when reading persisted settings; invalid persisted
 shape prevents readiness. Serving replicas refresh the complete validated snapshot at most
@@ -122,6 +122,7 @@ the [runbook](../05-operations/runbook.md).
 
 The finite structured log `msg` values are `http.request`, `auth.failure`,
 `database.failure`, `jobs.failure`, `audit.write_failure`, `plugins.failure`,
+`realtime.failure`,
 `observability.config_refresh_failure`, and `observability.listener_bind_failure`.
 Callers cannot supply arbitrary message text. The `route` field uses an actual registered
 method-and-template pair; a request that cannot be matched is recorded as the finite `unmatched`

@@ -23,6 +23,7 @@ export const LOG_MESSAGES = [
   "jobs.failure",
   "audit.write_failure",
   "plugins.failure",
+  "realtime.failure",
   "observability.config_refresh_failure",
   "observability.listener_bind_failure",
 ] as const;

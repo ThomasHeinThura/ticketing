@@ -11,6 +11,7 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAuthenticatedSession } from "./helpers/auth";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 
 const apiRequire = createRequire(
@@ -38,6 +39,90 @@ beforeEach(async () => {
 });
 
 describe("instance local-factor policy API", () => {
+  it("persists the realtime log-level module while accepting older module snapshots", async () => {
+    const [admin] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "factor-realtime-settings-admin",
+        name: "Realtime Settings Admin",
+        email: "factor-realtime-settings-admin@example.test",
+        role: "admin",
+      })
+      .returning();
+    if (!admin) throw new Error("realtime settings admin was not created");
+    await ensureStaffPersonForUser(admin.id);
+    mockAuthenticatedSession(admin);
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: `session-${admin.id}`,
+      token: `token-${admin.id}`,
+      userId: admin.id,
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60 * 60_000),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const legacyLevels = {
+      default: "warn",
+      modules: {
+        http: "info",
+        auth: "info",
+        database: "info",
+        jobs: "info",
+        audit: "info",
+        plugins: "info",
+      },
+    } as const;
+    await db
+      .update(schema.instanceSettingTable)
+      .set({ observabilityLogLevels: legacyLevels })
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    const [before] = await db
+      .select({
+        version: schema.instanceSettingTable.observabilityConfigVersion,
+      })
+      .from(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    if (!before) throw new Error("instance settings were not initialized");
+
+    const cookie = `__Host-tdk_agent_session=token-${admin.id}`;
+    const { app } = createApp();
+    const response = await csrfRequest(
+      app,
+      "/api/instance/observability",
+      {
+        method: "PATCH",
+        headers: { cookie, "content-type": "application/json" },
+        body: JSON.stringify({
+          version: before.version,
+          logLevels: {
+            default: "warn",
+            modules: { ...legacyLevels.modules, realtime: "debug" },
+          },
+        }),
+      },
+      cookie,
+    );
+
+    expect(response.status).toBe(200);
+    expect(
+      (
+        (await response.json()) as {
+          logLevels: { modules: Record<string, string> };
+        }
+      ).logLevels.modules.realtime,
+    ).toBe("debug");
+    const [stored] = await db
+      .select({ logLevels: schema.instanceSettingTable.observabilityLogLevels })
+      .from(schema.instanceSettingTable)
+      .where(eq(schema.instanceSettingTable.id, "singleton"));
+    expect(stored?.logLevels).toMatchObject({
+      default: "warn",
+      modules: { realtime: "debug" },
+    });
+  });
+
   it("applies evaluator key ceilings and refuses impersonation for admin settings", async () => {
     const [admin] = await db
       .insert(schema.userTable)
@@ -102,6 +187,7 @@ describe("instance local-factor policy API", () => {
             jobs: "debug",
             audit: "debug",
             plugins: "debug",
+            realtime: "debug",
           },
         },
       }),

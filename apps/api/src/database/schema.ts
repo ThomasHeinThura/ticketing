@@ -806,7 +806,7 @@ export const instanceSettingTable = pgTable(
           and jsonb_typeof(${table.observabilityLogLevels}->'default') = 'string'
           and ${table.observabilityLogLevels}->>'default' in ('error', 'warn', 'info', 'debug')
           and jsonb_typeof(${table.observabilityLogLevels}->'modules') = 'object'
-          and not (((${table.observabilityLogLevels}->'modules') - array['http', 'auth', 'database', 'jobs', 'audit', 'plugins']::text[]) <> '{}'::jsonb)
+          and not (((${table.observabilityLogLevels}->'modules') - array['http', 'auth', 'database', 'jobs', 'audit', 'plugins', 'realtime']::text[]) <> '{}'::jsonb)
           and not jsonb_path_exists(${table.observabilityLogLevels}, '$.modules.* ? (@ != \"error\" && @ != \"warn\" && @ != \"info\" && @ != \"debug\")')
         else false
       end`,

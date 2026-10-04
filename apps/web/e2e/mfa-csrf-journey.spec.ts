@@ -23,7 +23,14 @@ test.describe("P0 MFA and CSRF browser journey", () => {
       await page.getByLabel("Full name").fill("Disposable MFA Admin");
       await page.getByLabel("Email").fill(email);
       await page.locator('input[autocomplete="new-password"]').fill(password);
+      const signUpResponsePromise = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === "/api/auth/sign-up/email" &&
+          response.request().method() === "POST",
+      );
       await page.getByRole("button", { name: "Create account" }).click();
+      const signUpResponse = await signUpResponsePromise;
+      expect(signUpResponse.status()).toBe(200);
       await expect(page).toHaveURL(/\/onboarding(?:\?|$)/);
       await page.getByLabel("Workspace name").fill("Disposable MFA Workspace");
       await page.getByRole("button", { name: "Create workspace" }).click();
@@ -123,9 +130,17 @@ test.describe("P0 MFA and CSRF browser journey", () => {
       type ObservabilitySnapshot = {
         logLevels: {
           default: LogLevel;
-          modules: Record<
-            "http" | "auth" | "database" | "jobs" | "audit" | "plugins",
-            LogLevel
+          modules: Partial<
+            Record<
+              | "http"
+              | "auth"
+              | "database"
+              | "jobs"
+              | "audit"
+              | "plugins"
+              | "realtime",
+              LogLevel
+            >
           >;
         };
         version: number;
@@ -148,6 +163,10 @@ test.describe("P0 MFA and CSRF browser journey", () => {
       const initialSettings = await readSettings();
       const changedDefault =
         initialSettings.logLevels.default === "error" ? "warn" : "error";
+      const initialRealtime =
+        initialSettings.logLevels.modules.realtime ??
+        initialSettings.logLevels.default;
+      const changedRealtime = initialRealtime === "debug" ? "info" : "debug";
 
       await page.goto(new URL("/god-mode/observability", origin).toString());
       const defaultLevel = page.getByLabel("Default level");
@@ -171,6 +190,21 @@ test.describe("P0 MFA and CSRF browser journey", () => {
       expect(changedSettings.logLevels.default).toBe(changedDefault);
       expect(changedSettings.version > initialSettings.version).toBe(true);
 
+      const realtimeLevel = page.getByLabel("realtime");
+      await realtimeLevel.click();
+      await page
+        .getByRole("option", { name: changedRealtime, exact: true })
+        .click();
+      await realtimeLevel.press("Escape");
+      await saveLogLevels();
+      const changedRealtimeSettings = await readSettings();
+      expect(changedRealtimeSettings.logLevels.modules.realtime).toBe(
+        changedRealtime,
+      );
+      expect(changedRealtimeSettings.version > changedSettings.version).toBe(
+        true,
+      );
+
       await defaultLevel.click();
       await page
         .getByRole("option", {
@@ -179,9 +213,20 @@ test.describe("P0 MFA and CSRF browser journey", () => {
         })
         .click();
       await saveLogLevels();
+      await realtimeLevel.click();
+      await page
+        .getByRole("option", { name: initialRealtime, exact: true })
+        .click();
+      await realtimeLevel.press("Escape");
+      await saveLogLevels();
       const restoredSettings = await readSettings();
-      expect(restoredSettings.logLevels).toEqual(initialSettings.logLevels);
-      expect(restoredSettings.version > changedSettings.version).toBe(true);
+      expect(restoredSettings.logLevels.default).toBe(
+        initialSettings.logLevels.default,
+      );
+      expect(restoredSettings.logLevels.modules.realtime).toBe(initialRealtime);
+      expect(restoredSettings.version > changedRealtimeSettings.version).toBe(
+        true,
+      );
 
       const csrfResponse = await page.request.get(
         new URL("/api/me/csrf-token", origin).toString(),
