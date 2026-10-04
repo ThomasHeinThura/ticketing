@@ -1,3 +1,45 @@
+## P0 full structural source completed; hosted verification next — 2026-10-04 22:11 UTC
+
+Complete source **4a4969108d6753c4d6439ad423dd24b0f87a558d** adds the immediately
+accessible lazy-form dialog shell, memoized full list rows/board card lists, and immediate
+assignment optimism with cancellation-before-request/stale-result protection. It passes
+**3 files/30 focused tests**, both builds/types, three scoped browser journeys and one
+local canonical **22/22** on a staged tree equal to its commit. The unchanged500-row
+semantics test retains its15-second timeout. These are local author results, not hosted
+acceptance. The standalone task-details state path receives its own completed structural
+subscriber split at **ed8f9f4ff9c79c90f5d8e4d74453e223b615795c**: sidebar chrome remains
+asleep on property changes while controls retain current property/full-task mutation data.
+Exact scoped verification passes **5 files/21 tests**, types/Biome/both builds, legacy
+status benchmark **1/1,79.3ms**, version-freshness **1/1**, board smoke **1/1**. No full
+canonical rerun is claimed for the supplement. Both sources are normally composed into
+the P0 integration branch before one publication and current hosted verification. Public
+author packet: `security-reviews/579-p0-author-performance-4a496910.md`.
+
+P3 shared IP15 person-lifecycle batch **877fd3f89babf08da7e67de88a59bb082b61b98d** is
+clean/pushed: person-wide grant retirement, current native API-key/session revocation,
+SCIM-specific identity state/events and keep-memberships reprojection. Persisted focused
+tests **1 file/9 tests**, four API typechecks, Biome and no-change schema generation pass.
+Forward0099 extends the TEXT CHECK with registered person_deactivated; no nonexistent MCP
+store is claimed covered. Its next complete provisioning-history read/UI batch proceeds
+on separately registered safe DTO/pagination contracts. P4 Users contracts remain
+bc858440, with implementation resuming after the P0 source checkpoint.
+
+Latest published f4 hosted G11 remains **16/22 FAIL**, unit/component **416/417**; these
+are not cleared by local proof. Current bulk review/Sol, hosted CI, image/boot, G11
+protection/protected acceptance and the additional Sol phase finalizer remain pending.
+Accepted main **8ddb9de8** and reviewed OrbStack DEV **b8d0bbc4** are unchanged. October4
+is one partial actual clean bucket; remainingOctober5/6 observations follow Thomas's
+three-date rule, which replaces stale seven-day text in the Blocked section. Human
+review remains P4. No phase completion or waiver is claimed.
+
+## P0 exact hosted result and runtime proof; measured structural remediation — 2026-10-04 21:20 UTC
+
+Published clean candidate **f4f37ef54c7c8b462a90a05998abadb7033911ad**, full hosted run **37234317528**, completes with G4, G8, protected-route E2E and PostgreSQL **136 files / 1,649 tests / 5 tasks** passing. G11 fails **16/22**: list **540.2/500 ms**, LCP **2,556/2,500 ms**, state **329.9/200 ms**, assignment **337.0/200 ms**, board **733.2/500 ms**, and create dialog remains absent after the unchanged 5,000 ms visibility assertion. The allowed retries and full raw logs/traces are retained. Separate diagnostic **1/1** is diagnostic only. Its clean merge head **d67469a493ca7af19ea6599de99c6468934e27cc** has an independently reconstructed **952-path** shipping-source digest **72ac224f2b1b2442b6ac6b57636525803f147c31f8742cb993d9b1883940abe5**, exactly matching root f4. It captures canonical list/LCP, state, assignment and board windows; the missing-dialog trace is also retained. Fast run **37235764085** passes eleven checks, but unit/component fails **1 of 103 files / 1 of 417 tests**: the unchanged 500-row repeated-empty-label test times out at 15,000 ms. Full raw output is retained; neither fixture size nor timeout is relaxed. The template remains red while CI/reviews are incomplete. The earlier local22/22 does not establish hosted readiness. No unchanged canonical rerun, speculative per-node trial, fresh panel or threshold relaxation is requested; the author diagnoses these complete actual captures before a measured structural batch.
+
+Exact clean f4 image builds and boots: OCI revision matches, UID10001, live/ready200, migration prefixes80/88, settings CAS/stale-CAS, wrong-password/wrong-binding/replay and metrics rotation/digest/no raw-token application logging checks pass. Representative actual capture **2026-10-04T21:02:48.866476Z–21:02:55.270833Z** records **129 requests**, **28/28 eligible sources**, **44 tally rows / 127 occurrences**, zero unexplained/uncovered outcomes and reconciled events. Exact-source public pre-guard config and sole native WebSocket101 delegation receive specific normative attribution. All8 disposable resources are absent with zero cleanup errors. Result SHA256 **79306ee1e36272edc1d44951c148b654fab89dd421faa555e54b6a62b26ff57c**. Private operator logs are redacted; this is separate from the application raw-token-logged:false check. October4 remains one partial actual UTC bucket, not another date/all185routes/full-day/cutover/phase claim.
+
+P4 selected Users contracts are preserved clean/pushed at **bc85844062baf48f86927501497587de9836a464**, with no Users source implementation yet. Its author returns to P0 priority. P3 is assigned the complete IP15 person-lifecycle seam for God Mode and SCIM, preserving source-specific events and revoking actual issued credentials. Source reconciliation finds only the native key store, not the future canonical API/MCP extension; no nonexistent-table omission or fabricated second-layer coverage is claimed. P2's full SLA branch stays pushed and unaccepted. Accepted main **8ddb9de8** and reviewed OrbStack DEV **b8d0bbc4** remain unchanged. Current hosted performance, fresh bulk ordinary/Sol review, G11 protection/protected acceptance, actual remaining evidence dates/eligible cutover and additional Sol finalizer remain open; human review remains P4.
+
 ## P0 full performance remediation passes locally; final hosted batch pending — 2026-10-04 20:53 UTC
 
 Complete pushed source **6d091a432a3cedb8861dc186483715beccbaba84** is normally composed at **981f7cb**. The batch removes 1,500 redundant list wrappers while retaining 500 rows/1,000 links, applies optimistic status immediately after synchronous cancellation while preserving cancellation-before-write ordering and stale-response/rollback protection, contains mounted board cards, and preloads the existing lazy create dialog on trigger intent. One final clean-source local canonical run passes **22/22**: list **185.6/500 ms**, LCP **2,128/2,500 ms**, create **80.0/200 ms**, status **78.1/200 ms**, assignment **80.9/200 ms**, board **284.0/500 ms**, drag p95 **16.8/20 ms**. All three drag samples retain 100 successful CSRF-protected versioned writes. Full raw output, source/build identities and failed/stale attempt history are retained privately. Types, both builds, targeted formatting, focused **2 files / 19 tests** and freshly built list browser **1/1** pass. The focused tests preceded only test compile annotation/format correction; subsequent typecheck passes. No workloads, budgets, assertions or retries change.
@@ -3399,28 +3441,25 @@ kaneo's inherited routes present and each carrying a policy**, P0 security revie
 
 ## Blocked
 
-### P0 #8 — shadow-mode soak and cutover
+### P0 #8 — actual three-date shadow evidence and cutover
 
-The authorization mechanism is merged, but policy evaluation remains shadow-only. The live
-v2 UAT app is healthy; the 2026-10-01 read-only audit still finds only three low-volume days
-and unexercised routers. Representative traffic and the approximately seven-day clean soak
-are required before cutover. Do not treat further code review as a substitute for that evidence.
+The latest dated snapshots supersede the earlier seven-day requirement: Thomas selected
+three actual clean UTC observation dates for development/UAT. October 4 has one partial
+source-bound representative capture, covering 28/28 eligible sources with reconciled
+outcomes. The remaining October 5/6 observations have quiet follow-ups scheduled. No
+backfilled date, full-day, 72-hour or all-route claim is made. Current-head review, eligible
+strict cutover and the additional fresh Sol phase finalizer remain required.
 
-### P0 #10 — G8/G11 CI gates
+### P0 #10 — hosted performance and protected acceptance
 
-G8 is merged through #507 and required by `protect-main` ruleset 22365005; its scope is
-every exported Storybook story and every in-progress or complete route-kind inventory row.
-Future routes activate with implementation. PR #547 enabled the focused inherited-route
-regression in `test:all`; nine other declared gate entries remain disabled/pending. G11 is
-among them and remains disabled on main. #525's current head is
-`3f49f616f251a411f4f0d1afcccb7da08a51a935`; its current-source functional Chromium
-regressions pass 13/13. The earlier source `8dda28990c14ee0f3a6a42c4d091fd58213303c5`
-canonical run recorded 21/22 passes and one failed drag-column assertion without frame-p95.
-The current-source canonical local run passed 22/22 once with one worker; the hosted G11
-check remains pending, as recorded in the newest snapshot. No aggregate budget or savings
-claim is accepted. G11 must be added as a required branch-protection context before #525 can
-merge. G4 is enabled by #501. The #10 checklist still needs reconciliation with the
-implemented gates.
+G4/G8 pass on the latest published P0 batch in PR #579. Its hosted G11 run passes 16/22,
+failing list, LCP, state, assignment, board and create-dialog visibility. The complete
+structural rendering/dialog batch and the separate legacy task-details path are being
+finished before one current hosted run and fresh independent bulk review. Local passes
+remain source-bound author evidence. G11 must pass and become a required protected context
+before acceptance; the ruleset currently retains 17 required contexts and zero bypass actors.
+See the newest dated snapshot for exact heads, counts and retained evidence. No phase
+completion or performance threshold waiver is claimed.
 
 ### P1 #447 — saved-view candidate needs a current base and gates
 

@@ -1,3 +1,16 @@
+### 2026-10-04 · Bound the identity provisioning event-history read
+
+Under Thomas's standing authorization for recommended routine choices, select the missing
+connection-scoped provisioning ledger read as instance-admin-only. Require an existing
+parent connection; absent parents return the same 404. Query limit defaults to 25, maximum
+100. Use an opaque version-1 cursor bound to connection ID and descending created_at/id,
+with existing fail-closed query-validation conventions. Return only kind, outcome,
+actorType and createdAt in data, plus nextCursor/hasMore page metadata. No row IDs, trace
+IDs, stored detail or total-count query are exposed. Register this contract in the owning
+identity-provisioning spec before API/UI implementation; retain URL-state rules for the
+reachable history panel. This selects a bounded safe DTO, not a new authority, gate waiver,
+provider acceptance or stage-completion claim.
+
 ### 2026-10-04 · Keep route coverage independent of web build artifacts
 
 The API registers declared static middleware unconditionally. Verify real route descriptors, registration counts, auth-guard ordering and middleware inventory against explicit missing and built roots; do not require a checkout without generated web output or delete output to manufacture a pass. Correct the obsolete build-order instructions and use direct exact-path Playwright/Vitest invocation to prevent accidental broad package-script selection. These related corrections join the complete P0 batch for independent risk-sized review; no route, authority, coverage assertion or required gate is waived.
