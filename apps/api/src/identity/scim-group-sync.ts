@@ -18,6 +18,7 @@ type GroupWrite = {
   authority: ScimRequestAuthority;
   connectionId: string;
   groupId?: string;
+  createOnly?: boolean;
   externalId: string;
   displayName: string;
   active: boolean;
@@ -83,6 +84,8 @@ export async function writeScimGroup(input: GroupWrite) {
         .limit(1);
       if (input.groupId && !group)
         throw new ScimGroupWriteError(404, "notFound");
+      if (input.createOnly && group)
+        throw new ScimGroupWriteError(409, "uniqueness");
       if (group && group.externalId !== input.externalId)
         throw new ScimGroupWriteError(400, "invalidValue");
       const initiallyActiveMembers = group

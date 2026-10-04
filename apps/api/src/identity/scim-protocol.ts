@@ -1080,8 +1080,7 @@ export default scim
       )
       .where(
         and(
-          sql`lower(${schema.externalIdentityTable.emailSnapshot}) = lower(${profile.value.email}) or lower(${schema.userTable.email}) = lower(${profile.value.email})`,
-          sql`${schema.externalIdentityTable.id} <> ${id}`,
+          sql`(lower(${schema.externalIdentityTable.emailSnapshot}) = lower(${profile.value.email}) and ${schema.externalIdentityTable.id} <> ${id}) or (lower(${schema.userTable.email}) = lower(${profile.value.email}) and ${schema.personTable.id} <> ${current.personId})`,
         ),
       )
       .limit(1);
@@ -1229,8 +1228,8 @@ export default scim
         c.json(scimErrorBody(404, "Resource not found"), 404),
       );
     const currentResource = {
+      schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
       userName: current.userName ?? undefined,
-      email: current.email ?? undefined,
       active: current.active,
       ...(current.displayName
         ? {
@@ -1444,6 +1443,7 @@ export default scim
       const id = await writeScimGroup({
         authority,
         connectionId: authority.connectionId,
+        createOnly: true,
         ...input,
       });
       if (!id)

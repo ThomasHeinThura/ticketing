@@ -31,6 +31,62 @@ const originalEncryptionKey = process.env.TASKDESK_ENCRYPTION_KEY;
 const originalPreviousEncryptionKey =
   process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS;
 
+async function createScimProtocolFixture() {
+  await ensureInternalOrganisation();
+  const connectionId = "scim-protocol-isolated-connection";
+  const token = "F".repeat(43);
+  await db.insert(schema.identityConnectionTable).values({
+    id: connectionId,
+    providerType: "entra",
+    portalScope: "agent",
+    organisationId: null,
+    displayName: "SCIM isolated protocol fixture",
+    issuer: "https://login.microsoftonline.com/tenant/v2.0",
+    tenantId: "tenant",
+    clientId: "client",
+    clientSecret: encryptIdentityClientSecret(connectionId, "fixture"),
+    redirectUri: "http://localhost:1337/api/identity/callback",
+    scopes: ["openid"],
+    claimMapping: {},
+    domainBindings: [],
+    jitPolicy: { enabled: false, requiredEntraAppRole: "staff" },
+    maxRoleRank: 10,
+    enabled: true,
+  });
+  await db.insert(schema.scimConnectionTable).values({
+    identityConnectionId: connectionId,
+    tokenHash: sha256(token),
+    tokenPrefix: token.slice(0, 8),
+    tokenCreatedAt: new Date(),
+    allowedResources: ["users", "groups"],
+    enabled: true,
+  });
+  return { app: createApp().app, connectionId, token };
+}
+
+async function createScimProtocolUser(
+  app: ReturnType<typeof createApp>["app"],
+  token: string,
+) {
+  const response = await app.request("/scim/v2/Users", {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/scim+json",
+    },
+    body: JSON.stringify({
+      schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+      externalId: "isolated-user",
+      userName: "isolated@example.test",
+      displayName: "Isolated User",
+      emails: [{ value: "isolated@example.test", primary: true }],
+    }),
+  });
+  if (response.status !== 201)
+    throw new Error("SCIM protocol fixture user creation failed");
+  return (await response.json()) as { id: string };
+}
+
 beforeEach(async () => {
   vi.restoreAllMocks();
   await resetTestDatabase();
@@ -52,6 +108,94 @@ afterEach(() => {
 });
 
 describe("SCIM administration API", () => {
+  it("rejects duplicate group creation without returning a resource id", async () => {
+    const { app, token } = await createScimProtocolFixture();
+    const body = JSON.stringify({
+      schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+      externalId: "isolated-group",
+      displayName: "Isolated Group",
+      members: [],
+    });
+    const headers = {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/scim+json",
+    };
+    const first = await app.request("/scim/v2/Groups", {
+      method: "POST",
+      headers,
+      body,
+    });
+    expect(first.status).toBe(201);
+    const duplicate = await app.request("/scim/v2/Groups", {
+      method: "POST",
+      headers,
+      body,
+    });
+    expect(duplicate.status).toBe(409);
+    expect(await duplicate.json()).not.toHaveProperty("id");
+  });
+
+  it("allows a linked account to receive its own SCIM profile replacement", async () => {
+    const { app, token } = await createScimProtocolFixture();
+    const user = await createScimProtocolUser(app, token);
+    const [account] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "scim-protocol-isolated-account",
+        name: "Isolated User Account",
+        email: "isolated@example.test",
+        role: null,
+      })
+      .returning({ id: schema.userTable.id });
+    if (!account) throw new Error("SCIM protocol fixture account missing");
+    const [identity] = await db
+      .select({ personId: schema.externalIdentityTable.personId })
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.id, user.id));
+    if (!identity) throw new Error("SCIM protocol fixture identity missing");
+    await db
+      .update(schema.personTable)
+      .set({ userId: account.id })
+      .where(eq(schema.personTable.id, identity.personId));
+
+    const replaced = await app.request(`/scim/v2/Users/${user.id}`, {
+      method: "PUT",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/scim+json",
+      },
+      body: JSON.stringify({
+        schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+        externalId: "isolated-user",
+        userName: "isolated@example.test",
+        displayName: "Updated Isolated User",
+        emails: [{ value: "isolated@example.test", primary: true }],
+      }),
+    });
+    expect(replaced.status).toBe(200);
+    expect(await replaced.json()).toMatchObject({
+      displayName: "Updated Isolated User",
+    });
+  });
+
+  it("applies a valid SCIM User PATCH to the canonical wire representation", async () => {
+    const { app, token } = await createScimProtocolFixture();
+    const user = await createScimProtocolUser(app, token);
+    const patched = await app.request(`/scim/v2/Users/${user.id}`, {
+      method: "PATCH",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/scim+json",
+      },
+      body: JSON.stringify({
+        schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+        Operations: [{ op: "replace", path: "title", value: "Support" }],
+      }),
+    });
+    expect(patched.status).toBe(200);
+    expect(await patched.json()).toMatchObject({ title: "Support" });
+  });
+
   it("authenticates the delegated discovery mount with only its enabled connection bearer", async () => {
     const token = "A".repeat(43);
     await db.insert(schema.identityConnectionTable).values({
@@ -95,6 +239,51 @@ describe("SCIM administration API", () => {
       bulk: { supported: false },
       authenticationSchemes: [{ type: "oauthbearertoken" }],
     });
+
+    for (const [path, expectedSchema] of [
+      [
+        "/scim/v2/ResourceTypes",
+        "urn:ietf:params:scim:api:messages:2.0:ListResponse",
+      ],
+      [
+        "/scim/v2/Schemas",
+        "urn:ietf:params:scim:api:messages:2.0:ListResponse",
+      ],
+    ] as const) {
+      const discovery = await app.request(path, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      expect(discovery.status).toBe(200);
+      expect(discovery.headers.get("content-type")).toContain(
+        "application/scim+json",
+      );
+      expect(await discovery.json()).toMatchObject({
+        schemas: [expectedSchema],
+        Resources: expect.any(Array),
+      });
+    }
+
+    for (const authorization of [
+      undefined,
+      "Basic not-a-scim-token",
+      "Bearer short",
+    ]) {
+      const headers = new Headers();
+      if (authorization) headers.set("authorization", authorization);
+      const denied = await app.request("/scim/v2/ServiceProviderConfig", {
+        headers,
+      });
+      expect(denied.status).toBe(401);
+      expect(denied.headers.get("content-type")).toContain(
+        "application/scim+json",
+      );
+      expect(denied.headers.get("cache-control")).toBe("no-store");
+      expect(denied.headers.get("set-cookie")).toBeNull();
+      expect(await denied.json()).toMatchObject({
+        schemas: ["urn:ietf:params:scim:api:messages:2.0:Error"],
+        status: "401",
+      });
+    }
 
     const portalProbe = await app.request(
       new Request(
@@ -260,10 +449,26 @@ describe("SCIM administration API", () => {
       maxRoleRank: 10,
       enabled: true,
     });
+    const foreignToken = "C".repeat(43);
+    await db.insert(schema.scimConnectionTable).values({
+      identityConnectionId: "scim-protocol-foreign-connection",
+      tokenHash: sha256(foreignToken),
+      tokenPrefix: foreignToken.slice(0, 8),
+      tokenCreatedAt: new Date(),
+      allowedResources: ["users", "groups"],
+      enabled: true,
+    });
+    await db.insert(schema.personTable).values({
+      id: "scim-protocol-foreign-person",
+      organisationId: internalOrganisation.id,
+      side: "staff",
+      displayName: "Foreign Directory Person",
+      isPlaceholder: true,
+    });
     await db.insert(schema.externalIdentityTable).values({
       id: "scim-protocol-foreign-identity",
       identityConnectionId: "scim-protocol-foreign-connection",
-      personId: "scim-protocol-person-2",
+      personId: "scim-protocol-foreign-person",
       issuer: "https://identity.example.test/foreign",
       subject: "foreign-subject",
       scimExternalId: "foreign-external",
@@ -271,6 +476,24 @@ describe("SCIM administration API", () => {
       emailSnapshot: "foreign@example.test",
       provisionedVia: "scim",
       active: true,
+    });
+    const foreignUserDenied = await app.request(
+      "/scim/v2/Users/scim-protocol-foreign-identity",
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    expect(foreignUserDenied.status).toBe(404);
+    const foreignUserRead = await app.request(
+      "/scim/v2/Users/scim-protocol-foreign-identity",
+      { headers: { authorization: `Bearer ${foreignToken}` } },
+    );
+    expect(foreignUserRead.status).toBe(200);
+    const foreignDirectory = (await app.request("/scim/v2/Users", {
+      headers: { authorization: `Bearer ${foreignToken}` },
+    })) as Response;
+    expect(foreignDirectory.status).toBe(200);
+    expect(await foreignDirectory.json()).toMatchObject({
+      totalResults: 1,
+      Resources: [{ id: "scim-protocol-foreign-identity" }],
     });
     const foreignMember = await app.request("/scim/v2/Groups", {
       method: "POST",
@@ -654,6 +877,127 @@ describe("SCIM administration API", () => {
         ),
       );
     expect(removedDirectoryMembership?.active).toBe(false);
+    const [noGrantAfterGroupDelete] = await db
+      .select({ id: schema.membershipGrantTable.id })
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(
+            schema.membershipGrantTable.externalIdentityId,
+            provisionedResource.id,
+          ),
+          isNull(schema.membershipGrantTable.revokedAt),
+        ),
+      );
+    expect(noGrantAfterGroupDelete).toBeUndefined();
+    const revokedGroupLedger = await db
+      .select({
+        revokedAt: schema.scimGroupMemberTable.revokedAt,
+        membershipId: schema.scimGroupMemberTable.membershipId,
+      })
+      .from(schema.scimGroupMemberTable)
+      .where(
+        and(
+          eq(
+            schema.scimGroupMemberTable.externalIdentityId,
+            provisionedResource.id,
+          ),
+          eq(
+            schema.scimGroupMemberTable.scimGroupMappingId,
+            "scim-protocol-group-mapping",
+          ),
+        ),
+      );
+    expect(revokedGroupLedger.length).toBeGreaterThan(0);
+    expect(revokedGroupLedger).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          revokedAt: expect.any(Date),
+          membershipId: null,
+        }),
+      ]),
+    );
+    const softDeletedRead = await app.request(
+      `/scim/v2/Groups/${groupResource.id}`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    expect(softDeletedRead.status).toBe(200);
+    expect(await softDeletedRead.json()).toMatchObject({
+      active: false,
+      members: [],
+    });
+
+    const reactivatedGroupWithoutEvidence = await app.request(
+      `/scim/v2/Groups/${groupResource.id}`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/scim+json",
+        },
+        body: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+          externalId: "support-team",
+          displayName: "Support team",
+          active: true,
+          members: [],
+        }),
+      },
+    );
+    expect(reactivatedGroupWithoutEvidence.status).toBe(200);
+    const [noGrantAfterReactivation] = await db
+      .select({ id: schema.membershipGrantTable.id })
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(
+            schema.membershipGrantTable.externalIdentityId,
+            provisionedResource.id,
+          ),
+          isNull(schema.membershipGrantTable.revokedAt),
+        ),
+      );
+    expect(noGrantAfterReactivation).toBeUndefined();
+
+    await db
+      .update(schema.scimConnectionTable)
+      .set({ allowedResources: ["users"] })
+      .where(
+        eq(schema.scimConnectionTable.identityConnectionId, CONNECTION_ID),
+      );
+    const groupsReadDenied = await app.request("/scim/v2/Groups", {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(groupsReadDenied.status).toBe(403);
+    const groupsListDenied = await app.request(
+      `/scim/v2/Groups/${groupResource.id}`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    expect(groupsListDenied.status).toBe(403);
+    const groupWriteDenied = await app.request("/scim/v2/Groups", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/scim+json",
+      },
+      body: JSON.stringify({
+        schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+        externalId: "forbidden-group",
+        displayName: "Forbidden group",
+        members: [],
+      }),
+    });
+    expect(groupWriteDenied.status).toBe(403);
+    expect(
+      await app.request("/scim/v2/Users?count=1", {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    ).toHaveProperty("status", 200);
+    const [notCreatedForbiddenGroup] = await db
+      .select({ id: schema.scimGroupTable.id })
+      .from(schema.scimGroupTable)
+      .where(eq(schema.scimGroupTable.externalId, "forbidden-group"));
+    expect(notCreatedForbiddenGroup).toBeUndefined();
 
     const invalidFilter = await app.request(
       `/scim/v2/Users?filter=${encodeURIComponent('groups eq "staff"')}`,
