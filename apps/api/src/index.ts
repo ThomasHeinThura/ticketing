@@ -49,6 +49,11 @@ import externalLink from "./external-link";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
 import localFactorPolicy from "./instance/local-factor-policy";
 import observability from "./instance/observability";
+import {
+  logDatabaseFailure,
+  logHttpLifecycleFailure,
+  logHttpRequestFailure,
+} from "./instance/observability/http-lifecycle";
 import metricsTokenRotation from "./instance/observability/metrics-token-rotation";
 import {
   beginObservedRequest,
@@ -571,8 +576,8 @@ export function createApp(
     try {
       await getDatabase().execute(sql`SELECT 1`);
       return c.json({ status: "ok" });
-    } catch (error) {
-      console.error("Readiness check failed: database unreachable", error);
+    } catch {
+      logDatabaseFailure();
       return c.json({ status: "error" }, 503);
     }
   });
@@ -695,10 +700,7 @@ export function createApp(
         // forwarding it to the client, so an ENOSPC/EACCES/EDQUOT on the storage volume
         // would have surfaced to nobody. Detailed to the log, generic to the client.
         if (!(error instanceof StoragePathError)) {
-          console.error(
-            "storage/filesystem-upload: unexpected write failure",
-            error,
-          );
+          logHttpRequestFailure();
         }
         throw new HTTPException(400, {
           message:
@@ -776,10 +778,7 @@ export function createApp(
       } catch (error) {
         // Same safe-message/log-detail split as the task-image upload route above.
         if (!(error instanceof StoragePathError)) {
-          console.error(
-            "storage/filesystem-attachment-upload: unexpected write failure",
-            error,
-          );
+          logHttpRequestFailure();
         }
         throw new HTTPException(400, {
           message:
@@ -853,10 +852,7 @@ export function createApp(
         });
       } catch (error) {
         if (!(error instanceof StoragePathError)) {
-          console.error(
-            "storage/filesystem-download: unexpected read failure",
-            error,
-          );
+          logHttpRequestFailure();
         }
         throw new HTTPException(error instanceof StoragePathError ? 400 : 404, {
           message:
@@ -1202,8 +1198,8 @@ export function createApp(
             "Last-Modified": object.lastModified?.toUTCString() || "",
           },
         });
-      } catch (error) {
-        console.error("Failed to stream asset:", error);
+      } catch {
+        logHttpRequestFailure();
         throw new HTTPException(404, { message: "Asset object not found" });
       }
     },
@@ -1751,14 +1747,14 @@ export function createNodeServer(
       clearTimeout(deadline);
       resolveClose(forced ? "forced" : "graceful");
     };
-    const forceResources = (reason: string) => {
+    const forceResources = () => {
       if (forced) return;
       forced = true;
-      console.error(`Forcing API shutdown: ${reason}`);
+      logHttpLifecycleFailure();
       try {
         httpServer.closeAllConnections();
-      } catch (error) {
-        console.error("Failed to close active HTTP connections:", error);
+      } catch {
+        logHttpLifecycleFailure();
       }
       for (const client of websocketServer.clients) {
         try {
@@ -1774,7 +1770,7 @@ export function createNodeServer(
       }
     };
     deadline = setTimeout(() => {
-      forceResources("graceful close exceeded the shared deadline");
+      forceResources();
       finish(true);
     }, shutdownTimeoutMs);
 
@@ -1784,17 +1780,17 @@ export function createNodeServer(
         if (error) {
           const errorCode = (error as NodeJS.ErrnoException).code;
           if (errorCode !== "ERR_SERVER_NOT_RUNNING" || server.listening) {
-            console.error("HTTP server close failed:", error);
-            forceResources("HTTP server close failed");
+            logHttpLifecycleFailure();
+            forceResources();
           }
         }
         httpClosed = true;
         finish();
       });
-    } catch (error) {
+    } catch {
       if (server.listening) {
-        console.error("HTTP server close threw:", error);
-        forceResources("HTTP server close threw");
+        logHttpLifecycleFailure();
+        forceResources();
       }
       httpClosed = true;
       finish();
@@ -1804,14 +1800,14 @@ export function createNodeServer(
       websocketServer.close((error) => {
         if (error) {
           logRealtimeFailure();
-          forceResources("WebSocket server close failed");
+          forceResources();
         }
         websocketClosed = true;
         finish();
       });
     } catch {
       logRealtimeFailure();
-      forceResources("WebSocket server close threw");
+      forceResources();
       websocketClosed = true;
       finish();
     }
@@ -1821,7 +1817,7 @@ export function createNodeServer(
         client.close(1001, "Server shutting down");
       } catch {
         logRealtimeFailure();
-        forceResources("WebSocket close frame failed");
+        forceResources();
       }
     }
 
@@ -1835,7 +1831,7 @@ export function createNodeServer(
         () => {
           logRealtimeFailure();
           adapterClosed = true;
-          forceResources("WebSocket adapter shutdown failed");
+          forceResources();
           finish();
         },
       );
@@ -1849,8 +1845,8 @@ export function createNodeServer(
 export async function startServer(port = DEFAULT_PORT) {
   try {
     await runApiBootTasks();
-  } catch (error) {
-    console.error("❌ API boot failed!", error);
+  } catch {
+    logHttpLifecycleFailure();
     process.exit(1);
   }
 
@@ -1874,7 +1870,7 @@ export async function startServer(port = DEFAULT_PORT) {
     if (result === "graceful") {
       console.log("✅ API shutdown completed gracefully");
     } else {
-      console.error("⚠ API shutdown completed after forced resource closure");
+      logHttpLifecycleFailure();
     }
     process.exit(0);
   };
@@ -1946,8 +1942,8 @@ if (isMainModule) {
         console.log("✅ Migration step complete.");
         process.exit(0);
       })
-      .catch((error: unknown) => {
-        console.error("❌ Migration step failed!", error);
+      .catch(() => {
+        logDatabaseFailure();
         process.exit(1);
       });
   } else {
