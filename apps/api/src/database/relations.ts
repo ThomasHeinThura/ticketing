@@ -26,9 +26,15 @@ import {
   roleTable,
   scheduledTransitionTable,
   scimConnectionTable,
+  scimGroupDirectoryMemberTable,
   scimGroupMappingTable,
   scimGroupMemberTable,
+  scimGroupTable,
+  serviceCalendarTable,
   sessionTable,
+  slaGoalTable,
+  slaPolicyTable,
+  slaPolicyVersionTable,
   stakeholderTable,
   stateTable,
   stateTemplateTable,
@@ -131,6 +137,7 @@ export const workspaceTableRelations = relations(
     assets: many(assetTable),
     invitations: many(invitationTable),
     notificationWorkspaceRules: many(userNotificationWorkspaceRuleTable),
+    slaPolicies: many(slaPolicyTable),
   }),
 );
 
@@ -566,6 +573,7 @@ export const scimConnectionTableRelations = relations(
       fields: [scimConnectionTable.identityConnectionId],
       references: [identityConnectionTable.id],
     }),
+    groups: many(scimGroupTable),
     groupMappings: many(scimGroupMappingTable),
     provisioningEvents: many(provisioningEventTable),
   }),
@@ -588,6 +596,7 @@ export const externalIdentityTableRelations = relations(
     }),
     grants: many(membershipGrantTable),
     scimGroupMemberships: many(scimGroupMemberTable),
+    scimDirectoryMemberships: many(scimGroupDirectoryMemberTable),
     provisioningEvents: many(provisioningEventTable),
   }),
 );
@@ -604,6 +613,40 @@ export const oidcGroupMappingTableRelations = relations(
       references: [roleTable.id],
     }),
     grants: many(membershipGrantTable),
+  }),
+);
+
+export const scimGroupTableRelations = relations(
+  scimGroupTable,
+  ({ one, many }) => ({
+    scimConnection: one(scimConnectionTable, {
+      fields: [scimGroupTable.scimConnectionId],
+      references: [scimConnectionTable.identityConnectionId],
+    }),
+    directoryMembers: many(scimGroupDirectoryMemberTable),
+  }),
+);
+
+export const scimGroupDirectoryMemberTableRelations = relations(
+  scimGroupDirectoryMemberTable,
+  ({ one }) => ({
+    group: one(scimGroupTable, {
+      fields: [
+        scimGroupDirectoryMemberTable.scimConnectionId,
+        scimGroupDirectoryMemberTable.scimGroupId,
+      ],
+      references: [scimGroupTable.scimConnectionId, scimGroupTable.id],
+    }),
+    externalIdentity: one(externalIdentityTable, {
+      fields: [
+        scimGroupDirectoryMemberTable.scimConnectionId,
+        scimGroupDirectoryMemberTable.externalIdentityId,
+      ],
+      references: [
+        externalIdentityTable.identityConnectionId,
+        externalIdentityTable.id,
+      ],
+    }),
   }),
 );
 
@@ -710,6 +753,7 @@ export const workItemTypeTableRelations = relations(
       references: [workflowTable.id],
     }),
     workItems: many(workItemTable),
+    slaGoals: many(slaGoalTable),
   }),
 );
 
@@ -901,5 +945,59 @@ export const watcherTableRelations = relations(watcherTable, ({ one }) => ({
   person: one(personTable, {
     fields: [watcherTable.personId],
     references: [personTable.id],
+  }),
+}));
+
+export const serviceCalendarTableRelations = relations(
+  serviceCalendarTable,
+  ({ one, many }) => ({
+    workspace: one(workspaceTable, {
+      fields: [serviceCalendarTable.workspaceId],
+      references: [workspaceTable.id],
+    }),
+    slaPolicyVersions: many(slaPolicyVersionTable),
+  }),
+);
+
+export const slaPolicyTableRelations = relations(
+  slaPolicyTable,
+  ({ one, many }) => ({
+    workspace: one(workspaceTable, {
+      fields: [slaPolicyTable.workspaceId],
+      references: [workspaceTable.id],
+    }),
+    versions: many(slaPolicyVersionTable),
+  }),
+);
+
+export const slaPolicyVersionTableRelations = relations(
+  slaPolicyVersionTable,
+  ({ one, many }) => ({
+    policy: one(slaPolicyTable, {
+      fields: [
+        slaPolicyVersionTable.workspaceId,
+        slaPolicyVersionTable.policyId,
+      ],
+      references: [slaPolicyTable.workspaceId, slaPolicyTable.id],
+    }),
+    calendar: one(serviceCalendarTable, {
+      fields: [
+        slaPolicyVersionTable.workspaceId,
+        slaPolicyVersionTable.calendarId,
+      ],
+      references: [serviceCalendarTable.workspaceId, serviceCalendarTable.id],
+    }),
+    goals: many(slaGoalTable),
+  }),
+);
+
+export const slaGoalTableRelations = relations(slaGoalTable, ({ one }) => ({
+  version: one(slaPolicyVersionTable, {
+    fields: [slaGoalTable.workspaceId, slaGoalTable.versionId],
+    references: [slaPolicyVersionTable.workspaceId, slaPolicyVersionTable.id],
+  }),
+  workItemType: one(workItemTypeTable, {
+    fields: [slaGoalTable.workspaceId, slaGoalTable.workItemTypeId],
+    references: [workItemTypeTable.workspaceId, workItemTypeTable.id],
   }),
 }));

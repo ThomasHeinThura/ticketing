@@ -1,6 +1,6 @@
 {
-	"id": "97f2dffc-16bc-449b-8957-2c5753c4d2d6",
-	"prevId": "5657963b-1f55-4c6e-bf75-7d516bb0fe34",
+	"id": "e6af06e6-c124-4933-aa8d-c66d37ea75a8",
+	"prevId": "11a5625e-343f-4213-b08f-f6600a214714",
 	"version": "7",
 	"dialect": "postgresql",
 	"tables": {
@@ -3186,7 +3186,7 @@
 					"tableTo": "person",
 					"columnsFrom": ["granted_by_person_id"],
 					"columnsTo": ["id"],
-					"onDelete": "restrict",
+					"onDelete": "set null",
 					"onUpdate": "cascade"
 				}
 			},
@@ -5465,10 +5465,6 @@
 					"name": "scim_connection_token_pair_shape",
 					"value": "(\"scim_connection\".\"token_hash\" is null and \"scim_connection\".\"token_prefix\" is null) or (\"scim_connection\".\"token_hash\" is not null and \"scim_connection\".\"token_prefix\" is not null)"
 				},
-				"scim_connection_enabled_token_check": {
-					"name": "scim_connection_enabled_token_check",
-					"value": "not \"scim_connection\".\"enabled\" or \"scim_connection\".\"token_hash\" is not null"
-				},
 				"scim_connection_allowed_resources_check": {
 					"name": "scim_connection_allowed_resources_check",
 					"value": "'users' = any(\"scim_connection\".\"allowed_resources\") and \"scim_connection\".\"allowed_resources\" <@ ARRAY['users', 'groups']::text[]"
@@ -6594,7 +6590,7 @@
 				},
 				"step_up_operation_route": {
 					"name": "step_up_operation_route",
-					"value": "\"step_up_confirmation\".\"operation_key\" is null\n        or (\"step_up_confirmation\".\"operation_key\" = 'metrics_token_rotate' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/observability/metrics-token/rotate')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_create' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_update' and \"step_up_confirmation\".\"route_key\" = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')\n        or (\"step_up_confirmation\".\"operation_key\" = 'scim_admin_update' and \"step_up_confirmation\".\"route_key\" = 'PATCH /api/instance/identity-connections/{id}/scim')\n        or (\"step_up_confirmation\".\"operation_key\" = 'mfa_reset' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/users/{id}/reset-mfa')"
+					"value": "\"step_up_confirmation\".\"operation_key\" is null\n        or (\"step_up_confirmation\".\"operation_key\" = 'metrics_token_rotate' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/observability/metrics-token/rotate')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_create' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_update' and \"step_up_confirmation\".\"route_key\" = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')\n        or (\"step_up_confirmation\".\"operation_key\" = 'mfa_reset' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/users/{id}/reset-mfa')"
 				},
 				"step_up_state_shape": {
 					"name": "step_up_state_shape",
@@ -9850,18 +9846,6 @@
 				"description": {
 					"name": "description",
 					"type": "text",
-					"primaryKey": false,
-					"notNull": false
-				},
-				"deleted_at": {
-					"name": "deleted_at",
-					"type": "timestamp",
-					"primaryKey": false,
-					"notNull": false
-				},
-				"purge_after": {
-					"name": "purge_after",
-					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": false
 				},

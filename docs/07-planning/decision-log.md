@@ -5,6 +5,32 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-04 · Store SCIM directory groups separately from authorization mappings
+
+**Decision:** under the standing authorization to implement recommended decisions, represent
+SCIM directory resources in per-connection `scim_group` and
+`scim_group_directory_member` tables, separate from `scim_group_mapping` and its historical
+`scim_group_member` grant links. A group is keyed by the provider's stable external id and
+keeps its display name as opaque directory metadata. Membership points only to an
+`external_identity` from the same connection; it never resolves by email. Store unmapped
+groups without grants. A mapping created before a group is observed grants nothing until a
+later authenticated reconciliation. Removal/deactivation is soft and retains directory
+history; IP-22 retires only matching derived grants atomically with reconciliation. No group
+can add authority or cause a hard delete.
+
+This records implementation direction, not review, acceptance, or phase completion.
+
+### 2026-10-04 · Keep SCIM display names as per-person profile data
+
+**Decision:** under the standing authorization to implement recommended decisions, map SCIM
+`displayName`/`name.formatted` to nullable `person.display_name`, independent of
+account-wide `user.name`. Do not synthesize a value for existing rows from account names,
+email, username or IdP snapshots. Keep `external_identity` profile snapshots scoped to their
+connection and preserve both profile and snapshots through deactivation/reactivation.
+
+This records implementation direction, not review, acceptance, or phase completion.
+
+
 ### 2026-10-04 · Register separate PA-15 operations for SCIM token lifecycle
 
 **Decision:** under the standing authorization to implement recommended decisions, register

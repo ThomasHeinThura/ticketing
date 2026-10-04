@@ -87,6 +87,8 @@ import { policyRegistry } from "./policy-registry";
 import project from "./project";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
+import serviceCalendar from "./service-calendar";
+import slaPolicy from "./sla-policy";
 import { getPrivateObject, getStorageDriver } from "./storage";
 import {
   readAttachmentDownloadObject,
@@ -1265,6 +1267,8 @@ export function createApp(
   );
   const pendingActionApi = api.route("/me", pendingAction);
   const searchApi = api.route("/search", search);
+  const serviceCalendarApi = api.route("/service-calendars", serviceCalendar);
+  const slaPolicyApi = api.route("/sla-policies", slaPolicy);
   const taskRelationApi = api.route("/task-relation", taskRelation);
   const externalLinkApi = api.route("/external-link", externalLink);
   const workflowRuleApi = api.route("/workflow-rule", workflowRule);
@@ -1585,6 +1589,8 @@ export function createApp(
     pendingActionApi,
     projectApi,
     searchApi,
+    serviceCalendarApi,
+    slaPolicyApi,
     taskApi,
     taskV2Api,
     taskRelationApi,
@@ -1958,6 +1964,8 @@ const {
   pendingActionApi,
   projectApi,
   searchApi,
+  serviceCalendarApi,
+  slaPolicyApi,
   taskApi,
   taskV2Api,
   taskRelationApi,
@@ -2021,6 +2029,8 @@ export type AppType =
   | typeof notificationPreferencesApi
   | typeof pendingActionApi
   | typeof searchApi
+  | typeof serviceCalendarApi
+  | typeof slaPolicyApi
   | typeof taskRelationApi
   | typeof externalLinkApi
   | typeof factorStatusApi

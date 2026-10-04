@@ -1,6 +1,6 @@
 {
-	"id": "85e76d2f-e29c-42a4-9dad-a093b8c4b424",
-	"prevId": "97f2dffc-16bc-449b-8957-2c5753c4d2d6",
+	"id": "5657963b-1f55-4c6e-bf75-7d516bb0fe34",
+	"prevId": "e6af06e6-c124-4933-aa8d-c66d37ea75a8",
 	"version": "7",
 	"dialect": "postgresql",
 	"tables": {
@@ -3297,8 +3297,8 @@
 					"method": "btree",
 					"with": {}
 				},
-				"membership_person_scope_scope_id_unique": {
-					"name": "membership_person_scope_scope_id_unique",
+				"membership_personId_scope_scopeId_idx": {
+					"name": "membership_personId_scope_scopeId_idx",
 					"columns": [
 						{
 							"expression": "person_id",
@@ -3319,7 +3319,7 @@
 							"nulls": "last"
 						}
 					],
-					"isUnique": true,
+					"isUnique": false,
 					"concurrently": false,
 					"method": "btree",
 					"with": {}
@@ -6594,7 +6594,7 @@
 				},
 				"step_up_operation_route": {
 					"name": "step_up_operation_route",
-					"value": "\"step_up_confirmation\".\"operation_key\" is null\n        or (\"step_up_confirmation\".\"operation_key\" = 'metrics_token_rotate' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/observability/metrics-token/rotate')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_create' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_update' and \"step_up_confirmation\".\"route_key\" = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')\n        or (\"step_up_confirmation\".\"operation_key\" = 'scim_admin_update' and \"step_up_confirmation\".\"route_key\" = 'PATCH /api/instance/identity-connections/{id}/scim')\n        or (\"step_up_confirmation\".\"operation_key\" = 'mfa_reset' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/users/{id}/reset-mfa')"
+					"value": "\"step_up_confirmation\".\"operation_key\" is null\n        or (\"step_up_confirmation\".\"operation_key\" = 'metrics_token_rotate' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/observability/metrics-token/rotate')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_create' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')\n        or (\"step_up_confirmation\".\"operation_key\" = 'oidc_group_mapping_update' and \"step_up_confirmation\".\"route_key\" = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')\n        or (\"step_up_confirmation\".\"operation_key\" = 'mfa_reset' and \"step_up_confirmation\".\"route_key\" = 'POST /api/instance/users/{id}/reset-mfa')"
 				},
 				"step_up_state_shape": {
 					"name": "step_up_state_shape",
@@ -9850,18 +9850,6 @@
 				"description": {
 					"name": "description",
 					"type": "text",
-					"primaryKey": false,
-					"notNull": false
-				},
-				"deleted_at": {
-					"name": "deleted_at",
-					"type": "timestamp",
-					"primaryKey": false,
-					"notNull": false
-				},
-				"purge_after": {
-					"name": "purge_after",
-					"type": "timestamp",
 					"primaryKey": false,
 					"notNull": false
 				},

@@ -15,7 +15,7 @@ const migrationDirectory = resolve(
   dirname(fileURLToPath(import.meta.url)),
   "../../apps/api/drizzle",
 );
-const cutoverIndex = 87;
+const cutoverIndex = 89;
 const scratchDatabases: Array<{ adminUrl: string; name: string }> = [];
 
 async function createScratchDatabase(baseUrl: string) {

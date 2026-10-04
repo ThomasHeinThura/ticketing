@@ -75,6 +75,14 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 | `sla.met` | The **transition into a `completed`-group state** (`WF-17`) finds the goal satisfied before its due time. Not `sla-scan` — an item that has just met its goal has `resolved_at` set and is outside the scan's candidate set | — | ✅ | — | `metric`, `metAt`, `marginMinutes` |
 | `sla.missed` | The same transition finds the goal already past its due time — "closed after target" ([sla.md](../03-features/sla.md)). The `missed` half of the pair `sla.met` completes; without it the sixth SLA state fires nothing | — | ✅ | — | `metric`, `dueAt`, `missedByMinutes` |
 
+### Service calendars
+
+| Key | Emitted when | A | W | N | Payload |
+| --- | --- | :-: | :-: | :-: | --- |
+| `service_calendar.created` | A calendar is created; its event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
+| `service_calendar.updated` | A calendar is updated; its event envelope is inserted into `outbox` in the same transaction | — | — | — | `calendarId`, `workspaceId`, `name`, `changedFields: [name\|timezone\|windows\|holidays]`, `url` |
+| `service_calendar.deleted` | Reserved; not emitted yet. EV-1 outbox support will emit after a service calendar is deleted; no delete route exists yet | — | — | — | `calendarId`, `workspaceId`, `name`, `url` |
+
 ### Approvals
 
 | Key | Emitted when | A | W | N | Payload |

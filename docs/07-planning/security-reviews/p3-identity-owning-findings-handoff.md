@@ -37,7 +37,7 @@ checks, or real-Entra verification.
    discriminator shape, duplicate decisions, grant scope binding, and per-row evidence
    references/rationale. The custom startup and `db:migrate` runner now blocks parent
    writers, validates a current admin and direct-grant target before DDL, then runs
-   migrations 0087–0090 plus backfill/projection/constraints in one transaction. It refuses
+   migrations 0089–0092 plus backfill/projection/constraints in one transaction. It refuses
    duplicate projection keys and unsupported external-source claims; no persistent cutover
    has run. This is implementation evidence only, not runtime acceptance. Do not classify
    null `derived_from` as direct by default.

@@ -49,5 +49,33 @@
 		"applicationRoute": "/god-mode/observability",
 		"test": "observability settings screen @visual",
 		"screenshot": "observability-settings.png"
+	},
+	{
+		"name": "service-calendar-list",
+		"inventoryRoute": "/agent/settings/calendars",
+		"applicationRoute": "/agent/settings/calendars",
+		"test": "service calendar list screen @visual",
+		"screenshot": "service-calendar-list.png"
+	},
+	{
+		"name": "service-calendar-editor",
+		"inventoryRoute": "/agent/settings/calendars/{id}",
+		"applicationRoute": "/agent/settings/calendars/$id",
+		"test": "service calendar editor screen @visual",
+		"screenshot": "service-calendar-editor.png"
+	},
+	{
+		"name": "sla-policy-list",
+		"inventoryRoute": "/agent/settings/sla-policies",
+		"applicationRoute": "/agent/settings/sla-policies",
+		"test": "SLA policy list screen @visual",
+		"screenshot": "sla-policy-list.png"
+	},
+	{
+		"name": "sla-policy-editor",
+		"inventoryRoute": "/agent/settings/sla-policies/{id}",
+		"applicationRoute": "/agent/settings/sla-policies/$id",
+		"test": "SLA policy editor screen @visual",
+		"screenshot": "sla-policy-editor.png"
 	}
 ]

@@ -51,6 +51,8 @@ import { oauthPolicies } from "./oauth/policy";
 import { pendingActionPolicies } from "./pending-action/policy";
 import { projectPolicies } from "./project/policy";
 import { searchPolicies } from "./search/policy";
+import { serviceCalendarPolicies } from "./service-calendar/policy";
+import { slaPolicyPolicies } from "./sla-policy/policy";
 import { taskPolicies } from "./task/policy";
 import { taskRelationPolicies } from "./task-relation/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
@@ -323,6 +325,14 @@ export const POLICY_SOURCES = [
   { name: "apps/api/src/audit/policy.ts", policies: auditPolicies },
   { name: "apps/api/src/label/policy.ts", policies: labelPolicies },
   { name: "apps/api/src/asset/policy.ts", policies: assetPolicies },
+  {
+    name: "apps/api/src/service-calendar/policy.ts",
+    policies: serviceCalendarPolicies,
+  },
+  {
+    name: "apps/api/src/sla-policy/policy.ts",
+    policies: slaPolicyPolicies,
+  },
   { name: "apps/api/src/attachment/policy.ts", policies: attachmentPolicies },
   { name: "apps/api/src/workflow/policy.ts", policies: workflowPolicies },
 ];

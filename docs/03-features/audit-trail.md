@@ -183,6 +183,11 @@ Borrowed from OpenProject's journal design.
   Read behavior follows the owning feature contract: audit-log reads remain best-effort,
   while PA-11 pending-action detail reads fail closed and return no summary when their
   `pending_action.viewed` audit append fails ([pending-actions.md](../01-architecture/pending-actions.md)).
+  SLA policy create/update/publish mutations use the same mutation rule: an audit failure
+  after the policy write rolls back only the nested audit savepoint, allows the policy
+  mutation to commit, and reports the failure through the bounded AU-14 counter/log and
+  durable administrator-notification path. Publish immutability checks remain enforced
+  independently of audit success.
 - `AU-15` Rows are **hash-chained**: `row_hash` is SHA-256 over the **canonical form defined
   once in data-model.md §11** — the ordered column list (`prev_hash` **included**, as its
   first field, per §11's own "Hash input" list — corrected 2026-09-16: an earlier version
@@ -227,6 +232,9 @@ them; a new audit-only action is added here first ([AGENTS.md](../../AGENTS.md) 
 | `impersonation.started` · `impersonation.ended` | `GM-7`, `GM-11` |
 | `role.created` · `role.updated` · `role.deleted` · `membership.changed` · `membership.sees_all_granted` | Authority and reach changes |
 | `project.reach_changed` | `owner_team_id` or `parent_id` changed ([rbac.md](../01-architecture/rbac.md#reach)) |
+| `sla_policy.created` | SLA policy created; record only `policyId` and its initial `versionId` as safe identifiers. The raw policy body is never audited. |
+| `sla_policy.updated` | SLA policy draft changed; record `policyId`, `versionId`, a closed `changedFields` list (`name`, `description`, `calendarId`, `atRiskThresholdPct`, `goals`), and only the safe scalar values `calendarId` and `atRiskThresholdPct` when changed. Never record names/descriptions, goal matrices, or a raw request body. Published versions are immutable; an edit creates or updates a draft version and never rewrites a published one. |
+| `sla_policy.published` | SLA policy version published; record `policyId`, `versionId`, prior active version id when present, and the canonical `effectiveFrom` scalar. A publish never mutates an already-published version. |
 | `invitation.sent` · `invitation.redeemed` · `invitation.revoked` | Invitations |
 | `plugin.changed` · `plugin.tested` · `secrets.rekeyed` | Plugin configuration (keys only, never values), a `test()` call even when unsaved, key rotation |
 | `feature_flag.changed` | Any level |

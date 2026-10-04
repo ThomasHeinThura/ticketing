@@ -85,6 +85,42 @@ export type WorkItemListSearch = {
   dir: WorkItemSortDirection;
 };
 
+export type ServiceCalendarListSearch = { cursor?: string };
+export type SlaPolicyListSearch = { cursor?: string };
+
+export function parseSlaPolicyListSearch(raw: unknown): SlaPolicyListSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  const cursor =
+    typeof candidate.cursor === "string" &&
+    candidate.cursor.length > 0 &&
+    candidate.cursor.length <= 2048
+      ? candidate.cursor
+      : undefined;
+  return { cursor };
+}
+
+export function parseServiceCalendarListSearch(
+  raw: unknown,
+): ServiceCalendarListSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  const cursor =
+    typeof candidate.cursor === "string" &&
+    candidate.cursor.length > 0 &&
+    candidate.cursor.length <= 2048
+      ? candidate.cursor
+      : undefined;
+  return { cursor };
+}
+
+export function parseServiceCalendarListSearchFromQueryString(
+  queryString: string,
+) {
+  const params = new URLSearchParams(queryString);
+  return parseServiceCalendarListSearch({
+    cursor: params.get("cursor"),
+  });
+}
+
 export const DEFAULT_WORK_ITEM_LIST_SEARCH: WorkItemListSearch = {
   layout: "list",
   sort: "key",
@@ -147,6 +183,46 @@ export const routes = {
     path: "/" as const,
     build: () => "/",
     parse: (pathname: string) => (pathname === "/" ? "/" : undefined),
+  },
+  /** `docs/02-design/screen-inventory.md` "Workspace — service calendars". */
+  serviceCalendars: {
+    path: "/agent/settings/calendars" as const,
+    build: (search: ServiceCalendarListSearch = {}) => {
+      const resolved = parseServiceCalendarListSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
+      const suffix = query.toString();
+      return suffix
+        ? `/agent/settings/calendars?${suffix}`
+        : "/agent/settings/calendars";
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "Service calendar editor". */
+  serviceCalendarEditor: {
+    path: "/agent/settings/calendars/$id" as const,
+    build: (params: { id: string }, year?: number) => {
+      const path = `/agent/settings/calendars/${encodeURIComponent(params.id)}`;
+      return year === undefined ? path : `${path}?year=${year}`;
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "Workspace — SLA policies". */
+  slaPolicies: {
+    path: "/agent/settings/sla-policies" as const,
+    build: (search: SlaPolicyListSearch = {}) => {
+      const resolved = parseSlaPolicyListSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
+      const suffix = query.toString();
+      return suffix
+        ? `/agent/settings/sla-policies?${suffix}`
+        : "/agent/settings/sla-policies";
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "SLA policy editor". */
+  slaPolicyEditor: {
+    path: "/agent/settings/sla-policies/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/sla-policies/${encodeURIComponent(params.id)}`,
   },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {

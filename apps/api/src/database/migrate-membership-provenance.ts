@@ -9,8 +9,8 @@ import {
 } from "../identity/membership-provenance-preflight";
 import type { DatabaseInstance } from "./index";
 
-const CUTOVER_TAG = "0087_unique_the_stranger";
-const CUTOVER_END_TAG = "0090_mature_exodus";
+const CUTOVER_TAG = "0089_unique_the_stranger";
+const CUTOVER_END_TAG = "0092_mature_exodus";
 const MIGRATIONS_SCHEMA = "drizzle";
 const MIGRATIONS_TABLE = "__drizzle_migrations";
 
@@ -47,7 +47,7 @@ function reconciliationPathFromArgs(args: readonly string[]) {
 /**
  * Run the provenance authority transition at the exact migration boundary. The old
  * schema remains intact if preflight, approval, backfill, projection validation, or any
- * statement in 0087 fails. The migration connection is the only connection used while
+ * statement in the migration batch fails. The migration connection is the only connection used while
  * the legacy membership writers are blocked.
  */
 export async function migrateWithMembershipProvenanceCutover(options: {

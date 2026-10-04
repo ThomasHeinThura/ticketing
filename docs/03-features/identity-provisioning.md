@@ -311,6 +311,9 @@ protocol code; only the credential check reuses the platform.
   is the TaskDesk profile display name, independent of the account-wide `user.name`; an
   unlinked SCIM placeholder can therefore retain its own profile without creating a login.
   SCIM reads emit stored `displayName` and do not derive a name from `userName` or email.
+  The additive `person.display_name` field is per-person profile data and never changes
+  account-wide `user.name`. Existing rows stay NULL; no backfill guesses from account or
+  connection snapshots. Deactivation/reactivation preserves the value.
   Existing people without a stored display name remain without one; migration must not guess
   from account or identity snapshots. Deactivation and reactivation preserve the profile and
   connection-scoped snapshots. The version-1 `scim_connection.attribute_mapping` grammar,
@@ -367,8 +370,16 @@ protocol code; only the credential check reuses the platform.
   inside the connection's organisation (customer) or a workspace eligible under `IP-3`
   (agent). The instance administrator selects the agent workspace; each create, target
   change, enable and reconciliation revalidates that it is a non-deleted workspace owned
-  by the unique active, non-deleted internal organisation. Unmapped groups are stored as
-  opaque names and grant nothing.
+  by the unique active, non-deleted internal organisation. Provider Groups are stored
+  separately from role mappings in connection-scoped `scim_group` rows keyed by the
+  provider `externalId`; `displayName` is opaque directory metadata. Membership uses
+  `scim_group_directory_member` rows that reference only the same connection's
+  `external_identity` ids, never email. Unmapped groups are stored and grant nothing.
+  A mapping may predate observation, but creating it grants nothing until an authenticated
+  SCIM reconciliation observes the same-connection group membership. Group/member removal
+  and deactivation are soft, retain directory history, and use the IP-22 writer to retire
+  only grants derived from that SCIM mapping with `scim_group_removed`; no resource is
+  hard-deleted. Authorization history remains in the distinct `scim_group_member` table.
 - `IP-21` Customer groups map only to customer roles; agent groups map only to approved
   staff roles at or below `max_role_rank`. No group can grant `instance:admin` or
   `sees_all`; no group can create roles or capabilities; no group can add anyone to another

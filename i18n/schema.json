@@ -1049,6 +1049,142 @@
 						"createAccount"
 					]
 				},
+				"twoFactor": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"subtitle": {
+							"type": "string"
+						},
+						"authenticatorCode": {
+							"type": "string"
+						},
+						"backupCode": {
+							"type": "string"
+						},
+						"verify": {
+							"type": "string"
+						},
+						"verifying": {
+							"type": "string"
+						},
+						"useBackupCode": {
+							"type": "string"
+						},
+						"useAuthenticatorCode": {
+							"type": "string"
+						},
+						"error": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"subtitle",
+						"authenticatorCode",
+						"backupCode",
+						"verify",
+						"verifying",
+						"useBackupCode",
+						"useAuthenticatorCode",
+						"error"
+					]
+				},
+				"accountSecurity": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"pageTitle": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"required": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"enabled": {
+							"type": "string"
+						},
+						"enabledDescription": {
+							"type": "string"
+						},
+						"saveCodes": {
+							"type": "string"
+						},
+						"savedCodes": {
+							"type": "string"
+						},
+						"setupTitle": {
+							"type": "string"
+						},
+						"setupDescription": {
+							"type": "string"
+						},
+						"setupButton": {
+							"type": "string"
+						},
+						"starting": {
+							"type": "string"
+						},
+						"scanTitle": {
+							"type": "string"
+						},
+						"scanDescription": {
+							"type": "string"
+						},
+						"codeLabel": {
+							"type": "string"
+						},
+						"verify": {
+							"type": "string"
+						},
+						"verifying": {
+							"type": "string"
+						},
+						"enrollmentDisabled": {
+							"type": "string"
+						},
+						"enrollmentStartError": {
+							"type": "string"
+						},
+						"codeError": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"pageTitle",
+						"description",
+						"required",
+						"unavailable",
+						"enabled",
+						"enabledDescription",
+						"saveCodes",
+						"savedCodes",
+						"setupTitle",
+						"setupDescription",
+						"setupButton",
+						"starting",
+						"scanTitle",
+						"scanDescription",
+						"codeLabel",
+						"verify",
+						"verifying",
+						"enrollmentDisabled",
+						"enrollmentStartError",
+						"codeError",
+						"loading"
+					]
+				},
 				"invitation": {
 					"type": "object",
 					"additionalProperties": false,
@@ -1323,6 +1459,8 @@
 				"otpSignIn",
 				"signInForm",
 				"signUpForm",
+				"twoFactor",
+				"accountSecurity",
 				"invitation",
 				"onboarding",
 				"profileSetup"
@@ -9326,6 +9464,708 @@
 				}
 			},
 			"required": ["unavailable", "notFound", "error"]
+		},
+		"serviceCalendars": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"weekdays": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"mon": {
+							"type": "string"
+						},
+						"tue": {
+							"type": "string"
+						},
+						"wed": {
+							"type": "string"
+						},
+						"thu": {
+							"type": "string"
+						},
+						"fri": {
+							"type": "string"
+						},
+						"sat": {
+							"type": "string"
+						},
+						"sun": {
+							"type": "string"
+						}
+					},
+					"required": ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+				},
+				"list": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"new": {
+							"type": "string"
+						},
+						"readOnlyTitle": {
+							"type": "string"
+						},
+						"readOnlyDescription": {
+							"type": "string"
+						},
+						"toolsTitle": {
+							"type": "string"
+						},
+						"toolsDescription": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"label": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"create": {
+							"type": "string"
+						},
+						"weeklyHours": {
+							"type": "string"
+						},
+						"manualHolidays": {
+							"type": "string"
+						},
+						"manualHolidays_zero": {
+							"type": "string"
+						},
+						"manualHolidays_one": {
+							"type": "string"
+						},
+						"manualHolidays_two": {
+							"type": "string"
+						},
+						"manualHolidays_few": {
+							"type": "string"
+						},
+						"manualHolidays_many": {
+							"type": "string"
+						},
+						"manualHolidays_other": {
+							"type": "string"
+						},
+						"usageUnavailable": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"new",
+						"readOnlyTitle",
+						"readOnlyDescription",
+						"toolsTitle",
+						"toolsDescription",
+						"loading",
+						"loadErrorTitle",
+						"loadErrorDescription",
+						"retry",
+						"label",
+						"emptyTitle",
+						"emptyDescription",
+						"create",
+						"weeklyHours",
+						"usageUnavailable"
+					]
+				},
+				"editor": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"pageTitle": {
+							"type": "string"
+						},
+						"newTitle": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"back": {
+							"type": "string"
+						},
+						"save": {
+							"type": "string"
+						},
+						"create": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						},
+						"conflictTitle": {
+							"type": "string"
+						},
+						"conflictDescription": {
+							"type": "string"
+						},
+						"conflictRefreshing": {
+							"type": "string"
+						},
+						"conflictRefreshFailed": {
+							"type": "string"
+						},
+						"discardReload": {
+							"type": "string"
+						},
+						"keepDraft": {
+							"type": "string"
+						},
+						"readOnlyTitle": {
+							"type": "string"
+						},
+						"readOnlyDescription": {
+							"type": "string"
+						},
+						"timezoneTitle": {
+							"type": "string"
+						},
+						"timezoneDescription": {
+							"type": "string"
+						},
+						"timezoneCount": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"confirmSave": {
+							"type": "string"
+						},
+						"changesTitle": {
+							"type": "string"
+						},
+						"changesDescription": {
+							"type": "string"
+						},
+						"zeroWeeklyTitle": {
+							"type": "string"
+						},
+						"zeroWeeklyDescription": {
+							"type": "string"
+						},
+						"zeroTitle": {
+							"type": "string"
+						},
+						"zeroDescription": {
+							"type": "string"
+						},
+						"limitedTitle": {
+							"type": "string"
+						},
+						"limitedDescription": {
+							"type": "string"
+						},
+						"allCalendars": {
+							"type": "string"
+						},
+						"editableLegend": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"pageTitle",
+						"newTitle",
+						"loading",
+						"loadErrorTitle",
+						"loadErrorDescription",
+						"retry",
+						"back",
+						"save",
+						"create",
+						"saving",
+						"conflictTitle",
+						"conflictDescription",
+						"conflictRefreshing",
+						"conflictRefreshFailed",
+						"discardReload",
+						"keepDraft",
+						"readOnlyTitle",
+						"readOnlyDescription",
+						"timezoneTitle",
+						"timezoneDescription",
+						"timezoneCount",
+						"cancel",
+						"confirmSave",
+						"changesTitle",
+						"changesDescription",
+						"zeroWeeklyTitle",
+						"zeroWeeklyDescription",
+						"zeroTitle",
+						"zeroDescription",
+						"limitedTitle",
+						"limitedDescription",
+						"allCalendars",
+						"editableLegend"
+					]
+				},
+				"details": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"name": {
+							"type": "string"
+						},
+						"timezone": {
+							"type": "string"
+						},
+						"timezonePlaceholder": {
+							"type": "string"
+						},
+						"timezoneHelp": {
+							"type": "string"
+						},
+						"nameRequired": {
+							"type": "string"
+						},
+						"timezoneRequired": {
+							"type": "string"
+						},
+						"timezoneInvalid": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"name",
+						"timezone",
+						"timezonePlaceholder",
+						"timezoneHelp",
+						"nameRequired",
+						"timezoneRequired",
+						"timezoneInvalid"
+					]
+				},
+				"preview": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"year": {
+							"type": "string"
+						},
+						"yearHelp": {
+							"type": "string"
+						},
+						"saveToCalculate": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"weeklyHours": {
+							"type": "string"
+						},
+						"annualHours": {
+							"type": "string"
+						},
+						"zeroCover": {
+							"type": "string"
+						},
+						"calendar": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"year",
+						"yearHelp",
+						"saveToCalculate",
+						"unavailable",
+						"retry",
+						"weeklyHours",
+						"annualHours",
+						"zeroCover",
+						"calendar"
+					]
+				},
+				"weekly": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"none": {
+							"type": "string"
+						},
+						"add": {
+							"type": "string"
+						},
+						"addOn": {
+							"type": "string"
+						},
+						"windowInvalid": {
+							"type": "string"
+						},
+						"chooseWorkspace": {
+							"type": "string"
+						},
+						"created": {
+							"type": "string"
+						},
+						"saved": {
+							"type": "string"
+						},
+						"saveFailed": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"none",
+						"add",
+						"addOn",
+						"windowInvalid",
+						"chooseWorkspace",
+						"created",
+						"saved",
+						"saveFailed"
+					]
+				},
+				"window": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"timeline": {
+							"type": "string"
+						},
+						"label": {
+							"type": "string"
+						},
+						"label_zero": {
+							"type": "string"
+						},
+						"label_one": {
+							"type": "string"
+						},
+						"label_two": {
+							"type": "string"
+						},
+						"label_few": {
+							"type": "string"
+						},
+						"label_many": {
+							"type": "string"
+						},
+						"label_other": {
+							"type": "string"
+						},
+						"move": {
+							"type": "string"
+						},
+						"starts": {
+							"type": "string"
+						},
+						"ends": {
+							"type": "string"
+						},
+						"endBoundary": {
+							"type": "string"
+						},
+						"endBoundaryLabel": {
+							"type": "string"
+						},
+						"remove": {
+							"type": "string"
+						},
+						"removeWindow": {
+							"type": "string"
+						},
+						"startLabel": {
+							"type": "string"
+						},
+						"endLabel": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"timeline",
+						"move",
+						"starts",
+						"ends",
+						"endBoundary",
+						"endBoundaryLabel",
+						"remove",
+						"removeWindow",
+						"startLabel",
+						"endLabel"
+					]
+				},
+				"holidays": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"pastWarning": {
+							"type": "string"
+						},
+						"add": {
+							"type": "string"
+						},
+						"none": {
+							"type": "string"
+						},
+						"item": {
+							"type": "string"
+						},
+						"item_zero": {
+							"type": "string"
+						},
+						"item_one": {
+							"type": "string"
+						},
+						"item_two": {
+							"type": "string"
+						},
+						"item_few": {
+							"type": "string"
+						},
+						"item_many": {
+							"type": "string"
+						},
+						"item_other": {
+							"type": "string"
+						},
+						"pattern": {
+							"type": "string"
+						},
+						"date": {
+							"type": "string"
+						},
+						"range": {
+							"type": "string"
+						},
+						"annual": {
+							"type": "string"
+						},
+						"dateLabel": {
+							"type": "string"
+						},
+						"from": {
+							"type": "string"
+						},
+						"through": {
+							"type": "string"
+						},
+						"month": {
+							"type": "string"
+						},
+						"day": {
+							"type": "string"
+						},
+						"nameOptional": {
+							"type": "string"
+						},
+						"remove": {
+							"type": "string"
+						},
+						"removeHoliday": {
+							"type": "string"
+						},
+						"removeHoliday_zero": {
+							"type": "string"
+						},
+						"removeHoliday_one": {
+							"type": "string"
+						},
+						"removeHoliday_two": {
+							"type": "string"
+						},
+						"removeHoliday_few": {
+							"type": "string"
+						},
+						"removeHoliday_many": {
+							"type": "string"
+						},
+						"removeHoliday_other": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"pastWarning",
+						"add",
+						"none",
+						"pattern",
+						"date",
+						"range",
+						"annual",
+						"dateLabel",
+						"from",
+						"through",
+						"month",
+						"day",
+						"nameOptional",
+						"remove"
+					]
+				},
+				"import": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"file": {
+							"type": "string"
+						},
+						"unnamed": {
+							"type": "string"
+						},
+						"readError": {
+							"type": "string"
+						},
+						"errorTitle": {
+							"type": "string"
+						},
+						"error": {
+							"type": "string"
+						},
+						"preview": {
+							"type": "string"
+						},
+						"preview_zero": {
+							"type": "string"
+						},
+						"preview_one": {
+							"type": "string"
+						},
+						"preview_two": {
+							"type": "string"
+						},
+						"preview_few": {
+							"type": "string"
+						},
+						"preview_many": {
+							"type": "string"
+						},
+						"preview_other": {
+							"type": "string"
+						},
+						"confirmDescription": {
+							"type": "string"
+						},
+						"confirm": {
+							"type": "string"
+						},
+						"importing": {
+							"type": "string"
+						},
+						"successTitle": {
+							"type": "string"
+						},
+						"success": {
+							"type": "string"
+						},
+						"counts": {
+							"type": "string"
+						},
+						"tooLarge": {
+							"type": "string"
+						},
+						"tooMany": {
+							"type": "string"
+						},
+						"noEvents": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"description",
+						"file",
+						"unnamed",
+						"readError",
+						"errorTitle",
+						"error",
+						"confirmDescription",
+						"confirm",
+						"importing",
+						"successTitle",
+						"success",
+						"counts",
+						"tooLarge",
+						"tooMany",
+						"noEvents"
+					]
+				}
+			},
+			"required": [
+				"weekdays",
+				"list",
+				"editor",
+				"details",
+				"preview",
+				"weekly",
+				"window",
+				"holidays",
+				"import"
+			]
 		}
 	},
 	"required": [
@@ -9341,6 +10181,7 @@
 		"team",
 		"publicProject",
 		"workItems",
-		"portal"
+		"portal",
+		"serviceCalendars"
 	]
 }

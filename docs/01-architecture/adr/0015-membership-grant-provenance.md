@@ -134,15 +134,15 @@ cut-over runner must verify the approver is a current instance admin, validate e
 reference and role/scope under lock, reject duplicate projection keys, repeat the preflight
 while all participating writers are blocked, and perform grant backfill, projection, and
 constraints atomically. The startup and `db:migrate` paths use
-`apps/api/src/database/migrate-membership-provenance.ts` for the 0087–0090 transition.
+`apps/api/src/database/migrate-membership-provenance.ts` for the 0089–0092 transition.
 That runner applies the accepted prefix first, then takes parent-first exclusive locks for
 organisation, workspace, person, role, and membership; recomputes the inventory under
 those locks; validates the complete private owner record, current admin actor, exact
 legacy role/scope/person targets and duplicate projection keys before executing any
-cutover SQL. It executes 0087–0090, inserts the direct-grant backfill and validates the
+cutover SQL. It executes 0089–0092, inserts the direct-grant backfill and validates the
 effective projection in one transaction, including migration-journal rows. Failure rolls
 back all cutover DDL, backfill, indexes, and journal entries. The v1 runtime currently
-accepts owner-attested `direct/admin` legacy grants only: the pre-0087 schema has no durable
+accepts owner-attested `direct/admin` legacy grants only: the pre-0089 schema has no durable
 OIDC/JIT source ledger to validate, so external-source claims remain refused. Null
 `derived_from` is never treated as direct. Duplicate projection keys stop the transition and
 must be resolved before retry; the runner does not delete or choose a duplicate row.
