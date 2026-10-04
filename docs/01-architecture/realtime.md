@@ -265,7 +265,7 @@ small "live updates unavailable" indicator. The application remains fully usable
 | `ws-frame-validation.test.ts` | Malformed frames and `user:` topics for another person are refused |
 | `ws-fanout.test.ts` | Two clients, one mutation, both receive it once |
 | `ws-valkey-adapter.test.ts` | Cross-replica delivery via a real Valkey container |
-| E2E `realtime.spec.ts` | Two browser contexts on one board; a drag in one appears in the other |
+| E2E `realtime.spec.ts` | Two independently signed-in browser contexts open the same native work-item list. Create through the UI, then update through a real CSRF-protected, versioned API request; the other context observes the native `/api/ws` connection and renders both committed list responses before the 30-second polling fallback. This is the `work_item` path, not the legacy `task` board. The focused `node-server-websocket.test.ts` separately verifies two authorized actors receive one key-only hint per persisted POST/PATCH. Portal-host WebSocket denial remains covered by `ws-portal-session.test.ts` and CP-19 host-routing tests |
 
 ## Related
 
