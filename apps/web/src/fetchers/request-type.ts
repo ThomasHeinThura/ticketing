@@ -9,6 +9,32 @@ export type RequestTypeInput = Parameters<typeof requestTypeClient.create>[0];
 export type RequestTypePatch = Parameters<typeof requestTypeClient.update>[1];
 export type IntakeQueuePage = IntakeQueueDto;
 export type IntakeSubmission = IntakeSubmissionDto;
+export type IntakeReceipt = Pick<
+  IntakeSubmissionDto,
+  "ref" | "state" | "workItemKey" | "createdAt"
+>;
+
+export function getRequestTypeErrorMessage(
+  cause: unknown,
+  fallback: string,
+): string {
+  if (!(cause instanceof Error) || !cause.message) return fallback;
+  try {
+    const parsed: unknown = JSON.parse(cause.message);
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      "message" in parsed &&
+      typeof parsed.message === "string" &&
+      parsed.message.trim()
+    ) {
+      return parsed.message;
+    }
+  } catch {
+    // The typed clients also receive plain-text error bodies; retain those.
+  }
+  return cause.message;
+}
 
 export async function getIntakeQueue(input: {
   workspaceId: string;
@@ -51,10 +77,26 @@ export async function acceptIntakeSubmission(
   ref: string,
   input: { projectId: string; typeId: string },
 ) {
-  return intakeApiCall(`/submissions/${encodeURIComponent(ref)}/accept`, {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  return intakeApiCall<IntakeReceipt>(
+    `/submissions/${encodeURIComponent(ref)}/accept`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export async function markIntakeSubmissionDuplicate(
+  ref: string,
+  workItemKey: string,
+) {
+  return intakeApiCall<IntakeReceipt>(
+    `/submissions/${encodeURIComponent(ref)}/duplicate`,
+    {
+      method: "POST",
+      body: JSON.stringify({ workItemKey }),
+    },
+  );
 }
 
 export async function getRequestTypes(

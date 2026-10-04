@@ -252,6 +252,7 @@ async function setupAcceptanceFixture(
     defaultField,
     requester,
     requestType,
+    version,
   };
 }
 
@@ -801,6 +802,101 @@ describe("API integration: request-type custom-field conversion (RT-3, IQ-8, CF-
         workspaceId: fixture.workspace.id,
         organisationId: fixture.organisation.id,
       },
+    });
+  });
+
+  it("accepts a staged file with the pinned assignee, default state, privacy and SLA arrival", async () => {
+    const fixture = await setupAcceptanceFixture({ withFile: true });
+    const staffPerson = requireRow(
+      await db
+        .select()
+        .from(schema.personTable)
+        .where(eq(schema.personTable.userId, fixture.user.id))
+        .limit(1),
+      "intake fixture staff person",
+    );
+    const projectRole = requireRow(
+      await db
+        .insert(schema.roleTable)
+        .values({
+          scope: "project",
+          key: `intake-project-role-${randomUUID()}`,
+          name: "Intake assignee",
+          rank: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning(),
+      "intake fixture project role",
+    );
+    await db.insert(schema.membershipTable).values({
+      personId: staffPerson.id,
+      scope: "project",
+      scopeId: fixture.project.id,
+      roleId: projectRole.id,
+    });
+    await db
+      .update(schema.requestTypeTable)
+      .set({ defaultAssigneeId: staffPerson.id, forcePrivate: true })
+      .where(eq(schema.requestTypeTable.id, fixture.requestType.id));
+    await db
+      .update(schema.requestTypeVersionTable)
+      .set({ defaultAssigneeId: staffPerson.id })
+      .where(eq(schema.requestTypeVersionTable.id, fixture.version.id));
+    const attachment = await createSubmissionAttachment(fixture);
+    mockAuthenticatedSession(fixture.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/submissions/SUB-${fixture.submission.number}/accept`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          projectId: fixture.project.id,
+          typeId: fixture.type.id,
+        }),
+      },
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      state: "accepted",
+      workItemKey: expect.any(String),
+    });
+
+    const [accepted] = await db
+      .select()
+      .from(schema.submissionTable)
+      .where(eq(schema.submissionTable.id, fixture.submission.id));
+    const [workItem] = await db
+      .select()
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, accepted!.workItemId!));
+    expect(workItem).toMatchObject({
+      assigneeId: staffPerson.id,
+      customerVisibility: "private",
+    });
+    expect(workItem?.slaStartedAt?.getTime()).toBe(
+      fixture.submission.submittedAt?.getTime(),
+    );
+    const [state] = await db
+      .select()
+      .from(schema.stateTable)
+      .where(eq(schema.stateTable.id, workItem!.stateId));
+    expect(state).toMatchObject({
+      projectId: fixture.project.id,
+      isDefault: true,
+    });
+    const [transferred] = await db
+      .select()
+      .from(schema.attachmentTable)
+      .where(eq(schema.attachmentTable.id, attachment.id));
+    expect(transferred).toMatchObject({
+      state: "ready",
+      submissionId: null,
+      submissionFieldKey: "files",
+      workItemId: workItem?.id,
+      customerVisible: true,
     });
   });
 

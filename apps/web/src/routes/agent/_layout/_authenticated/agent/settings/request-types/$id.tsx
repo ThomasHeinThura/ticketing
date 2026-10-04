@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import type { FormSchema } from "@taskdesk/domain/intake";
+import type { FormSchema, FormValue } from "@taskdesk/domain/intake";
 import { requestTypeClient } from "@taskdesk/libs";
 import {
   Alert,
@@ -34,7 +34,11 @@ import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import { RequestTypeFields } from "@/components/request-type/request-type-fields";
 import getProjects from "@/fetchers/project/get-projects";
-import { getRequestTypes } from "@/fetchers/request-type";
+import {
+  getRequestTypeErrorMessage,
+  getRequestTypes,
+} from "@/fetchers/request-type";
+import getAssignablePeople from "@/fetchers/work-item/get-assignable-people";
 import getWorkItemTypes from "@/fetchers/work-item/get-work-item-types";
 import { useSlaPolicies } from "@/hooks/queries/sla-policy/use-sla-policies";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -51,6 +55,7 @@ type Draft = {
   group: string;
   workItemTypeId: string;
   defaultProjectId: string | null;
+  defaultAssigneeId: string | null;
   slaPolicyId: string | null;
   autoAccept: boolean;
   customerVisible: boolean;
@@ -87,6 +92,7 @@ const emptyDraft: Draft = {
   group: "General",
   workItemTypeId: "",
   defaultProjectId: null,
+  defaultAssigneeId: null,
   slaPolicyId: null,
   autoAccept: false,
   customerVisible: false,
@@ -128,6 +134,13 @@ function mutableFormSchema(schema: FormSchema) {
   };
 }
 
+function nextFieldKey(fields: FormSchema["fields"]): string {
+  const keys = new Set(fields.map((field) => field.key));
+  let suffix = fields.length + 1;
+  while (keys.has(`field_${suffix}`)) suffix += 1;
+  return `field_${suffix}`;
+}
+
 function RequestTypeEditorRoute() {
   const { id } = Route.useParams();
   const isNew = id === "new";
@@ -156,9 +169,17 @@ function RequestTypeEditorRoute() {
   const policiesQuery = useSlaPolicies(workspace?.id ?? "");
   const item = listQuery.data?.items.find((candidate) => candidate.id === id);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [previewValues, setPreviewValues] = useState<Record<string, FormValue>>(
+    {},
+  );
   const [initialized, setInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const assigneesQuery = useQuery({
+    queryKey: ["assignable-people", draft.defaultProjectId ?? ""],
+    queryFn: () => getAssignablePeople(draft.defaultProjectId!),
+    enabled: Boolean(draft.defaultProjectId),
+  });
 
   useEffect(() => {
     if (isNew && !initialized) {
@@ -174,6 +195,7 @@ function RequestTypeEditorRoute() {
         group: item.group,
         workItemTypeId: item.workItemTypeId,
         defaultProjectId: item.defaultProjectId,
+        defaultAssigneeId: item.defaultAssigneeId,
         slaPolicyId: item.slaPolicyId,
         autoAccept: item.autoAccept,
         customerVisible: item.customerVisible,
@@ -181,10 +203,17 @@ function RequestTypeEditorRoute() {
         formSchema: item.formSchema as FormSchema,
       });
       setInitialized(true);
-    } else if (!isNew && !listQuery.isLoading) {
+    } else if (!isNew && workspace && !listQuery.isLoading) {
       setInitialized(true);
     }
-  }, [initialized, isNew, item, listQuery.isLoading, typeQuery.data]);
+  }, [
+    initialized,
+    isNew,
+    item,
+    listQuery.isLoading,
+    typeQuery.data,
+    workspace,
+  ]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -198,7 +227,7 @@ function RequestTypeEditorRoute() {
         defaultProjectId: draft.defaultProjectId,
         formSchema: mutableFormSchema(draft.formSchema),
         slaPolicyId: draft.slaPolicyId,
-        defaultAssigneeId: item?.defaultAssigneeId ?? null,
+        defaultAssigneeId: draft.defaultAssigneeId,
         autoAccept: draft.autoAccept,
         customerVisible: draft.customerVisible,
         forcePrivate: draft.forcePrivate,
@@ -222,7 +251,7 @@ function RequestTypeEditorRoute() {
     },
     onError: (cause) => {
       setSaved(false);
-      setError(cause instanceof Error ? cause.message : t("editor.saveError"));
+      setError(getRequestTypeErrorMessage(cause, t("editor.saveError")));
     },
   });
   const publish = useMutation({
@@ -237,9 +266,7 @@ function RequestTypeEditorRoute() {
       setError(null);
     },
     onError: (cause) =>
-      setError(
-        cause instanceof Error ? cause.message : t("editor.publishError"),
-      ),
+      setError(getRequestTypeErrorMessage(cause, t("editor.publishError"))),
   });
 
   function updateField(
@@ -249,9 +276,19 @@ function RequestTypeEditorRoute() {
     setDraft((current) => ({
       ...current,
       formSchema: {
-        fields: current.formSchema.fields.map((field, fieldIndex) =>
-          fieldIndex === index ? { ...field, ...patch } : field,
-        ),
+        fields: current.formSchema.fields.map((field, fieldIndex) => {
+          if (fieldIndex === index) return { ...field, ...patch };
+          if (
+            typeof patch.key === "string" &&
+            field.showIf?.field_key === current.formSchema.fields[index]?.key
+          ) {
+            return {
+              ...field,
+              showIf: { ...field.showIf, field_key: patch.key },
+            };
+          }
+          return field;
+        }),
       },
     }));
     setSaved(false);
@@ -357,14 +394,16 @@ function RequestTypeEditorRoute() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label>{t("editor.workItemType")}</Label>
+                <Label htmlFor="request-type-work-item-type">
+                  {t("editor.workItemType")}
+                </Label>
                 <Select
                   value={draft.workItemTypeId}
                   onValueChange={(value) =>
                     setDraft({ ...draft, workItemTypeId: value ?? "" })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="request-type-work-item-type">
                     <SelectValue placeholder={t("editor.workItemType")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -377,17 +416,23 @@ function RequestTypeEditorRoute() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>{t("editor.defaultProject")}</Label>
+                <Label htmlFor="request-type-default-project">
+                  {t("editor.defaultProject")}
+                </Label>
                 <Select
                   value={draft.defaultProjectId ?? "none"}
                   onValueChange={(value) =>
-                    setDraft({
-                      ...draft,
+                    setDraft((current) => ({
+                      ...current,
                       defaultProjectId: value === "none" ? null : value,
-                    })
+                      defaultAssigneeId:
+                        value === current.defaultProjectId
+                          ? current.defaultAssigneeId
+                          : null,
+                    }))
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="request-type-default-project">
                     <SelectValue placeholder={t("editor.defaultProject")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -403,7 +448,43 @@ function RequestTypeEditorRoute() {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label>{t("editor.slaPolicy")}</Label>
+                <Label htmlFor="request-type-default-assignee">
+                  {t("editor.defaultAssignee")}
+                </Label>
+                <Select
+                  value={draft.defaultAssigneeId ?? "none"}
+                  disabled={!draft.defaultProjectId || assigneesQuery.isLoading}
+                  onValueChange={(value) =>
+                    setDraft({
+                      ...draft,
+                      defaultAssigneeId: value === "none" ? null : value,
+                    })
+                  }
+                >
+                  <SelectTrigger id="request-type-default-assignee">
+                    <SelectValue placeholder={t("editor.defaultAssignee")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      {t("editor.noDefaultAssignee")}
+                    </SelectItem>
+                    {assigneesQuery.data?.map((person) => (
+                      <SelectItem key={person.personId} value={person.personId}>
+                        {person.name ?? person.personId}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {assigneesQuery.isError ? (
+                  <p role="alert" className="text-sm text-destructive">
+                    {t("editor.assigneesUnavailable")}
+                  </p>
+                ) : null}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="request-type-sla-policy">
+                  {t("editor.slaPolicy")}
+                </Label>
                 <Select
                   value={draft.slaPolicyId ?? "none"}
                   onValueChange={(value) =>
@@ -413,7 +494,7 @@ function RequestTypeEditorRoute() {
                     })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="request-type-sla-policy">
                     <SelectValue placeholder={t("editor.slaPolicy")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -483,7 +564,7 @@ function RequestTypeEditorRoute() {
                         fields: [
                           ...current.formSchema.fields,
                           {
-                            key: `field_${current.formSchema.fields.length + 1}`,
+                            key: nextFieldKey(current.formSchema.fields),
                             type: "text",
                             label: "",
                             required: false,
@@ -551,6 +632,20 @@ function RequestTypeEditorRoute() {
                           }
                         />
                       </div>
+                      <div className="grid gap-2 sm:col-span-2">
+                        <Label htmlFor={`field-help-${index}`}>
+                          {t("editor.helpText")}
+                        </Label>
+                        <Input
+                          id={`field-help-${index}`}
+                          value={field.help ?? ""}
+                          onChange={(event) =>
+                            updateField(index, {
+                              help: event.currentTarget.value || undefined,
+                            })
+                          }
+                        />
+                      </div>
                       <div className="grid gap-2">
                         <Label>{t("editor.fieldType")}</Label>
                         <Select
@@ -574,6 +669,7 @@ function RequestTypeEditorRoute() {
                               "number",
                               "date",
                               "checkbox",
+                              "file",
                             ].map((kind) => (
                               <SelectItem key={kind} value={kind}>
                                 {kind}
@@ -614,6 +710,243 @@ function RequestTypeEditorRoute() {
                           />
                         </div>
                       ) : null}
+                      {field.type === "select" ||
+                      field.type === "combobox" ||
+                      field.type === "file" ? (
+                        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(field.multiple)}
+                            onChange={(event) =>
+                              updateField(index, {
+                                multiple: event.currentTarget.checked,
+                              })
+                            }
+                          />
+                          {t("editor.allowMultiple")}
+                        </label>
+                      ) : null}
+                      <div className="grid gap-2 sm:col-span-2">
+                        <Label htmlFor={`field-maps-to-${index}`}>
+                          {t("editor.mapsTo")}
+                        </Label>
+                        <Select
+                          value={
+                            field.mapsTo?.field.startsWith("cf.")
+                              ? "custom_field"
+                              : (field.mapsTo?.field ?? "none")
+                          }
+                          onValueChange={(value) =>
+                            updateField(index, {
+                              mapsTo:
+                                !value || value === "none"
+                                  ? undefined
+                                  : {
+                                      field:
+                                        value === "custom_field"
+                                          ? "cf."
+                                          : value,
+                                    },
+                            })
+                          }
+                        >
+                          <SelectTrigger id={`field-maps-to-${index}`}>
+                            <SelectValue placeholder={t("editor.mapsTo")} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">
+                              {t("editor.noMapping")}
+                            </SelectItem>
+                            {[
+                              ["title", t("editor.nativeTitle")],
+                              ["description", t("editor.nativeDescription")],
+                              ["priority", t("editor.nativePriority")],
+                              ["due_date", t("editor.nativeDueDate")],
+                            ].map(([value, label]) => (
+                              <SelectItem key={value} value={value}>
+                                {label}
+                              </SelectItem>
+                            ))}
+                            <SelectItem value="custom_field">
+                              {t("editor.customField")}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {field.mapsTo?.field.startsWith("cf.") ? (
+                        <div className="grid gap-2 sm:col-span-2">
+                          <Label htmlFor={`field-custom-target-${index}`}>
+                            {t("editor.customFieldKey")}
+                          </Label>
+                          <Input
+                            id={`field-custom-target-${index}`}
+                            value={field.mapsTo.field.slice(3)}
+                            placeholder={t("editor.customFieldKeyPlaceholder")}
+                            onChange={(event) =>
+                              updateField(index, {
+                                mapsTo: {
+                                  ...(field.mapsTo ?? {}),
+                                  field: `cf.${event.currentTarget.value.trim()}`,
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                      ) : null}
+                      {field.mapsTo?.field !== "title" &&
+                      field.mapsTo?.field !== "description" &&
+                      (field.type === "select" || field.type === "combobox") ? (
+                        <div className="grid gap-2 sm:col-span-2">
+                          <Label htmlFor={`field-map-${index}`}>
+                            {t("editor.valueMapping")}
+                          </Label>
+                          <Textarea
+                            id={`field-map-${index}`}
+                            value={Object.entries(field.mapsTo?.map ?? {})
+                              .map(
+                                ([source, target]) => `${source} = ${target}`,
+                              )
+                              .join("\n")}
+                            placeholder={t("editor.valueMappingPlaceholder")}
+                            onChange={(event) => {
+                              const mapping = Object.fromEntries(
+                                event.currentTarget.value
+                                  .split("\n")
+                                  .map((line) => line.split("="))
+                                  .filter((parts) => parts.length >= 2)
+                                  .map(([source, ...target]) => [
+                                    source!.trim(),
+                                    target.join("=").trim(),
+                                  ])
+                                  .filter(
+                                    ([source, target]) => source && target,
+                                  ),
+                              );
+                              updateField(index, {
+                                mapsTo: { ...field.mapsTo!, map: mapping },
+                              });
+                            }}
+                          />
+                        </div>
+                      ) : null}
+                      <div className="grid gap-2 sm:col-span-2">
+                        <Label htmlFor={`field-show-if-${index}`}>
+                          {t("editor.conditionalVisibility")}
+                        </Label>
+                        <Select
+                          value={field.showIf?.field_key ?? "none"}
+                          onValueChange={(value) =>
+                            updateField(index, {
+                              showIf:
+                                !value || value === "none"
+                                  ? undefined
+                                  : { field_key: value, op: "is_set" },
+                            })
+                          }
+                        >
+                          <SelectTrigger id={`field-show-if-${index}`}>
+                            <SelectValue
+                              placeholder={t("editor.conditionalVisibility")}
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">
+                              {t("editor.alwaysVisible")}
+                            </SelectItem>
+                            {draft.formSchema.fields
+                              .filter(
+                                (candidate) =>
+                                  candidate.key !== field.key &&
+                                  candidate.type !== "file" &&
+                                  !candidate.showIf,
+                              )
+                              .map((candidate) => (
+                                <SelectItem
+                                  key={candidate.key}
+                                  value={candidate.key}
+                                >
+                                  {candidate.label || candidate.key}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        {field.showIf ? (
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <Select
+                              value={field.showIf.op}
+                              onValueChange={(value) =>
+                                updateField(index, {
+                                  showIf: {
+                                    field_key: field.showIf!.field_key,
+                                    op: value as NonNullable<
+                                      typeof field.showIf
+                                    >["op"],
+                                    ...(field.showIf!.value === undefined
+                                      ? {}
+                                      : { value: field.showIf!.value }),
+                                  },
+                                })
+                              }
+                            >
+                              <SelectTrigger
+                                aria-label={t("editor.conditionOperator")}
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(["is_set", "eq", "neq", "in"] as const).map(
+                                  (op) => (
+                                    <SelectItem key={op} value={op}>
+                                      {t(`editor.conditionOperators.${op}`)}
+                                    </SelectItem>
+                                  ),
+                                )}
+                              </SelectContent>
+                            </Select>
+                            {field.showIf.op !== "is_set" ? (
+                              field.showIf.op === "in" ? (
+                                <Textarea
+                                  aria-label={t("editor.conditionValue")}
+                                  value={
+                                    Array.isArray(field.showIf.value)
+                                      ? field.showIf.value.join("\n")
+                                      : ""
+                                  }
+                                  onChange={(event) =>
+                                    updateField(index, {
+                                      showIf: {
+                                        field_key: field.showIf!.field_key,
+                                        op: "in",
+                                        value: event.currentTarget.value
+                                          .split("\n")
+                                          .filter(Boolean),
+                                      },
+                                    })
+                                  }
+                                />
+                              ) : (
+                                <Input
+                                  aria-label={t("editor.conditionValue")}
+                                  value={
+                                    typeof field.showIf.value === "string"
+                                      ? field.showIf.value
+                                      : ""
+                                  }
+                                  onChange={(event) =>
+                                    updateField(index, {
+                                      showIf: {
+                                        field_key: field.showIf!.field_key,
+                                        op: field.showIf!.op,
+                                        value: event.currentTarget.value,
+                                      },
+                                    })
+                                  }
+                                />
+                              )
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="flex gap-1">
                       <Button
@@ -643,9 +976,13 @@ function RequestTypeEditorRoute() {
                           setDraft((current) => ({
                             ...current,
                             formSchema: {
-                              fields: current.formSchema.fields.filter(
-                                (_, fieldIndex) => fieldIndex !== index,
-                              ),
+                              fields: current.formSchema.fields
+                                .filter((_, fieldIndex) => fieldIndex !== index)
+                                .map((remaining) =>
+                                  remaining.showIf?.field_key === field.key
+                                    ? { ...remaining, showIf: undefined }
+                                    : remaining,
+                                ),
                             },
                           }))
                         }
@@ -701,12 +1038,20 @@ function RequestTypeEditorRoute() {
               </div>
               <RequestTypeFields
                 schema={draft.formSchema}
-                values={{}}
+                values={previewValues}
                 requiredLabel={t("editor.required")}
                 selectPlaceholder={t("editor.fieldType")}
                 emptyOptionsLabel={t("editor.noWorkItemTypes")}
                 comboTriggerLabel={t("editor.fieldType")}
-                onValueChange={() => undefined}
+                onValueChange={(key, value) =>
+                  setPreviewValues((current) => ({ ...current, [key]: value }))
+                }
+                onFilesChange={(key, files) =>
+                  setPreviewValues((current) => ({
+                    ...current,
+                    [key]: files ? Array.from(files, (file) => file.name) : [],
+                  }))
+                }
               />
             </CardContent>
           </Card>

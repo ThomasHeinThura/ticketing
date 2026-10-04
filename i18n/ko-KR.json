@@ -2777,7 +2777,11 @@
 		"customer": "고객",
 		"organisation": "조직",
 		"submittedAt": "제출됨",
-		"suggestedDuplicates": "유사한 요청"
+		"suggestedDuplicates": "유사한 요청",
+		"acceptedWorkItem": "Created work item",
+		"markDuplicate": "Merge as duplicate",
+		"resolving": "Resolving…",
+		"duplicateWorkItem": "Duplicate of existing work item"
 	},
 	"requestTypes": {
 		"create": "New request type",
@@ -2818,7 +2822,33 @@
 			"noDefaultProject": "No default project",
 			"noSlaPolicy": "Use the project's SLA policy",
 			"options": "Choices, one per line",
-			"slaPolicy": "SLA policy override"
+			"slaPolicy": "SLA policy override",
+			"defaultAssignee": "Default assignee",
+			"noDefaultAssignee": "No default assignee",
+			"assigneesUnavailable": "Assignable people could not be loaded.",
+			"mapsTo": "Map answer to",
+			"noMapping": "Keep in request details",
+			"nativeTitle": "Work item title",
+			"nativeDescription": "Description",
+			"nativePriority": "Priority",
+			"nativeDueDate": "Due date",
+			"valueMapping": "Translate choices",
+			"valueMappingPlaceholder": "Just me = low\\nMy team = medium\\nEveryone = high",
+			"conditionalVisibility": "Show only when",
+			"alwaysVisible": "Always visible",
+			"conditionOperator": "Condition",
+			"conditionValue": "Value",
+			"conditionOperators": {
+				"is_set": "Has an answer",
+				"eq": "Equals",
+				"neq": "Does not equal",
+				"in": "Contains"
+			},
+			"helpText": "Help text",
+			"allowMultiple": "Allow multiple answers",
+			"customField": "Custom work-item field",
+			"customFieldKey": "Custom field key",
+			"customFieldKeyPlaceholder": "Enter the immutable field key"
 		},
 		"empty": "No request types yet",
 		"emptyDescription": "Create a draft, add its customer form, and publish it when ready.",

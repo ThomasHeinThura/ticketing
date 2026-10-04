@@ -31,12 +31,15 @@ import {
   claimIntakeSubmission,
   declineIntakeSubmission,
   getIntakeSubmission,
+  getRequestTypeErrorMessage,
+  markIntakeSubmissionDuplicate,
   sendIntakeMessage,
 } from "@/fetchers/request-type";
 import getWorkItemTypes from "@/fetchers/work-item/get-work-item-types";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { formatRelativeAge } from "@/lib/format-relative-age";
+import { routes } from "@/lib/routes";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/submissions/$ref",
@@ -71,6 +74,11 @@ function IntakeSubmissionRoute() {
   const [projectId, setProjectId] = useState("");
   const [typeId, setTypeId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [resolution, setResolution] = useState<{
+    ref: string;
+    workItemKey: string | null;
+    action: "accepted" | "duplicate";
+  } | null>(null);
   const canAct =
     detail.data?.state === "new" || detail.data?.state === "clarifying";
   const refresh = async () => {
@@ -79,34 +87,70 @@ function IntakeSubmissionRoute() {
   };
   const claim = useMutation({
     mutationFn: () => claimIntakeSubmission(ref),
+    onMutate: () => setError(null),
     onSuccess: refresh,
     onError: (cause) =>
-      setError(cause instanceof Error ? cause.message : t("claimError")),
+      setError(getRequestTypeErrorMessage(cause, t("claimError"))),
   });
   const send = useMutation({
     mutationFn: () => sendIntakeMessage(ref, message),
+    onMutate: () => setError(null),
     onSuccess: async () => {
       setMessage("");
       await refresh();
     },
     onError: (cause) =>
-      setError(cause instanceof Error ? cause.message : t("claimError")),
+      setError(getRequestTypeErrorMessage(cause, t("claimError"))),
   });
   const decline = useMutation({
     mutationFn: () => declineIntakeSubmission(ref, reason),
+    onMutate: () => setError(null),
     onSuccess: async () => {
       setReason("");
       await refresh();
     },
     onError: (cause) =>
-      setError(cause instanceof Error ? cause.message : t("declineError")),
+      setError(getRequestTypeErrorMessage(cause, t("declineError"))),
   });
   const accept = useMutation({
-    mutationFn: () => acceptIntakeSubmission(ref, { projectId, typeId }),
-    onSuccess: refresh,
+    mutationFn: () =>
+      acceptIntakeSubmission(ref, {
+        projectId: selectedProject,
+        typeId: selectedType,
+      }),
+    onMutate: () => setError(null),
+    onSuccess: async (receipt) => {
+      setResolution({
+        ref,
+        workItemKey: receipt.workItemKey,
+        action: "accepted",
+      });
+      await refresh();
+    },
     onError: (cause) =>
-      setError(cause instanceof Error ? cause.message : t("actionUnavailable")),
+      setError(getRequestTypeErrorMessage(cause, t("actionUnavailable"))),
   });
+  const duplicate = useMutation({
+    mutationFn: (workItemKey: string) =>
+      markIntakeSubmissionDuplicate(ref, workItemKey),
+    onMutate: () => setError(null),
+    onSuccess: async (receipt) => {
+      setResolution({
+        ref,
+        workItemKey: receipt.workItemKey,
+        action: "duplicate",
+      });
+      await refresh();
+    },
+    onError: (cause) =>
+      setError(getRequestTypeErrorMessage(cause, t("actionUnavailable"))),
+  });
+  const actionPending =
+    claim.isPending ||
+    send.isPending ||
+    decline.isPending ||
+    accept.isPending ||
+    duplicate.isPending;
 
   if (!isCheckingPermissions && !allowed)
     return (
@@ -134,6 +178,7 @@ function IntakeSubmissionRoute() {
       </main>
     );
   const submission = detail.data;
+  const currentResolution = resolution?.ref === ref ? resolution : null;
   const schema = submission.formSchema as FormSchema;
   const selectedProject = projectId || submission.suggestedProjectId || "";
   const selectedType = typeId || submission.suggestedWorkItemTypeId || "";
@@ -204,6 +249,18 @@ function IntakeSubmissionRoute() {
                     <p className="text-sm text-muted-foreground">
                       {suggestion.state}
                     </p>
+                    {canAct ? (
+                      <Button
+                        className="mt-2"
+                        variant="outline"
+                        disabled={actionPending}
+                        onClick={() => duplicate.mutate(suggestion.key)}
+                      >
+                        {duplicate.isPending
+                          ? t("resolving")
+                          : t("markDuplicate")}
+                      </Button>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -214,6 +271,27 @@ function IntakeSubmissionRoute() {
           <Alert variant="error">
             <AlertTitle>{t("actionUnavailable")}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
+        {currentResolution?.workItemKey || submission.workItemKey ? (
+          <Alert variant="info">
+            <AlertTitle>
+              {(currentResolution?.action ?? submission.state) === "duplicate"
+                ? t("duplicateWorkItem")
+                : t("acceptedWorkItem")}
+            </AlertTitle>
+            <AlertDescription>
+              <Link
+                className="underline underline-offset-4"
+                to={routes.workItemDetail.path}
+                params={{
+                  key:
+                    currentResolution?.workItemKey ?? submission.workItemKey!,
+                }}
+              >
+                {currentResolution?.workItemKey ?? submission.workItemKey}
+              </Link>
+            </AlertDescription>
           </Alert>
         ) : null}
         <div className="grid gap-5 xl:grid-cols-[1fr_22rem]">
@@ -300,7 +378,7 @@ function IntakeSubmissionRoute() {
                     <Button
                       className="justify-self-start"
                       variant="outline"
-                      disabled={!message.trim() || send.isPending}
+                      disabled={!message.trim() || actionPending}
                       onClick={() => send.mutate()}
                     >
                       <MessageSquare aria-hidden="true" />
@@ -358,7 +436,7 @@ function IntakeSubmissionRoute() {
                     <Button
                       className="w-full"
                       disabled={
-                        !selectedProject || !selectedType || accept.isPending
+                        !selectedProject || !selectedType || actionPending
                       }
                       onClick={() => accept.mutate()}
                     >
@@ -385,7 +463,7 @@ function IntakeSubmissionRoute() {
                   />
                   <Button
                     variant="destructive"
-                    disabled={!reason.trim() || decline.isPending}
+                    disabled={!reason.trim() || actionPending}
                     onClick={() => decline.mutate()}
                   >
                     {t("decline")}
