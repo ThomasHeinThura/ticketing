@@ -226,6 +226,7 @@ describe("TaskPropertiesSidebar responsive controls", () => {
 
   it("subscribes only to sidebar fields and the move-availability result", () => {
     setup();
+    expect(mocks.useGetTask).toHaveBeenCalledTimes(2);
 
     const taskSelectors = mocks.useGetTask.mock.calls
       .map((call) => call[1])

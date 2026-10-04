@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   KbdSequence,
@@ -71,20 +72,22 @@ function selectTaskPropertiesSidebarSummary(
   };
 }
 
-const selectTaskStatus = (task: Task) => task.status;
-
 function TaskMovePopoverForSidebar({
   taskId,
   projectId,
   workspaceId,
   triggerClassName,
+  initialStatus,
 }: {
   taskId: string;
   projectId: string;
   workspaceId: string;
   triggerClassName: string;
+  initialStatus?: string;
 }) {
-  const { data: status } = useGetTask(taskId, selectTaskStatus);
+  const queryClient = useQueryClient();
+  const currentTask = queryClient.getQueryData<Task>(["task", taskId]);
+  const status = currentTask?.status ?? initialStatus;
   if (status === undefined) return null;
 
   return (
@@ -175,6 +178,7 @@ export default function TaskPropertiesSidebar({
                   projectId={task.projectId}
                   workspaceId={workspaceId}
                   triggerClassName="rounded-l-md rounded-r-none border-r-0"
+                  initialStatus={providedTask?.status}
                 />
               )}
               <TooltipProvider>
@@ -243,6 +247,7 @@ export default function TaskPropertiesSidebar({
                   projectId={task.projectId}
                   workspaceId={workspaceId}
                   triggerClassName="rounded-l-md rounded-r-none border-r-0"
+                  initialStatus={providedTask?.status}
                 />
               )}
               <TooltipProvider>
@@ -301,6 +306,7 @@ export default function TaskPropertiesSidebar({
                     projectId={task.projectId}
                     workspaceId={workspaceId}
                     triggerClassName="rounded-l-md rounded-r-none border-r-0"
+                    initialStatus={providedTask?.status}
                   />
                 )}
                 <TooltipProvider>
