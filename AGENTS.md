@@ -163,7 +163,7 @@ is investigated rather than bypassed.
 pnpm lint && pnpm typecheck && pnpm test
 pnpm test:integration      # if the API changed
 pnpm test:permissions      # if a route changed
-pnpm test:e2e -- <scope>   # if the UI changed
+pnpm --filter @taskdesk/web exec playwright test --config playwright.config.ts <exact-spec-path> # UI scope
 docker build .             # if anything that ships in the image changed
 ```
 

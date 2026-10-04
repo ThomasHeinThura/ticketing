@@ -227,11 +227,13 @@ pnpm typecheck
 pnpm test
 pnpm test:integration       # if the API changed
 pnpm test:permissions       # if a route was added or changed
-pnpm test:e2e -- <relevant> # if the UI changed
+pnpm --filter @taskdesk/web exec playwright test --config playwright.config.ts <exact-spec-path> # UI scope
 ```
 
 And then **actually open the screen** and use it. Automated checks are necessary and not
 sufficient.
+
+For scoped web checks, invoke the runner directly with `pnpm --filter @taskdesk/web exec`: use `vitest run <exact-test-paths>` for unit tests and the Playwright command above for browser tests. An extra `--` passed through a package-script wrapper can select the whole suite; verify the selected file count before attributing results. This changes invocation guidance, not required gate coverage.
 
 For long local suites, retain the complete output in a private evidence file before
 summarizing file/test counts. Tool-output truncation is not a reason to repeat an entire

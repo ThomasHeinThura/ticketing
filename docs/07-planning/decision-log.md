@@ -1,3 +1,7 @@
+### 2026-10-04 · Keep route coverage independent of web build artifacts
+
+The API registers declared static middleware unconditionally. Verify real route descriptors, registration counts, auth-guard ordering and middleware inventory against explicit missing and built roots; do not require a checkout without generated web output or delete output to manufacture a pass. Correct the obsolete build-order instructions and use direct exact-path Playwright/Vitest invocation to prevent accidental broad package-script selection. These related corrections join the complete P0 batch for independent risk-sized review; no route, authority, coverage assertion or required gate is waived.
+
 ### 2026-10-04 · Preserve reactive full-task mutation freshness inside narrow display subscriptions
 
 The full task cache is the mutation authority, including version and omitted fields. Narrow display selection must not make a mutation snapshot nonreactive. Subscribe the controls to the shared complete task cache, keep the sidebar display selector narrow, and prove omitted-field/version advancement and identity reset through real-query and built browser regressions. Complete this entire correction before current risk-sized independent review. Preserve original request-changes reports and the earlier local22/22 result at its actual source; use final hosted performance for corrected acceptance rather than repeat local performance for comfort. No budget, data size, retry, permission, dependency or gate waiver changes.

@@ -176,18 +176,13 @@ fails" rule. This file is **not** subject to the "closed past a stable `v2.0.0`+
 above — that rule is specific to breaking API changes, and a lint false-positive on an
 already-shipped, intentional design is not one (decision log, 2026-09-28).
 
-**`pnpm test:permissions` must run before `apps/web` is built, against a router that cannot
-see a built `apps/web/dist` (#165).** The Fast stage's ordering above already guarantees this
-— `route-policy` builds nothing and runs in its own job/runner, `Build`'s `pnpm build` is a
-later stage in a separate job — but this is load-bearing, not incidental: `apps/api/src/index.ts`
-registers an extra `app.use("*", ...)` for static serving whenever it finds a built web app on
-disk, and that collides with `DECLARED_ROUTER_MIDDLEWARE`'s exact-count declaration in
-`packages/permissions/src/route-coverage.ts` for the CORS/compress registrations at the same
-key — see `tests/permissions/README.md` for the full mechanism. A future change that runs
-`test:permissions` in the same job/step as (or after) a web build — including anything shaped
-like the Docker image's own `build-web` stage below — must keep `apps/web/dist` out of that
-router's view, or re-derive this constraint; it is not something `route-coverage.ts`'s
-declaration list can absorb without weakening its strict-count design.
+**Route-policy verification must remain independent of generated web output.** Static
+serving is registered unconditionally as declared middleware; missing agent/portal roots
+produce per-host document failures without changing router registration. The permissions
+suite must enumerate the actual router and retain exact middleware counts and auth-guard
+ordering whether web output exists or is absent. Missing-root cases use explicit fixture
+roots rather than assuming the checkout has not been built. Do not remove build artifacts,
+exclude real middleware, or weaken count declarations to make this verification pass.
 
 **Full — required before merge, runs on pull request `opened`, `reopened`, `labeled`,
 `synchronize`, and `ready_for_review` events and on the merge queue, target under 45 minutes,
