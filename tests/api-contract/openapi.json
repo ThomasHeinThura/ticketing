@@ -18068,6 +18068,15 @@
                                 "info",
                                 "debug"
                               ]
+                            },
+                            "realtime": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
                             }
                           },
                           "additionalProperties": false
@@ -18226,6 +18235,15 @@
                               "info",
                               "debug"
                             ]
+                          },
+                          "realtime": {
+                            "type": "string",
+                            "enum": [
+                              "error",
+                              "warn",
+                              "info",
+                              "debug"
+                            ]
                           }
                         },
                         "additionalProperties": false
@@ -18320,6 +18338,15 @@
                               ]
                             },
                             "plugins": {
+                              "type": "string",
+                              "enum": [
+                                "error",
+                                "warn",
+                                "info",
+                                "debug"
+                              ]
+                            },
+                            "realtime": {
                               "type": "string",
                               "enum": [
                                 "error",

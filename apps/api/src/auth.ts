@@ -43,6 +43,7 @@ import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
 import { resolveAuthSecret } from "./utils/require-auth-secret";
 import { TRUSTED_CLIENT_IP_HEADER } from "./utils/resolve-client-ip";
 import { ensureStaffPersonForUser } from "./utils/seed-internal-organisation";
+import { invalidateNativeAuthorization } from "./ws";
 
 export function assertCookieDomainIsNotConfiguredForHostIsolation() {
   if (process.env.COOKIE_DOMAIN)
@@ -407,6 +408,11 @@ function createAuth(portal: AuthPortal) {
         create: {
           before: async (session) => ({ data: { ...session, portal } }),
         },
+        delete: {
+          after: async (session) => {
+            await invalidateNativeAuthorization({ userId: session.userId });
+          },
+        },
       },
       user: {
         create: {
@@ -721,6 +727,7 @@ function createAuth(portal: AuthPortal) {
                 ne(schema.sessionTable.id, newSession.session.id),
               ),
             );
+          await invalidateNativeAuthorization({ userId: newSession.user.id });
           await appendAuditLog(db, {
             action: "auth.mfa_enrolled",
             actorId: newSession.user.id,

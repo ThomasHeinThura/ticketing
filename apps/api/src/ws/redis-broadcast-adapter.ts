@@ -10,6 +10,7 @@ import {
 import type {
   BroadcastAdapter,
   BroadcastMessage,
+  NativeAuthorizationInvalidation,
   NativeBroadcastMessage,
   UserBroadcast,
 } from "./broadcast-adapter";
@@ -21,6 +22,7 @@ const CHANNEL_PATTERN = `${CHANNEL_PREFIX}*${CHANNEL_SUFFIX}`;
 const USER_CHANNEL_PREFIX = "taskdesk:ws-user:";
 const USER_CHANNEL_PATTERN = `${USER_CHANNEL_PREFIX}*${CHANNEL_SUFFIX}`;
 const NATIVE_CHANNEL = "taskdesk:ws-native:broadcast";
+const CONTROL_CHANNEL = "taskdesk:control";
 
 const broadcastMessageSchema = v.object({
   projectId: v.string(),
@@ -48,11 +50,18 @@ const nativeBroadcastSchema = v.object({
   key: v.string(),
   customerVisible: v.boolean(),
 });
+const nativeAuthorizationInvalidationSchema = v.strictObject({
+  type: v.literal("identity.invalidate"),
+  userId: v.optional(v.pipe(v.string(), v.minLength(1))),
+  workspaceId: v.optional(v.pipe(v.string(), v.minLength(1))),
+  projectId: v.optional(v.pipe(v.string(), v.minLength(1))),
+});
 
 export class RedisBroadcastAdapter implements BroadcastAdapter {
   private subscribed = false;
   private userSubscribed = false;
   private nativeSubscribed = false;
+  private controlSubscribed = false;
   private subscriber: RedisClient | null = null;
   private closing = false;
   private forced = false;
@@ -65,6 +74,9 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     | ((pattern: string, channel: string, data: string) => void)
     | null = null;
   private _nativeMessageHandler:
+    | ((channel: string, data: string) => void)
+    | null = null;
+  private _controlMessageHandler:
     | ((channel: string, data: string) => void)
     | null = null;
 
@@ -90,6 +102,48 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
       NATIVE_CHANNEL,
       JSON.stringify(msg),
     );
+  }
+
+  async publishControl(
+    message: NativeAuthorizationInvalidation,
+  ): Promise<void> {
+    if (this.forced) return;
+    await getRedisPub(this.clientFactory).publish(
+      CONTROL_CHANNEL,
+      JSON.stringify(message),
+    );
+  }
+
+  async subscribeToControl(
+    handler: (message: NativeAuthorizationInvalidation) => void,
+  ): Promise<void> {
+    if (this.controlSubscribed || this.closing) return;
+    this.controlSubscribed = true;
+    const sub = getRedisSub(this.clientFactory);
+    this.subscriber = sub;
+    this._controlMessageHandler = (channel, data) => {
+      if (this.closing || channel !== CONTROL_CHANNEL) return;
+      try {
+        const parsed = v.safeParse(
+          nativeAuthorizationInvalidationSchema,
+          JSON.parse(data),
+        );
+        if (
+          !parsed.success ||
+          (!parsed.output.userId &&
+            !parsed.output.workspaceId &&
+            !parsed.output.projectId)
+        ) {
+          console.error("Invalid native authorization invalidation");
+          return;
+        }
+        handler(parsed.output);
+      } catch {
+        console.error("Invalid native authorization invalidation");
+      }
+    };
+    (sub as Redis).on("message", this._controlMessageHandler);
+    await sub.subscribe(CONTROL_CHANNEL);
   }
 
   async subscribeToNative(
@@ -204,6 +258,13 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
         failures.push(error);
       }
     }
+    if (sub && !this.forced && this.controlSubscribed) {
+      try {
+        await sub.unsubscribe(CONTROL_CHANNEL);
+      } catch (error) {
+        failures.push(error);
+      }
+    }
     if (!this.forced) {
       try {
         await closeRedis();
@@ -216,6 +277,7 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     this.subscribed = false;
     this.userSubscribed = false;
     this.nativeSubscribed = false;
+    this.controlSubscribed = false;
 
     if (failures.length > 0) {
       throw new AggregateError(failures, "WebSocket Redis shutdown failed");
@@ -237,6 +299,10 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
     if (this._nativeMessageHandler) {
       (this.subscriber as Redis).off("message", this._nativeMessageHandler);
       this._nativeMessageHandler = null;
+    }
+    if (this._controlMessageHandler) {
+      (this.subscriber as Redis).off("message", this._controlMessageHandler);
+      this._controlMessageHandler = null;
     }
   }
 

@@ -15,6 +15,7 @@ describe("observability log-level settings", () => {
         jobs: "info",
         audit: "info",
         plugins: "info",
+        realtime: "info",
       },
     });
     expect(

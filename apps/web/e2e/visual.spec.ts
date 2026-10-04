@@ -136,6 +136,7 @@ async function installAuthenticatedFixture(page: Page) {
             jobs: "info",
             audit: "info",
             plugins: "info",
+            realtime: "info",
           },
         },
         metricsTokenConfigured: false,

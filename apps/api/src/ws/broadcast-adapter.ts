@@ -33,6 +33,13 @@ export type NativeBroadcastMessage = {
   customerVisible: boolean;
 };
 
+export type NativeAuthorizationInvalidation = {
+  type: "identity.invalidate";
+  userId?: string;
+  workspaceId?: string;
+  projectId?: string;
+};
+
 export type BroadcastAdapter = {
   /** Publish a message to all instances watching this project */
   publish(msg: BroadcastMessage): Promise<void>;
@@ -48,6 +55,12 @@ export type BroadcastAdapter = {
 
   subscribeToNative(
     handler: (msg: NativeBroadcastMessage) => void,
+  ): Promise<void>;
+
+  publishControl(message: NativeAuthorizationInvalidation): Promise<void>;
+
+  subscribeToControl(
+    handler: (message: NativeAuthorizationInvalidation) => void,
   ): Promise<void>;
 
   /** Cleanup on shutdown */

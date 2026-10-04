@@ -26,6 +26,7 @@ import {
 } from "../utils/require-workspace-permission";
 import { requireWorkspaceRoleAuthority } from "../utils/require-workspace-role-authority";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
+import { invalidateNativeAuthorization } from "../ws";
 import activateWorkspaceCtrl from "./controllers/activate-workspace";
 import addWorkspaceMemberCtrl from "./controllers/add-workspace-member";
 import createWorkspaceCtrl, {
@@ -873,6 +874,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
     if (!deleted) {
       throw new HTTPException(404, { message: "Workspace not found" });
     }
+    void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
     return c.json(deleted, 200);
   })
   .openapi(activateWorkspaceRoute, async (c) => {
@@ -880,6 +882,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
       c.get("workspaceId"),
       requireSessionId(c),
     );
+    void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
     return c.json(activated, 200);
   })
   .openapi(addWorkspaceMemberRoute, async (c) => {
@@ -889,6 +892,10 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         workspaceId: c.get("workspaceId"),
         userId: body.userId,
         role: body.role,
+      });
+      void invalidateNativeAuthorization({
+        userId: body.userId,
+        workspaceId: c.get("workspaceId"),
       });
       return c.json(added, 200);
     } catch (error) {
@@ -913,6 +920,10 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         c.get("workspaceId"),
         c.req.valid("param").userId,
       );
+      void invalidateNativeAuthorization({
+        userId: c.req.valid("param").userId,
+        workspaceId: c.get("workspaceId"),
+      });
       return c.json(removed, 200);
     } catch (error) {
       if (error instanceof MemberNotFoundError) {
@@ -932,6 +943,10 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         c.req.valid("param").userId,
         body.role,
       );
+      void invalidateNativeAuthorization({
+        userId: c.req.valid("param").userId,
+        workspaceId: c.get("workspaceId"),
+      });
       return c.json(updated, 200);
     } catch (error) {
       if (error instanceof OwnerRoleNotAssignableHereError) {
@@ -957,6 +972,10 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         c.get("userId"),
         requireSessionId(c),
       );
+      void invalidateNativeAuthorization({
+        userId: c.get("userId"),
+        workspaceId: c.get("workspaceId"),
+      });
       setShadowLegacyAuthorization(c, "allowed");
       return c.json(left, 200);
     } catch (error) {
@@ -982,6 +1001,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         c.get("userId"),
         body.newOwnerUserId,
       );
+      void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
       setShadowLegacyAuthorization(c, "allowed");
       return c.json(transferred, 200);
     } catch (error) {
@@ -1072,6 +1092,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         permission: body.permission,
         callerStatements: await resolveCallerWorkspaceStatements(c),
       });
+      void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
       return c.json(updated, 200);
     } catch (error) {
       if (error instanceof InvalidPermissionResourceError) {
@@ -1095,6 +1116,7 @@ const workspace = apiRouter<BaseVariables & { workspaceId: string }>()
         c.get("workspaceId"),
         c.req.valid("param").roleId,
       );
+      void invalidateNativeAuthorization({ workspaceId: c.get("workspaceId") });
       return c.json(deleted, 200);
     } catch (error) {
       if (error instanceof RoleNameReservedError) {

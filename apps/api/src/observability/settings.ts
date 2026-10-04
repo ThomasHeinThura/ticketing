@@ -10,6 +10,7 @@ export const OBSERVABILITY_MODULES = [
   "jobs",
   "audit",
   "plugins",
+  "realtime",
 ] as const;
 export type ObservabilityModule = (typeof OBSERVABILITY_MODULES)[number];
 
@@ -22,6 +23,7 @@ const modulesSchema = z
     jobs: levelSchema.optional(),
     audit: levelSchema.optional(),
     plugins: levelSchema.optional(),
+    realtime: levelSchema.optional(),
   })
   .strict();
 
@@ -58,6 +60,7 @@ export function defaultLogLevels(): LogLevels {
       jobs: "info",
       audit: "info",
       plugins: "info",
+      realtime: "info",
     },
   };
 }

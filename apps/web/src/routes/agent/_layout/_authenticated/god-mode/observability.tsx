@@ -26,6 +26,7 @@ const modules = [
   "jobs",
   "audit",
   "plugins",
+  "realtime",
 ] as const;
 const levels = ["error", "warn", "info", "debug"] as const;
 type Level = (typeof levels)[number];
@@ -33,7 +34,7 @@ type Settings = {
   version: number;
   logLevels: {
     default: Level;
-    modules: Record<(typeof modules)[number], Level>;
+    modules: Partial<Record<(typeof modules)[number], Level>>;
   };
   metricsTokenConfigured: boolean;
   metricsTokenRotatedAt: string | null;
@@ -350,7 +351,10 @@ function ObservabilitySettings() {
                 >
                   <span>{module}</span>
                   <Select
-                    value={settings.logLevels.modules[module]}
+                    value={
+                      settings.logLevels.modules[module] ??
+                      settings.logLevels.default
+                    }
                     onValueChange={(value) =>
                       value && changeLevel(module, value as Level)
                     }

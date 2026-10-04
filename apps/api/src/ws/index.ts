@@ -1,17 +1,22 @@
 import { randomUUID } from "node:crypto";
 import type { WSContext } from "hono/ws";
 import { subscribeToEvent } from "../events";
+import { logTaskDesk } from "../instance/observability/runtime";
 import type { RedisClient } from "../redis";
 import { isRedisConfigured } from "../redis";
 import type {
   BroadcastAdapter,
   BroadcastMessage,
+  NativeAuthorizationInvalidation,
   NativeBroadcastMessage,
   ProjectBroadcastMessage,
   UserBroadcast,
   UserBroadcastMessage,
 } from "./broadcast-adapter";
-import { deliverNativeBroadcast } from "./native-work-item-realtime";
+import {
+  deliverNativeBroadcast,
+  handleNativeAuthorizationInvalidation,
+} from "./native-work-item-realtime";
 
 export {
   addNativeConnection,
@@ -145,6 +150,9 @@ export async function initializeWebSocketAdapter(
       deliverToLocalUserConnections(msg.userId, msg.message);
     });
     await nextAdapter.subscribeToNative((msg) => deliverNativeBroadcast(msg));
+    await nextAdapter.subscribeToControl((message) => {
+      void handleNativeAuthorizationInvalidation(message);
+    });
   } catch (err) {
     await nextAdapter.shutdown().catch(() => {});
     throw err;
@@ -152,6 +160,34 @@ export async function initializeWebSocketAdapter(
 
   adapter = nextAdapter;
   console.log(`📡 WebSockets Initialized using: "${adapter.constructor.name}"`);
+}
+
+/** Publish a private control-plane invalidation after its authority write commits. */
+export async function invalidateNativeAuthorization(
+  target: Omit<NativeAuthorizationInvalidation, "type">,
+): Promise<void> {
+  if (!target.userId && !target.workspaceId && !target.projectId) {
+    throw new TypeError("At least one invalidation target is required");
+  }
+  const message: NativeAuthorizationInvalidation = {
+    type: "identity.invalidate",
+    ...target,
+  };
+  if (!adapter) {
+    await handleNativeAuthorizationInvalidation(message);
+    return;
+  }
+  try {
+    await adapter.publishControl(message);
+  } catch {
+    // The 60-second native authorization refresh is the recovery floor.
+    logTaskDesk({
+      module: "realtime",
+      message: "realtime.failure",
+      level: "error",
+      result: "failed",
+    });
+  }
 }
 
 export function shutdownWebSocketAdapter(): Promise<void> {

@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { projectTable } from "../../database/schema";
+import { invalidateNativeAuthorization } from "../../ws";
 
 async function archiveProject(id: string, workspaceId: string) {
   // Keep this as one conditional write: its project-row lock serializes with the
@@ -24,6 +25,8 @@ async function archiveProject(id: string, workspaceId: string) {
         "Project doesn't exist or doesn't belong to the specified workspace",
     });
   }
+
+  await invalidateNativeAuthorization({ projectId: id });
 
   return archivedProject;
 }
