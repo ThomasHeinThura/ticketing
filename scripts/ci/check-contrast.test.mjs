@@ -185,6 +185,230 @@ describe("G3 contrast inventory and math", () => {
     }
   });
 
+  it("binds reachable data-state ancestor backgrounds without losing the opaque fallback", async () => {
+    const fixture = `scripts/ci/.contrast-data-state-${process.pid}.tsx`;
+    await writeFile(
+      fixture,
+      '<main className="bg-background"><div className="bg-background data-[task-dragging=true]:bg-card data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50" data-task-dragging={dragging ? "true" : undefined} data-task-selected={selected ? "true" : undefined}><span className="text-muted-foreground">Selected</span></div></main>',
+    );
+    try {
+      const result = observeInheritedForegroundSurfaces(
+        [fixture],
+        new Set(["background", "card", "accent", "muted-foreground"]),
+      );
+      assert.equal(result.unresolved.size, 0);
+      assert.ok(
+        result.pairs.has(
+          "--color-muted-foreground|--color-background|bg-background|light",
+        ),
+      );
+      assert.ok(
+        result.pairs.has(
+          "--color-muted-foreground|--color-card|data-[task-dragging=true]:bg-card|light",
+        ),
+      );
+      assert.ok(
+        result.pairs.has(
+          "--color-muted-foreground|--color-accent|data-[task-selected=true]:not-data-[task-dragging=true]:bg-accent/50|light|backdrop:bg-background",
+        ),
+      );
+    } finally {
+      await rm(fixture, { force: true });
+    }
+  });
+
+  it("keeps unsupported state background variants unresolved", async () => {
+    const fixture = `scripts/ci/.contrast-unknown-state-${process.pid}.tsx`;
+    await writeFile(
+      fixture,
+      '<main className="bg-background"><div className="data-[mystery=true]:bg-card"><span className="text-muted-foreground">Unknown</span></div></main>',
+    );
+    try {
+      const result = observeInheritedForegroundSurfaces(
+        [fixture],
+        new Set(["background", "card", "muted-foreground"]),
+      );
+      assert.equal(result.unresolved.size, 1);
+      assert.equal(
+        result.pairs.has(
+          "--color-muted-foreground|--color-card|data-[mystery=true]:bg-card|light",
+        ),
+        false,
+      );
+    } finally {
+      await rm(fixture, { force: true });
+    }
+  });
+
+  it("enumerates a supported backdrop-filter background override with its fallback", async () => {
+    const fixture = `scripts/ci/.contrast-supports-state-${process.pid}.tsx`;
+    await writeFile(
+      fixture,
+      '<main className="bg-background"><div className="bg-card/80 supports-[backdrop-filter]:bg-card/70"><span className="text-muted-foreground">Card</span></div></main>',
+    );
+    try {
+      const result = observeInheritedForegroundSurfaces(
+        [fixture],
+        new Set(["background", "card", "muted-foreground"]),
+      );
+      assert.equal(result.unresolved.size, 0);
+      assert.ok(
+        result.pairs.has(
+          "--color-muted-foreground|--color-card|bg-card/80|light|backdrop:bg-background",
+        ),
+      );
+      assert.ok(
+        result.pairs.has(
+          "--color-muted-foreground|--color-card|supports-[backdrop-filter]:bg-card/70|light|backdrop:bg-background",
+        ),
+      );
+    } finally {
+      await rm(fixture, { force: true });
+    }
+  });
+
+  it("accepts a Base UI highlighted menu surface only on the forwarded menu item primitive", async () => {
+    const fixture = `packages/ui/src/components/.contrast-base-ui-state-${process.pid}.tsx`;
+    try {
+      await writeFile(
+        fixture,
+        'import { Menu as MenuPrimitive } from "@base-ui/react/menu"; export function MenuItem(){ return <div className="bg-popover"><MenuPrimitive.Item className="data-highlighted:bg-accent/50" {...props}><span className="text-foreground">Item</span></MenuPrimitive.Item></div>; }',
+      );
+      const result = observeInheritedForegroundSurfaces(
+        [fixture],
+        new Set(["popover", "accent", "foreground"]),
+      );
+      assert.equal(result.unresolved.size, 0);
+      assert.ok(
+        result.pairs.has("--color-foreground|--color-popover|bg-popover|light"),
+      );
+      assert.ok(
+        result.pairs.has(
+          "--color-foreground|--color-accent|data-highlighted:bg-accent/50|light|backdrop:bg-popover",
+        ),
+      );
+    } finally {
+      await rm(fixture, { force: true });
+    }
+  });
+
+  it("binds direct JSX-return helpers through renamed imports at every real caller", async () => {
+    const helper = `apps/web/src/components/.contrast-icon-helper-${process.pid}.tsx`;
+    const caller = `apps/web/src/components/.contrast-icon-caller-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        helper,
+        'export function renderIcon(){ return <svg className="text-primary" />; }',
+      );
+      await writeFile(
+        caller,
+        'import { renderIcon as paintIcon } from "./.contrast-icon-helper-' +
+          process.pid +
+          '"; export function Caller(){ return <main className="bg-background"><button className="bg-muted/50">{paintIcon()}</button><div className="bg-card">{paintIcon()}</div></main>; }',
+      );
+      const observed = observeInheritedForegroundSurfaces(
+        [helper, caller],
+        tokenNames,
+      );
+      assert.equal(observed.unresolved.size, 0);
+      const muted = observed.uses.occurrences.get(
+        "--color-primary|--color-muted|bg-muted/50|light|backdrop:bg-background",
+      );
+      const card = observed.uses.occurrences.get(
+        "--color-primary|--color-card|bg-card|light",
+      );
+      assert.equal(muted.length, 1);
+      assert.equal(card.length, 1);
+      assert.equal(muted[0].surfaceContext, "caller-chain");
+      assert.equal(card[0].surfaceContext, "caller-chain");
+    } finally {
+      await Promise.all(
+        [helper, caller].map((file) => rm(file, { force: true })),
+      );
+    }
+  });
+
+  it("keeps a direct JSX-return helper unresolved when any caller surface is unsupported", async () => {
+    const helper = `apps/web/src/components/.contrast-unbound-helper-${process.pid}.tsx`;
+    const caller = `apps/web/src/components/.contrast-unbound-caller-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        helper,
+        'export function renderIcon(){ return <svg className="text-primary" />; }',
+      );
+      await writeFile(
+        caller,
+        'import { renderIcon as paintIcon } from "./.contrast-unbound-helper-' +
+          process.pid +
+          '"; export function Caller(){ return <main className="bg-background"><div className="data-[mystery=true]:bg-card">{paintIcon()}</div></main>; }',
+      );
+      const observed = observeInheritedForegroundSurfaces(
+        [helper, caller],
+        tokenNames,
+      );
+      assert.equal(observed.unresolved.size, 1);
+      assert.equal(
+        [...observed.pairs].some((key) => key.includes("--color-card")),
+        false,
+      );
+    } finally {
+      await Promise.all(
+        [helper, caller].map((file) => rm(file, { force: true })),
+      );
+    }
+  });
+
+  it("binds a local memo-wrapped row to its actual module caller", async () => {
+    const fixture = `apps/web/src/components/.contrast-local-memo-${process.pid}.tsx`;
+    const theme = await readFile(
+      path.join(process.cwd(), "packages/ui/src/styles/theme.css"),
+      "utf8",
+    );
+    const tokenNames = new Set(
+      [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/gu)].map(
+        (match) => match[1],
+      ),
+    );
+    try {
+      await writeFile(
+        fixture,
+        'import { memo } from "react"; const WorkItemTableRow = memo(function WorkItemTableRow(){ return <span className="text-primary">Row</span>; }); function WorkItemList(){ return <div className="bg-card"><WorkItemTableRow /></div>; } export default memo(WorkItemList);',
+      );
+      const observed = observeInheritedForegroundSurfaces(
+        [fixture],
+        tokenNames,
+      );
+      assert.equal(observed.unresolved.size, 0);
+      const contexts = observed.uses.occurrences.get(
+        "--color-primary|--color-card|bg-card|light",
+      );
+      assert.equal(contexts.length, 1);
+      assert.equal(contexts[0].usage, fixture);
+      assert.equal(contexts[0].surfaceContext, "caller-chain");
+      assert.ok(contexts[0].id.includes("WorkItemTableRow"));
+    } finally {
+      await rm(fixture, { force: true });
+    }
+  });
+
   it("follows inline lazy imports when binding shipped caller surfaces", async () => {
     const suffix = `-${process.pid}`;
     const route = `apps/web/src/.contrast-lazy-route${suffix}.tsx`;
