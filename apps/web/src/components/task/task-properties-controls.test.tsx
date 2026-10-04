@@ -11,13 +11,16 @@ const renders = vi.hoisted(() => ({
   assignee: vi.fn(),
   startDate: vi.fn(),
   dueDate: vi.fn(),
+  dueStartDates: [] as Array<string | null>,
 }));
 const translations = vi.hoisted(() => ({
   ready: true,
   language: "en",
   t: (key: string) =>
     key === "tasks:popover.assignee.unassigned" && translations.ready
-      ? "Unassigned"
+      ? translations.language === "de"
+        ? "Nicht zugewiesen"
+        : "Unassigned"
       : key,
 }));
 
@@ -69,8 +72,15 @@ vi.mock("@/components/task/task-start-date-popover", () => ({
   },
 }));
 vi.mock("@/components/task/task-due-date-popover", () => ({
-  default: ({ children }: { children: React.ReactNode }) => {
+  default: ({
+    children,
+    task: currentTask,
+  }: {
+    children: React.ReactNode;
+    task: Pick<Task, "startDate">;
+  }) => {
     renders.dueDate();
+    renders.dueStartDates.push(currentTask.startDate);
     return <div>{children}</div>;
   },
 }));
@@ -93,6 +103,9 @@ vi.mock("@/lib/priority", () => ({ getPriorityIcon: () => null }));
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  renders.dueStartDates.length = 0;
+  translations.ready = true;
+  translations.language = "en";
 });
 
 const task: Task = {
@@ -172,6 +185,19 @@ describe("task property render boundaries", () => {
     translations.ready = false;
   });
 
+  it("refreshes memoized labels when the active language changes", () => {
+    translations.language = "en";
+    const { rerender } = render(renderControls(task));
+    expect(screen.getByRole("button", { name: "Unassigned" })).toBeVisible();
+
+    translations.language = "de";
+    rerender(renderControls(task));
+
+    expect(
+      screen.getByRole("button", { name: "Nicht zugewiesen" }),
+    ).toBeVisible();
+  });
+
   it("updates the selected property without rebuilding unrelated controls", () => {
     const { rerender } = render(renderControls(task));
     expect(screen.getByRole("button", { name: "Backlog" })).toBeVisible();
@@ -192,5 +218,22 @@ describe("task property render boundaries", () => {
     expect(renders.assignee).toHaveBeenCalledTimes(2);
     expect(renders.startDate).toHaveBeenCalledTimes(1);
     expect(renders.dueDate).toHaveBeenCalledTimes(1);
+  });
+
+  it("refreshes the due-date constraint when only the start date changes", () => {
+    const { rerender } = render(renderControls(task));
+    expect(renders.dueStartDates).toEqual([null]);
+
+    const updatedStartDate = "2026-10-15T00:00:00.000Z";
+    rerender(
+      renderControls({
+        ...task,
+        startDate: updatedStartDate,
+        version: task.version + 1,
+      }),
+    );
+
+    expect(renders.dueStartDates).toEqual([null, updatedStartDate]);
+    expect(renders.dueDate).toHaveBeenCalledTimes(2);
   });
 });

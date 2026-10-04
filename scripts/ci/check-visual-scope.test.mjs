@@ -483,6 +483,19 @@ test("G8 rejects a web visual test script that skips Playwright", async () => {
   );
 });
 
+test("G8 requires both web entries to build before preview screenshots", async () => {
+  const result = await runVisualScope({
+    webVisualScript:
+      "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual",
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /apps\/web\/package\.json test:visual must run route and Storybook Playwright configs/,
+  );
+});
+
 test("G8 rejects a web dev script that does not launch Vite", async () => {
   const result = await runVisualScope({ webDevScript: "node fake-app.mjs" });
 
@@ -734,8 +747,26 @@ test("G8 rejects a fake base app server command", async () => {
     "utf8",
   );
   const baseConfig = original.replace(
-    'command: "pnpm dev --host 127.0.0.1 --port 4178 --strictPort"',
-    'command: "node fake-app.mjs"',
+    'command:\n      "pnpm --filter @taskdesk/web preview --host 127.0.0.1 --port 4178 --strictPort",',
+    'command: "node fake-app.mjs",',
+  );
+  const result = await runVisualScope({ baseConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.config\.ts must define the e2e directory/,
+  );
+});
+
+test("G8 rejects a base preview server with a different environment contract", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.config.ts"),
+    "utf8",
+  );
+  const baseConfig = original.replace(
+    "    reuseExistingServer: false,",
+    '    reuseExistingServer: false,\n    env: { VITE_API_URL: "http://127.0.0.1:4178" },',
   );
   const result = await runVisualScope({ baseConfig });
 

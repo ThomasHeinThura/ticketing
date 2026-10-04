@@ -184,7 +184,10 @@ export default function TaskPropertiesControls({
       : undefined;
 
     return (
-      <TaskDueDatePopover task={latestTask} taskRef={taskRef}>
+      <TaskDueDatePopover
+        task={{ ...latestTask, startDate: startDate ?? null }}
+        taskRef={taskRef}
+      >
         <Button variant="ghost" size="sm" className={buttonClass(compact)}>
           {!dueDate && (
             <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
@@ -218,7 +221,7 @@ export default function TaskPropertiesControls({
         </Button>
       </TaskDueDatePopover>
     );
-  }, [taskId, dueDate, status, columns, compact, translate]);
+  }, [taskId, dueDate, status, columns, compact, startDate, translate]);
 
   if (!task) return null;
 

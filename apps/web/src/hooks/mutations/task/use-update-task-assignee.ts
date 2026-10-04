@@ -15,30 +15,35 @@ export function useUpdateTaskAssignee() {
   return useMutation({
     mutationKey: ["task-update"],
     mutationFn: (task: Task) => updateTaskAssignee(task.id, task),
-    onMutate: async (task): Promise<TaskUpdateContext> => {
+    onMutate: (task): TaskUpdateContext | Promise<TaskUpdateContext> => {
       const queryKey = ["task", task.id];
-      await queryClient.cancelQueries({ queryKey });
-      const version = nextTaskFieldMutationVersion(
-        queryClient,
-        task.id,
-        "assignee",
-      );
-      const previousTask = queryClient.getQueryData<Task>(queryKey);
-      const previousAssignee = previousTask
-        ? {
-            userId: previousTask.userId,
-            assigneeId: previousTask.assigneeId,
-            assigneeName: previousTask.assigneeName,
-          }
-        : undefined;
-      if (previousTask)
-        queryClient.setQueryData<Task>(queryKey, {
-          ...previousTask,
-          userId: task.userId,
-          assigneeId: task.assigneeId,
-          assigneeName: task.assigneeName,
-        });
-      return { previousAssignee, version };
+      const applyUpdate = (): TaskUpdateContext => {
+        const version = nextTaskFieldMutationVersion(
+          queryClient,
+          task.id,
+          "assignee",
+        );
+        const previousTask = queryClient.getQueryData<Task>(queryKey);
+        const previousAssignee = previousTask
+          ? {
+              userId: previousTask.userId,
+              assigneeId: previousTask.assigneeId,
+              assigneeName: previousTask.assigneeName,
+            }
+          : undefined;
+        if (previousTask)
+          queryClient.setQueryData<Task>(queryKey, {
+            ...previousTask,
+            userId: task.userId,
+            assigneeId: task.assigneeId,
+            assigneeName: task.assigneeName,
+          });
+        return { previousAssignee, version };
+      };
+
+      const fetchStatus = queryClient.getQueryState(queryKey)?.fetchStatus;
+      if (!fetchStatus || fetchStatus === "idle") return applyUpdate();
+      return queryClient.cancelQueries({ queryKey }).then(applyUpdate);
     },
     onError: (_error, task, context) => {
       const previousAssignee = context?.previousAssignee;

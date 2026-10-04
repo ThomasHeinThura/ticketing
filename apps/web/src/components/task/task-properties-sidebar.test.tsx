@@ -14,7 +14,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("react-i18next", () => ({
   initReactI18next: { type: "3rdParty", init: () => undefined },
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string) => key,
+    ready: true,
+    i18n: { language: "en" },
+  }),
 }));
 
 vi.mock("@taskdesk/ui", () => {

@@ -14,22 +14,27 @@ export function useUpdateTaskStatus() {
   return useMutation({
     mutationKey: ["task-update"],
     mutationFn: (task: Task) => updateTaskStatus(task.id, task),
-    onMutate: async (task): Promise<TaskUpdateContext> => {
+    onMutate: (task): TaskUpdateContext | Promise<TaskUpdateContext> => {
       const queryKey = ["task", task.id];
-      await queryClient.cancelQueries({ queryKey });
-      const version = nextTaskFieldMutationVersion(
-        queryClient,
-        task.id,
-        "status",
-      );
-      const previousTask = queryClient.getQueryData<Task>(queryKey);
-      const previousStatus = previousTask?.status;
-      if (previousTask)
-        queryClient.setQueryData<Task>(queryKey, {
-          ...previousTask,
-          status: task.status,
-        });
-      return { previousStatus, version };
+      const applyUpdate = (): TaskUpdateContext => {
+        const version = nextTaskFieldMutationVersion(
+          queryClient,
+          task.id,
+          "status",
+        );
+        const previousTask = queryClient.getQueryData<Task>(queryKey);
+        const previousStatus = previousTask?.status;
+        if (previousTask)
+          queryClient.setQueryData<Task>(queryKey, {
+            ...previousTask,
+            status: task.status,
+          });
+        return { previousStatus, version };
+      };
+
+      const fetchStatus = queryClient.getQueryState(queryKey)?.fetchStatus;
+      if (!fetchStatus || fetchStatus === "idle") return applyUpdate();
+      return queryClient.cancelQueries({ queryKey }).then(applyUpdate);
     },
     onError: (_error, task, context) => {
       const previousStatus = context?.previousStatus;

@@ -211,6 +211,13 @@ sharded four ways:**
 └──────────────────────────────────────────────────┘
 ```
 
+The default Playwright E2E suite and G8 route screenshots serve the built agent
+entry through Vite preview. CI builds both web entries before E2E and a11y runs;
+`pnpm test:visual` builds both entries before starting its route and Storybook suites.
+When running `pnpm test:e2e` locally, build the web entries first with
+`VITE_API_URL="" pnpm build` so browser API requests use the same-origin fixture
+contract.
+
 The Playwright suite includes the logged-out protected-route redirect and G8 visual
 snapshots for every exported `packages/ui` Storybook story and each implemented inventory
 route. G8 uses deterministic in-browser fixtures, in-repository Chromium baselines, and a

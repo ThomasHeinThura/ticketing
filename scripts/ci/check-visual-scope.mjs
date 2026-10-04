@@ -44,7 +44,7 @@ const failures = [];
 const expectedRootVisualCommand =
   "pnpm check:visual-scope && pnpm --filter @taskdesk/web test:visual";
 const expectedWebVisualCommand =
-  "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual";
+  "pnpm build && playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual";
 const expectedVisualStepName =
   "Check inventory scope and run screen and Storybook baselines";
 const expectedStorybookMain = [
@@ -431,18 +431,12 @@ function hasExpectedWebServer(config, storybook) {
       hasNumericProperty(webServer, "timeout", 120_000)
     );
   }
-  const env = objectProperty(webServer, "env");
   return (
-    hasExactObjectKeys(webServer, [
-      "command",
-      "url",
-      "reuseExistingServer",
-      "env",
-    ]) &&
+    hasExactObjectKeys(webServer, ["command", "url", "reuseExistingServer"]) &&
     hasLiteralProperty(
       webServer,
       "command",
-      "pnpm dev --host 127.0.0.1 --port 4178 --strictPort",
+      "pnpm --filter @taskdesk/web preview --host 127.0.0.1 --port 4178 --strictPort",
       ts.isStringLiteral,
     ) &&
     hasLiteralProperty(
@@ -451,14 +445,7 @@ function hasExpectedWebServer(config, storybook) {
       "http://127.0.0.1:4178/auth/sign-in",
       ts.isStringLiteral,
     ) &&
-    hasBooleanProperty(webServer, "reuseExistingServer", false) &&
-    hasExactObjectKeys(env, ["VITE_API_URL"]) &&
-    hasLiteralProperty(
-      env,
-      "VITE_API_URL",
-      "http://127.0.0.1:4178",
-      ts.isStringLiteral,
-    )
+    hasBooleanProperty(webServer, "reuseExistingServer", false)
   );
 }
 

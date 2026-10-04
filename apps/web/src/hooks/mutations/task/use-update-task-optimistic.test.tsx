@@ -154,4 +154,40 @@ describe("optimistic legacy task updates", () => {
       "done",
     );
   });
+
+  it("cancels an in-flight detail read before applying an optimistic status", async () => {
+    vi.mocked(updateTaskStatus).mockResolvedValue({} as never);
+    const { result, queryClient } = setup();
+    let resolveFetch!: (value: Task) => void;
+    let fetchSignal: AbortSignal | undefined;
+    const pendingFetch = queryClient.fetchQuery({
+      queryKey: ["task", task.id],
+      queryFn: ({ signal }) => {
+        fetchSignal = signal;
+        return new Promise<Task>((resolve) => {
+          resolveFetch = resolve;
+        });
+      },
+    });
+    void pendingFetch.catch(() => undefined);
+
+    await waitFor(() => {
+      expect(queryClient.isFetching({ queryKey: ["task", task.id] })).toBe(1);
+    });
+    await result.current.status.mutateAsync({
+      ...task,
+      status: "in-progress",
+    });
+
+    expect(fetchSignal?.aborted).toBe(true);
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
+      "in-progress",
+    );
+
+    resolveFetch({ ...task, title: "Late stale response" });
+    await Promise.resolve();
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
+      "in-progress",
+    );
+  });
 });
