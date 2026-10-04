@@ -135,6 +135,77 @@ describe("SCIM administration API", () => {
     expect(await duplicate.json()).not.toHaveProperty("id");
   });
 
+  it("returns SCIM username-filter and group collection protocol responses", async () => {
+    const { app, token } = await createScimProtocolFixture();
+    const user = await createScimProtocolUser(app, token);
+    const headers = { authorization: `Bearer ${token}` };
+
+    const filteredUsers = await app.request(
+      `/scim/v2/Users?filter=${encodeURIComponent('userName eq "isolated@example.test"')}`,
+      { headers },
+    );
+    expect(filteredUsers.status).toBe(200);
+    expect(filteredUsers.headers.get("content-type")).toContain(
+      "application/scim+json",
+    );
+    expect(await filteredUsers.json()).toMatchObject({
+      schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+      totalResults: 1,
+      startIndex: 1,
+      itemsPerPage: 1,
+      Resources: [{ id: user.id, userName: "isolated@example.test" }],
+    });
+
+    const groupCreated = await app.request("/scim/v2/Groups", {
+      method: "POST",
+      headers: {
+        ...headers,
+        "content-type": "application/scim+json",
+      },
+      body: JSON.stringify({
+        schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+        externalId: "isolated-group",
+        displayName: "Isolated Group",
+        members: [{ value: user.id, type: "User" }],
+      }),
+    });
+    expect(groupCreated.status).toBe(201);
+    const group = (await groupCreated.json()) as { id: string };
+
+    const listedGroups = await app.request(
+      "/scim/v2/Groups?startIndex=1&count=10",
+      { headers },
+    );
+    expect(listedGroups.status).toBe(200);
+    expect(listedGroups.headers.get("content-type")).toContain(
+      "application/scim+json",
+    );
+    expect(await listedGroups.json()).toMatchObject({
+      schemas: ["urn:ietf:params:scim:api:messages:2.0:ListResponse"],
+      totalResults: 1,
+      startIndex: 1,
+      itemsPerPage: 1,
+      Resources: [
+        {
+          id: group.id,
+          externalId: "isolated-group",
+          displayName: "Isolated Group",
+          members: [{ value: user.id, type: "User" }],
+        },
+      ],
+    });
+
+    const readGroup = await app.request(`/scim/v2/Groups/${group.id}`, {
+      headers,
+    });
+    expect(readGroup.status).toBe(200);
+    expect(await readGroup.json()).toMatchObject({
+      id: group.id,
+      externalId: "isolated-group",
+      displayName: "Isolated Group",
+    });
+  });
+
   it("allows a linked account to receive its own SCIM profile replacement", async () => {
     const { app, token } = await createScimProtocolFixture();
     const user = await createScimProtocolUser(app, token);
