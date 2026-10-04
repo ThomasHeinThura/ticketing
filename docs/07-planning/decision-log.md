@@ -9,6 +9,10 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-04 · Enforce contrast occurrence summaries structurally
+
+The contrast registry summary is the first-seen ordered distinct projection of detailed occurrence IDs; detailed records may repeat an ID for different surface contexts. Correct the eight stale summaries together and enforce this invariant across every pair with missing/extra/order regressions. Preserve pair identity, detailed contexts, colors, ratios and thresholds. Review this completed bounded checker pass/fail change with one strong independent Luna delta pass and the required full independent Sol pass, using earlier genuine UI bulk reviews as history rather than claiming current-head clearance. This applies the standing risk-sized review and complete-batch cadence; it waives no gate.
+
 ### 2026-10-04 · Keep reviewed development delivery separate from protected acceptance
 
 **Decision:** apply Thomas's explicit OrbStack development deployment authorization to a
