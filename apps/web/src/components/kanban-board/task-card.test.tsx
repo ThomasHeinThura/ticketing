@@ -205,4 +205,28 @@ describe("TaskCard keyboard context menu", () => {
       screen.getByText("Keyboard task").closest('[role="button"]'),
     ).toHaveAttribute("data-task-selected", "true");
   });
+
+  it("keeps the label spacing without an empty wrapper when labels are absent", () => {
+    const { container } = render(
+      <TaskCard
+        task={task}
+        projectSlug="PRJ"
+        taskIsCompleted={false}
+        displayPreferences={{ ...displayPreferences, showLabels: true }}
+        isTaskSelected={false}
+        isTaskFocused={false}
+        toggleSelection={mocks.toggleSelection}
+        onOpenTask={mocks.openTask}
+        t={((key: string) => key) as unknown as TFunction}
+        workspaceId="workspace-1"
+        assignee={undefined}
+        onContextMenuTask={mocks.openContextMenu}
+      />,
+    );
+
+    expect(
+      container.querySelectorAll('.group > [class~="mb-2.5"]'),
+    ).toHaveLength(1);
+    expect(screen.getByText("Keyboard task")).toBeInTheDocument();
+  });
 });

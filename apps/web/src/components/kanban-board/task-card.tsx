@@ -250,9 +250,9 @@ function TaskCard({
         {task.title}
       </div>
 
-      {showLabels && (
+      {showLabels && task.labels && task.labels.length > 0 && (
         <div className="mb-2.5">
-          <TaskLabels labels={task.labels ?? []} />
+          <TaskLabels labels={task.labels} />
         </div>
       )}
 
