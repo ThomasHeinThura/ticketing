@@ -4,6 +4,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createColumn from "./controllers/create-column";
@@ -27,7 +28,10 @@ const getColumnsRoute = createRoute({
   tags: ["Columns"],
   summary: "Get columns",
   description: "Get a project's board columns, ordered by position.",
-  middleware: [workspaceAccess.fromProject("projectId")] as const,
+  middleware: [
+    workspaceAccess.fromProject("projectId"),
+    requireWorkspaceCapability("project:read"),
+  ] as const,
   request: { params: projectIdParam },
   responses: {
     200: jsonResponse("List of columns ordered by position", columnListSchema),

@@ -59,11 +59,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  */
 export const taskRelationPolicies = {
   // Every relation where the task is the source or the target, each with a linked-task
-  // summary. `workspaceAccess.fromTaskId("taskId")` is the only middleware -- no
-  // `requireWorkspacePermission` call, same "reach alone, capability declared for the target
-  // model anyway" shape as the column and project read routes: every seeded role holds
-  // `work_item: ["read"]` unconditionally, so no role that reaches the task lacks read authority
-  // over it.
+  // summary. Runtime checks row-derived reach and the declared `work_item:read` capability.
   "GET /api/task-relation/{taskId}": {
     capability: "work_item:read",
     scope: "work_item",

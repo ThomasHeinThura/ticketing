@@ -41,10 +41,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * route addresses an existing project, directly or via the rule that belongs to it.
  */
 export const workflowRulePolicies = {
-  // Every workflow rule for a project. `getWorkflowRulesRoute`'s only middleware is
-  // `workspaceAccess.fromProject("projectId")` -- no `requireWorkspacePermission` call, same
-  // "reach alone" shape as the other list routes in this batch: every seeded role holds
-  // `project: ["read"]` unconditionally.
+  // Every workflow rule for a project. Runtime checks row-derived reach and then requires
+  // `project:read` from the caller's workspace role.
   "GET /api/workflow-rule/{projectId}": {
     capability: "project:read",
     scope: "project",

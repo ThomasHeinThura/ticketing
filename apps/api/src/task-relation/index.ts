@@ -11,6 +11,7 @@ import {
   jsonResponse,
 } from "../openapi";
 import { rejectNulByte } from "../utils/reject-nul-byte";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -141,7 +142,10 @@ const getTaskRelationsRoute = createRoute({
   summary: "Get task relations",
   description:
     "Get every relation where the task is the source or the target, each with a summary of both linked tasks. Relations pointing outside the caller's workspace are omitted.",
-  middleware: [workspaceAccess.fromTaskId("taskId")] as const,
+  middleware: [
+    workspaceAccess.fromTaskId("taskId"),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
   request: { params: taskIdParam },
   responses: {
     200: jsonResponse(

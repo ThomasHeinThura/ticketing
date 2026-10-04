@@ -1,3 +1,4 @@
+import { HTTPException } from "hono/http-exception";
 import {
   apiRouter,
   type BaseVariables,
@@ -5,7 +6,9 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { requireSessionOnly } from "../utils/require-session-only";
+import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { callerMembershipResolution } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import getCapabilitiesCtrl from "./controllers/get-capabilities";
@@ -64,6 +67,19 @@ const capabilities = apiRouter<
       409,
     );
   }
+  try {
+    await assertCallerHasCapability(
+      c.get("workspaceId"),
+      c.get("userId"),
+      "workspace:read",
+    );
+  } catch (error) {
+    if (error instanceof HTTPException && error.status === 403) {
+      setShadowLegacyAuthorization(c, "denied");
+    }
+    throw error;
+  }
+  setShadowLegacyAuthorization(c, "allowed");
   return c.json(await getCapabilitiesCtrl(c), 200);
 });
 

@@ -92,20 +92,12 @@
  *  3. **Legacy `workspace_member` rows do not carry `sees_all`.** Those rows resolve it as
  *     false. The generic P1 `membership` table is also loaded and its `sees_all` value is
  *     retained only on its validated concrete workspace scope; it never becomes global reach.
- *  4. **Instance-admin, as modelled here, is narrower than two existing bypasses.**
- *     `docs/01-architecture/rbac.md` § Reach step 1 says `instance:admin` grants *reach*
- *     only; `BUILT_IN_ROLES.instance_admin` (`packages/permissions/src/roles.ts`) holds only
- *     `instance:*` capabilities, nothing workspace-scoped. This mapper follows the spec:
- *     `user.role === "admin"` (today's only instance-admin bit — no `membership` row models
- *     it) becomes an `instance_admin` `RoleGrant` (reach `"all"`, `instance:*` authority
- *     only). But `apps/api/src/utils/require-workspace-permission.ts` and
- *     `require-workspace-role-authority.ts` both call `isInstanceAdmin(c)` as a full bypass
- *     of *every* workspace-scoped capability check, on *any* workspace — strictly wider
- *     authority than the spec grants. `require-workspace-capability.ts` and
- *     `transfer-workspace-ownership.ts` deliberately do NOT bypass, and already document
- *     this exact three-way disagreement. Slice 1 does not resolve it (nothing calls this
- *     adapter yet); Slice 2's shadow log will surface it live, on real traffic, the way the
- *     issue's own addendum expects.
+ *  4. **Instance-admin reach is not workspace capability authority.**
+ *     `rbac.md` § Reach step 1 grants `instance:admin` global reach only, while
+ *     `BUILT_IN_ROLES.instance_admin` holds only `instance:*`. `user.role === "admin"`
+ *     becomes an `instance_admin` `RoleGrant` with reach `"all"`; workspace capabilities
+ *     must still come from the caller's actual workspace role. Runtime legacy permission
+ *     checks and canonical capability checks now preserve that separation.
  *  5. **Customer identity has no `membership`/`role` backing at all.** No code path in
  *     `apps/api/src` ever assigns the `"customer"` role (`grep` returns nothing outside
  *     `packages/permissions`) — being `side === "customer"` is itself the grant, per

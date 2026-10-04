@@ -45,13 +45,9 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * vocabulary AND adding the ownership check the target model assumes are both #7-shaped work,
  * not this lane's; flagged here, and in the PR description, for that follow-up.
  *
- * **The two GET routes carry no `requireWorkspacePermission` call whatsoever** — only
- * `workspaceAccess.fromTaskId()` / `.fromTimeEntry()`, i.e. workspace membership alone.
- * `time_entry:read_any` (rbac.md: "See anyone's entries") is the only read capability in the
- * vocabulary — there is no `time_entry:read_own` to prefer instead — so it is the nearest
- * honest name, and is declared with the same gap noted: `MEMBER_CAPABILITIES` does not grant
- * `time_entry:read_any` (only `lead` and above do), so today's runtime is wider than the
- * target for these two routes as well.
+ * The GET routes enforce the declared `time_entry:read_any` capability after resolving
+ * reach from the addressed task/time-entry row. Members without that capability cannot read
+ * other users' entries merely because they belong to the workspace.
  *
  * **`scopeSource: "row"` on all four.** `workspaceAccess.fromTaskId()` / `.fromTimeEntry()`
  * (`apps/api/src/utils/workspace-access-middleware.ts`) resolve the workspace id by looking up
@@ -85,8 +81,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * so the elevation coverage test demands no declaration either way on any of these four.
  */
 export const timeEntryPolicies = {
-  // List every time entry logged against one task. Membership-gated only (no capability
-  // check in the runtime today) — see file comment for the `time_entry:read_any` gap.
+  // List every time entry logged against one task; requires `time_entry:read_any`.
   "GET /api/time-entry/task/{taskId}": {
     capability: "time_entry:read_any",
     scope: "workspace",
@@ -94,7 +89,7 @@ export const timeEntryPolicies = {
     reach: "required",
   },
 
-  // Read a single time entry by id. Same membership-only gate as the route above.
+  // Read a single time entry by id; requires `time_entry:read_any`.
   "GET /api/time-entry/{id}": {
     capability: "time_entry:read_any",
     scope: "workspace",

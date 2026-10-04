@@ -71,6 +71,7 @@ import pendingAction from "./pending-action";
 // all (presence only, always on); `runNextWithPolicyShadow` is the shadow-mode ALLOW/DENY
 // comparison, off by default. See the call sites below and each file's own header comment.
 import { assertRouteIsClassified } from "./permissions/route-classification-guard";
+import { setShadowLegacyAuthorization } from "./permissions/shadow-context";
 import {
   declareCatchAllMiddleware,
   runNextWithPolicyShadow,
@@ -115,6 +116,7 @@ import {
   parseConfiguredOrigins,
   selectOriginFromContext,
 } from "./utils/request-origin";
+import { assertCallerHasCapability } from "./utils/require-workspace-capability";
 import { seedDefaultWorkspaceRoles } from "./utils/seed-default-workspace-roles";
 import { seedInternalOrganisationAndStaffPersons } from "./utils/seed-internal-organisation";
 import { reachableWorkspacePredicate } from "./utils/workspace-access-middleware";
@@ -1159,6 +1161,19 @@ export function createApp(
       // cost the same single round trip and 404 identically -- see that
       // function's own comment.
       const asset = await loadReachableAsset(c, id);
+      try {
+        await assertCallerHasCapability(
+          asset.workspaceId,
+          c.get("userId"),
+          "workspace:read",
+        );
+      } catch (error) {
+        if (error instanceof HTTPException && error.status === 403) {
+          setShadowLegacyAuthorization(c, "denied");
+        }
+        throw error;
+      }
+      setShadowLegacyAuthorization(c, "allowed");
 
       try {
         const object = await getPrivateObject(asset.objectKey);

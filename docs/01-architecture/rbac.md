@@ -352,6 +352,14 @@ runtime, the existing Better Auth `user.role = 'admin'` field is the sole instan
 authority source; identity resolution projects it to this instance-scope grant. The Better
 Auth admin plugin's HTTP endpoints are not mounted and are not a second grant path.
 
+`instance_admin`'s global reach is **not** an implicit grant of workspace capabilities. A
+workspace-scoped route still requires the capability declared by its route policy from the
+caller's actual workspace role. In particular, `instance_admin` holding `instance:*` does not
+by itself grant `workspace:read`, `project:read`, or a workspace mutation capability. A route
+that currently checks only reach must add its declared capability check; the legacy
+`isInstanceAdmin` shortcut must not silently turn reach into workspace authority. An instance
+administrator who is also a workspace member is evaluated using that membership's role.
+
 ## The customer role is special
 
 Customers are not "a low-ranked member". They are a different kind of actor, and their

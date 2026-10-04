@@ -7,6 +7,7 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import addDocumentLinkCtrl from "./controllers/add-document-link";
@@ -70,7 +71,10 @@ const listProjectsRoute = createRoute({
   summary: "List projects",
   description:
     "List a workspace's projects in sidebar order, each with rollup task statistics. Archived projects are excluded unless includeArchived is set.",
-  middleware: [workspaceAccess.fromQuery()] as const,
+  middleware: [
+    workspaceAccess.fromQuery(),
+    requireWorkspaceCapability("project:read"),
+  ] as const,
   request: { query: listProjectsQuery },
   responses: {
     200: jsonResponse("List of projects", projectListSchema),
@@ -114,7 +118,10 @@ const getProjectRoute = createRoute({
   tags: ["Projects"],
   summary: "Get project",
   description: "Get a single project by ID.",
-  middleware: [workspaceAccess.fromProject()] as const,
+  middleware: [
+    workspaceAccess.fromProject(),
+    requireWorkspaceCapability("project:read"),
+  ] as const,
   request: { params: projectParam },
   responses: {
     200: jsonResponse("Project details", projectSchema),
@@ -278,7 +285,10 @@ const listMilestonesRoute = createRoute({
   tags: ["Projects"],
   summary: "List a project's milestones",
   description: "Name, date, reached -- ordered by date.",
-  middleware: [workspaceAccess.fromProject()] as const,
+  middleware: [
+    workspaceAccess.fromProject(),
+    requireWorkspaceCapability("project:read"),
+  ] as const,
   request: { params: projectParam },
   responses: {
     200: jsonResponse("The project's milestones", z.array(milestoneSchema)),
@@ -368,7 +378,10 @@ const listPrerequisitesRoute = createRoute({
   path: "/{id}/prerequisites",
   tags: ["Projects"],
   summary: "List a project's prerequisites",
-  middleware: [workspaceAccess.fromProject()] as const,
+  middleware: [
+    workspaceAccess.fromProject(),
+    requireWorkspaceCapability("project:read"),
+  ] as const,
   request: { params: projectParam },
   responses: {
     200: jsonResponse(
@@ -464,7 +477,10 @@ const listStakeholdersRoute = createRoute({
   tags: ["Projects"],
   summary: "List a project's stakeholders",
   description: "Ordered by escalation order.",
-  middleware: [workspaceAccess.fromProject()] as const,
+  middleware: [
+    workspaceAccess.fromProject(),
+    requireWorkspaceCapability("project:read"),
+  ] as const,
   request: { params: projectParam },
   responses: {
     200: jsonResponse("The project's stakeholders", z.array(stakeholderSchema)),
@@ -554,7 +570,10 @@ const listDocumentLinksRoute = createRoute({
   path: "/{id}/document-links",
   tags: ["Projects"],
   summary: "List a project's document links",
-  middleware: [workspaceAccess.fromProject()] as const,
+  middleware: [
+    workspaceAccess.fromProject(),
+    requireWorkspaceCapability("project:read"),
+  ] as const,
   request: { params: projectParam },
   responses: {
     200: jsonResponse(

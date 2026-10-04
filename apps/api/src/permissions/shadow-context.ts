@@ -6,11 +6,10 @@ export type ShadowLegacyAuthorization = "allowed" | "denied" | "unknown";
 /**
  * A request-sourced id is trustworthy evidence only once IT ITSELF is confirmed against a
  * real `workspace` row — never because some legacy authorization path merely said
- * "allowed". #400 (Opus R1 on #381): `validateWorkspaceAccess`'s admin early return and
- * `hasWorkspacePermission`'s `isInstanceAdmin` bypass (and any future one) grant an instance
- * admin access without ever checking the workspace exists, so "the legacy path allowed it"
- * is not proof of verification the way it is for a non-admin (whose "allowed" can only come
- * from a real `workspace_user` row naming that exact id). The caller does the row check
+ * "allowed". `validateWorkspaceAccess` may allow an instance administrator to address a
+ * workspace without membership, so "the legacy path allowed it" is not proof of verification
+ * the way it is for a member (whose "allowed" can only come from a real `workspace_user` row
+ * naming that exact id). The caller does the row check
  * itself (`runShadowEvaluation`'s lookup in `shadow-middleware.ts`); this function only
  * gates on its result, for every caller alike, admin or not.
  */

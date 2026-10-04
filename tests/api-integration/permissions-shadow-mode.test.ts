@@ -4,8 +4,8 @@
  * Four obligations from the brief, each its own describe block:
  *  1. Shadow off (the default) writes nothing — a true no-op.
  *  2. Responses are byte-identical with shadow on and off, for a representative route.
- *  3. A known disagreement — the instance-admin bypass (#315 S8) — is recorded, with shadow
- *     on, as `legacy_allow_policy_deny`.
+ *  3. Instance-admin reach does not bypass workspace capability authority; an assigned role
+ *     still permits the operation.
  *  4. An evaluator exception is caught and logged as `evaluator_error`; the response is
  *     unaffected.
  *
@@ -389,18 +389,13 @@ describe("request-sourced scope is evaluated with request provenance", () => {
   });
 });
 
-describe("a known disagreement: the instance-admin bypass (#315 S8)", () => {
-  it("legacy allows (requireWorkspacePermission's isInstanceAdmin bypass), the registry denies (instance:* only) — recorded as legacy_allow_policy_deny", {
+describe("instance-admin reach does not bypass workspace capability authority", () => {
+  it("refuses a nonmember instance admin and records agreement with the declared capability", {
     timeout: 60_000,
   }, async () => {
     const fresh = await createAppWithShadow("on");
 
-    // A label in a workspace the "instance admin" below is NOT a member of at all —
-    // `PUT /api/label/{id}` is gated by `requireWorkspacePermission({ label: ["update"] })`
-    // alone (no `requireWorkspaceRoleAuthority` follow-up, unlike `PATCH /api/workspace/
-    // {workspaceId}`, which closes this exact bypass for itself — see that route's own
-    // policy.ts comment). `isInstanceAdmin()` short-circuits `requireWorkspacePermission`
-    // to `true` regardless of membership (apps/api/src/utils/require-workspace-permission.ts).
+    // The admin has global reach but no role in this workspace.
     const owner = await createWorkspaceMember();
     const labelId = await createLabelFixture(fresh, owner.workspace.id);
     await backfillPersons();
@@ -429,30 +424,111 @@ describe("a known disagreement: the instance-admin bypass (#315 S8)", () => {
       }),
     });
 
-    // Legacy path: allowed, via the instance-admin bypass.
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(403);
 
     // Shadow write happens after the response, off the request's own promise chain
     // (see shadow-middleware.ts) — give it a tick to land.
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    const events = await shadowEventsFor(
-      UPDATE_LABEL_ROUTE_KEY,
-      "legacy_allow_policy_deny",
-    );
-    expect(events.length).toBeGreaterThanOrEqual(1);
-    const event = events.at(-1);
-    expect(event?.legacyAllowed).toBe(true);
-    expect(event?.legacyStatus).toBe(200);
-    expect(event?.policyAllowed).toBe(false);
-    expect(event?.workspaceId).toBe(owner.workspace.id);
-    expect(event?.identityKind).toBe("session");
-
     const tallies = await shadowTalliesFor(UPDATE_LABEL_ROUTE_KEY);
-    const disagreeTally = tallies.find(
-      (row) => row.outcome === "legacy_allow_policy_deny",
+    expect(tallies).toContainEqual(
+      expect.objectContaining({ outcome: "agree", reasonCode: null }),
     );
-    expect(disagreeTally?.count).toBeGreaterThanOrEqual(1);
+    expect(tallies).not.toContainEqual(
+      expect.objectContaining({ outcome: "legacy_allow_policy_deny" }),
+    );
+  });
+
+  it("allows an instance admin whose workspace role grants the required capability", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember({ role: "admin" });
+    const labelId = await createLabelFixture(fresh, member.workspace.id);
+    await fresh.db
+      .update(fresh.schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(fresh.schema.userTable.id, member.user.id));
+    fresh.mockUser({ ...member.user, role: "admin" });
+
+    const response = await fresh.app.request(`/api/label/${labelId}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: "Updated by assigned admin",
+        color: "#00ff00",
+      }),
+    });
+    expect(response.status).toBe(200);
+
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(UPDATE_LABEL_ROUTE_KEY);
+      return rows.find((row) => row.outcome === "agree");
+    });
+    expect(tally.outcome).toBe("agree");
+  });
+
+  it("keeps workspace-read routes denied without a role and available to assigned roles", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await backfillPersons();
+
+    const outsiderAdmin = {
+      id: "user-instance-admin-read-boundary-test",
+      email: "instance-admin-read-boundary-test@example.com",
+      name: "Instance Admin Without Workspace Role",
+      emailVerified: true,
+      role: "admin",
+    };
+    await fresh.db.insert(fresh.schema.userTable).values(outsiderAdmin);
+    await backfillPersons();
+    fresh.mockUser(outsiderAdmin);
+
+    const denied = await Promise.all([
+      fresh.app.request(`/api/project?workspaceId=${owner.workspace.id}`),
+      fresh.app.request(`/api/column/${project.id}`),
+      fresh.app.request(`/api/workflow-rule/${project.id}`),
+      fresh.app.request(`/api/label/workspace/${owner.workspace.id}`),
+      fresh.app.request(`/api/workspace/${owner.workspace.id}`),
+      fresh.app.request(`/api/capabilities?workspaceId=${owner.workspace.id}`),
+    ]);
+    expect(denied.map((response) => response.status)).toEqual([
+      403, 403, 403, 403, 403, 403,
+    ]);
+
+    const assignedAdmin = await createWorkspaceMember({
+      role: "admin",
+      workspaceName: "Instance Admin With Read Role",
+    });
+    await fresh.db
+      .update(fresh.schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(fresh.schema.userTable.id, assignedAdmin.user.id));
+    fresh.mockUser({ ...assignedAdmin.user, role: "admin" });
+    const { project: assignedProject } = await createProjectFixture({
+      workspaceId: assignedAdmin.workspace.id,
+    });
+
+    const allowed = await Promise.all([
+      fresh.app.request(
+        `/api/project?workspaceId=${assignedAdmin.workspace.id}`,
+      ),
+      fresh.app.request(`/api/column/${assignedProject.id}`),
+      fresh.app.request(`/api/workflow-rule/${assignedProject.id}`),
+      fresh.app.request(`/api/label/workspace/${assignedAdmin.workspace.id}`),
+      fresh.app.request(`/api/workspace/${assignedAdmin.workspace.id}`),
+      fresh.app.request(
+        `/api/capabilities?workspaceId=${assignedAdmin.workspace.id}`,
+      ),
+    ]);
+    expect(allowed.map((response) => response.status)).toEqual([
+      200, 200, 200, 200, 200, 200,
+    ]);
   });
 
   it("records a controller-level bulk membership denial after earlier gates allowed", {

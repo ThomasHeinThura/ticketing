@@ -42,11 +42,10 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * **`sessionOnly` and workspace-role authority are two independent boundaries, and this
  * batch enforces both directly.** `sessionOnly` refuses a non-session credential before the
  * route's own logic runs at all (`require-session-only.ts`). Separately, on the two mutation
- * routes only, `apps/api/src/utils/require-workspace-role-authority.ts` refuses an instance
- * admin whose OWN workspace role does not grant the capability, closing the
- * `hasWorkspacePermission` instance-admin bypass rather than inheriting it onto a route this
- * batch adds. See that file for the full reasoning, including why it is not #66 despite
- * touching the same permission rows.
+ * routes only, the canonical capability check requires the caller's own workspace role even
+ * when global reach permits the instance administrator to address that workspace. The
+ * separate role-authority middleware retains stricter malformed/missing-row handling on
+ * designated mutations.
  *
  * **`GET /api/workspace/{workspaceId}/members` is now classified below, by #8.** It predates
  * this batch (retrofit plan §3, S2 row: "already exists") and was left for #8's pass, as

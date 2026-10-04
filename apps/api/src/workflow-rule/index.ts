@@ -4,6 +4,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import deleteWorkflowRule from "./controllers/delete-workflow-rule";
@@ -24,7 +25,10 @@ const getWorkflowRulesRoute = createRoute({
   summary: "Get workflow rules",
   description:
     "Get every workflow rule for a project. A rule moves a task to a column when an integration event fires.",
-  middleware: [workspaceAccess.fromProject("projectId")] as const,
+  middleware: [
+    workspaceAccess.fromProject("projectId"),
+    requireWorkspaceCapability("project:read"),
+  ] as const,
   request: { params: projectIdParam },
   responses: {
     200: jsonResponse("List of workflow rules", workflowRuleListSchema),

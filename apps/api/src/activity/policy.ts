@@ -11,11 +11,8 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * constrain any route here.
  *
  * **`GET /api/activity/{taskId}` is the activity-feed twin of `GET /api/comment/{taskId}`** —
- * same `workspaceAccess.fromTaskId()`-only gate, same target capability (`work_item:read`,
- * scope `work_item`, `scopeSource: "row"`): the feed includes comments alongside system
- * events (status/assignee/priority/due-date changes, all written by the `subscribeToEvent`
- * handlers at the bottom of `apps/api/src/activity/index.ts`), but visibility is identical —
- * whatever can see the task's comments can see its full activity feed.
+ * both resolve reach from the task row and enforce `work_item:read`; the feed includes comments
+ * alongside system events, but visibility is identical.
  *
  * **`POST /api/activity/create` records a system-generated event**, not a comment — importers
  * and integrations, per its own description. Same `workspaceAccess.fromTaskId()` +
@@ -68,8 +65,7 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * restriction to preserve.
  */
 export const activityPolicies = {
-  // Full activity feed for a task (comments + system events). Same visibility as
-  // `GET /api/comment/{taskId}` — see file comment.
+  // Full activity feed for a task (comments + system events); requires `work_item:read`.
   "GET /api/activity/{taskId}": {
     capability: "work_item:read",
     scope: "work_item",

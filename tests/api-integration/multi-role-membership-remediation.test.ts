@@ -221,7 +221,7 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
     expect(body.problem).toBe("multi-valued");
   });
 
-  it("PINS THE ONE DELIBERATE EXCEPTION: an INSTANCE ADMIN with the same corrupt row still gets a 200 capability map, because `hasWorkspacePermission` short-circuits on `isInstanceAdmin` before it reads any membership row. That bypass is Thomas's 2026-09-08 decision and #82 does not re-open it -- an instance admin already holds the authority a corrupt row could confer, so the malformed value adds them no privilege. What #82 DOES require is that `/api/capabilities` and the evaluator make the same call, which they do because both route through `callerMembershipResolution`. The narrower guard that refuses this caller anyway is `requireWorkspaceRoleAuthority` -- see §2", async () => {
+  it("refuses an instance admin whose own workspace membership row is malformed", async () => {
     const { app } = createApp();
     // #18: instance-admin bootstrap now requires a valid setup token, so this owner
     // is deliberately signed up through the real bootstrap flow (`ownerIsInstanceAdmin`)
@@ -238,10 +238,9 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
       `/api/capabilities?workspaceId=${workspace.id}`,
       { headers: { cookie: owner.cookie } },
     );
-    expect(response.status).toBe(200);
-    expect(
-      ((await response.json()) as { deleteWorkspace: boolean }).deleteWorkspace,
-    ).toBe(true);
+    expect(response.status).toBe(409);
+    const body = (await response.json()) as { problem: string };
+    expect(body.problem).toBe("multi-valued");
   });
 });
 

@@ -1321,8 +1321,8 @@ describe("API integration: workspace RBAC enforcement", () => {
     });
   });
 
-  describe("instance admin bypass", () => {
-    it("bypasses the workspace permission check when user.role === 'admin'", async () => {
+  describe("instance admin reach and workspace capability", () => {
+    it("does not bypass the caller's workspace role when user.role === 'admin'", async () => {
       const member = await createWorkspaceMember({ role: "viewer" });
       // Promote the user to instance admin
       await db
@@ -1344,7 +1344,7 @@ describe("API integration: workspace RBAC enforcement", () => {
       const { app } = createApp();
 
       const response = await postCreateTask(app, project.id);
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(403);
     });
 
     it("does not bypass for users with no role set", async () => {
