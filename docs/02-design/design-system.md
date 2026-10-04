@@ -305,3 +305,10 @@ The extracted legacy `apps/web/src/components/ui` directory must remain empty; G
 ownership are defined in `design-tokens.md` and enforced by G2/G3. Authored palette matching
 remains provisional until the human H1–H6 review at P4; passing numeric contrast is not that
 review.
+
+This is the disposition of #403's five former app-specific files: `avatar.tsx` became the
+adapter in `components/avatar/`; `error-display.tsx` and `error-fallback.tsx` live in
+`components/errors/`; `error-test.tsx` is the `/test-error` route module; and
+`loading-skeleton.tsx` lives in `components/app-shell/`. Their app behavior is retained, but
+none is a permanent exception to G1c. The avatar's authored visual treatment remains subject
+to the existing P4 H1 review; that human review is not a P0 directory-placement exception.

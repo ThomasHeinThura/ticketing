@@ -1,7 +1,10 @@
 # Design tokens
 
-Every visual value is a token. Literal colours, arbitrary spacing and one-off radii are
-lint errors outside `packages/ui`.
+Semantic colors and theme values are tokens. Repeated rows, shared form controls and
+`CardPanel` use the registered density classes. Layout spacing, type, shadow and z-index use
+Tailwind's built-in scales directly, as selected in the 2026-09-06 design decision. G2 does
+not claim a repository-wide ban on arbitrary-value syntax or one-off radii; it enforces the
+explicit token and density contracts below.
 
 Tokens live in `packages/ui/src/styles/`:
 
@@ -288,9 +291,13 @@ entry. Each entry records
 `themes` (one or both; interaction variants may have theme-specific entries),
 `usage` (the real component/story/screen owner), `foregroundClass`, `backgroundClass` (the
 actual surface class for each theme, including alpha/interaction modifiers), and `backdrop`
-when either computed color is translucent. The current source-coverage inventory registers
-the shared Button, Badge, and Input variant declarations; adding a new styled component to
-that inventory requires adding its source and actual pairs to the same gate batch. Example:
+when either computed color is translucent. The source inventory covers every shipped
+TSX/JSX component and Storybook story under `packages/ui/src` and `apps/web/src`, including
+application compositions. It follows actual component/caller surfaces and fails on
+unresolved or unbound foreground occurrences; unit-test and spec renderers are excluded
+because they do not establish shipped screen surfaces. Adding a styled source or a new
+foreground/surface combination requires its measured occurrences and actual pairs in the same
+gate batch. Example:
 
 ```json
 {
@@ -307,8 +314,10 @@ that inventory requires adding its source and actual pairs to the same gate batc
 ```
 
 The inventory lists actual combinations, not every theoretical cross-product. The gate
-compares observed declared pairs across the full styled source set against the manifest;
-new or unclassified use fails until it has an explicit entry. The runner builds and loads the
+compares observed declared pairs across the full shipped source set against the manifest;
+new or unclassified use fails until it has an explicit entry. Repeated equivalent numeric
+pairs are deduplicated only after each occurrence has a current source-bound surface proof.
+The runner builds and loads the
 web CSS in Chromium, resolves the computed colors in each theme and interaction state,
 composites alpha over the recorded opaque backdrop, then computes WCAG 2.1 contrast. For
 autofill, only the built `:has(:autofill)` selector is substituted with a probe attribute
@@ -349,7 +358,13 @@ shared breakpoint.
 
 ## Enforcement
 
-`scripts/check-tokens.mjs` runs in CI and fails on:
+`pnpm check:tokens` runs the static G2 checker and built-CSS G3 browser checker. G2's
+intentional scope is semantic color/theme parity plus direct fixed spacing overrides on the
+registered density slots; it does not lint every Tailwind spacing, radius or z-index utility.
+G3 checks the full shipped component/story source inventory described above. The current CI
+implementation is `scripts/ci/check-tokens.mjs` and `scripts/ci/check-contrast.mjs`.
+
+The static G2 checker fails on:
 
 - A hex colour, `rgb()`, `hsl()`, `oklch()`, `color-mix(` or `--alpha(` outside
   `packages/ui/src/styles/`
