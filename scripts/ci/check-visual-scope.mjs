@@ -2994,6 +2994,7 @@ try {
       !hasExactObjectKeys(baseConfig, [
         "testDir",
         "fullyParallel",
+        "workers",
         "testIgnore",
         "forbidOnly",
         "retries",
@@ -3009,6 +3010,7 @@ try {
       !hasNamedImport(baseConfigSourceFile, "@playwright/test", "devices") ||
       !hasLiteralProperty(baseConfig, "testDir", "./e2e", ts.isStringLiteral) ||
       !hasBooleanProperty(baseConfig, "fullyParallel", true) ||
+      !hasNumericProperty(baseConfig, "workers", 1) ||
       !hasBooleanProperty(baseConfig, "forbidOnly", true) ||
       !hasNumericProperty(baseConfig, "retries", 0) ||
       !hasLiteralProperty(baseConfig, "reporter", "list", ts.isStringLiteral) ||

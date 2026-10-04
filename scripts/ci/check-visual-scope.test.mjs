@@ -687,6 +687,21 @@ test("G8 rejects an inherited Playwright shard that can select no route cases", 
   );
 });
 
+test("G8 requires the base Playwright config to isolate real-runtime workers", async () => {
+  const original = await readFile(
+    path.join(repoRoot, "apps/web/playwright.config.ts"),
+    "utf8",
+  );
+  const baseConfig = original.replace("workers: 1,", "workers: 2,");
+  const result = await runVisualScope({ baseConfig });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /playwright\.config\.ts must define the e2e directory/,
+  );
+});
+
 test("G8 rejects a route shard that can select no screenshots", async () => {
   const original = await readFile(
     path.join(repoRoot, "apps/web/playwright.visual.config.ts"),
