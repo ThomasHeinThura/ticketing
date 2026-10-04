@@ -29,7 +29,7 @@ const getColumnsRoute = createRoute({
   summary: "Get columns",
   description: "Get a project's board columns, ordered by position.",
   middleware: [
-    workspaceAccess.fromProject("projectId"),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
     requireWorkspaceCapability("project:read"),
   ] as const,
   request: { params: projectIdParam },

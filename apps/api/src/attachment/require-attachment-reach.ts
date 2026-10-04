@@ -2,10 +2,12 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { policyShadowEnabled } from "../permissions/shadow-config";
 import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import { projectReadDecision } from "../utils/has-project-reach";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 
 /**
@@ -26,7 +28,10 @@ import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
  * route re-checks `state = 'ready'` itself rather than relying on this middleware to filter
  * it.
  */
-export function requireAttachmentReach(idKey = "id") {
+export function requireAttachmentReach(
+  idKey = "id",
+  options: { readonly requireProjectReach?: boolean } = {},
+) {
   return async (c: Context, next: Next) => {
     markShadowLegacyAuthorizationUnknown(c);
     const userId = c.get("userId");
@@ -54,6 +59,8 @@ export function requireAttachmentReach(idKey = "id") {
         id: schema.attachmentTable.id,
         workItemId: schema.attachmentTable.workItemId,
         workspaceId: schema.attachmentTable.workspaceId,
+        projectId: schema.workItemTable.projectId,
+        organisationId: schema.workspaceTable.organisationId,
       })
       .from(schema.attachmentTable)
       .innerJoin(
@@ -63,6 +70,10 @@ export function requireAttachmentReach(idKey = "id") {
       .innerJoin(
         schema.projectTable,
         eq(schema.workItemTable.projectId, schema.projectTable.id),
+      )
+      .innerJoin(
+        schema.workspaceTable,
+        eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
       )
       .where(
         and(
@@ -77,11 +88,24 @@ export function requireAttachmentReach(idKey = "id") {
     if (!row) {
       throw new HTTPException(404, { message: "Attachment not found" });
     }
+    if (!row.projectId || !row.workItemId) {
+      throw new HTTPException(404, { message: "Attachment not found" });
+    }
 
     c.set("workspaceId", row.workspaceId);
     c.set("workspaceIdSource", "row");
+    c.set("projectId", row.projectId);
     c.set("workItemId", row.workItemId);
     c.set("policyScopeResource", "work_item");
+    if (policyShadowEnabled) {
+      c.set("projectReachFacts", {
+        projectId: row.projectId,
+        workspaceId: row.workspaceId,
+        organisationId: row.organisationId,
+        ancestorProjectIds: [],
+        ownerTeamId: null,
+      });
+    }
 
     const apiKey = c.get("apiKey");
     try {
@@ -92,6 +116,30 @@ export function requireAttachmentReach(idKey = "id") {
         throw new HTTPException(404, { message: "Attachment not found" });
       }
       throw error;
+    }
+
+    if (options.requireProjectReach) {
+      const decision = await projectReadDecision(c, userId, {
+        projectId: row.projectId,
+        workspaceId: row.workspaceId,
+        organisationId: row.organisationId,
+        workItemId: row.workItemId,
+        ancestorProjectIds: [],
+        ownerTeamId: null,
+      });
+      if (!decision) {
+        throw new HTTPException(500, {
+          message: "Project read policy could not be determined",
+        });
+      }
+      if (!decision.reachable) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(404, { message: "Attachment not found" });
+      }
+      if (!decision.capable) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
     }
 
     setShadowLegacyAuthorization(c, "allowed");

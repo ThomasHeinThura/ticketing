@@ -29,7 +29,7 @@ const getTaskCommentsRoute = createRoute({
   description:
     "Get every comment on a task, oldest first, each with its author's name and avatar.",
   middleware: [
-    workspaceAccess.fromTaskId(),
+    workspaceAccess.fromTaskId("taskId", { requireProjectReach: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: taskIdParam },

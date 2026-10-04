@@ -18,6 +18,7 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import { projectReadDecision } from "./has-project-reach";
 import { rejectNulByte } from "./reject-nul-byte";
 import { validateWorkspaceAccess } from "./validate-workspace-access";
 
@@ -124,6 +125,8 @@ type WorkspaceIdSource =
 
 type WorkspaceAccessMiddlewareConfig = {
   sources: WorkspaceIdSource[];
+  /** Enforce canonical project reach after the typed project row is resolved. */
+  requireProjectReach?: boolean;
 };
 
 type ShadowResourceAnchor = {
@@ -444,6 +447,41 @@ export function workspaceAccessMiddleware(
     }
     if (shadowWorkItemId) c.set("workItemId", shadowWorkItemId);
     if (policyScopeResource) c.set("policyScopeResource", policyScopeResource);
+
+    if (config.requireProjectReach) {
+      const projectId = c.get("projectId") as string | undefined;
+      const projectReachFacts = c.get("projectReachFacts") as
+        | ProjectReachFacts
+        | undefined;
+      if (
+        !projectId ||
+        !projectReachFacts ||
+        projectReachFacts.projectId !== projectId ||
+        projectReachFacts.workspaceId !== workspaceId
+      ) {
+        throw new HTTPException(500, {
+          message: "Project reach context could not be determined",
+        });
+      }
+
+      const decision = await projectReadDecision(c, userId, {
+        ...projectReachFacts,
+        workItemId: c.get("workItemId") as string | undefined,
+      });
+      if (!decision) {
+        throw new HTTPException(500, {
+          message: "Project read policy could not be determined",
+        });
+      }
+      if (!decision.reachable) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(404, { message: "Project not found" });
+      }
+      if (!decision.capable) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
+    }
 
     return next();
   };
@@ -905,19 +943,31 @@ export const workspaceAccess = {
   fromParam: (key = "workspaceId") =>
     workspaceAccessMiddleware({ sources: [{ type: "param", key }] }),
 
-  fromProject: (idKey = "id") =>
+  fromProject: (
+    idKey = "id",
+    options: { readonly requireProjectReach?: boolean } = {},
+  ) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "project", idKey }],
+      requireProjectReach: options.requireProjectReach,
     }),
 
-  fromTask: (idKey = "id") =>
+  fromTask: (
+    idKey = "id",
+    options: { readonly requireProjectReach?: boolean } = {},
+  ) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "task", idKey }],
+      requireProjectReach: options.requireProjectReach,
     }),
 
-  fromTaskId: (idKey = "taskId") =>
+  fromTaskId: (
+    idKey = "taskId",
+    options: { readonly requireProjectReach?: boolean } = {},
+  ) =>
     workspaceAccessMiddleware({
       sources: [{ type: "lookup", resource: "task", idKey }],
+      requireProjectReach: options.requireProjectReach,
     }),
 
   fromTasks: (idKey = "taskIds") =>

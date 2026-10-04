@@ -119,7 +119,7 @@ const getProjectRoute = createRoute({
   summary: "Get project",
   description: "Get a single project by ID.",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
     requireWorkspaceCapability("project:read"),
   ] as const,
   request: { params: projectParam },
@@ -286,7 +286,7 @@ const listMilestonesRoute = createRoute({
   summary: "List a project's milestones",
   description: "Name, date, reached -- ordered by date.",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
     requireWorkspaceCapability("project:read"),
   ] as const,
   request: { params: projectParam },
@@ -379,7 +379,7 @@ const listPrerequisitesRoute = createRoute({
   tags: ["Projects"],
   summary: "List a project's prerequisites",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
     requireWorkspaceCapability("project:read"),
   ] as const,
   request: { params: projectParam },
@@ -478,7 +478,7 @@ const listStakeholdersRoute = createRoute({
   summary: "List a project's stakeholders",
   description: "Ordered by escalation order.",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
     requireWorkspaceCapability("project:read"),
   ] as const,
   request: { params: projectParam },
@@ -571,7 +571,7 @@ const listDocumentLinksRoute = createRoute({
   tags: ["Projects"],
   summary: "List a project's document links",
   middleware: [
-    workspaceAccess.fromProject(),
+    workspaceAccess.fromProject("id", { requireProjectReach: true }),
     requireWorkspaceCapability("project:read"),
   ] as const,
   request: { params: projectParam },

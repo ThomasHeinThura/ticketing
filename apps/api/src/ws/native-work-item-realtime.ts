@@ -2,6 +2,8 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { WSContext } from "hono/ws";
 import { z } from "zod";
 import db, { schema } from "../database";
+import { resolveIdentity } from "../permissions/resolve-identity";
+import { evaluateProjectRead } from "../utils/has-project-reach";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import type {
@@ -13,6 +15,8 @@ import { logRealtimeFailure } from "./log-realtime-failure";
 type NativeCredential = {
   userId: string;
   apiKeyId?: string;
+  apiKeyEnabled?: boolean;
+  apiKeyOwnerUserId?: string;
   apiKeyPermissions?: Record<string, string[]> | null;
   portal: "agent" | "customer" | null;
 };
@@ -96,8 +100,13 @@ export async function authorizeNativeTopic(
       .select({
         id: schema.projectTable.id,
         workspaceId: schema.projectTable.workspaceId,
+        organisationId: schema.workspaceTable.organisationId,
       })
       .from(schema.projectTable)
+      .innerJoin(
+        schema.workspaceTable,
+        eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
+      )
       .where(
         and(
           eq(schema.projectTable.id, projectId),
@@ -107,6 +116,33 @@ export async function authorizeNativeTopic(
       )
       .limit(1);
     if (!project) return null;
+    const identity = await resolveIdentity({
+      userId: credential.userId,
+      credential: credential.apiKeyId ? "api_key" : "session",
+      ...(credential.apiKeyId
+        ? {
+            apiKey: {
+              enabled: credential.apiKeyEnabled === true,
+              ownerUserId: credential.apiKeyOwnerUserId ?? "",
+            },
+          }
+        : {}),
+    });
+    const facts = {
+      projectId,
+      workspaceId: project.workspaceId,
+      organisationId: project.organisationId,
+      ancestorProjectIds: [],
+      ownerTeamId: null,
+    } as const;
+    if (!identity) return null;
+    const decision = evaluateProjectRead(
+      identity,
+      "project:read",
+      "project",
+      facts,
+    );
+    if (!decision?.reachable || !decision.capable) return null;
     try {
       await validateWorkspaceAccess(
         credential.userId,
@@ -140,11 +176,16 @@ export async function authorizeNativeTopic(
       .select({
         projectId: schema.workItemTable.projectId,
         workspaceId: schema.workItemTable.workspaceId,
+        organisationId: schema.workspaceTable.organisationId,
       })
       .from(schema.workItemTable)
       .innerJoin(
         schema.projectTable,
         eq(schema.workItemTable.projectId, schema.projectTable.id),
+      )
+      .innerJoin(
+        schema.workspaceTable,
+        eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
       )
       .where(
         and(
@@ -157,6 +198,33 @@ export async function authorizeNativeTopic(
       )
       .limit(1);
     if (!item) return null;
+    const identity = await resolveIdentity({
+      userId: credential.userId,
+      credential: credential.apiKeyId ? "api_key" : "session",
+      ...(credential.apiKeyId
+        ? {
+            apiKey: {
+              enabled: credential.apiKeyEnabled === true,
+              ownerUserId: credential.apiKeyOwnerUserId ?? "",
+            },
+          }
+        : {}),
+    });
+    const facts = {
+      projectId: item.projectId,
+      workspaceId: item.workspaceId,
+      organisationId: item.organisationId,
+      ancestorProjectIds: [],
+      ownerTeamId: null,
+    } as const;
+    if (!identity) return null;
+    const decision = evaluateProjectRead(
+      identity,
+      "work_item:read",
+      "work_item",
+      facts,
+    );
+    if (!decision?.reachable || !decision.capable) return null;
     try {
       await validateWorkspaceAccess(
         credential.userId,

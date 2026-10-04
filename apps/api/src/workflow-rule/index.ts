@@ -26,7 +26,7 @@ const getWorkflowRulesRoute = createRoute({
   description:
     "Get every workflow rule for a project. A rule moves a task to a column when an integration event fires.",
   middleware: [
-    workspaceAccess.fromProject("projectId"),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
     requireWorkspaceCapability("project:read"),
   ] as const,
   request: { params: projectIdParam },

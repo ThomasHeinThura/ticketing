@@ -120,18 +120,13 @@ import {
  * reading the caller's own `workspace_member.role` against the compiled `BUILT_IN_ROLES`
  * data.
  *
- * "Plus reach on the project" (`work-items.md` § Permissions) reduces to WORKSPACE
- * membership here, not a dedicated per-project reach model: `packages/permissions`
- * ships a full reach/identity system (`ResolvedIdentity`, `ProjectReachFacts`, team
- * ownership, hierarchy), but nothing in this codebase assembles it for a live request
- * yet (no route calls `resolveIdentity`/`can()`/`evaluatePolicy` outside tests) -- that
- * is #8's runtime-integration work, explicitly out of this slice's scope. Every OTHER
- * project-scoped route in this codebase today (`project/index.ts`) defines its own reach
- * identically: `workspaceAccess.fromProject()` resolves the project's workspace, then
- * `validateWorkspaceAccess` (inside that middleware) requires actual membership in it.
- * This slice follows that same, already-live precedent rather than inventing a
- * project-level membership check nothing else here has yet. Flagged as a judgment call
- * in the PR body.
+ * Project reads use `workspaceAccess.fromProject(..., { requireProjectReach: true })`:
+ * the loaded project's persisted scope is resolved against the canonical `reaches()`
+ * evaluator before the unchanged workspace capability check. Workspace membership alone
+ * does not grant project reach; direct project membership, explicit workspace `sees_all`,
+ * instance-admin reach, and customer-organisation reach follow `docs/01-architecture/rbac.md`.
+ * Create/write routes retain their existing workspace membership and capability checks in
+ * this batch.
  *
  * The declared route policies in `./policy.ts` are the TARGET vocabulary
  * (`work_item:create`/`work_item:read`, `scope: "project"`/`"work_item"`) -- registered
@@ -228,7 +223,7 @@ const listWorkItemsRoute = createRoute({
     "excluded by default. Each row also carries the resolved `stateName`, " +
     "`stateCategory` and `assigneeName` (#310) alongside the raw ids.",
   middleware: [
-    workspaceAccess.fromProject("projectId"),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: projectIdParam, query: listWorkItemsQuery },
@@ -237,8 +232,9 @@ const listWorkItemsRoute = createRoute({
       "A page of the project's work items",
       workItemListResponseSchema,
     ),
-    // #290: an unknown/out-of-reach project 400s via `workspaceAccess.fromProject()`
-    // before this route's own permission check runs (#202's own precedent) -- folded
+    // #290: an unknown project 400s via `workspaceAccess.fromProject()`; an existing
+    // project beyond canonical project reach is masked as 404 by the same middleware
+    // before this route's own permission check runs -- folded
     // into the same 400 alongside #310's own query-validation cases (unknown sort
     // field, out-of-range limit, malformed cursor, NUL byte, etc.).
     400: errorResponse(
@@ -262,7 +258,7 @@ const getWorkItemRoute = createRoute({
   summary: "Get work item",
   description: "Get a single work item by its permanent key, e.g. PROJ-123.",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { requireProjectReach: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },
@@ -357,7 +353,7 @@ const listAssignablePeopleRoute = createRoute({
     "sees the active roster; anyone else with reach sees only themselves; a caller with " +
     "neither capability sees an empty list. The client never filters this itself.",
   middleware: [
-    workspaceAccess.fromProject("projectId"),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: projectIdParam },
@@ -555,7 +551,7 @@ const getWorkItemTreeRoute = createRoute({
     "Capped in total size (`truncated: true` when the real subtree is larger than the " +
     "response returned) -- see `get-work-item-tree.ts`'s own doc comment.",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { requireProjectReach: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },
@@ -660,7 +656,7 @@ const listWorkItemActivityRoute = createRoute({
     "regardless of `visibility` -- see the controller's own doc comment for why no " +
     "caller-type filtering is applied yet.",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { requireProjectReach: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam, query: listWorkItemActivityQuery },
@@ -774,7 +770,7 @@ const listWorkItemTransitionsRoute = createRoute({
     '(`workflows.md` § "The state select"). An illegal transition is absent, never ' +
     "shown disabled -- the UI never computes legality client-side.",
   middleware: [
-    requireWorkItemReach(),
+    requireWorkItemReach("key", { requireProjectReach: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },

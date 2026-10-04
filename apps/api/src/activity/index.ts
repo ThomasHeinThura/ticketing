@@ -33,7 +33,7 @@ const getActivitiesRoute = createRoute({
   description:
     "Get a task's full activity feed, newest first: comments alongside system events such as status and assignee changes.",
   middleware: [
-    workspaceAccess.fromTaskId(),
+    workspaceAccess.fromTaskId("taskId", { requireProjectReach: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: taskIdParam },
