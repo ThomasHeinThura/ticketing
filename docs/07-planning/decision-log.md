@@ -6,6 +6,23 @@ dependency choices, convention changes, scope calls, gate waivers.
 Newest first.
 
 
+### 2026-10-04 · Preserve canonical project reach when repairing native project reads
+
+**Decision:** the existing RBAC Reach order remains authoritative. Plain workspace
+membership alone grants no project reach. The three source-bound native-allow/policy-deny
+project read outcomes must be investigated and repaired under that rule; moving their
+registered policies to workspace scope to manufacture agreement is rejected. The shadow
+contract's statement that workspace membership is comparable refers to persisted workspace
+facts, not an additional project grant. Explicit project membership or workspace `sees_all`
+still needs the declared capability, and denied reach remains masked with `404`.
+
+Implement one shared native read-guard conformance batch with actual persisted positive and
+negative fixtures, preserved liveness and independently computed shadow outcomes. Do not add
+automatic membership, implicit reach, invented roles or observer-side grants. This clarifies
+and applies the accepted 2026-09-09 canonical rule under the user's standing routine decision
+authorization; no authority expansion, human review or gate waiver is introduced.
+
+
 ### 2026-10-04 · Close the server lifecycle logging defect class structurally
 
 **Decision:** register finite `http.lifecycle_failure` in the observability log contract,

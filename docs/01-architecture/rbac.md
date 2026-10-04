@@ -234,7 +234,15 @@ predicate the comparison is intended to test. The policy side independently eval
 `reaches()` from the resolved identity and typed, persisted target facts. Where those facts
 cannot be loaded completely, the result is `reach_unavailable`, not a guessed allow or deny.
 In the current schema, direct project membership, workspace membership, and organisation
-reach can be compared from their persisted rows. Project ancestors and owner-team relations
+reach can be compared from their persisted rows. Workspace membership is evidence for a
+workspace-scoped decision; it does not add a project-reach grant. Project-scoped reads still
+require one of the canonical Reach steps 1–6, independently of their exact required
+capability. A native project read that accepts an ordinary workspace member without project
+reach is an authorization discrepancy to repair, not a reason to downgrade the registered
+policy scope or supply the native predicate as policy reach. Native reach rejection masks the
+project with `404`; existing capability checks and resource liveness remain required.
+Observer bookkeeping stays read-only. Native guard repairs follow the protected change flow
+and do not authorize automatic project memberships, implicit `sees_all`, or new role grants. Project ancestors and owner-team relations
 are not represented in the current project schema; they remain unavailable until their own
 schema and loader exist. A future typed loader may supply those facts, but the observer may
 not infer them from a legacy denial, route URL, or caller input.
