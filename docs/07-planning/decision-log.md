@@ -28,9 +28,10 @@ backfill. No P2 SLA evaluation is accepted or deployed by this decision. If sepa
 operated SLA data is discovered, stop that data-migration path for an explicit owner data
 policy. Wire the existing `work-item/controllers/create-work-item.ts` transaction and the
 specified SLA read route; absent intake conversion/timer/cache/event writers remain real
-implementation dependencies and are not claimed complete. Add the required canonical
-request-type/submission persistence prerequisites in P2's sequential candidate migration,
-including their integrity constraints. Human review remains deferred to integrated P4;
+implementation dependencies and are not claimed complete. Stage candidate0088 as the four binding/pin columns for the current direct-create/read
+slice. Add canonical request-type/submission persistence with its complete intake conversion
+feature in a subsequent sequential candidate migration, including integrity constraints;
+the current slice does not claim request-type precedence or acceptance/duplicate writers. Human review remains deferred to integrated P4;
 normal independent review and migration acceptance are still required after the full batch.
 
 
