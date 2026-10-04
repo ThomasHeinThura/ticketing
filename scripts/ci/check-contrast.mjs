@@ -388,6 +388,16 @@ function sourceUsesPair(source, foregroundClass, backgroundClass, theme) {
 export function validatePairManifest(pairs, readUsage, observedPairs) {
   const failures = [];
   const seen = new Set();
+  const occurrenceSurfaceContexts = new Set([
+    "caller-chain",
+    "component-surface-contract",
+    "function-return-property",
+    "imported-opaque-wrapper",
+    "nearest-opaque-ancestor",
+    "route-layout-body",
+    "same-element",
+    "storybook-body",
+  ]);
   const themeSource = requireFromWeb("node:fs").readFileSync(
     path.join(repoRoot, "packages/ui/src/styles/theme.css"),
     "utf8",
@@ -405,16 +415,65 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
       );
       continue;
     }
-    if (Array.isArray(pair.occurrenceIds) && Array.isArray(pair.occurrences)) {
-      const occurrenceIds = [
-        ...new Set(pair.occurrences.map((occurrence) => occurrence?.id)),
+    const occurrenceShapeValid =
+      Array.isArray(pair.occurrenceIds) &&
+      pair.occurrenceIds.length > 0 &&
+      pair.occurrenceIds.every(
+        (id) => typeof id === "string" && id.length > 0,
+      ) &&
+      Array.isArray(pair.occurrences) &&
+      pair.occurrences.length > 0 &&
+      pair.occurrences.every((occurrence) => {
+        const expectedKeys = [
+          "backdropLayers",
+          "category",
+          "chain",
+          "id",
+          "surfaceContext",
+          "usage",
+        ];
+        const actualKeys =
+          occurrence !== null && typeof occurrence === "object"
+            ? Object.keys(occurrence).sort()
+            : [];
+        return (
+          occurrence !== null &&
+          typeof occurrence === "object" &&
+          !Array.isArray(occurrence) &&
+          actualKeys.length === expectedKeys.length &&
+          expectedKeys.every((key, index) => actualKeys[index] === key) &&
+          typeof occurrence.id === "string" &&
+          occurrence.id.trim().length > 0 &&
+          typeof occurrence.usage === "string" &&
+          occurrence.usage.trim().length > 0 &&
+          occurrenceSurfaceContexts.has(occurrence.surfaceContext) &&
+          ["body", "large-text", "non-text"].includes(occurrence.category) &&
+          Array.isArray(occurrence.chain) &&
+          occurrence.chain.length > 0 &&
+          occurrence.chain.every(
+            (entry) => typeof entry === "string" && entry.trim().length > 0,
+          ) &&
+          Array.isArray(occurrence.backdropLayers) &&
+          occurrence.backdropLayers.every(
+            (layer) => typeof layer === "string" && layer.trim().length > 0,
+          )
+        );
+      });
+    if (!occurrenceShapeValid) {
+      failures.push(
+        violation(
+          manifestPath,
+          `${label} needs non-empty occurrenceIds and well-shaped occurrence records.`,
+        ),
+      );
+    } else {
+      const projectedIds = [
+        ...new Set(pair.occurrences.map((occurrence) => occurrence.id)),
       ];
       if (
-        occurrenceIds.some((id) => typeof id !== "string") ||
-        pair.occurrenceIds.length !== occurrenceIds.length ||
-        pair.occurrenceIds.some(
-          (id, position) => id !== occurrenceIds[position],
-        )
+        new Set(pair.occurrenceIds).size !== pair.occurrenceIds.length ||
+        pair.occurrenceIds.length !== projectedIds.length ||
+        pair.occurrenceIds.some((id, position) => id !== projectedIds[position])
       ) {
         failures.push(
           violation(
@@ -460,7 +519,7 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
       ? [
           ...new Set(
             pair.occurrences
-              .map((occurrence) => occurrence.usage)
+              .map((occurrence) => occurrence?.usage)
               .filter((usagePath) => typeof usagePath === "string"),
           ),
         ]
@@ -582,7 +641,7 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
           observedPairs?.directOccurrenceUses?.has(`${occurrenceId}|${key}`),
         );
       const occurrenceBound =
-        Array.isArray(pair.occurrences) &&
+        occurrenceShapeValid &&
         pair.occurrences.length > 0 &&
         new Set(
           pair.occurrences.map(
