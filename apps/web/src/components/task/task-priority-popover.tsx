@@ -6,6 +6,7 @@ import {
   ShortcutNumber,
 } from "@taskdesk/ui";
 import { Check } from "lucide-react";
+import type { RefObject } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUpdateTaskPriority } from "@/hooks/mutations/task/use-update-task-status-priority";
@@ -18,6 +19,7 @@ import type Task from "@/types/task";
 
 type TaskPriorityPopoverProps = {
   task: Task;
+  taskRef?: RefObject<Task | undefined>;
   children: React.ReactNode;
 };
 
@@ -31,6 +33,7 @@ const priorityOptions = [
 
 export default function TaskPriorityPopover({
   task,
+  taskRef,
   children,
 }: TaskPriorityPopoverProps) {
   const { t } = useTranslation();
@@ -42,8 +45,9 @@ export default function TaskPriorityPopover({
   const handlePriorityChange = useCallback(
     async (newPriority: string) => {
       try {
+        const currentTask = taskRef?.current ?? task;
         await updateTaskPriority({
-          ...task,
+          ...currentTask,
           priority: newPriority,
         });
         setOpen(false);
@@ -55,7 +59,7 @@ export default function TaskPriorityPopover({
         );
       }
     },
-    [t, task, updateTaskPriority],
+    [t, task, taskRef, updateTaskPriority],
   );
 
   const shortcutOptions = useMemo(

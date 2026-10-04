@@ -20,9 +20,21 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
       const page = await context.newPage();
       await installPerformanceApiFixture(page);
       const writes: string[] = [];
+      const successfulBoardListGets: string[] = [];
       page.on("request", (request) => {
         if (request.method() !== "GET")
           writes.push(`${request.method()} ${new URL(request.url()).pathname}`);
+      });
+      page.on("response", (response) => {
+        const request = response.request();
+        const pathname = new URL(response.url()).pathname;
+        if (
+          request.method() === "GET" &&
+          pathname === `/api/task/tasks/${PROJECT_ID}` &&
+          response.ok()
+        ) {
+          successfulBoardListGets.push(pathname);
+        }
       });
 
       const taskReady = page.waitForResponse((response) => {
@@ -77,22 +89,13 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
       await page.keyboard.press("Escape");
       await expect(help).toBeHidden();
 
-      const boardReady = page.waitForResponse((response) => {
-        const request = response.request();
-        return (
-          request.method() === "GET" &&
-          new URL(response.url()).pathname ===
-            `/api/task/tasks/${PROJECT_ID}` &&
-          response.ok()
-        );
-      });
       await page.goto(
         `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/board`,
       );
-      await boardReady;
       await expect(page.locator('[data-task-id^="legacy-task-"]')).toHaveCount(
         200,
       );
+      expect(successfulBoardListGets.length).toBeGreaterThan(0);
       await expect(
         page.getByText("Seeded legacy task 200", { exact: true }),
       ).toBeVisible();
@@ -167,7 +170,9 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
           ?.body,
       ).toMatchObject({ position: 1 });
     } finally {
-      await context.close();
+      if (context.pages().some((page) => !page.isClosed())) {
+        await context.close();
+      }
     }
   }
 });

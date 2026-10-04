@@ -6,6 +6,7 @@ import {
   ShortcutNumber,
 } from "@taskdesk/ui";
 import { Check } from "lucide-react";
+import type { RefObject } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUpdateTaskStatus } from "@/hooks/mutations/task/use-update-task-status";
@@ -22,6 +23,7 @@ type TaskStatusPopoverProps = {
   columns: NonNullable<ReturnType<typeof useGetColumns>["data"]>;
   isLoading: boolean;
   isError: boolean;
+  taskRef?: RefObject<Task | undefined>;
   children: React.ReactNode;
 };
 
@@ -30,6 +32,7 @@ export default function TaskStatusPopover({
   columns,
   isLoading,
   isError,
+  taskRef,
   children,
 }: TaskStatusPopoverProps) {
   const { t } = useTranslation();
@@ -52,8 +55,9 @@ export default function TaskStatusPopover({
     async (newStatus: string) => {
       setOpen(false);
       try {
+        const currentTask = taskRef?.current ?? task;
         await updateTaskStatus({
-          ...task,
+          ...currentTask,
           status: newStatus,
         });
       } catch (error) {
@@ -65,7 +69,7 @@ export default function TaskStatusPopover({
         );
       }
     },
-    [t, task, updateTaskStatus],
+    [t, task, taskRef, updateTaskStatus],
   );
 
   const shortcutOptions = useMemo(

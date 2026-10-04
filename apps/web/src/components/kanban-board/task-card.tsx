@@ -240,19 +240,17 @@ function TaskCard({
         </div>
       )}
 
-      <div className="mb-2.5 pr-6">
-        <div
-          className="overflow-hidden break-words leading-5 font-medium text-foreground text-[15px]"
-          style={{
-            display: "-webkit-box",
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: "vertical",
-            wordBreak: "break-word",
-            hyphens: "auto",
-          }}
-        >
-          {task.title}
-        </div>
+      <div
+        className="mb-2.5 pr-6 overflow-hidden break-words leading-5 font-medium text-foreground text-[15px]"
+        style={{
+          display: "-webkit-box",
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: "vertical",
+          wordBreak: "break-word",
+          hyphens: "auto",
+        }}
+      >
+        {task.title}
       </div>
 
       {showLabels && (

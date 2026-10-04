@@ -771,7 +771,7 @@ async function verifyBoardCardMenu(page: Page) {
   await expect(copyLink).toHaveCount(0);
 
   const keyboardCard = page.locator(
-    '[data-task-id="legacy-task-1"] > [role="button"]',
+    '[data-task-id="legacy-task-1"][role="button"]',
   );
   await expect(keyboardCard).toHaveCount(1);
   await keyboardCard.focus();

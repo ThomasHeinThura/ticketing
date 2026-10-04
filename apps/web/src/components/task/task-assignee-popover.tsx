@@ -6,6 +6,7 @@ import {
   ShortcutNumber,
 } from "@taskdesk/ui";
 import { Check } from "lucide-react";
+import type { RefObject } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
@@ -22,12 +23,14 @@ const VISIBLE_USERS_STEP = 40;
 
 type TaskAssigneePopoverProps = {
   task: Task;
+  taskRef?: RefObject<Task | undefined>;
   workspaceUsers: ReturnType<typeof useGetActiveWorkspaceUsers>["data"];
   children: React.ReactNode;
 };
 
 export default function TaskAssigneePopover({
   task,
+  taskRef,
   workspaceUsers,
   children,
 }: TaskAssigneePopoverProps) {
@@ -56,8 +59,9 @@ export default function TaskAssigneePopover({
         const selectedUser = workspaceUsers?.members?.find(
           (member) => member.userId === newUserId,
         );
+        const currentTask = taskRef?.current ?? task;
         await updateTaskAssignee({
-          ...task,
+          ...currentTask,
           userId: newUserId,
           assigneeId: newUserId || null,
           assigneeName: selectedUser?.user?.name ?? null,
@@ -71,7 +75,7 @@ export default function TaskAssigneePopover({
         );
       }
     },
-    [t, task, updateTaskAssignee, workspaceUsers],
+    [t, task, taskRef, updateTaskAssignee, workspaceUsers],
   );
 
   const shortcutOptions = useMemo(() => {
