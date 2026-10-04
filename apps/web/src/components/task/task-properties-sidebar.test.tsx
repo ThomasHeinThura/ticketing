@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type Task from "@/types/task";
 import TaskPropertiesSidebar from "./task-properties-sidebar";
 
 const mocks = vi.hoisted(() => ({
   useGetTask: vi.fn(),
+  getTask: vi.fn(),
   useGetProject: vi.fn(),
   useGetColumns: vi.fn(),
   useGetActiveWorkspaceUsers: vi.fn(),
@@ -13,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   useGetLabelsByWorkspace: vi.fn(),
   useGetProjects: vi.fn(),
   labelPopoverRender: vi.fn(),
+  sidebarChromeRender: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -28,6 +30,10 @@ vi.mock("@taskdesk/ui", () => {
   const passthrough = ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   );
+  const tooltipProvider = ({ children }: { children: React.ReactNode }) => {
+    mocks.sidebarChromeRender();
+    return <div>{children}</div>;
+  };
   return {
     Badge: passthrough,
     Button: ({
@@ -39,14 +45,30 @@ vi.mock("@taskdesk/ui", () => {
     KbdSequence: passthrough,
     Tooltip: passthrough,
     TooltipContent: passthrough,
-    TooltipProvider: passthrough,
+    TooltipProvider: tooltipProvider,
     TooltipTrigger: passthrough,
   };
 });
 
-vi.mock("@/hooks/queries/task/use-get-task", () => ({
-  default: (...args: unknown[]) => mocks.useGetTask(...args),
-}));
+vi.mock("@/hooks/queries/task/use-get-task", async () => {
+  const { useQuery } = await import("@tanstack/react-query");
+  return {
+    default: <TSelected,>(
+      taskId: string,
+      select: ((task: Task) => TSelected) | undefined,
+      enabled = true,
+    ) => {
+      mocks.useGetTask(taskId, select, enabled);
+      return useQuery({
+        queryKey: ["task", taskId],
+        queryFn: () => mocks.getTask(taskId) as Promise<Task>,
+        enabled,
+        select,
+        staleTime: 60_000,
+      });
+    },
+  };
+});
 vi.mock("@/hooks/queries/project/use-get-project", () => ({
   default: (...args: unknown[]) => mocks.useGetProject(...args),
 }));
@@ -129,7 +151,7 @@ const task: Task = {
 };
 
 function setup() {
-  mocks.useGetTask.mockReturnValue({ data: task });
+  mocks.getTask.mockResolvedValue(task);
   mocks.useGetProject.mockReturnValue({ data: { slug: "PRJ" } });
   mocks.useGetColumns.mockReturnValue({
     data: [{ id: "backlog", slug: "backlog", name: "Backlog", isFinal: false }],
@@ -152,7 +174,7 @@ function setup() {
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
   const view = render(<TaskPropertiesSidebar {...props} />, { wrapper });
-  return { props, ...view };
+  return { props, queryClient, ...view };
 }
 
 describe("TaskPropertiesSidebar responsive controls", () => {
@@ -176,15 +198,28 @@ describe("TaskPropertiesSidebar responsive controls", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps label controls stable when a task property changes", () => {
-    const { props, rerender } = setup();
+  it("keeps sidebar chrome out of property-only task updates", async () => {
+    const { queryClient } = setup();
     expect(mocks.labelPopoverRender).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["task", task.id])?.fetchStatus).toBe(
+        "idle",
+      ),
+    );
+    const chromeRenders = mocks.sidebarChromeRender.mock.calls.length;
 
-    mocks.useGetTask.mockReturnValue({
-      data: { ...task, status: "in-progress", version: 2 },
+    await act(async () => {
+      queryClient.setQueryData(["task", task.id], {
+        ...task,
+        status: "in-progress",
+        version: 2,
+      });
     });
-    rerender(<TaskPropertiesSidebar {...props} />);
 
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
+      "in-progress",
+    );
+    expect(mocks.sidebarChromeRender).toHaveBeenCalledTimes(chromeRenders);
     expect(mocks.labelPopoverRender).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("status-popover")).toBeInTheDocument();
   });
@@ -192,15 +227,48 @@ describe("TaskPropertiesSidebar responsive controls", () => {
   it("subscribes only to sidebar fields and the move-availability result", () => {
     setup();
 
-    const taskSelector = mocks.useGetTask.mock.calls[0]?.[1] as (
-      value: Task,
-    ) => Record<string, unknown>;
+    const taskSelectors = mocks.useGetTask.mock.calls
+      .map((call) => call[1])
+      .filter(
+        (selector): selector is (value: Task) => unknown =>
+          typeof selector === "function",
+      );
+    const sidebarSelector = taskSelectors.find((selector) => {
+      const selected = selector(task);
+      return (
+        typeof selected === "object" &&
+        selected !== null &&
+        !("status" in selected)
+      );
+    }) as ((value: Task) => Record<string, unknown>) | undefined;
+    const controlsSelector = taskSelectors.find((selector) => {
+      const selected = selector(task);
+      return (
+        typeof selected === "object" &&
+        selected !== null &&
+        "status" in selected
+      );
+    }) as ((value: Task) => Record<string, unknown>) | undefined;
     const projectSelector = mocks.useGetProjects.mock.calls[0]?.[2] as (
       value: Array<{ id: string }>,
     ) => boolean;
 
-    expect(taskSelector(task)).not.toHaveProperty("description");
-    expect(taskSelector(task)).not.toHaveProperty("version");
+    expect(sidebarSelector).toBeDefined();
+    expect(sidebarSelector?.(task)).not.toHaveProperty("description");
+    expect(sidebarSelector?.(task)).not.toHaveProperty("version");
+    expect(sidebarSelector?.(task)).not.toHaveProperty("status");
+    expect(sidebarSelector?.(task)).not.toHaveProperty("priority");
+    expect(sidebarSelector?.(task)).not.toHaveProperty("userId");
+
+    expect(controlsSelector).toBeDefined();
+    expect(controlsSelector?.(task)).toMatchObject({
+      status: task.status,
+      priority: task.priority,
+      userId: task.userId,
+      assigneeId: task.assigneeId,
+      startDate: task.startDate,
+      dueDate: task.dueDate,
+    });
     expect(projectSelector([{ id: "project-1" }])).toBe(false);
     expect(projectSelector([{ id: "project-1" }, { id: "project-2" }])).toBe(
       true,

@@ -55,35 +55,45 @@ type TaskPropertiesSidebarProps = {
   compact?: boolean;
 };
 
-type TaskPropertiesSummary = Pick<
+type TaskPropertiesSidebarSummary = Pick<
   Task,
-  | "id"
-  | "projectId"
-  | "number"
-  | "title"
-  | "status"
-  | "priority"
-  | "userId"
-  | "assigneeId"
-  | "assigneeName"
-  | "startDate"
-  | "dueDate"
+  "id" | "projectId" | "number" | "title"
 >;
 
-function selectTaskPropertiesSummary(task: Task): TaskPropertiesSummary {
+function selectTaskPropertiesSidebarSummary(
+  task: Task,
+): TaskPropertiesSidebarSummary {
   return {
     id: task.id,
     projectId: task.projectId,
     number: task.number,
     title: task.title,
-    status: task.status,
-    priority: task.priority,
-    userId: task.userId,
-    assigneeId: task.assigneeId,
-    assigneeName: task.assigneeName,
-    startDate: task.startDate,
-    dueDate: task.dueDate,
   };
+}
+
+const selectTaskStatus = (task: Task) => task.status;
+
+function TaskMovePopoverForSidebar({
+  taskId,
+  projectId,
+  workspaceId,
+  triggerClassName,
+}: {
+  taskId: string;
+  projectId: string;
+  workspaceId: string;
+  triggerClassName: string;
+}) {
+  const { data: status } = useGetTask(taskId, selectTaskStatus);
+  if (status === undefined) return null;
+
+  return (
+    <TaskMovePopover
+      task={{ id: taskId, projectId, status }}
+      workspaceId={workspaceId}
+      triggerClassName={triggerClassName}
+    />
+  );
 }
 
 export default function TaskPropertiesSidebar({
@@ -98,7 +108,7 @@ export default function TaskPropertiesSidebar({
   const { t } = useTranslation();
   const { data: fetchedTask } = useGetTask(
     taskId ?? "",
-    selectTaskPropertiesSummary,
+    selectTaskPropertiesSidebarSummary,
     !providedTask,
   );
   const { data: fetchedProject } = useGetProject({
@@ -160,8 +170,9 @@ export default function TaskPropertiesSidebar({
           <div className="flex flex-row-reverse gap-2 w-full border-b border-border">
             <div className="flex px-3 py-2">
               {task && canMoveTask && (
-                <TaskMovePopover
-                  task={task}
+                <TaskMovePopoverForSidebar
+                  taskId={task.id}
+                  projectId={task.projectId}
                   workspaceId={workspaceId}
                   triggerClassName="rounded-l-md rounded-r-none border-r-0"
                 />
@@ -212,7 +223,7 @@ export default function TaskPropertiesSidebar({
             </div>
 
             <TaskPropertiesControls
-              task={task}
+              taskId={taskId}
               taskForMutation={providedTask}
               columns={columns}
               workspaceUsers={workspaceUsers}
@@ -227,8 +238,9 @@ export default function TaskPropertiesSidebar({
           <div className="flex flex-row-reverse gap-2 w-full border-b border-border lg:flex-col lg:gap-0 lg:border-b-0">
             <div className="flex px-3 py-2 lg:hidden">
               {task && canMoveTask && (
-                <TaskMovePopover
-                  task={task}
+                <TaskMovePopoverForSidebar
+                  taskId={task.id}
+                  projectId={task.projectId}
                   workspaceId={workspaceId}
                   triggerClassName="rounded-l-md rounded-r-none border-r-0"
                 />
@@ -284,8 +296,9 @@ export default function TaskPropertiesSidebar({
               </p>
               <div className="flex">
                 {task && canMoveTask && (
-                  <TaskMovePopover
-                    task={task}
+                  <TaskMovePopoverForSidebar
+                    taskId={task.id}
+                    projectId={task.projectId}
                     workspaceId={workspaceId}
                     triggerClassName="rounded-l-md rounded-r-none border-r-0"
                   />
@@ -337,7 +350,7 @@ export default function TaskPropertiesSidebar({
             </div>
 
             <TaskPropertiesControls
-              task={task}
+              taskId={taskId}
               taskForMutation={providedTask}
               columns={columns}
               workspaceUsers={workspaceUsers}
