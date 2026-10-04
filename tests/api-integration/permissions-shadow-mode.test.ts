@@ -404,7 +404,7 @@ describe("request-sourced scope is evaluated with request provenance", () => {
 });
 
 describe("observer-only provenance for masked native read denials", () => {
-  it("evaluates project reach from persisted membership independently of the legacy workspace predicate", {
+  it("agrees for an active workspace member with persisted project read authority", {
     timeout: 60_000,
   }, async () => {
     const fresh = await createAppWithShadow("on");
@@ -412,6 +412,12 @@ describe("observer-only provenance for masked native read denials", () => {
     const owner = await createWorkspaceMember();
     const { project, columns } = await createProjectFixture({
       workspaceId: owner.workspace.id,
+    });
+    await fresh.db.insert(fresh.schema.workspaceUserTable).values({
+      workspaceId: owner.workspace.id,
+      userId: caller.user.id,
+      role: "member",
+      joinedAt: new Date(),
     });
     const [task] = await fresh.db
       .insert(fresh.schema.taskTable)
@@ -458,23 +464,25 @@ describe("observer-only provenance for masked native read denials", () => {
     await backfillPersons();
     fresh.mockUser(caller.user);
 
-    // Native access remains deliberately workspace-member constrained and must not
-    // reveal the resource. The independent policy calculation sees the persisted
-    // project membership and records the disagreement without changing that response.
+    // Both the native handler and independent policy evaluation use the active
+    // workspace membership and persisted project role. The project role may override
+    // a workspace role that lacks the selected read capability.
     const response = await fresh.app.request(`/api/task/${task.id}`);
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(200);
 
     const tally = await waitForShadowEvidence(async () => {
       const rows = await shadowTalliesFor(GET_TASK_ROUTE_KEY);
-      return rows.find((row) => row.outcome === "legacy_deny_policy_allow");
+      return rows.find(
+        (row) => row.outcome === "agree" && row.reasonCode === null,
+      );
     });
     expect(tally).toMatchObject({
-      outcome: "legacy_deny_policy_allow",
+      outcome: "agree",
       reasonCode: null,
     });
-    expect(
-      await shadowEventsFor(GET_TASK_ROUTE_KEY, "legacy_deny_policy_allow"),
-    ).toHaveLength(1);
+    // Shadow events are intentionally stored only for non-agree outcomes; the tally is
+    // the complete request counter and is the evidence for this successful comparison.
+    expect(await shadowEventsFor(GET_TASK_ROUTE_KEY, "agree")).toHaveLength(0);
   });
 
   it("records policy denial when a workspace member has no project reach", {
@@ -511,15 +519,15 @@ describe("observer-only provenance for masked native read denials", () => {
     fresh.mockUser(caller.user);
 
     const response = await fresh.app.request(`/api/task/${task.id}`);
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(404);
     const tally = await waitForShadowEvidence(async () => {
       const rows = await shadowTalliesFor(GET_TASK_ROUTE_KEY);
       return rows.length ? rows : undefined;
     });
     expect(tally).toContainEqual(
       expect.objectContaining({
-        outcome: "legacy_allow_policy_deny",
-        reasonCode: "not_found",
+        outcome: "agree",
+        reasonCode: null,
       }),
     );
   });

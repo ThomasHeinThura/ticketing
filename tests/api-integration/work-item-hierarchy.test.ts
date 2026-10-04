@@ -22,6 +22,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 import { raceWorkItemSoftDelete } from "./helpers/race-soft-delete";
@@ -116,6 +117,10 @@ async function setupProjectWithDefaultState() {
   const { project } = await createProjectFixture({
     workspaceId: creator.workspace.id,
   });
+  await grantProjectRole(creator.user.id, project.id, [
+    "project:read",
+    "work_item:read",
+  ]);
   const type = await makeWorkItemType(creator.workspace.id);
   await makeDefaultState(creator.workspace.id, project.id);
   return { creator, project, type };
@@ -735,6 +740,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     ).json()) as CreatedWorkItem;
 
     const viewer = await addWorkspaceMember(creator.workspace.id, "viewer");
+    await grantProjectRole(viewer.id, project.id, ["work_item:read"]);
     mockAuthenticatedSession(viewer);
 
     const readTree = await treeRequest(app, child.key);

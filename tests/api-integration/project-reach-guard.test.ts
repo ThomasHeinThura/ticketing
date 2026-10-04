@@ -190,9 +190,11 @@ const WORK_ITEM_READ_ROUTE_KEYS = new Set([
 
 async function addWorkspaceActor(
   workspaceId: string,
-  role: "admin" | "member",
+  role: "admin" | "member" | "project-reader-custom",
 ) {
-  const actor = await createWorkspaceMember({ role });
+  const actor = await createWorkspaceMember({
+    role: role === "project-reader-custom" ? "member" : role,
+  });
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
     userId: actor.user.id,
@@ -204,8 +206,10 @@ async function addWorkspaceActor(
     .values({
       workspaceId,
       role,
-      permission: JSON.stringify(defaultRolePayloads[role]),
-      isSystem: true,
+      permission: JSON.stringify(
+        role === "project-reader-custom" ? {} : defaultRolePayloads[role],
+      ),
+      isSystem: role !== "project-reader-custom",
       createdAt: new Date(),
       updatedAt: new Date(),
     })
@@ -337,7 +341,10 @@ describe("native project read reach", () => {
     if (!workItem) throw new Error("work item fixture insert returned no row");
 
     const plainMember = await addWorkspaceActor(owner.workspace.id, "member");
-    const directMember = await addWorkspaceActor(owner.workspace.id, "member");
+    const directMember = await addWorkspaceActor(
+      owner.workspace.id,
+      "project-reader-custom",
+    );
     const seesAllMember = await addWorkspaceActor(owner.workspace.id, "admin");
     const limitedProjectMember = await addWorkspaceActor(
       owner.workspace.id,

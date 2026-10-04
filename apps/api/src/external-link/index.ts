@@ -8,7 +8,6 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
-import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { externalLinkListSchema } from "./response";
 import { taskIdParam } from "./schema";
@@ -23,7 +22,6 @@ const getExternalLinksByTaskRoute = createRoute({
     "Get all links from a task to resources in connected integrations, such as GitHub or Gitea issues.",
   middleware: [
     workspaceAccess.fromTaskId("taskId", { requireProjectReach: true }),
-    requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: taskIdParam },
   responses: {

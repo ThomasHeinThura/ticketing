@@ -8,6 +8,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -259,6 +260,30 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     );
   });
 
+  it("keeps project reads fail-closed for an API key whose owner has project authority", async () => {
+    const caller = await createWorkspaceMember();
+    const { project } = await createProjectFixture({
+      workspaceId: caller.workspace.id,
+    });
+    await grantProjectRole(caller.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
+    const rawKey = await createApiKeyFor(caller.user.id);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/projects/${project.id}/work-items`,
+      { headers: { "x-api-key": rawKey } },
+    );
+
+    // The current key schema has no canonical capability-subset column. The identity
+    // loader therefore resolves keyCapabilities as [], which must continue to clamp
+    // the owner's otherwise-valid project role rather than infer a translation from
+    // Better Auth's unrelated permission shape.
+    expect(response.status).toBe(403);
+  });
+
   it("P0 S4: bulk task reach is folded into each foreign and missing lookup", async () => {
     const caller = await createWorkspaceMember();
     const owner = await createWorkspaceMember();
@@ -341,6 +366,10 @@ describe("P0 #317: existence equality outside workspace middleware", () => {
     );
     const { project: ownProject, columns: ownColumns } =
       await createProjectFixture({ workspaceId: caller.workspace.id });
+    await grantProjectRole(caller.user.id, ownProject.id, [
+      "project:read",
+      "work_item:read",
+    ]);
     const ownTask = requireRow(
       await db
         .insert(schema.taskTable)

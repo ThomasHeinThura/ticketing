@@ -9,6 +9,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
 } from "./helpers/fixtures";
 
 async function listDocumentLinks(projectId: string) {
@@ -43,6 +44,7 @@ describe("API integration: project document links", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
 
     const response = await addDocumentLink(project.id, {
@@ -63,6 +65,7 @@ describe("API integration: project document links", () => {
       const { project } = await createProjectFixture({
         workspaceId: member.workspace.id,
       });
+      await grantProjectRole(member.user.id, project.id, ["project:read"]);
       mockAuthenticatedSession(member.user);
 
       const response = await addDocumentLink(project.id, {
@@ -84,6 +87,7 @@ describe("API integration: project document links", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
 
     const response = await addDocumentLink(project.id, {
@@ -99,6 +103,7 @@ describe("API integration: project document links", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
 
     const response = await addDocumentLink(project.id, {
@@ -114,6 +119,7 @@ describe("API integration: project document links", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
 
     const addResponse = await addDocumentLink(project.id, {
@@ -187,6 +193,7 @@ describe("API integration: project document links", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
 
     const response = await deleteDocumentLink(
@@ -202,6 +209,7 @@ describe("API integration: project document links", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
 
     const response = await addDocumentLink(project.id, {

@@ -16,6 +16,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -263,6 +264,10 @@ async function setupProject() {
     role: "admin",
   });
   const { project } = await createProjectFixture({ workspaceId: workspace.id });
+  await grantProjectRole(creator.id, project.id, [
+    "project:read",
+    "work_item:read",
+  ]);
   return { creator, workspace, project };
 }
 

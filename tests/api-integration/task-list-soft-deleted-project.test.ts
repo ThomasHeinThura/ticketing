@@ -12,6 +12,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
 } from "./helpers/fixtures";
 
 async function softDelete(projectId: string) {
@@ -41,6 +42,10 @@ describe("API integration: task listing/export against a soft-deleted project", 
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
 
     await db.insert(schema.taskTable).values({
       projectId: project.id,
@@ -87,6 +92,10 @@ describe("API integration: task listing/export against a soft-deleted project", 
     const { project, columns } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
     const task = await db
       .insert(schema.taskTable)
       .values({

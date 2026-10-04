@@ -13,7 +13,8 @@ import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 /**
  * `GET /api/work-items/{key}` middleware: resolves the caller's workspace reach from the
  * work item's own key, via a genuine DB lookup, and sets `workspaceId` in context for
- * `requireWorkspaceCapability` to read next.
+ * downstream workspace access. Project-scoped reads also evaluate the registered
+ * capability against the canonical target authority in this middleware.
  *
  * A LOCAL middleware, not an addition to the shared `workspace-access-middleware.ts`
  * (`workspaceAccess.fromProject`/`fromTaskId`/etc.), deliberately -- see #20 in

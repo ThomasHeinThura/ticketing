@@ -5,7 +5,6 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
-import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import createComment from "./controllers/create-comment";
@@ -30,7 +29,6 @@ const getTaskCommentsRoute = createRoute({
     "Get every comment on a task, oldest first, each with its author's name and avatar.",
   middleware: [
     workspaceAccess.fromTaskId("taskId", { requireProjectReach: true }),
-    requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: taskIdParam },
   responses: {

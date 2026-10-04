@@ -6,6 +6,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -202,6 +203,10 @@ describe("issue #290 (S4): NUL-byte sweep on body id fields that reach a DB look
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
 
@@ -335,6 +340,10 @@ describe("issue #307 (S5): NUL-byte sweep, task router follow-up", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, [
+      "project:read",
+      "work_item:read",
+    ]);
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
 

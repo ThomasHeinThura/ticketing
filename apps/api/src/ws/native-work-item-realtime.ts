@@ -4,7 +4,6 @@ import { z } from "zod";
 import db, { schema } from "../database";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { evaluateProjectRead } from "../utils/has-project-reach";
-import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import type {
   NativeAuthorizationInvalidation,
@@ -149,11 +148,6 @@ export async function authorizeNativeTopic(
         project.workspaceId,
         credential.apiKeyId,
       );
-      await assertCallerHasCapability(
-        project.workspaceId,
-        credential.userId,
-        "work_item:read",
-      );
     } catch {
       return null;
     }
@@ -230,11 +224,6 @@ export async function authorizeNativeTopic(
         credential.userId,
         item.workspaceId,
         credential.apiKeyId,
-      );
-      await assertCallerHasCapability(
-        item.workspaceId,
-        credential.userId,
-        "work_item:read",
       );
     } catch {
       return null;

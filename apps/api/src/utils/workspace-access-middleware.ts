@@ -72,8 +72,9 @@ const NUL_BYTE_LABEL = "Workspace/resource id";
 // api-design.md`'s 404 row requires exactly this to be indistinguishable ("not found or
 // out of reach"), and #261's F2 fixed the identical class for `require-work-item-reach.ts`.
 // The two cases now share not just the same status but the same message, and 403 stays
-// reserved for what `requireWorkspaceCapability` answers next: reachable workspace,
-// missing capability.
+// reserved for a reachable target with missing capability. Workspace-scoped routes use
+// `requireWorkspaceCapability`; project-scoped read routes opt into the canonical target
+// capability check in this middleware and do not apply a second workspace-role decision.
 const RESOURCE_NOT_FOUND_MESSAGE: Record<
   | "task"
   | "label"
