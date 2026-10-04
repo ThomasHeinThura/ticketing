@@ -18,6 +18,7 @@ import {
 
 export const LOG_MESSAGES = [
   "http.request",
+  "http.lifecycle_failure",
   "auth.failure",
   "database.failure",
   "jobs.failure",

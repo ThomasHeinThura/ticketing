@@ -19,6 +19,30 @@ function capture() {
 }
 
 describe("allowlisted structured logger", () => {
+  it("accepts HTTP lifecycle failures without request or exception details", () => {
+    const sink = capture();
+    const logger = createTaskDeskLogger(
+      defaultLogLevels(),
+      registeredRoutes,
+      sink.stream,
+    );
+    logger.log({
+      module: "http",
+      message: "http.lifecycle_failure",
+      level: "error",
+      result: "failed",
+    });
+
+    expect(JSON.parse(sink.lines[0] as string)).toMatchObject({
+      module: "http",
+      messageKey: "http.lifecycle_failure",
+      msg: "http.lifecycle_failure",
+      level: 50,
+      result: "failed",
+    });
+    expect(sink.lines).toHaveLength(1);
+  });
+
   it("emits only closed fields and suppresses messages below module level", () => {
     const sink = capture();
     const logger = createTaskDeskLogger(
