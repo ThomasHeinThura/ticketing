@@ -1,3 +1,4 @@
+import { Dialog, DialogContent } from "@taskdesk/ui";
 import {
   cleanup,
   fireEvent,
@@ -7,7 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HttpError } from "@/lib/http-error";
-import CreateWorkItemDialog from "./create-work-item-dialog";
+import CreateWorkItemDialogForm from "./create-work-item-dialog-form";
 
 const mocks = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
@@ -75,12 +76,18 @@ function pickOption(option: HTMLElement) {
 
 function renderDialog(onClose = vi.fn()) {
   render(
-    <CreateWorkItemDialog
-      open={true}
-      onClose={onClose}
-      projectId="proj-1"
-      workspaceId="ws-1"
-    />,
+    <Dialog open>
+      <DialogContent
+        showCloseButton={false}
+        data-testid="create-work-item-dialog"
+      >
+        <CreateWorkItemDialogForm
+          onClose={onClose}
+          projectId="proj-1"
+          workspaceId="ws-1"
+        />
+      </DialogContent>
+    </Dialog>,
   );
   return onClose;
 }

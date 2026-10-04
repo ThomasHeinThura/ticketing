@@ -284,4 +284,102 @@ describe("optimistic legacy task updates", () => {
     await Promise.resolve();
     expect(queryClient.getQueryData<Task>(["task", task.id])).toEqual(task);
   });
+
+  it("shows the optimistic assignee while a canceled detail transport is pending", async () => {
+    let resolveFetch!: (value: Task) => void;
+    let resolveMutation!: (
+      value: Awaited<ReturnType<typeof updateTaskAssignee>>,
+    ) => void;
+    let fetchSignal: AbortSignal | undefined;
+    vi.mocked(updateTaskAssignee).mockImplementation(
+      () => new Promise((resolve) => (resolveMutation = resolve)),
+    );
+    const { result, queryClient } = setup();
+    const pendingFetch = queryClient.fetchQuery({
+      queryKey: ["task", task.id],
+      queryFn: ({ signal }) => {
+        fetchSignal = signal;
+        return new Promise<Task>((resolve) => {
+          resolveFetch = resolve;
+        });
+      },
+    });
+    void pendingFetch.catch(() => undefined);
+    await waitFor(() => {
+      expect(queryClient.isFetching({ queryKey: ["task", task.id] })).toBe(1);
+    });
+
+    let assignmentRequest!: Promise<unknown>;
+    act(() => {
+      assignmentRequest = result.current.assignee.mutateAsync({
+        ...task,
+        userId: "user-2",
+        assigneeId: "user-2",
+        assigneeName: "Second User",
+      });
+    });
+
+    expect(fetchSignal?.aborted).toBe(true);
+    expect(queryClient.getQueryData<Task>(["task", task.id])).toEqual({
+      ...task,
+      userId: "user-2",
+      assigneeId: "user-2",
+      assigneeName: "Second User",
+    });
+    await waitFor(() => expect(updateTaskAssignee).toHaveBeenCalledOnce());
+
+    resolveFetch({ ...task, title: "Late stale response" });
+    await Promise.resolve();
+    resolveMutation({} as never);
+    await assignmentRequest;
+
+    expect(queryClient.getQueryData<Task>(["task", task.id])).toEqual({
+      ...task,
+      userId: "user-2",
+      assigneeId: "user-2",
+      assigneeName: "Second User",
+    });
+  });
+
+  it("rolls back a failed assignee write without accepting a late canceled read", async () => {
+    let resolveFetch!: (value: Task) => void;
+    let fetchSignal: AbortSignal | undefined;
+    vi.mocked(updateTaskAssignee).mockRejectedValue(
+      new Error("assignment update failed"),
+    );
+    const { result, queryClient } = setup();
+    const pendingFetch = queryClient.fetchQuery({
+      queryKey: ["task", task.id],
+      queryFn: ({ signal }) => {
+        fetchSignal = signal;
+        return new Promise<Task>((resolve) => {
+          resolveFetch = resolve;
+        });
+      },
+    });
+    void pendingFetch.catch(() => undefined);
+    await waitFor(() => {
+      expect(queryClient.isFetching({ queryKey: ["task", task.id] })).toBe(1);
+    });
+
+    let assignmentRequest!: Promise<unknown>;
+    act(() => {
+      assignmentRequest = result.current.assignee.mutateAsync({
+        ...task,
+        userId: "user-2",
+        assigneeId: "user-2",
+        assigneeName: "Second User",
+      });
+    });
+
+    expect(fetchSignal?.aborted).toBe(true);
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.userId).toBe(
+      "user-2",
+    );
+    await expect(assignmentRequest).rejects.toThrow("assignment update failed");
+
+    resolveFetch({ ...task, title: "Late stale response" });
+    await Promise.resolve();
+    expect(queryClient.getQueryData<Task>(["task", task.id])).toEqual(task);
+  });
 });

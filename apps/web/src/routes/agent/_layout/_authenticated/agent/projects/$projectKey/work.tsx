@@ -3,6 +3,7 @@ import { Button } from "@taskdesk/ui";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import CreateWorkItemDialog from "@/components/work-item/create-work-item-dialog";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -23,7 +24,7 @@ import {
 } from "@/lib/routes";
 
 function preloadCreateWorkItemDialog() {
-  void import("@/components/work-item/create-work-item-dialog").catch(
+  void import("@/components/work-item/create-work-item-dialog-form").catch(
     () => undefined,
   );
 }
@@ -57,6 +58,7 @@ function WorkItemsRouteComponent() {
     projectId: string;
     status: WorkItemRealtimeStatus;
   }>();
+  const closeCreateDialog = useCallback(() => setIsCreateOpen(false), []);
 
   // Creation is gated on the same server-computed capability the app's other create UI
   // uses (`useWorkspacePermission`, backed by `GET /api/capabilities`). The v2 canonical
@@ -175,7 +177,6 @@ function WorkItemsRouteComponent() {
         <Suspense fallback={<WorkItemListLoading />}>
           <WorkItemsPanel
             project={project}
-            workspaceId={workspace?.id}
             workItemsResult={workItemsResult as WorkItemsResult | undefined}
             isLoading={isLoading}
             isError={isError}
@@ -183,13 +184,19 @@ function WorkItemsRouteComponent() {
             realtimeStatus={realtimeStatus}
             sort={sort}
             dir={dir}
-            isCreateOpen={isCreateOpen}
-            onCloseCreate={() => setIsCreateOpen(false)}
             onSortChange={handleSortChange}
             onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
             onRetry={handleRetry}
           />
         </Suspense>
+        {project ? (
+          <CreateWorkItemDialog
+            open={isCreateOpen}
+            onClose={closeCreateDialog}
+            projectId={project.id}
+            workspaceId={workspace?.id}
+          />
+        ) : null}
       </div>
     </>
   );
