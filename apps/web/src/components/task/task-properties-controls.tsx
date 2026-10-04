@@ -1,6 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@taskdesk/ui";
 import { Calendar, CalendarClock, CalendarDays, CalendarX } from "lucide-react";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import TaskAssigneePopover from "@/components/task/task-assignee-popover";
@@ -54,6 +55,8 @@ type TaskPropertiesControlsProps = {
 const buttonClass = (compact: boolean) =>
   cn("justify-start h-7 px-1.5 gap-1.5", !compact && "lg:w-full");
 
+const selectTaskId = (currentTask: Task) => currentTask.id;
+
 export default function TaskPropertiesControls({
   task,
   taskForMutation,
@@ -72,15 +75,33 @@ export default function TaskPropertiesControls({
     (key: string) => (ready ? t(key, { lng: language }) : key),
     [t, ready, language],
   );
-  const { data: fetchedTask } = useGetTask(
-    task?.id ?? "",
-    undefined,
-    Boolean(task?.id),
-  );
-  const latestTask = fetchedTask ?? taskForMutation;
+  useGetTask(task?.id ?? "", selectTaskId, Boolean(task?.id));
+  const queryClient = useQueryClient();
   const taskRef = useRef(taskForMutation);
-  taskRef.current = latestTask;
   const taskId = task?.id;
+  const cachedTask = taskId
+    ? queryClient.getQueryData<Task>(["task", taskId])
+    : undefined;
+  taskRef.current = cachedTask ?? taskForMutation;
+
+  useEffect(() => {
+    if (!taskId) return;
+    const queryKey = ["task", taskId];
+    const syncTask = () => {
+      const currentTask = queryClient.getQueryData<Task>(queryKey);
+      if (currentTask) taskRef.current = currentTask;
+    };
+    syncTask();
+    return queryClient.getQueryCache().subscribe((event) => {
+      if (
+        event.type === "updated" &&
+        event.query.queryKey[0] === "task" &&
+        event.query.queryKey[1] === taskId
+      ) {
+        syncTask();
+      }
+    });
+  }, [queryClient, taskId]);
   const status = task?.status;
   const priority = task?.priority;
   const userId = task?.userId;
@@ -246,7 +267,7 @@ export default function TaskPropertiesControls({
     );
   }, [taskId, dueDate, status, columns, compact, startDate, translate]);
 
-  if (!task || !latestTask) return null;
+  if (!task || !taskRef.current) return null;
 
   return (
     <div

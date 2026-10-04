@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { useGetColumns } from "@/hooks/queries/column/use-get-columns";
@@ -172,10 +173,18 @@ function renderControls(currentTask: Task) {
   );
 }
 
+function renderWithQueryClient(element: React.ReactElement) {
+  const queryClient = new QueryClient();
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  return render(element, { wrapper });
+}
+
 describe("task property render boundaries", () => {
   it("refreshes memoized labels when the translation namespace becomes ready", () => {
     translations.ready = false;
-    const { rerender } = render(renderControls(task));
+    const { rerender } = renderWithQueryClient(renderControls(task));
     expect(
       screen.getByRole("button", {
         name: "tasks:popover.assignee.unassigned",
@@ -191,7 +200,7 @@ describe("task property render boundaries", () => {
 
   it("refreshes memoized labels when the active language changes", () => {
     translations.language = "en";
-    const { rerender } = render(renderControls(task));
+    const { rerender } = renderWithQueryClient(renderControls(task));
     expect(screen.getByRole("button", { name: "Unassigned" })).toBeVisible();
 
     translations.language = "de";
@@ -203,7 +212,7 @@ describe("task property render boundaries", () => {
   });
 
   it("updates the selected property without rebuilding unrelated controls", () => {
-    const { rerender } = render(renderControls(task));
+    const { rerender } = renderWithQueryClient(renderControls(task));
     expect(screen.getByRole("button", { name: "Backlog" })).toBeVisible();
 
     rerender(
@@ -225,7 +234,7 @@ describe("task property render boundaries", () => {
   });
 
   it("refreshes the due-date constraint when only the start date changes", () => {
-    const { rerender } = render(renderControls(task));
+    const { rerender } = renderWithQueryClient(renderControls(task));
     expect(renders.dueStartDates).toEqual([null]);
 
     const updatedStartDate = "2026-10-15T00:00:00.000Z";

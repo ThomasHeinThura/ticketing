@@ -13,6 +13,14 @@ describe("getTaskItemStats", () => {
     ).toEqual({ total: 4, completed: 2 });
   });
 
+  it("streams CRLF descriptions without changing line parsing", () => {
+    expect(
+      getTaskItemStats(
+        "- [x] Done\r\n```md\r\n- [ ] Example\r\n```\r\n- [ ] Open\r\n",
+      ),
+    ).toEqual({ total: 2, completed: 1 });
+  });
+
   it("does not count ordinary lists or checkbox syntax outside a list item", () => {
     expect(
       getTaskItemStats(

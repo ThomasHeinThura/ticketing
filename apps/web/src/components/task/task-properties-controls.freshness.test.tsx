@@ -8,13 +8,13 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import useGetTask from "@/hooks/queries/task/use-get-task";
 import type Task from "@/types/task";
 import TaskPropertiesControls from "./task-properties-controls";
 
 const mocks = vi.hoisted(() => ({
   getTask: vi.fn(),
   updateTask: vi.fn(),
+  propertyControlRenders: vi.fn(),
 }));
 
 vi.mock("@taskdesk/ui", async () => {
@@ -105,24 +105,28 @@ vi.mock("@/components/avatar", () => ({
   AvatarImage: () => null,
 }));
 vi.mock("@/components/task/task-status-popover", () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
+  default: ({ children }: { children: React.ReactNode }) => {
+    mocks.propertyControlRenders();
+    return <div>{children}</div>;
+  },
 }));
 vi.mock("@/components/task/task-priority-popover", () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
+  default: ({ children }: { children: React.ReactNode }) => {
+    mocks.propertyControlRenders();
+    return <div>{children}</div>;
+  },
 }));
 vi.mock("@/components/task/task-assignee-popover", () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
+  default: ({ children }: { children: React.ReactNode }) => {
+    mocks.propertyControlRenders();
+    return <div>{children}</div>;
+  },
 }));
 vi.mock("@/components/task/task-due-date-popover", () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
+  default: ({ children }: { children: React.ReactNode }) => {
+    mocks.propertyControlRenders();
+    return <div>{children}</div>;
+  },
 }));
 vi.mock("@/lib/column", () => ({ getColumnIcon: () => null }));
 vi.mock("@/lib/due-date-status", () => ({
@@ -179,7 +183,6 @@ function mount(currentTask: Task) {
         columnsLoading={false}
         columnsError={false}
       />
-      <TaskVersionProbe taskId={value.id} />
     </>
   );
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -187,11 +190,6 @@ function mount(currentTask: Task) {
   );
   const view = render(controls(currentTask), { wrapper });
   return { queryClient, controls, ...view };
-}
-
-function TaskVersionProbe({ taskId }: { taskId: string }) {
-  const { data } = useGetTask(taskId);
-  return <output data-testid="cached-version">{data?.version}</output>;
 }
 
 function startDateButton(buttons: Array<HTMLElement>) {
@@ -206,6 +204,13 @@ describe("WI-7a: task property mutation freshness", () => {
     const dateButtons = await screen.findAllByRole("button", {
       name: "tasks:properties.noDate",
     });
+    await waitFor(() =>
+      expect(queryClient.getQueryState(["task", task.id])?.fetchStatus).toBe(
+        "idle",
+      ),
+    );
+    const rendersBeforeCacheUpdate =
+      mocks.propertyControlRenders.mock.calls.length;
 
     const updatedTask = {
       ...task,
@@ -213,12 +218,12 @@ describe("WI-7a: task property mutation freshness", () => {
       description: "Updated description",
       version: 2,
     };
-    await queryClient.cancelQueries({ queryKey: ["task", task.id] });
     await act(async () => {
       queryClient.setQueryData(["task", task.id], updatedTask);
     });
-    await waitFor(() =>
-      expect(screen.getByTestId("cached-version")).toHaveTextContent("2"),
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.version).toBe(2);
+    expect(mocks.propertyControlRenders).toHaveBeenCalledTimes(
+      rendersBeforeCacheUpdate,
     );
 
     fireEvent.click(startDateButton(dateButtons));

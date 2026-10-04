@@ -18,6 +18,14 @@ input:-webkit-autofill:active {
   transition: background-color 5000s ease-in-out 0s;
 }
 
+@layer utilities {
+  /* Contain cell contents while keeping each native table row and cell mounted. */
+  .work-item-list-cell-content {
+    content-visibility: auto;
+    contain-intrinsic-block-size: calc(var(--spacing) * 4.5);
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @layer base {
