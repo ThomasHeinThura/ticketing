@@ -3196,11 +3196,13 @@ export const workItemTable = pgTable(
     index("work_item_workspaceId_idx").on(table.workspaceId),
     index("work_item_requesterId_idx").on(table.requesterId),
     index("work_item_parentId_idx").on(table.parentId),
-    // Deliberately NOT added here: the "## Indexing" GIN trigram title index and the
-    // generated `search_vector` column (`create extension pg_trgm`, `... using gin
-    // (title gin_trgm_ops)`, the `tsvector generated always as (...) stored` column) --
-    // full-text search is a separate P1 core work item (search), not part of #23's
-    // first-slice schema. Add these when that work lands.
+    // IQ-18 duplicate suggestions use pg_trgm's `%` operator at its documented 0.3
+    // threshold; this GIN index keeps the bounded per-submission candidate searches
+    // indexed instead of scanning the complete work-item table for each queue row.
+    index("work_item_title_trgm_idx").using(
+      "gin",
+      table.title.op("gin_trgm_ops"),
+    ),
 
     // #186 S2 -- composite-FK target for the self-referencing `parent_id` composite FK
     // below, same `(scope_id, id)` technique as `state_project_id_id_unique` above and

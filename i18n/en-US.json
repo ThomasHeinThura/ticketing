@@ -2798,6 +2798,10 @@
 			"triager": "Service desk"
 		},
 		"attachments": "Attachments",
-		"downloadAttachment": "Download file"
+		"downloadAttachment": "Download file",
+		"customer": "Customer",
+		"organisation": "Organisation",
+		"submittedAt": "Submitted",
+		"suggestedDuplicates": "Suggested duplicates"
 	}
 }

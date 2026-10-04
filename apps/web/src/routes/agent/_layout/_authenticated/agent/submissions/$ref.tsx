@@ -36,6 +36,7 @@ import {
 import getWorkItemTypes from "@/fetchers/work-item/get-work-item-types";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { formatRelativeAge } from "@/lib/format-relative-age";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/submissions/$ref",
@@ -43,7 +44,7 @@ export const Route = createFileRoute(
 
 function IntakeSubmissionRoute() {
   const { ref } = Route.useParams();
-  const { t } = useTranslation("intakeTriage");
+  const { t, i18n } = useTranslation("intakeTriage");
   const { data: workspace } = useActiveWorkspace();
   const cache = useQueryClient();
   const { canTriageIntake, isCheckingPermissions } = useWorkspacePermission(
@@ -166,6 +167,49 @@ function IntakeSubmissionRoute() {
             </Button>
           ) : null}
         </header>
+        <Card>
+          <CardContent className="grid gap-2 p-4">
+            <p className="text-sm text-muted-foreground">
+              {t("customer")}: {submission.customerName} · {t("organisation")}:{" "}
+              {submission.organisationName}
+            </p>
+            <p className="font-medium">
+              {submission.summary || submission.ref}
+            </p>
+            <time
+              className="text-xs text-muted-foreground"
+              dateTime={new Date(submission.submittedAt).toISOString()}
+            >
+              {t("submittedAt")}:{" "}
+              {formatRelativeAge(
+                submission.submittedAt,
+                new Date(),
+                i18n.language,
+              )}
+            </time>
+          </CardContent>
+        </Card>
+        {submission.suggestedDuplicates.length ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("suggestedDuplicates")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {submission.suggestedDuplicates.map((suggestion) => (
+                  <li key={suggestion.key} className="rounded-md border p-3">
+                    <p className="font-medium">
+                      {suggestion.key} · {suggestion.title}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {suggestion.state}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        ) : null}
         {error ? (
           <Alert variant="error">
             <AlertTitle>{t("actionUnavailable")}</AlertTitle>

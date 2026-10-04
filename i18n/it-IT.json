@@ -2751,7 +2751,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "Allegati",
-		"downloadAttachment": "Scarica file"
+		"downloadAttachment": "Scarica file",
+		"customer": "Cliente",
+		"organisation": "Organizzazione",
+		"submittedAt": "Inviato",
+		"suggestedDuplicates": "Richieste simili"
 	},
 	"requestTypes": {
 		"create": "New request type",

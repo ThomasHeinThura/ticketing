@@ -2737,7 +2737,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "附件",
-		"downloadAttachment": "下载文件"
+		"downloadAttachment": "下载文件",
+		"customer": "客户",
+		"organisation": "组织",
+		"submittedAt": "已提交",
+		"suggestedDuplicates": "相似请求"
 	},
 	"requestTypes": {
 		"create": "New request type",

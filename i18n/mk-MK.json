@@ -2744,7 +2744,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "Прилози",
-		"downloadAttachment": "Преземи датотека"
+		"downloadAttachment": "Преземи датотека",
+		"customer": "Клиент",
+		"organisation": "Организација",
+		"submittedAt": "Поднесено",
+		"suggestedDuplicates": "Слични барања"
 	},
 	"requestTypes": {
 		"create": "New request type",

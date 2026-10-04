@@ -24,6 +24,7 @@ import PageTitle from "@/components/page-title";
 import { getIntakeQueue } from "@/fetchers/request-type";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
+import { formatRelativeAge } from "@/lib/format-relative-age";
 import { routes } from "@/lib/routes";
 
 const states = [
@@ -57,7 +58,7 @@ export const Route = createFileRoute("/_layout/_authenticated/agent/triage")({
 });
 
 function IntakeQueueRoute() {
-  const { t } = useTranslation("intakeTriage");
+  const { t, i18n } = useTranslation("intakeTriage");
   const navigate = useNavigate({ from: Route.fullPath });
   const { state, before } = Route.useSearch();
   const { data: workspace, isLoading: workspaceLoading } = useActiveWorkspace();
@@ -142,11 +143,7 @@ function IntakeQueueRoute() {
         ) : query.data?.items.length ? (
           <section aria-label={t("title")} className="grid gap-3">
             {query.data.items.map((item) => {
-              const title =
-                Object.values(item.formData).find(
-                  (value): value is string => typeof value === "string",
-                ) ?? item.ref;
-              const createdAt = new Date(item.createdAt).toISOString();
+              const submittedAt = new Date(item.submittedAt).toISOString();
               return (
                 <Card
                   key={item.id}
@@ -169,13 +166,39 @@ function IntakeQueueRoute() {
                           {item.requestTypeName}
                         </span>
                       </div>
-                      <p className="mt-1 line-clamp-2">{title}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t("customer")}: {item.customerName} ·{" "}
+                        {t("organisation")}: {item.organisationName}
+                      </p>
+                      <p className="mt-1 line-clamp-2">
+                        {item.summary || item.ref}
+                      </p>
                       <time
                         className="text-xs text-muted-foreground"
-                        dateTime={createdAt}
+                        dateTime={submittedAt}
                       >
-                        {new Date(createdAt).toLocaleString()}
+                        {t("submittedAt")}:{" "}
+                        {formatRelativeAge(
+                          item.submittedAt,
+                          new Date(),
+                          i18n.language,
+                        )}
                       </time>
+                      {item.suggestedDuplicates.length ? (
+                        <div className="mt-2">
+                          <p className="text-xs font-medium">
+                            {t("suggestedDuplicates")}
+                          </p>
+                          <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                            {item.suggestedDuplicates.map((suggestion) => (
+                              <li key={suggestion.key}>
+                                {suggestion.key} · {suggestion.title} ·{" "}
+                                {suggestion.state}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
                     </div>
                     <Button
                       variant="outline"

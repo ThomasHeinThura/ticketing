@@ -26,7 +26,10 @@ import {
   z,
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
-import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
+import {
+  assertCallerHasCapability,
+  requireWorkspaceCapability,
+} from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { resolveAssigneeEligibility } from "../work-item/assignee-eligibility";
@@ -35,6 +38,7 @@ import {
   downloadSubmissionAttachment,
   listSubmissionAttachments,
 } from "./download-submission-attachment";
+import { mayExposeDuplicateSuggestions } from "./duplicate-visibility";
 import {
   getSubmissionEventScope,
   notifySubmissionEvent,
@@ -54,8 +58,20 @@ import {
   submissionRefParam,
 } from "./schema";
 
+const duplicateItemSchema = z.object({
+  key: z.string(),
+  title: z.string(),
+  state: z.string(),
+  similarity: z.number(),
+});
+const duplicateList = z.object({ items: z.array(duplicateItemSchema).max(10) });
 const itemSchema = submissionListItemSchema.extend({
   requestTypeName: z.string(),
+  customerName: z.string(),
+  organisationName: z.string(),
+  summary: z.string(),
+  submittedAt: z.string().datetime(),
+  suggestedDuplicates: z.array(duplicateItemSchema).max(3),
 });
 const listSchema = z.object({
   items: z.array(itemSchema),
@@ -167,18 +183,125 @@ export async function assertSubmissionFileAnswers(
     }
   }
 }
-const duplicateList = z.object({
-  items: z.array(
-    z.object({
-      key: z.string(),
-      title: z.string(),
-      state: z.string(),
-      similarity: z.number(),
-    }),
-  ),
-});
 export type IntakeQueueDto = z.infer<typeof listSchema>;
 export type IntakeSubmissionDto = z.infer<typeof detailSchema>;
+
+type DuplicateSearchInput = {
+  submissionId: string;
+  workspaceId: string;
+  organisationId: string;
+  title: string;
+};
+
+const duplicateProjectionSchema = z.array(
+  z.object({ submissionId: z.string() }).merge(duplicateItemSchema),
+);
+
+function submissionTitle(
+  formSchema: FormSchema,
+  formData: Record<string, FormValue>,
+) {
+  const titleFields = formSchema.fields.filter(
+    (field) => field.mapsTo?.field === "title",
+  );
+  if (titleFields.length !== 1) return "";
+  const value = formData[titleFields[0]!.key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function displayName(...values: Array<string | null | undefined>) {
+  return (
+    values
+      .map((value) => value?.trim())
+      .find((value) => value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(value)) ??
+    "Customer"
+  );
+}
+
+function submittedAtIso(value: Date | null) {
+  if (!value)
+    throw new HTTPException(503, {
+      message: "Submission arrival time is unavailable",
+    });
+  return value.toISOString();
+}
+
+async function canReadWorkItems(c: Context, workspaceId: string) {
+  const userId = c.get("userId") as string | undefined;
+  // The current request-key contract has no row-level work-item reach proof.
+  const hasApiKey = Boolean(c.get("apiKey"));
+  if (!userId || hasApiKey) return false;
+  try {
+    await assertCallerHasCapability(workspaceId, userId, "work_item:read");
+    return mayExposeDuplicateSuggestions({
+      hasUser: true,
+      hasApiKey: false,
+      hasWorkItemRead: true,
+    });
+  } catch (error) {
+    if (error instanceof HTTPException && error.status === 403) return false;
+    throw error;
+  }
+}
+
+async function findSuggestedDuplicates(
+  inputs: readonly DuplicateSearchInput[],
+  limit: 3 | 10,
+) {
+  const candidates = inputs.filter((input) => input.title.trim());
+  const result = new Map<string, z.infer<typeof duplicateList>["items"]>();
+  if (candidates.length === 0) return result;
+
+  const values = sql.join(
+    candidates.map(
+      (input) =>
+        sql`(${input.submissionId}::text, ${input.workspaceId}::text, ${input.organisationId}::text, ${input.title}::text)`,
+    ),
+    sql`,`,
+  );
+  const query = await db.execute(sql`
+    WITH source(submission_id, workspace_id, organisation_id, title) AS (
+      VALUES ${values}
+    )
+    SELECT source.submission_id AS "submissionId",
+           suggestion.key AS "key",
+           suggestion.title AS "title",
+           suggestion.state AS "state",
+           suggestion.similarity AS "similarity"
+    FROM source
+    CROSS JOIN LATERAL (
+      SELECT wi.key,
+             wi.title,
+             state_template.name AS state,
+             similarity(wi.title, source.title) AS similarity
+      FROM work_item wi
+      INNER JOIN workspace w ON w.id = wi.workspace_id
+      INNER JOIN project p ON p.id = wi.project_id
+      INNER JOIN state s ON s.id = wi.state_id
+      INNER JOIN state_template ON state_template.id = s.state_template_id
+      WHERE w.id = source.workspace_id
+        AND p.organisation_id = source.organisation_id
+        AND wi.deleted_at IS NULL
+        AND wi.archived_at IS NULL
+        AND p.deleted_at IS NULL
+        AND p.archived_at IS NULL
+        AND wi.created_at >= now() - interval '90 days'
+        AND wi.title % source.title
+        AND similarity(wi.title, source.title) > 0.3
+      ORDER BY similarity(wi.title, source.title) DESC, wi.key ASC
+      LIMIT ${limit}
+    ) AS suggestion
+    ORDER BY source.submission_id, suggestion.similarity DESC, suggestion.key ASC
+  `);
+  const rows = duplicateProjectionSchema.parse(query.rows);
+  for (const row of rows) {
+    const { submissionId, ...item } = row;
+    const items = result.get(submissionId) ?? [];
+    items.push(item);
+    result.set(submissionId, items);
+  }
+  return result;
+}
 
 async function submissionReach(c: Context, next: Next) {
   const ref = c.req.param("ref");
@@ -922,6 +1045,7 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
         state: schema.submissionTable.state,
         workItemId: schema.submissionTable.workItemId,
         createdAt: schema.submissionTable.createdAt,
+        submittedAt: schema.submissionTable.submittedAt,
         organisationId: schema.submissionTable.organisationId,
         requesterId: schema.submissionTable.requesterId,
         requestTypeId: schema.submissionTable.requestTypeId,
@@ -931,12 +1055,45 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
         claimedAt: schema.submissionTable.claimedAt,
         version: schema.submissionTable.version,
         requestTypeName: schema.requestTypeTable.name,
+        pinnedFormSchema: schema.requestTypeVersionTable.formSchema,
+        organisationName: schema.organisationTable.name,
+        customerDisplayName: schema.personTable.displayName,
+        customerAccountName: schema.userTable.name,
         workItemKey: schema.workItemTable.key,
       })
       .from(schema.submissionTable)
       .innerJoin(
         schema.requestTypeTable,
         eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+      )
+      .innerJoin(
+        schema.requestTypeVersionTable,
+        and(
+          eq(
+            schema.requestTypeVersionTable.id,
+            schema.submissionTable.requestTypeVersionId,
+          ),
+          eq(
+            schema.requestTypeVersionTable.requestTypeId,
+            schema.submissionTable.requestTypeId,
+          ),
+          eq(
+            schema.requestTypeVersionTable.workspaceId,
+            schema.requestTypeTable.workspaceId,
+          ),
+        ),
+      )
+      .innerJoin(
+        schema.organisationTable,
+        eq(schema.organisationTable.id, schema.submissionTable.organisationId),
+      )
+      .innerJoin(
+        schema.personTable,
+        eq(schema.personTable.id, schema.submissionTable.requesterId),
+      )
+      .leftJoin(
+        schema.userTable,
+        eq(schema.userTable.id, schema.personTable.userId),
       )
       .leftJoin(
         schema.workItemTable,
@@ -946,6 +1103,24 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
       .orderBy(desc(schema.submissionTable.number))
       .limit(query.limit + 1);
     const page = rows.slice(0, query.limit);
+    const canSuggest = await canReadWorkItems(c, query.workspaceId);
+    const duplicateInputs = page.flatMap((row) => {
+      const title = submissionTitle(
+        row.pinnedFormSchema as FormSchema,
+        row.formData as Record<string, FormValue>,
+      );
+      return canSuggest && title
+        ? [
+            {
+              submissionId: row.id,
+              workspaceId: query.workspaceId,
+              organisationId: row.organisationId,
+              title,
+            },
+          ]
+        : [];
+    });
+    const suggestions = await findSuggestedDuplicates(duplicateInputs, 3);
     const items = page.map((row) =>
       itemSchema.parse({
         id: row.id,
@@ -962,6 +1137,18 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
         claimedAt: row.claimedAt,
         version: row.version,
         requestTypeName: row.requestTypeName,
+        customerName: displayName(
+          row.customerDisplayName,
+          row.customerAccountName,
+        ),
+        organisationName: row.organisationName,
+        summary:
+          submissionTitle(
+            row.pinnedFormSchema as FormSchema,
+            row.formData as Record<string, FormValue>,
+          ) || `SUB-${row.number}`,
+        submittedAt: submittedAtIso(row.submittedAt),
+        suggestedDuplicates: suggestions.get(row.id) ?? [],
       }),
     );
     setShadowLegacyAuthorization(c, "allowed");
@@ -983,6 +1170,7 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
         state: schema.submissionTable.state,
         workItemId: schema.submissionTable.workItemId,
         createdAt: schema.submissionTable.createdAt,
+        submittedAt: schema.submissionTable.submittedAt,
         organisationId: schema.submissionTable.organisationId,
         requesterId: schema.submissionTable.requesterId,
         requestTypeId: schema.submissionTable.requestTypeId,
@@ -992,12 +1180,27 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
         claimedAt: schema.submissionTable.claimedAt,
         version: schema.submissionTable.version,
         requestTypeName: schema.requestTypeTable.name,
+        organisationName: schema.organisationTable.name,
+        customerDisplayName: schema.personTable.displayName,
+        customerAccountName: schema.userTable.name,
         workItemKey: schema.workItemTable.key,
       })
       .from(schema.submissionTable)
       .innerJoin(
         schema.requestTypeTable,
         eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+      )
+      .innerJoin(
+        schema.organisationTable,
+        eq(schema.organisationTable.id, schema.submissionTable.organisationId),
+      )
+      .innerJoin(
+        schema.personTable,
+        eq(schema.personTable.id, schema.submissionTable.requesterId),
+      )
+      .leftJoin(
+        schema.userTable,
+        eq(schema.userTable.id, schema.personTable.userId),
       )
       .leftJoin(
         schema.workItemTable,
@@ -1039,6 +1242,29 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
     const attachments = await listSubmissionAttachments(row.id, {
       customerVisibleOnly: false,
     });
+    const formSchema = (pinnedVersion?.formSchema ?? {
+      fields: [],
+    }) as FormSchema;
+    const summary = submissionTitle(
+      formSchema,
+      row.formData as Record<string, FormValue>,
+    );
+    const canSuggest = await canReadWorkItems(c, c.get("workspaceId"));
+    const suggestions = canSuggest
+      ? await findSuggestedDuplicates(
+          summary
+            ? [
+                {
+                  submissionId: row.id,
+                  workspaceId: c.get("workspaceId"),
+                  organisationId: row.organisationId,
+                  title: summary,
+                },
+              ]
+            : [],
+          3,
+        )
+      : new Map<string, z.infer<typeof duplicateList>["items"]>();
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
       detailSchema.parse({
@@ -1056,9 +1282,17 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
         claimedAt: row.claimedAt,
         version: row.version,
         requestTypeName: row.requestTypeName,
+        customerName: displayName(
+          row.customerDisplayName,
+          row.customerAccountName,
+        ),
+        organisationName: row.organisationName,
+        summary: summary || `SUB-${row.number}`,
+        submittedAt: submittedAtIso(row.submittedAt),
+        suggestedDuplicates: suggestions.get(row.id) ?? [],
         suggestedProjectId: pinnedVersion?.defaultProjectId ?? null,
         suggestedWorkItemTypeId: pinnedVersion?.workItemTypeId ?? null,
-        formSchema: pinnedVersion?.formSchema ?? { fields: [] },
+        formSchema,
         messages: messages.map((item) => ({
           ...item,
           createdAt: item.createdAt.toISOString(),
@@ -1404,47 +1638,63 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
       .select({
         id: schema.submissionTable.id,
         organisationId: schema.submissionTable.organisationId,
+        workspaceId: schema.requestTypeTable.workspaceId,
+        requestTypeVersionId: schema.submissionTable.requestTypeVersionId,
+        requestTypeId: schema.submissionTable.requestTypeId,
         formData: schema.submissionTable.formData,
       })
       .from(schema.submissionTable)
+      .innerJoin(
+        schema.requestTypeTable,
+        eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+      )
       .where(eq(schema.submissionTable.number, number))
       .limit(1);
     if (!submission)
       throw new HTTPException(404, { message: "Submission not found" });
-    const formData = submission.formData as Record<string, unknown>;
-    const title = typeof formData.title === "string" ? formData.title : "";
-    if (!title) return c.json({ items: [] }, 200);
-    const rows = await db
-      .select({
-        key: schema.workItemTable.key,
-        title: schema.workItemTable.title,
-        state: schema.stateTemplateTable.name,
-        similarity: sql<number>`similarity(${schema.workItemTable.title}, ${title})`,
-      })
-      .from(schema.workItemTable)
-      .innerJoin(
-        schema.workspaceTable,
-        eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
-      )
-      .innerJoin(
-        schema.stateTable,
-        eq(schema.stateTable.id, schema.workItemTable.stateId),
-      )
-      .innerJoin(
-        schema.stateTemplateTable,
-        eq(schema.stateTemplateTable.id, schema.stateTable.stateTemplateId),
-      )
+    if (!(await canReadWorkItems(c, submission.workspaceId)))
+      return c.json({ items: [] }, 200);
+    const [version] = await db
+      .select({ formSchema: schema.requestTypeVersionTable.formSchema })
+      .from(schema.requestTypeVersionTable)
       .where(
         and(
-          eq(schema.workspaceTable.organisationId, submission.organisationId),
-          sql`${schema.workItemTable.createdAt} >= now() - interval '90 days'`,
-          sql`similarity(${schema.workItemTable.title}, ${title}) > 0.3`,
+          eq(
+            schema.requestTypeVersionTable.id,
+            submission.requestTypeVersionId,
+          ),
+          eq(
+            schema.requestTypeVersionTable.requestTypeId,
+            submission.requestTypeId,
+          ),
+          eq(
+            schema.requestTypeVersionTable.workspaceId,
+            submission.workspaceId,
+          ),
         ),
       )
-      .orderBy(desc(sql`similarity(${schema.workItemTable.title}, ${title})`))
-      .limit(10);
+      .limit(1);
+    const title = version
+      ? submissionTitle(
+          version.formSchema as FormSchema,
+          submission.formData as Record<string, FormValue>,
+        )
+      : "";
+    const suggestions = await findSuggestedDuplicates(
+      title
+        ? [
+            {
+              submissionId: submission.id,
+              workspaceId: submission.workspaceId,
+              organisationId: submission.organisationId,
+              title,
+            },
+          ]
+        : [],
+      10,
+    );
     setShadowLegacyAuthorization(c, "allowed");
-    return c.json({ items: rows }, 200);
+    return c.json({ items: suggestions.get(submission.id) ?? [] }, 200);
   });
 
 export default routes;

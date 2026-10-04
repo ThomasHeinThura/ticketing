@@ -2737,7 +2737,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "添付ファイル",
-		"downloadAttachment": "ファイルをダウンロード"
+		"downloadAttachment": "ファイルをダウンロード",
+		"customer": "顧客",
+		"organisation": "組織",
+		"submittedAt": "送信日時",
+		"suggestedDuplicates": "類似する依頼"
 	},
 	"requestTypes": {
 		"create": "New request type",

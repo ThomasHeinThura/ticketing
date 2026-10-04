@@ -2737,7 +2737,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "Lampiran",
-		"downloadAttachment": "Unduh file"
+		"downloadAttachment": "Unduh file",
+		"customer": "Pelanggan",
+		"organisation": "Organisasi",
+		"submittedAt": "Dikirim",
+		"suggestedDuplicates": "Permintaan serupa"
 	},
 	"requestTypes": {
 		"create": "New request type",

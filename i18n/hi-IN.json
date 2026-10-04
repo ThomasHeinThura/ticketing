@@ -2744,7 +2744,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "अटैचमेंट",
-		"downloadAttachment": "फ़ाइल डाउनलोड करें"
+		"downloadAttachment": "फ़ाइल डाउनलोड करें",
+		"customer": "ग्राहक",
+		"organisation": "संगठन",
+		"submittedAt": "सबमिट किया गया",
+		"suggestedDuplicates": "मिलते-जुलते अनुरोध"
 	},
 	"requestTypes": {
 		"create": "New request type",

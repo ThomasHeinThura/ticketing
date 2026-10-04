@@ -2737,7 +2737,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "Tệp đính kèm",
-		"downloadAttachment": "Tải tệp"
+		"downloadAttachment": "Tải tệp",
+		"customer": "Khách hàng",
+		"organisation": "Tổ chức",
+		"submittedAt": "Đã gửi",
+		"suggestedDuplicates": "Yêu cầu tương tự"
 	},
 	"requestTypes": {
 		"create": "New request type",

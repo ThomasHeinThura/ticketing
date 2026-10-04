@@ -2744,7 +2744,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "Bijlagen",
-		"downloadAttachment": "Bestand downloaden"
+		"downloadAttachment": "Bestand downloaden",
+		"customer": "Klant",
+		"organisation": "Organisatie",
+		"submittedAt": "Ingediend",
+		"suggestedDuplicates": "Vergelijkbare verzoeken"
 	},
 	"requestTypes": {
 		"create": "New request type",

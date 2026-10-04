@@ -2758,7 +2758,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "Załączniki",
-		"downloadAttachment": "Pobierz plik"
+		"downloadAttachment": "Pobierz plik",
+		"customer": "Klient",
+		"organisation": "Organizacja",
+		"submittedAt": "Wysłano",
+		"suggestedDuplicates": "Podobne zgłoszenia"
 	},
 	"requestTypes": {
 		"create": "New request type",

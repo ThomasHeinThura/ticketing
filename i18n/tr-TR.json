@@ -2744,7 +2744,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "Ekler",
-		"downloadAttachment": "Dosyayı indir"
+		"downloadAttachment": "Dosyayı indir",
+		"customer": "Müşteri",
+		"organisation": "Kuruluş",
+		"submittedAt": "Gönderildi",
+		"suggestedDuplicates": "Benzer talepler"
 	},
 	"requestTypes": {
 		"create": "New request type",

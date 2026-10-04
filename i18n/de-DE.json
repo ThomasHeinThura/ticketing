@@ -2744,7 +2744,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "Anhänge",
-		"downloadAttachment": "Datei herunterladen"
+		"downloadAttachment": "Datei herunterladen",
+		"customer": "Kunde",
+		"organisation": "Organisation",
+		"submittedAt": "Eingereicht",
+		"suggestedDuplicates": "Ähnliche Vorgänge"
 	},
 	"requestTypes": {
 		"create": "New request type",

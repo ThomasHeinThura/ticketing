@@ -715,6 +715,13 @@
 			"when": 1791095006455,
 			"tag": "0101_productive_hawkeye",
 			"breakpoints": true
+		},
+		{
+			"idx": 102,
+			"version": "7",
+			"when": 1791104542064,
+			"tag": "0102_work_item_title_trigram_index",
+			"breakpoints": true
 		}
 	]
 }

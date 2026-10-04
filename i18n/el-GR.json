@@ -2744,7 +2744,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "Συνημμένα",
-		"downloadAttachment": "Λήψη αρχείου"
+		"downloadAttachment": "Λήψη αρχείου",
+		"customer": "Πελάτης",
+		"organisation": "Οργανισμός",
+		"submittedAt": "Υποβλήθηκε",
+		"suggestedDuplicates": "Παρόμοια αιτήματα"
 	},
 	"requestTypes": {
 		"create": "New request type",

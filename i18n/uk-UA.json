@@ -2758,7 +2758,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "Вкладення",
-		"downloadAttachment": "Завантажити файл"
+		"downloadAttachment": "Завантажити файл",
+		"customer": "Клієнт",
+		"organisation": "Організація",
+		"submittedAt": "Надіслано",
+		"suggestedDuplicates": "Схожі запити"
 	},
 	"requestTypes": {
 		"create": "New request type",

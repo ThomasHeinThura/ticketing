@@ -79,7 +79,11 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
 **Triage**
 
 - `IQ-5` The queue shows: reference, customer, organisation, request type, summary, age,
-  and any suggested duplicates.
+  and any suggested duplicates. Customer is the requester's person display name, falling
+  back to the linked account name and then a generic label; email is never shown in the
+  queue summary. Organisation is the submission's organisation name. Summary is the answer
+  mapped by the pinned request-type version to native `work_item.title`. Queue age is
+  measured from `submitted_at`, not draft `created_at`.
 - `IQ-6` Triage actions are: **Accept**, **Decline**, **Merge as duplicate**,
   **Ask for clarification**.
 - `IQ-7` Accepting requires choosing the project and confirming the work item type. Both
@@ -145,9 +149,16 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
   customer as a watcher on it, so they still get updates.
 - `IQ-18` Duplicate suggestions are offered by trigram similarity
   (`similarity(work_item.title, :query) > 0.3` — pg_trgm's own default threshold, over the
-  `gin (title gin_trgm_ops)` index already in [data-model.md](../01-architecture/data-model.md))
-  over work items created in the same organisation in the last 90 days. Suggestions only —
-  the decision is human.
+  `gin (title gin_trgm_ops)` index in [data-model.md](../01-architecture/data-model.md);
+  the indexed `%` candidate predicate uses the same default threshold before the exact
+  similarity check)
+  over work items in projects serving the submission's organisation and created in the
+  last 90 days. To avoid disclosing work items outside the current staff reach, a suggestion
+  is included only when it is in the submission's workspace and the caller also has
+  `work_item:read` there. Queue and
+  detail responses return at most three suggestions per submission, ordered by similarity
+  descending; the dedicated suggestion endpoint may return up to ten under the same scope.
+  Suggestions only — the decision is human.
 
 **Queues**
 
@@ -173,8 +184,10 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
 
 ## Screens
 
-**Agent** — intake queue list; submission detail with form data, thread, attachments and
-duplicate suggestions; accept dialog; decline dialog; queue management.
+**Agent** — intake queue list with customer, organisation, pinned-title summary, age and
+reachable duplicate suggestions; submission detail with the same summary, form data, thread,
+attachments and reachable duplicate suggestions; accept dialog; decline dialog; queue
+management.
 
 **Portal** — submission confirmation; durable submission page with the thread; reply box.
 
@@ -203,6 +216,18 @@ POST   /api/portal/submissions/{ref}/attachments/presign  { portal: 'customer', 
 POST   /api/portal/submissions/{ref}/attachments/{id}/complete  { portal: 'customer', predicate: 'own_submission' }
 POST   /api/portal/submissions/{ref}/submit  { portal: 'customer', predicate: 'own_submission' } — validate ready file IDs, finalize or auto-accept
 ```
+
+The staff queue and submission detail responses project `customerName`,
+`organisationName`, `summary`, `submittedAt` and `suggestedDuplicates`. `customerName` uses
+the person's display name, then the linked account name, then a generic label; email is not
+included in this summary. `summary` comes only from the pinned version's native title
+mapping. `submittedAt` is the age origin; draft creation time is not shown as queue age.
+Suggestions are limited to three items in queue/detail responses and ten in the dedicated
+endpoint. They are drawn from the same workspace, in projects serving the submission's
+organisation, within 90 days, and are
+omitted for callers without `work_item:read` in that workspace. This prevents a triager who
+cannot read work items from learning their titles, while keeping queue access under
+`intake:triage`.
 
 Submission detail responses include safe attachment metadata (id, field key, filename,
 content type, size, uploader and creation time), never an object key or signed URL. Staff

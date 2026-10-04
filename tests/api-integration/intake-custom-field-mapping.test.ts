@@ -355,6 +355,248 @@ describe("API integration: request-type custom-field conversion (RT-3, IQ-8, CF-
     await rm(storageRoot, { recursive: true, force: true });
   });
 
+  it("projects queue/detail summaries and only suggests recent work in serving projects", async () => {
+    const fixture = await setupAcceptanceFixture();
+    const requesterAccount = requireRow(
+      await db
+        .insert(schema.userTable)
+        .values({
+          id: `customer-${randomUUID()}`,
+          email: `requester-${randomUUID()}@example.com`,
+          emailVerified: true,
+          name: "Requester account",
+        })
+        .returning(),
+      "intake customer account",
+    );
+    await db
+      .update(schema.personTable)
+      .set({
+        displayName: requesterAccount.email,
+        userId: requesterAccount.id,
+      })
+      .where(eq(schema.personTable.id, fixture.requester.id));
+    const arrival = new Date("2026-09-30T12:00:00.000Z");
+    const pinnedSchema = {
+      fields: [
+        {
+          key: "request_summary",
+          type: "text",
+          label: "Summary",
+          required: true,
+          mapsTo: { field: "title" },
+        },
+        {
+          key: "asset",
+          type: "text",
+          label: "Asset reference",
+          required: true,
+          mapsTo: { field: `cf.${fixture.mappedField.key}` },
+        },
+      ],
+    };
+    await db
+      .update(schema.requestTypeVersionTable)
+      .set({ formSchema: pinnedSchema })
+      .where(
+        eq(
+          schema.requestTypeVersionTable.requestTypeId,
+          fixture.requestType.id,
+        ),
+      );
+    await db
+      .update(schema.submissionTable)
+      .set({
+        formData: {
+          request_summary: "Replace the laptop",
+          asset: "LT-27",
+        },
+        submittedAt: arrival,
+      })
+      .where(eq(schema.submissionTable.id, fixture.submission.id));
+
+    const [state] = await db
+      .select({
+        id: schema.stateTable.id,
+        stateTemplateId: schema.stateTable.stateTemplateId,
+      })
+      .from(schema.stateTable)
+      .where(eq(schema.stateTable.projectId, fixture.project.id))
+      .limit(1);
+    if (!state) throw new Error("intake test project state is missing");
+
+    async function addCandidate(
+      project: typeof fixture.project,
+      workspaceId: string,
+      typeId: string,
+      itemTitle: string,
+      number: number,
+      stateId: string,
+    ) {
+      await db.insert(schema.workItemTable).values({
+        projectId: project.id,
+        workspaceId,
+        typeId,
+        stateId,
+        number,
+        key: `${project.slug}-${number}`,
+        title: itemTitle,
+      });
+    }
+
+    await addCandidate(
+      fixture.project,
+      fixture.workspace.id,
+      fixture.type.id,
+      "Replace the laptop",
+      1,
+      state.id,
+    );
+
+    const otherOrganisation = requireRow(
+      await db
+        .insert(schema.organisationTable)
+        .values({
+          key: `other-customer-${randomUUID()}`,
+          name: "Other customer",
+          portalAccess: true,
+        })
+        .returning(),
+      "other intake organisation",
+    );
+    const { project: otherProject } = await createProjectFixture({
+      workspaceId: fixture.workspace.id,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: otherOrganisation.id })
+      .where(eq(schema.projectTable.id, otherProject.id));
+    const otherState = requireRow(
+      await db
+        .insert(schema.stateTable)
+        .values({
+          projectId: otherProject.id,
+          stateTemplateId: state.stateTemplateId,
+          isDefault: true,
+        })
+        .returning(),
+      "other intake project state",
+    );
+    await addCandidate(
+      otherProject,
+      fixture.workspace.id,
+      fixture.type.id,
+      "Replace the laptop",
+      1,
+      otherState.id,
+    );
+
+    const otherWorkspace = await createWorkspaceMember({ role: "admin" });
+    const { project: foreignWorkspaceProject } = await createProjectFixture({
+      workspaceId: otherWorkspace.workspace.id,
+    });
+    await db
+      .update(schema.projectTable)
+      .set({ organisationId: fixture.organisation.id })
+      .where(eq(schema.projectTable.id, foreignWorkspaceProject.id));
+    const foreignType = requireRow(
+      await db
+        .insert(schema.workItemTypeTable)
+        .values({
+          workspaceId: otherWorkspace.workspace.id,
+          key: `foreign-type-${randomUUID()}`,
+          name: "Request",
+          category: "delivery",
+        })
+        .returning(),
+      "foreign workspace work item type",
+    );
+    const foreignStateTemplate = requireRow(
+      await db
+        .insert(schema.stateTemplateTable)
+        .values({
+          workspaceId: otherWorkspace.workspace.id,
+          key: `foreign-state-${randomUUID()}`,
+          name: "Backlog",
+          group: "backlog",
+        })
+        .returning(),
+      "foreign workspace state template",
+    );
+    const foreignState = requireRow(
+      await db
+        .insert(schema.stateTable)
+        .values({
+          projectId: foreignWorkspaceProject.id,
+          stateTemplateId: foreignStateTemplate.id,
+          isDefault: true,
+        })
+        .returning(),
+      "foreign workspace project state",
+    );
+    await addCandidate(
+      foreignWorkspaceProject,
+      otherWorkspace.workspace.id,
+      foreignType.id,
+      "Replace the laptop",
+      1,
+      foreignState.id,
+    );
+
+    mockAuthenticatedSession(fixture.user);
+    const { app } = createApp();
+    const queueResponse = await app.request(
+      `/api/submissions?workspaceId=${fixture.workspace.id}`,
+    );
+    expect(queueResponse.status).toBe(200);
+    const queue = (await queueResponse.json()) as {
+      items: Array<Record<string, unknown>>;
+    };
+    expect(queue.items).toHaveLength(1);
+    expect(queue.items[0]).toMatchObject({
+      customerName: "Requester account",
+      organisationName: "Intake Customer",
+      summary: "Replace the laptop",
+      submittedAt: arrival.toISOString(),
+      suggestedDuplicates: [
+        expect.objectContaining({ title: "Replace the laptop" }),
+      ],
+    });
+    expect(JSON.stringify(queue.items[0])).not.toContain("@example.com");
+    const suggestions = queue.items[0]?.suggestedDuplicates as Array<{
+      key: string;
+    }>;
+    expect(suggestions.map((item) => item.key)).not.toContain(
+      `${otherProject.slug}-1`,
+    );
+    expect(suggestions.map((item) => item.key)).not.toContain(
+      `${foreignWorkspaceProject.slug}-1`,
+    );
+
+    const detailResponse = await app.request(
+      `/api/submissions/SUB-${fixture.submission.number}`,
+    );
+    expect(detailResponse.status).toBe(200);
+    const detail = (await detailResponse.json()) as Record<string, unknown>;
+    expect(detail).toMatchObject({
+      customerName: "Requester account",
+      organisationName: "Intake Customer",
+      summary: "Replace the laptop",
+      submittedAt: arrival.toISOString(),
+      suggestedDuplicates: [
+        expect.objectContaining({ title: "Replace the laptop" }),
+      ],
+    });
+
+    const dedicatedResponse = await app.request(
+      `/api/submissions/SUB-${fixture.submission.number}/duplicates`,
+    );
+    expect(dedicatedResponse.status).toBe(200);
+    expect(await dedicatedResponse.json()).toMatchObject({
+      items: [expect.objectContaining({ title: "Replace the laptop" })],
+    });
+  });
+
   it("returns safe ready attachment metadata and audits exact staff downloads", async () => {
     const fixture = await setupAcceptanceFixture();
     const ready = await createSubmissionAttachment(fixture);

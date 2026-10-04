@@ -2814,7 +2814,11 @@
 			"triager": "Service desk"
 		},
 		"attachments": "Вложения",
-		"downloadAttachment": "Скачать файл"
+		"downloadAttachment": "Скачать файл",
+		"customer": "Клиент",
+		"organisation": "Организация",
+		"submittedAt": "Отправлено",
+		"suggestedDuplicates": "Похожие запросы"
 	},
 	"requestTypes": {
 		"create": "New request type",
