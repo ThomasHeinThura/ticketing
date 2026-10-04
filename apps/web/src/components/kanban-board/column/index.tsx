@@ -13,6 +13,7 @@ type ColumnProps = {
   column: ProjectWithTasks["columns"][number];
   projectSlug: string;
   projectColumns: ProjectWithTasks["columns"];
+  columnCompletionBySlug: ReadonlyMap<string, boolean>;
   displayPreferences: TaskCardDisplayPreferences;
   selectedTaskIds: Set<string>;
   focusedTaskId: string | null;
@@ -29,6 +30,7 @@ function Column({
   column,
   projectSlug,
   projectColumns,
+  columnCompletionBySlug,
   displayPreferences,
   selectedTaskIds,
   focusedTaskId,
@@ -59,6 +61,7 @@ function Column({
           column={column}
           projectSlug={projectSlug}
           projectColumns={projectColumns}
+          columnCompletionBySlug={columnCompletionBySlug}
           displayPreferences={displayPreferences}
           selectedTaskIds={selectedTaskIds}
           focusedTaskId={focusedTaskId}

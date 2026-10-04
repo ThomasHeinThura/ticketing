@@ -83,7 +83,7 @@ export default function WorkItemsPanel({
           onRetry={onRetry}
         />
       </Suspense>
-      {project && !isLoading && realtimeProjectId === project.id ? (
+      {project && realtimeProjectId === project.id ? (
         <Suspense fallback={null}>
           <WorkItemListRealtime
             key={project.id}

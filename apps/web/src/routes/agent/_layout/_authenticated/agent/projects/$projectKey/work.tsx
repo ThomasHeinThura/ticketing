@@ -98,10 +98,10 @@ function WorkItemsRouteComponent() {
     isWorkspaceError || isProjectsError || isWorkItemsError || projectNotFound;
 
   useEffect(() => {
-    if (!project?.id || isLoading) return;
+    if (!project?.id) return;
     setRealtimeProjectId(project.id);
     setRealtimeStatus({ projectId: project.id, status: "connecting" });
-  }, [project?.id, isLoading]);
+  }, [project?.id]);
 
   const handleRealtimeAvailabilityChange = useCallback(
     (projectId: string, status: WorkItemRealtimeStatus) => {

@@ -29,10 +29,12 @@ describe("Kanban column rendering", () => {
       tasks: [],
     } as ProjectWithTasks["columns"][number];
     const onContextMenuTask = vi.fn();
+    const columnCompletionBySlug = new Map([[column.slug, column.isFinal]]);
     const props = {
       column,
       projectSlug: "PRJ",
       projectColumns: [column],
+      columnCompletionBySlug,
       displayPreferences: {
         showAssignees: true,
         showPriority: true,
@@ -56,5 +58,9 @@ describe("Kanban column rendering", () => {
 
     expect(mocks.columnHeader).toHaveBeenCalledOnce();
     expect(mocks.columnDropzone).toHaveBeenCalledOnce();
+    expect(mocks.columnDropzone).toHaveBeenCalledWith(
+      expect.objectContaining({ columnCompletionBySlug }),
+      undefined,
+    );
   });
 });

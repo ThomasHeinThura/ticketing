@@ -107,6 +107,11 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
       members.map((member) => [member.userId, member]),
     );
   }, [workspaceUsers?.members]);
+  const columnCompletionBySlug = useMemo(
+    () =>
+      new Map(project.columns.map((column) => [column.slug, column.isFinal])),
+    [project.columns],
+  );
   const { mutate: updateTask } = useUpdateTask();
   const navigate = useNavigate();
   const handleOpenTask = useCallback(
@@ -382,6 +387,7 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                       column={column}
                       projectSlug={project.slug}
                       projectColumns={project.columns}
+                      columnCompletionBySlug={columnCompletionBySlug}
                       displayPreferences={displayPreferences}
                       selectedTaskIds={selectedTaskIds}
                       focusedTaskId={focusedTaskId}

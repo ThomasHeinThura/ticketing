@@ -3,7 +3,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import type { ProjectWithTasks } from "@/types/project";
 import TaskCard, {
   type TaskCardDisplayPreferences,
@@ -15,6 +15,7 @@ type ColumnDropzoneProps = {
   column: ProjectWithTasks["columns"][number];
   projectSlug: string;
   projectColumns: ProjectWithTasks["columns"];
+  columnCompletionBySlug: ReadonlyMap<string, boolean>;
   displayPreferences: TaskCardDisplayPreferences;
   selectedTaskIds: Set<string>;
   focusedTaskId: string | null;
@@ -32,6 +33,7 @@ export function ColumnDropzone({
   column,
   projectSlug,
   projectColumns,
+  columnCompletionBySlug,
   displayPreferences,
   selectedTaskIds,
   focusedTaskId,
@@ -44,15 +46,6 @@ export function ColumnDropzone({
   onOpenTask,
   t,
 }: ColumnDropzoneProps) {
-  const columnCompletionBySlug = useMemo(() => {
-    const completionBySlug = new Map<string, boolean>();
-    for (const item of projectColumns) {
-      if (!completionBySlug.has(item.slug)) {
-        completionBySlug.set(item.slug, item.isFinal);
-      }
-    }
-    return completionBySlug;
-  }, [projectColumns]);
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
     data: {
