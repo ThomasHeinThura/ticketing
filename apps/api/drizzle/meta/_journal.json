@@ -673,6 +673,13 @@
 			"when": 1791078221911,
 			"tag": "0095_normal_whizzer",
 			"breakpoints": true
+		},
+		{
+			"idx": 96,
+			"version": "7",
+			"when": 1791082450558,
+			"tag": "0096_red_corsair",
+			"breakpoints": true
 		}
 	]
 }

@@ -1,0 +1,3 @@
+ALTER TABLE "identity_connection" ADD COLUMN "default_workspace_id" text;--> statement-breakpoint
+ALTER TABLE "identity_connection" ADD CONSTRAINT "identity_connection_default_workspace_id_workspace_id_fk" FOREIGN KEY ("default_workspace_id") REFERENCES "public"."workspace"("id") ON DELETE restrict ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "identity_connection" ADD CONSTRAINT "identity_connection_customer_default_workspace_check" CHECK ("identity_connection"."portal_scope" <> 'customer' or "identity_connection"."default_workspace_id" is null);
