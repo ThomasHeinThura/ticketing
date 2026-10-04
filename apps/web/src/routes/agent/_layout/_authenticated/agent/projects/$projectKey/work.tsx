@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Button } from "@taskdesk/ui";
+import { Button, Skeleton } from "@taskdesk/ui";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import CreateWorkItemDialog from "@/components/work-item/create-work-item-dialog";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
@@ -15,6 +14,9 @@ import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 const WorkItemsPanel = lazy(
   () => import("@/components/work-item/work-items-panel"),
 );
+const CreateWorkItemDialog = lazy(
+  () => import("@/components/work-item/create-work-item-dialog"),
+);
 
 import {
   parseWorkItemListSearch,
@@ -24,7 +26,7 @@ import {
 } from "@/lib/routes";
 
 function preloadCreateWorkItemDialog() {
-  void import("@/components/work-item/create-work-item-dialog-form").catch(
+  void import("@/components/work-item/create-work-item-dialog").catch(
     () => undefined,
   );
 }
@@ -189,13 +191,27 @@ function WorkItemsRouteComponent() {
             onRetry={handleRetry}
           />
         </Suspense>
-        {project ? (
-          <CreateWorkItemDialog
-            open={isCreateOpen}
-            onClose={closeCreateDialog}
-            projectId={project.id}
-            workspaceId={workspace?.id}
-          />
+        {project && isCreateOpen ? (
+          <Suspense
+            fallback={
+              <div
+                role="status"
+                aria-busy="true"
+                aria-live="polite"
+                data-testid="create-work-item-dialog-loading"
+              >
+                <span className="sr-only">{t("common:empty.loading")}</span>
+                <Skeleton className="h-10 w-full" />
+              </div>
+            }
+          >
+            <CreateWorkItemDialog
+              open
+              onClose={closeCreateDialog}
+              projectId={project.id}
+              workspaceId={workspace?.id}
+            />
+          </Suspense>
         ) : null}
       </div>
     </>
