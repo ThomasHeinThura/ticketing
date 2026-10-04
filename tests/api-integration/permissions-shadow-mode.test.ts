@@ -639,6 +639,106 @@ describe("observer-only provenance for masked native read denials", () => {
     }
   });
 
+  it("compares a two-actor persisted work-item mutation denial using loaded reach facts", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const owner = await createWorkspaceMember({ role: "owner" });
+    const outsider = await createWorkspaceMember({ role: "owner" });
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await backfillPersons();
+    fresh.mockUser(owner.user);
+
+    const now = new Date();
+    const [type] = await fresh.db
+      .insert(fresh.schema.workItemTypeTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `shadow-mutation-${randomUUID()}`,
+        name: "Shadow mutation item",
+        category: "delivery",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!type) throw new Error("work item type fixture insert failed");
+    const [template] = await fresh.db
+      .insert(fresh.schema.stateTemplateTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `shadow-mutation-state-${randomUUID()}`,
+        name: "Shadow mutation backlog",
+        group: "backlog",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!template) throw new Error("state template fixture insert failed");
+    await fresh.db.insert(fresh.schema.stateTable).values({
+      projectId: project.id,
+      stateTemplateId: template.id,
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const created = await fresh.app.request(
+      `/api/projects/${project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ typeId: type.id, title: "Persisted original" }),
+      },
+    );
+    expect(created.status).toBe(200);
+    const createdBody = (await created.json()) as {
+      key: string;
+      version: number;
+    };
+    const [before] = await fresh.db
+      .select({
+        title: fresh.schema.workItemTable.title,
+        version: fresh.schema.workItemTable.version,
+      })
+      .from(fresh.schema.workItemTable)
+      .where(eq(fresh.schema.workItemTable.key, createdBody.key));
+    expect(before).toEqual({ title: "Persisted original", version: 1 });
+
+    fresh.mockUser(outsider.user);
+    const denied = await fresh.app.request(
+      `/api/work-items/${createdBody.key}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "if-match": `"${createdBody.version}"`,
+        },
+        body: JSON.stringify({ title: "Unauthorized replacement" }),
+      },
+    );
+    expect(denied.status).toBe(404);
+
+    const [after] = await fresh.db
+      .select({
+        title: fresh.schema.workItemTable.title,
+        version: fresh.schema.workItemTable.version,
+      })
+      .from(fresh.schema.workItemTable)
+      .where(eq(fresh.schema.workItemTable.key, createdBody.key));
+    expect(after).toEqual(before);
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor("PATCH /api/work-items/{key}");
+      return rows.find((row) => row.outcome === "agree");
+    });
+    expect(tally).toMatchObject({
+      outcome: "agree",
+      reasonCode: null,
+      count: 1,
+    });
+  });
+
   it("keeps a soft-deleted containing project unknown for a nonmember read", {
     timeout: 60_000,
   }, async () => {
