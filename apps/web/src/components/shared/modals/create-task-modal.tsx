@@ -195,10 +195,12 @@ function CreateTaskModal({
   const { data: workspace } = useActiveWorkspace();
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
     workspace?.id || "",
+    open,
   );
   const { mutateAsync: createLabel } = useCreateLabel();
   const { data: workspaceLabels = [] } = useGetLabelsByWorkspace(
     workspace?.id || "",
+    open,
   );
   const { canCreateTasks, canCreateLabels } = useWorkspacePermission();
   const canCreateTaskCapability = canCreateTasks();
@@ -227,9 +229,10 @@ function CreateTaskModal({
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const resolvedProjectId =
     explicitProjectId || selectedProjectId || project?.id || "";
-  const { data: workspaceProjects } = useGetProjects({
-    workspaceId: workspace?.id || "",
-  });
+  const { data: workspaceProjects } = useGetProjects(
+    { workspaceId: workspace?.id || "" },
+    open,
+  );
   const resolvedProject = explicitProjectId
     ? project
     : (workspaceProjects?.find((p) => p.id === resolvedProjectId) ?? null);

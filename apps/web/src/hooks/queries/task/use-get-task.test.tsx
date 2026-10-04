@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { selectTaskDetailsSummary } from "@/components/task/task-details-content";
 import useGetTask from "./use-get-task";
 
 const mocks = vi.hoisted(() => ({ getTask: vi.fn() }));
@@ -41,7 +42,7 @@ describe("useGetTask cancellation", () => {
     queryClient.clear();
   });
 
-  it("keeps a selected field stable when unrelated task fields change", async () => {
+  it("keeps the task detail summary stable when property fields change", async () => {
     mocks.getTask.mockResolvedValue({
       id: "task-1",
       title: "Stable title",
@@ -55,11 +56,18 @@ describe("useGetTask cancellation", () => {
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
     const { result } = renderHook(
-      () => useGetTask("task-1", (task) => task.title),
+      () => useGetTask("task-1", selectTaskDetailsSummary),
       { wrapper },
     );
 
-    await waitFor(() => expect(result.current.data).toBe("Stable title"));
+    await waitFor(() =>
+      expect(result.current.data).toEqual({
+        number: undefined,
+        title: "Stable title",
+        description: undefined,
+      }),
+    );
+    const summary = result.current.data;
     await act(async () => {
       queryClient.setQueryData(["task", "task-1"], {
         id: "task-1",
@@ -69,7 +77,7 @@ describe("useGetTask cancellation", () => {
       });
     });
 
-    expect(result.current.data).toBe("Stable title");
+    expect(result.current.data).toBe(summary);
     queryClient.clear();
   });
 });

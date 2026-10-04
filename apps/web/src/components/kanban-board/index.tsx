@@ -24,8 +24,7 @@ import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import CreateTaskModal from "@/components/shared/modals/create-task-modal";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
-import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { isTaskCompleted } from "@/lib/due-date-status";
 import useBulkSelectionStore from "@/store/bulk-selection";
@@ -56,10 +55,17 @@ const boardAnnouncements = {
 
 type KanbanBoardProps = {
   project: ProjectWithTasks;
+  workspaceId: string;
+  workspaceUsers: ReturnType<typeof useGetActiveWorkspaceUsers>["data"];
   disableDragDrop?: boolean;
 };
 
-function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
+function KanbanBoard({
+  project,
+  workspaceId,
+  workspaceUsers,
+  disableDragDrop = false,
+}: KanbanBoardProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const setProject = useProjectStore((state) => state.setProject);
@@ -100,10 +106,6 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
   const [createTaskStatus, setCreateTaskStatus] = useState<string | null>(null);
   const createTaskTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const { data: workspace } = useActiveWorkspace();
-  const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
-    workspace?.id ?? "",
-  );
   const workspaceUsersById = useMemo(() => {
     const members = workspaceUsers?.members ?? [];
     return new Map<string, TaskCardWorkspaceUser>(
@@ -411,7 +413,7 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                       focusedTaskId={focusedTaskId}
                       toggleSelection={toggleSelection}
                       disableDragDrop={disableDragDrop}
-                      workspaceId={workspace?.id}
+                      workspaceId={workspaceId}
                       workspaceUsersById={workspaceUsersById}
                       onContextMenuTask={openContextMenuForTask}
                       onOpenTask={handleOpenTask}
@@ -424,12 +426,12 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
             </div>
           </div>
         </ContextMenuTrigger>
-        {contextMenuTask && workspace?.id ? (
+        {contextMenuTask ? (
           <TaskCardContextMenuContent
             task={contextMenuTask}
             taskCardContext={{
               projectId: project.id,
-              worskpaceId: workspace.id,
+              worskpaceId: workspaceId,
             }}
             onDeleteClick={() => {
               setDeleteTaskId(contextMenuTask.id);
@@ -453,8 +455,12 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                 isTaskSelected={selectedTaskIds.has(activeTask.id)}
                 isTaskFocused={focusedTaskId === activeTask.id}
                 toggleSelection={toggleSelection}
-                workspaceId={workspace?.id}
-                workspaceUsersById={workspaceUsersById}
+                workspaceId={workspaceId}
+                assignee={
+                  activeTask.userId
+                    ? workspaceUsersById.get(activeTask.userId)
+                    : undefined
+                }
                 onContextMenuTask={openContextMenuForTask}
                 onOpenTask={handleOpenTask}
                 t={t}

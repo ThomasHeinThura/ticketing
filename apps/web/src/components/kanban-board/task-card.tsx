@@ -45,7 +45,7 @@ export type TaskCardProps = {
   task: Task;
   disableDragDrop?: boolean;
   workspaceId?: string;
-  workspaceUsersById: ReadonlyMap<string, TaskCardWorkspaceUser>;
+  assignee?: TaskCardWorkspaceUser;
   onContextMenuTask: (taskId: string) => void;
   projectSlug: string;
   taskIsCompleted: boolean;
@@ -70,7 +70,7 @@ function TaskCard({
   task,
   disableDragDrop = false,
   workspaceId,
-  workspaceUsersById,
+  assignee,
   onContextMenuTask,
   projectSlug,
   taskIsCompleted,
@@ -146,9 +146,6 @@ function TaskCard({
     zIndex: isDragging ? 999 : "auto",
   };
 
-  const assignee = useMemo(() => {
-    return task.userId ? workspaceUsersById.get(task.userId) : undefined;
-  }, [workspaceUsersById, task.userId]);
   const dueDate = showDueDates && task.dueDate ? new Date(task.dueDate) : null;
   const dueDateStatus = dueDate
     ? getDueDateStatus(dueDate, taskIsCompleted)

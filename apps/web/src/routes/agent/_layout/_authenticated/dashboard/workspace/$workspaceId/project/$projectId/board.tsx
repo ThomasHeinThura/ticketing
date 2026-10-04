@@ -262,6 +262,8 @@ function RouteComponent() {
             viewMode === "board" ? (
               <KanbanBoard
                 project={sortedProject}
+                workspaceId={workspaceId}
+                workspaceUsers={users}
                 disableDragDrop={sort.field !== "position"}
               />
             ) : (
