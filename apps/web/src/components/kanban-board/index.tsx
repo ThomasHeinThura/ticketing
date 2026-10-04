@@ -175,12 +175,9 @@ function KanbanBoard({
 
   useEffect(() => {
     if (project?.columns) {
-      const allTaskIds = project.columns.flatMap((column) =>
-        column.tasks.map((task) => task.id),
-      );
-      setAvailableTasks(allTaskIds);
+      setAvailableTasks(allTasks.map((task) => task.id));
     }
-  }, [project, setAvailableTasks]);
+  }, [allTasks, project?.columns, setAvailableTasks]);
 
   useEffect(() => {
     clearFocus();
@@ -370,9 +367,7 @@ function KanbanBoard({
   }
 
   const activeTask = activeId
-    ? project.columns
-        .flatMap((col) => col.tasks)
-        .find((task) => task.id === activeId)
+    ? allTasks.find((task) => task.id === activeId)
     : null;
 
   return (

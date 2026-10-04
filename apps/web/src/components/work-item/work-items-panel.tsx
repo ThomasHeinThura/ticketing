@@ -75,6 +75,7 @@ export default function WorkItemsPanel({
       <Suspense fallback={<WorkItemListLoading />}>
         <WorkItemList
           workItems={workItems}
+          hasPartialFailure={workItemsResult?.hasPartialFailure ?? false}
           isLoading={isLoading}
           isError={isError}
           sort={sort}

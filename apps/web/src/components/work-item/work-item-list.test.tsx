@@ -37,6 +37,7 @@ vi.mock("react-i18next", () => ({
 }));
 
 const baseProps = {
+  hasPartialFailure: false,
   sort: "key" as const,
   dir: "asc" as const,
   onSortChange: vi.fn(),
@@ -331,6 +332,7 @@ describe("WorkItemList", () => {
         {...baseProps}
         // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
         workItems={[resolvedItem, partialItem] as any}
+        hasPartialFailure={true}
         isLoading={false}
         isError={false}
       />,
