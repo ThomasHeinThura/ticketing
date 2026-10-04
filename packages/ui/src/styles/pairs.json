@@ -835,8 +835,6 @@
       "apps/web/src/components/common/header/task-crumb-select.tsx::TaskCrumbSelect::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/common/header/workspace-crumb-select.tsx::WorkspaceCrumbSelect::Button[0]::text-foreground#0",
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-foreground#0",
-      "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]::text-foreground#0",
-      "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]::hover:text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[2]::text-foreground#0",
@@ -1540,28 +1538,6 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]::text-foreground#0",
-        "usage": "apps/web/src/components/list-view/index.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]::hover:text-foreground#0",
-        "usage": "apps/web/src/components/list-view/index.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]"
         ],
         "backdropLayers": []
       },
@@ -1808,8 +1784,6 @@
       "apps/web/src/components/common/header/task-crumb-select.tsx::TaskCrumbSelect::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/common/header/workspace-crumb-select.tsx::WorkspaceCrumbSelect::Button[0]::text-foreground#0",
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-foreground#0",
-      "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]::text-foreground#0",
-      "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]::hover:text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[2]::text-foreground#0",
@@ -2517,28 +2491,6 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]::text-foreground#0",
-        "usage": "apps/web/src/components/list-view/index.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]::hover:text-foreground#0",
-        "usage": "apps/web/src/components/list-view/index.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
         "id": "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
         "usage": "apps/web/src/components/team/members-table.tsx",
         "surfaceContext": "caller-chain",
@@ -2737,8 +2689,8 @@
       "apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/ChannelCard[2]/div[0]/div[2]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/ChannelCard[3]/div[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/ChannelCard[3]/div[0]/div[1]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#1",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#1",
       "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/div[0]/GripVertical[0]::text-muted-foreground#0",
       "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/div[0]/div[0]/div[0]/CheckCircle2[0]::text-muted-foreground#0",
       "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/div[0]/div[0]/div[0]/Circle[0]::text-muted-foreground#0",
@@ -2989,24 +2941,24 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "same-element",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]>bg-sidebar"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]>bg-sidebar"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#1",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#1",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "same-element",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]>bg-sidebar"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]>bg-sidebar"
         ],
         "backdropLayers": []
       },
@@ -3403,7 +3355,7 @@
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:getPRInfo.icon",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]"
         ],
         "backdropLayers": []
       },
@@ -3716,8 +3668,8 @@
       "apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/ChannelCard[2]/div[0]/div[2]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/ChannelCard[3]/div[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/account/notification-preferences-settings.tsx::NotificationPreferencesSettings::div[0]/ChannelCard[3]/div[0]/div[1]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#1",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#1",
       "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/div[0]/GripVertical[0]::text-muted-foreground#0",
       "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/div[0]/div[0]/div[0]/CheckCircle2[0]::text-muted-foreground#0",
       "apps/web/src/components/project/column-editor.tsx::ColumnEditor::div[0]/div[0]/div[0]/div[0]/div[0]/Circle[0]::text-muted-foreground#0",
@@ -3968,24 +3920,24 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "same-element",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]>bg-sidebar"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]>bg-sidebar"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#1",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]::text-muted-foreground#1",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "same-element",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]>bg-sidebar"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]>bg-sidebar"
         ],
         "backdropLayers": []
       },
@@ -4382,7 +4334,7 @@
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:getPRInfo.icon",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]"
         ],
         "backdropLayers": []
       },
@@ -4910,7 +4862,7 @@
       "apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::div[0]/div[0]/button[0]::hover:text-foreground#0",
       "apps/web/src/components/external-links/external-links-accordion.tsx::ExternalLinksAccordion::Collapsible[0]/CollapsibleContent[0]/div[0]/a[0]/span[0]::text-foreground#0",
       "apps/web/src/components/external-links/external-links-accordion.tsx::ExternalLinksAccordion::Collapsible[0]/CollapsibleContent[0]/div[0]/a[0]/span[0]::group-hover:text-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
       "apps/web/src/components/task/subtask-row.tsx::SubtaskRow::motion.div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/SubtaskStatusPopover[0]/button[0]::hover:[&_svg]:text-foreground#0",
       "apps/web/src/components/task/subtask-row.tsx::SubtaskRow::motion.div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/button[0]/span[0]::text-foreground#0",
       "apps/web/src/components/task/task-details-content.tsx::TaskDetailsContent::div[0]/div[0]/button[0]::hover:text-foreground#0",
@@ -5268,13 +5220,13 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": []
       },
@@ -5534,7 +5486,7 @@
       "apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::div[0]/div[0]/button[0]::hover:text-foreground#0",
       "apps/web/src/components/external-links/external-links-accordion.tsx::ExternalLinksAccordion::Collapsible[0]/CollapsibleContent[0]/div[0]/a[0]/span[0]::text-foreground#0",
       "apps/web/src/components/external-links/external-links-accordion.tsx::ExternalLinksAccordion::Collapsible[0]/CollapsibleContent[0]/div[0]/a[0]/span[0]::group-hover:text-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
       "apps/web/src/components/task/subtask-row.tsx::SubtaskRow::motion.div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/SubtaskStatusPopover[0]/button[0]::hover:[&_svg]:text-foreground#0",
       "apps/web/src/components/task/subtask-row.tsx::SubtaskRow::motion.div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/button[0]/span[0]::text-foreground#0",
       "apps/web/src/components/task/task-details-content.tsx::TaskDetailsContent::div[0]/div[0]/button[0]::hover:text-foreground#0",
@@ -5892,13 +5844,13 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": []
       },
@@ -6196,7 +6148,6 @@
       "apps/web/src/components/common/header/task-crumb-select.tsx::TaskCrumbSelect::DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronsUpDown[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[1]::text-muted-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
@@ -7036,17 +6987,6 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/list-view/index.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]"
         ],
         "backdropLayers": []
       },
@@ -7542,7 +7482,6 @@
       "apps/web/src/components/common/header/task-crumb-select.tsx::TaskCrumbSelect::DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronsUpDown[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[1]::text-muted-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
@@ -8382,17 +8321,6 @@
         "chain": [
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/list-view/index.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]"
         ],
         "backdropLayers": []
       },
@@ -9160,7 +9088,7 @@
       "apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/errors/error-display.tsx::ErrorDisplay::div[0]/Card[0]/CardContent[0]/div[0]/ul[0]::text-muted-foreground#0",
       "apps/web/src/components/errors/error-display.tsx::ErrorDisplay::div[0]/Card[0]/CardContent[0]/div[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/list-view/index.tsx::ListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormLabel[0]::text-muted-foreground#0",
@@ -9251,8 +9179,8 @@
       "apps/web/src/components/external-links/external-links-accordion.tsx::ExternalLinksAccordion::Collapsible[0]/CollapsibleContent[0]/div[0]/a[0]/FolderGit[0]::text-muted-foreground#0",
       "apps/web/src/components/external-links/external-links-accordion.tsx::ExternalLinksAccordion::Collapsible[0]/CollapsibleContent[0]/div[0]/a[0]/GithubIcon[0]::text-muted-foreground#0",
       "apps/web/src/components/external-links/external-links-accordion.tsx::ExternalLinksAccordion::Collapsible[0]/CollapsibleContent[0]/div[0]/a[0]/span[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/subtask-row.tsx::SubtaskRow::motion.div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/SubtaskStatusPopover[0]/button[0]::[&_svg]:text-muted-foreground#0",
@@ -9335,12 +9263,12 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/index.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
-          "apps/web/src/components/list-view/index.tsx:ListView",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
           "jsx:div[0]/div[0]/div[0]>bg-card"
         ],
         "backdropLayers": []
@@ -10368,24 +10296,24 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": []
       },
@@ -10861,7 +10789,7 @@
       "apps/web/src/components/backlog-list-view/index.tsx::BacklogListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/errors/error-display.tsx::ErrorDisplay::div[0]/Card[0]/CardContent[0]/div[0]/ul[0]::text-muted-foreground#0",
       "apps/web/src/components/errors/error-display.tsx::ErrorDisplay::div[0]/Card[0]/CardContent[0]/div[0]/ul[0]/li[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/list-view/index.tsx::ListView::DndContext[0]/DragOverlay[0]/div[0]/div[0]/div[1]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/onboarding/onboarding-flow.tsx::OnboardingFlow::motion.div[0]/div[0]/Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormLabel[0]::text-muted-foreground#0",
@@ -10952,8 +10880,8 @@
       "apps/web/src/components/external-links/external-links-accordion.tsx::ExternalLinksAccordion::Collapsible[0]/CollapsibleContent[0]/div[0]/a[0]/FolderGit[0]::text-muted-foreground#0",
       "apps/web/src/components/external-links/external-links-accordion.tsx::ExternalLinksAccordion::Collapsible[0]/CollapsibleContent[0]/div[0]/a[0]/GithubIcon[0]::text-muted-foreground#0",
       "apps/web/src/components/external-links/external-links-accordion.tsx::ExternalLinksAccordion::Collapsible[0]/CollapsibleContent[0]/div[0]/a[0]/span[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[2]::text-muted-foreground#0",
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/subtask-row.tsx::SubtaskRow::motion.div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/SubtaskStatusPopover[0]/button[0]::[&_svg]:text-muted-foreground#0",
@@ -11036,12 +10964,12 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/index.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
-          "apps/web/src/components/list-view/index.tsx:ListView",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
           "jsx:div[0]/div[0]/div[0]>bg-card"
         ],
         "backdropLayers": []
@@ -12069,24 +11997,24 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": []
       },
@@ -14848,8 +14776,8 @@
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
       "apps/web/src/components/keyboard-shortcuts-help.tsx::KeyboardShortcutsHelp::Dialog[0]/DialogContent[0]/div[0]/div[0]/div[0]/h3[0]::text-muted-foreground#0",
       "apps/web/src/components/keyboard-shortcuts-help.tsx::KeyboardShortcutsHelp::Dialog[0]/DialogContent[0]/div[1]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
       "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/DndContext[0]/SidebarMenu[0]/SortableContext[0]/SortableProjectItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]/Folder[0]::text-muted-foreground#0",
       "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/DndContext[0]/SidebarMenu[0]/SortableContext[0]/SortableProjectItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[1]/Forward[0]::text-muted-foreground#0",
       "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/DndContext[0]/SidebarMenu[0]/SortableContext[0]/SortableProjectItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[2]/Settings[0]::text-muted-foreground#0",
@@ -15250,25 +15178,25 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
           "HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]",
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]",
           "HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
         ],
         "backdropLayers": []
@@ -16723,17 +16651,6 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCardDeleteConfirmation",
-          "AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/alert-dialog.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/list-view/task-row.tsx:TaskRow",
           "AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
         ],
         "backdropLayers": []
@@ -17602,8 +17519,8 @@
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
       "apps/web/src/components/keyboard-shortcuts-help.tsx::KeyboardShortcutsHelp::Dialog[0]/DialogContent[0]/div[0]/div[0]/div[0]/h3[0]::text-muted-foreground#0",
       "apps/web/src/components/keyboard-shortcuts-help.tsx::KeyboardShortcutsHelp::Dialog[0]/DialogContent[0]/div[1]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
       "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/DndContext[0]/SidebarMenu[0]/SortableContext[0]/SortableProjectItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[0]/Folder[0]::text-muted-foreground#0",
       "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/DndContext[0]/SidebarMenu[0]/SortableContext[0]/SortableProjectItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[1]/Forward[0]::text-muted-foreground#0",
       "apps/web/src/components/nav-projects.tsx::NavProjects::Collapsible[0]/SidebarGroup[0]/CollapsiblePanel[0]/SidebarGroupContent[0]/DndContext[0]/SidebarMenu[0]/SortableContext[0]/SortableProjectItem[0]/DropdownMenu[0]/DropdownMenuContent[0]/DropdownMenuItem[2]/Settings[0]::text-muted-foreground#0",
@@ -18004,25 +17921,25 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
           "HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]",
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]",
           "HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
         ],
         "backdropLayers": []
@@ -19477,17 +19394,6 @@
         "category": "body",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCardDeleteConfirmation",
-          "AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
-        "usage": "packages/ui/src/components/alert-dialog.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/list-view/task-row.tsx:TaskRow",
           "AlertDialogContent->packages/ui/src/components/alert-dialog.tsx:AlertDialogPopup"
         ],
         "backdropLayers": []
@@ -22010,8 +21916,8 @@
     "occurrenceIds": [
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
       "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -22046,26 +21952,26 @@
         ]
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]>hover:bg-muted/50"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]>hover:bg-muted/50"
         ],
         "backdropLayers": [
           "bg-popover"
         ]
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]>hover:bg-muted/50"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]>hover:bg-muted/50"
         ],
         "backdropLayers": [
           "bg-popover"
@@ -22105,8 +22011,8 @@
     "occurrenceIds": [
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
       "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -22141,26 +22047,26 @@
         ]
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]>hover:bg-muted/50"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]>hover:bg-muted/50"
         ],
         "backdropLayers": [
           "bg-popover"
         ]
       },
       {
-        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/list-view/task-row.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]>hover:bg-muted/50"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]>hover:bg-muted/50"
         ],
         "backdropLayers": [
           "bg-popover"
@@ -28144,148 +28050,6 @@
         ],
         "backdropLayers": [
           "dark:bg-card/90",
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-foreground",
-    "bg": "--color-accent",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "light"
-    ],
-    "usage": "apps/web/src/components/list-view/index.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "hover:text-foreground",
-    "backgroundClass": {
-      "light": "hover:bg-accent"
-    },
-    "occurrenceIds": [
-      "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#0",
-      "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#1"
-    ],
-    "surfaceContext": "caller-chain",
-    "backdropLayers": [
-      "bg-muted/60",
-      "bg-accent/35",
-      "bg-background"
-    ],
-    "occurrences": [
-      {
-        "id": "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#0",
-        "usage": "apps/web/src/components/list-view/index.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/div[0]/button[0]>hover:bg-accent",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/div[0]/button[0]",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/div[0]/button[0]",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
-          "opaque-backdrop:bg-background"
-        ],
-        "backdropLayers": [
-          "bg-muted/60",
-          "bg-accent/35",
-          "bg-background"
-        ]
-      },
-      {
-        "id": "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#1",
-        "usage": "apps/web/src/components/list-view/index.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/div[0]/button[0]>hover:bg-accent",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/div[0]/button[0]",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/div[0]/button[0]",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
-          "opaque-backdrop:bg-background"
-        ],
-        "backdropLayers": [
-          "bg-muted/60",
-          "bg-accent/35",
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-foreground",
-    "bg": "--color-accent",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "dark"
-    ],
-    "usage": "apps/web/src/components/list-view/index.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "hover:text-foreground",
-    "backgroundClass": {
-      "dark": "hover:bg-accent"
-    },
-    "occurrenceIds": [
-      "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#0",
-      "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#1"
-    ],
-    "surfaceContext": "caller-chain",
-    "backdropLayers": [
-      "bg-muted/60",
-      "bg-accent/35",
-      "bg-background"
-    ],
-    "occurrences": [
-      {
-        "id": "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#0",
-        "usage": "apps/web/src/components/list-view/index.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/div[0]/button[0]>hover:bg-accent",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/div[0]/button[0]",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/div[0]/button[0]",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
-          "opaque-backdrop:bg-background"
-        ],
-        "backdropLayers": [
-          "bg-muted/60",
-          "bg-accent/35",
-          "bg-background"
-        ]
-      },
-      {
-        "id": "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#1",
-        "usage": "apps/web/src/components/list-view/index.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/div[0]/button[0]>hover:bg-accent",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/div[0]/button[0]",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/div[0]/button[0]",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
-          "opaque-backdrop:bg-background"
-        ],
-        "backdropLayers": [
-          "bg-muted/60",
-          "bg-accent/35",
           "bg-background"
         ]
       }
@@ -34292,7 +34056,7 @@
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:getPRInfo.icon",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]"
         ],
         "backdropLayers": []
       }
@@ -34325,7 +34089,7 @@
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:getPRInfo.icon",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]"
         ],
         "backdropLayers": []
       }
@@ -34358,7 +34122,7 @@
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:getPRInfo.icon",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]"
         ],
         "backdropLayers": []
       }
@@ -34391,7 +34155,7 @@
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:getPRInfo.icon",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]"
+          "jsx:div[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardTrigger[0]/button[0]"
         ],
         "backdropLayers": []
       }
@@ -35831,174 +35595,6 @@
   },
   {
     "fg": "--color-muted-foreground",
-    "bg": "--color-muted",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "light"
-    ],
-    "usage": "apps/web/src/lib/column.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "text-muted-foreground",
-    "backgroundClass": {
-      "light": "bg-muted/60"
-    },
-    "occurrenceIds": [
-      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
-      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
-    ],
-    "surfaceContext": "caller-chain",
-    "backdropLayers": [
-      "bg-accent/35",
-      "bg-background"
-    ],
-    "occurrences": [
-      {
-        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/lib/column.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/button[0]/div[0]",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/button[0]/div[0]",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
-          "opaque-backdrop:bg-background"
-        ],
-        "backdropLayers": [
-          "bg-accent/35",
-          "bg-background"
-        ]
-      },
-      {
-        "id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/lib/column.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "non-text",
-        "chain": [
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/button[0]/div[0]",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/button[0]/div[0]",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
-          "opaque-backdrop:bg-background"
-        ],
-        "backdropLayers": [
-          "bg-accent/35",
-          "bg-background"
-        ]
-      },
-      {
-        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/lib/column.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "non-text",
-        "chain": [
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/button[0]/div[0]",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/button[0]/div[0]",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
-          "opaque-backdrop:bg-background"
-        ],
-        "backdropLayers": [
-          "bg-accent/35",
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-muted-foreground",
-    "bg": "--color-muted",
-    "category": "body",
-    "minRatio": 4.5,
-    "themes": [
-      "dark"
-    ],
-    "usage": "apps/web/src/lib/column.tsx",
-    "backdrop": "--color-background",
-    "foregroundClass": "text-muted-foreground",
-    "backgroundClass": {
-      "dark": "bg-muted/60"
-    },
-    "occurrenceIds": [
-      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
-      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
-    ],
-    "surfaceContext": "caller-chain",
-    "backdropLayers": [
-      "bg-accent/35",
-      "bg-background"
-    ],
-    "occurrences": [
-      {
-        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/lib/column.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/button[0]/div[0]",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/button[0]/div[0]",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
-          "opaque-backdrop:bg-background"
-        ],
-        "backdropLayers": [
-          "bg-accent/35",
-          "bg-background"
-        ]
-      },
-      {
-        "id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/lib/column.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "non-text",
-        "chain": [
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/button[0]/div[0]",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/button[0]/div[0]",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
-          "opaque-backdrop:bg-background"
-        ],
-        "backdropLayers": [
-          "bg-accent/35",
-          "bg-background"
-        ]
-      },
-      {
-        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/lib/column.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "non-text",
-        "chain": [
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/button[0]/div[0]",
-          "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/button[0]/div[0]",
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
-          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
-          "opaque-backdrop:bg-background"
-        ],
-        "backdropLayers": [
-          "bg-accent/35",
-          "bg-background"
-        ]
-      }
-    ]
-  },
-  {
-    "fg": "--color-muted-foreground",
     "bg": "--color-sidebar-accent",
     "category": "body",
     "minRatio": 4.5,
@@ -37350,12 +36946,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -37413,12 +37008,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -37476,12 +37070,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -37539,12 +37132,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -38756,12 +38348,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -38819,12 +38410,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -38882,12 +38472,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -38945,12 +38534,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -40312,12 +39900,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -40375,12 +39962,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -40438,12 +40024,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -40501,12 +40086,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -41868,12 +41452,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -41931,12 +41514,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -41994,12 +41576,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -42057,12 +41638,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -43425,12 +43005,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -43463,12 +43042,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -43527,12 +43105,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -43565,12 +43142,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -43629,12 +43205,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -43667,12 +43242,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -43731,12 +43305,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -43769,12 +43342,11 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/task-row.tsx:TaskRow",
-          "jsx:div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]",
+          "jsx:div[0]/div[0]/div[0]",
           "apps/web/src/components/list-view/index.tsx:ListView",
-          "jsx:div[0]/div[0]/SortableContext[0]/AnimatePresence[0]/motion.div[0]/TaskRow[0]",
-          "opaque-backdrop:bg-card"
+          "ListColumnSection->apps/web/src/components/list-view/index.tsx:ListColumnSection"
         ],
         "backdropLayers": [
           "bg-accent/60",
@@ -45699,6 +45271,544 @@
         ],
         "backdropLayers": [
           "bg-popover"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-foreground",
+    "bg": "--color-accent",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/list-view/index.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-foreground",
+    "backgroundClass": {
+      "light": "hover:bg-accent"
+    },
+    "occurrenceIds": [
+      "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#0",
+      "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#1"
+    ],
+    "surfaceContext": "caller-chain",
+    "backdropLayers": [
+      "bg-muted/60",
+      "bg-accent/35",
+      "bg-muted/20",
+      "bg-background"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#0",
+        "usage": "apps/web/src/components/list-view/index.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/div[0]/button[0]>hover:bg-accent",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/div[0]/button[0]",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/div[0]/button[0]",
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-muted/60",
+          "bg-accent/35",
+          "bg-muted/20",
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#1",
+        "usage": "apps/web/src/components/list-view/index.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/div[0]/button[0]>hover:bg-accent",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/div[0]/button[0]",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/div[0]/button[0]",
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-muted/60",
+          "bg-accent/35",
+          "bg-muted/20",
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-foreground",
+    "bg": "--color-accent",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/list-view/index.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-foreground",
+    "backgroundClass": {
+      "dark": "hover:bg-accent"
+    },
+    "occurrenceIds": [
+      "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#0",
+      "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#1"
+    ],
+    "surfaceContext": "caller-chain",
+    "backdropLayers": [
+      "bg-muted/60",
+      "bg-accent/35",
+      "bg-muted/20",
+      "bg-background"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#0",
+        "usage": "apps/web/src/components/list-view/index.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/div[0]/button[0]>hover:bg-accent",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/div[0]/button[0]",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/div[0]/button[0]",
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-muted/60",
+          "bg-accent/35",
+          "bg-muted/20",
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/div[0]/button[0]::hover:text-foreground#1",
+        "usage": "apps/web/src/components/list-view/index.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/div[0]/button[0]>hover:bg-accent",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/div[0]/button[0]",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/div[0]/button[0]",
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-muted/60",
+          "bg-accent/35",
+          "bg-muted/20",
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-foreground",
+    "bg": "--color-muted",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/list-view/index.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-foreground",
+    "backgroundClass": {
+      "light": "bg-muted/20"
+    },
+    "occurrenceIds": [
+      "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/button[0]::text-foreground#0",
+      "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/button[0]::hover:text-foreground#0"
+    ],
+    "surfaceContext": "caller-chain",
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/button[0]::text-foreground#0",
+        "usage": "apps/web/src/components/list-view/index.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/button[0]::hover:text-foreground#0",
+        "usage": "apps/web/src/components/list-view/index.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-foreground",
+    "bg": "--color-muted",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/list-view/index.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-foreground",
+    "backgroundClass": {
+      "dark": "bg-muted/20"
+    },
+    "occurrenceIds": [
+      "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/button[0]::text-foreground#0",
+      "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/button[0]::hover:text-foreground#0"
+    ],
+    "surfaceContext": "caller-chain",
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/button[0]::text-foreground#0",
+        "usage": "apps/web/src/components/list-view/index.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/button[0]::hover:text-foreground#0",
+        "usage": "apps/web/src/components/list-view/index.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-muted-foreground",
+    "bg": "--color-muted",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/components/list-view/index.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-muted-foreground",
+    "backgroundClass": {
+      "light": "bg-muted/20"
+    },
+    "occurrenceIds": [
+      "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0"
+    ],
+    "surfaceContext": "caller-chain",
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/list-view/index.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-muted-foreground",
+    "bg": "--color-muted",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/components/list-view/index.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-muted-foreground",
+    "backgroundClass": {
+      "dark": "bg-muted/20"
+    },
+    "occurrenceIds": [
+      "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0"
+    ],
+    "surfaceContext": "caller-chain",
+    "backdropLayers": [
+      "bg-background"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/components/list-view/index.tsx::ListColumnSection::div[0]/div[0]/button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/list-view/index.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-muted-foreground",
+    "bg": "--color-muted",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "light"
+    ],
+    "usage": "apps/web/src/lib/column.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-muted-foreground",
+    "backgroundClass": {
+      "light": "bg-muted/60"
+    },
+    "occurrenceIds": [
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
+    ],
+    "surfaceContext": "caller-chain",
+    "backdropLayers": [
+      "bg-accent/35",
+      "bg-muted/20",
+      "bg-background"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/button[0]/div[0]",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/button[0]/div[0]",
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-accent/35",
+          "bg-muted/20",
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/button[0]/div[0]",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/button[0]/div[0]",
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-accent/35",
+          "bg-muted/20",
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/button[0]/div[0]",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/button[0]/div[0]",
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-accent/35",
+          "bg-muted/20",
+          "bg-background"
+        ]
+      }
+    ]
+  },
+  {
+    "fg": "--color-muted-foreground",
+    "bg": "--color-muted",
+    "category": "body",
+    "minRatio": 4.5,
+    "themes": [
+      "dark"
+    ],
+    "usage": "apps/web/src/lib/column.tsx",
+    "backdrop": "--color-background",
+    "foregroundClass": "text-muted-foreground",
+    "backgroundClass": {
+      "dark": "bg-muted/60"
+    },
+    "occurrenceIds": [
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
+    ],
+    "surfaceContext": "caller-chain",
+    "backdropLayers": [
+      "bg-accent/35",
+      "bg-muted/20",
+      "bg-background"
+    ],
+    "occurrences": [
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/button[0]/div[0]",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/button[0]/div[0]",
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-accent/35",
+          "bg-muted/20",
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/button[0]/div[0]",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/button[0]/div[0]",
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-accent/35",
+          "bg-muted/20",
+          "bg-background"
+        ]
+      },
+      {
+        "id": "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/lib/column.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "non-text",
+        "chain": [
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/button[0]/div[0]",
+          "apps/web/src/components/list-view/index.tsx:ListColumnSection",
+          "jsx:div[0]/div[0]/button[0]/div[0]",
+          "apps/web/src/components/list-view/index.tsx:ListView",
+          "jsx:DndContext[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/ListColumnSection[0]",
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
+          "jsx:ProjectLayout[0]/div[0]/div[0]/ListView[0]",
+          "opaque-backdrop:bg-background"
+        ],
+        "backdropLayers": [
+          "bg-accent/35",
+          "bg-muted/20",
+          "bg-background"
         ]
       }
     ]
