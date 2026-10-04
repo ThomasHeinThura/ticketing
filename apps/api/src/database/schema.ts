@@ -3492,7 +3492,8 @@ export const stepUpConfirmationTable = pgTable(
         or (${table.operationKey} = 'metrics_token_rotate' and ${table.routeKey} = 'POST /api/instance/observability/metrics-token/rotate')
         or (${table.operationKey} = 'oidc_group_mapping_create' and ${table.routeKey} = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')
         or (${table.operationKey} = 'oidc_group_mapping_update' and ${table.routeKey} = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')
-        or (${table.operationKey} = 'mfa_reset' and ${table.routeKey} = 'POST /api/instance/users/{id}/reset-mfa')`,
+        or (${table.operationKey} = 'mfa_reset' and ${table.routeKey} = 'POST /api/instance/users/{id}/reset-mfa')
+        or (${table.operationKey} = 'instance_admin_grant' and ${table.routeKey} = 'POST /api/instance/users/{id}/grant-admin')`,
     ),
     check(
       "step_up_state_shape",

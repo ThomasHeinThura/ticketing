@@ -19,8 +19,10 @@ import {
   loadLocalFactorState,
 } from "./local-factor-service";
 import {
+  createInstanceAdminGrantChallenge,
   createMfaResetChallenge,
   createRotationChallenge,
+  issueInstanceAdminGrantToken,
   issueMfaResetToken,
   issueRotationToken,
   STEP_UP_CHALLENGE_LIMIT,
@@ -101,6 +103,13 @@ const challengeRoute = createRoute({
                 operation: z.literal("mfa_reset"),
                 userId: z.string().min(1),
                 verificationNote: z.string().trim().min(12).max(1000),
+              })
+              .strict(),
+            z
+              .object({
+                kind: z.literal("operation"),
+                operation: z.literal("instance_admin_grant"),
+                targetUserId: z.string().min(1),
               })
               .strict(),
           ]),
@@ -193,6 +202,39 @@ const proveRoute = createRoute({
             z
               .object({
                 kind: z.literal("operation"),
+                operation: z.literal("instance_admin_grant"),
+                targetUserId: z.string().min(1),
+                challengeId: z.string(),
+                nonce: z.string().length(43),
+                method: z.literal("password"),
+                password: z.string().min(1).max(1024),
+              })
+              .strict(),
+            z
+              .object({
+                kind: z.literal("operation"),
+                operation: z.literal("instance_admin_grant"),
+                targetUserId: z.string().min(1),
+                challengeId: z.string(),
+                nonce: z.string().length(43),
+                method: z.literal("totp"),
+                code: z.string().regex(/^\d{6}$/u),
+              })
+              .strict(),
+            z
+              .object({
+                kind: z.literal("operation"),
+                operation: z.literal("instance_admin_grant"),
+                targetUserId: z.string().min(1),
+                challengeId: z.string(),
+                nonce: z.string().length(43),
+                method: z.literal("backup_code"),
+                code: z.string().min(1).max(64),
+              })
+              .strict(),
+            z
+              .object({
+                kind: z.literal("operation"),
                 operation: z.literal("mfa_reset"),
                 userId: z.string().min(1),
                 verificationNote: z.string().trim().min(12).max(1000),
@@ -252,6 +294,44 @@ const routes = apiRouter()
           sessionId: actor.session.id,
           userId: input.userId,
           verificationNote: input.verificationNote,
+        });
+      } catch (error) {
+        if (error instanceof StepUpAttemptLimitError)
+          return c.json(
+            {
+              message: "step_up_attempt_limit" as const,
+              limit: STEP_UP_CHALLENGE_LIMIT,
+              windowMinutes: STEP_UP_CHALLENGE_WINDOW_MINUTES,
+            },
+            429,
+          );
+        throw error;
+      }
+      setShadowLegacyAuthorization(c, "allowed");
+      return c.json(
+        {
+          challengeId: challenge.id,
+          nonce: challenge.nonce,
+          expiresAt: challenge.expiresAt,
+        },
+        200,
+      );
+    }
+    if (input.operation === "instance_admin_grant") {
+      const [target] = await db
+        .select({ id: schema.userTable.id })
+        .from(schema.userTable)
+        .where(eq(schema.userTable.id, input.targetUserId))
+        .limit(1);
+      if (!target) throw new HTTPException(404, { message: "User not found" });
+      let challenge: Awaited<
+        ReturnType<typeof createInstanceAdminGrantChallenge>
+      >;
+      try {
+        challenge = await createInstanceAdminGrantChallenge({
+          personId: actor.factor.personId,
+          sessionId: actor.session.id,
+          userId: input.targetUserId,
         });
       } catch (error) {
         if (error instanceof StepUpAttemptLimitError)
@@ -390,17 +470,29 @@ const routes = apiRouter()
             },
             verifyAuthentication,
           )
-        : await issueRotationToken(
-            {
-              id: input.challengeId,
-              nonce: input.nonce,
-              personId: actor.factor.personId,
-              sessionId: actor.session.id,
-              userId: c.get("userId"),
-              version: input.version,
-            },
-            verifyAuthentication,
-          );
+        : input.operation === "instance_admin_grant"
+          ? await issueInstanceAdminGrantToken(
+              {
+                id: input.challengeId,
+                nonce: input.nonce,
+                personId: actor.factor.personId,
+                sessionId: actor.session.id,
+                userId: c.get("userId"),
+                targetUserId: input.targetUserId,
+              },
+              verifyAuthentication,
+            )
+          : await issueRotationToken(
+              {
+                id: input.challengeId,
+                nonce: input.nonce,
+                personId: actor.factor.personId,
+                sessionId: actor.session.id,
+                userId: c.get("userId"),
+                version: input.version,
+              },
+              verifyAuthentication,
+            );
     if (!token) {
       setShadowLegacyAuthorization(c, "denied");
       throw new HTTPException(403, { message: "step_up_unavailable" });
@@ -419,7 +511,9 @@ const routes = apiRouter()
         route:
           input.operation === "mfa_reset"
             ? "POST /api/instance/users/{id}/reset-mfa"
-            : "POST /api/instance/observability/metrics-token/rotate",
+            : input.operation === "instance_admin_grant"
+              ? "POST /api/instance/users/{id}/grant-admin"
+              : "POST /api/instance/observability/metrics-token/rotate",
       },
     }).catch(async () => {
       recordAuditWriteFailure("mutation");

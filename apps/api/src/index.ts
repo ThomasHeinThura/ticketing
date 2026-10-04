@@ -61,6 +61,7 @@ import {
 } from "./instance/observability/runtime";
 import resetMfa from "./instance/reset-mfa";
 import { ensureSetupToken } from "./instance/setup-token";
+import users from "./instance/users";
 import invitation from "./invitation";
 import label from "./label";
 import { migrateColumns } from "./migrations/column-migration";
@@ -1248,6 +1249,7 @@ export function createApp(
   const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
   const resetMfaApi = api.route("/instance", resetMfa);
+  const usersApi = api.route("/instance", users);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
@@ -1536,6 +1538,7 @@ export function createApp(
     metricsTokenRotationApi,
     localFactorPolicyApi,
     resetMfaApi,
+    usersApi,
     invitationApi,
     invitationPublicApi,
     oauthApi,
@@ -1905,6 +1908,7 @@ const {
   metricsTokenRotationApi,
   localFactorPolicyApi,
   resetMfaApi,
+  usersApi,
   invitationApi,
   invitationPublicApi,
   oauthApi,
@@ -1986,6 +1990,7 @@ export type AppType =
   | typeof metricsTokenRotationApi
   | typeof localFactorPolicyApi
   | typeof resetMfaApi
+  | typeof usersApi
   | typeof workflowApi
   | typeof workflowRuleApi
   | typeof workItemApi

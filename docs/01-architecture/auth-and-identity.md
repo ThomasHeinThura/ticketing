@@ -710,11 +710,12 @@ means no role change. The alert goes to every current instance administrator and
 with a closed payload that contains no identity-provider data, credentials, or secrets.
 
 God Mode suspension uses the existing Better Auth `user.banned`, `banReason`, and
-`banExpires` fields, not `person.active`. Suspending blocks all login and API-key/MCP-key
-authentication, revokes all existing sessions and all personal API/MCP keys, and preserves
-the person's identity and memberships. Unsuspending clears the ban fields only. It never
-restores sessions or keys. Force sign-out deletes all current sessions, including any
-impersonation session, and leaves account state and API/MCP keys unchanged. Deactivation is
+`banExpires` fields, not `person.active`. Suspending blocks login and API-key authentication,
+revokes all existing sessions and all personal keys in the current native Better Auth
+`apikey` store, and preserves the person's identity and memberships. There is no separate
+MCP credential store in this implementation. Unsuspending clears the ban fields only. It
+never restores sessions or keys. Force sign-out deletes all current sessions, including any
+impersonation session, and leaves account state and API keys unchanged. Deactivation is
 the separate IP-15 identity-provisioning lifecycle and is not a suspension alias.
 
 ## Threat notes

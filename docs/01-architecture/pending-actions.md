@@ -215,6 +215,8 @@ thing that is hashed or executed.
   { "kind": "operation", "operation": "metrics_token_rotate", "version": 7 }
   { "kind": "operation", "operation": "mfa_reset", "userId": "...",
     "verificationNote": "..." }
+  { "kind": "operation", "operation": "instance_admin_grant",
+    "targetUserId": "..." }
   { "kind": "operation", "operation": "oidc_group_mapping_create",
     "connectionId": "...", "request": { "configVersion": 7, "externalGroupId": "...", "roleId": "...", "scope": "workspace", "scopeId": "..." } }
   { "kind": "operation", "operation": "oidc_group_mapping_update",

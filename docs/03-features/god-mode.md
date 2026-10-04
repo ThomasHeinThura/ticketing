@@ -305,13 +305,22 @@ ban reasons.
 
 Suspension is reversible and distinct from person deactivation. Suspending sets the existing
 `user.banned` fields, records a bounded reason and optional expiry, revokes all current
-sessions, and revokes all personal API and MCP keys. Unsuspending clears the ban fields; it
-does not recreate sessions or keys. Deactivation sets `person.active = false` and follows
+sessions, and revokes all personal keys in the current native Better Auth `apikey` store.
+There is no separate MCP credential store in this implementation. Unsuspending clears the
+ban fields; it does not recreate sessions or keys. Deactivation sets `person.active = false` and follows
 `identity-provisioning.md` IP-15, including its membership and external-grant lifecycle.
 There is no God Mode unsuspend for a deactivated person; reactivation follows IP-16.
 Force sign-out deletes all current target sessions, including impersonation sessions, and
 does not change keys or account status. It is safe to repeat and reports only the count of
 revoked sessions.
+
+The suspension request is strict JSON `{ reason?: string, expiresAt?: string | null }`.
+When present, `reason` is trimmed, must be non-empty, and is limited to 500 Unicode
+codepoints. `expiresAt`, when a string, must be a valid ISO timestamp strictly later than
+the server's current time. Omission or `null` means an indefinite suspension. The reason is
+used only in the existing Better Auth ban field; it is never returned by the Users API or
+written to audit/security-alert payloads. Expired bans are reported as not currently
+suspended and do not trigger credential restoration.
 
 Granting `instance:admin` uses the recovery contract's existing eligibility and concurrency
 invariants: the target is an existing non-anonymous, unbanned user with exactly one active
