@@ -1,4 +1,9 @@
-import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
+import {
+  jsonValueSchema,
+  nullableResponseTimestamp,
+  responseTimestamp,
+  z,
+} from "../openapi";
 
 // Plain (unregistered) shape shared by `workItemSchema` and `workItemDetailSchema`, so the
 // detail schema extends this shape rather than the already-`.openapi()`-registered
@@ -17,7 +22,7 @@ const workItemShape = z.object({
   }),
   key: z.string().openapi({ description: "e.g. PROJ-123. Permanent." }),
   title: z.string(),
-  description: z.unknown().nullable(),
+  description: jsonValueSchema.nullable().optional(),
   stateId: z.string(),
   priority: z
     .string()
@@ -351,9 +356,9 @@ export const workItemActivityRowSchema = z
     actorType: z.string(),
     verb: z.string(),
     field: z.string().nullable(),
-    oldValue: z.unknown().nullable(),
-    newValue: z.unknown().nullable(),
-    payload: z.unknown().nullable(),
+    oldValue: jsonValueSchema.nullable().optional(),
+    newValue: jsonValueSchema.nullable().optional(),
+    payload: jsonValueSchema.nullable().optional(),
     visibility: z.string(),
     workflowVersionId: z.string().nullable(),
     createdAt: responseTimestamp,
@@ -366,7 +371,7 @@ export const workItemActivityRowSchema = z
           '"comment" for a posted comment. Optional in the schema (not the pre-#452 ' +
           "contract) so this remains an additive change, not a breaking one.",
       }),
-    body: z.unknown().nullable().optional().openapi({
+    body: jsonValueSchema.nullable().optional().openapi({
       description:
         "Comment rows only: the Tiptap document, or null if deleted (CA-18).",
     }),

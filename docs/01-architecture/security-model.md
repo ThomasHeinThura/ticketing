@@ -350,18 +350,32 @@ X-Frame-Options: DENY
 runtime configuration (the storage origin, the OTLP and Sentry endpoints):
 
 ```
-default-src 'none';
-script-src 'self' 'nonce-<per-response>';
+default-src 'self';
+script-src 'self';
 style-src 'self' 'unsafe-inline';                      -- Tailwind v4 requirement; tracked as debt
-img-src 'self' <files-origin>;                         -- no data:/blob: — attachments are references, never base64
+img-src 'self' <trusted-storage-origin>;
 font-src 'self';
-connect-src 'self' wss://<this-host> <sentry> <otlp>;
-frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';
-report-to csp-endpoint
+connect-src 'self' ws: wss:;
+frame-src 'self' <trusted-storage-origin>;              -- only for the sandboxed attachment PDF viewer
+object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';
 ```
 
-Rolled out `Content-Security-Policy-Report-Only` first for one release, then enforced.
-Reports land at `POST /api/public/csp-report` (rate-limited, `public` with reason).
+`<trusted-storage-origin>` is the exact origin of the configured S3 endpoint used to mint
+the signed URL; it is not derived from `Forwarded`, `X-Forwarded-Host`, a query parameter,
+or attachment metadata. With filesystem storage, it is the application's own origin. The
+application shell includes only these trusted origins in `img-src` and `frame-src`; the
+S3 public endpoint must already be browser-facing and HTTPS when the application is HTTPS.
+It is never rewritten after signing. Attachment PDFs use an iframe with an empty `sandbox`
+attribute; no `allow-scripts`, `allow-same-origin`, `allow-forms`, or top-navigation token
+is granted. Filesystem object responses also carry `Content-Security-Policy: sandbox` and
+`X-Content-Type-Options: nosniff`; the S3 signed response uses the separate trusted storage
+origin and the empty iframe sandbox because S3 response overrides do not set a CSP header.
+Inline response disposition is available only from the authenticated attachment-preview request and only for the verified MIME allowlist in
+[attachments.md](../03-features/attachments.md); all default downloads remain attachments.
+
+The enforced application-shell policy is set on agent and portal HTML responses. A
+report-only rollout and report collector are separate deployment work and are not part of
+the attachment preview implementation.
 
 ## Secrets
 

@@ -1,5 +1,5 @@
 import { CHANGE_RISK_LEVELS } from "@taskdesk/domain";
-import { z } from "../openapi";
+import { jsonValueSchema, z } from "../openapi";
 
 export const workflowIdParam = z.object({ id: z.string() });
 
@@ -44,7 +44,7 @@ export const effectSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("set_field"),
     field: z.string(),
-    value: z.unknown(),
+    value: jsonValueSchema.optional() as z.ZodType<unknown>,
   }),
   z.object({
     kind: z.literal("schedule_transition"),

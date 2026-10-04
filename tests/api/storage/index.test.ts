@@ -3,10 +3,14 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  attachmentDisposition,
+  buildAttachmentContentDisposition,
   createTaskImageUploadUrl,
   deleteStorageObject,
   getPrivateObject,
+  getStorageBrowserOrigin,
   getStorageDriver,
+  isInlineAttachmentMimeType,
   toFinalAttachmentObjectKey,
   validateTaskAssetUploadInput,
 } from "../../../apps/api/src/storage/index";
@@ -62,6 +66,41 @@ describe("storage driver selector", () => {
   it("throws on an unrecognized driver name rather than silently defaulting", () => {
     process.env.TASKDESK_STORAGE_DRIVER = "azure-blob";
     expect(() => getStorageDriver()).toThrow(/TASKDESK_STORAGE_DRIVER/);
+  });
+
+  it("limits inline responses to the documented verified MIME allowlist", () => {
+    for (const mimeType of [
+      "image/png",
+      "image/jpeg",
+      "image/gif",
+      "image/webp",
+      "application/pdf",
+    ]) {
+      expect(isInlineAttachmentMimeType(mimeType)).toBe(true);
+      expect(attachmentDisposition("preview", mimeType)).toBe("inline");
+    }
+    for (const mimeType of [
+      "image/svg+xml",
+      "image/avif",
+      "application/msword",
+      "text/html",
+    ]) {
+      expect(isInlineAttachmentMimeType(mimeType)).toBe(false);
+      expect(attachmentDisposition("preview", mimeType)).toBe("attachment");
+    }
+    expect(attachmentDisposition("download", "image/png")).toBe("attachment");
+  });
+
+  it("builds safe, Unicode-capable content disposition and trusts only configured S3 origin", () => {
+    expect(buildAttachmentContentDisposition('résumé\r\n".png', "inline")).toBe(
+      "inline; filename=\"resume.png\"; filename*=UTF-8''r%C3%A9sum%C3%A9.png",
+    );
+
+    process.env.TASKDESK_STORAGE_DRIVER = "s3";
+    process.env.S3_ENDPOINT = "https://objects.example.test:9443/s3";
+    expect(getStorageBrowserOrigin()).toBe("https://objects.example.test:9443");
+    process.env.S3_ENDPOINT = "https://user:pass@objects.example.test/s3";
+    expect(getStorageBrowserOrigin()).toBeUndefined();
   });
 
   it("switching the driver actually changes which upload-size ceiling applies", () => {

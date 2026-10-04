@@ -1,4 +1,9 @@
-import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
+import {
+  jsonValueSchema,
+  nullableResponseTimestamp,
+  responseTimestamp,
+  z,
+} from "../openapi";
 
 const priorityDescription = "One of: no-priority, low, medium, high, urgent.";
 
@@ -56,7 +61,7 @@ const taskExternalLinkSchema = z
     externalId: z.string(),
     url: z.string(),
     title: z.string().nullable(),
-    metadata: z.record(z.string(), z.unknown()).nullable().openapi({
+    metadata: z.record(z.string(), jsonValueSchema).nullable().openapi({
       description:
         "Provider-specific payload, already parsed from the stored JSON string.",
     }),
@@ -194,7 +199,7 @@ export const taskImportResultSchema = z
         total: z.number(),
         successful: z.number(),
         failed: z.number(),
-        tasks: z.array(z.unknown()).openapi({
+        tasks: z.array(jsonValueSchema).openapi({
           description: "Per-task outcome, each carrying a success flag.",
         }),
       })

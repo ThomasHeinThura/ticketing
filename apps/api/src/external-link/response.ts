@@ -1,4 +1,4 @@
-import { responseTimestamp, z } from "../openapi";
+import { jsonValueSchema, responseTimestamp, z } from "../openapi";
 
 export const externalLinkSchema = z
   .object({
@@ -13,7 +13,7 @@ export const externalLinkSchema = z
     }),
     url: z.string(),
     title: z.string().nullable(),
-    metadata: z.unknown().nullable().openapi({
+    metadata: jsonValueSchema.nullable().optional().openapi({
       description:
         "Provider-specific payload, parsed from the stored JSON string. Null when the link has no metadata.",
     }),

@@ -1,4 +1,9 @@
-import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
+import {
+  jsonValueSchema,
+  nullableResponseTimestamp,
+  responseTimestamp,
+  z,
+} from "../openapi";
 import { formSchema } from "./schema";
 
 export const requestTypeSchema = z.object({
@@ -78,7 +83,7 @@ export const submissionListItemSchema = submissionReceiptSchema.extend({
   requesterId: z.string(),
   requestTypeId: z.string(),
   requestTypeVersionId: z.string(),
-  formData: z.record(z.string(), z.json()),
+  formData: z.record(z.string(), jsonValueSchema),
   claimedBy: z.string().nullable(),
   claimedAt: nullableResponseTimestamp,
   version: z.number().int(),

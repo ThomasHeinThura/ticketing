@@ -54,6 +54,49 @@ async function addPersonForUser(userId: string) {
   );
 }
 
+async function requestPresignedAttachmentUpload(
+  app: ReturnType<typeof createApp>["app"],
+  uploadUrl: string,
+  init: RequestInit,
+): Promise<Response> {
+  const response = await app.request(uploadUrl, init);
+  if (!response.ok) {
+    const url = new URL(uploadUrl);
+    let category = "other";
+    try {
+      const payload: unknown = await response.clone().json();
+      if (
+        typeof payload === "object" &&
+        payload !== null &&
+        "message" in payload &&
+        typeof payload.message === "string"
+      ) {
+        category =
+          payload.message === "Not Found"
+            ? "not_found"
+            : payload.message === "Forbidden"
+              ? "authorization_denied"
+              : payload.message ===
+                  "The filesystem storage driver is not active."
+                ? "storage_unavailable"
+                : "other";
+      }
+    } catch {
+      category = "non_json_error";
+    }
+    console.error(
+      "ATTACHMENT_UPLOAD_DIAGNOSTIC",
+      JSON.stringify({
+        origin: url.origin,
+        pathname: url.pathname,
+        status: response.status,
+        category,
+      }),
+    );
+  }
+  return response;
+}
+
 const PNG_BYTES = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0,
 ]);
@@ -184,11 +227,15 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     expect(pendingRow?.state).toBe("pending");
     expect(pendingRow?.workspaceId).toBe(workspace.id);
 
-    const uploadResponse = await app.request(presigned.uploadUrl, {
-      method: "PUT",
-      headers: presigned.uploadHeaders,
-      body: PNG_BYTES,
-    });
+    const uploadResponse = await requestPresignedAttachmentUpload(
+      app,
+      presigned.uploadUrl,
+      {
+        method: "PUT",
+        headers: presigned.uploadHeaders,
+        body: PNG_BYTES,
+      },
+    );
     expect(uploadResponse.status).toBe(204);
 
     const completeResponse = await app.request(
@@ -238,7 +285,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       uploadHeaders: Record<string, string>;
     };
 
-    await app.request(presigned.uploadUrl, {
+    await requestPresignedAttachmentUpload(app, presigned.uploadUrl, {
       method: "PUT",
       headers: presigned.uploadHeaders,
       body: NOT_A_PNG,
@@ -303,7 +350,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       uploadUrl: string;
       uploadHeaders: Record<string, string>;
     };
-    await app.request(presigned.uploadUrl, {
+    await requestPresignedAttachmentUpload(app, presigned.uploadUrl, {
       method: "PUT",
       headers: presigned.uploadHeaders,
       body: PNG_BYTES,
@@ -321,6 +368,76 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       "/storage/filesystem-download",
     );
 
+    const downloadUrl = new URL(
+      downloadResponse.headers.get("location") as string,
+    );
+    expect(downloadUrl.searchParams.get("contentType")).toBe("image/png");
+    expect(downloadUrl.searchParams.get("representation")).toBe("download");
+    expect(downloadUrl.searchParams.get("disposition")).toBe("attachment");
+
+    const downloadObject = await app.request(
+      `${downloadUrl.pathname}${downloadUrl.search}`,
+    );
+    expect(downloadObject.status).toBe(200);
+    expect(downloadObject.headers.get("content-type")).toBe("image/png");
+    expect(downloadObject.headers.get("content-disposition")).toMatch(
+      /^attachment;/,
+    );
+
+    const previewResponse = await app.request(
+      `/api/attachments/${presigned.attachmentId}?representation=preview`,
+      { redirect: "manual" },
+    );
+    expect(previewResponse.status).toBe(302);
+    const previewUrl = new URL(
+      previewResponse.headers.get("location") as string,
+    );
+    expect(previewUrl.searchParams.get("representation")).toBe("preview");
+    expect(previewUrl.searchParams.get("disposition")).toBe("inline");
+    expect(previewUrl.searchParams.get("contentType")).toBe("image/png");
+
+    const previewObject = await app.request(
+      `${previewUrl.pathname}${previewUrl.search}`,
+    );
+    expect(previewObject.status).toBe(200);
+    expect(previewObject.headers.get("content-type")).toBe("image/png");
+    expect(previewObject.headers.get("content-disposition")).toMatch(
+      /^inline;/,
+    );
+    expect(previewObject.headers.get("content-security-policy")).toBe(
+      "sandbox",
+    );
+    expect(previewObject.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(Buffer.from(await previewObject.arrayBuffer())).toEqual(PNG_BYTES);
+
+    const tamperedPreview = new URL(previewUrl);
+    tamperedPreview.searchParams.set("contentType", "text/html");
+    const rejectedTampering = await app.request(
+      `${tamperedPreview.pathname}${tamperedPreview.search}`,
+    );
+    expect(rejectedTampering.status).toBe(400);
+
+    const tamperedDisposition = new URL(previewUrl);
+    tamperedDisposition.searchParams.set("disposition", "attachment");
+    const rejectedDisposition = await app.request(
+      `${tamperedDisposition.pathname}${tamperedDisposition.search}`,
+    );
+    expect(rejectedDisposition.status).toBe(400);
+
+    await db
+      .update(schema.attachmentTable)
+      .set({ mimeType: "image/svg+xml" })
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+    const rejectedSvgPreview = await app.request(
+      `/api/attachments/${presigned.attachmentId}?representation=preview`,
+      { redirect: "manual" },
+    );
+    expect(rejectedSvgPreview.status).toBe(415);
+    await db
+      .update(schema.attachmentTable)
+      .set({ mimeType: "image/png" })
+      .where(eq(schema.attachmentTable.id, presigned.attachmentId));
+
     const auditRows = await db
       .select()
       .from(schema.auditLogTable)
@@ -330,7 +447,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
           eq(schema.auditLogTable.action, "attachment.downloaded"),
         ),
       );
-    expect(auditRows).toHaveLength(1);
+    expect(auditRows).toHaveLength(2);
     expect(auditRows[0]?.workspaceId).toBe(workspace.id);
 
     const deleteResponse = await app.request(
@@ -535,11 +652,15 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       uploadHeaders: Record<string, string>;
     };
 
-    const firstPut = await app.request(presigned.uploadUrl, {
-      method: "PUT",
-      headers: presigned.uploadHeaders,
-      body: PNG_BYTES,
-    });
+    const firstPut = await requestPresignedAttachmentUpload(
+      app,
+      presigned.uploadUrl,
+      {
+        method: "PUT",
+        headers: presigned.uploadHeaders,
+        body: PNG_BYTES,
+      },
+    );
     expect(firstPut.status).toBe(204);
 
     const completeResponse = await app.request(
@@ -568,11 +689,15 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     const MALICIOUS_REPLACEMENT = Buffer.from(
       "this would have silently replaced the checked bytes",
     );
-    const secondPut = await app.request(presigned.uploadUrl, {
-      method: "PUT",
-      headers: presigned.uploadHeaders,
-      body: MALICIOUS_REPLACEMENT,
-    });
+    const secondPut = await requestPresignedAttachmentUpload(
+      app,
+      presigned.uploadUrl,
+      {
+        method: "PUT",
+        headers: presigned.uploadHeaders,
+        body: MALICIOUS_REPLACEMENT,
+      },
+    );
     // The write route itself has no notion of "already completed" (it is a bare signed
     // token, exactly like a real S3 presigned PUT) -- it succeeds, but only against the
     // now-vacated pending key, which nothing serves from any more.
@@ -627,7 +752,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
         releaseController = controller;
       },
     });
-    const slowPut = app.request(presigned.uploadUrl, {
+    const slowPut = requestPresignedAttachmentUpload(app, presigned.uploadUrl, {
       method: "PUT",
       headers: presigned.uploadHeaders,
       body: slowBody,
@@ -639,11 +764,15 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
     // past it -- otherwise the two requests would not actually be concurrent.
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    const fastPut = await app.request(presigned.uploadUrl, {
-      method: "PUT",
-      headers: presigned.uploadHeaders,
-      body: PNG_BYTES,
-    });
+    const fastPut = await requestPresignedAttachmentUpload(
+      app,
+      presigned.uploadUrl,
+      {
+        method: "PUT",
+        headers: presigned.uploadHeaders,
+        body: PNG_BYTES,
+      },
+    );
     expect(fastPut.status).toBe(204);
 
     const completeResponse = await app.request(
@@ -816,7 +945,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       uploadUrl: string;
       uploadHeaders: Record<string, string>;
     };
-    await app.request(presigned.uploadUrl, {
+    await requestPresignedAttachmentUpload(app, presigned.uploadUrl, {
       method: "PUT",
       headers: presigned.uploadHeaders,
       body: PNG_BYTES,
@@ -873,7 +1002,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       uploadUrl: string;
       uploadHeaders: Record<string, string>;
     };
-    await app.request(presigned.uploadUrl, {
+    await requestPresignedAttachmentUpload(app, presigned.uploadUrl, {
       method: "PUT",
       headers: presigned.uploadHeaders,
       body: PNG_BYTES,
@@ -979,7 +1108,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       uploadUrl: string;
       uploadHeaders: Record<string, string>;
     };
-    await app.request(presigned.uploadUrl, {
+    await requestPresignedAttachmentUpload(app, presigned.uploadUrl, {
       method: "PUT",
       headers: presigned.uploadHeaders,
       body: PNG_BYTES,

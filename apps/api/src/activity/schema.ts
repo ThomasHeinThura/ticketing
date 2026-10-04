@@ -1,4 +1,4 @@
-import { z } from "../openapi";
+import { jsonValueSchema, z } from "../openapi";
 
 export const taskIdParam = z.object({ taskId: z.string() });
 
@@ -11,9 +11,13 @@ export const createActivityBody = z.object({
   type: z.string().openapi({
     description: "The event kind, e.g. status_changed or assignee_changed.",
   }),
-  eventData: z.record(z.string(), z.unknown()).nullable().optional().openapi({
-    description: "Type-specific payload stored alongside the event.",
-  }),
+  eventData: z
+    .record(z.string(), jsonValueSchema)
+    .nullable()
+    .optional()
+    .openapi({
+      description: "Type-specific payload stored alongside the event.",
+    }),
 });
 
 export const createCommentBody = z.object({

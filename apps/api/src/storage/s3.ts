@@ -13,6 +13,7 @@ import { config } from "dotenv-mono";
 import {
   type AssetObject,
   applyKeyPrefix,
+  buildAttachmentContentDisposition,
   buildObjectKey,
   buildObjectKeyPrefix,
   DEFAULT_DOWNLOAD_URL_TTL_SECONDS,
@@ -137,6 +138,26 @@ function getStorageConfig(): StorageConfig {
       DEFAULT_PRESIGN_TTL_SECONDS,
     ),
   };
+}
+
+/** Exact browser origin used by signed object URLs. Never infer this from request headers. */
+export function getStorageBrowserOrigin(): string | undefined {
+  const endpoint = env("S3_ENDPOINT");
+  try {
+    const parsed = new URL(endpoint);
+    if (
+      (parsed.protocol !== "https:" && parsed.protocol !== "http:") ||
+      parsed.username ||
+      parsed.password ||
+      parsed.search ||
+      parsed.hash
+    ) {
+      return undefined;
+    }
+    return parsed.origin;
+  } catch {
+    return undefined;
+  }
 }
 
 function getMaxImageUploadBytes() {
@@ -308,6 +329,10 @@ export async function createAttachmentUploadUrl(
 export async function createAttachmentDownloadUrl(
   key: string,
   filename: string,
+  options: {
+    contentType?: string;
+    disposition: "attachment" | "inline";
+  } = { disposition: "attachment" },
 ): Promise<string> {
   const config = getStorageConfig();
   const client = getClient(config);
@@ -315,7 +340,13 @@ export async function createAttachmentDownloadUrl(
   const command = new GetObjectCommand({
     Bucket: config.bucket,
     Key: key,
-    ResponseContentDisposition: `attachment; filename="${filename.replaceAll('"', "")}"`,
+    ResponseContentDisposition: buildAttachmentContentDisposition(
+      filename,
+      options.disposition,
+    ),
+    ...(options.contentType
+      ? { ResponseContentType: options.contentType }
+      : {}),
   });
 
   return getSignedUrl(client, command, {

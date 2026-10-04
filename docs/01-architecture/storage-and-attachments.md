@@ -103,11 +103,22 @@ ods), text (txt, md, csv, log, json, xml, yaml), archives (zip, 7z, tar, gz).
   endpoint is served behind this Traefik ([deployment.md](../05-operations/deployment.md));
   on `storage.filesystem` the API serves bytes itself and no third hostname exists.
   The object store is never public.
-- `Content-Disposition: attachment` for everything except images that are being displayed
-  inline in the UI.
+- `Content-Disposition: attachment` for every ordinary download. The authenticated
+  work-item preview request may sign an inline response only for the verified PNG, JPEG,
+  GIF, WebP and PDF MIME allowlist. Both S3 response overrides and filesystem download
+  tokens bind the MIME type, safe filename, representation and disposition; changing any
+  of them invalidates the signature. The filesystem response uses the MIME type bound into
+  that token, not a caller-supplied response header. SVG and all other types remain
+  attachment-only.
 - Where the storage backend permits, downloads are served from a **separate origin** so
   that even a successfully uploaded hostile file cannot execute against the application
-  origin. When it cannot, a restrictive `Content-Security-Policy: sandbox` header is set.
+  origin. The parent application's `img-src` and `frame-src` allow only its own origin and
+  the configured S3 endpoint's exact origin. Filesystem storage is same-origin. Filesystem
+  object responses set `X-Content-Type-Options: nosniff` and a sandbox CSP; the PDF iframe
+  also has an empty `sandbox` attribute. No arbitrary forwarded host or request-controlled
+  storage origin is trusted. The existing public-storage contract requires the S3 endpoint
+  used for presigning to be the browser-facing endpoint, so an HTTPS application never
+  rewrites an HTTP/internal signed URL after signing.
 - Every download writes an audit row: who, what, when.
 
 ## Visibility

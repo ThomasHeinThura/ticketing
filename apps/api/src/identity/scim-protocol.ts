@@ -11,7 +11,13 @@ import { and, eq, isNull, sql, count as sqlCount } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
 import type { BaseVariables } from "../openapi";
-import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
+import {
+  apiRouter,
+  createRoute,
+  jsonResponse,
+  jsonValueSchema,
+  z,
+} from "../openapi";
 import {
   IdentityGrantClosureChangedError,
   retryIdentityGrantClosure,
@@ -183,7 +189,7 @@ const serviceProviderConfig = z.object({
   ),
 });
 
-const scimListSchema = z.record(z.string(), z.unknown());
+const scimListSchema = z.record(z.string(), jsonValueSchema);
 const userListRoute = createRoute({
   method: "get",
   path: "/Users",
@@ -720,7 +726,7 @@ const schemasRoute = createRoute({
         totalResults: z.number(),
         startIndex: z.number(),
         itemsPerPage: z.number(),
-        Resources: z.array(z.record(z.string(), z.unknown())),
+        Resources: z.array(z.record(z.string(), jsonValueSchema)),
       }),
     ),
   },

@@ -7,6 +7,7 @@ import {
   parseServiceCalendarListSearchFromQueryString,
   parseSlaPolicyListSearch,
   parseWorkItemActivityFilter,
+  parseWorkItemDetailSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   routes,
@@ -146,6 +147,38 @@ describe("routes.workItemDetail", () => {
 
   it("falls back to all for malformed activity filters", () => {
     expect(parseWorkItemActivityFilter("internal-only")).toBe("all");
+  });
+
+  it("round-trips the attachment preview while retaining activity URL state", () => {
+    const url = routes.workItemDetail.build(
+      { key: "PROJ-123" },
+      { activity: "comments", previewAttachment: "attachment/a+b" },
+    );
+    expect(url).toBe(
+      "/agent/work-items/PROJ-123?activity=comments&previewAttachment=attachment%2Fa%2Bb",
+    );
+    expect(
+      parseWorkItemDetailSearch(
+        Object.fromEntries(
+          new URL(url, "https://taskdesk.invalid").searchParams.entries(),
+        ),
+      ),
+    ).toEqual({ activity: "comments", previewAttachment: "attachment/a+b" });
+  });
+
+  it("drops empty, oversized, and control-character preview identifiers", () => {
+    expect(parseWorkItemDetailSearch({ previewAttachment: "" })).toEqual({
+      activity: undefined,
+      previewAttachment: undefined,
+    });
+    expect(
+      parseWorkItemDetailSearch({ previewAttachment: "a\n/b" })
+        .previewAttachment,
+    ).toBeUndefined();
+    expect(
+      parseWorkItemDetailSearch({ previewAttachment: "x".repeat(201) })
+        .previewAttachment,
+    ).toBeUndefined();
   });
 });
 

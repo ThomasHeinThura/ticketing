@@ -1,4 +1,4 @@
-import { z } from "../openapi";
+import { jsonValueSchema, z } from "../openapi";
 
 const identifier = z
   .string()
@@ -10,7 +10,7 @@ const showIf = z
   .object({
     field_key: z.string().min(1).max(80),
     op: z.enum(["eq", "neq", "in", "is_set"]),
-    value: z.json().optional(),
+    value: jsonValueSchema.optional(),
   })
   .strict();
 
@@ -150,13 +150,13 @@ export const duplicateSubmissionBody = z
 export const submitRequestBody = z
   .object({
     requestTypeKey: identifier,
-    formData: z.record(z.string(), z.json()),
+    formData: z.record(z.string(), jsonValueSchema),
   })
   .strict();
 
 export const createSubmissionDraftBody = submitRequestBody;
 export const finalizeSubmissionDraftBody = z
   .object({
-    formData: z.record(z.string(), z.json()),
+    formData: z.record(z.string(), jsonValueSchema),
   })
   .strict();

@@ -48,11 +48,22 @@ This document covers behaviour and interface.
   action approved by the requester — a click-level confirmation showing the file and its
   parent ([pending-actions.md](../01-architecture/pending-actions.md)); the nightly
   `attachment-gc` and `attachment-pending-cleanup` runs need no second approval (`PA-12`).
-- `AT-8` Images render inline as thumbnails with a lightbox. Everything else shows an icon,
-  filename, size and uploader.
-- `AT-9` PDFs preview in a sandboxed viewer. Office documents do not preview — they
-  download. The viewer's CSP and iframe sandboxing are
-  [security-model.md](../01-architecture/security-model.md)'s (§ Transport and headers).
+- `AT-8` Ready PNG, JPEG, GIF and WebP attachments render as thumbnails with a lightbox.
+  Other MIME types, including SVG and other image formats, show a file icon, filename,
+  size and uploader. The preview request is still an authenticated `work_item:read`
+  request against the persisted attachment and its parent; it never exposes an object key.
+- `AT-9` Ready `application/pdf` attachments preview in a sandboxed viewer. Office
+  documents, SVG, and all other types download and never preview. Preview uses the same
+  five-minute signed storage response as download, with the representation and verified
+  MIME/disposition covered by the storage signature. Without the exact `representation=preview`
+  query, downloads retain `Content-Disposition: attachment`. The viewer uses an iframe
+  with an empty `sandbox` attribute and no permissions. The parent CSP permits frames and
+  images only from the application itself and the configured S3 endpoint (or same-origin
+  filesystem storage); `object-src` remains `none`. See
+  [security-model.md](../01-architecture/security-model.md#transport-and-headers).
+  The selected attachment is URL state on the work-item detail route as
+  `?previewAttachment=<attachment-id>`; closing the lightbox removes only that parameter.
+  A stale, malformed, deleted, or non-previewable id never renders a preview.
 
 ## Upload experience
 
@@ -103,6 +114,7 @@ the [screen inventory](../02-design/screen-inventory.md).
 POST   /api/attachments/presign                work_item:update
 POST   /api/attachments/{id}/complete          work_item:update
 GET    /api/attachments/{id}                   work_item:read → 302 to presigned URL
+GET    /api/attachments/{id}?representation=preview   work_item:read → 302 to signed inline URL (only PNG/JPEG/GIF/WebP/PDF)
 PATCH  /api/attachments/{id}                   work_item:update   (visibility, filename)
 DELETE /api/attachments/{id}                   work_item:update
 GET    /api/work-items/{key}/attachments       work_item:read

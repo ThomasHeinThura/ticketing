@@ -12,7 +12,7 @@ import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItem from "@/hooks/queries/work-item/use-get-work-item";
 import { HttpError } from "@/lib/http-error";
 import {
-  parseWorkItemActivityFilter,
+  parseWorkItemDetailSearch,
   type WorkItemActivityFilter,
 } from "@/lib/routes";
 
@@ -31,12 +31,7 @@ const WorkItemDetail = lazy(loadWorkItemDetail);
 export const Route = createFileRoute(
   "/_layout/_authenticated/agent/work-items/$key",
 )({
-  validateSearch: (search) => ({
-    activity:
-      search.activity === undefined
-        ? undefined
-        : parseWorkItemActivityFilter(search.activity),
-  }),
+  validateSearch: (search) => parseWorkItemDetailSearch(search),
   component: WorkItemDetailRouteComponent,
   pendingComponent: WorkItemDetailLoading,
   pendingMs: 0,
@@ -45,7 +40,7 @@ export const Route = createFileRoute(
 
 function WorkItemDetailRouteComponent() {
   const { key } = Route.useParams();
-  const { activity: searchActivity } = Route.useSearch();
+  const { activity: searchActivity, previewAttachment } = Route.useSearch();
   const activity: WorkItemActivityFilter = searchActivity ?? "all";
   const navigate = Route.useNavigate();
   const { t } = useTranslation();
@@ -108,6 +103,15 @@ function WorkItemDetailRouteComponent() {
               isNotFound={false}
               isError={isError && !isNotFound}
               onRetry={refetch}
+              previewAttachmentId={previewAttachment}
+              onPreviewAttachment={(id) => {
+                void navigate({
+                  search: {
+                    activity: searchActivity,
+                    previewAttachment: id ?? undefined,
+                  },
+                });
+              }}
             />
           ) : !isNotFound && !isError ? (
             <WorkItemDetailLoading />
@@ -136,6 +140,7 @@ function WorkItemDetailRouteComponent() {
               void navigate({
                 search: {
                   activity: nextFilter === "all" ? undefined : nextFilter,
+                  previewAttachment,
                 },
               });
             }}
@@ -155,12 +160,16 @@ function WorkItemDetailWithProject({
   isNotFound,
   isError,
   onRetry,
+  previewAttachmentId,
+  onPreviewAttachment,
 }: {
   item: NonNullable<ReturnType<typeof useGetWorkItem>["data"]>;
   workItemKey: string;
   isNotFound: boolean;
   isError: boolean;
   onRetry: () => void;
+  previewAttachmentId?: string;
+  onPreviewAttachment: (id: string | null) => void;
 }) {
   const { data: projects } = useGetProjects({ workspaceId: item.workspaceId });
   const project = projects?.find(
@@ -176,6 +185,8 @@ function WorkItemDetailWithProject({
       isNotFound={isNotFound}
       isError={isError}
       onRetry={onRetry}
+      previewAttachmentId={previewAttachmentId}
+      onPreviewAttachment={onPreviewAttachment}
     />
   );
 }

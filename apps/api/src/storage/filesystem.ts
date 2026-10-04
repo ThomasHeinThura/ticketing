@@ -53,7 +53,9 @@ import type { ReadableStream as NodeWebReadableStream } from "node:stream/web";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
 import {
   type AssetObject,
+  type AttachmentRepresentation,
   applyKeyPrefix,
+  attachmentDisposition,
   buildObjectKey,
   buildObjectKeyPrefix,
   DEFAULT_DOWNLOAD_URL_TTL_SECONDS,
@@ -554,7 +556,7 @@ export async function getPrivateObject(key: string): Promise<AssetObject> {
 const ATTACHMENT_UPLOAD_TOKEN_INFO =
   "taskdesk:storage:attachment-upload-token:v1";
 const ATTACHMENT_DOWNLOAD_TOKEN_INFO =
-  "taskdesk:storage:attachment-download-token:v1";
+  "taskdesk:storage:attachment-download-token:v2";
 
 function deriveTokenKey(info: string): Buffer {
   const authSecret = getAuthSecretEnv();
@@ -605,23 +607,38 @@ function verifyAttachmentUploadToken(
   return crypto.timingSafeEqual(expectedBuf, providedBuf);
 }
 
-function signDownloadToken(key: string, expires: number): string {
+function signDownloadToken(input: {
+  key: string;
+  expires: number;
+  filename: string;
+  contentType: string;
+  representation: AttachmentRepresentation;
+  disposition: "attachment" | "inline";
+}): string {
   const hmac = crypto.createHmac(
     "sha256",
     deriveTokenKey(ATTACHMENT_DOWNLOAD_TOKEN_INFO),
   );
-  hmac.update(`${key}\n${expires}`);
+  hmac.update(
+    JSON.stringify([
+      input.key,
+      input.expires,
+      input.filename,
+      input.contentType,
+      input.representation,
+      input.disposition,
+    ]),
+  );
   return hmac.digest("base64url");
 }
 
 function verifyDownloadToken(
-  key: string,
-  expires: number,
+  input: Parameters<typeof signDownloadToken>[0],
   token: string,
 ): boolean {
   let expected: string;
   try {
-    expected = signDownloadToken(key, expires);
+    expected = signDownloadToken(input);
   } catch {
     return false;
   }
@@ -722,10 +739,27 @@ export function createAttachmentDownloadUrl(
   key: string,
   filename: string,
   apiBaseUrl?: string,
+  options: {
+    contentType: string;
+    representation: AttachmentRepresentation;
+    disposition: "attachment" | "inline";
+  } = {
+    contentType: "application/octet-stream",
+    representation: "download",
+    disposition: "attachment",
+  },
 ): string {
   const expires =
     Math.floor(Date.now() / 1000) + DEFAULT_DOWNLOAD_URL_TTL_SECONDS;
-  const token = signDownloadToken(key, expires);
+  const tokenInput = {
+    key,
+    expires,
+    filename,
+    contentType: options.contentType,
+    representation: options.representation,
+    disposition: options.disposition,
+  };
+  const token = signDownloadToken(tokenInput);
   const base = normalizeApiServerUrl(apiBaseUrl || "http://localhost:1337");
 
   const query = new URLSearchParams({
@@ -733,6 +767,9 @@ export function createAttachmentDownloadUrl(
     expires: String(expires),
     token,
     filename,
+    contentType: options.contentType,
+    representation: options.representation,
+    disposition: options.disposition,
   });
 
   return `${base}/storage/filesystem-download?${query.toString()}`;
@@ -747,6 +784,10 @@ export async function readAttachmentDownloadObject(params: {
   key: string;
   expires: string;
   token: string;
+  filename: string;
+  contentType: string;
+  representation: AttachmentRepresentation;
+  disposition: "attachment" | "inline";
 }): Promise<AssetObject> {
   const expiresNum = Number.parseInt(params.expires, 10);
   if (!Number.isFinite(expiresNum)) {
@@ -755,7 +796,22 @@ export async function readAttachmentDownloadObject(params: {
   if (Math.floor(Date.now() / 1000) > expiresNum) {
     throw new StoragePathError("Download URL has expired.");
   }
-  if (!verifyDownloadToken(params.key, expiresNum, params.token)) {
+  if (
+    params.disposition !==
+      attachmentDisposition(params.representation, params.contentType) ||
+    (params.representation === "preview" && params.disposition !== "inline") ||
+    !verifyDownloadToken(
+      {
+        key: params.key,
+        expires: expiresNum,
+        filename: params.filename,
+        contentType: params.contentType,
+        representation: params.representation,
+        disposition: params.disposition,
+      },
+      params.token,
+    )
+  ) {
     throw new StoragePathError("Invalid or missing download token.");
   }
   return getPrivateObject(params.key);

@@ -1,4 +1,4 @@
-import { responseTimestamp, z } from "../openapi";
+import { jsonValueSchema, responseTimestamp, z } from "../openapi";
 
 const activityTypeDescription =
   "One of: comment, task, create, status_changed, priority_changed, assignee_changed, unassigned, due_date_changed, title_changed, description_changed.";
@@ -12,7 +12,7 @@ export const activitySchema = z
     updatedAt: responseTimestamp,
     userId: z.string().nullable(),
     content: z.string().nullable(),
-    eventData: z.unknown().openapi({
+    eventData: jsonValueSchema.optional().openapi({
       description:
         "Type-specific payload, e.g. { oldStatus, newStatus } for status_changed. Null for plain comments.",
     }),

@@ -6,6 +6,13 @@ import { installStrictPolicyRegistration } from "./permissions/strict-route-regi
 export { createRoute } from "@hono/zod-openapi";
 export { z };
 
+// The public API accepts JSON values at these extension points. Keeping the
+// recursive shape named lets OpenAPI emit a finite component reference instead
+// of recursively expanding Zod's anonymous unknown schema forever.
+export const jsonValueSchema: z.ZodType<unknown> = z
+  .json()
+  .openapi("JsonValue") as z.ZodType<unknown>;
+
 export type ApiKey = {
   id: string;
   userId: string;

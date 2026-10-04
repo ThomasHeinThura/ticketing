@@ -1,11 +1,11 @@
-import { responseTimestamp, z } from "../openapi";
+import { jsonValueSchema, responseTimestamp, z } from "../openapi";
 
 export const cannedResponseSchema = z
   .object({
     id: z.string(),
     workspaceId: z.string(),
     name: z.string(),
-    body: z.unknown(),
+    body: jsonValueSchema.optional(),
     visibilityDefault: z
       .string()
       .openapi({ description: "One of: public, internal." }),

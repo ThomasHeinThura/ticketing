@@ -1,4 +1,4 @@
-import { z } from "../openapi";
+import { jsonValueSchema, z } from "../openapi";
 
 /** One audit row as the API returns it (`data-model.md` §11's columns, ids only —
  * the writer already guarantees no secret, body, header, email or name is stored). */
@@ -15,8 +15,8 @@ export const auditRowSchema = z.object({
   action: z.string(),
   entityType: z.string(),
   entityId: z.string(),
-  before: z.unknown().nullable(),
-  after: z.unknown().nullable(),
+  before: jsonValueSchema.nullable().optional(),
+  after: jsonValueSchema.nullable().optional(),
 });
 
 export const auditListSchema = z.object({

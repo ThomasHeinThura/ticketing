@@ -1,4 +1,4 @@
-import { z } from "../openapi";
+import { jsonValueSchema, z } from "../openapi";
 
 export const notificationParam = z.object({ id: z.string() });
 
@@ -8,7 +8,7 @@ export const createNotificationBody = z.object({
     description: "Stored as the notification's content.",
   }),
   type: z.string(),
-  eventData: z.record(z.string(), z.unknown()).nullable().optional(),
+  eventData: z.record(z.string(), jsonValueSchema).nullable().optional(),
   relatedEntityId: z.string().optional().openapi({
     description:
       "Stored as resourceId: the task or workspace being pointed at.",

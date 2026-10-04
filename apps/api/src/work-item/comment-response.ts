@@ -1,4 +1,9 @@
-import { nullableResponseTimestamp, responseTimestamp, z } from "../openapi";
+import {
+  jsonValueSchema,
+  nullableResponseTimestamp,
+  responseTimestamp,
+  z,
+} from "../openapi";
 
 // `data-model.md` §4's `comment` row, narrowed to what a caller needs back. `deletedBy` is
 // omitted from the response on purpose: the tombstone text (CA-18: "Comment deleted by
@@ -14,7 +19,7 @@ export const commentSchema = z
     actorType: z.string().openapi({
       description: "One of: person, automation, system, api_key.",
     }),
-    body: z.unknown().nullable().openapi({
+    body: jsonValueSchema.nullable().optional().openapi({
       description: "Tiptap document. Null once the comment is deleted (CA-18).",
     }),
     visibility: z

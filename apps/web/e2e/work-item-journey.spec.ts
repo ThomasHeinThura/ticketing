@@ -101,6 +101,32 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
     },
   };
   const routeCalls: string[] = [];
+  const previewAttachment = {
+    id: "attachment-preview-e2e",
+    workItemId: "item-e2e",
+    filename: "evidence.png",
+    mimeType: "image/png",
+    size: 68,
+    state: "ready",
+    customerVisible: false,
+    uploadedBy: "person-e2e",
+    createdAt: "2026-09-29T10:00:00.000Z",
+    deletedAt: null,
+  };
+  const pdfAttachment = {
+    ...previewAttachment,
+    id: "attachment-preview-pdf-e2e",
+    filename: "report.pdf",
+    mimeType: "application/pdf",
+    size: 68,
+  };
+  const downloadOnlyAttachment = {
+    ...previewAttachment,
+    id: "attachment-download-only-e2e",
+    filename: "notes.txt",
+    mimeType: "text/plain",
+    size: 12,
+  };
   await page.addInitScript(() => {
     const shifts: Array<{ value: number; startTime: number }> = [];
     const observer = new PerformanceObserver((list) => {
@@ -147,6 +173,33 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
         contentType: "application/json",
         body: JSON.stringify(body),
       });
+    if (
+      path === "/api/work-items/WLP-1/attachments" &&
+      request.method() === "GET"
+    ) {
+      return json([previewAttachment, pdfAttachment, downloadOnlyAttachment]);
+    }
+    if (
+      [
+        "/api/attachments/attachment-preview-e2e",
+        "/api/attachments/attachment-preview-pdf-e2e",
+      ].includes(path) &&
+      url.searchParams.get("representation") === "preview"
+    ) {
+      const isPdf = path.endsWith("attachment-preview-pdf-e2e");
+      return route.fulfill({
+        status: 200,
+        contentType: isPdf ? "application/pdf" : "image/png",
+        body: isPdf
+          ? Buffer.from(
+              "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Count 0/Kids[]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF",
+            )
+          : Buffer.from(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jxioAAAAASUVORK5CYII=",
+              "base64",
+            ),
+      });
+    }
     if (path.endsWith("/auth/get-session")) return json(session);
     if (path === "/api/me/csrf-token" && request.method() === "GET")
       return json({
@@ -601,7 +654,46 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await page.reload();
   await expect(page.getByLabel("Default comment visibility")).toBeEnabled();
   await page.goto("/agent/work-items/WLP-1");
-  await expect(page.getByTestId("work-item-detail")).toBeVisible();
+  await expect(
+    page.getByTestId("work-item-detail"),
+    JSON.stringify(routeCalls),
+  ).toBeVisible();
+  await expect(page.getByText("evidence.png", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Download evidence.png" }),
+  ).toHaveAttribute("href", /\/api\/attachments\/attachment-preview-e2e$/);
+  await page.getByRole("button", { name: "Preview evidence.png" }).click();
+  await expect(page).toHaveURL(/previewAttachment=attachment-preview-e2e/);
+  await expect(
+    page.getByRole("dialog").getByRole("img", { name: "evidence.png" }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: test.info().outputPath("p1-attachment-preview.png"),
+  });
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(page).not.toHaveURL(/previewAttachment=/);
+  await expect(
+    page.getByRole("button", { name: "Preview report.pdf" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Download report.pdf" }),
+  ).toHaveAttribute("href", /\/api\/attachments\/attachment-preview-pdf-e2e$/);
+  await page.getByRole("button", { name: "Preview report.pdf" }).click();
+  await expect(page).toHaveURL(/previewAttachment=attachment-preview-pdf-e2e/);
+  const pdfPreview = page.getByRole("dialog").getByTitle("report.pdf");
+  await expect(pdfPreview).toBeVisible();
+  await expect(pdfPreview).toHaveAttribute("sandbox", "");
+  await page.getByRole("button", { name: "Close" }).click();
+  await expect(page).not.toHaveURL(/previewAttachment=/);
+  await expect(
+    page.getByRole("button", { name: "Preview notes.txt" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Download notes.txt" }),
+  ).toHaveAttribute(
+    "href",
+    /\/api\/attachments\/attachment-download-only-e2e$/,
+  );
   await expect(page.getByTestId("realtime-unavailable")).toBeVisible();
   await expect(page.getByText("Activity", { exact: true })).toBeVisible();
   await expect(page.getByText("Tiptap note", { exact: true })).toBeVisible();
@@ -701,7 +793,11 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   await expect(
     page.getByText("assignee: person-existing → person-e2e"),
   ).toBeVisible();
-  await expect(page.getByText("Internal", { exact: true })).toHaveCount(2);
+  await expect(
+    page
+      .getByTestId("work-item-journey")
+      .getByText("Internal", { exact: true }),
+  ).toHaveCount(2);
   await expect(page.getByText("Tiptap note", { exact: true })).toBeVisible();
   await expect(page.getByText("Tiptap note", { exact: true })).toHaveJSProperty(
     "tagName",

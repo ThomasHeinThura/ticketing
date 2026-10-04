@@ -3,7 +3,11 @@ import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../../audit/audit-writer";
 import db from "../../database";
 import { attachmentTable, workItemTable } from "../../database/schema";
-import { createAttachmentDownloadUrl } from "../../storage";
+import {
+  type AttachmentRepresentation,
+  createAttachmentDownloadUrl,
+  isInlineAttachmentMimeType,
+} from "../../storage";
 
 export type DownloadAttachmentInput = {
   attachmentId: string;
@@ -13,6 +17,7 @@ export type DownloadAttachmentInput = {
   actorType: "person" | "api_key";
   apiKeyId: string | null;
   apiBaseUrl: string;
+  representation?: AttachmentRepresentation;
 };
 
 /**
@@ -30,6 +35,7 @@ export async function downloadAttachment(input: DownloadAttachmentInput) {
     actorType,
     apiKeyId,
     apiBaseUrl,
+    representation = "download",
   } = input;
 
   const [attachment] = await db
@@ -49,6 +55,15 @@ export async function downloadAttachment(input: DownloadAttachmentInput) {
     throw new HTTPException(404, { message: "Attachment not found" });
   }
 
+  if (
+    representation === "preview" &&
+    !isInlineAttachmentMimeType(attachment.mimeType)
+  ) {
+    throw new HTTPException(415, {
+      message: "This attachment type cannot be previewed.",
+    });
+  }
+
   const [workItem] = await db
     .select({ projectId: workItemTable.projectId })
     .from(workItemTable)
@@ -59,6 +74,7 @@ export async function downloadAttachment(input: DownloadAttachmentInput) {
     attachment.objectKey,
     attachment.filename,
     apiBaseUrl,
+    { contentType: attachment.mimeType, representation },
   );
 
   await appendAuditLog(db, {

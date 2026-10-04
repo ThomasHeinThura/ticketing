@@ -8,6 +8,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
+  Dialog,
+  DialogDescription,
+  DialogHeader,
+  DialogPopup,
+  DialogTitle,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -84,23 +89,67 @@ function AttachmentIcon({ mimeType }: { mimeType: string }) {
   return <File aria-hidden="true" />;
 }
 
+function isPreviewable(attachment: WorkItemAttachment) {
+  const mimeType = attachment.mimeType.toLowerCase().split(";")[0]?.trim();
+  return (
+    attachment.state === "ready" &&
+    (mimeType === "image/png" ||
+      mimeType === "image/jpeg" ||
+      mimeType === "image/gif" ||
+      mimeType === "image/webp" ||
+      mimeType === "application/pdf")
+  );
+}
+
+function previewUrl(attachmentId: string) {
+  const url = new URL(
+    getApiUrl(`attachments/${encodeURIComponent(attachmentId)}`),
+    window.location.origin,
+  );
+  url.searchParams.set("representation", "preview");
+  return url.toString();
+}
+
 function AttachmentRow({
   attachment,
   onDelete,
+  onPreview,
   canDelete,
 }: {
   attachment: WorkItemAttachment;
   canDelete: boolean;
   onDelete: (attachment: WorkItemAttachment) => void;
+  onPreview: (attachment: WorkItemAttachment) => void;
 }) {
   const { t } = useTranslation();
   const downloadUrl = getApiUrl(
     `attachments/${encodeURIComponent(attachment.id)}`,
   );
+  const canPreview = isPreviewable(attachment);
+  const isRasterImage =
+    canPreview && attachment.mimeType.toLowerCase().startsWith("image/");
   return (
     <li className="flex min-w-0 items-center gap-3 rounded-md border p-3">
-      <span className="shrink-0" aria-hidden="true">
-        <AttachmentIcon mimeType={attachment.mimeType} />
+      <span className="shrink-0">
+        {isRasterImage ? (
+          <button
+            type="button"
+            className="overflow-hidden rounded border"
+            aria-label={t("workItems:attachments.preview", {
+              filename: attachment.filename,
+            })}
+            onClick={() => onPreview(attachment)}
+          >
+            <img
+              src={previewUrl(attachment.id)}
+              alt=""
+              loading="lazy"
+              className="h-14 w-20 object-cover"
+            />
+          </button>
+        ) : (
+          <AttachmentIcon mimeType={attachment.mimeType} />
+        )}
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{attachment.filename}</p>
@@ -118,6 +167,19 @@ function AttachmentRow({
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
+        {canPreview && !isRasterImage && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-label={t("workItems:attachments.preview", {
+              filename: attachment.filename,
+            })}
+            onClick={() => onPreview(attachment)}
+          >
+            {t("workItems:attachments.previewAction")}
+          </Button>
+        )}
         <a
           href={downloadUrl}
           className="inline-flex h-8 items-center rounded-md border px-3 text-sm hover:bg-accent"
@@ -148,9 +210,13 @@ function AttachmentRow({
 export default function WorkItemAttachments({
   workItemKey,
   workspaceId,
+  previewAttachmentId,
+  onPreviewAttachment,
 }: {
   workItemKey: string;
   workspaceId: string;
+  previewAttachmentId?: string;
+  onPreviewAttachment?: (id: string | null) => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -170,6 +236,24 @@ export default function WorkItemAttachments({
     queryKey,
     queryFn: () => listWorkItemAttachments(workItemKey),
   });
+  const previewAttachment = attachments.data?.find(
+    (attachment) => attachment.id === previewAttachmentId,
+  );
+
+  useEffect(() => {
+    if (
+      previewAttachmentId &&
+      attachments.data &&
+      (!previewAttachment || !isPreviewable(previewAttachment))
+    ) {
+      onPreviewAttachment?.(null);
+    }
+  }, [
+    attachments.data,
+    onPreviewAttachment,
+    previewAttachment,
+    previewAttachmentId,
+  ]);
   const [deleting, setDeleting] = useState<WorkItemAttachment | null>(null);
   const [deleteError, setDeleteError] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -306,6 +390,7 @@ export default function WorkItemAttachments({
               key={attachment.id}
               attachment={attachment}
               canDelete={canUpload}
+              onPreview={(attachment) => onPreviewAttachment?.(attachment.id)}
               onDelete={(row) => {
                 setDeleteError("");
                 setDeleting(row);
@@ -323,6 +408,49 @@ export default function WorkItemAttachments({
           </EmptyHeader>
         </Empty>
       )}
+
+      <Dialog
+        open={Boolean(
+          previewAttachmentId &&
+            previewAttachment &&
+            isPreviewable(previewAttachment),
+        )}
+        onOpenChange={(open) => {
+          if (!open) onPreviewAttachment?.(null);
+        }}
+      >
+        {previewAttachment && isPreviewable(previewAttachment) && (
+          <DialogPopup
+            closeLabel={t("common:actions.close")}
+            className="max-w-5xl"
+          >
+            <DialogHeader>
+              <DialogTitle>
+                {t("workItems:attachments.previewTitle")}
+              </DialogTitle>
+              <DialogDescription>
+                {previewAttachment.filename}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex min-h-0 justify-center overflow-auto p-4">
+              {previewAttachment.mimeType === "application/pdf" ? (
+                <iframe
+                  title={previewAttachment.filename}
+                  src={previewUrl(previewAttachment.id)}
+                  sandbox=""
+                  className="h-[75vh] w-full rounded-md border"
+                />
+              ) : (
+                <img
+                  src={previewUrl(previewAttachment.id)}
+                  alt={previewAttachment.filename}
+                  className="max-h-[75vh] max-w-full object-contain"
+                />
+              )}
+            </div>
+          </DialogPopup>
+        )}
+      </Dialog>
 
       {uploads.length > 0 && (
         <ul

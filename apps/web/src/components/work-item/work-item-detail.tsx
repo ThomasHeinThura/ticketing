@@ -39,6 +39,8 @@ export type WorkItemDetailProps = {
   isNotFound: boolean;
   isError: boolean;
   onRetry: () => void;
+  previewAttachmentId?: string;
+  onPreviewAttachment?: (id: string | null) => void;
 };
 
 const FIELD_LABEL_KEYS: Record<WorkItemDetailField, string> = {
@@ -103,6 +105,8 @@ function WorkItemDetail({
   isNotFound,
   isError,
   onRetry,
+  previewAttachmentId,
+  onPreviewAttachment,
 }: WorkItemDetailProps) {
   const { t } = useTranslation();
 
@@ -257,6 +261,8 @@ function WorkItemDetail({
       <WorkItemAttachments
         workItemKey={item.key}
         workspaceId={item.workspaceId}
+        previewAttachmentId={previewAttachmentId}
+        onPreviewAttachment={onPreviewAttachment}
       />
 
       <Separator />

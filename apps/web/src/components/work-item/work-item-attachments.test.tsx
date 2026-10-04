@@ -44,13 +44,22 @@ const imageAttachment = {
   deletedAt: null,
 };
 
-function renderAttachments() {
+function renderAttachments(
+  options: {
+    previewAttachmentId?: string;
+    onPreviewAttachment?: (id: string | null) => void;
+  } = {},
+) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <WorkItemAttachments workItemKey="WI-1" workspaceId="workspace-1" />
+      <WorkItemAttachments
+        workItemKey="WI-1"
+        workspaceId="workspace-1"
+        {...options}
+      />
     </QueryClientProvider>,
   );
 }
@@ -74,6 +83,14 @@ describe("work-item attachment screen (AT-1/AT-5/AT-7/AT-8/AT-9)", () => {
       name: "workItems:attachments.download",
     });
     expect(download.getAttribute("href")).toContain("attachments/attachment-1");
+    expect(download.getAttribute("href")).not.toContain(
+      "representation=preview",
+    );
+    expect(
+      await screen.findByRole("button", {
+        name: "workItems:attachments.preview",
+      }),
+    ).toBeTruthy();
     expect(screen.getByText("workItems:attachments.internalOnly")).toBeTruthy();
 
     fireEvent.click(
@@ -90,6 +107,56 @@ describe("work-item attachment screen (AT-1/AT-5/AT-7/AT-8/AT-9)", () => {
       expect(deleteAttachment).toHaveBeenCalledWith("attachment-1"),
     );
     await waitFor(() => expect(listAttachments).toHaveBeenCalledTimes(2));
+  });
+
+  it("opens an image preview from URL state using the authenticated inline endpoint", async () => {
+    listAttachments.mockResolvedValue([imageAttachment]);
+    const onPreviewAttachment = vi.fn();
+    renderAttachments({
+      previewAttachmentId: imageAttachment.id,
+      onPreviewAttachment,
+    });
+
+    const image = await screen.findByRole("img", {
+      name: imageAttachment.filename,
+    });
+    expect(image.getAttribute("src")).toContain(
+      "/api/attachments/attachment-1?representation=preview",
+    );
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(onPreviewAttachment).not.toHaveBeenCalled();
+  });
+
+  it("selects an image preview without changing the ordinary download URL", async () => {
+    listAttachments.mockResolvedValue([imageAttachment]);
+    const onPreviewAttachment = vi.fn();
+    renderAttachments({ onPreviewAttachment });
+
+    const preview = await screen.findByRole("button", {
+      name: "workItems:attachments.preview",
+    });
+    fireEvent.click(preview);
+    expect(onPreviewAttachment).toHaveBeenCalledWith(imageAttachment.id);
+    expect(
+      screen
+        .getByRole("link", { name: "workItems:attachments.download" })
+        .getAttribute("href"),
+    ).not.toContain("representation=preview");
+  });
+
+  it("does not offer preview for unapproved MIME types", async () => {
+    listAttachments.mockResolvedValue([
+      {
+        ...imageAttachment,
+        mimeType: "image/svg+xml",
+        filename: "diagram.svg",
+      },
+    ]);
+    renderAttachments();
+    await screen.findByText("diagram.svg");
+    expect(
+      screen.queryByRole("button", { name: "workItems:attachments.preview" }),
+    ).toBeNull();
   });
 
   it("uploads each selected file directly and refreshes the ready attachment list", async () => {

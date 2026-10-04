@@ -1,6 +1,6 @@
-import { z } from "../openapi";
+import { jsonValueSchema, z } from "../openapi";
 
-const pendingActionSummarySchema = z.record(z.string(), z.unknown());
+const pendingActionSummarySchema = z.record(z.string(), jsonValueSchema);
 
 export const pendingActionReadSchema = z
   .object({

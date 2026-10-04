@@ -4,6 +4,7 @@ import {
   createRoute,
   errorResponse,
   jsonResponse,
+  z,
 } from "../openapi";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { requireWorkItemReach } from "../work-item/require-work-item-reach";
@@ -149,16 +150,21 @@ const downloadAttachmentRoute = createRoute({
   summary: "Download an attachment",
   description:
     "AT-5/AT-6: redirects to a five-minute presigned download URL and writes an " +
-    "attachment.downloaded audit row.",
+    "attachment.downloaded audit row. AT-8/AT-9 allow representation=preview only " +
+    "for verified PNG/JPEG/GIF/WebP/PDF rows.",
   middleware: [
     requireAttachmentReach(),
     requireWorkspacePermission({ work_item: ["read"] }),
   ] as const,
-  request: { params: attachmentIdParam },
+  request: {
+    params: attachmentIdParam,
+    query: z.strictObject({ representation: z.enum(["preview"]).optional() }),
+  },
   responses: {
     302: { description: "Redirect to the presigned download URL" },
     403: errorResponse("Missing work_item:read permission"),
     404: errorResponse("Attachment not found, or not ready"),
+    415: errorResponse("This attachment type cannot be previewed"),
   },
 });
 
@@ -230,6 +236,7 @@ const attachment = apiRouter<
   })
   .openapi(downloadAttachmentRoute, async (c) => {
     const { id } = c.req.valid("param");
+    const { representation } = c.req.valid("query");
     const workItemId = c.get("workItemId") as string;
     const workspaceId = c.get("workspaceId") as string;
     const apiKey = c.get("apiKey");
@@ -243,6 +250,7 @@ const attachment = apiRouter<
       actorType,
       apiKeyId: apiKey?.id ?? null,
       apiBaseUrl: new URL(c.req.url).origin,
+      representation: representation ?? "download",
     });
 
     return c.redirect(downloadUrl, 302);

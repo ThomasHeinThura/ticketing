@@ -22,6 +22,59 @@ export const DEFAULT_UPLOAD_URL_TTL_SECONDS = 300;
 // constant secretly meaning two different things.
 export const DEFAULT_DOWNLOAD_URL_TTL_SECONDS = 300;
 
+export type AttachmentRepresentation = "download" | "preview";
+
+const INLINE_ATTACHMENT_MIME_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/gif",
+  "image/webp",
+  "application/pdf",
+]);
+
+export function isInlineAttachmentMimeType(contentType: string) {
+  return INLINE_ATTACHMENT_MIME_TYPES.has(
+    contentType.toLowerCase().split(";")[0]?.trim() ?? "",
+  );
+}
+
+export function attachmentDisposition(
+  representation: AttachmentRepresentation,
+  contentType: string,
+): "attachment" | "inline" {
+  if (representation === "preview" && isInlineAttachmentMimeType(contentType)) {
+    return "inline";
+  }
+  return "attachment";
+}
+
+export function buildAttachmentContentDisposition(
+  filename: string,
+  disposition: "attachment" | "inline",
+) {
+  const normalized = [...filename.normalize("NFC")]
+    .filter((character) => {
+      const codePoint = character.codePointAt(0) ?? 0;
+      return character !== '"' && codePoint > 0x1f && codePoint !== 0x7f;
+    })
+    .join("")
+    .trim();
+  const safeFilename = normalized || "file";
+  const asciiFallback =
+    safeFilename
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[\\/]/g, "-")
+      .replace(/[^\x20-\x7E]+/g, "_")
+      .replace(/\s+/g, " ")
+      .trim() || "file";
+  const encodedFilename = encodeURIComponent(safeFilename).replace(
+    /['()*]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+  return `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${encodedFilename}`;
+}
+
 const allowedImageMimeTypes = new Set([
   "image/apng",
   "image/avif",

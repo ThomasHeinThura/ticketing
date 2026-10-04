@@ -9,7 +9,13 @@ import { HTTPException } from "hono/http-exception";
 import { auth } from "../auth";
 import db, { schema } from "../database";
 import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
-import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
+import {
+  apiRouter,
+  createRoute,
+  jsonResponse,
+  jsonValueSchema,
+  z,
+} from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { requireSessionOnly } from "../utils/require-session-only";
 import {
@@ -121,7 +127,7 @@ const challengeRoute = createRoute({
                 kind: z.literal("operation"),
                 operation: z.literal("scim_admin_update"),
                 connectionId: z.string().min(1),
-                request: z.record(z.string(), z.unknown()),
+                request: z.record(z.string(), jsonValueSchema),
               })
               .strict(),
             z
@@ -260,7 +266,7 @@ const proveRoute = createRoute({
                 kind: z.literal("operation"),
                 operation: z.literal("scim_admin_update"),
                 connectionId: z.string().min(1),
-                request: z.record(z.string(), z.unknown()),
+                request: z.record(z.string(), jsonValueSchema),
                 challengeId: z.string(),
                 nonce: z.string().length(43),
                 method: z.literal("password"),
@@ -272,7 +278,7 @@ const proveRoute = createRoute({
                 kind: z.literal("operation"),
                 operation: z.literal("scim_admin_update"),
                 connectionId: z.string().min(1),
-                request: z.record(z.string(), z.unknown()),
+                request: z.record(z.string(), jsonValueSchema),
                 challengeId: z.string(),
                 nonce: z.string().length(43),
                 method: z.literal("totp"),
@@ -284,7 +290,7 @@ const proveRoute = createRoute({
                 kind: z.literal("operation"),
                 operation: z.literal("scim_admin_update"),
                 connectionId: z.string().min(1),
-                request: z.record(z.string(), z.unknown()),
+                request: z.record(z.string(), jsonValueSchema),
                 challengeId: z.string(),
                 nonce: z.string().length(43),
                 method: z.literal("backup_code"),

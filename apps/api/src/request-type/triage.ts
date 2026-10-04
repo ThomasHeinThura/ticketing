@@ -23,6 +23,7 @@ import {
   createRoute,
   errorResponse,
   jsonResponse,
+  jsonValueSchema,
   z,
 } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
@@ -87,7 +88,7 @@ const detailSchema = itemSchema.extend({
       createdAt: z.string().datetime(),
     }),
   ),
-  formSchema: z.object({ fields: z.array(z.unknown()) }),
+  formSchema: z.object({ fields: z.array(jsonValueSchema) }),
   suggestedProjectId: z.string().nullable(),
   suggestedWorkItemTypeId: z.string().nullable(),
 });

@@ -1,12 +1,43 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   createApp,
   resolvePort,
   resolveStaticRoot,
 } from "../../apps/api/src/index";
+import { jsonValueSchema, z } from "../../apps/api/src/openapi";
+
+describe("JSON value schema", () => {
+  it.each([
+    "text",
+    3,
+    true,
+    null,
+    ["nested", 2, null],
+    { nested: { values: [false, null, { count: 1 }] } },
+  ])("accepts JSON values", (value) => {
+    expect(jsonValueSchema.safeParse(value).success).toBe(true);
+  });
+
+  it.each([undefined, 1n, new Date(0), Number.NaN])(
+    "rejects non-JSON values",
+    (value) => {
+      expect(jsonValueSchema.safeParse(value).success).toBe(false);
+    },
+  );
+
+  it("preserves an omitted unknown-valued property", () => {
+    expect(
+      z.object({ value: jsonValueSchema.optional() }).safeParse({}).success,
+    ).toBe(true);
+    expect(
+      z.object({ value: jsonValueSchema.nullable().optional() }).safeParse({})
+        .success,
+    ).toBe(true);
+  });
+});
 
 describe("resolvePort", () => {
   it("uses the documented default when TASKDESK_PORT is unset", () => {
@@ -142,7 +173,38 @@ describe("static file serving", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/html");
+    expect(response.headers.get("content-security-policy")).toContain(
+      "frame-src 'self'",
+    );
     await expect(response.text()).resolves.toContain("index-marker");
+  });
+
+  it("adds only the configured storage origin to preview CSP, never forwarded host input", async () => {
+    vi.stubEnv("TASKDESK_STORAGE_DRIVER", "s3");
+    vi.stubEnv(
+      "S3_ENDPOINT",
+      "https://storage.example.test:9443/bucket-prefix",
+    );
+    try {
+      const { app } = createApp({ staticRoot });
+      const response = await app.request("/projects/example", {
+        headers: {
+          host: "localhost:5173",
+          "x-forwarded-host": "attacker.example",
+        },
+      });
+      const policy = response.headers.get("content-security-policy") ?? "";
+      expect(policy).toContain(
+        "img-src 'self' https://storage.example.test:9443",
+      );
+      expect(policy).toContain(
+        "frame-src 'self' https://storage.example.test:9443",
+      );
+      expect(policy).not.toContain("attacker.example");
+      expect(policy).toContain("object-src 'none'");
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("never falls back to index.html for an unmatched API-prefixed route", async () => {

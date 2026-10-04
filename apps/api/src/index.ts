@@ -103,7 +103,12 @@ import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
 import serviceCalendar from "./service-calendar";
 import slaPolicy from "./sla-policy";
-import { getPrivateObject, getStorageDriver } from "./storage";
+import {
+  buildAttachmentContentDisposition,
+  getPrivateObject,
+  getStorageBrowserOrigin,
+  getStorageDriver,
+} from "./storage";
 import {
   readAttachmentDownloadObject,
   StoragePathError,
@@ -369,6 +374,7 @@ function denyByHost(c: Context<AppVariables>) {
 function registerStaticServing(
   app: Hono<AppVariables>,
   staticRoots: Record<"agent" | "portal", string | undefined>,
+  configuredOrigins: ReturnType<typeof parseConfiguredOrigins>,
 ) {
   if (!staticRoots.agent && !staticRoots.portal) {
     console.warn(
@@ -402,13 +408,45 @@ function registerStaticServing(
 
     const serveAsset = serveStatic({ root: staticRoot });
     const serveIndex = serveStatic({ root: staticRoot, path: "/index.html" });
+    const lastSegment = c.req.path.split("/").pop() ?? "";
+    const isApplicationShell =
+      c.req.path === "/" ||
+      c.req.path.endsWith("/index.html") ||
+      (surface === "agent" && !lastSegment.includes("."));
+    if (isApplicationShell) {
+      const appOrigin = configuredOrigins.find(
+        (origin) => origin.kind === surface,
+      );
+      const configuredStorageOrigin = getStorageBrowserOrigin();
+      const storageOrigin =
+        configuredStorageOrigin &&
+        (appOrigin?.scheme !== "https:" ||
+          configuredStorageOrigin.startsWith("https://"))
+          ? configuredStorageOrigin
+          : undefined;
+      c.header(
+        "Content-Security-Policy",
+        [
+          "default-src 'self'",
+          "base-uri 'self'",
+          "object-src 'none'",
+          "frame-ancestors 'none'",
+          "form-action 'self'",
+          "script-src 'self'",
+          "style-src 'self' 'unsafe-inline'",
+          `img-src 'self'${storageOrigin ? ` ${storageOrigin}` : ""}`,
+          "font-src 'self'",
+          "connect-src 'self' ws: wss:",
+          `frame-src 'self'${storageOrigin ? ` ${storageOrigin}` : ""}`,
+        ].join("; "),
+      );
+    }
     let assetMissing = false;
     const result = await serveAsset(c, async () => {
       assetMissing = true;
     });
     if (!assetMissing) return result;
 
-    const lastSegment = c.req.path.split("/").pop() ?? "";
     if (lastSegment.includes(".")) return next();
     if (surface === "portal") return c.notFound();
     return serveIndex(c, next);
@@ -839,6 +877,9 @@ export function createApp(
             .regex(/^\d+$/, "expires must be a unix timestamp"),
           token: z.string().min(1),
           filename: z.string().min(1),
+          contentType: z.string().min(1),
+          representation: z.enum(["download", "preview"]),
+          disposition: z.enum(["attachment", "inline"]),
         }),
       },
       responses: {
@@ -859,19 +900,36 @@ export function createApp(
         });
       }
 
-      const { key, expires, token, filename } = c.req.valid("query");
+      const {
+        key,
+        expires,
+        token,
+        filename,
+        contentType,
+        representation,
+        disposition,
+      } = c.req.valid("query");
 
       try {
         const object = await readAttachmentDownloadObject({
           key,
           expires,
           token,
+          filename,
+          contentType,
+          representation,
+          disposition,
         });
         return new Response(object.body as BodyInit, {
           headers: {
             "Cache-Control": "private, max-age=0, no-store",
-            "Content-Type": object.contentType || "application/octet-stream",
-            "Content-Disposition": `attachment; filename="${filename.replaceAll('"', "")}"`,
+            "Content-Type": contentType,
+            "Content-Disposition": buildAttachmentContentDisposition(
+              filename,
+              disposition,
+            ),
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "sandbox",
           },
         });
       } catch (error) {
@@ -1585,7 +1643,7 @@ export function createApp(
 
   app.route("/api", api);
   options.registerAdditionalRoutes?.(app);
-  registerStaticServing(app, staticRoots);
+  registerStaticServing(app, staticRoots, origins);
 
   return {
     app,

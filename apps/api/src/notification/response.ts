@@ -1,4 +1,4 @@
-import { responseTimestamp, z } from "../openapi";
+import { jsonValueSchema, responseTimestamp, z } from "../openapi";
 
 export const notificationSchema = z
   .object({
@@ -13,7 +13,7 @@ export const notificationSchema = z
       description:
         "One of: info, task_created, workspace_created, task_status_changed, task_assignee_changed, time_entry_created, due_date_reminder, task_overdue, task_mention, task_comment.",
     }),
-    eventData: z.unknown().openapi({
+    eventData: jsonValueSchema.optional().openapi({
       description:
         "Type-specific payload, e.g. { taskTitle, oldStatus, newStatus, projectId, workspaceId }.",
     }),

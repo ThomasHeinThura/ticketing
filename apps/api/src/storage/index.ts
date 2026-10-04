@@ -16,11 +16,15 @@ import * as filesystemDriver from "./filesystem";
 import * as s3Driver from "./s3";
 import {
   type AssetObject,
+  type AttachmentRepresentation,
   applyKeyPrefix,
+  attachmentDisposition,
+  buildAttachmentContentDisposition,
   buildObjectKey,
   buildObjectKeyPrefix,
   getFileExtension,
   isImageContentType,
+  isInlineAttachmentMimeType,
   parseBoolean,
   parsePositiveInt,
   sanitizePathSegment,
@@ -31,6 +35,7 @@ import {
 
 export type {
   AssetObject,
+  AttachmentRepresentation,
   TaskImageUploadContext,
   TaskImageUploadUrl,
   UploadSurface,
@@ -40,10 +45,13 @@ export type {
 // there is nothing to dispatch on. Re-exported here so callers have one import surface.
 export {
   applyKeyPrefix,
+  attachmentDisposition,
+  buildAttachmentContentDisposition,
   buildObjectKey,
   buildObjectKeyPrefix,
   getFileExtension,
   isImageContentType,
+  isInlineAttachmentMimeType,
   parseBoolean,
   parsePositiveInt,
   sanitizePathSegment,
@@ -147,15 +155,43 @@ export async function createAttachmentDownloadUrl(
   key: string,
   filename: string,
   apiBaseUrl?: string,
+  options: {
+    contentType?: string;
+    representation: AttachmentRepresentation;
+  } = {
+    representation: "download",
+  },
 ): Promise<string> {
+  const contentType = options.contentType ?? "application/octet-stream";
+  const disposition = attachmentDisposition(
+    options.representation,
+    contentType,
+  );
+  if (options.representation === "preview" && disposition !== "inline") {
+    throw new Error("This attachment type cannot be previewed.");
+  }
   if (getStorageDriver() === "s3") {
-    return s3Driver.createAttachmentDownloadUrl(key, filename);
+    return s3Driver.createAttachmentDownloadUrl(key, filename, {
+      contentType: options.contentType,
+      disposition,
+    });
   }
   return filesystemDriver.createAttachmentDownloadUrl(
     key,
     filename,
     apiBaseUrl,
+    {
+      contentType,
+      representation: options.representation,
+      disposition,
+    },
   );
+}
+
+export function getStorageBrowserOrigin(): string | undefined {
+  return getStorageDriver() === "s3"
+    ? s3Driver.getStorageBrowserOrigin()
+    : undefined;
 }
 
 /**

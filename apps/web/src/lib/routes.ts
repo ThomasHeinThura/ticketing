@@ -114,6 +114,32 @@ export type WorkItemListSearch = {
   dir: WorkItemSortDirection;
 };
 
+export type WorkItemDetailSearch = {
+  activity?: WorkItemActivityFilter;
+  previewAttachment?: string;
+};
+
+export function parseWorkItemDetailSearch(raw: unknown): WorkItemDetailSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  const attachment = candidate.previewAttachment;
+  return {
+    activity:
+      candidate.activity === undefined
+        ? undefined
+        : parseWorkItemActivityFilter(candidate.activity),
+    previewAttachment:
+      typeof attachment === "string" &&
+      attachment.length > 0 &&
+      attachment.length <= 200 &&
+      ![...attachment].some((character) => {
+        const codePoint = character.codePointAt(0) ?? 0;
+        return codePoint <= 0x1f || codePoint === 0x7f;
+      })
+        ? attachment
+        : undefined,
+  };
+}
+
 export type ServiceCalendarListSearch = { cursor?: string };
 export type SlaPolicyListSearch = { cursor?: string };
 
@@ -296,13 +322,16 @@ export const routes = {
    */
   workItemDetail: {
     path: "/agent/work-items/$key" as const,
-    build: (
-      params: { key: string },
-      search: { activity?: WorkItemActivityFilter } = {},
-    ) => {
+    build: (params: { key: string }, search: WorkItemDetailSearch = {}) => {
       const path = `/agent/work-items/${encodeURIComponent(params.key)}`;
-      const activity = parseWorkItemActivityFilter(search.activity);
-      return activity === "all" ? path : `${path}?activity=${activity}`;
+      const resolved = parseWorkItemDetailSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.activity && resolved.activity !== "all")
+        query.set("activity", resolved.activity);
+      if (resolved.previewAttachment)
+        query.set("previewAttachment", resolved.previewAttachment);
+      const serialized = query.toString();
+      return serialized ? `${path}?${serialized}` : path;
     },
   },
 };
