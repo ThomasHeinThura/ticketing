@@ -1046,8 +1046,10 @@ const routes = apiRouter<
         ...row,
         ref: `SUB-${row.number}`,
         workItemKey: row.workItemKey ?? null,
-        createdAt: row.createdAt.toISOString(),
-        claimedAt: row.claimedAt?.toISOString() ?? null,
+        // The response schema validates timestamps as Date instances; Hono's
+        // JSON serializer emits the ISO strings after this parse.
+        createdAt: row.createdAt,
+        claimedAt: row.claimedAt,
         messages: messages.map((message) => ({
           ...message,
           actorType: message.actorType as "customer" | "triager",
@@ -1114,8 +1116,10 @@ const routes = apiRouter<
         ...row,
         ref: `SUB-${row.number}`,
         workItemKey: row.workItemKey ?? null,
-        createdAt: row.createdAt.toISOString(),
-        claimedAt: row.claimedAt?.toISOString() ?? null,
+        // The response schema validates timestamps as Date instances; Hono's
+        // JSON serializer emits the ISO strings after this parse.
+        createdAt: row.createdAt,
+        claimedAt: row.claimedAt,
         messages: messages.map((message) => ({
           ...message,
           actorType: message.actorType as "customer" | "triager",
