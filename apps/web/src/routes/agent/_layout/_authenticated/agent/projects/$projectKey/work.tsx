@@ -1,23 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Alert, AlertDescription, Button } from "@taskdesk/ui";
+import { Button } from "@taskdesk/ui";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
+import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetWorkItems from "@/hooks/queries/work-item/use-get-work-items";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 
-const CreateWorkItemDialog = lazy(
-  () => import("@/components/work-item/create-work-item-dialog"),
-);
-const WorkItemListRealtime = lazy(
-  () => import("@/components/work-item/work-item-list-realtime"),
-);
-const WorkItemList = lazy(
-  () => import("@/components/work-item/work-item-list"),
+const WorkItemsPanel = lazy(
+  () => import("@/components/work-item/work-items-panel"),
 );
 
 import {
@@ -78,7 +73,6 @@ function WorkItemsRouteComponent() {
   } = useGetProjects({ workspaceId: workspace?.id ?? "" });
 
   const project = projects?.find((candidate) => candidate.slug === projectKey);
-  const projectId = project?.id;
   const projectNotFound =
     !isWorkspaceLoading && !isProjectsLoading && !!projects && !project;
 
@@ -96,8 +90,6 @@ function WorkItemsRouteComponent() {
         ? realtimeStatus.status
         : "connecting",
   });
-  const workItems = workItemsResult?.items;
-
   const isLoading =
     isWorkspaceLoading ||
     isProjectsLoading ||
@@ -106,10 +98,10 @@ function WorkItemsRouteComponent() {
     isWorkspaceError || isProjectsError || isWorkItemsError || projectNotFound;
 
   useEffect(() => {
-    if (!projectId || isLoading) return;
-    setRealtimeProjectId(projectId);
-    setRealtimeStatus({ projectId, status: "connecting" });
-  }, [projectId, isLoading]);
+    if (!project?.id || isLoading) return;
+    setRealtimeProjectId(project.id);
+    setRealtimeStatus({ projectId: project.id, status: "connecting" });
+  }, [project?.id, isLoading]);
 
   const handleRealtimeAvailabilityChange = useCallback(
     (projectId: string, status: WorkItemRealtimeStatus) => {
@@ -133,10 +125,14 @@ function WorkItemsRouteComponent() {
     [navigate],
   );
 
-  const handleRetry = useCallback(() => {
+  const handleRetryProjects = useCallback(() => {
     refetchProjects();
+  }, [refetchProjects]);
+
+  const handleRetry = useCallback(() => {
+    handleRetryProjects();
     if (project) refetchWorkItems();
-  }, [project, refetchProjects, refetchWorkItems]);
+  }, [handleRetryProjects, project, refetchWorkItems]);
 
   return (
     <>
@@ -168,49 +164,24 @@ function WorkItemsRouteComponent() {
             </Button>
           ) : null}
         </div>
-        {project &&
-        realtimeStatus?.projectId === project.id &&
-        realtimeStatus.status === "unavailable" ? (
-          <Alert
-            variant="warning"
-            role="status"
-            data-testid="realtime-unavailable"
-          >
-            <AlertDescription>
-              {t("workItems:detail.realtimeUnavailable")}
-            </AlertDescription>
-          </Alert>
-        ) : null}
         <Suspense fallback={<WorkItemListLoading />}>
-          <WorkItemList
-            workItems={workItems}
+          <WorkItemsPanel
+            project={project}
+            workspaceId={workspace?.id}
+            workItemsResult={workItemsResult as WorkItemsResult | undefined}
             isLoading={isLoading}
             isError={isError}
+            realtimeProjectId={realtimeProjectId}
+            realtimeStatus={realtimeStatus}
             sort={sort}
             dir={dir}
+            isCreateOpen={isCreateOpen}
+            onCloseCreate={() => setIsCreateOpen(false)}
             onSortChange={handleSortChange}
+            onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
             onRetry={handleRetry}
           />
         </Suspense>
-        {project && !isLoading && realtimeProjectId === project.id ? (
-          <Suspense fallback={null}>
-            <WorkItemListRealtime
-              key={project.id}
-              projectId={project.id}
-              onAvailabilityChange={handleRealtimeAvailabilityChange}
-            />
-          </Suspense>
-        ) : null}
-        {project && isCreateOpen ? (
-          <Suspense fallback={null}>
-            <CreateWorkItemDialog
-              open
-              onClose={() => setIsCreateOpen(false)}
-              projectId={project.id}
-              workspaceId={workspace?.id}
-            />
-          </Suspense>
-        ) : null}
       </div>
     </>
   );
