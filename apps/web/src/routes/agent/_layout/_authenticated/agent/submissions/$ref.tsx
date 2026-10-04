@@ -24,6 +24,7 @@ import { ChevronLeft, MessageSquare, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
+import { getApiUrl } from "@/fetchers/get-api-url";
 import getProjects from "@/fetchers/project/get-projects";
 import {
   acceptIntakeSubmission,
@@ -197,6 +198,31 @@ function IntakeSubmissionRoute() {
                 })}
               </CardContent>
             </Card>
+            {submission.attachments.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t("attachments")}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {submission.attachments.map((attachment) => (
+                    <a
+                      className="flex items-center justify-between gap-3 rounded-md border p-3 text-sm underline-offset-4 hover:underline"
+                      href={getApiUrl(
+                        `submissions/${encodeURIComponent(ref)}/attachments/${encodeURIComponent(attachment.id)}`,
+                      )}
+                      key={attachment.id}
+                    >
+                      <span className="min-w-0 truncate">
+                        {attachment.filename}
+                      </span>
+                      <span className="shrink-0 text-muted-foreground">
+                        {t("downloadAttachment")}
+                      </span>
+                    </a>
+                  ))}
+                </CardContent>
+              </Card>
+            ) : null}
             <Card>
               <CardHeader>
                 <CardTitle>{t("thread")}</CardTitle>

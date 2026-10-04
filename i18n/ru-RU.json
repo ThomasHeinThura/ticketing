@@ -2691,7 +2691,9 @@
 			"replyLabel": "Reply to your service desk",
 			"retry": "Retry",
 			"send": "Send reply",
-			"sending": "Sending…"
+			"sending": "Sending…",
+			"attachments": "Вложения",
+			"downloadAttachment": "Скачать вложение"
 		}
 	},
 	"slaPolicies": {
@@ -2810,7 +2812,9 @@
 		"actor": {
 			"customer": "Customer",
 			"triager": "Service desk"
-		}
+		},
+		"attachments": "Вложения",
+		"downloadAttachment": "Скачать файл"
 	},
 	"requestTypes": {
 		"create": "New request type",

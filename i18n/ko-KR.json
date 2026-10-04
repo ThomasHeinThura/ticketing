@@ -2614,7 +2614,9 @@
 			"replyLabel": "Reply to your service desk",
 			"retry": "Retry",
 			"send": "Send reply",
-			"sending": "Sending…"
+			"sending": "Sending…",
+			"attachments": "첨부 파일",
+			"downloadAttachment": "첨부 파일 다운로드"
 		}
 	},
 	"slaPolicies": {
@@ -2733,7 +2735,9 @@
 		"actor": {
 			"customer": "Customer",
 			"triager": "Service desk"
-		}
+		},
+		"attachments": "첨부 파일",
+		"downloadAttachment": "파일 다운로드"
 	},
 	"requestTypes": {
 		"create": "New request type",

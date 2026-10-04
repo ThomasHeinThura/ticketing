@@ -2614,7 +2614,9 @@
 			"replyLabel": "Reply to your service desk",
 			"retry": "Retry",
 			"send": "Send reply",
-			"sending": "Sending…"
+			"sending": "Sending…",
+			"attachments": "添付ファイル",
+			"downloadAttachment": "添付ファイルをダウンロード"
 		}
 	},
 	"slaPolicies": {
@@ -2733,7 +2735,9 @@
 		"actor": {
 			"customer": "Customer",
 			"triager": "Service desk"
-		}
+		},
+		"attachments": "添付ファイル",
+		"downloadAttachment": "ファイルをダウンロード"
 	},
 	"requestTypes": {
 		"create": "New request type",

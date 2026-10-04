@@ -278,6 +278,36 @@ async function authenticatePortalRequester(
   return user;
 }
 
+async function createSubmissionAttachment(
+  fixture: Awaited<ReturnType<typeof setupAcceptanceFixture>>,
+  options: {
+    customerVisible?: boolean;
+    state?: string;
+    deleted?: boolean;
+  } = {},
+) {
+  return requireRow(
+    await db
+      .insert(schema.attachmentTable)
+      .values({
+        workspaceId: fixture.workspace.id,
+        organisationId: fixture.organisation.id,
+        submissionId: fixture.submission.id,
+        submissionFieldKey: "files",
+        objectKey: `submission-test/${randomUUID()}`,
+        filename: "supporting-document.txt",
+        mimeType: "text/plain",
+        size: 12,
+        state: options.state ?? "ready",
+        customerVisible: options.customerVisible ?? true,
+        uploadedBy: fixture.requester.id,
+        deletedAt: options.deleted ? new Date() : null,
+      })
+      .returning(),
+    "submission attachment",
+  );
+}
+
 // CP-19 intentionally keeps the public customer-origin `/api` edge closed until
 // P3 identity acceptance. Exercise this production router directly with the
 // production host-to-auth realm selection so its transaction handlers remain
@@ -323,6 +353,130 @@ describe("API integration: request-type custom-field conversion (RT-3, IQ-8, CF-
       process.env.TASKDESK_STORAGE_DRIVER = originalStorageDriver;
     }
     await rm(storageRoot, { recursive: true, force: true });
+  });
+
+  it("returns safe ready attachment metadata and audits exact staff downloads", async () => {
+    const fixture = await setupAcceptanceFixture();
+    const ready = await createSubmissionAttachment(fixture);
+    await createSubmissionAttachment(fixture, { state: "pending" });
+    await createSubmissionAttachment(fixture, {
+      state: "deleted",
+      deleted: true,
+    });
+    mockAuthenticatedSession(fixture.user);
+    const { app } = createApp();
+
+    const detail = await app.request(
+      `/api/submissions/SUB-${fixture.submission.number}`,
+    );
+    expect(detail.status).toBe(200);
+    const body = (await detail.json()) as {
+      attachments: Array<Record<string, unknown>>;
+    };
+    expect(body.attachments).toEqual([
+      expect.objectContaining({
+        id: ready.id,
+        fieldKey: "files",
+        filename: "supporting-document.txt",
+        mimeType: "text/plain",
+        size: 12,
+      }),
+    ]);
+    expect(JSON.stringify(body)).not.toContain("objectKey");
+
+    const download = await app.request(
+      `/api/submissions/SUB-${fixture.submission.number}/attachments/${ready.id}`,
+    );
+    expect(download.status).toBe(302);
+    expect(download.headers.get("location")).toContain(
+      "/storage/filesystem-download?",
+    );
+    const audit = await db
+      .select({ action: schema.auditLogTable.action })
+      .from(schema.auditLogTable)
+      .where(eq(schema.auditLogTable.entityId, ready.id));
+    expect(audit.map((row) => row.action)).toEqual(["attachment.downloaded"]);
+
+    for (const attachmentId of [
+      (await createSubmissionAttachment(fixture, { state: "pending" })).id,
+      (await createSubmissionAttachment(fixture, { deleted: true })).id,
+      `missing-${randomUUID()}`,
+    ]) {
+      const rejected = await app.request(
+        `/api/submissions/SUB-${fixture.submission.number}/attachments/${attachmentId}`,
+      );
+      expect(rejected.status).toBe(404);
+    }
+    const wrongSubmission = await app.request(
+      `/api/submissions/SUB-999999/attachments/${ready.id}`,
+    );
+    expect(wrongSubmission.status).toBe(404);
+  });
+
+  it("shows and downloads only customer-visible attachments for an own submission", async () => {
+    const fixture = await setupAcceptanceFixture();
+    const visible = await createSubmissionAttachment(fixture, {
+      customerVisible: true,
+    });
+    const internal = await createSubmissionAttachment(fixture, {
+      customerVisible: false,
+    });
+    await authenticatePortalRequester(fixture);
+    const app = createPortalRouterHarness();
+    const headers = {
+      host: "portal.localhost:5174",
+      origin: "http://portal.localhost:5174",
+    };
+
+    const detail = await app.request(
+      `/api/portal/submissions/SUB-${fixture.submission.number}`,
+      { headers },
+    );
+    expect(detail.status).toBe(200);
+    const body = (await detail.json()) as {
+      attachments: Array<{ id: string; filename: string }>;
+    };
+    expect(body.attachments).toEqual([
+      {
+        id: visible.id,
+        fieldKey: "files",
+        filename: visible.filename,
+        mimeType: visible.mimeType,
+        size: visible.size,
+        uploadedBy: visible.uploadedBy,
+        createdAt: visible.createdAt.toISOString(),
+      },
+    ]);
+
+    const download = await app.request(
+      `/api/portal/submissions/SUB-${fixture.submission.number}/attachments/${visible.id}`,
+      { headers },
+    );
+    expect(download.status).toBe(302);
+    expect(download.headers.get("location")).toContain(
+      "/storage/filesystem-download?",
+    );
+    const privateDownload = await app.request(
+      `/api/portal/submissions/SUB-${fixture.submission.number}/attachments/${internal.id}`,
+      { headers },
+    );
+    expect(privateDownload.status).toBe(404);
+  });
+
+  it("denies staff without intake triage capability before returning submission attachments", async () => {
+    const fixture = await setupAcceptanceFixture();
+    await createSubmissionAttachment(fixture);
+    mockAuthenticatedSession(fixture.user);
+    await db
+      .update(schema.workspaceUserTable)
+      .set({ role: "unassigned-test-role" })
+      .where(eq(schema.workspaceUserTable.userId, fixture.user.id));
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/submissions/SUB-${fixture.submission.number}`,
+    );
+    expect(response.status).toBe(403);
   });
 
   it("writes mapped values and one-time defaults atomically with the accepted work item", async () => {

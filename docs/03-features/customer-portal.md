@@ -44,7 +44,7 @@ See [ADR 0004](../01-architecture/adr/0004-two-portals-two-origins.md).
 | --- | --- |
 | **Home** | Open requests, anything waiting on them, recent activity |
 | **My requests** | Everything they have raised, filterable by status |
-| **Request detail** | Conversation, status, SLA due time, attachments, actions |
+| **Request detail** | Conversation, status, SLA due time, customer-visible attachments, actions |
 | **New request** | The catalogue, grouped, with deflection suggestions |
 | **Request form** | The chosen request type's form |
 | **Approvals** | Decisions waiting on them |
@@ -158,6 +158,12 @@ misconfigured away through the role editor.
   into the sequence unannounced; appending it after the highest-numbered rule makes it
   legible as exactly that — a later addition — without invalidating every existing
   citation.)*
+- Submission detail returns safe metadata for ready, non-deleted, customer-visible
+  submission attachments only. A participant can download one through the
+  `GET /api/portal/submissions/{ref}/attachments/{id}` own-submission route; the handler
+  matches both identifiers to the persisted submission, audits the download, and redirects
+  to a five-minute signed URL. This route remains behind the CP-19 portal API boundary and
+  does not activate public portal traffic.
 - `CP-19` **Before portal identity exists, the portal origin is disabled and isolated.**
   In P0, `GET` and `HEAD /` serve a localized unavailable notice built with
   `packages/ui`; the page has no login form, provider list, session probe, external

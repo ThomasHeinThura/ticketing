@@ -2614,7 +2614,9 @@
 			"replyLabel": "Reply to your service desk",
 			"retry": "Retry",
 			"send": "Send reply",
-			"sending": "Sending…"
+			"sending": "Sending…",
+			"attachments": "附件",
+			"downloadAttachment": "下载附件"
 		}
 	},
 	"slaPolicies": {
@@ -2733,7 +2735,9 @@
 		"actor": {
 			"customer": "Customer",
 			"triager": "Service desk"
-		}
+		},
+		"attachments": "附件",
+		"downloadAttachment": "下载文件"
 	},
 	"requestTypes": {
 		"create": "New request type",

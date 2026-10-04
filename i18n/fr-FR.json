@@ -2628,7 +2628,9 @@
 			"replyLabel": "Reply to your service desk",
 			"retry": "Retry",
 			"send": "Send reply",
-			"sending": "Sending…"
+			"sending": "Sending…",
+			"attachments": "Pièces jointes",
+			"downloadAttachment": "Télécharger la pièce jointe"
 		}
 	},
 	"slaPolicies": {
@@ -2747,7 +2749,9 @@
 		"actor": {
 			"customer": "Customer",
 			"triager": "Service desk"
-		}
+		},
+		"attachments": "Pièces jointes",
+		"downloadAttachment": "Télécharger le fichier"
 	},
 	"requestTypes": {
 		"create": "New request type",

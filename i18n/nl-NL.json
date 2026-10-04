@@ -2621,7 +2621,9 @@
 			"replyLabel": "Reply to your service desk",
 			"retry": "Retry",
 			"send": "Send reply",
-			"sending": "Sending…"
+			"sending": "Sending…",
+			"attachments": "Bijlagen",
+			"downloadAttachment": "Bijlage downloaden"
 		}
 	},
 	"slaPolicies": {
@@ -2740,7 +2742,9 @@
 		"actor": {
 			"customer": "Customer",
 			"triager": "Service desk"
-		}
+		},
+		"attachments": "Bijlagen",
+		"downloadAttachment": "Bestand downloaden"
 	},
 	"requestTypes": {
 		"create": "New request type",

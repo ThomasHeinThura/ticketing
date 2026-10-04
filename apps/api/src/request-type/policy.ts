@@ -77,6 +77,12 @@ export const requestTypePolicies = {
     scopeSource: "row",
     reach: "required",
   },
+  "GET /api/submissions/{ref}/attachments/{id}": {
+    capability: "intake:triage",
+    scope: "workspace",
+    scopeSource: "row",
+    reach: "required",
+  },
   "POST /api/submissions/{ref}/claim": {
     capability: "intake:triage",
     scope: "workspace",
@@ -118,6 +124,10 @@ export const requestTypePolicies = {
     predicate: "own_organisation",
   },
   "GET /api/portal/submissions/{ref}": {
+    portal: "customer",
+    predicate: "own_submission",
+  },
+  "GET /api/portal/submissions/{ref}/attachments/{id}": {
     portal: "customer",
     predicate: "own_submission",
   },

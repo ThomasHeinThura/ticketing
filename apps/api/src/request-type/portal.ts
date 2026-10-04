@@ -32,6 +32,10 @@ import {
   recordWorkItemEvent,
 } from "../work-item/native-event";
 import {
+  downloadSubmissionAttachment,
+  listSubmissionAttachments,
+} from "./download-submission-attachment";
+import {
   getSubmissionEventScope,
   notifySubmissionEvent,
   recordSubmissionEvent,
@@ -39,6 +43,7 @@ import {
 import {
   portalCatalogueSchema,
   portalRequestTypeSchema,
+  submissionAttachmentSchema,
   submissionListItemSchema,
   submissionReceiptSchema,
 } from "./response";
@@ -101,8 +106,11 @@ async function customerContext(
   await next();
 }
 
-const portalSubmission = submissionListItemSchema.extend({
+const portalSubmissionItem = submissionListItemSchema.extend({
   requestTypeName: z.string(),
+});
+const portalSubmission = portalSubmissionItem.extend({
+  attachments: z.array(submissionAttachmentSchema),
   messages: z.array(
     z.object({
       id: z.string(),
@@ -112,7 +120,7 @@ const portalSubmission = submissionListItemSchema.extend({
     }),
   ),
 });
-const portalSubmissionList = z.object({ items: z.array(portalSubmission) });
+const portalSubmissionList = z.object({ items: z.array(portalSubmissionItem) });
 
 async function ownSubmissionContext(c: Context, next: Next) {
   const number = Number(c.req.param("ref")?.replace(/^SUB-/, ""));
@@ -330,6 +338,19 @@ const submissionDetailRoute = createRoute({
   request: { params: submissionRefParam },
   responses: {
     200: jsonResponse("Submission and thread", portalSubmission),
+    404: errorResponse("Not found"),
+  },
+});
+const downloadPortalSubmissionAttachmentRoute = createRoute({
+  method: "get",
+  path: "/portal/submissions/{ref}/attachments/{id}",
+  operationId: "downloadPortalSubmissionAttachment",
+  tags: ["Portal", "Attachments"],
+  summary: "Download a customer-visible attachment on an own submission",
+  middleware: [customerContext, ownSubmissionContext] as const,
+  request: { params: submissionRefParam.extend(attachmentIdParam.shape) },
+  responses: {
+    302: { description: "Redirect to the five-minute signed download URL" },
     404: errorResponse("Not found"),
   },
 });
@@ -1083,6 +1104,9 @@ const routes = apiRouter<
         schema.submissionMessageTable.createdAt,
         schema.submissionMessageTable.id,
       );
+    const attachments = await listSubmissionAttachments(id, {
+      customerVisibleOnly: true,
+    });
     setShadowLegacyAuthorization(c, "allowed");
     c.header("Cache-Control", "private, no-store");
     return c.json(
@@ -1097,9 +1121,25 @@ const routes = apiRouter<
           actorType: message.actorType as "customer" | "triager",
           createdAt: message.createdAt.toISOString(),
         })),
+        attachments,
       }),
       200,
     );
+  })
+  .openapi(downloadPortalSubmissionAttachmentRoute, async (c) => {
+    const { id } = c.req.valid("param");
+    const submissionId = c.get("portalSubmissionId") as string;
+    const workspaceId = c.get("workspaceId") as string;
+    const downloadUrl = await downloadSubmissionAttachment({
+      attachmentId: id,
+      submissionId,
+      workspaceId,
+      actorId: c.get("portalPersonId") as string,
+      apiBaseUrl: process.env.TASKDESK_AGENT_URL || new URL(c.req.url).origin,
+      customerVisibleOnly: true,
+    });
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.redirect(downloadUrl, 302);
   })
   .openapi(submissionMessageRoute, async (c) => {
     const id = c.get("portalSubmissionId") as string;

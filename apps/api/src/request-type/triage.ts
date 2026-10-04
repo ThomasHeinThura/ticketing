@@ -13,6 +13,7 @@ import {
 import { and, asc, desc, eq, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
+import { attachmentIdParam } from "../attachment/schema";
 import db, { schema } from "../database";
 import type { DbTransaction } from "../events/outbox";
 import { requireFeatureEnabled } from "../feature-flags/runtime";
@@ -31,11 +32,19 @@ import { workspaceAccess } from "../utils/workspace-access-middleware";
 import { resolveAssigneeEligibility } from "../work-item/assignee-eligibility";
 import createWorkItem from "../work-item/controllers/create-work-item";
 import {
+  downloadSubmissionAttachment,
+  listSubmissionAttachments,
+} from "./download-submission-attachment";
+import {
   getSubmissionEventScope,
   notifySubmissionEvent,
   recordSubmissionEvent,
 } from "./events";
-import { submissionListItemSchema, submissionReceiptSchema } from "./response";
+import {
+  submissionAttachmentSchema,
+  submissionListItemSchema,
+  submissionReceiptSchema,
+} from "./response";
 import {
   acceptSubmissionBody,
   declineSubmissionBody,
@@ -53,6 +62,7 @@ const listSchema = z.object({
   nextBefore: z.string().nullable(),
 });
 const detailSchema = itemSchema.extend({
+  attachments: z.array(submissionAttachmentSchema),
   messages: z.array(
     z.object({
       id: z.string(),
@@ -724,6 +734,26 @@ const detailRoute = createRoute({
     404: errorResponse("Submission not found"),
   },
 });
+const downloadSubmissionAttachmentRoute = createRoute({
+  method: "get",
+  path: "/submissions/{ref}/attachments/{id}",
+  operationId: "downloadSubmissionAttachment",
+  tags: ["Intake", "Attachments"],
+  summary: "Download an attachment belonging to this submission",
+  middleware: [
+    submissionReach,
+    requireFeatureEnabled("feature.intake", (c) => ({
+      workspaceId: c.get("workspaceId") as string,
+    })),
+    requireWorkspaceCapability("intake:triage"),
+  ] as const,
+  request: { params: submissionRefParam.extend(attachmentIdParam.shape) },
+  responses: {
+    302: { description: "Redirect to the five-minute signed download URL" },
+    403: errorResponse("Forbidden"),
+    404: errorResponse("Submission attachment not found"),
+  },
+});
 const claimRoute = createRoute({
   method: "post",
   path: "/submissions/{ref}/claim",
@@ -1006,6 +1036,9 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
       .from(schema.submissionMessageTable)
       .where(eq(schema.submissionMessageTable.submissionId, row.id))
       .orderBy(schema.submissionMessageTable.createdAt);
+    const attachments = await listSubmissionAttachments(row.id, {
+      customerVisibleOnly: false,
+    });
     setShadowLegacyAuthorization(c, "allowed");
     return c.json(
       detailSchema.parse({
@@ -1030,9 +1063,41 @@ const routes = apiRouter<BaseVariables & { workspaceId: string }>()
           ...item,
           createdAt: item.createdAt.toISOString(),
         })),
+        attachments,
       }),
       200,
     );
+  })
+  .openapi(downloadSubmissionAttachmentRoute, async (c) => {
+    const person = await staffPerson(c);
+    const { ref, id } = c.req.valid("param");
+    const number = Number(ref.slice(4));
+    const [submission] = await db
+      .select({ id: schema.submissionTable.id })
+      .from(schema.submissionTable)
+      .innerJoin(
+        schema.requestTypeTable,
+        eq(schema.requestTypeTable.id, schema.submissionTable.requestTypeId),
+      )
+      .where(
+        and(
+          eq(schema.submissionTable.number, number),
+          eq(schema.requestTypeTable.workspaceId, c.get("workspaceId")),
+          ne(schema.submissionTable.state, "draft"),
+        ),
+      )
+      .limit(1);
+    if (!submission) throw new HTTPException(404, { message: "Not found" });
+    const downloadUrl = await downloadSubmissionAttachment({
+      attachmentId: id,
+      submissionId: submission.id,
+      workspaceId: c.get("workspaceId"),
+      actorId: person.id,
+      apiBaseUrl: new URL(c.req.url).origin,
+      customerVisibleOnly: false,
+    });
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.redirect(downloadUrl, 302);
   })
   .openapi(claimRoute, async (c) => {
     const person = await staffPerson(c);

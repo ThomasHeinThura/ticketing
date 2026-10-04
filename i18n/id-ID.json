@@ -2614,7 +2614,9 @@
 			"replyLabel": "Reply to your service desk",
 			"retry": "Retry",
 			"send": "Send reply",
-			"sending": "Sending…"
+			"sending": "Sending…",
+			"attachments": "Lampiran",
+			"downloadAttachment": "Unduh lampiran"
 		}
 	},
 	"slaPolicies": {
@@ -2733,7 +2735,9 @@
 		"actor": {
 			"customer": "Customer",
 			"triager": "Service desk"
-		}
+		},
+		"attachments": "Lampiran",
+		"downloadAttachment": "Unduh file"
 	},
 	"requestTypes": {
 		"create": "New request type",

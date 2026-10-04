@@ -2613,7 +2613,9 @@
 			"actor": {
 				"customer": "You",
 				"triager": "Service desk"
-			}
+			},
+			"attachments": "Attachments",
+			"downloadAttachment": "Download attachment"
 		},
 		"state": {
 			"new": "New",
@@ -2794,6 +2796,8 @@
 		"actor": {
 			"customer": "Customer",
 			"triager": "Service desk"
-		}
+		},
+		"attachments": "Attachments",
+		"downloadAttachment": "Download file"
 	}
 }

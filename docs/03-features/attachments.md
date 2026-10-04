@@ -108,7 +108,19 @@ DELETE /api/attachments/{id}                   work_item:update
 GET    /api/work-items/{key}/attachments       work_item:read
 POST   /api/portal/submissions/{ref}/attachments/presign   { portal: 'customer', predicate: 'own_submission' }
 POST   /api/portal/submissions/{ref}/attachments/{id}/complete   { portal: 'customer', predicate: 'own_submission' }
+GET    /api/submissions/{ref}/attachments/{id}   intake:triage — exact submission parent, ready/non-deleted rows, audited five-minute redirect
+GET    /api/portal/submissions/{ref}/attachments/{id}   { portal: 'customer', predicate: 'own_submission' } — exact own-submission parent and customer-visible ready/non-deleted rows
 ```
+
+Submission detail DTOs expose safe attachment metadata only, never an object key or signed
+URL. Staff triage can read ready, non-deleted submission attachments regardless of their
+customer-visibility flag; the existing `intake:triage` policy is the boundary. Portal
+detail and download expose only customer-visible rows after the own-submission predicate
+has established participant reach. Both download routes bind the URL reference and
+attachment ID to the same persisted submission, return 404 for a foreign, pending or
+deleted row, issue a five-minute signed redirect, and append `attachment.downloaded`.
+They do not change generic work-item attachment reach or make the portal origin public;
+`CP-19` remains in force.
 
 ## Edge cases
 

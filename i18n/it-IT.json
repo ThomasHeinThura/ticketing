@@ -2628,7 +2628,9 @@
 			"replyLabel": "Reply to your service desk",
 			"retry": "Retry",
 			"send": "Send reply",
-			"sending": "Sending…"
+			"sending": "Sending…",
+			"attachments": "Allegati",
+			"downloadAttachment": "Scarica allegato"
 		}
 	},
 	"slaPolicies": {
@@ -2747,7 +2749,9 @@
 		"actor": {
 			"customer": "Customer",
 			"triager": "Service desk"
-		}
+		},
+		"attachments": "Allegati",
+		"downloadAttachment": "Scarica file"
 	},
 	"requestTypes": {
 		"create": "New request type",

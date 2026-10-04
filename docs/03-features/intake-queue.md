@@ -187,6 +187,7 @@ the one screen where density is a feature.
 ```
 GET    /api/submissions                        intake:triage
 GET    /api/submissions/{ref}                  intake:triage
+GET    /api/submissions/{ref}/attachments/{id}  intake:triage — only a ready, non-deleted attachment whose `submission_id` is this exact submission; redirects to a five-minute signed URL and writes `attachment.downloaded`
 POST   /api/submissions/{ref}/claim            intake:triage   (sets claimed_by/claimed_at, IQ-16a)
 POST   /api/submissions/{ref}/accept           intake:triage
 POST   /api/submissions/{ref}/decline          intake:triage
@@ -195,12 +196,22 @@ POST   /api/submissions/{ref}/messages         intake:triage
 GET    /api/submissions/{ref}/duplicates       intake:triage
 GET    /api/portal/submissions                 { portal: 'customer', predicate: 'own_organisation' } — filtered to the caller's own submissions
 GET    /api/portal/submissions/{ref}           { portal: 'customer', predicate: 'own_submission' }
+GET    /api/portal/submissions/{ref}/attachments/{id} { portal: 'customer', predicate: 'own_submission' } — exact submission/attachment pair; only ready, non-deleted, customer-visible attachments; redirects to a five-minute signed URL and writes `attachment.downloaded`
 POST   /api/portal/submissions/{ref}/messages  { portal: 'customer', predicate: 'own_submission' }
 POST   /api/portal/submissions/{ref}/withdraw  { portal: 'customer', predicate: 'own_submission' }   (requester only)
 POST   /api/portal/submissions/{ref}/attachments/presign  { portal: 'customer', predicate: 'own_submission' } — file-form draft only
 POST   /api/portal/submissions/{ref}/attachments/{id}/complete  { portal: 'customer', predicate: 'own_submission' }
 POST   /api/portal/submissions/{ref}/submit  { portal: 'customer', predicate: 'own_submission' } — validate ready file IDs, finalize or auto-accept
 ```
+
+Submission detail responses include safe attachment metadata (id, field key, filename,
+content type, size, uploader and creation time), never an object key or signed URL. Staff
+triage may read every ready, non-deleted attachment on the submission under
+`intake:triage`, including attachments marked internal. The portal returns only
+customer-visible rows to a participant who already satisfies `own_submission`; the
+download endpoint rechecks that same submission and attachment relationship and returns
+the same 404 for mismatched, pending or deleted rows. `CP-19` continues to block public
+portal-origin API access; these registered routes do not activate that boundary.
 
 ## Edge cases
 

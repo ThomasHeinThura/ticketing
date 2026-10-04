@@ -2621,7 +2621,9 @@
 			"replyLabel": "Reply to your service desk",
 			"retry": "Retry",
 			"send": "Send reply",
-			"sending": "Sending…"
+			"sending": "Sending…",
+			"attachments": "Ekler",
+			"downloadAttachment": "Eki indir"
 		}
 	},
 	"slaPolicies": {
@@ -2740,7 +2742,9 @@
 		"actor": {
 			"customer": "Customer",
 			"triager": "Service desk"
-		}
+		},
+		"attachments": "Ekler",
+		"downloadAttachment": "Dosyayı indir"
 	},
 	"requestTypes": {
 		"create": "New request type",

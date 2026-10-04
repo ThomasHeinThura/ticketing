@@ -62,6 +62,16 @@ export const submissionReceiptSchema = z.object({
   createdAt: responseTimestamp,
 });
 
+export const submissionAttachmentSchema = z.object({
+  id: z.string(),
+  fieldKey: z.string().nullable(),
+  filename: z.string(),
+  mimeType: z.string(),
+  size: z.number().int().nonnegative(),
+  uploadedBy: z.string().nullable(),
+  createdAt: responseTimestamp,
+});
+
 export const submissionListItemSchema = submissionReceiptSchema.extend({
   id: z.string(),
   organisationId: z.string(),

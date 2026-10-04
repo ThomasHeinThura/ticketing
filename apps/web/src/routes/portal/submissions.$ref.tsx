@@ -39,6 +39,7 @@ type Submission = {
   createdAt: string;
   requestTypeName: string;
   messages: Message[];
+  attachments: { id: string; filename: string; size: number }[];
 };
 
 function SubmissionThread() {
@@ -179,6 +180,31 @@ function SubmissionThread() {
           <p className="text-muted-foreground">{t("thread.noMessages")}</p>
         ) : null}
       </section>
+
+      {submission.attachments.length > 0 ? (
+        <section className="space-y-3" aria-label={t("thread.attachments")}>
+          <h2 className="text-lg font-semibold">{t("thread.attachments")}</h2>
+          <ul className="space-y-2">
+            {submission.attachments.map((attachment) => (
+              <li key={attachment.id}>
+                <a
+                  className="flex items-center justify-between gap-3 rounded-md border bg-card p-3 text-sm underline-offset-4 hover:underline"
+                  href={getApiUrl(
+                    `portal/submissions/${encodeURIComponent(ref)}/attachments/${encodeURIComponent(attachment.id)}`,
+                  )}
+                >
+                  <span className="min-w-0 truncate">
+                    {attachment.filename}
+                  </span>
+                  <span className="shrink-0 text-muted-foreground">
+                    {t("thread.downloadAttachment")}
+                  </span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {!closed ? (
         <Card>
