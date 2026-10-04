@@ -71,9 +71,12 @@ function IdentityConnectionsRoute() {
         <header className="space-y-2">
           <h1 className="text-2xl font-semibold">Identity connections</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            Review configured identity connections and open their SCIM user
-            lookup settings. Only safe connection metadata is shown here.
+            Configure Microsoft Entra sign-in, review safe connection metadata,
+            and manage the associated SCIM settings.
           </p>
+          <Button render={<a href={routes.identityConnectionCreate.build()} />}>
+            Add identity connection
+          </Button>
         </header>
 
         {error ? (
@@ -125,7 +128,7 @@ function IdentityConnectionsRoute() {
                     }
                     variant="outline"
                   >
-                    SCIM settings
+                    Manage settings
                   </Button>
                 </CardContent>
               </Card>

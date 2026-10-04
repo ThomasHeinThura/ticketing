@@ -70,6 +70,10 @@ export const sessionTable = pgTable(
     activeOrganizationId: text("active_organization_id"),
     activeTeamId: text("active_team_id"),
     impersonatedBy: text("impersonated_by"),
+    identityConnectionId: text("identity_connection_id").references(
+      () => identityConnectionTable.id,
+      { onDelete: "cascade", onUpdate: "cascade" },
+    ),
   },
   (table) => [
     index("session_userId_idx").on(table.userId),
@@ -4694,6 +4698,8 @@ export const stepUpConfirmationTable = pgTable(
       "step_up_operation_route",
       sql`${table.operationKey} is null
         or (${table.operationKey} = 'metrics_token_rotate' and ${table.routeKey} = 'POST /api/instance/observability/metrics-token/rotate')
+        or (${table.operationKey} = 'identity_connection_create' and ${table.routeKey} = 'POST /api/instance/identity-connections')
+        or (${table.operationKey} = 'identity_connection_configure' and ${table.routeKey} = 'PATCH /api/instance/identity-connections/{id}')
         or (${table.operationKey} = 'oidc_group_mapping_create' and ${table.routeKey} = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')
         or (${table.operationKey} = 'oidc_group_mapping_update' and ${table.routeKey} = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')
         or (${table.operationKey} = 'scim_admin_update' and ${table.routeKey} = 'PATCH /api/instance/identity-connections/{id}/scim')

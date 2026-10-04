@@ -13,7 +13,7 @@ import {
 import type { BetterAuthPlugin, GenericEndpointContext } from "better-auth";
 import { APIError, createAuthEndpoint } from "better-auth/api";
 import { setSessionCookie } from "better-auth/cookies";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import db, { schema } from "../database";
 import { logTaskDesk } from "../instance/observability/runtime";
@@ -87,6 +87,160 @@ function parseFlow(value: string) {
 
 function safeFailure(ctx: { redirect(url: string): unknown }): never {
   throw ctx.redirect("/auth/sign-in?identity_error=sign_in_failed");
+}
+
+const OIDC_SESSION_SOURCE_PREFIX = "oidc-session-source:";
+export const OIDC_PENDING_SESSION_COOKIE = "taskdesk_oidc_pending_session";
+
+/**
+ * Bind a just-created Better Auth session to the validated connection before its
+ * cookie is emitted. The parent lock serializes this tag with connection disable;
+ * the caller deletes the unexposed session when the source is no longer enabled.
+ */
+export async function bindOidcSessionProvenance(input: {
+  sessionId: string;
+  userId: string;
+  connectionId: string;
+  portal: "agent" | "customer";
+}) {
+  return db.transaction(async (tx) => {
+    const [connection] = await tx
+      .select({
+        id: schema.identityConnectionTable.id,
+        enabled: schema.identityConnectionTable.enabled,
+        portalScope: schema.identityConnectionTable.portalScope,
+      })
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, input.connectionId))
+      .for("update")
+      .limit(1);
+    if (!connection?.enabled || connection.portalScope !== input.portal)
+      return false;
+
+    const [identity] = await tx
+      .select({ id: schema.externalIdentityTable.id })
+      .from(schema.externalIdentityTable)
+      .where(
+        and(
+          eq(
+            schema.externalIdentityTable.identityConnectionId,
+            input.connectionId,
+          ),
+          eq(schema.externalIdentityTable.userId, input.userId),
+          eq(schema.externalIdentityTable.active, true),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!identity) return false;
+
+    const [session] = await tx
+      .update(schema.sessionTable)
+      .set({ identityConnectionId: input.connectionId })
+      .where(
+        and(
+          eq(schema.sessionTable.id, input.sessionId),
+          eq(schema.sessionTable.userId, input.userId),
+          eq(schema.sessionTable.portal, input.portal),
+          gt(schema.sessionTable.expiresAt, sql`now()`),
+          isNull(schema.sessionTable.identityConnectionId),
+        ),
+      )
+      .returning({ id: schema.sessionTable.id });
+    return Boolean(session);
+  });
+}
+
+/**
+ * OIDC login can first produce a Better Auth `two_factor` challenge. Carry its
+ * connection source in a short-lived verification row keyed by the signed
+ * challenge identifier, then bind only the matching session after the native
+ * factor endpoint succeeds. A missing marker is an ordinary local 2FA session.
+ */
+export async function bindTwoFactorOidcSession(input: {
+  challengeId: string | null;
+  sourceMarker: string | null;
+  sessionId: string;
+  userId: string;
+  portal: "agent" | "customer";
+}): Promise<"not_oidc" | "bound" | "invalid"> {
+  if (!input.challengeId) return input.sourceMarker ? "invalid" : "not_oidc";
+  if (input.sourceMarker && input.sourceMarker !== input.challengeId)
+    return "invalid";
+  const identifier = `${OIDC_SESSION_SOURCE_PREFIX}${digest(input.challengeId)}`;
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(schema.verificationTable)
+      .where(eq(schema.verificationTable.identifier, identifier))
+      .for("update")
+      .limit(1);
+    if (!row) return input.sourceMarker ? "invalid" : "not_oidc";
+    await tx
+      .delete(schema.verificationTable)
+      .where(eq(schema.verificationTable.id, row.id));
+    if (row.expiresAt <= new Date()) return "invalid";
+    let source: unknown;
+    try {
+      source = JSON.parse(row.value) as unknown;
+    } catch {
+      return "invalid";
+    }
+    if (
+      typeof source !== "object" ||
+      source === null ||
+      Array.isArray(source) ||
+      !("connectionId" in source) ||
+      typeof source.connectionId !== "string" ||
+      !("portal" in source) ||
+      source.portal !== input.portal ||
+      !("userId" in source) ||
+      source.userId !== input.userId
+    )
+      return "invalid";
+    const [connection] = await tx
+      .select({
+        id: schema.identityConnectionTable.id,
+        enabled: schema.identityConnectionTable.enabled,
+        portalScope: schema.identityConnectionTable.portalScope,
+      })
+      .from(schema.identityConnectionTable)
+      .where(eq(schema.identityConnectionTable.id, source.connectionId))
+      .for("update")
+      .limit(1);
+    if (!connection?.enabled || connection.portalScope !== input.portal)
+      return "invalid";
+    const [identity] = await tx
+      .select({ id: schema.externalIdentityTable.id })
+      .from(schema.externalIdentityTable)
+      .where(
+        and(
+          eq(
+            schema.externalIdentityTable.identityConnectionId,
+            source.connectionId,
+          ),
+          eq(schema.externalIdentityTable.userId, input.userId),
+          eq(schema.externalIdentityTable.active, true),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!identity) return "invalid";
+    const [session] = await tx
+      .update(schema.sessionTable)
+      .set({ identityConnectionId: source.connectionId })
+      .where(
+        and(
+          eq(schema.sessionTable.id, input.sessionId),
+          eq(schema.sessionTable.userId, input.userId),
+          eq(schema.sessionTable.portal, input.portal),
+          gt(schema.sessionTable.expiresAt, sql`now()`),
+          isNull(schema.sessionTable.identityConnectionId),
+        ),
+      )
+      .returning({ id: schema.sessionTable.id });
+    return session ? "bound" : "invalid";
+  });
 }
 
 export function identityOidcPlugin(
@@ -253,8 +407,7 @@ export function identityOidcPlugin(
         .where(eq(schema.identityConnectionTable.id, connectionId))
         .limit(1);
       if (
-        !connection ||
-        !connection.enabled ||
+        !connection?.enabled ||
         connection.portalScope !== portal ||
         !connection.tenantId ||
         connection.redirectUri !== consumed.redirectUri
@@ -607,11 +760,30 @@ async function signInAdmittedIdentity(input: {
       value: "0",
       expiresAt,
     });
+    await ctx.context.internalAdapter.createVerificationValue({
+      identifier: `${OIDC_SESSION_SOURCE_PREFIX}${digest(identifier)}`,
+      value: JSON.stringify({
+        connectionId: connection.id,
+        portal,
+        userId: user.id,
+      }),
+      expiresAt,
+    });
     await ctx.setSignedCookie(
       cookie.name,
       identifier,
       ctx.context.secret,
       cookie.attributes,
+    );
+    const sourceCookie = ctx.context.createAuthCookie(
+      OIDC_PENDING_SESSION_COOKIE,
+      { maxAge },
+    );
+    await ctx.setSignedCookie(
+      sourceCookie.name,
+      identifier,
+      ctx.context.secret,
+      sourceCookie.attributes,
     );
     return { kind: "two_factor" as const };
   }
@@ -620,6 +792,18 @@ async function signInAdmittedIdentity(input: {
     false,
     { portal },
   );
+  if (
+    !session ||
+    !(await bindOidcSessionProvenance({
+      sessionId: session.id,
+      userId: user.id,
+      connectionId: connection.id,
+      portal,
+    }))
+  ) {
+    if (session) await ctx.context.internalAdapter.deleteSession(session.token);
+    return safeFailure(ctx);
+  }
   return { kind: "session" as const, session, user };
 }
 

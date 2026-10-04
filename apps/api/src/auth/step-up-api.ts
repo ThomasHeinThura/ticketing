@@ -8,6 +8,13 @@ import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { auth } from "../auth";
 import db, { schema } from "../database";
+import {
+  type IdentityConnectionConfigureRequest,
+  type IdentityConnectionCreateRequest,
+  identityConnectionConfigureRequestSchema,
+  identityConnectionCreateRequestSchema,
+} from "../identity/connection-contract";
+import { loadEntraDiscovery } from "../identity/oidc-provider";
 import { isCurrentInstanceAdmin } from "../instance/observability/audit-failure-notifier";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
 import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
@@ -18,10 +25,14 @@ import {
 } from "./local-factor-service";
 import { appendStepUpAudit } from "./step-up-audit";
 import {
+  createIdentityConnectionChallenge,
   createMfaResetChallenge,
   createRotationChallenge,
   createScimAdminChallenge,
   createScimTokenChallenge,
+  IDENTITY_CONNECTION_CONFIGURE_OPERATION,
+  IDENTITY_CONNECTION_CREATE_OPERATION,
+  issueIdentityConnectionToken,
   issueMfaResetToken,
   issueRotationToken,
   issueScimAdminToken,
@@ -138,6 +149,21 @@ const challengeRoute = createRoute({
                 operation: z.literal("scim_token_revoke"),
                 connectionId: z.string().min(1),
                 version: versionSchema,
+              })
+              .strict(),
+            z
+              .object({
+                kind: z.literal("operation"),
+                operation: z.literal(IDENTITY_CONNECTION_CREATE_OPERATION),
+                request: identityConnectionCreateRequestSchema,
+              })
+              .strict(),
+            z
+              .object({
+                kind: z.literal("operation"),
+                operation: z.literal(IDENTITY_CONNECTION_CONFIGURE_OPERATION),
+                connectionId: z.string().min(1).max(128),
+                request: identityConnectionConfigureRequestSchema,
               })
               .strict(),
           ]),
@@ -331,6 +357,59 @@ const proveRoute = createRoute({
                   .strict(),
               ],
             ),
+            ...(
+              [
+                IDENTITY_CONNECTION_CREATE_OPERATION,
+                IDENTITY_CONNECTION_CONFIGURE_OPERATION,
+              ] as const
+            ).flatMap((operation) => {
+              const requestSchema =
+                operation === IDENTITY_CONNECTION_CREATE_OPERATION
+                  ? identityConnectionCreateRequestSchema
+                  : identityConnectionConfigureRequestSchema;
+              const connection =
+                operation === IDENTITY_CONNECTION_CONFIGURE_OPERATION
+                  ? { connectionId: z.string().min(1).max(128) }
+                  : {};
+              return [
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal(operation),
+                    ...connection,
+                    request: requestSchema,
+                    challengeId: z.string(),
+                    nonce: z.string().length(43),
+                    method: z.literal("password"),
+                    password: z.string().min(1).max(1024),
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal(operation),
+                    ...connection,
+                    request: requestSchema,
+                    challengeId: z.string(),
+                    nonce: z.string().length(43),
+                    method: z.literal("totp"),
+                    code: z.string().regex(/^\d{6}$/u),
+                  })
+                  .strict(),
+                z
+                  .object({
+                    kind: z.literal("operation"),
+                    operation: z.literal(operation),
+                    ...connection,
+                    request: requestSchema,
+                    challengeId: z.string(),
+                    nonce: z.string().length(43),
+                    method: z.literal("backup_code"),
+                    code: z.string().min(1).max(64),
+                  })
+                  .strict(),
+              ];
+            }),
           ]),
         },
       },
@@ -562,6 +641,113 @@ const routes = apiRouter()
         200,
       );
     }
+    if (
+      input.operation === IDENTITY_CONNECTION_CREATE_OPERATION ||
+      input.operation === IDENTITY_CONNECTION_CONFIGURE_OPERATION
+    ) {
+      const connectionInput = input as typeof input & {
+        request:
+          | IdentityConnectionCreateRequest
+          | IdentityConnectionConfigureRequest;
+      };
+      const creating = input.operation === IDENTITY_CONNECTION_CREATE_OPERATION;
+      if (creating) {
+        try {
+          await loadEntraDiscovery(
+            (connectionInput.request as IdentityConnectionCreateRequest)
+              .tenantId,
+          );
+        } catch {
+          await appendStepUpAudit(db, {
+            action: "auth.step_up_denied",
+            actorId: c.get("userId"),
+            personId: actor.factor.personId,
+            operation: input.operation,
+            traceId: c.req.header("x-request-id"),
+          });
+          throw new HTTPException(422, {
+            message: "Identity provider configuration is invalid",
+          });
+        }
+      } else {
+        const [connection] = await db
+          .select({ version: schema.identityConnectionTable.configVersion })
+          .from(schema.identityConnectionTable)
+          .where(
+            eq(
+              schema.identityConnectionTable.id,
+              (input as typeof input & { connectionId: string }).connectionId,
+            ),
+          )
+          .limit(1);
+        if (!connection)
+          throw new HTTPException(404, { message: "Connection unavailable" });
+        if (
+          connection.version !==
+          (connectionInput.request as IdentityConnectionConfigureRequest)
+            .configVersion
+        )
+          return c.json(
+            {
+              message: "version_conflict" as const,
+              version: connection.version,
+            },
+            409,
+          );
+      }
+      let challenge: Awaited<
+        ReturnType<typeof createIdentityConnectionChallenge>
+      >;
+      try {
+        challenge = await createIdentityConnectionChallenge({
+          personId: actor.factor.personId,
+          sessionId: actor.session.id,
+          connectionId: creating
+            ? undefined
+            : (input as typeof input & { connectionId: string }).connectionId,
+          request: connectionInput.request as unknown as Record<
+            string,
+            unknown
+          >,
+          operation: input.operation,
+        });
+      } catch (error) {
+        if (error instanceof StepUpAttemptLimitError) {
+          await appendStepUpAudit(db, {
+            action: "auth.step_up_denied",
+            actorId: c.get("userId"),
+            personId: actor.factor.personId,
+            operation: input.operation,
+            traceId: c.req.header("x-request-id"),
+          });
+          return c.json(
+            {
+              message: "step_up_attempt_limit" as const,
+              limit: STEP_UP_CHALLENGE_LIMIT,
+              windowMinutes: STEP_UP_CHALLENGE_WINDOW_MINUTES,
+            },
+            429,
+          );
+        }
+        throw error;
+      }
+      await appendStepUpAudit(db, {
+        action: "auth.step_up_issued",
+        actorId: c.get("userId"),
+        personId: actor.factor.personId,
+        operation: input.operation,
+        traceId: c.req.header("x-request-id"),
+      });
+      setShadowLegacyAuthorization(c, "allowed");
+      return c.json(
+        {
+          challengeId: challenge.id,
+          nonce: challenge.nonce,
+          expiresAt: challenge.expiresAt,
+        },
+        200,
+      );
+    }
     const [setting] = await db
       .select({
         version: schema.instanceSettingTable.observabilityConfigVersion,
@@ -633,6 +819,54 @@ const routes = apiRouter()
       throw new HTTPException(403, { message: "step_up_unavailable" });
     }
     const input = c.req.valid("json");
+    const connectionInput = input as typeof input & {
+      request:
+        | IdentityConnectionCreateRequest
+        | IdentityConnectionConfigureRequest;
+    };
+    if (
+      input.operation === IDENTITY_CONNECTION_CREATE_OPERATION ||
+      input.operation === IDENTITY_CONNECTION_CONFIGURE_OPERATION
+    ) {
+      const creating = input.operation === IDENTITY_CONNECTION_CREATE_OPERATION;
+      if (creating) {
+        try {
+          await loadEntraDiscovery(
+            (connectionInput.request as IdentityConnectionCreateRequest)
+              .tenantId,
+          );
+        } catch {
+          throw new HTTPException(422, {
+            message: "Identity provider configuration is invalid",
+          });
+        }
+      } else {
+        const [connection] = await db
+          .select({ version: schema.identityConnectionTable.configVersion })
+          .from(schema.identityConnectionTable)
+          .where(
+            eq(
+              schema.identityConnectionTable.id,
+              (input as typeof input & { connectionId: string }).connectionId,
+            ),
+          )
+          .limit(1);
+        if (!connection)
+          throw new HTTPException(404, { message: "Connection unavailable" });
+        if (
+          connection.version !==
+          (connectionInput.request as IdentityConnectionConfigureRequest)
+            .configVersion
+        )
+          return c.json(
+            {
+              message: "version_conflict" as const,
+              version: connection.version,
+            },
+            409,
+          );
+      }
+    }
     let scimAdminRequest: ScimAdminRequest | undefined;
     if (input.operation === "scim_admin_update") {
       const validated = validateScimAdminRequest(input.request);
@@ -731,23 +965,31 @@ const routes = apiRouter()
       }
     };
     const token =
-      input.operation === "scim_token_rotate" ||
-      input.operation === "scim_token_revoke"
-        ? await issueScimTokenToken(
+      input.operation === IDENTITY_CONNECTION_CREATE_OPERATION ||
+      input.operation === IDENTITY_CONNECTION_CONFIGURE_OPERATION
+        ? await issueIdentityConnectionToken(
             {
               id: input.challengeId,
               nonce: input.nonce,
               personId: actor.factor.personId,
               sessionId: actor.session.id,
               userId: c.get("userId"),
-              connectionId: input.connectionId,
-              version: input.version,
+              connectionId:
+                input.operation === IDENTITY_CONNECTION_CONFIGURE_OPERATION
+                  ? (input as typeof input & { connectionId: string })
+                      .connectionId
+                  : undefined,
+              request: connectionInput.request as unknown as Record<
+                string,
+                unknown
+              >,
               operation: input.operation,
             },
             verifyAuthentication,
           )
-        : input.operation === "scim_admin_update"
-          ? await issueScimAdminToken(
+        : input.operation === "scim_token_rotate" ||
+            input.operation === "scim_token_revoke"
+          ? await issueScimTokenToken(
               {
                 id: input.challengeId,
                 nonce: input.nonce,
@@ -755,34 +997,48 @@ const routes = apiRouter()
                 sessionId: actor.session.id,
                 userId: c.get("userId"),
                 connectionId: input.connectionId,
-                request: requireScimAdminRequest(scimAdminRequest),
+                version: "version" in input ? input.version : 1,
+                operation: input.operation,
               },
               verifyAuthentication,
             )
-          : input.operation === "mfa_reset"
-            ? await issueMfaResetToken(
+          : input.operation === "scim_admin_update"
+            ? await issueScimAdminToken(
                 {
                   id: input.challengeId,
                   nonce: input.nonce,
                   personId: actor.factor.personId,
                   sessionId: actor.session.id,
                   userId: c.get("userId"),
-                  targetUserId: input.userId,
-                  verificationNote: input.verificationNote,
+                  connectionId: input.connectionId,
+                  request: requireScimAdminRequest(scimAdminRequest),
                 },
                 verifyAuthentication,
               )
-            : await issueRotationToken(
-                {
-                  id: input.challengeId,
-                  nonce: input.nonce,
-                  personId: actor.factor.personId,
-                  sessionId: actor.session.id,
-                  userId: c.get("userId"),
-                  version: input.version,
-                },
-                verifyAuthentication,
-              );
+            : input.operation === "mfa_reset"
+              ? await issueMfaResetToken(
+                  {
+                    id: input.challengeId,
+                    nonce: input.nonce,
+                    personId: actor.factor.personId,
+                    sessionId: actor.session.id,
+                    userId: c.get("userId"),
+                    targetUserId: input.userId,
+                    verificationNote: input.verificationNote,
+                  },
+                  verifyAuthentication,
+                )
+              : await issueRotationToken(
+                  {
+                    id: input.challengeId,
+                    nonce: input.nonce,
+                    personId: actor.factor.personId,
+                    sessionId: actor.session.id,
+                    userId: c.get("userId"),
+                    version: "version" in input ? input.version : 1,
+                  },
+                  verifyAuthentication,
+                );
     if (!token) {
       await appendStepUpAudit(db, {
         action: "auth.step_up_denied",

@@ -132,7 +132,19 @@ has not been granted. These are target contracts, not implemented tables.
   cross-organisation access. Customer self-service IdP setup is a later feature with its own
   spec, security review, validation workflow and approval model.
 - `IP-6` Creating or changing a connection and rotating or revoking a SCIM token are
-  **elevated, audited** actions. Every OIDC group-mapping create, edit, enable or disable
+  **elevated, audited** actions. Connection creation and configuration use distinct,
+  session-only PA-15 operations: create binds the fixed collection route, initial version
+  `1` and the complete canonical strict body; configuration binds the fixed item route,
+  immutable connection id, current positive `configVersion` and complete canonical strict
+  body. The connection id, provider, portal scope, customer organisation, tenant, issuer and
+  derived redirect URI cannot be changed after creation. Disable is `enabled:false` in the
+  configuration CAS and retires only this connection's external sources and tagged
+  sessions. Create starts disabled. Client-secret plaintext is accepted only on a strict
+  write, encrypted using the existing per-connection AES-GCM helper, and never returned,
+  logged or written to audit/event detail. Connection delete remains the separate typed-name
+  pending action. The superseding operation decision is recorded in
+  [decision-log.md](../07-planning/decision-log.md); it replaces the older api-design sentence
+  that classified connection PATCH as ordinary. Every OIDC group-mapping create, edit, enable or disable
   is also elevated and audited, using the fixed route policies and operation-bound step-up
   in [api-design.md](../01-architecture/api-design.md#oidc-group-mapping-administration).
   Every write through the existing `PATCH /api/instance/identity-connections/{id}/scim`
@@ -143,8 +155,8 @@ has not been granted. These are target contracts, not implemented tables.
   `scim_admin_update` PA-15 binding are specified in
   [api-design.md](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).
   The same route has one closed `attribute_mapping` replacement variant for profile-only
-  values, as specified in that API contract. This is a design contract, not a mounted runtime route; an implementation lacking the
-  verifier still fails closed with `403 step_up_unavailable` and makes no mutation. OIDC
+  values, as specified in that API contract. Its mounted strict route enforces the
+  registered session-only PA-15 operation and fails closed if proof is unavailable. OIDC
   mapping writes remain unconditionally elevated with separate operation bindings.
 
   The same settings variant may replace the closed `matchAttributes` list used by

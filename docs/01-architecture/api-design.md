@@ -139,20 +139,55 @@ method cannot be verified, return `403 step_up_unavailable` and do not rotate. S
 [security-model.md](security-model.md#sessions-csrf-and-step-up) and
 [pending-actions.md](pending-actions.md) `PA-15`.
 
-### Identity-connection configuration compare-and-set
+### Identity-connection create and configuration compare-and-set — PA-15
 
-`PATCH /api/instance/identity-connections/{id}` carries the connection's expected positive
-safe-integer `configVersion` with the configured fields. Under the `IP-22` total lock order,
-compare it with `identity_connection.config_version`; a stale version returns
-`409 version_conflict` with only the current safe version and changes nothing. Every
-committed connection-configuration mutation advances the version exactly once. In
-particular, changing JIT enabled/default-role/target policy and lowering an enabled agent
-connection's `max_role_rank` apply the `IP-22` source-scoped retirement, projection,
-audit/provisioning and existing event/outbox changes in the same CAS transaction. The
-shared lock/retry protocol prevents racing a mapping write, OIDC login, SCIM synchronization,
-role edit or connection disable into committing stale authority. This ordinary connection
-update is not a new PA-15 operation; the two OIDC mapping routes below retain their separate
-operation-bound proof.
+`POST /api/instance/identity-connections` and
+`PATCH /api/instance/identity-connections/{id}` require distinct session-only PA-15
+operations, `identity_connection_create` and `identity_connection_configure`. Both require
+current `instance:admin`; API keys are refused. Create is bound to fixed expected version
+`1`, the exact collection route and the server-canonical complete validated request body.
+PATCH is bound to the path connection id, current positive `configVersion`, exact route and
+complete validated request body. Challenge and proof routes derive these bindings from the
+same strict request; clients cannot provide a hash, route key or version outside the body.
+Missing, expired, replayed, cross-route, cross-connection, stale-version or wrong-body proof
+fails without mutation. The existing single-use transaction consumes proof in the same
+transaction as the configuration CAS.
+
+The create body is strict: `{portalScope, organisationId, defaultWorkspaceId, displayName,
+tenantId, clientId, clientSecret, scopes, claimMapping, domainBindings, jitPolicy,
+maxRoleRank}`. `providerType` is fixed to `entra`; the server derives `issuer` from the
+tenant-specific Entra discovery document and derives `redirectUri` from the configured
+portal origin and generated connection id. The server creates the id, starts at
+`configVersion: 1`, and starts disabled. Customer scope requires its exact existing
+organisation and null workspace/rank; agent scope has null organisation and validates any
+configured JIT workspace/role using IP-3/IP-22. The required Entra app role is validated
+even when JIT is disabled. The secret is encrypted with the existing per-row AES-256-GCM
+helper before persistence and is never returned. The mutation response uses the existing
+safe connection DTO.
+
+PATCH accepts only `{configVersion, displayName?, clientId?, clientSecret?, scopes?,
+claimMapping?, domainBindings?, defaultWorkspaceId?, jitPolicy?, maxRoleRank?, enabled?}`.
+Omitted fields retain their current values; nullable `defaultWorkspaceId` and
+`jitPolicy.default_role_id` explicitly clear those values where allowed. Unknown fields,
+null secrets and empty replacement secrets are rejected. Connection id, provider, portal,
+customer organisation, tenant, issuer and derived redirect URI are immutable; changing
+tenant or ownership requires a separate connection and the existing typed-name deletion
+workflow. Each successful create/configure/disable mutation advances the connection version
+exactly once. A stale version returns `409 version_conflict` with only the current safe
+version. Under the `IP-22` total lock order, changing JIT policy or lowering an enabled
+agent connection's `max_role_rank` applies source-scoped grant retirement, projection,
+audit/provisioning and existing event/outbox changes in the same transaction. Disabling
+also revokes only sessions tagged with this connection id and retires only its external
+grant sources; direct and other-connection sessions/grants remain. Re-enabling does not
+restore retired grants; fresh validated identity evidence is required. Network discovery
+occurs before locks, then the selected immutable connection facts and references are
+revalidated under the complete IP-22 closure before commit.
+
+This contract is the dated superseding PA-15 decision in
+[decision-log.md](../07-planning/decision-log.md). The previous sentence describing ordinary
+connection PATCH as non-PA-15 is superseded. Connection deletion remains its separately
+specified typed-name pending action. The `mfaUpstreamMode` column remains read-only and
+defaults to `off`; this batch does not claim enforcement of the planned upstream-MFA modes.
 
 The strict connection DTO may replace `claimMapping` only with the closed first-release
 profile map `{ "version": 1, "displayName": "name" }`. Missing or null persisted data

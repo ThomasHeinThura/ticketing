@@ -54,7 +54,10 @@ describe("God Mode identity connection list", () => {
 
     render(<IdentityConnectionsRoute />);
 
-    const link = await screen.findByRole("link", { name: "SCIM settings" });
+    const link = await screen.findByRole("link", { name: "Manage settings" });
+    expect(
+      screen.getByRole("link", { name: "Add identity connection" }),
+    ).toHaveAttribute("href", "/god-mode/authentication/new");
     expect(link).toHaveAttribute(
       "href",
       "/god-mode/authentication/connection%2Fone",

@@ -20,6 +20,14 @@ export const SCIM_TOKEN_ROTATE_ROUTE =
 export const SCIM_TOKEN_REVOKE_OPERATION = "scim_token_revoke" as const;
 export const SCIM_TOKEN_REVOKE_ROUTE =
   "POST /api/instance/identity-connections/{id}/scim/revoke-token" as const;
+export const IDENTITY_CONNECTION_CREATE_OPERATION =
+  "identity_connection_create" as const;
+export const IDENTITY_CONNECTION_CREATE_ROUTE =
+  "POST /api/instance/identity-connections" as const;
+export const IDENTITY_CONNECTION_CONFIGURE_OPERATION =
+  "identity_connection_configure" as const;
+export const IDENTITY_CONNECTION_CONFIGURE_ROUTE =
+  "PATCH /api/instance/identity-connections/{id}" as const;
 export class StepUpAttemptLimitError extends Error {
   constructor() {
     super("step_up_attempt_limit");
@@ -55,6 +63,56 @@ export function canonicalScimTokenBody(version: number): Buffer {
   // PA-15 stores the operation, route, version, person and session as separate
   // binding columns. The body hash is only the canonical validated request body.
   return Buffer.from(JSON.stringify({ version }), "utf8");
+}
+
+export function canonicalIdentityConnectionCreateBody(
+  request: Record<string, unknown>,
+): Buffer {
+  return canonicalOperationBody(
+    IDENTITY_CONNECTION_CREATE_OPERATION,
+    IDENTITY_CONNECTION_CREATE_ROUTE,
+    1,
+    request,
+  );
+}
+
+export function canonicalIdentityConnectionConfigureBody(
+  connectionId: string,
+  request: Record<string, unknown>,
+): Buffer {
+  return canonicalOperationBody(
+    IDENTITY_CONNECTION_CONFIGURE_OPERATION,
+    IDENTITY_CONNECTION_CONFIGURE_ROUTE,
+    Number(request.configVersion),
+    { connectionId, request },
+  );
+}
+
+export function createIdentityConnectionChallenge(input: {
+  personId: string;
+  sessionId: string;
+  connectionId?: string;
+  request: Record<string, unknown>;
+  operation:
+    | typeof IDENTITY_CONNECTION_CREATE_OPERATION
+    | typeof IDENTITY_CONNECTION_CONFIGURE_OPERATION;
+}) {
+  const creating = input.operation === IDENTITY_CONNECTION_CREATE_OPERATION;
+  return createOperationChallenge({
+    personId: input.personId,
+    sessionId: input.sessionId,
+    operation: input.operation,
+    route: creating
+      ? IDENTITY_CONNECTION_CREATE_ROUTE
+      : IDENTITY_CONNECTION_CONFIGURE_ROUTE,
+    version: creating ? 1 : Number(input.request.configVersion),
+    body: creating
+      ? canonicalIdentityConnectionCreateBody(input.request)
+      : canonicalIdentityConnectionConfigureBody(
+          input.connectionId ?? "",
+          input.request,
+        ),
+  });
 }
 
 export function createScimAdminChallenge(input: {
@@ -287,6 +345,35 @@ export async function consumeScimAdminProof(
   });
 }
 
+export async function consumeIdentityConnectionProof(
+  tx: StepUpTransaction,
+  input: {
+    token: string;
+    personId: string;
+    sessionId: string;
+    connectionId?: string;
+    request: Record<string, unknown>;
+    operation:
+      | typeof IDENTITY_CONNECTION_CREATE_OPERATION
+      | typeof IDENTITY_CONNECTION_CONFIGURE_OPERATION;
+  },
+) {
+  const creating = input.operation === IDENTITY_CONNECTION_CREATE_OPERATION;
+  return consumeOperationProof(tx, {
+    ...input,
+    version: creating ? 1 : Number(input.request.configVersion),
+    route: creating
+      ? IDENTITY_CONNECTION_CREATE_ROUTE
+      : IDENTITY_CONNECTION_CONFIGURE_ROUTE,
+    body: creating
+      ? canonicalIdentityConnectionCreateBody(input.request)
+      : canonicalIdentityConnectionConfigureBody(
+          input.connectionId ?? "",
+          input.request,
+        ),
+  });
+}
+
 export async function consumeScimTokenProof(
   tx: StepUpTransaction,
   input: {
@@ -445,6 +532,42 @@ export async function issueScimAdminToken(
       operation: SCIM_ADMIN_OPERATION,
       route: SCIM_ADMIN_ROUTE,
       body: canonicalScimAdminBody(input.connectionId, input.request),
+    },
+    verifyAuthentication,
+  );
+}
+
+export async function issueIdentityConnectionToken(
+  input: {
+    id: string;
+    nonce: string;
+    personId: string;
+    sessionId: string;
+    userId: string;
+    connectionId?: string;
+    request: Record<string, unknown>;
+    operation:
+      | typeof IDENTITY_CONNECTION_CREATE_OPERATION
+      | typeof IDENTITY_CONNECTION_CONFIGURE_OPERATION;
+  },
+  verifyAuthentication: () => Promise<
+    "password" | "totp" | "backup_code" | null
+  >,
+) {
+  const creating = input.operation === IDENTITY_CONNECTION_CREATE_OPERATION;
+  return issueOperationToken(
+    {
+      ...input,
+      version: creating ? 1 : Number(input.request.configVersion),
+      route: creating
+        ? IDENTITY_CONNECTION_CREATE_ROUTE
+        : IDENTITY_CONNECTION_CONFIGURE_ROUTE,
+      body: creating
+        ? canonicalIdentityConnectionCreateBody(input.request)
+        : canonicalIdentityConnectionConfigureBody(
+            input.connectionId ?? "",
+            input.request,
+          ),
     },
     verifyAuthentication,
   );

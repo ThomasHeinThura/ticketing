@@ -204,8 +204,11 @@ describe("routes.slaPolicies", () => {
 });
 
 describe("routes.identityConnections", () => {
-  it("keeps the God Mode list and connection editor directly addressable", () => {
+  it("keeps the God Mode list, create form and connection editor directly addressable", () => {
     expect(routes.identityConnections.build()).toBe("/god-mode/authentication");
+    expect(routes.identityConnectionCreate.build()).toBe(
+      "/god-mode/authentication/new",
+    );
     expect(
       routes.identityConnectionSettings.build({ id: "connection/a" }),
     ).toBe("/god-mode/authentication/connection%2Fa");

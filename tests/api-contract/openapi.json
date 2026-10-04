@@ -21579,6 +21579,314 @@
                       "version"
                     ],
                     "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "identity_connection_create"
+                        ]
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "portalScope": {
+                            "type": "string",
+                            "enum": [
+                              "agent",
+                              "customer"
+                            ]
+                          },
+                          "organisationId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "defaultWorkspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "displayName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "tenantId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "clientId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "clientSecret": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16384
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            },
+                            "maxItems": 32
+                          },
+                          "claimMapping": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "version": {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              "displayName": {
+                                "type": "string",
+                                "enum": [
+                                  "name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "version",
+                              "displayName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "domainBindings": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 253,
+                              "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/u"
+                            },
+                            "maxItems": 100
+                          },
+                          "jitPolicy": {
+                            "type": "object",
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "default_role_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "required_entra_app_role": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "default_role_id",
+                              "required_entra_app_role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxRoleRank": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "minimum": 0,
+                            "maximum": 10000
+                          }
+                        },
+                        "required": [
+                          "portalScope",
+                          "organisationId",
+                          "defaultWorkspaceId",
+                          "displayName",
+                          "tenantId",
+                          "clientId",
+                          "clientSecret",
+                          "scopes",
+                          "domainBindings",
+                          "jitPolicy",
+                          "maxRoleRank"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "request"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "identity_connection_configure"
+                        ]
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "displayName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "clientId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "clientSecret": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16384
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            },
+                            "maxItems": 32
+                          },
+                          "claimMapping": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "version": {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              "displayName": {
+                                "type": "string",
+                                "enum": [
+                                  "name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "version",
+                              "displayName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "domainBindings": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 253,
+                              "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/u"
+                            },
+                            "maxItems": 100
+                          },
+                          "defaultWorkspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "jitPolicy": {
+                            "type": "object",
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "default_role_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "required_entra_app_role": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "default_role_id",
+                              "required_entra_app_role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxRoleRank": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "minimum": 0,
+                            "maximum": 10000
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "configVersion"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "connectionId",
+                      "request"
+                    ],
+                    "additionalProperties": false
                   }
                 ]
               }
@@ -22526,6 +22834,1066 @@
                       "operation",
                       "connectionId",
                       "version",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "identity_connection_create"
+                        ]
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "portalScope": {
+                            "type": "string",
+                            "enum": [
+                              "agent",
+                              "customer"
+                            ]
+                          },
+                          "organisationId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "defaultWorkspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "displayName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "tenantId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "clientId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "clientSecret": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16384
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            },
+                            "maxItems": 32
+                          },
+                          "claimMapping": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "version": {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              "displayName": {
+                                "type": "string",
+                                "enum": [
+                                  "name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "version",
+                              "displayName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "domainBindings": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 253,
+                              "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/u"
+                            },
+                            "maxItems": 100
+                          },
+                          "jitPolicy": {
+                            "type": "object",
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "default_role_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "required_entra_app_role": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "default_role_id",
+                              "required_entra_app_role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxRoleRank": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "minimum": 0,
+                            "maximum": 10000
+                          }
+                        },
+                        "required": [
+                          "portalScope",
+                          "organisationId",
+                          "defaultWorkspaceId",
+                          "displayName",
+                          "tenantId",
+                          "clientId",
+                          "clientSecret",
+                          "scopes",
+                          "domainBindings",
+                          "jitPolicy",
+                          "maxRoleRank"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "password"
+                        ]
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "password"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "identity_connection_create"
+                        ]
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "portalScope": {
+                            "type": "string",
+                            "enum": [
+                              "agent",
+                              "customer"
+                            ]
+                          },
+                          "organisationId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "defaultWorkspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "displayName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "tenantId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "clientId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "clientSecret": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16384
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            },
+                            "maxItems": 32
+                          },
+                          "claimMapping": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "version": {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              "displayName": {
+                                "type": "string",
+                                "enum": [
+                                  "name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "version",
+                              "displayName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "domainBindings": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 253,
+                              "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/u"
+                            },
+                            "maxItems": 100
+                          },
+                          "jitPolicy": {
+                            "type": "object",
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "default_role_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "required_entra_app_role": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "default_role_id",
+                              "required_entra_app_role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxRoleRank": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "minimum": 0,
+                            "maximum": 10000
+                          }
+                        },
+                        "required": [
+                          "portalScope",
+                          "organisationId",
+                          "defaultWorkspaceId",
+                          "displayName",
+                          "tenantId",
+                          "clientId",
+                          "clientSecret",
+                          "scopes",
+                          "domainBindings",
+                          "jitPolicy",
+                          "maxRoleRank"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "totp"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$/u"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "identity_connection_create"
+                        ]
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "portalScope": {
+                            "type": "string",
+                            "enum": [
+                              "agent",
+                              "customer"
+                            ]
+                          },
+                          "organisationId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "defaultWorkspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "displayName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "tenantId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "clientId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "clientSecret": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16384
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            },
+                            "maxItems": 32
+                          },
+                          "claimMapping": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "version": {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              "displayName": {
+                                "type": "string",
+                                "enum": [
+                                  "name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "version",
+                              "displayName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "domainBindings": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 253,
+                              "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/u"
+                            },
+                            "maxItems": 100
+                          },
+                          "jitPolicy": {
+                            "type": "object",
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "default_role_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "required_entra_app_role": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "default_role_id",
+                              "required_entra_app_role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxRoleRank": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "minimum": 0,
+                            "maximum": 10000
+                          }
+                        },
+                        "required": [
+                          "portalScope",
+                          "organisationId",
+                          "defaultWorkspaceId",
+                          "displayName",
+                          "tenantId",
+                          "clientId",
+                          "clientSecret",
+                          "scopes",
+                          "domainBindings",
+                          "jitPolicy",
+                          "maxRoleRank"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "backup_code"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "identity_connection_configure"
+                        ]
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "displayName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "clientId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "clientSecret": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16384
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            },
+                            "maxItems": 32
+                          },
+                          "claimMapping": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "version": {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              "displayName": {
+                                "type": "string",
+                                "enum": [
+                                  "name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "version",
+                              "displayName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "domainBindings": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 253,
+                              "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/u"
+                            },
+                            "maxItems": 100
+                          },
+                          "defaultWorkspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "jitPolicy": {
+                            "type": "object",
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "default_role_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "required_entra_app_role": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "default_role_id",
+                              "required_entra_app_role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxRoleRank": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "minimum": 0,
+                            "maximum": 10000
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "configVersion"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "password"
+                        ]
+                      },
+                      "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "connectionId",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "password"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "identity_connection_configure"
+                        ]
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "displayName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "clientId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "clientSecret": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16384
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            },
+                            "maxItems": 32
+                          },
+                          "claimMapping": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "version": {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              "displayName": {
+                                "type": "string",
+                                "enum": [
+                                  "name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "version",
+                              "displayName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "domainBindings": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 253,
+                              "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/u"
+                            },
+                            "maxItems": 100
+                          },
+                          "defaultWorkspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "jitPolicy": {
+                            "type": "object",
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "default_role_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "required_entra_app_role": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "default_role_id",
+                              "required_entra_app_role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxRoleRank": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "minimum": 0,
+                            "maximum": 10000
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "configVersion"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "totp"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "pattern": "^\\d{6}$/u"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "connectionId",
+                      "request",
+                      "challengeId",
+                      "nonce",
+                      "method",
+                      "code"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "operation"
+                        ]
+                      },
+                      "operation": {
+                        "type": "string",
+                        "enum": [
+                          "identity_connection_configure"
+                        ]
+                      },
+                      "connectionId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "request": {
+                        "type": "object",
+                        "properties": {
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "displayName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "clientId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "clientSecret": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 16384
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 256
+                            },
+                            "maxItems": 32
+                          },
+                          "claimMapping": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "version": {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              "displayName": {
+                                "type": "string",
+                                "enum": [
+                                  "name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "version",
+                              "displayName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "domainBindings": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 253,
+                              "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/u"
+                            },
+                            "maxItems": 100
+                          },
+                          "defaultWorkspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "minLength": 1,
+                            "maxLength": 128
+                          },
+                          "jitPolicy": {
+                            "type": "object",
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "default_role_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ],
+                                "minLength": 1,
+                                "maxLength": 128
+                              },
+                              "required_entra_app_role": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "default_role_id",
+                              "required_entra_app_role"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxRoleRank": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ],
+                            "minimum": 0,
+                            "maximum": 10000
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "configVersion"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "challengeId": {
+                        "type": "string"
+                      },
+                      "nonce": {
+                        "type": "string",
+                        "minLength": 43,
+                        "maxLength": 43
+                      },
+                      "method": {
+                        "type": "string",
+                        "enum": [
+                          "backup_code"
+                        ]
+                      },
+                      "code": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "operation",
+                      "connectionId",
+                      "request",
                       "challengeId",
                       "nonce",
                       "method",
@@ -23800,6 +25168,426 @@
             }
           }
         }
+      },
+      "post": {
+        "operationId": "createIdentityConnection",
+        "tags": [
+          "Identity connections"
+        ],
+        "summary": "Create a disabled Entra identity connection",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "x-taskdesk-step-up-token",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "portalScope": {
+                    "type": "string",
+                    "enum": [
+                      "agent",
+                      "customer"
+                    ]
+                  },
+                  "organisationId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "defaultWorkspaceId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "tenantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "clientId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "clientSecret": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16384
+                  },
+                  "scopes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "maxItems": 32
+                  },
+                  "claimMapping": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "properties": {
+                      "version": {
+                        "type": "number",
+                        "enum": [
+                          1
+                        ]
+                      },
+                      "displayName": {
+                        "type": "string",
+                        "enum": [
+                          "name"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "version",
+                      "displayName"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "domainBindings": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 253,
+                      "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/u"
+                    },
+                    "maxItems": 100
+                  },
+                  "jitPolicy": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "default_role_id": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "required_entra_app_role": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "default_role_id",
+                      "required_entra_app_role"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "maxRoleRank": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 10000
+                  }
+                },
+                "required": [
+                  "portalScope",
+                  "organisationId",
+                  "defaultWorkspaceId",
+                  "displayName",
+                  "tenantId",
+                  "clientId",
+                  "clientSecret",
+                  "scopes",
+                  "domainBindings",
+                  "jitPolicy",
+                  "maxRoleRank"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created identity connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "providerType": {
+                          "type": "string",
+                          "enum": [
+                            "entra"
+                          ]
+                        },
+                        "portalScope": {
+                          "type": "string",
+                          "enum": [
+                            "agent",
+                            "customer"
+                          ]
+                        },
+                        "organisationId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "defaultWorkspaceId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "issuer": {
+                          "type": "string"
+                        },
+                        "tenantId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clientId": {
+                          "type": "string"
+                        },
+                        "clientSecretConfigured": {
+                          "type": "boolean"
+                        },
+                        "redirectUri": {
+                          "type": "string"
+                        },
+                        "scopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "claimMapping": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "version": {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            "displayName": {
+                              "type": "string",
+                              "enum": [
+                                "name"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "version",
+                            "displayName"
+                          ]
+                        },
+                        "claimMappingState": {
+                          "type": "string",
+                          "enum": [
+                            "default",
+                            "valid",
+                            "invalid"
+                          ]
+                        },
+                        "domainBindings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "jitPolicy": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "default_role_id": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "required_entra_app_role": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "enabled",
+                            "default_role_id",
+                            "required_entra_app_role"
+                          ]
+                        },
+                        "maxRoleRank": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "mfaUpstreamMode": {
+                          "type": "string",
+                          "enum": [
+                            "claim",
+                            "static",
+                            "off"
+                          ]
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "configVersion": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "healthState": {
+                          "type": "string",
+                          "enum": [
+                            "unknown",
+                            "healthy",
+                            "degraded",
+                            "invalid"
+                          ]
+                        },
+                        "healthCheckedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "providerType",
+                        "portalScope",
+                        "organisationId",
+                        "defaultWorkspaceId",
+                        "displayName",
+                        "issuer",
+                        "tenantId",
+                        "clientId",
+                        "clientSecretConfigured",
+                        "redirectUri",
+                        "scopes",
+                        "claimMapping",
+                        "claimMappingState",
+                        "domainBindings",
+                        "jitPolicy",
+                        "maxRoleRank",
+                        "mfaUpstreamMode",
+                        "enabled",
+                        "configVersion",
+                        "healthState",
+                        "healthCheckedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden or step-up unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity connection already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid identity configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/instance/organisations/{id}/identity": {
@@ -24062,6 +25850,438 @@
           },
           "503": {
             "description": "Stored identity configuration is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/identity-connections/{id}": {
+      "patch": {
+        "operationId": "configureIdentityConnection",
+        "tags": [
+          "Identity connections"
+        ],
+        "summary": "Update identity connection configuration with versioned step-up",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "x-taskdesk-step-up-token",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "configVersion": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "clientId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "clientSecret": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16384
+                  },
+                  "scopes": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    },
+                    "maxItems": 32
+                  },
+                  "claimMapping": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "properties": {
+                      "version": {
+                        "type": "number",
+                        "enum": [
+                          1
+                        ]
+                      },
+                      "displayName": {
+                        "type": "string",
+                        "enum": [
+                          "name"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "version",
+                      "displayName"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "domainBindings": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 253,
+                      "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/u"
+                    },
+                    "maxItems": 100
+                  },
+                  "defaultWorkspaceId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "minLength": 1,
+                    "maxLength": 128
+                  },
+                  "jitPolicy": {
+                    "type": "object",
+                    "properties": {
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "default_role_id": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "minLength": 1,
+                        "maxLength": 128
+                      },
+                      "required_entra_app_role": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      }
+                    },
+                    "required": [
+                      "enabled",
+                      "default_role_id",
+                      "required_entra_app_role"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "maxRoleRank": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "minimum": 0,
+                    "maximum": 10000
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "configVersion"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated identity connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "providerType": {
+                          "type": "string",
+                          "enum": [
+                            "entra"
+                          ]
+                        },
+                        "portalScope": {
+                          "type": "string",
+                          "enum": [
+                            "agent",
+                            "customer"
+                          ]
+                        },
+                        "organisationId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "defaultWorkspaceId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "issuer": {
+                          "type": "string"
+                        },
+                        "tenantId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clientId": {
+                          "type": "string"
+                        },
+                        "clientSecretConfigured": {
+                          "type": "boolean"
+                        },
+                        "redirectUri": {
+                          "type": "string"
+                        },
+                        "scopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "claimMapping": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "version": {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            "displayName": {
+                              "type": "string",
+                              "enum": [
+                                "name"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "version",
+                            "displayName"
+                          ]
+                        },
+                        "claimMappingState": {
+                          "type": "string",
+                          "enum": [
+                            "default",
+                            "valid",
+                            "invalid"
+                          ]
+                        },
+                        "domainBindings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "jitPolicy": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "default_role_id": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "required_entra_app_role": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "enabled",
+                            "default_role_id",
+                            "required_entra_app_role"
+                          ]
+                        },
+                        "maxRoleRank": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "mfaUpstreamMode": {
+                          "type": "string",
+                          "enum": [
+                            "claim",
+                            "static",
+                            "off"
+                          ]
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "configVersion": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "healthState": {
+                          "type": "string",
+                          "enum": [
+                            "unknown",
+                            "healthy",
+                            "degraded",
+                            "invalid"
+                          ]
+                        },
+                        "healthCheckedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "providerType",
+                        "portalScope",
+                        "organisationId",
+                        "defaultWorkspaceId",
+                        "displayName",
+                        "issuer",
+                        "tenantId",
+                        "clientId",
+                        "clientSecretConfigured",
+                        "redirectUri",
+                        "scopes",
+                        "claimMapping",
+                        "claimMappingState",
+                        "domainBindings",
+                        "jitPolicy",
+                        "maxRoleRank",
+                        "mfaUpstreamMode",
+                        "enabled",
+                        "configVersion",
+                        "healthState",
+                        "healthCheckedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden or step-up unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Connection unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Configuration changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "currentVersion": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "currentVersion"
+                  ]
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid identity configuration",
             "content": {
               "application/json": {
                 "schema": {

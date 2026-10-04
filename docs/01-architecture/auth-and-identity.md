@@ -387,6 +387,19 @@ code; only the credential check reuses the platform. Budget it as such.
   closed during authenticated request resolution and at the realtime boundary, requiring
   a fresh sign-in. The selected host's portal must match `session.portal` even if a cookie
   value is copied into the other portal's cookie name.
+- Native OIDC-issued sessions also carry nullable `identity_connection_id` referencing
+  `identity_connection.id` with `ON DELETE CASCADE`. Only a validated native OIDC callback
+  may set it; local sign-in, impersonation and other-connection sessions remain null or keep
+  their original connection provenance. The callback revalidates the enabled connection
+  under the `IP-22` connection lock before issuing a session. Disabling a connection deletes
+  only sessions whose provenance equals that connection id, in the same serialized
+  configuration transaction that retires its grants. The forward migration does not infer
+  provenance for pre-migration sessions. Because those older OIDC sessions cannot be
+  distinguished from local sessions, rollout must occur before enabling this source-scoped
+  revocation guarantee; any persistent runtime with such sessions requires an explicit
+  operator reconciliation before the migration is applied. The FK cascade is only a
+  source-specific final deletion guard; production deletion still uses its pending-action,
+  audit and authority-invalidation lifecycle.
 - **Server-side sessions in Postgres, and this is the honest revocation SLA.**
   better-auth's `session.cookieCache` is **disabled** at the fork — kaneo enables it for
   five minutes, which serves a session from a signed cookie with no database read. Every

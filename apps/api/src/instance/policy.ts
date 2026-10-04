@@ -34,6 +34,28 @@ export const instancePolicies = {
     elevationExemptionReason:
       "safe identity DTO omits client secrets and raw provider claims",
   },
+  "POST /api/instance/identity-connections": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "identity connection creation is an instance-wide operation",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
+  "PATCH /api/instance/identity-connections/{id}": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "identity connection configuration is an instance-wide operation",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
   "GET /api/instance/identity-connections/{id}/scim": {
     capability: "instance:admin",
     scope: "instance",

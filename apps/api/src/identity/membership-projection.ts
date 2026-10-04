@@ -51,10 +51,12 @@ export async function lockScimGrantClosure(
   tx: IdentityTransaction,
   input: {
     connectionId: string;
+    sourceKinds?: readonly ("jit_default" | "oidc_group" | "scim_group")[];
     actorPersonId?: string;
     proposedRoleId?: string;
     proposedScope?: string;
     proposedScopeId?: string;
+    proposedOrganisationId?: string;
     mappingId?: string;
     additionalProjectionKeys?: readonly (MembershipProjectionKey & {
       roleId: string;
@@ -83,7 +85,9 @@ export async function lockScimGrantClosure(
           schema.membershipGrantTable.identityConnectionId,
           input.connectionId,
         ),
-        eq(schema.membershipGrantTable.sourceKind, "scim_group"),
+        ...(input.sourceKinds
+          ? [inArray(schema.membershipGrantTable.sourceKind, input.sourceKinds)]
+          : [eq(schema.membershipGrantTable.sourceKind, "scim_group")]),
         isNull(schema.membershipGrantTable.revokedAt),
       ),
     );
@@ -179,6 +183,7 @@ export async function lockScimGrantClosure(
       ...(proposedScope === "organisation" && input.proposedScopeId
         ? [input.proposedScopeId]
         : []),
+      ...(input.proposedOrganisationId ? [input.proposedOrganisationId] : []),
       ...mappings
         .filter((mapping) => mapping.scope === "organisation")
         .map((mapping) => mapping.scopeId),
@@ -422,7 +427,9 @@ export async function lockScimGrantClosure(
           schema.membershipGrantTable.identityConnectionId,
           input.connectionId,
         ),
-        eq(schema.membershipGrantTable.sourceKind, "scim_group"),
+        ...(input.sourceKinds
+          ? [inArray(schema.membershipGrantTable.sourceKind, input.sourceKinds)]
+          : [eq(schema.membershipGrantTable.sourceKind, "scim_group")]),
         isNull(schema.membershipGrantTable.revokedAt),
       ),
     );
@@ -435,6 +442,7 @@ export async function lockScimGrantClosure(
       grant.roleId,
       grant.externalIdentityId,
       grant.scimGroupMappingId,
+      grant.oidcGroupMappingId,
     ].join("\0");
   const discoveredKeys = discovered.map(closureKey).sort();
   const currentKeys = current.map(closureKey).sort();
@@ -453,6 +461,51 @@ export async function lockScimGrantClosure(
       ...key
     }) => key,
   );
+}
+
+/** Revoke only grants sourced by one identity connection and reproject their scopes. */
+export async function retireConnectionGrantSources(
+  tx: IdentityTransaction,
+  connectionId: string,
+) {
+  const keys = await lockScimGrantClosure(tx, {
+    connectionId,
+    sourceKinds: ["jit_default", "oidc_group", "scim_group"],
+  });
+  const grants = await tx
+    .select({ id: schema.membershipGrantTable.id })
+    .from(schema.membershipGrantTable)
+    .where(
+      and(
+        eq(schema.membershipGrantTable.identityConnectionId, connectionId),
+        inArray(schema.membershipGrantTable.sourceKind, [
+          "jit_default",
+          "oidc_group",
+          "scim_group",
+        ]),
+        isNull(schema.membershipGrantTable.revokedAt),
+      ),
+    )
+    .for("update");
+  const now = new Date();
+  if (grants.length) {
+    const grantIds = grants.map((grant) => grant.id);
+    await tx
+      .update(schema.scimGroupMemberTable)
+      .set({ revokedAt: now, membershipId: null })
+      .where(inArray(schema.scimGroupMemberTable.membershipGrantId, grantIds));
+    await tx
+      .update(schema.membershipGrantTable)
+      .set({
+        revokedAt: now,
+        revocationReason: "connection_disabled",
+        membershipId: null,
+        updatedAt: now,
+      })
+      .where(inArray(schema.membershipGrantTable.id, grantIds));
+  }
+  await projectMembershipKeys(tx, keys);
+  return { retiredGrantCount: grants.length, projectionKeys: keys };
 }
 
 /**

@@ -229,6 +229,10 @@ export const routes = {
     path: "/god-mode/authentication" as const,
     build: () => "/god-mode/authentication",
   },
+  identityConnectionCreate: {
+    path: "/god-mode/authentication/new" as const,
+    build: () => "/god-mode/authentication/new",
+  },
   identityConnectionSettings: {
     path: "/god-mode/authentication/$id" as const,
     build: (params: { id: string }) =>

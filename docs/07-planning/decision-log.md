@@ -5,6 +5,30 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-05 · Bind identity connection writes to distinct PA-15 operations
+
+Under the standing authorization for recommended decisions, connection creation and
+configuration PATCH are separate, session-only, elevated PA-15 operations:
+`identity_connection_create` binds the exact create route, the strict canonical request
+body, and initial expected version `1`; `identity_connection_configure` binds the exact
+PATCH route, connection id, current positive `configVersion`, and strict canonical request
+body. The older api-design sentence calling connection PATCH an ordinary non-PA-15 update
+is superseded. Disabling is `enabled: false` in the configuration transaction and applies
+the same source-specific grant retirement, projection, audit/event, and connection-issued
+session revocation as the identity-provisioning contract. Delete remains on the existing
+typed-name pending-action path. Connection id and portal/organisation ownership are
+immutable after creation; a different Entra tenant requires a separate connection.
+
+OIDC-created sessions carry nullable `session.identity_connection_id` provenance. Password
+and other non-connection sessions keep it null. The OIDC callback binds it before issuing
+the session, and the disable transaction revokes only sessions with that connection id.
+This preserves independent sessions from another linked identity source. The field and
+operation-route pairs are registered in the data model and PA-15 database constraint by a
+forward migration; accepted history is unchanged. This is implementation direction, not
+human design approval, review, merge, or P3 acceptance.
+
+**Recorded by:** GPT-6 Luna implementation author, 2026-10-05.
+
 ### 2026-10-05 · Bind SCIM mapping selector reads to mutation eligibility
 
 The SCIM group-mapping editor may use a new read-only, session-only `instance:admin`

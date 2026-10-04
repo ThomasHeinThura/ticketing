@@ -172,7 +172,8 @@ thing that is hashed or executed.
   session/person-bound challenge and confirmation. `POST /api/me/step-up/challenges`
   (`authenticated + self`, session-only) creates a five-minute challenge for either the
   current requester's pending action or an explicitly registered operation. The operation
-  allowlist is `metrics_token_rotate`, `oidc_group_mapping_create`,
+  allowlist is `metrics_token_rotate`, `identity_connection_create`,
+  `identity_connection_configure`, `oidc_group_mapping_create`,
   `oidc_group_mapping_update`, `scim_admin_update`, `scim_token_rotate`,
   `scim_token_revoke`, and `mfa_reset`. Pending-action binding
   uses its existing `pending_action.id`
@@ -207,6 +208,18 @@ thing that is hashed or executed.
   { "kind": "operation", "operation": "metrics_token_rotate", "version": 7 }
   { "kind": "operation", "operation": "mfa_reset", "userId": "...",
     "verificationNote": "..." }
+  { "kind": "operation", "operation": "identity_connection_create",
+    "request": { "portalScope": "agent", "organisationId": null,
+      "defaultWorkspaceId": null, "displayName": "Support sign-in",
+      "tenantId": "00000000-0000-4000-8000-000000000001",
+      "clientId": "00000000-0000-4000-8000-000000000002",
+      "clientSecret": "<submitted once>", "scopes": [],
+      "claimMapping": { "version": 1, "displayName": "name" },
+      "domainBindings": [],
+      "jitPolicy": { "enabled": false, "default_role_id": null,
+        "required_entra_app_role": "TaskDesk.User" }, "maxRoleRank": 10 } }
+  { "kind": "operation", "operation": "identity_connection_configure",
+    "connectionId": "...", "request": { "configVersion": 7, "enabled": false } }
   { "kind": "operation", "operation": "oidc_group_mapping_create",
     "connectionId": "...", "request": { "configVersion": 7, "externalGroupId": "...", "roleId": "...", "scope": "workspace", "scopeId": "..." } }
   { "kind": "operation", "operation": "oidc_group_mapping_update",
@@ -222,14 +235,19 @@ thing that is hashed or executed.
     "connectionId": "...", "version": 7 }
   ```
 
+  The proof request repeats the exact same validated `request` object for its challenge; the
+  create body above is not abbreviated or replaced with a client-computed digest.
+
   For `metrics_token_rotate`, the server requires current `instance:admin` and a matching
   current `observability_config_version`, then hashes the canonical body bytes defined in
-  [api-design.md](api-design.md#observability-administration-and-step-up). For either OIDC
-  mapping operation, or the SCIM administration operation, it requires current
+  [api-design.md](api-design.md#observability-administration-and-step-up). For identity
+  connection create/configure, either OIDC mapping operation, or SCIM administration, it
+  requires current
   `instance:admin`, session-only authentication, the exact allowlisted route and a
-  connection with any variant-specific mapping that belongs to it; it
-  checks the current `identity_connection.config_version` against `request.configVersion`
-  (stored as `expected_version`) and validates the strict request against the persisted
+  connection with any variant-specific mapping that belongs to it. Connection create uses
+  fixed initial version `1`; connection configure and the other connection operations check
+  the current `identity_connection.config_version` against `request.configVersion` or
+  `version` (stored as `expected_version`) and validate the strict request against the persisted
   connection and mapping, or SCIM child and selected mapping when the SCIM variant has one,
   before issuing a challenge. The canonical request-binding hash covers the fixed route key,
   path `connectionId`, OIDC path `mappingId` where applicable, and the server-canonical
@@ -274,6 +292,8 @@ thing that is hashed or executed.
   | --- | --- | --- |
   | `metrics_token_rotate` | `POST /api/instance/observability/metrics-token/rotate` | `observability_config_version` |
   | `mfa_reset` | `POST /api/instance/users/{id}/reset-mfa` | fixed operation version `1` |
+  | `identity_connection_create` | `POST /api/instance/identity-connections` | fixed initial version `1` |
+  | `identity_connection_configure` | `PATCH /api/instance/identity-connections/{id}` | `identity_connection.config_version` |
   | `oidc_group_mapping_create` | `POST /api/instance/identity-connections/{id}/oidc-group-mappings` | `identity_connection.config_version` |
   | `oidc_group_mapping_update` | `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` | `identity_connection.config_version` |
   | `scim_admin_update` | `PATCH /api/instance/identity-connections/{id}/scim` | `identity_connection.config_version` |

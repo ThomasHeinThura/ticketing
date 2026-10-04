@@ -1,12 +1,41 @@
+import { createId } from "@paralleldrive/cuid2";
 import {
+  DEFAULT_IDENTITY_CLAIM_MAPPING,
   parseIdentityClaimMapping,
   parseIdentityJitPolicy,
 } from "@taskdesk/domain";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import { appendAuditLog } from "../audit/audit-writer";
+import { appendStepUpAudit } from "../auth/step-up-audit";
+import {
+  consumeIdentityConnectionProof,
+  IDENTITY_CONNECTION_CONFIGURE_OPERATION,
+  IDENTITY_CONNECTION_CREATE_OPERATION,
+} from "../auth/step-up-service";
 import db, { schema } from "../database";
+import {
+  isCurrentInstanceAdmin,
+  notifyCurrentInstanceAdminsOfAuditFailure,
+} from "../instance/observability/audit-failure-notifier";
+import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { requireCurrentInstanceAdmin } from "../instance/require-instance-admin";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
+import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
+import { requireSessionOnly } from "../utils/require-session-only";
+import { encryptIdentityClientSecret } from "./client-secret";
+import {
+  type IdentityConnectionConfigureRequest,
+  type IdentityConnectionCreateRequest,
+  identityConnectionConfigureRequestSchema,
+  identityConnectionCreateRequestSchema,
+} from "./connection-contract";
+import {
+  lockScimGrantClosure,
+  retireConnectionGrantSources,
+  retryIdentityGrantClosure,
+} from "./membership-projection";
+import { loadEntraDiscovery } from "./oidc-provider";
 
 const connectionShape = z.object({
   id: z.string(),
@@ -77,6 +106,91 @@ const organisationIdentityRoute = createRoute({
     ),
     503: jsonResponse(
       "Stored identity configuration is invalid",
+      z.object({ message: z.string() }),
+    ),
+  },
+});
+
+const operationHeader = z.object({
+  "x-taskdesk-step-up-token": z.string().min(1).max(128),
+});
+
+const createConnectionRoute = createRoute({
+  method: "post",
+  path: "/identity-connections",
+  operationId: "createIdentityConnection",
+  tags: ["Identity connections"],
+  summary: "Create a disabled Entra identity connection",
+  middleware: [requireSessionOnly()] as const,
+  request: {
+    headers: operationHeader,
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: identityConnectionCreateRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: jsonResponse(
+      "Created identity connection",
+      z.object({ data: connectionShape }),
+    ),
+    403: jsonResponse(
+      "Forbidden or step-up unavailable",
+      z.object({ message: z.string() }),
+    ),
+    409: jsonResponse(
+      "Identity connection already exists",
+      z.object({ message: z.string() }),
+    ),
+    422: jsonResponse(
+      "Invalid identity configuration",
+      z.object({ message: z.string() }),
+    ),
+  },
+});
+
+const configureConnectionRoute = createRoute({
+  method: "patch",
+  path: "/identity-connections/{id}",
+  operationId: "configureIdentityConnection",
+  tags: ["Identity connections"],
+  summary: "Update identity connection configuration with versioned step-up",
+  middleware: [requireSessionOnly()] as const,
+  request: {
+    params: z.object({ id: z.string().min(1).max(128) }),
+    headers: operationHeader,
+    body: {
+      required: true,
+      content: {
+        "application/json": {
+          schema: identityConnectionConfigureRequestSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "Updated identity connection",
+      z.object({ data: connectionShape }),
+    ),
+    403: jsonResponse(
+      "Forbidden or step-up unavailable",
+      z.object({ message: z.string() }),
+    ),
+    404: jsonResponse(
+      "Connection unavailable",
+      z.object({ message: z.string() }),
+    ),
+    409: jsonResponse(
+      "Configuration changed",
+      z.object({ message: z.string(), currentVersion: z.number() }),
+    ),
+    422: jsonResponse(
+      "Invalid identity configuration",
       z.object({ message: z.string() }),
     ),
   },
@@ -179,6 +293,177 @@ const connectionProjection = {
   healthCheckedAt: schema.identityConnectionTable.healthCheckedAt,
 } as const;
 
+type ConnectionTransaction = Parameters<
+  Parameters<typeof db.transaction>[0]
+>[0];
+
+async function lockIdentityDomainBindings(tx: ConnectionTransaction) {
+  await tx.execute(
+    sql`SELECT pg_advisory_xact_lock(hashtext('taskdesk:identity-domain-bindings'), 0)`,
+  );
+}
+
+async function domainBindingsAreUnique(
+  tx: ConnectionTransaction,
+  domains: readonly string[],
+  exceptConnectionId?: string,
+) {
+  const existing = await tx
+    .select({
+      id: schema.identityConnectionTable.id,
+      domains: schema.identityConnectionTable.domainBindings,
+    })
+    .from(schema.identityConnectionTable);
+  const requested = new Set(domains.map((domain) => domain.toLowerCase()));
+  return existing.every(
+    (row) =>
+      row.id === exceptConnectionId ||
+      row.domains.every((domain) => !requested.has(domain.toLowerCase())),
+  );
+}
+
+function safeRoleCapabilities(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every((capability) =>
+      typeof capability === "string"
+        ? capability !== "instance:admin" && capability !== "sees_all"
+        : false,
+    )
+  );
+}
+
+async function validateConnectionReferences(
+  tx: ConnectionTransaction,
+  value: {
+    portalScope: "agent" | "customer";
+    organisationId: string | null;
+    defaultWorkspaceId: string | null;
+    maxRoleRank: number | null;
+    jitPolicy: unknown;
+  },
+) {
+  const jit = parseIdentityJitPolicy(value.jitPolicy);
+  if (!jit.ok) return false;
+  if (
+    (value.portalScope === "agent" &&
+      (value.organisationId !== null || value.maxRoleRank === null)) ||
+    (value.portalScope === "customer" &&
+      (value.defaultWorkspaceId !== null || value.maxRoleRank !== null))
+  )
+    return false;
+  if (value.portalScope === "customer") {
+    if (!value.organisationId) return false;
+    const [organisation] = await tx
+      .select({ id: schema.organisationTable.id })
+      .from(schema.organisationTable)
+      .where(
+        and(
+          eq(schema.organisationTable.id, value.organisationId),
+          eq(schema.organisationTable.active, true),
+          eq(schema.organisationTable.isInternal, false),
+          isNull(schema.organisationTable.deletedAt),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!organisation) return false;
+  }
+  if (value.defaultWorkspaceId) {
+    const [workspace] = await tx
+      .select({ id: schema.workspaceTable.id })
+      .from(schema.workspaceTable)
+      .innerJoin(
+        schema.organisationTable,
+        eq(schema.organisationTable.id, schema.workspaceTable.organisationId),
+      )
+      .where(
+        and(
+          eq(schema.workspaceTable.id, value.defaultWorkspaceId),
+          eq(schema.organisationTable.active, true),
+          eq(schema.organisationTable.isInternal, true),
+          isNull(schema.organisationTable.deletedAt),
+          isNull(schema.workspaceTable.deletedAt),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    if (!workspace || value.portalScope !== "agent") return false;
+  }
+  if (!jit.value.enabled) return true;
+  const [role] = await tx
+    .select({
+      id: schema.roleTable.id,
+      scope: schema.roleTable.scope,
+      workspaceId: schema.roleTable.workspaceId,
+      key: schema.roleTable.key,
+      rank: schema.roleTable.rank,
+      capabilities: schema.roleTable.capabilities,
+    })
+    .from(schema.roleTable)
+    .where(eq(schema.roleTable.id, jit.value.default_role_id ?? ""))
+    .for("update")
+    .limit(1);
+  if (!role) return false;
+  if (value.portalScope === "agent")
+    return Boolean(
+      value.defaultWorkspaceId &&
+        value.maxRoleRank !== null &&
+        role.scope === "workspace" &&
+        role.workspaceId === value.defaultWorkspaceId &&
+        role.rank >= 0 &&
+        role.rank <= value.maxRoleRank &&
+        role.key !== "admin" &&
+        role.key !== "owner" &&
+        safeRoleCapabilities(role.capabilities),
+    );
+  return Boolean(
+    role.scope === "organisation" &&
+      role.workspaceId === null &&
+      role.key === "customer" &&
+      role.rank >= 0 &&
+      safeRoleCapabilities(role.capabilities),
+  );
+}
+
+async function reportAuditFailure() {
+  recordAuditWriteFailure("mutation");
+  await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+}
+
+async function writeConnectionAudit(
+  tx: ConnectionTransaction,
+  input: {
+    actorId: string;
+    personId: string;
+    connectionId: string;
+    traceId?: string | null;
+    changes: string[];
+    configVersion: number;
+  },
+) {
+  try {
+    await tx.transaction(async (auditTx) => {
+      await appendAuditLog(auditTx, {
+        action: "identity_connection.changed",
+        actorId: input.actorId,
+        actorType: "person",
+        traceId: input.traceId,
+        workspaceId: null,
+        entityType: "identity_connection",
+        entityId: input.connectionId,
+        after: {
+          changes: input.changes,
+          configVersion: input.configVersion,
+        },
+      });
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 const router = apiRouter();
 
 router.openapi(connectionListRoute, async (c) => {
@@ -216,6 +501,426 @@ router.openapi(organisationIdentityRoute, async (c) => {
     .where(eq(schema.identityConnectionTable.organisationId, id))
     .limit(1);
   return c.json({ data: row ? toSafeConnection(row) : null }, 200);
+});
+
+router.openapi(createConnectionRoute, async (c) => {
+  c.header("Cache-Control", "no-store");
+  await requireCurrentInstanceAdmin(
+    c,
+    "POST",
+    "/api/instance/identity-connections",
+  );
+  const userId = c.get("userId");
+  const session = c.get("session") as {
+    id: string;
+    impersonatedBy?: string | null;
+  } | null;
+  if (
+    !session ||
+    session.impersonatedBy ||
+    !(await isCurrentInstanceAdmin(userId))
+  )
+    throw new HTTPException(403, { message: "Forbidden" });
+  const request = c.req.valid("json") as IdentityConnectionCreateRequest;
+  let discovery: Awaited<ReturnType<typeof loadEntraDiscovery>>;
+  try {
+    discovery = await loadEntraDiscovery(request.tenantId);
+  } catch {
+    throw new HTTPException(422, {
+      message: "Identity provider configuration is invalid",
+    });
+  }
+  const [actor] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  if (!actor) throw new HTTPException(403, { message: "Forbidden" });
+  const connectionId = createId();
+  const redirectOrigin =
+    request.portalScope === "agent"
+      ? new URL(process.env.TASKDESK_AGENT_URL || "http://localhost:5173")
+          .origin
+      : new URL(process.env.TASKDESK_PORTAL_URL || "http://localhost:5174")
+          .origin;
+  const redirectUri = `${redirectOrigin}/api/auth/identity/${connectionId}/callback`;
+  const token = c.req.valid("header")["x-taskdesk-step-up-token"];
+  const result = await db.transaction(async (tx) => {
+    await lockIdentityDomainBindings(tx);
+    if (request.organisationId) {
+      const [existing] = await tx
+        .select({ id: schema.identityConnectionTable.id })
+        .from(schema.identityConnectionTable)
+        .where(
+          eq(
+            schema.identityConnectionTable.organisationId,
+            request.organisationId,
+          ),
+        )
+        .limit(1);
+      if (existing) return { kind: "duplicate" as const };
+    }
+    if (!(await domainBindingsAreUnique(tx, request.domainBindings)))
+      return { kind: "invalid" as const };
+    const [targetWorkspace] = request.defaultWorkspaceId
+      ? await tx
+          .select({ organisationId: schema.workspaceTable.organisationId })
+          .from(schema.workspaceTable)
+          .where(eq(schema.workspaceTable.id, request.defaultWorkspaceId))
+          .limit(1)
+      : [];
+    await lockScimGrantClosure(tx, {
+      connectionId,
+      proposedRoleId: request.jitPolicy.default_role_id ?? undefined,
+      proposedScope:
+        request.jitPolicy.default_role_id === null
+          ? undefined
+          : request.portalScope === "agent"
+            ? "workspace"
+            : "organisation",
+      proposedScopeId:
+        request.jitPolicy.default_role_id === null
+          ? undefined
+          : request.portalScope === "agent"
+            ? (request.defaultWorkspaceId ?? undefined)
+            : (request.organisationId ?? undefined),
+      proposedOrganisationId:
+        request.portalScope === "agent"
+          ? targetWorkspace?.organisationId
+          : (request.organisationId ?? undefined),
+    });
+    if (
+      !(await validateConnectionReferences(tx, {
+        portalScope: request.portalScope,
+        organisationId: request.organisationId,
+        defaultWorkspaceId: request.defaultWorkspaceId,
+        maxRoleRank: request.maxRoleRank,
+        jitPolicy: request.jitPolicy,
+      }))
+    )
+      return { kind: "invalid" as const };
+    const proof = await consumeIdentityConnectionProof(tx, {
+      token,
+      personId: actor.id,
+      sessionId: session.id,
+      operation: IDENTITY_CONNECTION_CREATE_OPERATION,
+      request: request as unknown as Record<string, unknown>,
+    });
+    if (!proof) return { kind: "proof" as const };
+    await tx.insert(schema.identityConnectionTable).values({
+      id: connectionId,
+      providerType: "entra",
+      portalScope: request.portalScope,
+      organisationId: request.organisationId,
+      defaultWorkspaceId: request.defaultWorkspaceId,
+      displayName: request.displayName,
+      issuer: discovery.issuer,
+      tenantId: request.tenantId,
+      clientId: request.clientId,
+      clientSecret: encryptIdentityClientSecret(
+        connectionId,
+        request.clientSecret,
+      ),
+      redirectUri,
+      scopes: request.scopes,
+      claimMapping: request.claimMapping ?? DEFAULT_IDENTITY_CLAIM_MAPPING,
+      domainBindings: request.domainBindings,
+      jitPolicy: request.jitPolicy,
+      maxRoleRank: request.maxRoleRank,
+      enabled: false,
+      configVersion: 1,
+      createdBy: actor.id,
+      updatedBy: actor.id,
+    });
+    const auditOk = await writeConnectionAudit(tx, {
+      actorId: userId,
+      personId: actor.id,
+      connectionId,
+      traceId: c.req.header("x-request-id"),
+      changes: ["created"],
+      configVersion: 1,
+    });
+    await tx.insert(schema.provisioningEventTable).values({
+      identityConnectionId: connectionId,
+      kind: "connection.changed",
+      outcome: "succeeded",
+      detail: { changes: ["created"], configVersion: 1 },
+      actorType: "person",
+      traceId: c.req.header("x-request-id") ?? null,
+    });
+    await appendStepUpAudit(tx, {
+      action: "auth.step_up_consumed",
+      actorId: userId,
+      personId: actor.id,
+      operation: IDENTITY_CONNECTION_CREATE_OPERATION,
+      traceId: c.req.header("x-request-id"),
+    });
+    return { kind: "created" as const, auditOk };
+  });
+  if (result.kind === "proof") {
+    setShadowLegacyAuthorization(c, "denied");
+    throw new HTTPException(403, { message: "step_up_unavailable" });
+  }
+  if (result.kind === "duplicate")
+    return c.json({ message: "Identity connection already exists" }, 409);
+  if (result.kind === "invalid")
+    throw new HTTPException(422, {
+      message: "Identity configuration is invalid",
+    });
+  if (!result.auditOk) await reportAuditFailure();
+  setShadowLegacyAuthorization(c, "allowed");
+  const [created] = await db
+    .select(connectionProjection)
+    .from(schema.identityConnectionTable)
+    .where(eq(schema.identityConnectionTable.id, connectionId))
+    .limit(1);
+  if (!created)
+    throw new HTTPException(500, {
+      message: "Identity configuration unavailable",
+    });
+  return c.json({ data: toSafeConnection(created) }, 201);
+});
+
+router.openapi(configureConnectionRoute, async (c) => {
+  c.header("Cache-Control", "no-store");
+  const { id } = c.req.valid("param");
+  await requireCurrentInstanceAdmin(
+    c,
+    "PATCH",
+    "/api/instance/identity-connections/{id}",
+  );
+  const userId = c.get("userId");
+  const session = c.get("session") as {
+    id: string;
+    impersonatedBy?: string | null;
+  } | null;
+  if (
+    !session ||
+    session.impersonatedBy ||
+    !(await isCurrentInstanceAdmin(userId))
+  )
+    throw new HTTPException(403, { message: "Forbidden" });
+  const request = c.req.valid("json") as IdentityConnectionConfigureRequest;
+  const token = c.req.valid("header")["x-taskdesk-step-up-token"];
+  const [actor] = await db
+    .select({ id: schema.personTable.id })
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  if (!actor) throw new HTTPException(403, { message: "Forbidden" });
+  const [before] = await db
+    .select({
+      tenantId: schema.identityConnectionTable.tenantId,
+      portalScope: schema.identityConnectionTable.portalScope,
+      organisationId: schema.identityConnectionTable.organisationId,
+      defaultWorkspaceId: schema.identityConnectionTable.defaultWorkspaceId,
+      jitPolicy: schema.identityConnectionTable.jitPolicy,
+      configVersion: schema.identityConnectionTable.configVersion,
+    })
+    .from(schema.identityConnectionTable)
+    .where(eq(schema.identityConnectionTable.id, id))
+    .limit(1);
+  let discovery: Awaited<ReturnType<typeof loadEntraDiscovery>> | null = null;
+  if (request.enabled === true) {
+    if (!before?.tenantId)
+      throw new HTTPException(404, { message: "Connection unavailable" });
+    try {
+      discovery = await loadEntraDiscovery(before.tenantId);
+    } catch {
+      throw new HTTPException(422, {
+        message: "Identity provider configuration is invalid",
+      });
+    }
+  }
+  const result = await retryIdentityGrantClosure(() =>
+    db.transaction(async (tx) => {
+      await lockIdentityDomainBindings(tx);
+      const candidateWorkspaceId =
+        request.defaultWorkspaceId === undefined
+          ? before?.defaultWorkspaceId
+          : request.defaultWorkspaceId;
+      const [targetWorkspace] = candidateWorkspaceId
+        ? await tx
+            .select({ organisationId: schema.workspaceTable.organisationId })
+            .from(schema.workspaceTable)
+            .where(eq(schema.workspaceTable.id, candidateWorkspaceId))
+            .limit(1)
+        : [];
+      const currentJit = parseIdentityJitPolicy(before?.jitPolicy);
+      const candidateJit =
+        request.jitPolicy ?? (currentJit.ok ? currentJit.value : null);
+      await lockScimGrantClosure(tx, {
+        connectionId: id,
+        sourceKinds: ["jit_default", "oidc_group", "scim_group"],
+        proposedRoleId: candidateJit?.default_role_id ?? undefined,
+        proposedScope:
+          candidateJit?.default_role_id === null || !candidateJit
+            ? undefined
+            : before?.portalScope === "agent"
+              ? "workspace"
+              : "organisation",
+        proposedScopeId:
+          candidateJit?.default_role_id === null || !candidateJit
+            ? undefined
+            : before?.portalScope === "agent"
+              ? (candidateWorkspaceId ?? undefined)
+              : (before?.organisationId ?? undefined),
+        proposedOrganisationId:
+          before?.portalScope === "agent"
+            ? targetWorkspace?.organisationId
+            : (before?.organisationId ?? undefined),
+      });
+      const [current] = await tx
+        .select(connectionProjection)
+        .from(schema.identityConnectionTable)
+        .where(eq(schema.identityConnectionTable.id, id))
+        .for("update")
+        .limit(1);
+      if (!current) return { kind: "not_found" as const };
+      if (current.configVersion !== request.configVersion)
+        return { kind: "conflict" as const, version: current.configVersion };
+      const claimMapping =
+        request.claimMapping === undefined
+          ? current.claimMapping
+          : (request.claimMapping ?? DEFAULT_IDENTITY_CLAIM_MAPPING);
+      const domainBindings = request.domainBindings ?? current.domainBindings;
+      const jitPolicy = request.jitPolicy ?? current.jitPolicy;
+      const config = {
+        portalScope: current.portalScope as "agent" | "customer",
+        organisationId: current.organisationId,
+        defaultWorkspaceId:
+          request.defaultWorkspaceId === undefined
+            ? current.defaultWorkspaceId
+            : request.defaultWorkspaceId,
+        maxRoleRank:
+          request.maxRoleRank === undefined
+            ? current.maxRoleRank
+            : request.maxRoleRank,
+        jitPolicy,
+      };
+      if (
+        !parseIdentityClaimMapping(claimMapping).ok ||
+        !(await domainBindingsAreUnique(tx, domainBindings, id)) ||
+        !(await validateConnectionReferences(tx, config))
+      )
+        return { kind: "invalid" as const };
+      if (request.enabled === true && discovery?.issuer !== current.issuer)
+        return { kind: "invalid" as const };
+      const proof = await consumeIdentityConnectionProof(tx, {
+        token,
+        personId: actor.id,
+        sessionId: session.id,
+        connectionId: id,
+        operation: IDENTITY_CONNECTION_CONFIGURE_OPERATION,
+        request: request as unknown as Record<string, unknown>,
+      });
+      if (!proof) return { kind: "proof" as const };
+      const nextVersion = current.configVersion + 1;
+      const now = new Date();
+      const update: Partial<
+        typeof schema.identityConnectionTable.$inferInsert
+      > = {
+        configVersion: nextVersion,
+        updatedAt: now,
+        updatedBy: actor.id,
+      };
+      if (request.displayName !== undefined)
+        update.displayName = request.displayName;
+      if (request.clientId !== undefined) update.clientId = request.clientId;
+      if (request.clientSecret !== undefined)
+        update.clientSecret = encryptIdentityClientSecret(
+          id,
+          request.clientSecret,
+        );
+      if (request.scopes !== undefined) update.scopes = request.scopes;
+      if (request.claimMapping !== undefined)
+        update.claimMapping = claimMapping;
+      if (request.domainBindings !== undefined)
+        update.domainBindings = domainBindings;
+      if (request.defaultWorkspaceId !== undefined)
+        update.defaultWorkspaceId = request.defaultWorkspaceId;
+      if (request.jitPolicy !== undefined) update.jitPolicy = request.jitPolicy;
+      if (request.maxRoleRank !== undefined)
+        update.maxRoleRank = request.maxRoleRank;
+      if (request.enabled !== undefined) update.enabled = request.enabled;
+      const [updated] = await tx
+        .update(schema.identityConnectionTable)
+        .set(update)
+        .where(
+          and(
+            eq(schema.identityConnectionTable.id, id),
+            eq(
+              schema.identityConnectionTable.configVersion,
+              request.configVersion,
+            ),
+          ),
+        )
+        .returning({ version: schema.identityConnectionTable.configVersion });
+      if (!updated)
+        return { kind: "conflict" as const, version: current.configVersion };
+      const disabling = current.enabled && request.enabled === false;
+      if (disabling) {
+        await retireConnectionGrantSources(tx, id);
+        await tx
+          .delete(schema.sessionTable)
+          .where(eq(schema.sessionTable.identityConnectionId, id));
+        await tx
+          .update(schema.scimConnectionTable)
+          .set({ enabled: false })
+          .where(eq(schema.scimConnectionTable.identityConnectionId, id));
+      }
+      const changedKeys = Object.keys(request).filter(
+        (key) => key !== "configVersion",
+      );
+      const auditOk = await writeConnectionAudit(tx, {
+        actorId: userId,
+        personId: actor.id,
+        connectionId: id,
+        traceId: c.req.header("x-request-id"),
+        changes: changedKeys,
+        configVersion: updated.version,
+      });
+      await tx.insert(schema.provisioningEventTable).values({
+        identityConnectionId: id,
+        kind: "connection.changed",
+        outcome: "succeeded",
+        detail: { changes: changedKeys, configVersion: updated.version },
+        actorType: "person",
+        traceId: c.req.header("x-request-id") ?? null,
+      });
+      await appendStepUpAudit(tx, {
+        action: "auth.step_up_consumed",
+        actorId: userId,
+        personId: actor.id,
+        operation: IDENTITY_CONNECTION_CONFIGURE_OPERATION,
+        traceId: c.req.header("x-request-id"),
+      });
+      return { kind: "updated" as const, auditOk };
+    }),
+  );
+  if (result.kind === "not_found")
+    return c.json({ message: "Connection unavailable" }, 404);
+  if (result.kind === "conflict")
+    return c.json(
+      { message: "version_conflict", currentVersion: result.version },
+      409,
+    );
+  if (result.kind === "invalid")
+    return c.json({ message: "Identity configuration is invalid" }, 422);
+  if (result.kind === "proof") {
+    setShadowLegacyAuthorization(c, "denied");
+    throw new HTTPException(403, { message: "step_up_unavailable" });
+  }
+  if (!result.auditOk) await reportAuditFailure();
+  setShadowLegacyAuthorization(c, "allowed");
+  const [updated] = await db
+    .select(connectionProjection)
+    .from(schema.identityConnectionTable)
+    .where(eq(schema.identityConnectionTable.id, id))
+    .limit(1);
+  if (!updated)
+    throw new HTTPException(404, { message: "Connection unavailable" });
+  return c.json({ data: toSafeConnection(updated) }, 200);
 });
 
 export default router;
