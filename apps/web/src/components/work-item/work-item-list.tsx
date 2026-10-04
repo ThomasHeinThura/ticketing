@@ -362,104 +362,79 @@ function WorkItemList({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {workItems.map((item) => (
-            <WorkItemTableRow
-              key={item.id}
-              item={item}
-              t={t}
-              getPriorityLabel={getPriorityLabel}
-              noDueDateLabel={noDueDateLabel}
-              assigneeLabels={assigneeLabels}
-            />
-          ))}
+          {workItems.map((item) => {
+            const detailHref = item.unavailableFields.includes("key")
+              ? undefined
+              : routes.workItemDetail.build({ key: item.key });
+
+            return (
+              <TableRow key={item.id}>
+                <TableCell>
+                  <div className="work-item-list-cell-content">
+                    {item.unavailableFields.includes("key") ? (
+                      <UnavailableField field="key" t={t} />
+                    ) : (
+                      <a
+                        href={detailHref}
+                        data-work-item-key={item.key}
+                        className="font-medium text-primary underline-offset-2 hover:underline"
+                      >
+                        {item.key}
+                      </a>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="max-w-xs truncate whitespace-nowrap">
+                  <div className="work-item-list-cell-content truncate">
+                    {item.unavailableFields.includes("title") ? (
+                      <UnavailableField field="title" t={t} />
+                    ) : item.unavailableFields.includes("key") ? (
+                      <span title={item.title}>{item.title}</span>
+                    ) : (
+                      <a
+                        href={detailHref}
+                        data-work-item-key={item.key}
+                        className="hover:underline"
+                        title={item.title}
+                      >
+                        {item.title}
+                      </a>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="work-item-list-cell-content">
+                    {item.unavailableFields.includes("priority") ? (
+                      <UnavailableField field="priority" t={t} />
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5">
+                        {getPriorityIcon(item.priority ?? "no-priority")}
+                        {getPriorityLabel(item.priority)}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {item.unavailableFields.includes("dueDate") ? (
+                    <UnavailableField field="dueDate" t={t} />
+                  ) : item.dueDate ? (
+                    formatDateShort(item.dueDate)
+                  ) : (
+                    noDueDateLabel
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{item.stateName}</Badge>
+                </TableCell>
+                <TableCell>{assigneeLabel(item, assigneeLabels)}</TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
   );
 }
-
-type WorkItemTableRowProps = {
-  item: WorkItemRow;
-  t: ReturnType<typeof useTranslation>["t"];
-  getPriorityLabel: (priority: string | null) => string;
-  noDueDateLabel: string;
-  assigneeLabels: { unassigned: string; inactive: string };
-};
-
-const WorkItemTableRow = memo(function WorkItemTableRow({
-  item,
-  t,
-  getPriorityLabel,
-  noDueDateLabel,
-  assigneeLabels,
-}: WorkItemTableRowProps) {
-  const detailHref = item.unavailableFields.includes("key")
-    ? undefined
-    : routes.workItemDetail.build({ key: item.key });
-
-  return (
-    <TableRow>
-      <TableCell>
-        <div className="work-item-list-cell-content">
-          {item.unavailableFields.includes("key") ? (
-            <UnavailableField field="key" t={t} />
-          ) : (
-            <a
-              href={detailHref}
-              data-work-item-key={item.key}
-              className="font-medium text-primary underline-offset-2 hover:underline"
-            >
-              {item.key}
-            </a>
-          )}
-        </div>
-      </TableCell>
-      <TableCell className="max-w-xs truncate whitespace-nowrap">
-        <div className="work-item-list-cell-content truncate">
-          {item.unavailableFields.includes("title") ? (
-            <UnavailableField field="title" t={t} />
-          ) : item.unavailableFields.includes("key") ? (
-            <span title={item.title}>{item.title}</span>
-          ) : (
-            <a
-              href={detailHref}
-              data-work-item-key={item.key}
-              className="hover:underline"
-              title={item.title}
-            >
-              {item.title}
-            </a>
-          )}
-        </div>
-      </TableCell>
-      <TableCell>
-        <div className="work-item-list-cell-content">
-          {item.unavailableFields.includes("priority") ? (
-            <UnavailableField field="priority" t={t} />
-          ) : (
-            <span className="inline-flex items-center gap-1.5">
-              {getPriorityIcon(item.priority ?? "no-priority")}
-              {getPriorityLabel(item.priority)}
-            </span>
-          )}
-        </div>
-      </TableCell>
-      <TableCell>
-        {item.unavailableFields.includes("dueDate") ? (
-          <UnavailableField field="dueDate" t={t} />
-        ) : item.dueDate ? (
-          formatDateShort(item.dueDate)
-        ) : (
-          noDueDateLabel
-        )}
-      </TableCell>
-      <TableCell>
-        <Badge variant="outline">{item.stateName}</Badge>
-      </TableCell>
-      <TableCell>{assigneeLabel(item, assigneeLabels)}</TableCell>
-    </TableRow>
-  );
-});
 
 function sortAriaValue(
   field: WorkItemSortField,
