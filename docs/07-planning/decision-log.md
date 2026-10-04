@@ -1,3 +1,14 @@
+### 2026-10-04 · Select bounded Users suspension input
+
+Under Thomas's standing authorization for recommended routine choices, the P4 suspension
+body may contain an optional trimmed, nonempty reason of at most500 Unicode code points
+and an optional nullable ISO expiry. A supplied expiry must be strictly after server now;
+null or omission means indefinite suspension. Register these rules in the owning God Mode
+contract before implementation. Revoke current native Better Auth apikey/session rows;
+no nonexistent API/MCP extension is claimed covered, and unsuspension restores no revoked
+credential. This selects validation for the authorized Users batch; it does not implement
+that batch in P0, waive review or grant stage acceptance.
+
 ### 2026-10-04 · Bound the identity provisioning event-history read
 
 Under Thomas's standing authorization for recommended routine choices, select the missing

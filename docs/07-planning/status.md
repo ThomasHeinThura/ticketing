@@ -1,3 +1,80 @@
+## P0 complete residual batch verified locally — 2026-10-04 23:45 UTC
+
+Completed source **dd6b1ab0670833ed9dc7291fffdf6e002fc270fa**, normally composed by
+root at6a953c9dab168d70607807e5f51be3b29da62f7e, closes the remaining G3 source
+contexts and refreshes the whole contrast inventory:434 observed keys/228 grouped rows,
+zero unresolved foregrounds or inventory errors, focused49/49. Integrated check:tokens,
+agent/portal builds and scoped browser5/5 pass. The browser set covers independent lazy
+loading, create lifecycle, current version/status/assignee,200-card keyboard drag and
+500-row/1000-link200% geometry. Source/build hashes and actual initial failures are
+recorded in security-reviews/579-p0-author-residual-dd6b1ab0.md. No unchanged local
+canonical rerun. One complete publication follows, then hosted canonical and current
+independent risk-sized bulk/Sol review. The Users heavy verification window is released.
+Latest published81218/22 remains historical acceptance evidence until the new hosted run.
+Acceptedmain8ddb/reviewedDEVb8, remaining actual dates/cutover and Sol finalizer remain.
+
+## P0 residual source composed; Users backend complete — 2026-10-04 23:37 UTC
+
+P0 local integration source **a473868fc175450a7f10ed5c173736055e544929** normally
+composes list/navigation **3fa76e081c1bcc7fc447e59babd319de88dcb979** and
+state/initial-load **58eb867d0a68ba68d7989a1b98b4104b3188d9fb** over published812.
+List/navigation focused tests16/16 and state/loading tests13/13 pass with types/Biome;
+no new integrated build, canonical performance or hosted acceptance is claimed. The
+complete source-bound G3 correction remains in progress, with scanner tests49/49 and
+one actual MenuShortcut caller still unresolved at this checkpoint. Finish the whole
+checker/manifest integration before one integrated build/browser proof and publication.
+Latest published812 hosted18/22 remains the acceptance result; reviewedDEVb8 and
+acceptedmain8ddb remain unchanged. No per-edit review or gate waiver.
+
+P4 Users backend **0a44569668cb3ea9b40b3598f11bf92cf6e745a4** is clean/pushed on
+its isolated bc858440-based branch: directory/detail, suspend/unsuspend, force-sign-out,
+PA15-bound admin grant, reused MFA reset, policies/audits/durable grant alerts and an
+unaccepted forward CHECK migration. Focused PostgreSQL6/6 and directoryunit3/3,
+API/tests types, branch routepolicy88/88 and OpenAPI179 pass. Force-sign-out deletes
+all target-user sessions; keys/account status remain unchanged. Its complete URL-backed
+Users UI/actions are being implemented before whole-batch review. Branch counts are
+source-specific, not claimed for the eventual P3/P2/P4 schema union. The original P4
+directory prototype is preserved. No later-stage acceptance or real-provider claim.
+
+## P0 hosted18/22; complete residual source batch in parallel — 2026-10-04 22:25 UTC
+
+Published **812f0e515393f973f5fd8807de761720fc4324de**, full37239086148, passes
+G4/G8/protected redirect and PostgreSQL **136 files/1649 tests/5 tasks**,12m9.257s.
+G11 **18/22FAIL**, four residuals: list525.8/500ms, LCP2648/2500ms,
+state234.9/200ms, board663.3/500ms. Create145.8/200 and assignment186.1/200 now
+pass; dragp9516.8/20, comment61.2/200, route113.4/300 and CLS pass. Raw logs,
+allowed retry samples/traces and diagnostic1/1 are retained. Current diagnostic clean
+mergee6e0badcd95a544b986da5e00ab917d150362af9 has **954 shipping files** and
+SHA25611ca42449605166ac3741b60a88c2598dc7dc261c570dba5e108ca4e978be8a6,
+independently reconstructed from root812 with exact match. No stale-source explanation
+or diagnostic acceptance is claimed. Fast37239166100 passes11/13jobs: web
+**103 files/420 tests**, wholeunitjob12tasks pass. Static G3 fails source-bound
+occurrence contexts moved by the JSX refactor; pending-review template remains red.
+The two Luna implementation lanes now own disjoint full residual batches (list/board;
+state/initial resources), followed by serial complete G3 inventory integration. No
+known-unready candidate is sent to reviewers; no per-edit review, unchanged canonical
+rerun, virtualized/deleted workload, timeout/threshold relaxation or gate exemption.
+
+Exact812 image/operator proof completes at22:14:09.517049–22:14:16.259932UTC:
+revision812,UID10001/live-ready200,80/88prefix,CAS/auth-proof/metrics negatives pass.
+129requests,28/28eligible sources,44tallyrows127occurrences reconcile with0unexplained
+and0uncovered; all8resources absent/0cleanup errors. Root checks three pre-guard source
+hashes and the sole nativeWS101 delegation. ResultSHA256
+41c299b769e9843950b658353cb1f48b753137303b90f7d50c48e3bd6610513f. Private operator
+logs are redacted. This remains one partialOctober4UTCbucket; no additional date,
+all185routes/full-day/cutover/DEVrefresh/phase claim. Acceptedmain8ddb9de8 and
+reviewedOrbStackDEVb8d0bbc4 remain unchanged.
+
+P3 provisioning history **2258d1ad05a293e0905dbd082ab23e2a161c1816** is clean/pushed:
+safe connection-bound cursor API and URL-backed settings panel, PG6/6, permissions88/88,
+route-policy, API/webtypes, OpenAPI217, webtests20/20, bothbuilds and browser1/1 pass.
+Native BetterAuth credentials remain the actual implemented store; realEntra acceptance
+is not claimed. P4 resumed its bounded Users service work, then paused for P0priority;
+its isolated directory source and registered suspend DTO draft are preserved on its branch.
+Independent current bulk/Sol review, exact hosted acceptance/G11protection, remaining
+actualOctober5/6observations, eligiblecutover and additionalSolfinalizer remain open.
+Human review remainsP4; no stage-completion/waiver claim.
+
 ## P0 full structural source completed; hosted verification next — 2026-10-04 22:11 UTC
 
 Complete source **4a4969108d6753c4d6439ad423dd24b0f87a558d** adds the immediately
@@ -3452,11 +3529,11 @@ strict cutover and the additional fresh Sol phase finalizer remain required.
 
 ### P0 #10 — hosted performance and protected acceptance
 
-G4/G8 pass on the latest published P0 batch in PR #579. Its hosted G11 run passes 16/22,
-failing list, LCP, state, assignment, board and create-dialog visibility. The complete
-structural rendering/dialog batch and the separate legacy task-details path are being
-finished before one current hosted run and fresh independent bulk review. Local passes
-remain source-bound author evidence. G11 must pass and become a required protected context
+G4/G8 pass on the latest published P0 batch in PR #579. Its hosted G11 run passes 18/22,
+failing list, LCP, state and board; create and assignment now pass. The complete residual
+rendering/resource batch is composed locally, with source-bound contrast inventory
+integration in progress before one current hosted run and fresh independent bulk review.
+Local passes remain source-bound author evidence. G11 must pass and become a required protected context
 before acceptance; the ruleset currently retains 17 required contexts and zero bypass actors.
 See the newest dated snapshot for exact heads, counts and retained evidence. No phase
 completion or performance threshold waiver is claimed.
