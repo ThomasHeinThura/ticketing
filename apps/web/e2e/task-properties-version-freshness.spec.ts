@@ -101,7 +101,9 @@ test("a description edit refreshes the version used by an open start-date contro
   );
   await initialTask;
 
-  const description = page.locator('[contenteditable="true"]').first();
+  const description = page
+    .getByRole("region", { name: "Task description editor" })
+    .locator('[contenteditable="true"]');
   await expect(description).toBeVisible();
   await description.fill("Latest description");
   const descriptionWrite = page.waitForResponse((response) => {

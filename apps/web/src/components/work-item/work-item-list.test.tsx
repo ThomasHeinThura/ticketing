@@ -253,7 +253,14 @@ describe("WorkItemList", () => {
       />,
     );
 
-    expect(screen.getAllByRole("row")).toHaveLength(501);
+    const rows = screen.getAllByRole("row");
+    expect(rows).toHaveLength(501);
+    expect(
+      screen
+        .getByTestId("work-item-list-populated")
+        .querySelectorAll(".work-item-list-cell-content"),
+    ).toHaveLength(3_000);
+    expect(screen.getAllByRole("link")).toHaveLength(1_000);
     expect(screen.getAllByText("workItems:list.noDueDate")).toHaveLength(500);
     expect(screen.getAllByText("workItems:list.unassigned")).toHaveLength(500);
     expect(screen.getAllByText("medium")).toHaveLength(375);

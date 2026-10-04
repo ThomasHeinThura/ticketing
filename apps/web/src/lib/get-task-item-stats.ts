@@ -29,7 +29,15 @@ export function getTaskItemStats(description: string | null): TaskItemsStats {
   let fenceChar: string | null = null;
   let fenceLen = 0;
 
-  for (const line of description.split(/\r\n|\n/)) {
+  let lineStart = 0;
+  while (true) {
+    const newlineIndex = description.indexOf("\n", lineStart);
+    const lineEnd = newlineIndex < 0 ? description.length : newlineIndex;
+    const contentEnd =
+      lineEnd > lineStart && description.charCodeAt(lineEnd - 1) === 13
+        ? lineEnd - 1
+        : lineEnd;
+    const line = description.slice(lineStart, contentEnd);
     const fenceMatch = FENCE_PATTERN.exec(line);
 
     if (fenceMatch) {
@@ -46,16 +54,16 @@ export function getTaskItemStats(description: string | null): TaskItemsStats {
         // Closing the current fence
         fenceChar = null;
       }
-      continue;
+    } else if (!fenceChar) {
+      const taskMatch = TASK_ITEM_PATTERN.exec(line);
+      if (taskMatch) {
+        total++;
+        if (taskMatch[1].toLowerCase() === "x") completed++;
+      }
     }
 
-    if (fenceChar) continue; // inside a fenced block, skip
-
-    const taskMatch = TASK_ITEM_PATTERN.exec(line);
-    if (!taskMatch) continue;
-
-    total++;
-    if (taskMatch[1].toLowerCase() === "x") completed++;
+    if (newlineIndex < 0) break;
+    lineStart = newlineIndex + 1;
   }
 
   return { total, completed };

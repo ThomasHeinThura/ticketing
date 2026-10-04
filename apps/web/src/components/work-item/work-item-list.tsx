@@ -349,64 +349,78 @@ function WorkItemList({
             return (
               <TableRow key={item.id}>
                 <TableCell>
-                  {item.unavailableFields.includes("key") ? (
-                    <UnavailableField field="key" t={t} />
-                  ) : (
-                    // Keep a real URL and native modified-click behavior without
-                    // one router-location subscription or event-handler set per
-                    // list anchor. The table delegates pointer, focus and click
-                    // handling from its single wrapper.
-                    <a
-                      href={detailHref}
-                      data-work-item-key={item.key}
-                      className="font-medium text-primary underline-offset-2 hover:underline"
-                    >
-                      {item.key}
-                    </a>
-                  )}
+                  <div className="work-item-list-cell-content">
+                    {item.unavailableFields.includes("key") ? (
+                      <UnavailableField field="key" t={t} />
+                    ) : (
+                      // Keep a real URL and native modified-click behavior without
+                      // one router-location subscription or event-handler set per
+                      // list anchor. The table delegates pointer, focus and click
+                      // handling from its single wrapper.
+                      <a
+                        href={detailHref}
+                        data-work-item-key={item.key}
+                        className="font-medium text-primary underline-offset-2 hover:underline"
+                      >
+                        {item.key}
+                      </a>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="max-w-xs truncate whitespace-nowrap">
-                  {item.unavailableFields.includes("title") ? (
-                    <UnavailableField field="title" t={t} />
-                  ) : item.unavailableFields.includes("key") ? (
-                    // The key this row's link would navigate to is unavailable -- render
-                    // the (valid) title as plain text rather than a link to nowhere
-                    // trustworthy.
-                    <span title={item.title}>{item.title}</span>
-                  ) : (
-                    <a
-                      href={detailHref}
-                      data-work-item-key={item.key}
-                      className="hover:underline"
-                      title={item.title}
-                    >
-                      {item.title}
-                    </a>
-                  )}
+                  <div className="work-item-list-cell-content truncate">
+                    {item.unavailableFields.includes("title") ? (
+                      <UnavailableField field="title" t={t} />
+                    ) : item.unavailableFields.includes("key") ? (
+                      // The key this row's link would navigate to is unavailable -- render
+                      // the (valid) title as plain text rather than a link to nowhere
+                      // trustworthy.
+                      <span title={item.title}>{item.title}</span>
+                    ) : (
+                      <a
+                        href={detailHref}
+                        data-work-item-key={item.key}
+                        className="hover:underline"
+                        title={item.title}
+                      >
+                        {item.title}
+                      </a>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
-                  {item.unavailableFields.includes("priority") ? (
-                    <UnavailableField field="priority" t={t} />
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5">
-                      {getPriorityIcon(item.priority ?? "no-priority")}
-                      {getPriorityLabel(item.priority)}
-                    </span>
-                  )}
+                  <div className="work-item-list-cell-content">
+                    {item.unavailableFields.includes("priority") ? (
+                      <UnavailableField field="priority" t={t} />
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5">
+                        {getPriorityIcon(item.priority ?? "no-priority")}
+                        {getPriorityLabel(item.priority)}
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
-                  {item.unavailableFields.includes("dueDate") ? (
-                    <UnavailableField field="dueDate" t={t} />
-                  ) : item.dueDate ? (
-                    formatDateShort(item.dueDate)
-                  ) : (
-                    noDueDateLabel
-                  )}
+                  <div className="work-item-list-cell-content">
+                    {item.unavailableFields.includes("dueDate") ? (
+                      <UnavailableField field="dueDate" t={t} />
+                    ) : item.dueDate ? (
+                      formatDateShort(item.dueDate)
+                    ) : (
+                      noDueDateLabel
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline">{item.stateName}</Badge>
+                  <div className="work-item-list-cell-content">
+                    <Badge variant="outline">{item.stateName}</Badge>
+                  </div>
                 </TableCell>
-                <TableCell>{assigneeLabel(item, assigneeLabels)}</TableCell>
+                <TableCell>
+                  <div className="work-item-list-cell-content">
+                    {assigneeLabel(item, assigneeLabels)}
+                  </div>
+                </TableCell>
               </TableRow>
             );
           })}
