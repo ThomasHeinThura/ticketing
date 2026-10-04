@@ -101,6 +101,7 @@ function Harness({ projectId }: { projectId: string }) {
   return (
     <WorkItemList
       workItems={data?.items}
+      hasPartialFailure={data?.hasPartialFailure ?? false}
       isLoading={isLoading}
       isError={isError}
       sort="key"

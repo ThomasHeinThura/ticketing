@@ -42,6 +42,8 @@ import WorkItemListLoading from "./work-item-list-loading";
 
 export type WorkItemListProps = {
   workItems: WorkItemRow[] | undefined;
+  /** Precomputed by the validated fetcher so rendering does not rescan every row. */
+  hasPartialFailure: boolean;
   isLoading: boolean;
   isError: boolean;
   sort: WorkItemSortField;
@@ -137,6 +139,7 @@ function UnavailableField({
  */
 function WorkItemList({
   workItems,
+  hasPartialFailure,
   isLoading,
   isError,
   sort,
@@ -290,10 +293,6 @@ function WorkItemList({
     );
   }
 
-  const hasPartialFailure = workItems.some(
-    (item) => item.unavailableFields.length > 0,
-  );
-
   return (
     <div className="flex flex-col gap-3">
       {hasPartialFailure && (
@@ -343,69 +342,74 @@ function WorkItemList({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {workItems.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>
-                {item.unavailableFields.includes("key") ? (
-                  <UnavailableField field="key" t={t} />
-                ) : (
-                  // Keep a real URL and native modified-click behavior without
-                  // one router-location subscription or event-handler set per
-                  // list anchor. The table delegates pointer, focus and click
-                  // handling from its single wrapper.
-                  <a
-                    href={routes.workItemDetail.build({ key: item.key })}
-                    data-work-item-key={item.key}
-                    className="font-medium text-primary underline-offset-2 hover:underline"
-                  >
-                    {item.key}
-                  </a>
-                )}
-              </TableCell>
-              <TableCell className="max-w-xs truncate whitespace-nowrap">
-                {item.unavailableFields.includes("title") ? (
-                  <UnavailableField field="title" t={t} />
-                ) : item.unavailableFields.includes("key") ? (
-                  // The key this row's link would navigate to is unavailable -- render
-                  // the (valid) title as plain text rather than a link to nowhere
-                  // trustworthy.
-                  <span title={item.title}>{item.title}</span>
-                ) : (
-                  <a
-                    href={routes.workItemDetail.build({ key: item.key })}
-                    data-work-item-key={item.key}
-                    className="hover:underline"
-                    title={item.title}
-                  >
-                    {item.title}
-                  </a>
-                )}
-              </TableCell>
-              <TableCell>
-                {item.unavailableFields.includes("priority") ? (
-                  <UnavailableField field="priority" t={t} />
-                ) : (
-                  <span className="inline-flex items-center gap-1.5">
-                    {getPriorityIcon(item.priority ?? "no-priority")}
-                    {getPriorityLabel(item.priority)}
-                  </span>
-                )}
-              </TableCell>
-              <TableCell>
-                {item.unavailableFields.includes("dueDate") ? (
-                  <UnavailableField field="dueDate" t={t} />
-                ) : item.dueDate ? (
-                  formatDateShort(item.dueDate)
-                ) : (
-                  noDueDateLabel
-                )}
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline">{item.stateName}</Badge>
-              </TableCell>
-              <TableCell>{assigneeLabel(item, assigneeLabels)}</TableCell>
-            </TableRow>
-          ))}
+          {workItems.map((item) => {
+            const detailHref = item.unavailableFields.includes("key")
+              ? undefined
+              : routes.workItemDetail.build({ key: item.key });
+            return (
+              <TableRow key={item.id}>
+                <TableCell>
+                  {item.unavailableFields.includes("key") ? (
+                    <UnavailableField field="key" t={t} />
+                  ) : (
+                    // Keep a real URL and native modified-click behavior without
+                    // one router-location subscription or event-handler set per
+                    // list anchor. The table delegates pointer, focus and click
+                    // handling from its single wrapper.
+                    <a
+                      href={detailHref}
+                      data-work-item-key={item.key}
+                      className="font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      {item.key}
+                    </a>
+                  )}
+                </TableCell>
+                <TableCell className="max-w-xs truncate whitespace-nowrap">
+                  {item.unavailableFields.includes("title") ? (
+                    <UnavailableField field="title" t={t} />
+                  ) : item.unavailableFields.includes("key") ? (
+                    // The key this row's link would navigate to is unavailable -- render
+                    // the (valid) title as plain text rather than a link to nowhere
+                    // trustworthy.
+                    <span title={item.title}>{item.title}</span>
+                  ) : (
+                    <a
+                      href={detailHref}
+                      data-work-item-key={item.key}
+                      className="hover:underline"
+                      title={item.title}
+                    >
+                      {item.title}
+                    </a>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {item.unavailableFields.includes("priority") ? (
+                    <UnavailableField field="priority" t={t} />
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5">
+                      {getPriorityIcon(item.priority ?? "no-priority")}
+                      {getPriorityLabel(item.priority)}
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {item.unavailableFields.includes("dueDate") ? (
+                    <UnavailableField field="dueDate" t={t} />
+                  ) : item.dueDate ? (
+                    formatDateShort(item.dueDate)
+                  ) : (
+                    noDueDateLabel
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{item.stateName}</Badge>
+                </TableCell>
+                <TableCell>{assigneeLabel(item, assigneeLabels)}</TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

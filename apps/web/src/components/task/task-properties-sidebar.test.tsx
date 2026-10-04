@@ -9,7 +9,9 @@ const mocks = vi.hoisted(() => ({
   useGetColumns: vi.fn(),
   useGetActiveWorkspaceUsers: vi.fn(),
   useGetLabelsByTask: vi.fn(),
+  useGetLabelsByWorkspace: vi.fn(),
   useGetProjects: vi.fn(),
+  labelPopoverRender: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -60,6 +62,9 @@ vi.mock(
 vi.mock("@/hooks/queries/label/use-get-labels-by-task", () => ({
   default: (...args: unknown[]) => mocks.useGetLabelsByTask(...args),
 }));
+vi.mock("@/hooks/queries/label/use-get-labels-by-workspace", () => ({
+  default: (...args: unknown[]) => mocks.useGetLabelsByWorkspace(...args),
+}));
 vi.mock("@/hooks/queries/project/use-get-projects", () => ({
   default: (...args: unknown[]) => mocks.useGetProjects(...args),
 }));
@@ -90,9 +95,10 @@ vi.mock("./task-due-date-popover", () => ({
   ),
 }));
 vi.mock("./task-labels-popover", () => ({
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="labels-popover">{children}</div>
-  ),
+  default: ({ children }: { children: React.ReactNode }) => {
+    mocks.labelPopoverRender();
+    return <div data-testid="labels-popover">{children}</div>;
+  },
 }));
 vi.mock("./task-move-popover", () => ({
   default: () => <div data-testid="move-popover" />,
@@ -129,15 +135,16 @@ function setup() {
   });
   mocks.useGetActiveWorkspaceUsers.mockReturnValue({ data: { members: [] } });
   mocks.useGetLabelsByTask.mockReturnValue({ data: [] });
+  mocks.useGetLabelsByWorkspace.mockReturnValue({ data: [] });
   mocks.useGetProjects.mockReturnValue({ data: [] });
 
-  render(
-    <TaskPropertiesSidebar
-      taskId="task-1"
-      projectId="project-1"
-      workspaceId="workspace-1"
-    />,
-  );
+  const props = {
+    taskId: "task-1",
+    projectId: "project-1",
+    workspaceId: "workspace-1",
+  };
+  const view = render(<TaskPropertiesSidebar {...props} />);
+  return { props, ...view };
 }
 
 describe("TaskPropertiesSidebar responsive controls", () => {
@@ -159,5 +166,18 @@ describe("TaskPropertiesSidebar responsive controls", () => {
         name: /tasks:popover\.assignee\.unassigned/,
       }),
     ).toBeInTheDocument();
+  });
+
+  it("keeps label controls stable when a task property changes", () => {
+    const { props, rerender } = setup();
+    expect(mocks.labelPopoverRender).toHaveBeenCalledTimes(1);
+
+    mocks.useGetTask.mockReturnValue({
+      data: { ...task, status: "in-progress", version: 2 },
+    });
+    rerender(<TaskPropertiesSidebar {...props} />);
+
+    expect(mocks.labelPopoverRender).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("status-popover")).toBeInTheDocument();
   });
 });

@@ -1,5 +1,4 @@
 import {
-  Badge,
   Button,
   KbdSequence,
   Tooltip,
@@ -7,7 +6,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@taskdesk/ui";
-import { Copy, GitBranch, Plus } from "lucide-react";
+import { Copy, GitBranch } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import useGetLabelsByTask from "@/hooks/queries/label/use-get-labels-by-task";
@@ -16,11 +15,10 @@ import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetTask from "@/hooks/queries/task/use-get-task";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { cn } from "@/lib/cn";
-import { resolveLabelColor } from "@/lib/label-color";
 import { toast } from "@/lib/toast";
 import type { Project } from "@/types/project";
 import type Task from "@/types/task";
-import TaskLabelsPopover from "./task-labels-popover";
+import TaskLabelsSection from "./task-labels-section";
 import TaskMovePopover from "./task-move-popover";
 import TaskPropertiesControls from "./task-properties-controls";
 
@@ -306,54 +304,15 @@ export default function TaskPropertiesSidebar({
           </div>
         )}
 
-        <div className="hidden lg:flex px-3 flex-col gap-3 p-2">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-foreground px-2">
-              {t("tasks:properties.labels")}
-            </span>
-            <div className="flex flex-wrap items-center gap-1.5 px-2">
-              {task &&
-                taskLabels.length > 0 &&
-                taskLabels.map(
-                  (label: { id: string; name: string; color: string }) => (
-                    <TaskLabelsPopover
-                      key={`edit-${label.id}`}
-                      task={task}
-                      workspaceId={workspaceId}
-                      triggerNativeButton={false}
-                    >
-                      <Badge
-                        variant="outline"
-                        className="flex items-center gap-1 px-1.5 py-0.5 cursor-pointer hover:bg-accent/50 transition-colors text-[10px]"
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{
-                            backgroundColor: resolveLabelColor(label.color),
-                          }}
-                        />
-                        <span className="truncate max-w-[60px]">
-                          {label.name}
-                        </span>
-                      </Badge>
-                    </TaskLabelsPopover>
-                  ),
-                )}
-
-              {task && (
-                <TaskLabelsPopover task={task} workspaceId={workspaceId}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 w-5 p-0 rounded-full"
-                  >
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </TaskLabelsPopover>
-              )}
-            </div>
-          </div>
-        </div>
+        {task && (
+          <TaskLabelsSection
+            taskId={task.id}
+            projectId={task.projectId}
+            workspaceId={workspaceId}
+            taskLabels={taskLabels}
+            heading={t("tasks:properties.labels")}
+          />
+        )}
       </div>
     </div>
   );

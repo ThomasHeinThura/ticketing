@@ -5275,6 +5275,17 @@
         "backdropLayers": []
       },
       {
+        "id": "apps/web/src/components/task/task-labels-section.tsx::TaskLabelsSection::div[0]/div[0]/span[0]::text-foreground#0",
+        "usage": "apps/web/src/components/task/task-labels-section.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_.tsx:RouteComponent",
+          "TaskLayout->apps/web/src/components/common/task-layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
         "id": "apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverTrigger[0]/Button[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-move-popover.tsx",
         "surfaceContext": "caller-chain",
@@ -5353,17 +5364,6 @@
       },
       {
         "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_.tsx:RouteComponent",
-          "TaskLayout->apps/web/src/components/common/task-layout.tsx:default"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -5899,6 +5899,17 @@
         "backdropLayers": []
       },
       {
+        "id": "apps/web/src/components/task/task-labels-section.tsx::TaskLabelsSection::div[0]/div[0]/span[0]::text-foreground#0",
+        "usage": "apps/web/src/components/task/task-labels-section.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_.tsx:RouteComponent",
+          "TaskLayout->apps/web/src/components/common/task-layout.tsx:default"
+        ],
+        "backdropLayers": []
+      },
+      {
         "id": "apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverTrigger[0]/Button[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-move-popover.tsx",
         "surfaceContext": "caller-chain",
@@ -5977,17 +5988,6 @@
       },
       {
         "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_.tsx:RouteComponent",
-          "TaskLayout->apps/web/src/components/common/task-layout.tsx:default"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -23129,6 +23129,17 @@
         "backdropLayers": []
       },
       {
+        "id": "apps/web/src/components/task/task-labels-section.tsx::TaskLabelsSection::div[0]/div[0]/span[0]::text-foreground#0",
+        "usage": "apps/web/src/components/task/task-labels-section.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+        ],
+        "backdropLayers": []
+      },
+      {
         "id": "apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverTrigger[0]/Button[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-move-popover.tsx",
         "surfaceContext": "caller-chain",
@@ -23207,17 +23218,6 @@
       },
       {
         "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
-          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -23315,6 +23315,17 @@
         "backdropLayers": []
       },
       {
+        "id": "apps/web/src/components/task/task-labels-section.tsx::TaskLabelsSection::div[0]/div[0]/span[0]::text-foreground#0",
+        "usage": "apps/web/src/components/task/task-labels-section.tsx",
+        "surfaceContext": "caller-chain",
+        "category": "body",
+        "chain": [
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+        ],
+        "backdropLayers": []
+      },
+      {
         "id": "apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverTrigger[0]/Button[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-move-popover.tsx",
         "surfaceContext": "caller-chain",
@@ -23393,17 +23404,6 @@
       },
       {
         "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "caller-chain",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
-          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
