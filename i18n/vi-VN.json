@@ -1374,7 +1374,8 @@
 			"workspaces": "Không gian làm việc",
 			"switching": "Đang chuyển...",
 			"addWorkspace": "Thêm không gian làm việc",
-			"selectWorkspace": "Chọn không gian làm việc"
+			"selectWorkspace": "Chọn không gian làm việc",
+			"instanceUsers": "Người dùng phiên bản"
 		},
 		"page": {
 			"projectsTitle": "Dự án",

@@ -194,6 +194,22 @@ export function WorkspaceSwitcher() {
                     </DropdownMenuItem>
                   </>
                 )}
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate({ to: "/god-mode/users" });
+                      }}
+                      className="h-7 text-sm data-highlighted:bg-sidebar-accent data-highlighted:text-sidebar-accent-foreground"
+                    >
+                      {t("navigation:workspaceSwitcher.instanceUsers", {
+                        defaultValue: "Instance users",
+                      })}
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

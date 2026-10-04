@@ -4,6 +4,7 @@ import {
   buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
   parseGeneratedRouteUrl,
+  parseGodModeUsersSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   routes,
@@ -149,5 +150,40 @@ describe("routes.workItemDetail", () => {
     expect(routes.workItemDetail.build({ key: "a/b" })).toBe(
       "/agent/work-items/a%2Fb",
     );
+  });
+});
+
+describe("routes.godModeUsers", () => {
+  it("round-trips filters, cursor and selected account in URL state", () => {
+    const url = routes.godModeUsers.build({
+      q: " Alice Example ",
+      side: "staff",
+      active: "false",
+      organisationId: "org-1",
+      cursor: "eyJ2IjoxfQ",
+      user: "user/2",
+    });
+    const parsed = parseGodModeUsersSearch(
+      Object.fromEntries(new URLSearchParams(url.split("?")[1])),
+    );
+    expect(parsed).toEqual({
+      q: "Alice Example",
+      side: "staff",
+      active: "false",
+      organisationId: "org-1",
+      cursor: "eyJ2IjoxfQ",
+      user: "user/2",
+    });
+  });
+
+  it("drops malformed values and bounds user-controlled search text", () => {
+    expect(
+      parseGodModeUsersSearch({
+        q: ` ${"x".repeat(220)} `,
+        side: "internal",
+        active: "yes",
+        cursor: "",
+      }),
+    ).toEqual({ q: "x".repeat(200) });
   });
 });

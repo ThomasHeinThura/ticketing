@@ -1375,7 +1375,8 @@
 			"workspaces": "Çalışma Alanları",
 			"switching": "Geçiliyor...",
 			"addWorkspace": "Çalışma alanı ekle",
-			"selectWorkspace": "Çalışma alanı seç"
+			"selectWorkspace": "Çalışma alanı seç",
+			"instanceUsers": "Örnek kullanıcıları"
 		},
 		"page": {
 			"projectsTitle": "Projeler",

@@ -1375,7 +1375,8 @@
 			"workspaces": "Workspaces",
 			"switching": "Wechseln...",
 			"addWorkspace": "Workspace hinzufügen",
-			"selectWorkspace": "Workspace auswählen"
+			"selectWorkspace": "Workspace auswählen",
+			"instanceUsers": "Instanzbenutzer"
 		},
 		"page": {
 			"projectsTitle": "Projekte",

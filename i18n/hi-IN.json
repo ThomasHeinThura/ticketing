@@ -1375,7 +1375,8 @@
 			"workspaces": "वर्कस्पेस",
 			"switching": "बदल रहे हैं...",
 			"addWorkspace": "वर्कस्पेस जोड़ें",
-			"selectWorkspace": "वर्कस्पेस चुनें"
+			"selectWorkspace": "वर्कस्पेस चुनें",
+			"instanceUsers": "इंस्टेंस उपयोगकर्ता"
 		},
 		"page": {
 			"projectsTitle": "प्रोजेक्ट",
