@@ -50,6 +50,7 @@ describe("Kanban column rendering", () => {
       workspaceUsersById: new Map(),
       onContextMenuTask,
       onOpenTask: vi.fn(),
+      onCreateTask: vi.fn(),
       t: ((key: string) => key) as unknown as TFunction,
     };
     const view = render(<Column {...props} />);

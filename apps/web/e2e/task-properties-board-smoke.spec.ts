@@ -100,6 +100,15 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
         page.getByText("Seeded legacy task 200", { exact: true }),
       ).toBeVisible();
 
+      const addTask = page.getByTitle("Add task").first();
+      await addTask.focus();
+      await addTask.click();
+      const createTaskDialog = page.getByRole("dialog");
+      await expect(createTaskDialog).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(createTaskDialog).toBeHidden();
+      await expect(addTask).toBeFocused();
+
       const keyboardCard = page.locator(
         '[data-task-id="legacy-task-1"][role="button"][aria-describedby^="DndDescribedBy"]',
       );

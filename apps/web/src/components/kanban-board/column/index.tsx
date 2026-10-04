@@ -23,6 +23,7 @@ type ColumnProps = {
   workspaceUsersById: ReadonlyMap<string, TaskCardWorkspaceUser>;
   onContextMenuTask: TaskCardProps["onContextMenuTask"];
   onOpenTask: TaskCardProps["onOpenTask"];
+  onCreateTask: (status: string, trigger: HTMLButtonElement) => void;
   t: TFunction;
 };
 
@@ -40,6 +41,7 @@ function Column({
   workspaceUsersById,
   onContextMenuTask,
   onOpenTask,
+  onCreateTask,
   t,
 }: ColumnProps) {
   const [isDropzoneOver, setIsDropzoneOver] = useState(false);
@@ -54,7 +56,7 @@ function Column({
       }`}
     >
       <div className="shrink-0 border-b border-border/60 px-3 py-2">
-        <ColumnHeader column={column} t={t} />
+        <ColumnHeader column={column} onCreateTask={onCreateTask} t={t} />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-1 [-webkit-overflow-scrolling:touch]">
         <ColumnDropzone
