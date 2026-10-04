@@ -624,6 +624,27 @@
 			"when": 1791063845024,
 			"tag": "0088_whole_mojo",
 			"breakpoints": true
+		},
+		{
+			"idx": 89,
+			"version": "7",
+			"when": 1791064842648,
+			"tag": "0089_bright_prowler",
+			"breakpoints": true
+		},
+		{
+			"idx": 90,
+			"version": "7",
+			"when": 1791067823422,
+			"tag": "0090_mature_exodus",
+			"breakpoints": true
+		},
+		{
+			"idx": 91,
+			"version": "7",
+			"when": 1791070220860,
+			"tag": "0091_violet_living_lightning",
+			"breakpoints": true
 		}
 	]
 }

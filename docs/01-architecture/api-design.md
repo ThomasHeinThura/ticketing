@@ -201,6 +201,17 @@ empty values, and extra keys are rejected. A value of `unmapped` leaves that opt
 profile field unchanged; it is forbidden for name or email. An identical effective
 mapping is a `422` no-op without proof consumption or version advance.
 
+The map's name destination is `person.display_name`, independent of account-wide
+`user.name`; a placeholder can therefore have a profile before it has a login. The email
+destination is the connection-scoped `external_identity.email_snapshot`, never a verified
+login address or an automatic account-link key. Fixed `userName` is retained separately in
+`external_identity.user_name_snapshot`. Job title and locale use the existing `person`
+fields. Reads emit stored `displayName` and `name.formatted` values only; they do not derive
+given/family components or substitute `userName` or email for a missing profile name. Existing
+people without a stored display name remain without one; migration must not synthesize it
+from account-wide names or identity snapshots. Profile data and identity snapshots remain
+available after deactivation/reactivation.
+
 The fixed identity keys (`id`, `externalId`, `userName` for lookup), `active`, group/member
 links, portal, organisation, side, person/user ids, roles, grants, reach and capabilities
 are outside this map and never configurable through it. `userName` as an email profile
@@ -263,6 +274,36 @@ before hashing UTF-8 bytes. The client supplies neither route key nor hash. Exec
 consumes the one-use proof with CAS and mutation in one transaction; stale CAS or failed
 validation rolls back consumption. An unavailable fresh supported verifier returns
 `403 step_up_unavailable`; no OIDC, MFA-reset or metrics proof is accepted.
+
+### SCIM token rotation and revocation — PA-15 operations
+
+The separate token lifecycle routes are session-only God Mode operations:
+
+```
+POST /api/instance/identity-connections/{id}/scim/rotate-token
+POST /api/instance/identity-connections/{id}/scim/revoke-token
+```
+
+Both accept exactly `{ "version": <positive safe integer> }`, use
+`identity_connection.config_version` as the compare-and-set value, require
+`instance:admin`, and require their distinct `scim_token_rotate` or
+`scim_token_revoke` PA-15 binding. Challenge, proof mint and execution bind the exact route,
+connection id and canonical UTF-8 `{"version":<base-10 integer>}`; no other operation's
+proof is accepted. A stale version returns `409 version_conflict` without consuming proof or
+changing the token. Each committed operation increments the parent version exactly once,
+sets the SCIM child disabled and invalidates the old bearer immediately. Rotation returns
+`{configVersion, token, tokenRotatedAt}` once with `Cache-Control: no-store`; the token is a
+fresh 32-byte random value encoded as unpadded base64url. Revoke returns only
+`{configVersion, revoked: true}`. Revoking an already absent token is a `422` no-op and
+does not consume proof. Re-enabling SCIM requires a later settings PATCH after the upstream
+bearer has been updated.
+
+Both operations record only the changed key and new version in `identity_connection.changed`
+audit detail, and a `token.rotated` or `token.revoked` provisioning event with connection
+id and version. Raw tokens, token prefixes, hashes and bearer header values never enter
+audit, event details, logs or read DTOs. Audit append failure follows AU-14; the mutation
+commits with the durable operational alert. The response and step-up credentials are
+no-store.
 
 `IP-22` governs pre-discovery, total parent-first lock order, closure re-read/retry and
 atomic source-validity projection. Disabling this SCIM child or removing `groups` retires

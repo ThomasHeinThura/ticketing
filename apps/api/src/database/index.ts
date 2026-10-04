@@ -336,9 +336,9 @@ export function getMigrationDatabasePool(): Pool {
       connectionString: resolveMigrationDatabaseConnectionString(),
       connectionTimeoutMillis: 5_000,
       idleTimeoutMillis: 30_000,
-      // Startup-only and single-purpose: migrations run one statement at a time,
-      // never concurrently, so this pool never needs more than one connection.
-      max: 1,
+      // One client retains the migration advisory lock while Drizzle's dialect
+      // and the transactional provenance cutover use a second pooled connection.
+      max: 2,
     });
 
     migrationPool.on("error", (error) => {

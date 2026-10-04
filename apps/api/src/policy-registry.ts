@@ -97,6 +97,29 @@ export const platformPolicies = {
       "better-auth owns authentication; its endpoint set is the approved plugin list",
   },
 
+  // SCIM is an explicitly delegated mount. Its middleware accepts only the dedicated
+  // per-connection bearer and establishes a fixed connection/tenant context.
+  "GET /scim/v2/ServiceProviderConfig": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "GET /scim/v2/ResourceTypes": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "GET /scim/v2/Schemas": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "GET /scim/v2/Users": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "GET /scim/v2/Users/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+
   // The websocket surface. The upgrade handler authenticates the request itself before the
   // socket opens; there is no Hono response for a policy middleware to shape.
   "GET /api/ws": {

@@ -222,9 +222,9 @@ describe("route coverage", () => {
 
   it("counts middleware as middleware, not as routes", async () => {
     const middleware = await loadRouterMiddleware();
-    // The four origin/CORS/compress/static global middlewares and the API auth guard are
+    // The origin/CORS/compress/static global middlewares, API auth guard and dedicated SCIM bearer middleware are
     // chain entries, not endpoints; their exact keys remain closed and reviewed.
-    expect(middleware).toEqual(["ALL /*", "ALL /api/*"]);
+    expect(middleware).toEqual(["ALL /*", "ALL /api/*", "ALL /scim/v2/*"]);
   });
 
   it("FAILS when a new route arrives without a policy", async () => {

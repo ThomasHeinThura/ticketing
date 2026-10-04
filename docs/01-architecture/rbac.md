@@ -707,7 +707,7 @@ the first day.
 | Action | Route |
 | --- | --- |
 | Creating or changing an identity connection (OIDC) or a non-OIDC auth plugin | `POST /api/instance/identity-connections`, `PATCH /api/instance/identity-connections/{id}`; `POST/PATCH /api/instance/plugins/{id}` for `auth.*` |
-| Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `…/scim/rotate-token`, `…/scim/revoke-token` |
+| Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `POST /api/instance/identity-connections/{id}/scim/rotate-token`, `POST /api/instance/identity-connections/{id}/scim/revoke-token` |
 | OIDC mapping administration — every create, edit, enable and disable is unconditionally elevated, session-only and audited, including customer/display-only changes; forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-34`) | `POST /api/instance/identity-connections/{id}/oidc-group-mappings`, `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` |
 | Every SCIM administration PATCH is route-wide elevated, session-only and audited, with strict DTO, parent-version CAS and dedicated `scim_admin_update` PA-15 proof. An implementation lacking its verifier fails closed. Forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-20`–`IP-22`; [api-design.md](api-design.md#scim-administration-patch--issue-561-owner-contract)) | `PATCH /api/instance/identity-connections/{id}/scim` |
 | Granting `instance:admin` | `POST /api/instance/users/{id}/grant-admin` |

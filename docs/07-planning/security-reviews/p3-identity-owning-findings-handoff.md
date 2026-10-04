@@ -28,11 +28,19 @@ checks, or real-Entra verification.
 
 1. Implement the proposed ADR-0015 schema and one shared IP-22 transaction/projection
    writer, including every parent, direct-grant, role, connection, JIT/OIDC and SCIM path.
-   Preflight every legacy membership without writes. Classify only from an unbroken durable
-   source chain. Produce the private per-row reconciliation inventory/record with row digest;
-   reject ambiguity, stale records and unapproved duplicate repair. Block writers across
-   final preflight and the transactional cut-over; rollback the entire DDL/backfill/projection
-   on any failure. Do not classify null `derived_from` as direct by default.
+   The read-only inventory/classifier now exists at
+   `apps/api/scripts/preflight-membership-provenance.ts` and
+   `apps/api/src/identity/membership-provenance-preflight.ts`; it classifies only an exact,
+   internally consistent SCIM chain and leaves all other rows unresolved. It rejects
+   implicit database fallbacks and writes its report create-only with mode 0600. The pure
+   owner-record validator checks exact unresolved-row coverage, matching digest, source
+   discriminator shape, duplicate decisions, grant scope binding, and per-row evidence
+   references/rationale. The custom startup and `db:migrate` runner now blocks parent
+   writers, validates a current admin and direct-grant target before DDL, then runs
+   migrations 0087–0090 plus backfill/projection/constraints in one transaction. It refuses
+   duplicate projection keys and unsupported external-source claims; no persistent cutover
+   has run. This is implementation evidence only, not runtime acceptance. Do not classify
+   null `derived_from` as direct by default.
 2. Implement selected-connection OIDC protocol and Entra admission **before** JIT or session
    issue, then source-scoped group/JIT reconciliation under IP-22 locks. Implement SCIM
    token scope, user lifecycle and group evidence with the same writer. Make authority

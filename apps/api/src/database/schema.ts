@@ -217,6 +217,8 @@ export const workspaceTable = pgTable("workspace", {
   logo: text("logo"),
   metadata: text("metadata"),
   description: text("description"),
+  deletedAt: timestamp("deleted_at", { mode: "date" }),
+  purgeAfter: timestamp("purge_after", { mode: "date" }),
   createdAt: timestamp("created_at", { mode: "date" }).notNull(),
 });
 
@@ -1648,7 +1650,7 @@ export const membershipTable = pgTable(
     // dropped as redundant; `membership_scope_scopeId_idx` is kept alongside it because it
     // serves the reverse lookup (all memberships for a scope/scope_id, independent of
     // person) that this composite's column order can't serve.
-    index("membership_personId_scope_scopeId_idx").on(
+    uniqueIndex("membership_person_scope_scope_id_unique").on(
       table.personId,
       table.scope,
       table.scopeId,
@@ -3989,6 +3991,9 @@ export const stepUpConfirmationTable = pgTable(
         or (${table.operationKey} = 'metrics_token_rotate' and ${table.routeKey} = 'POST /api/instance/observability/metrics-token/rotate')
         or (${table.operationKey} = 'oidc_group_mapping_create' and ${table.routeKey} = 'POST /api/instance/identity-connections/{id}/oidc-group-mappings')
         or (${table.operationKey} = 'oidc_group_mapping_update' and ${table.routeKey} = 'PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}')
+        or (${table.operationKey} = 'scim_admin_update' and ${table.routeKey} = 'PATCH /api/instance/identity-connections/{id}/scim')
+        or (${table.operationKey} = 'scim_token_rotate' and ${table.routeKey} = 'POST /api/instance/identity-connections/{id}/scim/rotate-token')
+        or (${table.operationKey} = 'scim_token_revoke' and ${table.routeKey} = 'POST /api/instance/identity-connections/{id}/scim/revoke-token')
         or (${table.operationKey} = 'mfa_reset' and ${table.routeKey} = 'POST /api/instance/users/{id}/reset-mfa')`,
     ),
     check(

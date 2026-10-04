@@ -173,7 +173,8 @@ thing that is hashed or executed.
   (`authenticated + self`, session-only) creates a five-minute challenge for either the
   current requester's pending action or an explicitly registered operation. The operation
   allowlist is `metrics_token_rotate`, `oidc_group_mapping_create`,
-  `oidc_group_mapping_update`, `scim_admin_update`, and `mfa_reset`. Pending-action binding
+  `oidc_group_mapping_update`, `scim_admin_update`, `scim_token_rotate`,
+  `scim_token_revoke`, and `mfa_reset`. Pending-action binding
   uses its existing `pending_action.id`
   and `payload_hash`; operation binding uses the exact fixed route key, operation key,
   expected resource version and server-computed canonical request-binding hash. The client
@@ -215,6 +216,10 @@ thing that is hashed or executed.
     "connectionId": "...",
     "request": { "configVersion": 7, "kind": "mapping_update",
       "mappingId": "...", "enabled": false } }
+  { "kind": "operation", "operation": "scim_token_rotate",
+    "connectionId": "...", "version": 7 }
+  { "kind": "operation", "operation": "scim_token_revoke",
+    "connectionId": "...", "version": 7 }
   ```
 
   For `metrics_token_rotate`, the server requires current `instance:admin` and a matching
@@ -250,6 +255,10 @@ thing that is hashed or executed.
     "request": { "configVersion": 7, "kind": "settings", "enabled": false },
     "challengeId": "...", "challengeNonce": "...",
     "proof": { "method": "password", "value": "..." } }
+  { "kind": "operation", "operation": "scim_token_rotate",
+    "connectionId": "...", "version": 7,
+    "challengeId": "...", "challengeNonce": "...",
+    "proof": { "method": "password", "value": "..." } }
   ```
 
   Supported proofs are the current password only for a local-password account with no
@@ -268,12 +277,28 @@ thing that is hashed or executed.
   | `oidc_group_mapping_create` | `POST /api/instance/identity-connections/{id}/oidc-group-mappings` | `identity_connection.config_version` |
   | `oidc_group_mapping_update` | `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` | `identity_connection.config_version` |
   | `scim_admin_update` | `PATCH /api/instance/identity-connections/{id}/scim` | `identity_connection.config_version` |
+  | `scim_token_rotate` | `POST /api/instance/identity-connections/{id}/scim/rotate-token` | `identity_connection.config_version` |
+  | `scim_token_revoke` | `POST /api/instance/identity-connections/{id}/scim/revoke-token` | `identity_connection.config_version` |
 
   OIDC mapping and SCIM administration challenge and completion requests carry the exact
   connection id and strict operation body; the OIDC mapping id is a separate path id, while
-  the SCIM mapping id, when applicable, is inside its validated body. The service re-resolves
+  the SCIM mapping id, when applicable, is inside its validated body. SCIM token operations
+  carry only the connection id and positive expected `version`; their fixed route is part of
+  the server-side binding. The service re-resolves
   both resources and checks that each mapping belongs to the named connection. The step-up
   request repeats the binding.
+  For either SCIM token operation, the service requires current `instance:admin`, a current
+  agent session, the exact operation route and connection id, and a strict body containing
+  only the positive safe-integer `version`. It checks that the connection and SCIM child
+  exist and that `identity_connection.config_version` still equals `version` before issuing
+  a challenge. The binding hash covers the fixed route key, connection id and canonical
+  UTF-8 `{"version":<base-10 integer>}`. Rotation and revocation advance the same parent
+  version exactly once. Rotation disables SCIM until the administrator explicitly
+  re-enables it after updating the upstream bearer; revocation also leaves it disabled. Both
+  operations consume proof atomically with the parent CAS and secret-hash mutation. A stale
+  version leaves the proof unused. Rotation returns the random bearer once with no-store;
+  revoke returns only the new safe version. Neither raw tokens nor token prefixes/hashes
+  enter audit, provisioning-event detail, logs or read DTOs.
   Each protected route uses `X-TaskDesk-Step-Up-Token` and recomputes the request-binding
   hash from the loaded path parameters and server-validated canonical body. In one database
   transaction, re-read the current active person and session, re-evaluate the exact

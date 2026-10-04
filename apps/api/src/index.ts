@@ -8,7 +8,6 @@ import { OpenAPIHono } from "@hono/zod-openapi";
 import { normaliseRouteKey } from "@taskdesk/permissions";
 import type { Session, User } from "better-auth/types";
 import { and, eq, sql } from "drizzle-orm";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
 import type { Context, Next } from "hono";
 import { Hono } from "hono";
 import { compress } from "hono/compress";
@@ -36,16 +35,20 @@ import db, {
   closeMigrationPool,
   getDatabase,
   getMigrationDatabase,
+  getMigrationDatabasePool,
   schema,
 } from "./database";
 import { assertApplicationRoleIsNotPrivileged } from "./database/assert-application-role-is-not-privileged";
 import { assertNoMigrationUrlInApiProcess } from "./database/assert-no-migration-url-in-api-process";
 import { ensureApplicationRole } from "./database/ensure-application-role";
+import { migrateWithMembershipProvenanceCutover } from "./database/migrate-membership-provenance";
 import { prepareDatabaseStartup } from "./database/prepare-database-startup";
 import { resolveMigrationDatabaseConfig } from "./database/resolve-database-url";
 import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
+import scimAdmin from "./identity/scim-admin";
+import scimProtocol from "./identity/scim-protocol";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
 import localFactorPolicy from "./instance/local-factor-policy";
 import observability from "./instance/observability";
@@ -461,6 +464,7 @@ export function createApp(
       c.req.path === "/api/health" ||
       c.req.path === "/api/public/health/live" ||
       c.req.path === "/api/public/health/ready";
+    const isScimPath = c.req.path.startsWith("/scim/v2/");
     const isHealthRequest =
       isHealthPath && (c.req.method === "GET" || c.req.method === "HEAD");
     const upgrade = c.req.header("upgrade")?.toLowerCase();
@@ -469,6 +473,7 @@ export function createApp(
       upgrade === "websocket" && connection.includes("upgrade");
 
     if (selected === "invalid") return denyByHost(c);
+    if (isScimPath && selected !== "agent") return denyByHost(c);
     if (isWebSocketUpgrade && (selected !== "agent" || isHealthPath))
       return denyByHost(c);
     if (isHealthRequest) {
@@ -545,6 +550,11 @@ export function createApp(
   const compressMiddleware = compress();
   declareCatchAllMiddleware(compressMiddleware);
   app.use(compressMiddleware);
+
+  // SCIM lives at the protocol's documented agent-origin path, outside `/api` and
+  // therefore outside the session/API-key guard. The host-routing guard above admits
+  // this path only on the agent origin; scimProtocol authenticates its dedicated bearer.
+  const scimProtocolApi = app.route("/scim/v2", scimProtocol);
 
   const api = installStrictPolicyRegistration(new OpenAPIHono<ApiVariables>());
 
@@ -920,6 +930,11 @@ export function createApp(
     scheme: "bearer",
     description: "API key or session token (Bearer)",
   });
+  api.openAPIRegistry.registerComponent("securitySchemes", "scimBearerAuth", {
+    type: "http",
+    scheme: "bearer",
+    description: "Per-connection SCIM bearer token",
+  });
 
   api.get("/openapi", (c) => {
     const document = api.getOpenAPI31Document({
@@ -943,6 +958,42 @@ export function createApp(
       ],
       security: [{ bearerAuth: [] }],
     });
+
+    const scimDocument = scimProtocol.getOpenAPI31Document({
+      openapi: "3.1.0",
+      info: { title: "TaskDesk SCIM API", version: "1.0.0" },
+    });
+    for (const [path, pathItem] of Object.entries(scimDocument.paths ?? {})) {
+      if (!pathItem) continue;
+      const scimPathItem: Record<string, unknown> = { ...pathItem };
+      for (const method of [
+        "get",
+        "post",
+        "put",
+        "patch",
+        "delete",
+        "options",
+        "head",
+        "trace",
+      ] as const) {
+        const operation = scimPathItem[method];
+        if (operation && typeof operation === "object")
+          scimPathItem[method] = {
+            ...(operation as Record<string, unknown>),
+            security: [{ scimBearerAuth: [] }],
+          };
+      }
+      document.paths ??= {};
+      document.paths[`/scim/v2${path}`] = {
+        ...scimPathItem,
+        servers: [
+          {
+            url: process.env.TASKDESK_AGENT_URL || "http://localhost:5173",
+            description: "SCIM protocol on the agent origin",
+          },
+        ],
+      } as NonNullable<typeof document.paths>[string];
+    }
 
     // Every authenticated route sits behind the same app-wide
     // authenticateApiRequest middleware, so the shared 401 is injected here
@@ -1234,6 +1285,7 @@ export function createApp(
   const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
   const resetMfaApi = api.route("/instance", resetMfa);
+  const scimAdminApi = api.route("/instance", scimAdmin);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
   // so the literal path "user" isn't consumed by the param route.
@@ -1522,6 +1574,8 @@ export function createApp(
     metricsTokenRotationApi,
     localFactorPolicyApi,
     resetMfaApi,
+    scimAdminApi,
+    scimProtocolApi,
     invitationApi,
     invitationPublicApi,
     oauthApi,
@@ -1600,7 +1654,9 @@ export async function runMigrationStep(): Promise<void> {
       await migrateSessionColumn(migrationDb);
 
       console.log("🔄 Migrating database...");
-      await migrate(migrationDb, {
+      await migrateWithMembershipProvenanceCutover({
+        database: migrationDb,
+        pool: getMigrationDatabasePool(),
         migrationsFolder: `${currentDir}/../drizzle`,
       });
       console.log("✅ Database migrated successfully!");
@@ -1891,6 +1947,8 @@ const {
   metricsTokenRotationApi,
   localFactorPolicyApi,
   resetMfaApi,
+  scimAdminApi,
+  scimProtocolApi,
   invitationApi,
   invitationPublicApi,
   oauthApi,
@@ -1972,6 +2030,8 @@ export type AppType =
   | typeof metricsTokenRotationApi
   | typeof localFactorPolicyApi
   | typeof resetMfaApi
+  | typeof scimAdminApi
+  | typeof scimProtocolApi
   | typeof workflowApi
   | typeof workflowRuleApi
   | typeof workItemApi

@@ -140,6 +140,16 @@ has not been granted. These are target contracts, not implemented tables.
   Mapping to `instance:admin` or `sees_all` is not elevated — it is **impossible**: the
   mapping editor does not offer it and the server refuses it.
 
+  SCIM token rotation and revocation use separate PA-15 operations,
+  `scim_token_rotate` and `scim_token_revoke`, each bound to its exact route, connection id
+  and positive expected parent `configVersion`. Both disable the SCIM child and increment
+  the parent version exactly once; rotation invalidates the previous bearer immediately and
+  returns a new 32-byte bearer once, while revocation returns no secret. Re-enable is a
+  later authenticated settings write after updating the upstream bearer. Stale CAS preserves
+  the proof for retry and changes nothing; raw token material is excluded from audit, events,
+  logs and read DTOs. Full request and response semantics are in
+  [api-design.md](../01-architecture/api-design.md#scim-token-rotation-and-revocation--pa-15-operations).
+
 ### OIDC login
 
 - `IP-7` Every connection enforces the protocol floor in
@@ -295,9 +305,15 @@ protocol code; only the credential check reuses the platform.
   SCIM grants are re-derived only from current verified SCIM groups/mappings; OIDC grants
   wait for a later validated login on that connection. Direct grants retained by
   `keep_memberships` remain dormant until the person is active.
-- `IP-17` Profile updates (`PATCH`/`PUT`) may change permitted attributes — name, email
-  snapshot, `userName`, job title, locale — and can never alter organisation, portal scope,
-  role, reach or capabilities. The version-1 `scim_connection.attribute_mapping` grammar,
+- `IP-17` Profile updates (`PATCH`/`PUT`) may change permitted attributes — per-person
+  display name, connection-scoped email snapshot, `userName`, job title and locale — and can
+  never alter organisation, portal scope, role, reach or capabilities. `person.display_name`
+  is the TaskDesk profile display name, independent of the account-wide `user.name`; an
+  unlinked SCIM placeholder can therefore retain its own profile without creating a login.
+  SCIM reads emit stored `displayName` and do not derive a name from `userName` or email.
+  Existing people without a stored display name remain without one; migration must not guess
+  from account or identity snapshots. Deactivation and reactivation preserve the profile and
+  connection-scoped snapshots. The version-1 `scim_connection.attribute_mapping` grammar,
   deterministic email selection, mandatory-profile failure, optional-field omission and
   future-write-only behavior are owned by the
   [SCIM administration API contract](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).

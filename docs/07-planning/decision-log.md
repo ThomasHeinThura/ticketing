@@ -5,6 +5,26 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-04 · Register separate PA-15 operations for SCIM token lifecycle
+
+**Decision:** under the standing authorization to implement recommended decisions, register
+`scim_token_rotate` and `scim_token_revoke` as distinct PA-15 operations for the existing
+SCIM token lifecycle routes. Each operation is bound to its exact route, connection id and
+strict positive-version body; neither reuses `scim_admin_update`. Both use the parent
+`identity_connection.config_version` CAS and consume proof atomically with the token change.
+Rotation and revocation disable the SCIM child, increment the shared parent version once and
+invalidate the prior bearer immediately. Rotation returns a fresh bearer once; revocation
+returns no secret. Re-enabling SCIM is a separate settings write after the upstream bearer
+has been updated. No new capability, event key, table, dependency or persistent setting is
+added.
+
+This is a documented implementation recommendation, not an independent review, P4 human
+design approval, or finding/phase acceptance. Exact request, response, audit and failure
+semantics are in [api-design.md](../01-architecture/api-design.md#scim-token-rotation-and-revocation--pa-15-operations)
+and [pending-actions.md](../01-architecture/pending-actions.md#pa-15-step-up-is-single-use-and-bound-to-one-pending-action-or-one-explicitly-registered-operation).
+
+**Recorded by:** GPT-6 Luna implementation author, 2026-10-04.
+
 ### 2026-10-04 · Select P3 grant-provenance reconciliation and closed SCIM profile map
 
 **Decision:** under Thomas's standing authorization to implement documented recommended

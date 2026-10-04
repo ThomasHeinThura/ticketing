@@ -1,5 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createId } from "@paralleldrive/cuid2";
+import type { ScimAdminRequest } from "@taskdesk/domain";
+import { canonicalScimAdminRequest } from "@taskdesk/domain";
 import { and, count, eq, gt, sql } from "drizzle-orm";
 import db, { schema } from "../database";
 
@@ -9,6 +11,15 @@ export const STEP_UP_ROUTE =
 export const MFA_RESET_OPERATION = "mfa_reset" as const;
 export const MFA_RESET_ROUTE =
   "POST /api/instance/users/{id}/reset-mfa" as const;
+export const SCIM_ADMIN_OPERATION = "scim_admin_update" as const;
+export const SCIM_ADMIN_ROUTE =
+  "PATCH /api/instance/identity-connections/{id}/scim" as const;
+export const SCIM_TOKEN_ROTATE_OPERATION = "scim_token_rotate" as const;
+export const SCIM_TOKEN_ROTATE_ROUTE =
+  "POST /api/instance/identity-connections/{id}/scim/rotate-token" as const;
+export const SCIM_TOKEN_REVOKE_OPERATION = "scim_token_revoke" as const;
+export const SCIM_TOKEN_REVOKE_ROUTE =
+  "POST /api/instance/identity-connections/{id}/scim/revoke-token" as const;
 export class StepUpAttemptLimitError extends Error {
   constructor() {
     super("step_up_attempt_limit");
@@ -30,6 +41,58 @@ export function canonicalMfaResetBody(
   return canonicalOperationBody(MFA_RESET_OPERATION, MFA_RESET_ROUTE, 1, {
     userId,
     verificationNote,
+  });
+}
+
+export function canonicalScimAdminBody(
+  connectionId: string,
+  request: ScimAdminRequest,
+): Buffer {
+  return Buffer.from(canonicalScimAdminRequest(connectionId, request), "utf8");
+}
+
+export function canonicalScimTokenBody(version: number): Buffer {
+  // PA-15 stores the operation, route, version, person and session as separate
+  // binding columns. The body hash is only the canonical validated request body.
+  return Buffer.from(JSON.stringify({ version }), "utf8");
+}
+
+export function createScimAdminChallenge(input: {
+  personId: string;
+  sessionId: string;
+  connectionId: string;
+  request: ScimAdminRequest;
+}) {
+  return createOperationChallenge({
+    personId: input.personId,
+    sessionId: input.sessionId,
+    operation: SCIM_ADMIN_OPERATION,
+    route: SCIM_ADMIN_ROUTE,
+    version: input.request.configVersion,
+    body: canonicalScimAdminBody(input.connectionId, input.request),
+  });
+}
+
+export function createScimTokenChallenge(input: {
+  personId: string;
+  sessionId: string;
+  connectionId: string;
+  version: number;
+  operation:
+    | typeof SCIM_TOKEN_ROTATE_OPERATION
+    | typeof SCIM_TOKEN_REVOKE_OPERATION;
+}) {
+  const route =
+    input.operation === SCIM_TOKEN_ROTATE_OPERATION
+      ? SCIM_TOKEN_ROTATE_ROUTE
+      : SCIM_TOKEN_REVOKE_ROUTE;
+  return createOperationChallenge({
+    personId: input.personId,
+    sessionId: input.sessionId,
+    operation: input.operation,
+    route,
+    version: input.version,
+    body: canonicalScimTokenBody(input.version),
   });
 }
 
@@ -95,7 +158,9 @@ async function createOperationChallenge(input: {
     const clock = await tx.execute<{ challenge_expires_at: string }>(
       sql`SELECT (now() + interval '5 minutes')::text AS challenge_expires_at`,
     );
-    const expiresAt = new Date(clock.rows[0]!.challenge_expires_at);
+    const clockRow = clock.rows[0];
+    if (!clockRow) throw new Error("Unable to read database challenge time");
+    const expiresAt = new Date(clockRow.challenge_expires_at);
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.operation}))`,
     );
@@ -200,6 +265,49 @@ export async function consumeMfaResetProof(
     operation: MFA_RESET_OPERATION,
     route: MFA_RESET_ROUTE,
     body: canonicalMfaResetBody(input.userId, input.verificationNote),
+  });
+}
+
+export async function consumeScimAdminProof(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  input: {
+    token: string;
+    personId: string;
+    sessionId: string;
+    connectionId: string;
+    request: ScimAdminRequest;
+  },
+) {
+  return consumeOperationProof(tx, {
+    ...input,
+    version: input.request.configVersion,
+    operation: SCIM_ADMIN_OPERATION,
+    route: SCIM_ADMIN_ROUTE,
+    body: canonicalScimAdminBody(input.connectionId, input.request),
+  });
+}
+
+export async function consumeScimTokenProof(
+  tx: StepUpTransaction,
+  input: {
+    token: string;
+    personId: string;
+    sessionId: string;
+    connectionId: string;
+    version: number;
+    operation:
+      | typeof SCIM_TOKEN_ROTATE_OPERATION
+      | typeof SCIM_TOKEN_REVOKE_OPERATION;
+  },
+) {
+  const route =
+    input.operation === SCIM_TOKEN_ROTATE_OPERATION
+      ? SCIM_TOKEN_ROTATE_ROUTE
+      : SCIM_TOKEN_REVOKE_ROUTE;
+  return consumeOperationProof(tx, {
+    ...input,
+    route,
+    body: canonicalScimTokenBody(input.version),
   });
 }
 
@@ -316,6 +424,63 @@ export async function issueMfaResetToken(
   );
 }
 
+export async function issueScimAdminToken(
+  input: {
+    id: string;
+    nonce: string;
+    personId: string;
+    sessionId: string;
+    userId: string;
+    connectionId: string;
+    request: ScimAdminRequest;
+  },
+  verifyAuthentication: () => Promise<
+    "password" | "totp" | "backup_code" | null
+  >,
+) {
+  return issueOperationToken(
+    {
+      ...input,
+      version: input.request.configVersion,
+      operation: SCIM_ADMIN_OPERATION,
+      route: SCIM_ADMIN_ROUTE,
+      body: canonicalScimAdminBody(input.connectionId, input.request),
+    },
+    verifyAuthentication,
+  );
+}
+
+export async function issueScimTokenToken(
+  input: {
+    id: string;
+    nonce: string;
+    personId: string;
+    sessionId: string;
+    userId: string;
+    connectionId: string;
+    version: number;
+    operation:
+      | typeof SCIM_TOKEN_ROTATE_OPERATION
+      | typeof SCIM_TOKEN_REVOKE_OPERATION;
+  },
+  verifyAuthentication: () => Promise<
+    "password" | "totp" | "backup_code" | null
+  >,
+) {
+  const route =
+    input.operation === SCIM_TOKEN_ROTATE_OPERATION
+      ? SCIM_TOKEN_ROTATE_ROUTE
+      : SCIM_TOKEN_REVOKE_ROUTE;
+  return issueOperationToken(
+    {
+      ...input,
+      route,
+      body: canonicalScimTokenBody(input.version),
+    },
+    verifyAuthentication,
+  );
+}
+
 async function issueOperationToken(
   input: {
     id: string;
@@ -412,8 +577,10 @@ async function issueOperationToken(
     }>(
       sql`SELECT now()::text AS issued_at, (now() + interval '5 minutes')::text AS token_expires_at`,
     );
-    const issuedAt = new Date(clock.rows[0]!.issued_at);
-    const tokenExpiresAt = new Date(clock.rows[0]!.token_expires_at);
+    const clockRow = clock.rows[0];
+    if (!clockRow) throw new Error("Unable to read database token time");
+    const issuedAt = new Date(clockRow.issued_at);
+    const tokenExpiresAt = new Date(clockRow.token_expires_at);
 
     const updated = await tx
       .update(schema.stepUpConfirmationTable)

@@ -220,6 +220,16 @@ privileged surface, not an integration:
   history, and writes a provisioning event (`IP-15`). It is never a hard delete.
 - `/scim/v2/*` is `delegated: scim` in the policy registry and is inside the IDOR-fuzz and
   tenant-isolation suites like any other scoped surface.
+- The SCIM mount is registered before the ordinary session/API-key guard because its
+  credential is the per-connection SCIM bearer. It authenticates only `Authorization:
+  Bearer …` by SHA-256 digest comparison with an enabled `scim_connection`; it resolves
+  the parent identity connection and its persisted portal, organisation, resource allowlist,
+  and mappings into request-local SCIM context. It never populates Better Auth user/session
+  context, and never falls through to cookie or API-key authentication. Missing, malformed,
+  revoked, disabled, and unknown bearers share the SCIM 401 response. The requested resource
+  and every row lookup are constrained by that resolved context. Invalid authenticated
+  requests are recorded against the owning connection without recording token or payload
+  values.
 
 ## Deletion approval
 
@@ -358,6 +368,7 @@ Reports land at `POST /api/public/csp-report` (rate-limited, `public` with reaso
 | Secret | Storage and rotation |
 | --- | --- |
 | Plugin configuration secrets | AES-256-GCM per row: envelope `key_id ‖ iv ‖ ciphertext ‖ tag`, a fresh random 96-bit IV per write, and the row id as **AAD** so a ciphertext cannot be moved between rows. Rotation is `secrets-rekey`, resumable, staged by the operator ([runbook](../05-operations/runbook.md)) |
+| Entra OIDC client secrets | `identity_connection.client_secret` uses the same row-bound AES-256-GCM envelope. Its binary encoding is ASCII `TDK1`, the first 8 bytes of SHA-256 over the decoded 32-byte encryption key, a fresh 12-byte IV, ciphertext, and the 16-byte GCM tag; the exact `identity_connection.id` UTF-8 bytes are AAD. Readers accept the current key or the configured previous key only when the envelope key id matches. The secret and envelope are never returned in an API response or audit record. |
 | Webhook signing secrets | Same envelope; per-webhook rotation with a 24 h dual-signing window (`WH-13`); **rotate all** is a God Mode incident action |
 | `TASKDESK_AUTH_SECRET` | Env only. Rotation signs everyone out — a documented incident action with a warning banner, not an accident; dual-secret verification during a window where better-auth supports it |
 | API keys | Hashed (Argon2id); only a prefix stored in clear; **revoke all** is a God Mode incident action |
