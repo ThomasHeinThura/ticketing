@@ -2,6 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { Context, Next } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../database";
+import { policyShadowEnabled } from "../permissions/shadow-config";
 import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
@@ -101,17 +102,35 @@ export function requireWorkItemReach(idKey = "key") {
     // see a genuine, already-loaded work-item/project scope for this route. Read only by
     // `apps/api/src/permissions/shadow-middleware.ts`; the legacy check below still reads
     // `workItem.workspaceId` alone, unchanged.
-    const [workItem] = await db
-      .select({
-        id: schema.workItemTable.id,
-        projectId: schema.workItemTable.projectId,
-        workspaceId: schema.workItemTable.workspaceId,
-      })
-      .from(schema.workItemTable)
-      .innerJoin(
-        schema.projectTable,
-        eq(schema.workItemTable.projectId, schema.projectTable.id),
-      )
+    const workItemQuery = policyShadowEnabled
+      ? db
+          .select({
+            id: schema.workItemTable.id,
+            projectId: schema.workItemTable.projectId,
+            workspaceId: schema.workItemTable.workspaceId,
+            organisationId: schema.workspaceTable.organisationId,
+          })
+          .from(schema.workItemTable)
+          .innerJoin(
+            schema.projectTable,
+            eq(schema.workItemTable.projectId, schema.projectTable.id),
+          )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
+          )
+      : db
+          .select({
+            id: schema.workItemTable.id,
+            projectId: schema.workItemTable.projectId,
+            workspaceId: schema.workItemTable.workspaceId,
+          })
+          .from(schema.workItemTable)
+          .innerJoin(
+            schema.projectTable,
+            eq(schema.workItemTable.projectId, schema.projectTable.id),
+          );
+    const [workItem] = await workItemQuery
       .where(
         and(
           eq(schema.workItemTable.key, key),
@@ -134,6 +153,18 @@ export function requireWorkItemReach(idKey = "key") {
     c.set("workItemId", workItem.id);
     c.set("projectId", workItem.projectId);
     c.set("policyScopeResource", "work_item");
+    // Same-query persisted project/workspace facts let the observer evaluate canonical
+    // membership independently of this middleware's native reach result. Current schema
+    // has no hierarchy or owner-team columns, so those remain explicit empty facts.
+    if (policyShadowEnabled && "organisationId" in workItem) {
+      c.set("projectReachFacts", {
+        projectId: workItem.projectId,
+        workspaceId: workItem.workspaceId,
+        organisationId: workItem.organisationId,
+        ancestorProjectIds: [],
+        ownerTeamId: null,
+      });
+    }
 
     const apiKey = c.get("apiKey");
     try {

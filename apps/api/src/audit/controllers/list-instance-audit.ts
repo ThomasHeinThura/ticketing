@@ -3,6 +3,7 @@ import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
 import { auditLogTable } from "../../database/schema";
+import { setShadowLegacyAuthorization } from "../../permissions/shadow-context";
 import { isInstanceAdmin } from "../../utils/is-instance-admin";
 import {
   type AuditQuery,
@@ -26,6 +27,7 @@ import {
  */
 export async function listInstanceAudit(c: Context, query: AuditQuery) {
   if (!(await isInstanceAdmin(c))) {
+    setShadowLegacyAuthorization(c, "denied");
     throw new HTTPException(403, { message: "Forbidden" });
   }
 
@@ -37,5 +39,6 @@ export async function listInstanceAudit(c: Context, query: AuditQuery) {
     .limit(query.limit);
 
   await writeAuditRead(c, { workspaceId: null });
+  setShadowLegacyAuthorization(c, "allowed");
   return rows;
 }

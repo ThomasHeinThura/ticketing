@@ -1,4 +1,5 @@
 import { apiRouter, createRoute, jsonResponse } from "../openapi";
+import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import getIdToken from "./controllers/get-id-token";
 import { idTokenSchema } from "./response";
 
@@ -15,8 +16,10 @@ const getIdTokenRoute = createRoute({
   },
 });
 
-const oauth = apiRouter().openapi(getIdTokenRoute, async (c) =>
-  c.json(await getIdToken(c.get("userId")), 200),
-);
+const oauth = apiRouter().openapi(getIdTokenRoute, async (c) => {
+  const result = await getIdToken(c.get("userId"));
+  setShadowLegacyAuthorization(c, "allowed");
+  return c.json(result, 200);
+});
 
 export default oauth;

@@ -113,5 +113,11 @@ export async function loadReachableAsset(
     throw new HTTPException(404, { message: "Asset not found" });
   }
 
+  // The handler uses this persisted row scope for its existing capability gate. Do not
+  // mark the full legacy decision here: the route records `allowed` only after that gate.
+  if (policyShadowEnabled) {
+    c.set("workspaceId", asset.workspaceId);
+    c.set("workspaceIdSource", "row");
+  }
   return asset;
 }
