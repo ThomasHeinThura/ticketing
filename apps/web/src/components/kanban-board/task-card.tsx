@@ -1,6 +1,5 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useNavigate } from "@tanstack/react-router";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -15,6 +14,7 @@ import {
   HoverCardTrigger,
 } from "@taskdesk/ui";
 import { format } from "date-fns";
+import type { TFunction } from "i18next";
 import {
   Calendar,
   CalendarClock,
@@ -49,6 +49,8 @@ export type TaskCardProps = {
   isTaskSelected: boolean;
   isTaskFocused: boolean;
   toggleSelection: (taskId: string) => void;
+  onOpenTask: (taskId: string) => void;
+  t: TFunction;
 };
 
 export type TaskCardDisplayPreferences = {
@@ -72,8 +74,9 @@ function TaskCard({
   isTaskSelected,
   isTaskFocused,
   toggleSelection,
+  onOpenTask,
+  t,
 }: TaskCardProps) {
-  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -82,7 +85,6 @@ function TaskCard({
     transition,
     isDragging,
   } = useSortable({ id: task.id, disabled: disableDragDrop });
-  const navigate = useNavigate();
   const {
     showAssignees,
     showPriority,
@@ -158,20 +160,7 @@ function TaskCard({
       return;
     }
 
-    const currentParams = new URLSearchParams(window.location.search);
-    const currentTaskId = currentParams.get("taskId");
-
-    if (currentTaskId === task.id) {
-      navigate({
-        to: ".",
-        search: {},
-      });
-    } else {
-      navigate({
-        to: ".",
-        search: { taskId: task.id },
-      });
-    }
+    onOpenTask(task.id);
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

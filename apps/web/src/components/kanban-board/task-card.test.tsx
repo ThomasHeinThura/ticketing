@@ -1,10 +1,12 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import type { TFunction } from "i18next";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type Task from "@/types/task";
 import TaskCard from "./task-card";
 
 const mocks = vi.hoisted(() => ({
   openContextMenu: vi.fn(),
+  openTask: vi.fn(),
   toggleSelection: vi.fn(),
 }));
 
@@ -132,6 +134,8 @@ function renderTaskCard() {
       isTaskSelected={false}
       isTaskFocused={false}
       toggleSelection={mocks.toggleSelection}
+      onOpenTask={mocks.openTask}
+      t={((key: string) => key) as unknown as TFunction}
       workspaceId="workspace-1"
       workspaceUsers={undefined}
       onContextMenuTask={mocks.openContextMenu}
@@ -168,6 +172,14 @@ describe("TaskCard keyboard context menu", () => {
     expect(mocks.openContextMenu).toHaveBeenCalledExactlyOnceWith("task-1");
   });
 
+  it("delegates opening the task sheet to the board owner", () => {
+    const card = renderTaskCard();
+
+    fireEvent.click(card as HTMLElement);
+
+    expect(mocks.openTask).toHaveBeenCalledExactlyOnceWith("task-1");
+  });
+
   it("renders board-owned selection state supplied by the parent", () => {
     const props = {
       task,
@@ -179,6 +191,8 @@ describe("TaskCard keyboard context menu", () => {
       isTaskSelected: false,
       isTaskFocused: false,
       toggleSelection: mocks.toggleSelection,
+      onOpenTask: mocks.openTask,
+      t: ((key: string) => key) as unknown as TFunction,
       projectSlug: "PRJ",
     };
     const { rerender } = render(<TaskCard {...props} />);

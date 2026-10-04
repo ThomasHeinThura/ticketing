@@ -1,7 +1,7 @@
+import type { TFunction } from "i18next";
 import { produce } from "immer";
 import { Archive, Plus } from "lucide-react";
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import CreateTaskModal from "@/components/shared/modals/create-task-modal";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
@@ -13,10 +13,10 @@ import { ArchiveTasksModal } from "../../shared/modals/archive-tasks-modal";
 
 type ColumnHeaderProps = {
   column: ProjectWithTasks["columns"][number];
+  t: TFunction;
 };
 
-export function ColumnHeader({ column }: ColumnHeaderProps) {
-  const { t } = useTranslation();
+export function ColumnHeader({ column, t }: ColumnHeaderProps) {
   const { project, setProject } = useProjectStore();
   const { mutate: updateTask } = useUpdateTask();
   const { canUpdateTasks, canCreateTasks } = useWorkspacePermission();

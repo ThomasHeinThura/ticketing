@@ -1,4 +1,5 @@
 import { cleanup, render } from "@testing-library/react";
+import type { TFunction } from "i18next";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ProjectWithTasks } from "@/types/project";
 
@@ -46,6 +47,8 @@ describe("Kanban column rendering", () => {
       workspaceId: "workspace-1",
       workspaceUsers: undefined,
       onContextMenuTask,
+      onOpenTask: vi.fn(),
+      t: ((key: string) => key) as unknown as TFunction,
     };
     const view = render(<Column {...props} />);
 

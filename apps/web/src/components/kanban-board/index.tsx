@@ -18,6 +18,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { produce } from "immer";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
@@ -40,6 +41,7 @@ type KanbanBoardProps = {
 };
 
 function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { setProject } = useProjectStore();
   const displayPreferences = useUserPreferencesStore(
@@ -83,6 +85,18 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
   );
   const { mutate: updateTask } = useUpdateTask();
   const navigate = useNavigate();
+  const handleOpenTask = useCallback(
+    (taskId: string) => {
+      const currentTaskId = new URLSearchParams(window.location.search).get(
+        "taskId",
+      );
+      navigate({
+        to: ".",
+        search: currentTaskId === taskId ? {} : { taskId },
+      });
+    },
+    [navigate],
+  );
   const allTasks = useMemo(
     () => project.columns?.flatMap((column) => column.tasks) ?? [],
     [project.columns],
@@ -344,6 +358,8 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                       workspaceId={workspace?.id}
                       workspaceUsers={workspaceUsers}
                       onContextMenuTask={openContextMenuForTask}
+                      onOpenTask={handleOpenTask}
+                      t={t}
                     />
                   </div>
                 ))}
@@ -383,6 +399,8 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                 workspaceId={workspace?.id}
                 workspaceUsers={workspaceUsers}
                 onContextMenuTask={openContextMenuForTask}
+                onOpenTask={handleOpenTask}
+                t={t}
               />
             </div>
           </div>

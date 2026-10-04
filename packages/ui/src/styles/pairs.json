@@ -4896,9 +4896,9 @@
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#1",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#1",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/p[0]::text-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/p[0]::text-foreground#0",
+      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
       "apps/web/src/components/task/task-relations.tsx::TaskRelations::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/button[0]::hover:text-foreground#0",
       "apps/web/src/components/task/task-relations.tsx::TaskRelations::Collapsible[0]/CollapsibleContent[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/SubtaskStatusPopover[0]/button[0]::hover:[&_svg]:text-foreground#0",
@@ -4984,8 +4984,7 @@
         "chain": [
           "apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
           "jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]>bg-card"
-        ],
-        "backdropLayers": []
+        ]
       },
       {
         "id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
@@ -4995,8 +4994,7 @@
         "chain": [
           "apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
           "jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]>bg-card"
-        ],
-        "backdropLayers": []
+        ]
       },
       {
         "id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
@@ -5354,7 +5352,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/p[0]::text-foreground#0",
+        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/p[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -5365,7 +5363,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -5376,7 +5374,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -5520,9 +5518,9 @@
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#1",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#1",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/p[0]::text-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/p[0]::text-foreground#0",
+      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
       "apps/web/src/components/task/task-relations.tsx::TaskRelations::Collapsible[0]/div[0]/div[0]/CollapsibleTrigger[0]/button[0]::hover:text-foreground#0",
       "apps/web/src/components/task/task-relations.tsx::TaskRelations::Collapsible[0]/CollapsibleContent[0]/div[0]/div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/SubtaskStatusPopover[0]/button[0]::hover:[&_svg]:text-foreground#0",
@@ -5608,8 +5606,7 @@
         "chain": [
           "apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
           "jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]>bg-card"
-        ],
-        "backdropLayers": []
+        ]
       },
       {
         "id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
@@ -5619,8 +5616,7 @@
         "chain": [
           "apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
           "jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]>bg-card"
-        ],
-        "backdropLayers": []
+        ]
       },
       {
         "id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
@@ -5978,7 +5974,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/p[0]::text-foreground#0",
+        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/p[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -5989,7 +5985,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -6000,7 +5996,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -14832,18 +14828,10 @@
       "apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/Label[0]::text-muted-foreground#1",
       "apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#1",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#1",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#1",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#1",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
+      "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#0",
+      "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-relations.tsx::TaskRelations::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandEmpty[0]/div[0]/Search[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-relations.tsx::TaskRelations::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandEmpty[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-relations.tsx::TaskRelations::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/span[0]::text-muted-foreground#0",
@@ -15594,145 +15582,49 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
+        "id": "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/task/task-properties-controls.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]",
+          "apps/web/src/components/task/task-properties-controls.tsx:TaskPropertiesControls",
+          "jsx:div[0]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]",
           "TaskStartDatePopover->apps/web/src/components/task/task-start-date-popover.tsx:default>bg-popover"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
+        "id": "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/task/task-properties-controls.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]",
+          "apps/web/src/components/task/task-properties-controls.tsx:TaskPropertiesControls",
+          "jsx:div[0]/TaskStartDatePopover[0]/Button[0]/span[0]",
           "TaskStartDatePopover->apps/web/src/components/task/task-start-date-popover.tsx:default>bg-popover"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
+        "id": "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/task/task-properties-controls.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]",
+          "apps/web/src/components/task/task-properties-controls.tsx:TaskPropertiesControls",
+          "jsx:div[0]/TaskDueDatePopover[0]/Button[0]/Calendar[0]",
           "TaskDueDatePopover->apps/web/src/components/task/task-due-date-popover.tsx:default>bg-popover"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
+        "id": "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/task/task-properties-controls.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]",
-          "TaskDueDatePopover->apps/web/src/components/task/task-due-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#1",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "non-text",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]",
-          "TaskStartDatePopover->apps/web/src/components/task/task-start-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#1",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]",
-          "TaskStartDatePopover->apps/web/src/components/task/task-start-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#1",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "non-text",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]",
-          "TaskDueDatePopover->apps/web/src/components/task/task-due-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#1",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]",
-          "TaskDueDatePopover->apps/web/src/components/task/task-due-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "non-text",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[1]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]",
-          "TaskStartDatePopover->apps/web/src/components/task/task-start-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[1]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]",
-          "TaskStartDatePopover->apps/web/src/components/task/task-start-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "non-text",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[1]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]",
-          "TaskDueDatePopover->apps/web/src/components/task/task-due-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[1]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]",
+          "apps/web/src/components/task/task-properties-controls.tsx:TaskPropertiesControls",
+          "jsx:div[0]/TaskDueDatePopover[0]/Button[0]/span[0]",
           "TaskDueDatePopover->apps/web/src/components/task/task-due-date-popover.tsx:default>bg-popover"
         ],
         "backdropLayers": []
@@ -17690,18 +17582,10 @@
       "apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/Label[0]::text-muted-foreground#1",
       "apps/web/src/components/task/task-move-popover.tsx::TaskMovePopover::Popover[0]/PopoverContent[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#1",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#1",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#1",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#1",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
+      "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#0",
+      "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-relations.tsx::TaskRelations::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandEmpty[0]/div[0]/Search[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-relations.tsx::TaskRelations::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandEmpty[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-relations.tsx::TaskRelations::CommandDialog[0]/CommandDialogPopup[0]/Command[0]/CommandPanel[0]/CommandList[0]/Fragment[0]/CommandGroup[0]/CommandCollection[0]/CommandItem[0]/span[0]::text-muted-foreground#0",
@@ -18452,145 +18336,49 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
+        "id": "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/task/task-properties-controls.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]",
+          "apps/web/src/components/task/task-properties-controls.tsx:TaskPropertiesControls",
+          "jsx:div[0]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]",
           "TaskStartDatePopover->apps/web/src/components/task/task-start-date-popover.tsx:default>bg-popover"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
+        "id": "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/task/task-properties-controls.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]",
+          "apps/web/src/components/task/task-properties-controls.tsx:TaskPropertiesControls",
+          "jsx:div[0]/TaskStartDatePopover[0]/Button[0]/span[0]",
           "TaskStartDatePopover->apps/web/src/components/task/task-start-date-popover.tsx:default>bg-popover"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
+        "id": "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/task/task-properties-controls.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]",
+          "apps/web/src/components/task/task-properties-controls.tsx:TaskPropertiesControls",
+          "jsx:div[0]/TaskDueDatePopover[0]/Button[0]/Calendar[0]",
           "TaskDueDatePopover->apps/web/src/components/task/task-due-date-popover.tsx:default>bg-popover"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
+        "id": "apps/web/src/components/task/task-properties-controls.tsx::TaskPropertiesControls::div[0]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/task/task-properties-controls.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]",
-          "TaskDueDatePopover->apps/web/src/components/task/task-due-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#1",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "non-text",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]",
-          "TaskStartDatePopover->apps/web/src/components/task/task-start-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#1",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]",
-          "TaskStartDatePopover->apps/web/src/components/task/task-start-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#1",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "non-text",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]",
-          "TaskDueDatePopover->apps/web/src/components/task/task-due-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#1",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[0]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]",
-          "TaskDueDatePopover->apps/web/src/components/task/task-due-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "non-text",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[1]/div[1]/TaskStartDatePopover[0]/Button[0]/CalendarDays[0]",
-          "TaskStartDatePopover->apps/web/src/components/task/task-start-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[1]/div[1]/TaskStartDatePopover[0]/Button[0]/span[0]",
-          "TaskStartDatePopover->apps/web/src/components/task/task-start-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "non-text",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[1]/div[1]/TaskDueDatePopover[0]/Button[0]/Calendar[0]",
-          "TaskDueDatePopover->apps/web/src/components/task/task-due-date-popover.tsx:default>bg-popover"
-        ],
-        "backdropLayers": []
-      },
-      {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
-        "surfaceContext": "imported-opaque-wrapper",
-        "category": "body",
-        "chain": [
-          "apps/web/src/components/task/task-properties-sidebar.tsx:TaskPropertiesSidebar",
-          "jsx:div[0]/div[0]/div[1]/div[1]/TaskDueDatePopover[0]/Button[0]/span[0]",
+          "apps/web/src/components/task/task-properties-controls.tsx:TaskPropertiesControls",
+          "jsx:div[0]/TaskDueDatePopover[0]/Button[0]/span[0]",
           "TaskDueDatePopover->apps/web/src/components/task/task-due-date-popover.tsx:default>bg-popover"
         ],
         "backdropLayers": []
@@ -23362,9 +23150,9 @@
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#1",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#1",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/p[0]::text-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/p[0]::text-foreground#0",
+      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
       "apps/web/src/components/version-display.tsx::VersionDisplay::div[0]/a[0]::hover:text-foreground#0",
       "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0"
@@ -23438,7 +23226,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/p[0]::text-foreground#0",
+        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/p[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -23449,7 +23237,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -23460,7 +23248,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -23548,9 +23336,9 @@
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#1",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#1",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/p[0]::text-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
-      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/p[0]::text-foreground#0",
+      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+      "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
       "apps/web/src/components/version-display.tsx::VersionDisplay::div[0]/a[0]::hover:text-foreground#0",
       "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0"
@@ -23624,7 +23412,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/p[0]::text-foreground#0",
+        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/p[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -23635,7 +23423,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -23646,7 +23434,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[1]/div[0]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+        "id": "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
         "usage": "apps/web/src/components/task/task-properties-sidebar.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",

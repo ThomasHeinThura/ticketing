@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import { memo, useState } from "react";
 import type { ProjectWithTasks } from "@/types/project";
 import type { TaskCardDisplayPreferences, TaskCardProps } from "../task-card";
@@ -16,6 +17,8 @@ type ColumnProps = {
   workspaceId?: string;
   workspaceUsers: TaskCardProps["workspaceUsers"];
   onContextMenuTask: TaskCardProps["onContextMenuTask"];
+  onOpenTask: TaskCardProps["onOpenTask"];
+  t: TFunction;
 };
 
 function Column({
@@ -30,6 +33,8 @@ function Column({
   workspaceId,
   workspaceUsers,
   onContextMenuTask,
+  onOpenTask,
+  t,
 }: ColumnProps) {
   const [isDropzoneOver, setIsDropzoneOver] = useState(false);
 
@@ -43,7 +48,7 @@ function Column({
       }`}
     >
       <div className="shrink-0 border-b border-border/60 px-3 py-2">
-        <ColumnHeader column={column} />
+        <ColumnHeader column={column} t={t} />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-1 [-webkit-overflow-scrolling:touch]">
         <ColumnDropzone
@@ -59,6 +64,8 @@ function Column({
           workspaceId={workspaceId}
           workspaceUsers={workspaceUsers}
           onContextMenuTask={onContextMenuTask}
+          onOpenTask={onOpenTask}
+          t={t}
         />
       </div>
     </div>

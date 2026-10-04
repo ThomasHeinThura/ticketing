@@ -35,14 +35,23 @@ export default function TaskLayout({
 }: TaskLayoutProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data: project } = useGetProject({ id: projectId, workspaceId });
-  const { data: task } = useGetTask(taskId);
+  const { data: project } = useGetProject(
+    { id: projectId, workspaceId },
+    (currentProject) => ({
+      name: currentProject.name,
+      slug: currentProject.slug,
+    }),
+  );
+  const { data: taskNumber } = useGetTask(
+    taskId,
+    (currentTask) => currentTask.number,
+  );
 
   useProjectWebSocket(projectId);
 
   const taskLabel =
-    project?.slug && task?.number != null
-      ? `${project.slug}-${task.number}`
+    project?.slug && taskNumber != null
+      ? `${project.slug}-${taskNumber}`
       : t("tasks:common.selectTask");
 
   const handleTaskSwitch = (nextTaskId: string) => {

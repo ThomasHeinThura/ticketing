@@ -23,6 +23,8 @@ type ColumnDropzoneProps = {
   workspaceId?: string;
   workspaceUsers: TaskCardProps["workspaceUsers"];
   onContextMenuTask: TaskCardProps["onContextMenuTask"];
+  onOpenTask: TaskCardProps["onOpenTask"];
+  t: TaskCardProps["t"];
 };
 
 export function ColumnDropzone({
@@ -38,6 +40,8 @@ export function ColumnDropzone({
   workspaceId,
   workspaceUsers,
   onContextMenuTask,
+  onOpenTask,
+  t,
 }: ColumnDropzoneProps) {
   const columnCompletionBySlug = useMemo(() => {
     const completionBySlug = new Map<string, boolean>();
@@ -85,6 +89,8 @@ export function ColumnDropzone({
               workspaceId={workspaceId}
               workspaceUsers={workspaceUsers}
               onContextMenuTask={onContextMenuTask}
+              onOpenTask={onOpenTask}
+              t={t}
             />
           ))}
         </div>
