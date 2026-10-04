@@ -12,11 +12,17 @@ import type Task from "@/types/task";
 
 type TaskTitleProps = {
   taskId: string;
+  task?: Task;
 };
 
-export default function TaskTitle({ taskId }: TaskTitleProps) {
+export default function TaskTitle({ taskId, task }: TaskTitleProps) {
   const { t } = useTranslation();
-  const { data: title } = useGetTask(taskId, (task) => task.title);
+  const { data: fetchedTitle } = useGetTask(
+    taskId,
+    (currentTask) => currentTask.title,
+    !task,
+  );
+  const title = task?.title ?? fetchedTitle;
   const queryClient = useQueryClient();
   const { mutateAsync: updateTaskTitle } = useUpdateTaskTitle();
   const { canUpdateTasks } = useWorkspacePermission();

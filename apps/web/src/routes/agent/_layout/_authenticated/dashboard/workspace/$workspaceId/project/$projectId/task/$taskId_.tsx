@@ -28,16 +28,13 @@ function RouteComponent() {
     data: task,
     isLoading: isTaskLoading,
     isError: isTaskError,
-  } = useGetTask(taskId, (currentTask) => ({
-    id: currentTask.id,
-    number: currentTask.number,
-    title: currentTask.title,
-  }));
+  } = useGetTask(taskId);
   const { data: project, isLoading: isProjectLoading } = useGetProject({
     id: projectId,
     workspaceId,
   });
-  const { isLoading: isActivitiesLoading } = useGetActivitiesByTaskId(taskId);
+  const { data: activities = [], isLoading: isActivitiesLoading } =
+    useGetActivitiesByTaskId(taskId);
   const isLoading = isTaskLoading || isProjectLoading || isActivitiesLoading;
 
   const handleDeleted = () => {
@@ -53,6 +50,9 @@ function RouteComponent() {
       taskId={taskId}
       projectId={projectId}
       workspaceId={workspaceId}
+      projectName={project?.name}
+      projectSlug={project?.slug}
+      taskNumber={task?.number}
       headerActions={
         !isLoading && task ? (
           <TaskDeleteButton taskId={taskId} onDeleted={handleDeleted} />
@@ -66,6 +66,8 @@ function RouteComponent() {
             taskId={taskId}
             projectId={projectId}
             workspaceId={workspaceId}
+            task={task}
+            project={project}
             className="h-full w-full lg:w-72 xl:w-80 flex flex-col gap-2"
           />
         )
@@ -113,6 +115,9 @@ function RouteComponent() {
           taskId={taskId}
           projectId={projectId}
           workspaceId={workspaceId}
+          task={task}
+          project={project}
+          activities={activities}
           className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col gap-2 px-3 pb-16 pt-3 sm:px-4 xl:pb-20 xl:pt-8"
           dataTestId="g13-legacy-task-content"
         />

@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
+import { summarizeProfileCoverage } from "../src/lib/performance-profile-intervals";
 import {
   installPerformanceApiFixture,
   PERFORMANCE_BASE_URL,
@@ -475,19 +476,12 @@ function sanitizeTraceCpuProfile(
   profile: TraceCpuProfile,
   startMicroseconds?: number,
   endMicroseconds?: number,
-  uncertaintyMicroseconds = 0,
 ) {
   const samples = profile.samples.flatMap((sample) => {
     const start = startMicroseconds ?? Number.NEGATIVE_INFINITY;
     const end = endMicroseconds ?? Number.POSITIVE_INFINITY;
-    const clippedStart = Math.max(
-      sample.start,
-      start - uncertaintyMicroseconds,
-    );
-    const clippedEnd = Math.min(
-      sample.start + sample.duration,
-      end + uncertaintyMicroseconds,
-    );
+    const clippedStart = Math.max(sample.start, start);
+    const clippedEnd = Math.min(sample.start + sample.duration, end);
     return clippedEnd > clippedStart
       ? [
           {
@@ -1280,7 +1274,6 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
           traceProfile,
           alignment.startTraceMicroseconds,
           alignment.endTraceMicroseconds,
-          alignment.transform.uncertaintyMicroseconds,
         ),
       )
       .filter((value) => value !== undefined);
@@ -1295,19 +1288,11 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
         end: sample.startMicroseconds + sample.durationMicroseconds,
       })),
     );
-    const observedIntervals = clippedSamples
-      .sort((left, right) => left.start - right.start)
-      .reduce<Array<{ start: number; end: number }>>((intervals, next) => {
-        const previous = intervals.at(-1);
-        if (previous && next.start <= previous.end) {
-          previous.end = Math.max(previous.end, next.end);
-        } else {
-          intervals.push({ ...next });
-        }
-        return intervals;
-      }, []);
-    const sampledStart = observedIntervals[0]?.start;
-    const sampledEnd = observedIntervals.at(-1)?.end;
+    const cpuCoverage = summarizeProfileCoverage(
+      clippedSamples,
+      alignment.startTraceMicroseconds,
+      alignment.endTraceMicroseconds,
+    );
     return {
       name,
       documentId: alignment.documentId,
@@ -1324,20 +1309,13 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
           "observed trace ProfileChunk samples; not a completeness guarantee",
         intervalStartMicroseconds: alignment.startTraceMicroseconds,
         intervalEndMicroseconds: alignment.endTraceMicroseconds,
-        observedStartMicroseconds: sampledStart ?? null,
-        observedEndMicroseconds: sampledEnd ?? null,
-        uncoveredPrefixMicroseconds:
-          sampledStart === undefined
-            ? alignment.endTraceMicroseconds - alignment.startTraceMicroseconds
-            : Math.max(0, sampledStart - alignment.startTraceMicroseconds),
-        uncoveredSuffixMicroseconds:
-          sampledEnd === undefined
-            ? alignment.endTraceMicroseconds - alignment.startTraceMicroseconds
-            : Math.max(0, alignment.endTraceMicroseconds - sampledEnd),
-        unionCoverageMicroseconds: observedIntervals.reduce(
-          (total, interval) => total + interval.end - interval.start,
-          0,
-        ),
+        observedStartMicroseconds: cpuCoverage.observedStart,
+        observedEndMicroseconds: cpuCoverage.observedEnd,
+        uncoveredPrefixMicroseconds: cpuCoverage.uncoveredPrefix,
+        uncoveredSuffixMicroseconds: cpuCoverage.uncoveredSuffix,
+        unionCoverageMicroseconds: cpuCoverage.unionCoverage,
+        clockAlignmentUncertaintyMicroseconds:
+          alignment.transform.uncertaintyMicroseconds,
       },
       topCpuFrames: sampledTraceFrames(
         clippedTraceCpuProfiles,

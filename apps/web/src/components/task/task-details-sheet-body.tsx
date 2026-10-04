@@ -9,6 +9,7 @@ import {
 import { Maximize2, X } from "lucide-react";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetTask from "@/hooks/queries/task/use-get-task";
 import TaskDeleteButton from "./task-delete-button";
@@ -30,8 +31,9 @@ export default function TaskDetailsSheetBody({
 }: TaskDetailsSheetBodyProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data: taskNumber } = useGetTask(taskId, (task) => task.number);
+  const { data: task } = useGetTask(taskId);
   const { data: project } = useGetProject({ id: projectId, workspaceId });
+  const { data: activities = [] } = useGetActivitiesByTaskId(taskId);
 
   const handleOpenFullPage = useCallback(() => {
     navigate({
@@ -49,7 +51,7 @@ export default function TaskDetailsSheetBody({
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-background shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-muted-foreground">
-            {project?.slug}-{taskNumber}
+            {project?.slug}-{task?.number}
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -87,6 +89,8 @@ export default function TaskDetailsSheetBody({
           taskId={taskId}
           projectId={projectId}
           workspaceId={workspaceId}
+          task={task}
+          project={project}
           className="w-full bg-sidebar border-b border-border flex flex-col gap-0 overflow-y-auto shrink-0"
           compact={true}
         />
@@ -97,6 +101,9 @@ export default function TaskDetailsSheetBody({
               taskId={taskId}
               projectId={projectId}
               workspaceId={workspaceId}
+              task={task}
+              project={project}
+              activities={activities}
               className="flex flex-col gap-3"
             />
           </div>
