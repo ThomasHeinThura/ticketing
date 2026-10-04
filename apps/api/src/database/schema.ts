@@ -217,6 +217,10 @@ export const workspaceTable = pgTable("workspace", {
   logo: text("logo"),
   metadata: text("metadata"),
   description: text("description"),
+  defaultSlaPolicyId: text("default_sla_policy_id").references(
+    (): AnyPgColumn => slaPolicyTable.id,
+    { onDelete: "restrict", onUpdate: "cascade" },
+  ),
   createdAt: timestamp("created_at", { mode: "date" }).notNull(),
 });
 
@@ -387,6 +391,10 @@ export const projectTable = pgTable(
     icon: text("icon").default("Layout"),
     name: text("name").notNull(),
     description: text("description"),
+    slaPolicyId: text("sla_policy_id").references(
+      (): AnyPgColumn => slaPolicyTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
     defaultCommentVisibility: text("default_comment_visibility")
       .$type<"public" | "internal">()
       .notNull()
@@ -1690,13 +1698,15 @@ export const workItemTypeTable = pgTable(
     // existing "a referenced entity in active use cannot be deleted" convention
     // (`state.state_template_id`, `membership.role_id`).
     //
-    // Policy persistence exists, but work-item policy binding is outside this slice --
-    // keep this nullable column without a foreign key until its binding contract lands.
+    // Nullable source binding; SLA-1 resolves it before project/workspace defaults.
     workflowId: text("workflow_id").references(
       (): AnyPgColumn => workflowTable.id,
       { onDelete: "restrict", onUpdate: "cascade" },
     ),
-    slaPolicyId: text("sla_policy_id"),
+    slaPolicyId: text("sla_policy_id").references(
+      (): AnyPgColumn => slaPolicyTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
     isEpic: boolean("is_epic").default(false).notNull(),
     isChange: boolean("is_change").default(false).notNull(),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -2427,6 +2437,10 @@ export const workItemTable = pgTable(
     cycleId: text("cycle_id"),
     moduleId: text("module_id"),
     slaStartedAt: timestamp("sla_started_at", { mode: "date" }),
+    slaPolicyVersionId: text("sla_policy_version_id").references(
+      (): AnyPgColumn => slaPolicyVersionTable.id,
+      { onDelete: "restrict", onUpdate: "no action" },
+    ),
     firstResponseAt: timestamp("first_response_at", { mode: "date" }),
     resolvedAt: timestamp("resolved_at", { mode: "date" }),
     // #186 S1: NOT NULL DEFAULT 'private' -- the safe default, matching

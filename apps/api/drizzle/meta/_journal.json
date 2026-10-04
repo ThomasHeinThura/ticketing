@@ -617,6 +617,14 @@
 			"when": 1791021220581,
 			"tag": "0087_parallel_hairball",
 			"breakpoints": true
+		},
+
+		{
+			"idx": 88,
+			"version": "7",
+			"when": 1791073473869,
+			"tag": "0088_p2_sla_version_pinning",
+			"breakpoints": true
 		}
 	]
 }

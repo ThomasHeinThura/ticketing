@@ -79,10 +79,14 @@ repeats every year (`CAL-12`).
 - `CAL-7` During a DST spring-forward, an hour that does not exist is skipped. During
   autumn fall-back, the repeated hour is counted once.
 - `CAL-8` Changing a calendar takes effect immediately for all SLAs measured against it,
-  because SLA state is computed on read. Changing its timezone requires explicit
-  confirmation before save. The editor shows how many open work items are affected when
-  usage data is available; this count remains outstanding until `/usage` can be implemented
-  after project calendar references (#437) and the `sla_policy` table exist.
+  because SLA state is computed on read. A published SLA policy version immutably pins the
+  calendar ID and its own goals/threshold; evaluation resolves that ID to the calendar's
+  current definition. Editing a calendar never rewrites a published policy version or
+  captures a private copy of calendar windows/holidays/timezone. Changing its timezone
+  requires explicit confirmation before save. The editor shows how many open work items
+  are affected when usage data is available; this count remains outstanding until `/usage`
+  can be implemented after project calendar references (#437) and the `sla_policy` table
+  exist.
 - `CAL-9` A calendar in use cannot be deleted. It must be replaced on every policy and
   project referencing it first, and the UI lists them (`GET
   /api/service-calendars/{id}/usage`, below).
@@ -285,7 +289,11 @@ Unit tests in `packages/domain/src/calendar/`:
 - CAL-17 parser profile, normalization, exclusive DTEND conversion, boundary dates, and
   rejected timed/recurring/unsupported/malformed input and all resource limits.
 
-E2E: edit a calendar, observe an open work item's due time change on the next render.
+When the SLA detail read is wired, its browser journey edits a referenced calendar and
+observes the open work item's due time change without changing the published policy version.
+The API integration test exercises the current database-to-domain evaluation adapter and
+proves that the immutable version continues to point at the same calendar ID while the live
+calendar definition changes.
 The CAL-17 API integration tests cover atomic rejection, duplicate no-op behavior, stale
 If-Match ordering, preserved rows, event/audit behavior, and real SQL audit failure. A persisted
 browser journey imports a file, verifies the stored response, then rejects a mixed valid/invalid
@@ -293,11 +301,9 @@ file and confirms the persisted calendar did not change.
 
 ## Open questions
 
-- `CAL-8` says calendar changes immediately affect all SLAs, while the selected SLA
-  policy-authoring contract evaluates each published version against its immutable
-  calendar snapshot. The effect of editing a calendar referenced by a published version
-  is unresolved; neither live replacement nor snapshot rewriting is authorized by these
-  contracts.
+None for CAL-8: policy versions pin calendar identity and policy configuration, while the
+calendar definition remains live and is read at evaluation time. See the selected
+cross-feature rule in [SLA](sla.md#selected-policy-authoring-contract).
 
 ## Related
 

@@ -63,8 +63,11 @@ an event once, and for list filtering. It is never the answer to "what is the st
 - `SLA-1` Order: work item type override → request type → project → workspace default.
   First match wins.
 - `SLA-2` If no policy resolves, state is `none`.
-- `SLA-3` The **version effective at the work item's creation** is used. Changing a policy
-  never rewrites whether past work was met.
+- `SLA-3` The **published version effective at `work_item.sla_started_at`** is pinned when
+  the work item is created or accepted. That instant is the direct work item's creation
+  time, or the original submission's `created_at` on acceptance (ADR 0009). The selected
+  version is stored on the work item; later policy binding or publication changes never
+  rewrite the version used by an existing item.
 
 **Computation**
 
@@ -192,7 +195,10 @@ calendar usage for projects.
   no SLA goal; it does not borrow a lower-precedence policy's goal.
 - A newly created policy has no active published version and exactly one editable draft.
   Each version snapshots its own `calendarId` and `atRiskThresholdPct` alongside its goal
-  matrix. Draft edits change these snapshot values; changing policy metadata never changes
+  matrix. The calendar ID is pinned; the referenced calendar definition (timezone, windows,
+  holidays) remains live and is resolved from `service_calendar` on every evaluation, so a
+  calendar edit affects all SLAs that reference it without mutating a published version.
+  Draft edits change the pinned ID and policy values; changing policy metadata never changes
   an existing published version's evaluation. The first `PATCH` after publication creates
   a draft by copying the active version's calendar, threshold, and full goal matrix; further
   patches replace the draft configuration. A draft is never used to evaluate a work item.
@@ -206,8 +212,25 @@ calendar usage for projects.
   remains editable. The initial publication creates the first active version. The active
   pointer always names the newest published version; historical evaluation selects the
   published version with the greatest `effective_from` not after `sla_started_at`. SLA-3
-  evaluates that version's own goals, calendar, and threshold snapshot. If no version was
-  effective then, the result is `none`.
+  evaluates that version's own goals, pinned calendar ID, and threshold. The ID resolves to
+  that calendar's current definition at read time (CAL-8); no historical copy of its windows,
+  holidays, or timezone is stored in the version. If no version was effective then, the
+  result is `none`.
+- At creation or acceptance, source precedence is resolved from authoritative rows:
+  work-item type override → the request type on the original accepted submission → project
+  binding → workspace default. The greatest published `effective_from` not after
+  `sla_started_at` is stored as `work_item.sla_policy_version_id`; no applicable version
+  stores null. Duplicate submissions never change the original item's request type, start
+  instant, or version pin. Existing items without trustworthy source history remain unpinned;
+  their version is not guessed from today's mutable bindings.
+- `GET /api/work-items/{key}/sla` reads the stored version pin and authoritative work-item
+  facts. It loads that version's goals and threshold and resolves its pinned calendar ID to
+  the current `service_calendar` row in the same workspace before calling
+  `packages/domain`'s pure evaluator. A null pin returns `none`; a missing pinned version or
+  referenced calendar is an integrity error, never a fallback. The response omits policy
+  internals from customer-reachable work items. Until submission acceptance is implemented,
+  this writer contract applies to direct work-item creation; it does not claim intake
+  acceptance integration.
 - Policy `version` is the optimistic-concurrency token. `GET` returns it and `PATCH` and
   `publish` accept the shared optional `If-Match: "<version>"` precondition. When supplied,
   a mismatch returns `409` with asserted and current versions and makes no change. Every
@@ -273,11 +296,10 @@ values the API reports.
 
 ## Open questions
 
-- Policy deletion and project-level policy binding are outside this slice; no route,
-  capability, identifier, or foreign key for either is introduced here.
-- The interaction between `CAL-8` live calendar changes and this contract's immutable
-  published-version calendar snapshots is unresolved. Calendar edits must not silently
-  select one behavior until the contracts are reconciled.
+- Policy deletion and policy-binding management routes are outside this slice. The canonical nullable same-workspace binding columns on request type, project, work-item type and workspace are read by the SLA-1 resolver; no binding-management route is introduced here.
+- CAL-8 is resolved by the selected contract above: policy versions pin the calendar ID,
+  while calendar definitions remain live. Calendar edits affect evaluations that resolve
+  that ID; they do not rewrite policy versions.
 
 ## Related
 

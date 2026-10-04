@@ -7,7 +7,10 @@ import { createPolicy } from "../../apps/api/src/sla-policy/repository";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
-import { createWorkspaceMember } from "./helpers/fixtures";
+import {
+  createProjectFixture,
+  createWorkspaceMember,
+} from "./helpers/fixtures";
 
 const windows = {
   mon: [{ from: 540, to: 1020 }],
@@ -292,6 +295,7 @@ describe("API integration: SLA policy authoring contract", () => {
         goals: unknown[];
       };
     };
+
     expect(edited.version).toBe(3);
     expect(edited.activeVersion.id).toBe(published.activeVersion.id);
     expect(edited.activeVersion.atRiskThresholdPct).toBe(75);
@@ -321,6 +325,279 @@ describe("API integration: SLA policy authoring contract", () => {
       atRiskThresholdPct: 80,
     });
     expect(auditRows[2]?.after).not.toHaveProperty("calendarId");
+  });
+
+  it("CAL-8: evaluates a pinned policy version against the calendar's current definition", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(owner.user);
+    const sessionCookie = await prepareCookieSession(owner.user.id);
+    const { app } = createApp();
+    const calendar = await createCalendar(owner.workspace.id);
+    const type = await createType(owner.workspace.id);
+    const { project } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const createdAt = new Date();
+    const [stateTemplate] = await db
+      .insert(schema.stateTemplateTable)
+      .values({
+        workspaceId: owner.workspace.id,
+        key: `backlog-${randomUUID()}`,
+        name: "Backlog",
+        group: "backlog",
+        createdAt,
+        updatedAt: createdAt,
+      })
+      .returning();
+    if (!stateTemplate) throw new Error("state template insert failed");
+    await db.insert(schema.stateTable).values({
+      projectId: project.id,
+      stateTemplateId: stateTemplate.id,
+      isDefault: true,
+      createdAt,
+      updatedAt: createdAt,
+    });
+    const create = await csrfRequest(
+      app,
+      `/api/sla-policies?workspaceId=${owner.workspace.id}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: sessionCookie },
+        body: JSON.stringify({
+          name: "Live calendar policy",
+          calendarId: calendar.id,
+          atRiskThresholdPct: 75,
+          goals: fullMatrix(type.id),
+        }),
+      },
+      sessionCookie,
+    );
+    expect(create.status).toBe(200);
+    const created = (await create.json()) as { id: string };
+    const publish = await csrfRequest(
+      app,
+      `/api/sla-policies/${created.id}/publish`,
+      { method: "POST", headers: { cookie: sessionCookie } },
+      sessionCookie,
+    );
+    expect(publish.status).toBe(200);
+    const published = (await publish.json()) as {
+      activeVersion: {
+        id: string;
+        number: number;
+        calendarId: string;
+        atRiskThresholdPct: number;
+        effectiveFrom: string;
+      };
+    };
+
+    const otherCreate = await csrfRequest(
+      app,
+      `/api/sla-policies?workspaceId=${owner.workspace.id}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: sessionCookie },
+        body: JSON.stringify({
+          name: "Project fallback policy",
+          calendarId: calendar.id,
+          atRiskThresholdPct: 75,
+          goals: fullMatrix(type.id),
+        }),
+      },
+      sessionCookie,
+    );
+    expect(otherCreate.status).toBe(200);
+    const otherPolicy = (await otherCreate.json()) as { id: string };
+    const otherPublish = await csrfRequest(
+      app,
+      `/api/sla-policies/${otherPolicy.id}/publish`,
+      { method: "POST", headers: { cookie: sessionCookie } },
+      sessionCookie,
+    );
+    expect(otherPublish.status).toBe(200);
+    const otherPublished = (await otherPublish.json()) as {
+      activeVersion: { id: string };
+    };
+
+    await db
+      .update(schema.workItemTypeTable)
+      .set({ slaPolicyId: created.id })
+      .where(eq(schema.workItemTypeTable.id, type.id));
+    await db
+      .update(schema.projectTable)
+      .set({ slaPolicyId: otherPolicy.id })
+      .where(eq(schema.projectTable.id, project.id));
+    const createItem = await csrfRequest(
+      app,
+      `/api/projects/${project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie: sessionCookie },
+        body: JSON.stringify({
+          typeId: type.id,
+          title: "SLA evaluation route",
+          priority: "high",
+        }),
+      },
+      sessionCookie,
+    );
+    expect(createItem.status).toBe(200);
+    const item = (await createItem.json()) as { id: string; key: string };
+    const startedAt = new Date("2030-01-07T09:00:00.000Z");
+    await db
+      .update(schema.workItemTable)
+      .set({ slaStartedAt: startedAt })
+      .where(eq(schema.workItemTable.id, item.id));
+    const [pinnedItem] = await db
+      .select({ slaPolicyVersionId: schema.workItemTable.slaPolicyVersionId })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.id, item.id));
+    expect(pinnedItem?.slaPolicyVersionId).toBe(published.activeVersion.id);
+
+    const createWithType = async (title: string) => {
+      const unboundType = await createType(owner.workspace.id);
+      const response = await csrfRequest(
+        app,
+        `/api/projects/${project.id}/work-items`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            cookie: sessionCookie,
+          },
+          body: JSON.stringify({ typeId: unboundType.id, title }),
+        },
+        sessionCookie,
+      );
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { id: string; key: string };
+      const [stored] = await db
+        .select({ slaPolicyVersionId: schema.workItemTable.slaPolicyVersionId })
+        .from(schema.workItemTable)
+        .where(eq(schema.workItemTable.id, body.id));
+      return {
+        key: body.key,
+        versionId: stored?.slaPolicyVersionId ?? null,
+      };
+    };
+    const projectFallback = await createWithType("Project fallback precedence");
+    expect(projectFallback.versionId).toBe(otherPublished.activeVersion.id);
+    await db
+      .update(schema.projectTable)
+      .set({ slaPolicyId: null })
+      .where(eq(schema.projectTable.id, project.id));
+    await db
+      .update(schema.workspaceTable)
+      .set({ defaultSlaPolicyId: created.id })
+      .where(eq(schema.workspaceTable.id, owner.workspace.id));
+    const workspaceFallback = await createWithType(
+      "Workspace fallback precedence",
+    );
+    expect(workspaceFallback.versionId).toBe(published.activeVersion.id);
+    await db
+      .update(schema.workspaceTable)
+      .set({ defaultSlaPolicyId: null })
+      .where(eq(schema.workspaceTable.id, owner.workspace.id));
+    const unbound = await createWithType("No configured SLA policy");
+    expect(unbound.versionId).toBeNull();
+    const noPolicyResponse = await app.request(
+      `/api/work-items/${unbound.key}/sla`,
+      { headers: { cookie: sessionCookie } },
+    );
+    expect(noPolicyResponse.status).toBe(200);
+    expect((await noPolicyResponse.json()).metrics).toEqual([
+      expect.objectContaining({
+        metric: "first_response",
+        state: "none",
+        dueAt: null,
+      }),
+      expect.objectContaining({
+        metric: "resolution",
+        state: "none",
+        dueAt: null,
+      }),
+    ]);
+
+    const getEvaluation = () =>
+      app.request(`/api/work-items/${item.key}/sla`, {
+        headers: { cookie: sessionCookie },
+      });
+    const beforeResponse = await getEvaluation();
+    expect(beforeResponse.status).toBe(200);
+    const before = (await beforeResponse.json()) as {
+      metrics: Array<{ metric: string; dueAt: string | null }>;
+    };
+    const beforeDue = before.metrics.find(
+      (metric) => metric.metric === "resolution",
+    )?.dueAt;
+    expect(beforeDue).toBe("2030-01-07T12:00:00.000Z");
+
+    const changedWindows = {
+      ...windows,
+      mon: [{ from: 660, to: 1020 }],
+    };
+    const editCalendar = await csrfRequest(
+      app,
+      `/api/service-calendars/${calendar.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          cookie: sessionCookie,
+          "if-match": '"1"',
+        },
+        body: JSON.stringify({
+          name: calendar.name,
+          timezone: calendar.timezone,
+          windows: changedWindows,
+          holidays: [],
+        }),
+      },
+      sessionCookie,
+    );
+    expect(editCalendar.status).toBe(200);
+
+    const afterResponse = await getEvaluation();
+    expect(afterResponse.status).toBe(200);
+    const after = (await afterResponse.json()) as {
+      metrics: Array<{ metric: string; dueAt: string | null }>;
+    };
+    const afterDue = after.metrics.find(
+      (metric) => metric.metric === "resolution",
+    )?.dueAt;
+    expect(afterDue).toBe("2030-01-07T14:00:00.000Z");
+
+    const [pinnedVersion] = await db
+      .select({
+        id: schema.slaPolicyVersionTable.id,
+        calendarId: schema.slaPolicyVersionTable.calendarId,
+        atRiskThresholdPct: schema.slaPolicyVersionTable.atRiskThresholdPct,
+        effectiveFrom: schema.slaPolicyVersionTable.effectiveFrom,
+      })
+      .from(schema.slaPolicyVersionTable)
+      .where(eq(schema.slaPolicyVersionTable.id, published.activeVersion.id));
+    expect(pinnedVersion).toMatchObject({
+      id: published.activeVersion.id,
+      calendarId: calendar.id,
+      atRiskThresholdPct: 75,
+      effectiveFrom: new Date(published.activeVersion.effectiveFrom),
+    });
+    const [currentCalendar] = await db
+      .select({
+        id: schema.serviceCalendarTable.id,
+        version: schema.serviceCalendarTable.version,
+        windows: schema.serviceCalendarTable.windows,
+      })
+      .from(schema.serviceCalendarTable)
+      .where(eq(schema.serviceCalendarTable.id, calendar.id));
+    expect(currentCalendar).toMatchObject({
+      id: published.activeVersion.calendarId,
+      version: 2,
+      windows: changedWindows,
+    });
+    expect(
+      new Date(published.activeVersion.effectiveFrom).getTime(),
+    ).toBeLessThan(startedAt.getTime());
   });
 
   it("commits a policy when a real audit INSERT trigger fails inside its savepoint", async () => {
