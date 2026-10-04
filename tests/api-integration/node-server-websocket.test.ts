@@ -21,10 +21,12 @@ import {
   shutdownWebSocketAdapter,
 } from "../../apps/api/src/ws";
 import { mockAuthenticatedSession } from "./helpers/auth";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 
 interface TestSocket {
@@ -40,6 +42,10 @@ interface TestSocket {
     listener: (data: { toString(): string }) => void,
   ): TestSocket;
   once(event: "close", listener: (code: number) => void): TestSocket;
+  on(
+    event: "message",
+    listener: (data: { toString(): string }) => void,
+  ): TestSocket;
   off(event: "message", listener: () => void): TestSocket;
   send(data: string): void;
   close(code?: number, reason?: string): void;
@@ -486,6 +492,247 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     );
     socket.close();
     await closed;
+  });
+
+  it("publishes committed work-item create and update hints to both authorized subscribers", async () => {
+    const first = await createWorkspaceMember();
+    const project = await createProjectFixture({
+      workspaceId: first.workspace.id,
+    });
+    const secondId = `user-${randomBytes(12).toString("hex")}`;
+    const [secondUser] = await db
+      .insert(schema.userTable)
+      .values({
+        id: secondId,
+        email: `${secondId}@example.com`,
+        emailVerified: true,
+        name: "Second authorized subscriber",
+      })
+      .returning();
+    if (!secondUser)
+      throw new Error("second user fixture insert returned no row");
+    await prepareAuthenticatedApiFixture(secondUser.id);
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: first.workspace.id,
+      userId: secondUser.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    const sessionNow = new Date();
+    for (const user of [first.user, secondUser]) {
+      await db.insert(schema.sessionTable).values({
+        id: `session-${user.id}`,
+        token: `token-${user.id}`,
+        userId: user.id,
+        expiresAt: new Date(sessionNow.getTime() + 60 * 60 * 1000),
+        createdAt: sessionNow,
+        updatedAt: sessionNow,
+        portal: "agent",
+      });
+    }
+
+    const [type] = await db
+      .insert(schema.workItemTypeTable)
+      .values({
+        workspaceId: first.workspace.id,
+        key: `type-${randomBytes(6).toString("hex")}`,
+        name: "Task",
+        category: "delivery",
+      })
+      .returning();
+    if (!type) throw new Error("work item type fixture insert returned no row");
+    const [stateTemplate] = await db
+      .insert(schema.stateTemplateTable)
+      .values({
+        workspaceId: first.workspace.id,
+        key: `state-${randomBytes(6).toString("hex")}`,
+        name: "Backlog",
+        group: "backlog",
+      })
+      .returning();
+    if (!stateTemplate) {
+      throw new Error("state template fixture insert returned no row");
+    }
+    await db.insert(schema.stateTable).values({
+      projectId: project.project.id,
+      stateTemplateId: stateTemplate.id,
+      isDefault: true,
+    });
+
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const headers = {
+      host: "localhost:1337",
+      origin: "http://localhost:1337",
+      cookie: `__Host-tdk_agent_session=token-${first.user.id}`,
+    };
+    const url = websocketUrl(node.server, "/api/ws");
+
+    // Authenticate each connection under a different real fixture actor. The WebSocket
+    // adapter captures the authenticated identity at upgrade, so changing the mock
+    // between upgrades exercises two independent authorization decisions.
+    const sessionMock = mockAuthenticatedSession(first.user);
+    const firstSocket = await openSocket(url, headers);
+    sessionMock.mockResolvedValue({
+      session: {
+        id: `session-${secondUser.id}`,
+        token: `token-${secondUser.id}`,
+        userId: secondUser.id,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ipAddress: null,
+        userAgent: null,
+        portal: "agent",
+      },
+      user: { ...secondUser, twoFactorEnabled: false },
+    });
+    const secondSocket = await openSocket(url, {
+      ...headers,
+      cookie: `__Host-tdk_agent_session=token-${secondUser.id}`,
+    });
+    sessionMock.mockResolvedValue({
+      session: {
+        id: `session-${first.user.id}`,
+        token: `token-${first.user.id}`,
+        userId: first.user.id,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ipAddress: null,
+        userAgent: null,
+        portal: "agent",
+      },
+      user: { ...first.user, twoFactorEnabled: false },
+    });
+
+    for (const socket of [firstSocket, secondSocket]) {
+      const subscribed = nextMessage(socket);
+      socket.send(
+        JSON.stringify({
+          type: "subscribe",
+          topic: `project:${project.project.id}`,
+        }),
+      );
+      await expect(subscribed).resolves.toEqual({
+        type: "subscribed",
+        topic: `project:${project.project.id}`,
+      });
+    }
+
+    const firstEvents: unknown[] = [];
+    const secondEvents: unknown[] = [];
+    firstSocket.on("message", (data) =>
+      firstEvents.push(JSON.parse(data.toString())),
+    );
+    secondSocket.on("message", (data) =>
+      secondEvents.push(JSON.parse(data.toString())),
+    );
+
+    const firstCreated = nextMessage(firstSocket);
+    const secondCreated = nextMessage(secondSocket);
+    const createdResponse = await csrfRequest(
+      app,
+      `/api/projects/${project.project.id}/work-items`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ typeId: type.id, title: "Created through API" }),
+      },
+      headers.cookie,
+    );
+    expect(createdResponse.status).toBe(200);
+    const created = (await createdResponse.json()) as {
+      key: string;
+      title: string;
+      version: number;
+    };
+    expect(created.title).toBe("Created through API");
+    expect(created.version).toBe(1);
+    const [firstCreatedEnvelope, secondCreatedEnvelope] = await Promise.all([
+      firstCreated,
+      secondCreated,
+    ]);
+    for (const envelope of [firstCreatedEnvelope, secondCreatedEnvelope]) {
+      const message = envelope as Record<string, unknown>;
+      expect(Object.keys(message).sort()).toEqual([
+        "at",
+        "eventId",
+        "payload",
+        "topic",
+        "type",
+      ]);
+      expect(message.type).toBe("work_item.created");
+      expect(message.topic).toBe(`project:${project.project.id}`);
+      expect(message.eventId).toEqual(expect.stringMatching(/^evt_/));
+      expect(Date.parse(message.at as string)).not.toBeNaN();
+      expect(message.payload).toEqual({ key: created.key });
+    }
+
+    const firstUpdated = nextMessage(firstSocket);
+    const secondUpdated = nextMessage(secondSocket);
+    const updateResponse = await csrfRequest(
+      app,
+      `/api/work-items/${encodeURIComponent(created.key)}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          "if-match": '"1"',
+        },
+        body: JSON.stringify({ title: "Updated through API" }),
+      },
+      headers.cookie,
+    );
+    expect(updateResponse.status).toBe(200);
+    const updated = (await updateResponse.json()) as {
+      title: string;
+      version: number;
+    };
+    expect(updated.title).toBe("Updated through API");
+    expect(updated.version).toBe(2);
+    const [firstUpdatedEnvelope, secondUpdatedEnvelope] = await Promise.all([
+      firstUpdated,
+      secondUpdated,
+    ]);
+    for (const envelope of [firstUpdatedEnvelope, secondUpdatedEnvelope]) {
+      const message = envelope as Record<string, unknown>;
+      expect(Object.keys(message).sort()).toEqual([
+        "at",
+        "eventId",
+        "payload",
+        "topic",
+        "type",
+      ]);
+      expect(message.type).toBe("work_item.updated");
+      expect(message.topic).toBe(`project:${project.project.id}`);
+      expect(message.eventId).toEqual(expect.stringMatching(/^evt_/));
+      expect(Date.parse(message.at as string)).not.toBeNaN();
+      expect(message.payload).toEqual({ key: created.key });
+    }
+    expect(firstEvents).toHaveLength(2);
+    expect(secondEvents).toHaveLength(2);
+    expect(secondEvents).toEqual(firstEvents);
+
+    const persistedResponse = await app.request(
+      `/api/work-items/${encodeURIComponent(created.key)}`,
+    );
+    expect(persistedResponse.status).toBe(200);
+    await expect(persistedResponse.json()).resolves.toMatchObject({
+      key: created.key,
+      title: "Updated through API",
+      version: 2,
+    });
+
+    for (const socket of [firstSocket, secondSocket]) {
+      const closed = new Promise<void>((resolve) =>
+        socket.once("close", () => resolve()),
+      );
+      socket.close();
+      await closed;
+    }
   });
 
   it("persists native event envelopes with the mutation transaction and rolls them back with it", async () => {
