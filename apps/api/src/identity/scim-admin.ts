@@ -5,7 +5,7 @@ import {
   validateScimAdminRequest,
 } from "@taskdesk/domain";
 import { isCapability } from "@taskdesk/permissions";
-import { and, eq, sql } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, or, sql } from "drizzle-orm";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
@@ -129,6 +129,63 @@ const safeResponseSchema = z.object({
     ),
   }),
   configVersion: versionSchema,
+});
+
+const mappingOptionsLimit = z.coerce.number().int().min(1).max(100).default(50);
+const problemSchema = z.object({
+  type: z.string(),
+  title: z.string(),
+  status: z.number(),
+});
+const mappingOptionsQuery = z
+  .object({
+    workspaceId: z.string().min(1).max(128).optional(),
+    cursor: z.string().min(1).max(512).optional(),
+    limit: mappingOptionsLimit,
+  })
+  .strict();
+const mappingOptionsRoute = createRoute({
+  method: "get",
+  operationId: "getScimMappingOptions",
+  path: "/identity-connections/{id}/scim/mapping-options",
+  tags: ["Instance"],
+  summary: "List eligible SCIM group mapping targets and roles",
+  middleware: [requireSessionOnly()] as const,
+  request: {
+    params: z.object({ id: z.string().min(1) }),
+    query: mappingOptionsQuery,
+  },
+  responses: {
+    200: jsonResponse(
+      "Eligible targets or roles for a SCIM group mapping",
+      z.union([
+        z.object({
+          kind: z.literal("agent_targets"),
+          data: z.array(z.object({ id: z.string(), name: z.string() })),
+          nextCursor: z.string().nullable(),
+        }),
+        z.object({
+          kind: z.literal("agent_roles"),
+          target: z.object({ id: z.string(), name: z.string() }),
+          data: z.array(
+            z.object({ id: z.string(), name: z.string(), rank: z.number() }),
+          ),
+          nextCursor: z.string().nullable(),
+        }),
+        z.object({
+          kind: z.literal("customer"),
+          target: z.object({ id: z.string(), name: z.string() }).nullable(),
+          role: z
+            .object({ id: z.string(), name: z.string(), rank: z.number() })
+            .nullable(),
+          nextCursor: z.null(),
+        }),
+      ]),
+    ),
+    400: jsonResponse("Invalid selector query or cursor", problemSchema),
+    403: jsonResponse("Forbidden", problemSchema),
+    404: jsonResponse("Connection unavailable", problemSchema),
+  },
 });
 
 function error(status: number, message: string) {
@@ -292,6 +349,271 @@ export async function validateScimMappingRole(
   );
 }
 
+type MappingOptionsCursor = {
+  v: 1;
+  connectionId: string;
+  kind: "agent_targets" | "agent_roles";
+  workspaceId: string | null;
+  afterId: string;
+};
+
+function encodeMappingOptionsCursor(value: MappingOptionsCursor) {
+  return Buffer.from(JSON.stringify(value)).toString("base64url");
+}
+
+function decodeMappingOptionsCursor(
+  value: string | undefined,
+  expected: Omit<MappingOptionsCursor, "afterId">,
+): string | null | false {
+  if (value === undefined) return null;
+  try {
+    const decoded = Buffer.from(value, "base64url").toString("utf8");
+    const parsed: unknown = JSON.parse(decoded);
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      Array.isArray(parsed) ||
+      Object.keys(parsed).sort().join(",") !==
+        "afterId,connectionId,kind,v,workspaceId"
+    )
+      return false;
+    const cursor = parsed as MappingOptionsCursor;
+    if (
+      cursor.v !== 1 ||
+      cursor.connectionId !== expected.connectionId ||
+      cursor.kind !== expected.kind ||
+      cursor.workspaceId !== expected.workspaceId ||
+      typeof cursor.afterId !== "string" ||
+      cursor.afterId.length < 1 ||
+      cursor.afterId.length > 128 ||
+      encodeMappingOptionsCursor(cursor) !== value
+    )
+      return false;
+    return cursor.afterId;
+  } catch {
+    return false;
+  }
+}
+
+async function readScimMappingOptions(input: {
+  connectionId: string;
+  workspaceId?: string;
+  cursor?: string;
+  limit: number;
+}) {
+  const [connection] = await db
+    .select({
+      id: schema.identityConnectionTable.id,
+      portalScope: schema.identityConnectionTable.portalScope,
+      organisationId: schema.identityConnectionTable.organisationId,
+      maxRoleRank: schema.identityConnectionTable.maxRoleRank,
+    })
+    .from(schema.identityConnectionTable)
+    .innerJoin(
+      schema.scimConnectionTable,
+      eq(
+        schema.scimConnectionTable.identityConnectionId,
+        schema.identityConnectionTable.id,
+      ),
+    )
+    .where(eq(schema.identityConnectionTable.id, input.connectionId))
+    .limit(1);
+  if (!connection) return null;
+
+  if (connection.portalScope === "customer") {
+    if (input.workspaceId || input.cursor) return false;
+    if (!connection.organisationId)
+      return {
+        kind: "customer" as const,
+        target: null,
+        role: null,
+        nextCursor: null,
+      };
+    const [target] = await db
+      .select({
+        id: schema.organisationTable.id,
+        name: schema.organisationTable.name,
+      })
+      .from(schema.organisationTable)
+      .where(
+        and(
+          eq(schema.organisationTable.id, connection.organisationId),
+          eq(schema.organisationTable.active, true),
+          eq(schema.organisationTable.portalAccess, true),
+          eq(schema.organisationTable.isInternal, false),
+          isNull(schema.organisationTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!target)
+      return {
+        kind: "customer" as const,
+        target: null,
+        role: null,
+        nextCursor: null,
+      };
+    const [role] = await db
+      .select({
+        id: schema.roleTable.id,
+        name: schema.roleTable.name,
+        rank: schema.roleTable.rank,
+      })
+      .from(schema.roleTable)
+      .where(
+        and(
+          eq(schema.roleTable.scope, "organisation"),
+          eq(schema.roleTable.key, "customer"),
+          isNull(schema.roleTable.workspaceId),
+        ),
+      )
+      .limit(1);
+    if (
+      !role ||
+      !(await db.transaction((tx) =>
+        validateScimMappingRole(tx, {
+          portalScope: connection.portalScope,
+          organisationId: connection.organisationId,
+          maxRoleRank: connection.maxRoleRank,
+          scope: "organisation",
+          scopeId: connection.organisationId ?? undefined,
+          roleId: role.id,
+        }),
+      ))
+    )
+      return {
+        kind: "customer" as const,
+        target: null,
+        role: null,
+        nextCursor: null,
+      };
+    return { kind: "customer" as const, target, role, nextCursor: null };
+  }
+
+  if (connection.portalScope !== "agent") return null;
+  if (!input.workspaceId) {
+    const expected = {
+      v: 1 as const,
+      connectionId: input.connectionId,
+      kind: "agent_targets" as const,
+      workspaceId: null,
+    };
+    const afterId = decodeMappingOptionsCursor(input.cursor, expected);
+    if (afterId === false) return false;
+    const rows = await db
+      .select({
+        id: schema.workspaceTable.id,
+        name: schema.workspaceTable.name,
+      })
+      .from(schema.workspaceTable)
+      .innerJoin(
+        schema.organisationTable,
+        eq(schema.organisationTable.id, schema.workspaceTable.organisationId),
+      )
+      .where(
+        and(
+          eq(schema.organisationTable.isInternal, true),
+          eq(schema.organisationTable.active, true),
+          isNull(schema.organisationTable.deletedAt),
+          isNull(schema.workspaceTable.deletedAt),
+          ...(afterId ? [gt(schema.workspaceTable.id, afterId)] : []),
+        ),
+      )
+      .orderBy(asc(schema.workspaceTable.id))
+      .limit(input.limit + 1);
+    const page = rows.slice(0, input.limit);
+    const lastTarget = page[page.length - 1];
+    const nextCursor =
+      rows.length > input.limit && lastTarget
+        ? encodeMappingOptionsCursor({
+            ...expected,
+            afterId: lastTarget.id,
+          })
+        : null;
+    return { kind: "agent_targets" as const, data: page, nextCursor };
+  }
+
+  const expected = {
+    v: 1 as const,
+    connectionId: input.connectionId,
+    kind: "agent_roles" as const,
+    workspaceId: input.workspaceId,
+  };
+  const afterId = decodeMappingOptionsCursor(input.cursor, expected);
+  if (afterId === false) return false;
+  const [target] = await db
+    .select({ id: schema.workspaceTable.id, name: schema.workspaceTable.name })
+    .from(schema.workspaceTable)
+    .innerJoin(
+      schema.organisationTable,
+      eq(schema.organisationTable.id, schema.workspaceTable.organisationId),
+    )
+    .where(
+      and(
+        eq(schema.workspaceTable.id, input.workspaceId),
+        eq(schema.organisationTable.isInternal, true),
+        eq(schema.organisationTable.active, true),
+        isNull(schema.organisationTable.deletedAt),
+        isNull(schema.workspaceTable.deletedAt),
+      ),
+    )
+    .limit(1);
+  if (!target) return null;
+  const candidateRoles =
+    connection.maxRoleRank === null
+      ? []
+      : await db
+          .select({
+            id: schema.roleTable.id,
+            name: schema.roleTable.name,
+            rank: schema.roleTable.rank,
+          })
+          .from(schema.roleTable)
+          .where(
+            and(
+              eq(schema.roleTable.scope, "workspace"),
+              sql`${schema.roleTable.rank} <= ${connection.maxRoleRank}`,
+              or(
+                eq(schema.roleTable.workspaceId, input.workspaceId),
+                isNull(schema.roleTable.workspaceId),
+              ),
+              ...(afterId ? [gt(schema.roleTable.id, afterId)] : []),
+            ),
+          )
+          .orderBy(asc(schema.roleTable.id))
+          .limit(input.limit + 1);
+  const candidates = candidateRoles.slice(0, input.limit);
+  const lastCandidate = candidates[candidates.length - 1];
+  const eligibleRoles = [];
+  for (const role of candidates) {
+    if (
+      await db.transaction((tx) =>
+        validateScimMappingRole(tx, {
+          portalScope: connection.portalScope,
+          organisationId: connection.organisationId,
+          maxRoleRank: connection.maxRoleRank,
+          scope: "workspace",
+          scopeId: input.workspaceId,
+          roleId: role.id,
+        }),
+      )
+    )
+      eligibleRoles.push(role);
+  }
+  const nextCursor =
+    candidateRoles.length > input.limit && lastCandidate
+      ? encodeMappingOptionsCursor({
+          ...expected,
+          afterId: lastCandidate.id,
+        })
+      : null;
+  return {
+    kind: "agent_roles" as const,
+    target,
+    data: eligibleRoles,
+    nextCursor,
+  };
+}
+
 const getRoute = createRoute({
   method: "get",
   operationId: "getScimAdministration",
@@ -448,6 +770,26 @@ const routes = apiRouter()
     if (!response) return c.json(error(404, "Not found"), 404);
     c.header("Cache-Control", "no-store");
     return c.json(response, 200);
+  })
+  .openapi(mappingOptionsRoute, async (c) => {
+    await requireCurrentInstanceAdmin(
+      c,
+      "GET",
+      "/api/instance/identity-connections/{id}/scim/mapping-options",
+    );
+    setShadowLegacyAuthorization(c, "allowed");
+    const { id } = c.req.valid("param");
+    const query = c.req.valid("query");
+    const result = await readScimMappingOptions({
+      connectionId: id,
+      ...(query.workspaceId ? { workspaceId: query.workspaceId } : {}),
+      ...(query.cursor ? { cursor: query.cursor } : {}),
+      limit: query.limit,
+    });
+    if (result === false) return c.json(error(400, "Invalid cursor"), 400);
+    if (result === null) return c.json(error(404, "Not found"), 404);
+    c.header("Cache-Control", "no-store");
+    return c.json(result, 200);
   })
   .openapi(patchRoute, async (c) => {
     const userId = c.get("userId");

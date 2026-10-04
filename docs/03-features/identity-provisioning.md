@@ -681,6 +681,14 @@ hand-written protocol code; only the credential check reuses the platform.
 
 ## API
 
+The SCIM group-mapping editor loads selector choices from the connection-bound
+`GET /api/instance/identity-connections/{id}/scim/mapping-options` contract in
+[api-design.md](../01-architecture/api-design.md#scim-group-mapping-selector-options).
+It pages every eligible target and role, and submits the existing `mapping_create` and
+`mapping_update` variants through the shared parent `configVersion` CAS and
+`scim_admin_update` PA-15 operation. It never accepts a role, target, scope, or grant
+outside the exact `validateScimMappingRole` constraints used by those writes.
+
 ```
 GET    /api/instance/identity-connections                         instance:admin
 POST   /api/instance/identity-connections                         instance:admin  E

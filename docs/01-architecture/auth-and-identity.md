@@ -103,6 +103,7 @@ registered in [inherited-features.md](inherited-features.md).
 | `bearer` | **removed at fork** | a second token-bearing authentication surface |
 | `organization` | **removed at fork — P0 step 1b** | see below |
 | `twoFactor` | **candidate P0 integration** | TOTP and backup codes use Better Auth's verifier; candidate login/session/policy wiring is not accepted until the full runtime and browser evidence passes |
+| `taskdesk-identity-oidc` | **added — P3 identity integration** | TaskDesk's native OIDC plugin enforces the documented issuer, signature, nonce, audience, and identity-connection contracts; it uses Better Auth's adapter/session infrastructure and does not grant roles or instance authority |
 | `passkey` | **planned later; not enabled in current API source** | Integration and verification remain future work |
 
 **The organization plugin is kaneo's workspace model, not a dormant feature.** In kaneo it

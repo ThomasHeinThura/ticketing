@@ -35,6 +35,7 @@ function settings(
     jobTitle: "unmapped",
     locale: "unmapped",
   },
+  mappings: Array<Record<string, unknown>> = [],
 ) {
   return {
     data: {
@@ -43,7 +44,7 @@ function settings(
       lifecyclePolicy,
       matchAttributes,
       attributeMapping,
-      mappings: [],
+      mappings,
     },
     configVersion,
   };
@@ -72,6 +73,9 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
     jobTitle: "unmapped",
     locale: "unmapped",
   };
+  let mappings: Array<Record<string, unknown>> = [];
+  let groupMappingRequest: Record<string, unknown> | null = null;
+  const mappingOptionRequests: string[] = [];
 
   page.on("response", (response) => {
     const url = new URL(response.url());
@@ -207,6 +211,35 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
     }),
   );
   await page.route(
+    `**/api/instance/identity-connections/${connectionId}/scim/mapping-options**`,
+    async (route) => {
+      const url = new URL(route.request().url());
+      mappingOptionRequests.push(url.search);
+      const body = url.searchParams.has("workspaceId")
+        ? {
+            kind: "agent_roles",
+            target: { id: "workspace-scim-target", name: "Support workspace" },
+            data: [{ id: "role-scim-responder", name: "Responder", rank: 3 }],
+            nextCursor: null,
+          }
+        : {
+            kind: "agent_targets",
+            data: [
+              {
+                id: "workspace-scim-target",
+                name: "Support workspace",
+              },
+            ],
+            nextCursor: null,
+          };
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(body),
+      });
+    },
+  );
+  await page.route(
     `**/api/instance/identity-connections/${connectionId}/scim`,
     async (route) => {
       if (route.request().method() === "GET") {
@@ -220,15 +253,30 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
               allowedResources,
               lifecyclePolicy,
               attributeMapping,
+              mappings,
             ),
           ),
         });
         return;
       }
       const request = route.request().postDataJSON() as Record<string, unknown>;
-      if (request.enabled === true) {
+      if (request.kind === "mapping_create") {
+        groupMappingRequest = request;
+        configVersion += 1;
+        mappings = [
+          {
+            id: "mapping-scim-e2e",
+            externalGroupId: request.externalGroupId,
+            externalGroupNameSnapshot: request.externalGroupNameSnapshot,
+            roleId: request.roleId,
+            scope: request.scope,
+            scopeId: request.scopeId,
+            enabled: true,
+          },
+        ];
+      } else if (request.enabled === true) {
         enableRequest = request;
-        configVersion = 8;
+        configVersion += 1;
       } else if (request.kind === "attribute_mapping") {
         attributeMapping = request.attributeMapping;
         configVersion = 6;
@@ -249,6 +297,7 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
             allowedResources,
             lifecyclePolicy,
             attributeMapping,
+            mappings,
           ),
         ),
       });
@@ -278,7 +327,7 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
     `**/api/instance/identity-connections/${connectionId}/scim/rotate-token`,
     async (route) => {
       rotateRequest = route.request().postDataJSON() as Record<string, unknown>;
-      configVersion = 7;
+      configVersion += 1;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -295,7 +344,7 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
     `**/api/instance/identity-connections/${connectionId}/scim/revoke-token`,
     async (route) => {
       revokeRequest = route.request().postDataJSON() as Record<string, unknown>;
-      configVersion = 9;
+      configVersion += 1;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -321,7 +370,7 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
     .getByRole("combobox", { name: "User deactivation policy" })
     .click();
   await page.getByRole("option", { name: "Keep sourced memberships" }).click();
-  await page.getByLabel("Password", { exact: true }).fill("test-only-password");
+  await page.locator("#scim-step-up-secret").fill("test-only-password");
   await page.getByRole("button", { name: "Save SCIM settings" }).click();
 
   await expect(
@@ -350,7 +399,7 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
 
   await page.getByRole("combobox", { name: "Display name source" }).click();
   await page.getByRole("option", { name: "name.formatted" }).click();
-  await page.getByLabel("Password", { exact: true }).fill("test-only-password");
+  await page.locator("#scim-step-up-secret").fill("test-only-password");
   await page.getByRole("button", { name: "Save profile mapping" }).click();
   await expect(page.getByText("Configuration version 6")).toBeVisible();
   expect(stepUpBindings[1]).toEqual({
@@ -370,32 +419,74 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
     },
   });
 
+  const mappingForm = page
+    .locator("form")
+    .filter({ has: page.getByLabel("External group identifier") });
+  await mappingForm
+    .getByLabel("External group identifier")
+    .fill("entra-group-scim-e2e");
+  await mappingForm
+    .getByLabel("Display name (optional)")
+    .fill("Service desk responders");
+  await mappingForm
+    .getByRole("combobox", { name: "Internal workspace" })
+    .click();
+  await page.getByRole("option", { name: "Support workspace" }).click();
+  await mappingForm.getByRole("combobox", { name: "Eligible role" }).click();
+  await page.getByRole("option", { name: "Responder · rank 3" }).click();
+  await mappingForm.getByLabel("Password").fill("test-only-password");
+  await mappingForm.getByRole("button", { name: "Create mapping" }).click();
+  await expect(
+    page.getByText("entra-group-scim-e2e · role role-scim-responder"),
+  ).toBeVisible();
+  expect(
+    mappingOptionRequests.some((query) =>
+      query.includes("workspaceId=workspace-scim-target"),
+    ),
+  ).toBe(true);
+  expect(groupMappingRequest).toEqual({
+    configVersion: 6,
+    kind: "mapping_create",
+    externalGroupId: "entra-group-scim-e2e",
+    externalGroupNameSnapshot: "Service desk responders",
+    roleId: "role-scim-responder",
+    scope: "workspace",
+    scopeId: "workspace-scim-target",
+    enabled: true,
+  });
+  expect(stepUpBindings[2]).toEqual({
+    kind: "operation",
+    operation: "scim_admin_update",
+    connectionId,
+    request: groupMappingRequest,
+  });
+
   await page.getByLabel("Token operation password").fill("test-only-password");
   await page.getByRole("button", { name: "Issue or rotate token" }).click();
   await expect(page.getByLabel("New token — copy it now")).toHaveValue(
     "one-time-fixture-bearer",
   );
-  expect(stepUpBindings[2]).toEqual({
+  expect(stepUpBindings[3]).toEqual({
     kind: "operation",
     operation: "scim_token_rotate",
     connectionId,
-    version: 6,
+    version: 7,
   });
-  expect(rotateRequest).toEqual({ version: 6 });
+  expect(rotateRequest).toEqual({ version: 7 });
 
   await page.getByLabel("Token operation password").fill("test-only-password");
   await page.getByRole("button", { name: "Re-enable SCIM" }).click();
   await expect(
     page.getByText("SCIM is enabled with the current bearer token."),
   ).toBeVisible();
-  expect(stepUpBindings[3]).toEqual({
+  expect(stepUpBindings[4]).toEqual({
     kind: "operation",
     operation: "scim_admin_update",
     connectionId,
-    request: { configVersion: 7, kind: "settings", enabled: true },
+    request: { configVersion: 8, kind: "settings", enabled: true },
   });
   expect(enableRequest).toEqual({
-    configVersion: 7,
+    configVersion: 8,
     kind: "settings",
     enabled: true,
   });
@@ -403,12 +494,12 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
   await page.getByLabel("Token operation password").fill("test-only-password");
   await page.getByRole("button", { name: "Revoke token" }).click();
   await expect(page.getByText(/bearer was revoked/u)).toBeVisible();
-  expect(stepUpBindings[4]).toEqual({
+  expect(stepUpBindings[5]).toEqual({
     kind: "operation",
     operation: "scim_token_revoke",
     connectionId,
-    version: 8,
+    version: 9,
   });
-  expect(revokeRequest).toEqual({ version: 8 });
+  expect(revokeRequest).toEqual({ version: 9 });
   expect(unexpectedApiRequests).toEqual([]);
 });

@@ -1297,6 +1297,101 @@ describe("SCIM administration API", () => {
     expect(JSON.stringify(safeSettings)).not.toContain("tokenPrefix");
     expect(JSON.stringify(safeSettings)).not.toContain("tokenHash");
 
+    const targetId = "scim-options-target";
+    await db.insert(schema.workspaceTable).values({
+      id: targetId,
+      organisationId: person.organisationId,
+      name: "Eligible selector workspace",
+      slug: "scim-options-target",
+      createdAt: now,
+    });
+    await db.insert(schema.roleTable).values([
+      {
+        id: "scim-options-eligible-role",
+        scope: "workspace",
+        workspaceId: targetId,
+        key: "scim-options-eligible",
+        name: "Eligible role",
+        rank: 5,
+        capabilities: [],
+      },
+      {
+        id: "scim-options-over-ceiling-role",
+        scope: "workspace",
+        workspaceId: targetId,
+        key: "scim-options-over-ceiling",
+        name: "Over ceiling role",
+        rank: 11,
+        capabilities: [],
+      },
+      {
+        id: "scim-options-instance-role",
+        scope: "workspace",
+        workspaceId: targetId,
+        key: "scim-options-instance-role",
+        name: "Forbidden instance role",
+        rank: 4,
+        capabilities: ["instance:admin"],
+      },
+    ]);
+    const optionsUrl = `/api/instance/identity-connections/${CONNECTION_ID}/scim/mapping-options`;
+    const targetsResponse = await app.request(`${optionsUrl}?limit=1`, {
+      headers: { cookie: sessionCookie },
+    });
+    expect(targetsResponse.status).toBe(200);
+    const firstTargetPage = (await targetsResponse.json()) as {
+      kind: string;
+      data: Array<{ id: string; name: string }>;
+      nextCursor: string | null;
+    };
+    expect(firstTargetPage.kind).toBe("agent_targets");
+    expect(firstTargetPage.data).toHaveLength(1);
+    if (firstTargetPage.nextCursor) {
+      const nextPage = await app.request(
+        `${optionsUrl}?limit=1&cursor=${encodeURIComponent(firstTargetPage.nextCursor)}`,
+        { headers: { cookie: sessionCookie } },
+      );
+      expect(nextPage.status).toBe(200);
+    }
+    const allTargetIds = new Set<string>();
+    let targetCursor: string | null = null;
+    do {
+      const query = new URLSearchParams({ limit: "1" });
+      if (targetCursor) query.set("cursor", targetCursor);
+      const page = await app.request(`${optionsUrl}?${query}`, {
+        headers: { cookie: sessionCookie },
+      });
+      const body = (await page.json()) as {
+        data: Array<{ id: string }>;
+        nextCursor: string | null;
+      };
+      for (const target of body.data) allTargetIds.add(target.id);
+      targetCursor = body.nextCursor;
+    } while (targetCursor);
+    expect(allTargetIds.has(targetId)).toBe(true);
+    const roleOptions = await app.request(
+      `${optionsUrl}?workspaceId=${targetId}&limit=2`,
+      { headers: { cookie: sessionCookie } },
+    );
+    expect(roleOptions.status).toBe(200);
+    expect(await roleOptions.json()).toMatchObject({
+      kind: "agent_roles",
+      target: { id: targetId, name: "Eligible selector workspace" },
+      data: [{ id: "scim-options-eligible-role", rank: 5 }],
+    });
+    const invalidCursor = await app.request(
+      `${optionsUrl}?cursor=not-a-cursor`,
+      {
+        headers: { cookie: sessionCookie },
+      },
+    );
+    expect(invalidCursor.status).toBe(400);
+    const missingConnection = await app.request(
+      "/api/instance/identity-connections/missing/scim/mapping-options",
+      { headers: { cookie: sessionCookie } },
+    );
+    expect(missingConnection.status).toBe(404);
+
     const request = {
       configVersion: 1,
       kind: "settings",

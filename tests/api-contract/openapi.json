@@ -22,6 +22,11 @@
         "type": "http",
         "scheme": "bearer",
         "description": "API key or session token (Bearer)"
+      },
+      "scimBearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Per-connection SCIM bearer token"
       }
     },
     "schemas": {
@@ -19434,6 +19439,142 @@
         }
       }
     },
+    "/work-items/{key}/sla": {
+      "get": {
+        "operationId": "getWorkItemSla",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Evaluate a work item's pinned SLA policy version",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The work item's current SLA evaluation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "startedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "evaluatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "metrics": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "metric": {
+                            "type": "string",
+                            "enum": [
+                              "first_response",
+                              "resolution"
+                            ]
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "none",
+                              "ok",
+                              "at_risk",
+                              "breached",
+                              "met",
+                              "missed"
+                            ]
+                          },
+                          "dueAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ],
+                            "format": "date-time"
+                          },
+                          "targetMinutes": {
+                            "type": [
+                              "integer",
+                              "null"
+                            ]
+                          },
+                          "consumedMinutes": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "consumedPct": {
+                            "type": "number",
+                            "minimum": 0
+                          },
+                          "remainingMinutes": {
+                            "type": [
+                              "number",
+                              "null"
+                            ],
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "metric",
+                          "state",
+                          "dueAt",
+                          "targetMinutes",
+                          "consumedMinutes",
+                          "consumedPct",
+                          "remainingMinutes"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "startedAt",
+                    "evaluatedAt",
+                    "metrics"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No workspace access or missing work_item:read permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/workspace/{workspaceId}/work-item-types": {
       "get": {
         "operationId": "listWorkItemTypes",
@@ -23412,6 +23553,534 @@
         }
       }
     },
+    "/instance/identity-connections": {
+      "get": {
+        "operationId": "listIdentityConnections",
+        "tags": [
+          "Identity connections"
+        ],
+        "summary": "List configured identity connections without secret material",
+        "responses": {
+          "200": {
+            "description": "Identity connections",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "providerType": {
+                            "type": "string",
+                            "enum": [
+                              "entra"
+                            ]
+                          },
+                          "portalScope": {
+                            "type": "string",
+                            "enum": [
+                              "agent",
+                              "customer"
+                            ]
+                          },
+                          "organisationId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "defaultWorkspaceId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "issuer": {
+                            "type": "string"
+                          },
+                          "tenantId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "clientId": {
+                            "type": "string"
+                          },
+                          "clientSecretConfigured": {
+                            "type": "boolean"
+                          },
+                          "redirectUri": {
+                            "type": "string"
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "claimMapping": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "version": {
+                                "type": "number",
+                                "enum": [
+                                  1
+                                ]
+                              },
+                              "displayName": {
+                                "type": "string",
+                                "enum": [
+                                  "name"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "version",
+                              "displayName"
+                            ]
+                          },
+                          "claimMappingState": {
+                            "type": "string",
+                            "enum": [
+                              "default",
+                              "valid",
+                              "invalid"
+                            ]
+                          },
+                          "domainBindings": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "jitPolicy": {
+                            "type": "object",
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "default_role_id": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "required_entra_app_role": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": [
+                              "enabled",
+                              "default_role_id",
+                              "required_entra_app_role"
+                            ]
+                          },
+                          "maxRoleRank": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "mfaUpstreamMode": {
+                            "type": "string",
+                            "enum": [
+                              "claim",
+                              "static",
+                              "off"
+                            ]
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "configVersion": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0
+                          },
+                          "healthState": {
+                            "type": "string",
+                            "enum": [
+                              "unknown",
+                              "healthy",
+                              "degraded",
+                              "invalid"
+                            ]
+                          },
+                          "healthCheckedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "providerType",
+                          "portalScope",
+                          "organisationId",
+                          "defaultWorkspaceId",
+                          "displayName",
+                          "issuer",
+                          "tenantId",
+                          "clientId",
+                          "clientSecretConfigured",
+                          "redirectUri",
+                          "scopes",
+                          "claimMapping",
+                          "claimMappingState",
+                          "domainBindings",
+                          "jitPolicy",
+                          "maxRoleRank",
+                          "mfaUpstreamMode",
+                          "enabled",
+                          "configVersion",
+                          "healthState",
+                          "healthCheckedAt"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Stored identity configuration is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/organisations/{id}/identity": {
+      "get": {
+        "operationId": "getOrganisationIdentityConnection",
+        "tags": [
+          "Identity connections"
+        ],
+        "summary": "Read the configured identity connection for an organisation",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Organisation identity connection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "providerType": {
+                          "type": "string",
+                          "enum": [
+                            "entra"
+                          ]
+                        },
+                        "portalScope": {
+                          "type": "string",
+                          "enum": [
+                            "agent",
+                            "customer"
+                          ]
+                        },
+                        "organisationId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "defaultWorkspaceId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "issuer": {
+                          "type": "string"
+                        },
+                        "tenantId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clientId": {
+                          "type": "string"
+                        },
+                        "clientSecretConfigured": {
+                          "type": "boolean"
+                        },
+                        "redirectUri": {
+                          "type": "string"
+                        },
+                        "scopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "claimMapping": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "version": {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            "displayName": {
+                              "type": "string",
+                              "enum": [
+                                "name"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "version",
+                            "displayName"
+                          ]
+                        },
+                        "claimMappingState": {
+                          "type": "string",
+                          "enum": [
+                            "default",
+                            "valid",
+                            "invalid"
+                          ]
+                        },
+                        "domainBindings": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "jitPolicy": {
+                          "type": "object",
+                          "properties": {
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "default_role_id": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "required_entra_app_role": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": [
+                            "enabled",
+                            "default_role_id",
+                            "required_entra_app_role"
+                          ]
+                        },
+                        "maxRoleRank": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "mfaUpstreamMode": {
+                          "type": "string",
+                          "enum": [
+                            "claim",
+                            "static",
+                            "off"
+                          ]
+                        },
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "configVersion": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0
+                        },
+                        "healthState": {
+                          "type": "string",
+                          "enum": [
+                            "unknown",
+                            "healthy",
+                            "degraded",
+                            "invalid"
+                          ]
+                        },
+                        "healthCheckedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "providerType",
+                        "portalScope",
+                        "organisationId",
+                        "defaultWorkspaceId",
+                        "displayName",
+                        "issuer",
+                        "tenantId",
+                        "clientId",
+                        "clientSecretConfigured",
+                        "redirectUri",
+                        "scopes",
+                        "claimMapping",
+                        "claimMappingState",
+                        "domainBindings",
+                        "jitPolicy",
+                        "maxRoleRank",
+                        "mfaUpstreamMode",
+                        "enabled",
+                        "configVersion",
+                        "healthState",
+                        "healthCheckedAt"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Organisation not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Stored identity configuration is invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/instance/identity-connections/{id}/scim": {
       "get": {
         "operationId": "getScimAdministration",
@@ -23460,6 +24129,21 @@
                             "end_memberships",
                             "keep_memberships"
                           ]
+                        },
+                        "matchAttributes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "externalId",
+                              "userName",
+                              "displayName",
+                              "name.formatted",
+                              "title",
+                              "preferredLanguage"
+                            ]
+                          },
+                          "minItems": 2
                         },
                         "attributeMapping": {
                           "type": "object",
@@ -23559,6 +24243,7 @@
                         "enabled",
                         "allowedResources",
                         "lifecyclePolicy",
+                        "matchAttributes",
                         "attributeMapping",
                         "mappings"
                       ]
@@ -23690,6 +24375,21 @@
                           "end_memberships",
                           "keep_memberships"
                         ]
+                      },
+                      "matchAttributes": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "externalId",
+                            "userName",
+                            "displayName",
+                            "name.formatted",
+                            "title",
+                            "preferredLanguage"
+                          ]
+                        },
+                        "minItems": 2
                       }
                     },
                     "required": [
@@ -23899,6 +24599,21 @@
                             "keep_memberships"
                           ]
                         },
+                        "matchAttributes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "externalId",
+                              "userName",
+                              "displayName",
+                              "name.formatted",
+                              "title",
+                              "preferredLanguage"
+                            ]
+                          },
+                          "minItems": 2
+                        },
                         "attributeMapping": {
                           "type": "object",
                           "properties": {
@@ -23997,6 +24712,7 @@
                         "enabled",
                         "allowedResources",
                         "lifecyclePolicy",
+                        "matchAttributes",
                         "attributeMapping",
                         "mappings"
                       ]
@@ -24101,6 +24817,311 @@
           },
           "422": {
             "description": "Invalid or no-op configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instance/identity-connections/{id}/scim/mapping-options": {
+      "get": {
+        "operationId": "getScimMappingOptions",
+        "tags": [
+          "Instance"
+        ],
+        "summary": "List eligible SCIM group mapping targets and roles",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": false,
+            "name": "workspaceId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Eligible targets or roles for a SCIM group mapping",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "agent_targets"
+                          ]
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ]
+                          }
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "data",
+                        "nextCursor"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "agent_roles"
+                          ]
+                        },
+                        "target": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ]
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "rank": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "rank"
+                            ]
+                          }
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "target",
+                        "data",
+                        "nextCursor"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "customer"
+                          ]
+                        },
+                        "target": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ]
+                        },
+                        "role": {
+                          "type": [
+                            "object",
+                            "null"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "rank": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "rank"
+                          ]
+                        },
+                        "nextCursor": {
+                          "type": "null"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "target",
+                        "role",
+                        "nextCursor"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid selector query or cursor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Connection unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -24447,6 +25468,1331 @@
           }
         }
       }
+    },
+    "/scim/v2/Users": {
+      "get": {
+        "operationId": "listScimUsers",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "List users provisioned by this SCIM connection",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "required": false,
+            "name": "filter",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000
+            },
+            "required": false,
+            "name": "startIndex",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "required": false,
+            "name": "count",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SCIM users",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid SCIM filter",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "SCIM resource is not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SCIM configuration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createScimUser",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "Create a user in this SCIM connection's directory",
+        "requestBody": {
+          "content": {
+            "application/scim+json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created SCIM user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid SCIM user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "SCIM resource is not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SCIM configuration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "servers": [
+        {
+          "url": "http://localhost:5173",
+          "description": "SCIM protocol on the agent origin"
+        }
+      ]
+    },
+    "/scim/v2/Users/{id}": {
+      "get": {
+        "operationId": "getScimUser",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "Read a user provisioned by this SCIM connection",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SCIM user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "SCIM resource is not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SCIM user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "replaceScimUser",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "Replace a SCIM user profile",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/scim+json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated SCIM user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid SCIM user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "SCIM resource is not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SCIM user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SCIM configuration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "patchScimUser",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "Update mapped SCIM user attributes",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/scim+json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated SCIM user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid SCIM patch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "SCIM resource is not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SCIM user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SCIM configuration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "deactivateScimUser",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "Deactivate a SCIM user without deleting its history",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "User deactivated"
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "SCIM resource is not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SCIM user not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SCIM lifecycle unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "servers": [
+        {
+          "url": "http://localhost:5173",
+          "description": "SCIM protocol on the agent origin"
+        }
+      ]
+    },
+    "/scim/v2/Groups": {
+      "get": {
+        "operationId": "listScimGroups",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "List groups in this SCIM connection's directory",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000
+            },
+            "required": false,
+            "name": "startIndex",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "required": false,
+            "name": "count",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SCIM groups",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "SCIM resource is not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "createScimGroup",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "Create a directory group and reconcile mapped memberships",
+        "requestBody": {
+          "content": {
+            "application/scim+json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created SCIM group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid SCIM group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "SCIM resource is not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "SCIM group already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SCIM configuration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "servers": [
+        {
+          "url": "http://localhost:5173",
+          "description": "SCIM protocol on the agent origin"
+        }
+      ]
+    },
+    "/scim/v2/Groups/{id}": {
+      "get": {
+        "operationId": "getScimGroup",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "Read a group in this SCIM connection's directory",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SCIM group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "SCIM resource is not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SCIM group not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "operationId": "replaceScimGroup",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "Replace directory group metadata and membership",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/scim+json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated SCIM group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid SCIM group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "SCIM resource is not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SCIM group not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SCIM configuration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "patchScimGroup",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "Update directory group attributes and membership",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/scim+json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated SCIM group",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid SCIM group patch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "SCIM resource is not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SCIM group not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SCIM configuration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "deactivateScimGroup",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "Soft deactivate a SCIM directory group",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Group deactivated"
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "SCIM resource is not allowed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SCIM group not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "SCIM configuration unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "servers": [
+        {
+          "url": "http://localhost:5173",
+          "description": "SCIM protocol on the agent origin"
+        }
+      ]
+    },
+    "/scim/v2/ServiceProviderConfig": {
+      "get": {
+        "operationId": "getScimServiceProviderConfig",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "Read SCIM service provider capabilities",
+        "responses": {
+          "200": {
+            "description": "SCIM capabilities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schemas": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "documentationUri": {
+                      "type": "string"
+                    },
+                    "patch": {
+                      "type": "object",
+                      "properties": {
+                        "supported": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "supported"
+                      ]
+                    },
+                    "bulk": {
+                      "type": "object",
+                      "properties": {
+                        "supported": {
+                          "type": "boolean"
+                        },
+                        "maxOperations": {
+                          "type": "number"
+                        },
+                        "maxPayloadSize": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "supported",
+                        "maxOperations",
+                        "maxPayloadSize"
+                      ]
+                    },
+                    "filter": {
+                      "type": "object",
+                      "properties": {
+                        "supported": {
+                          "type": "boolean"
+                        },
+                        "maxResults": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "supported",
+                        "maxResults"
+                      ]
+                    },
+                    "changePassword": {
+                      "type": "object",
+                      "properties": {
+                        "supported": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "supported"
+                      ]
+                    },
+                    "sort": {
+                      "type": "object",
+                      "properties": {
+                        "supported": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "supported"
+                      ]
+                    },
+                    "etag": {
+                      "type": "object",
+                      "properties": {
+                        "supported": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "supported"
+                      ]
+                    },
+                    "authenticationSchemes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "specUri": {
+                            "type": "string"
+                          },
+                          "documentationUri": {
+                            "type": "string"
+                          },
+                          "primary": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "name",
+                          "description",
+                          "primary"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "schemas",
+                    "patch",
+                    "bulk",
+                    "filter",
+                    "changePassword",
+                    "sort",
+                    "etag",
+                    "authenticationSchemes"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "servers": [
+        {
+          "url": "http://localhost:5173",
+          "description": "SCIM protocol on the agent origin"
+        }
+      ]
+    },
+    "/scim/v2/ResourceTypes": {
+      "get": {
+        "operationId": "listScimResourceTypes",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "List supported SCIM resource types",
+        "responses": {
+          "200": {
+            "description": "SCIM resource types",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schemas": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "totalResults": {
+                      "type": "number"
+                    },
+                    "startIndex": {
+                      "type": "number"
+                    },
+                    "itemsPerPage": {
+                      "type": "number"
+                    },
+                    "Resources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "schemas": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "endpoint": {
+                            "type": "string"
+                          },
+                          "schema": {
+                            "type": "string"
+                          },
+                          "meta": {
+                            "type": "object",
+                            "properties": {
+                              "resourceType": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "resourceType"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "schemas",
+                          "id",
+                          "name",
+                          "endpoint",
+                          "schema"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "schemas",
+                    "totalResults",
+                    "startIndex",
+                    "itemsPerPage",
+                    "Resources"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "servers": [
+        {
+          "url": "http://localhost:5173",
+          "description": "SCIM protocol on the agent origin"
+        }
+      ]
+    },
+    "/scim/v2/Schemas": {
+      "get": {
+        "operationId": "listScimSchemas",
+        "tags": [
+          "SCIM"
+        ],
+        "summary": "List supported SCIM schemas",
+        "responses": {
+          "200": {
+            "description": "SCIM schemas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "schemas": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "totalResults": {
+                      "type": "number"
+                    },
+                    "startIndex": {
+                      "type": "number"
+                    },
+                    "itemsPerPage": {
+                      "type": "number"
+                    },
+                    "Resources": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "schemas",
+                    "totalResults",
+                    "startIndex",
+                    "itemsPerPage",
+                    "Resources"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          }
+        },
+        "security": [
+          {
+            "scimBearerAuth": []
+          }
+        ]
+      },
+      "servers": [
+        {
+          "url": "http://localhost:5173",
+          "description": "SCIM protocol on the agent origin"
+        }
+      ]
     }
   },
   "webhooks": {}

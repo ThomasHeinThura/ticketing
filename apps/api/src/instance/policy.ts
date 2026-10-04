@@ -46,6 +46,20 @@ export const instancePolicies = {
     elevationExemptionReason:
       "read-only SCIM settings omit token material and identity payloads",
   },
+  "GET /api/instance/identity-connections/{id}/scim/mapping-options": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "connection-bound selector options are instance identity metadata",
+    },
+    elevated: false,
+    sessionOnly: true,
+    elevationExemptionReason:
+      "read-only eligible target and role metadata contains no credentials or grants",
+  },
   "PATCH /api/instance/identity-connections/{id}/scim": {
     capability: "instance:admin",
     scope: "instance",

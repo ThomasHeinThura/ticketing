@@ -15,6 +15,7 @@ import {
 } from "@taskdesk/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getApiUrl } from "@/fetchers/get-api-url";
+import { ScimGroupMappingsSettings } from "./scim-group-mappings-settings";
 import { ScimTokenSettings } from "./scim-token-settings";
 
 const REQUIRED_MATCH_ATTRIBUTES = ["externalId", "userName"] as const;
@@ -364,6 +365,13 @@ export function ScimMatchAttributesSettings({
           change identity linking or authority.
         </p>
       </header>
+
+      <ScimGroupMappingsSettings
+        configVersion={settings.configVersion}
+        connectionId={connectionId}
+        mappings={settings.data.mappings}
+        onReload={() => void refresh()}
+      />
 
       <fieldset className="space-y-3" disabled={isSaving}>
         <legend className="font-medium">Provisioned resources</legend>

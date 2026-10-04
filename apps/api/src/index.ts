@@ -47,6 +47,7 @@ import { resolveMigrationDatabaseConfig } from "./database/resolve-database-url"
 import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
+import identityConnectionAdmin from "./identity/connection-admin";
 import scimAdmin from "./identity/scim-admin";
 import scimProtocol from "./identity/scim-protocol";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
@@ -1289,6 +1290,10 @@ export function createApp(
   const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
   const resetMfaApi = api.route("/instance", resetMfa);
+  const identityConnectionAdminApi = api.route(
+    "/instance",
+    identityConnectionAdmin,
+  );
   const scimAdminApi = api.route("/instance", scimAdmin);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
@@ -1578,6 +1583,7 @@ export function createApp(
     metricsTokenRotationApi,
     localFactorPolicyApi,
     resetMfaApi,
+    identityConnectionAdminApi,
     scimAdminApi,
     scimProtocolApi,
     invitationApi,
@@ -1953,6 +1959,7 @@ const {
   metricsTokenRotationApi,
   localFactorPolicyApi,
   resetMfaApi,
+  identityConnectionAdminApi,
   scimAdminApi,
   scimProtocolApi,
   invitationApi,
@@ -2040,6 +2047,7 @@ export type AppType =
   | typeof metricsTokenRotationApi
   | typeof localFactorPolicyApi
   | typeof resetMfaApi
+  | typeof identityConnectionAdminApi
   | typeof scimAdminApi
   | typeof scimProtocolApi
   | typeof workflowApi

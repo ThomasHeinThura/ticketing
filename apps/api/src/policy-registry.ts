@@ -121,6 +121,46 @@ export const platformPolicies = {
     delegated: "scim",
     reason: "SCIM bearer middleware authenticates the configured connection",
   },
+  "POST /scim/v2/Users": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "PUT /scim/v2/Users/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "PATCH /scim/v2/Users/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "DELETE /scim/v2/Users/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "GET /scim/v2/Groups": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "GET /scim/v2/Groups/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "POST /scim/v2/Groups": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "PUT /scim/v2/Groups/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "PATCH /scim/v2/Groups/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
+  "DELETE /scim/v2/Groups/{id}": {
+    delegated: "scim",
+    reason: "SCIM bearer middleware authenticates the configured connection",
+  },
 
   // The websocket surface. The upgrade handler authenticates the request itself before the
   // socket opens; there is no Hono response for a policy middleware to shape.

@@ -5,6 +5,22 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-05 · Bind SCIM mapping selector reads to mutation eligibility
+
+The SCIM group-mapping editor may use a new read-only, session-only `instance:admin`
+route at `GET /api/instance/identity-connections/{id}/scim/mapping-options`. It exists
+only to enumerate eligible targets and roles for the current connection. Customer
+connections expose only their own eligible organisation and existing Customer role; agent
+connections expose active workspaces in the active internal organisation and, after a
+workspace is selected, roles accepted for that target. The read path calls the same
+`validateScimMappingRole` predicate as mapping writes. It returns only IDs, display names,
+and role ranks; stable ID-cursor pagination prevents silent truncation; and the route grants
+no authority. Existing mutation CAS, PA-15, audit, scope, role, and source-retirement rules
+remain unchanged. Human design review is deferred to integrated P4; this implementation
+selection is not independent review or acceptance.
+
+**Recorded by:** GPT-6 Luna implementation author, 2026-10-05.
+
 ### 2026-10-04 · Bind customer-serving projects at creation
 
 Under the standing recommended-decision authorization, `project.organisation_id` is a

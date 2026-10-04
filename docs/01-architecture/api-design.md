@@ -1,5 +1,34 @@
 # API design
 
+## SCIM group-mapping selector options
+
+`GET /api/instance/identity-connections/{id}/scim/mapping-options` is a safe,
+session-only instance-administrator read used by the SCIM group-mapping editor. A missing
+identity connection or SCIM child returns the same `404`. It returns only target and role
+IDs, display names, and role ranks; it never returns membership, grants, capabilities,
+provider data, or credentials. This selector read grants no authority.
+
+The result is connection-bound and uses the same eligibility predicate as
+`validateScimMappingRole` for mapping writes. For a customer connection it returns only the
+connection's active, portal-enabled, non-internal organisation and its existing `customer`
+role. For an agent connection, a request without `workspaceId` returns eligible active
+workspaces in the active internal organisation; a request with `workspaceId` returns only
+existing roles valid for that workspace, its connection's `maxRoleRank`, and the mapping
+capability exclusions. An agent workspace role must be workspace-scoped or global as the
+existing validator allows, match the selected workspace if scoped, have a valid capability
+set, be at or below the configured rank ceiling, and contain no `instance:*` capability.
+Customer mappings remain fixed to their connection organisation and `customer` role.
+Target/role reads must share the write validator rather than maintaining a second eligibility
+interpretation.
+
+Both agent result sets are paged in stable ID order. `limit` defaults to 50 and is bounded
+to 100; `cursor` is an opaque continuation for the same connection, result kind, and
+workspace selection. The response includes `nextCursor: string | null`; callers must follow
+it to enumerate all options and may not treat one page as the complete set. Invalid query
+combinations or cursors return `400`; they never widen the selection. The route is
+`instance:admin`, `scope: instance`, `sessionOnly: true`, read-only/elevation-exempt because
+it returns only selector metadata and performs no mutation.
+
 REST over HTTP, described by an OpenAPI document generated from Zod schemas via
 `@hono/zod-openapi`. **The OpenAPI document is the published contract for third parties**
 (MCP clients, importers, customers' integrations, the Scalar reference); **the in-repo
