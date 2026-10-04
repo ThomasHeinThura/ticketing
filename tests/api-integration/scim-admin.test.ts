@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   canonicalScimAdminBody,
@@ -7,6 +7,8 @@ import {
 } from "../../apps/api/src/auth/step-up-service";
 import db, { schema } from "../../apps/api/src/database";
 import { encryptIdentityClientSecret } from "../../apps/api/src/identity/client-secret";
+import { transitionPersonLifecycleInTransaction } from "../../apps/api/src/identity/person-lifecycle";
+import { setScimIdentityActive } from "../../apps/api/src/identity/scim-lifecycle";
 import { createApp } from "../../apps/api/src/index";
 import {
   ensureInternalOrganisation,
@@ -121,6 +123,299 @@ afterEach(() => {
 });
 
 describe("SCIM administration API", () => {
+  it("IP-15/IP-16 keep-memberships leaves direct grants dormant and reprojects on reactivation", async () => {
+    const { app, token, connectionId } = await createScimProtocolFixture(
+      "person-lifecycle-keep-connection",
+      "R".repeat(43),
+    );
+    const source = await createScimProtocolUser(app, token, {
+      externalId: "person-lifecycle-keep-source",
+      userName: "keep-lifecycle@example.test",
+      displayName: "Keep Lifecycle Person",
+      email: "keep-lifecycle@example.test",
+      title: undefined,
+      preferredLanguage: undefined,
+    });
+    const [identity] = await db
+      .select({ personId: schema.externalIdentityTable.personId })
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.id, source.id));
+    if (!identity) throw new Error("Lifecycle identity was not persisted");
+    const internalOrg = await ensureInternalOrganisation();
+    const [workspace] = await db
+      .insert(schema.workspaceTable)
+      .values([
+        {
+          id: "person-lifecycle-keep-workspace",
+          organisationId: internalOrg.id,
+          name: "Keep lifecycle workspace",
+          slug: "person-lifecycle-keep-workspace",
+          createdAt: new Date(),
+        },
+      ])
+      .returning({ id: schema.workspaceTable.id });
+    if (!workspace) throw new Error("Lifecycle workspace was not created");
+    await db.insert(schema.roleTable).values({
+      id: "person-lifecycle-keep-role",
+      scope: "workspace",
+      workspaceId: workspace.id,
+      key: "person-lifecycle-keep-role",
+      name: "Keep lifecycle role",
+      rank: 1,
+      capabilities: [],
+    });
+    await db.insert(schema.membershipGrantTable).values({
+      id: "person-lifecycle-keep-direct-grant",
+      personId: identity.personId,
+      scope: "workspace",
+      scopeId: workspace.id,
+      roleId: "person-lifecycle-keep-role",
+      sourceKind: "direct",
+      directOrigin: "admin",
+      grantedByPersonId: identity.personId,
+    });
+
+    expect(
+      await setScimIdentityActive(
+        source.id,
+        connectionId,
+        false,
+        "keep_memberships",
+      ),
+    ).toBe(true);
+    const [dormantGrant] = await db
+      .select({ revokedAt: schema.membershipGrantTable.revokedAt })
+      .from(schema.membershipGrantTable)
+      .where(
+        eq(
+          schema.membershipGrantTable.id,
+          "person-lifecycle-keep-direct-grant",
+        ),
+      );
+    expect(dormantGrant?.revokedAt).toBeNull();
+    const [dormantMembership] = await db
+      .select({ roleId: schema.membershipTable.roleId })
+      .from(schema.membershipTable)
+      .where(eq(schema.membershipTable.personId, identity.personId));
+    expect(dormantMembership?.roleId).toBe("person-lifecycle-keep-role");
+    const [inactivePerson] = await db
+      .select({ active: schema.personTable.active })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.id, identity.personId));
+    expect(inactivePerson?.active).toBe(false);
+
+    expect(
+      await setScimIdentityActive(
+        source.id,
+        connectionId,
+        true,
+        "keep_memberships",
+      ),
+    ).toBe(true);
+    const [reactivatedPerson] = await db
+      .select({ active: schema.personTable.active })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.id, identity.personId));
+    expect(reactivatedPerson?.active).toBe(true);
+    const retainedGrant = await db
+      .select({
+        id: schema.membershipGrantTable.id,
+        revokedAt: schema.membershipGrantTable.revokedAt,
+      })
+      .from(schema.membershipGrantTable)
+      .where(eq(schema.membershipGrantTable.personId, identity.personId));
+    expect(retainedGrant).toEqual([
+      { id: "person-lifecycle-keep-direct-grant", revokedAt: null },
+    ]);
+    const activeMemberships = await db
+      .select({ roleId: schema.membershipTable.roleId })
+      .from(schema.membershipTable)
+      .where(eq(schema.membershipTable.personId, identity.personId));
+    expect(activeMemberships).toEqual([
+      { roleId: "person-lifecycle-keep-role" },
+    ]);
+  });
+
+  it("IP-15 shares administrative retirement across external and direct grants", async () => {
+    const first = await createScimProtocolFixture(
+      "person-lifecycle-scim-connection",
+      "P".repeat(43),
+    );
+    const source = await createScimProtocolUser(first.app, first.token, {
+      externalId: "person-lifecycle-source",
+      userName: "person-lifecycle@example.test",
+      displayName: "Lifecycle Person",
+      email: "person-lifecycle@example.test",
+      title: undefined,
+      preferredLanguage: undefined,
+    });
+    const [linked] = await db
+      .select({ personId: schema.externalIdentityTable.personId })
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.id, source.id));
+    if (!linked) throw new Error("Lifecycle identity was not persisted");
+
+    const second = await createScimProtocolFixture(
+      "person-lifecycle-other-connection",
+      "Q".repeat(43),
+    );
+    await db.insert(schema.externalIdentityTable).values({
+      id: "person-lifecycle-other-identity",
+      identityConnectionId: second.connectionId,
+      personId: linked.personId,
+      issuer: "https://identity.example.test/other",
+      subject: "person-lifecycle-other-subject",
+      provisionedVia: "jit",
+      active: true,
+    });
+    const internalOrg = await ensureInternalOrganisation();
+    const [workspace] = await db
+      .insert(schema.workspaceTable)
+      .values([
+        {
+          id: "person-lifecycle-workspace",
+          organisationId: internalOrg.id,
+          name: "Person lifecycle workspace",
+          slug: "person-lifecycle-workspace",
+          createdAt: new Date(),
+        },
+      ])
+      .returning({ id: schema.workspaceTable.id });
+    if (!workspace) throw new Error("Lifecycle workspace was not created");
+    await db.insert(schema.roleTable).values({
+      id: "person-lifecycle-role",
+      scope: "workspace",
+      workspaceId: workspace.id,
+      key: "person-lifecycle-role",
+      name: "Person lifecycle role",
+      rank: 1,
+      capabilities: [],
+    });
+    await db.insert(schema.membershipGrantTable).values([
+      {
+        id: "person-lifecycle-direct-grant",
+        personId: linked.personId,
+        scope: "workspace",
+        scopeId: workspace.id,
+        roleId: "person-lifecycle-role",
+        sourceKind: "direct",
+        directOrigin: "admin",
+        grantedByPersonId: linked.personId,
+      },
+      {
+        id: "person-lifecycle-external-grant",
+        personId: linked.personId,
+        scope: "workspace",
+        scopeId: workspace.id,
+        roleId: "person-lifecycle-role",
+        sourceKind: "jit_default",
+        identityConnectionId: second.connectionId,
+        externalIdentityId: "person-lifecycle-other-identity",
+      },
+    ]);
+    await db.insert(schema.userTable).values({
+      id: "person-lifecycle-user",
+      name: "Lifecycle Person",
+      email: "person-lifecycle@example.test",
+      role: null,
+    });
+    await db
+      .update(schema.personTable)
+      .set({ userId: "person-lifecycle-user" })
+      .where(eq(schema.personTable.id, linked.personId));
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: "person-lifecycle-session",
+      token: "person-lifecycle-session-token",
+      userId: "person-lifecycle-user",
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60_000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    await db.insert(schema.apikeyTable).values({
+      id: "person-lifecycle-key",
+      referenceId: "person-lifecycle-user",
+      userId: "person-lifecycle-user",
+      key: "person-lifecycle-api-key",
+      enabled: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const changed = await db.transaction((tx) =>
+      transitionPersonLifecycleInTransaction(
+        tx,
+        linked.personId,
+        false,
+        "end_memberships",
+        { kind: "administrative" },
+      ),
+    );
+    expect(changed).toBe(true);
+    const retired = await db
+      .select({
+        id: schema.membershipGrantTable.id,
+        reason: schema.membershipGrantTable.revocationReason,
+      })
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(schema.membershipGrantTable.personId, linked.personId),
+          isNotNull(schema.membershipGrantTable.revokedAt),
+        ),
+      );
+    expect(retired).toEqual(
+      expect.arrayContaining([
+        { id: "person-lifecycle-direct-grant", reason: "person_deactivated" },
+        { id: "person-lifecycle-external-grant", reason: "person_deactivated" },
+      ]),
+    );
+    expect(
+      await db
+        .select({ reason: schema.membershipGrantTable.revocationReason })
+        .from(schema.membershipGrantTable)
+        .where(
+          and(
+            eq(
+              schema.membershipGrantTable.externalIdentityId,
+              "person-lifecycle-other-identity",
+            ),
+            isNotNull(schema.membershipGrantTable.revokedAt),
+          ),
+        ),
+    ).toEqual([{ reason: "person_deactivated" }]);
+    expect(
+      await db
+        .select({ id: schema.membershipTable.id })
+        .from(schema.membershipTable)
+        .where(eq(schema.membershipTable.personId, linked.personId)),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ id: schema.sessionTable.id })
+        .from(schema.sessionTable)
+        .where(eq(schema.sessionTable.userId, "person-lifecycle-user")),
+    ).toEqual([]);
+    expect(
+      await db
+        .select({ enabled: schema.apikeyTable.enabled })
+        .from(schema.apikeyTable)
+        .where(eq(schema.apikeyTable.id, "person-lifecycle-key")),
+    ).toEqual([{ enabled: false }]);
+    expect(
+      await db
+        .select({ active: schema.externalIdentityTable.active })
+        .from(schema.externalIdentityTable)
+        .where(
+          eq(
+            schema.externalIdentityTable.id,
+            "person-lifecycle-other-identity",
+          ),
+        ),
+    ).toEqual([{ active: true }]);
+  });
+
   it("rejects duplicate group creation without returning a resource id", async () => {
     const { app, token } = await createScimProtocolFixture();
     const body = JSON.stringify({
@@ -944,6 +1239,19 @@ describe("SCIM administration API", () => {
       revokedAt: expect.any(Date),
       reason: "direct_removed",
     });
+    const scimRetirementReasons = await db
+      .select({ reason: schema.membershipGrantTable.revocationReason })
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(
+            schema.membershipGrantTable.externalIdentityId,
+            provisionedResource.id,
+          ),
+          eq(schema.membershipGrantTable.revocationReason, "scim_deactivated"),
+        ),
+      );
+    expect(scimRetirementReasons.length).toBeGreaterThan(0);
 
     const reactivated = await app.request(
       `/scim/v2/Users/${provisionedResource.id}`,

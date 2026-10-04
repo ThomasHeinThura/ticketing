@@ -364,7 +364,7 @@ hand-written protocol code; only the credential check reuses the platform.
 - `IP-15` **Deactivation** (`active=false`, or `DELETE`): set `person.active = false`; revoke
   every session — which takes effect on that person's **very next request**, because
   `session.cookieCache` is disabled and every request is validated against the `session`
-  table ([auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions)); revoke every personal API key and MCP key; retire every external
+  table ([auth-and-identity.md § Sessions](../01-architecture/auth-and-identity.md#sessions)); revoke every currently issued personal API key; retire every external
   `membership_grant` for the person, including explicitly linked identities on other
   connections. With `lifecycle_policy = end_memberships` (the default), also retire direct
   grants and remove all effective memberships. With `keep_memberships`, retain only direct
@@ -374,11 +374,29 @@ hand-written protocol code; only the credential check reuses the platform.
   member; write a provisioning event with source, organisation, external identity, previous
   state and resulting action. Local user deletion and anonymisation remain the separate
   elevated administrative process in [data-protection.md](../05-operations/data-protection.md).
+  The person-wide state/credential/grant transition is one shared IP-22 transaction seam:
+  it takes the person id, the caller's documented direct-membership lifecycle policy and
+  a closed, server-owned caller context; it locks and revalidates the complete
+  person grant closure, marks the person inactive, revokes every session and every current
+  Better Auth personal API-key row, retires all external grants across linked connections,
+  retires direct grants only for `end_memberships`, and reprojects every affected key. It
+  preserves historical rows. SCIM context derives `scim_deactivated` for external grants
+  and `direct_removed` for direct grants; administrative person-wide deactivation derives
+  `person_deactivated` for both. Request fields never choose a retirement reason. A
+  source-specific caller remains responsible for changing only its own identity evidence
+  and writing its own durable event/audit in the same outer
+  transaction; the shared transition does not infer or rewrite another connection's
+  external-identity state. The current P3 runtime has no separate `api_key` extension or
+  `is_mcp` storage table/column; this batch's credential revocation covers all existing
+  Better Auth `apikey` rows. A future extension/MCP credential store must add its person
+  revocation to this same lifecycle seam before it can be enabled as an issued credential.
 - `IP-16` **Reactivation** (`active=true`) reactivates only the existing linked
   `external_identity`'s person; it never creates a duplicate or restores a revoked grant.
   SCIM grants are re-derived only from current verified SCIM groups/mappings; OIDC grants
   wait for a later validated login on that connection. Direct grants retained by
-  `keep_memberships` remain dormant until the person is active.
+  `keep_memberships` remain dormant until the person is active. Reactivation uses the same
+  locked person lifecycle seam but performs no credential restoration or grant insertion;
+  the caller updates only its linked external identity and records its own source event.
 - `IP-17` Profile updates (`PATCH`/`PUT`) may change permitted attributes — per-person
   display name, connection-scoped email snapshot, `userName`, job title and locale — and can
   never alter organisation, portal scope, role, reach or capabilities. `person.display_name`

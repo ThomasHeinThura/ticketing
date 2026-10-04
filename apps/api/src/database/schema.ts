@@ -2261,7 +2261,7 @@ export const membershipGrantTable = pgTable(
     ),
     check(
       "membership_grant_revocation_reason_check",
-      sql`${table.revocationReason} is null or ${table.revocationReason} in ('claim_removed', 'claim_missing', 'claim_overage', 'admission_failed', 'mapping_disabled', 'mapping_changed', 'role_deleted', 'connection_disabled', 'scim_group_removed', 'scim_deactivated', 'direct_removed')`,
+      sql`${table.revocationReason} is null or ${table.revocationReason} in ('claim_removed', 'claim_missing', 'claim_overage', 'admission_failed', 'mapping_disabled', 'mapping_changed', 'role_deleted', 'connection_disabled', 'scim_group_removed', 'scim_deactivated', 'direct_removed', 'person_deactivated')`,
     ),
     check(
       "membership_grant_source_shape_check",
