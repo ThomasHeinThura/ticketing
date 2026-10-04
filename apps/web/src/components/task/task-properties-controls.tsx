@@ -25,9 +25,24 @@ import type Task from "@/types/task";
 
 type ColumnData = NonNullable<ReturnType<typeof useGetColumns>["data"]>;
 type WorkspaceUsersData = ReturnType<typeof useGetActiveWorkspaceUsers>["data"];
+type TaskPropertiesSummary = Pick<
+  Task,
+  | "id"
+  | "projectId"
+  | "number"
+  | "title"
+  | "status"
+  | "priority"
+  | "userId"
+  | "assigneeId"
+  | "assigneeName"
+  | "startDate"
+  | "dueDate"
+>;
 
 type TaskPropertiesControlsProps = {
-  task?: Task;
+  task?: TaskPropertiesSummary;
+  taskForMutation?: Task;
   columns: ColumnData;
   workspaceUsers: WorkspaceUsersData;
   compact: boolean;
@@ -40,6 +55,7 @@ const buttonClass = (compact: boolean) =>
 
 export default function TaskPropertiesControls({
   task,
+  taskForMutation,
   columns,
   workspaceUsers,
   compact,
@@ -55,8 +71,8 @@ export default function TaskPropertiesControls({
     (key: string) => (ready ? t(key, { lng: language }) : key),
     [t, ready, language],
   );
-  const taskRef = useRef(task);
-  taskRef.current = task;
+  const taskRef = useRef(taskForMutation);
+  taskRef.current = taskForMutation;
   const taskId = task?.id;
   const status = task?.status;
   const priority = task?.priority;
@@ -223,7 +239,7 @@ export default function TaskPropertiesControls({
     );
   }, [taskId, dueDate, status, columns, compact, startDate, translate]);
 
-  if (!task) return null;
+  if (!task || !taskForMutation) return null;
 
   return (
     <div

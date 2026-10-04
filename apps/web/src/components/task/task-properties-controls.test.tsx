@@ -145,6 +145,7 @@ function renderControls(currentTask: Task) {
   return (
     <TaskPropertiesControls
       task={currentTask}
+      taskForMutation={currentTask}
       columns={columns}
       workspaceUsers={
         {
