@@ -6,6 +6,27 @@ dependency choices, convention changes, scope calls, gate waivers.
 Newest first.
 
 
+### 2026-10-04 · Complete native realtime invalidation and safe logging in one batch
+
+**Decision:** the documented internal `taskdesk:control` channel is the selected seam for
+native subscription authorization invalidation. Existing domain events alone do not cover
+session, membership, role and project authority changes. The implementation must publish
+only after the relevant mutation commits, refresh authority from current persisted facts,
+retain periodic reauthorization as fallback, and never expose control messages to browsers.
+Use the existing memory/Valkey adapter boundary; exact closed coordination keys, payloads
+and trigger semantics are registered in the owning realtime/auth runtime contract before
+implementation. This does not add an authority grant or a new identity cache.
+
+Add the finite `realtime` log module and `realtime.failure` message to the observability
+allowlists before replacing the native socket's raw exception logging. Error objects and
+arbitrary exception text remain prohibited. Archived projects must deny and revoke native
+subscriptions under the existing resource-live contract. All three independent bulk-review
+findings are implemented together, then verified at the required review tier. These routine
+recommended resolutions use the user's standing autonomous implementation authorization;
+no review, performance threshold or security gate is waived.
+
+
+
 ### 2026-10-04 · Keep native-denial evidence independent from shadow reach
 
 **Decision:** for issue #8 observer-only native read evidence, the typed observer result may
