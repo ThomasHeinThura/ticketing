@@ -911,11 +911,14 @@ describe("G3 contrast inventory and math", () => {
         occurrences: [
           {
             id: "Fixture::p[0]::text-primary#0",
+            usage: "fixture.tsx",
             surfaceContext: "nearest-opaque-ancestor",
             category: "body",
             chain: ["fixture.tsx:Fixture", "jsx:p[0]>bg-card"],
+            backdropLayers: [],
           },
         ],
+        occurrenceIds: ["Fixture::p[0]::text-primary#0"],
       },
     ];
     const observed = new Set([key]);
@@ -1016,6 +1019,7 @@ describe("G3 contrast inventory and math", () => {
       [firstId],
       [firstId, secondId, "Fixture::p[2]::text-foreground#0"],
       [secondId, firstId],
+      [firstId, firstId, secondId],
     ]) {
       assert.ok(
         validatePairManifest([makePair(summary)], () => source, observed).some(
@@ -1025,6 +1029,88 @@ describe("G3 contrast inventory and math", () => {
             ),
         ),
         `rejects a missing, extra, or reordered summary: ${summary.join(", ")}`,
+      );
+    }
+  });
+
+  it("fails closed on missing or malformed occurrence contract arrays", () => {
+    const firstId = "Fixture::p[0]::text-foreground#0";
+    const occurrence = {
+      id: firstId,
+      usage: "fixture.tsx",
+      surfaceContext: "nearest-opaque-ancestor",
+      category: "body",
+      chain: ["fixture.tsx:Fixture", "jsx:p[0]>bg-background"],
+      backdropLayers: [],
+    };
+    const makePair = () => ({
+      fg: "--color-foreground",
+      bg: "--color-background",
+      category: "body",
+      minRatio: 4.5,
+      themes: ["light"],
+      usage: "fixture.tsx",
+      backdrop: "--color-background",
+      foregroundClass: "text-foreground",
+      backgroundClass: { light: "bg-background" },
+      surfaceContext: "nearest-opaque-ancestor",
+      occurrenceIds: [firstId],
+      occurrences: [occurrence],
+    });
+    const key = "--color-foreground|--color-background|bg-background|light";
+    const observed = new Set([key]);
+    observed.occurrences = new Map([[key, [occurrence]]]);
+    const source =
+      '<main className="bg-background"><p className="text-foreground">One</p></main>';
+    const malformed = [
+      ["missing summary", (pair) => delete pair.occurrenceIds],
+      ["string summary", (pair) => (pair.occurrenceIds = firstId)],
+      ["non-string summary item", (pair) => (pair.occurrenceIds = [1])],
+      ["missing details", (pair) => delete pair.occurrences],
+      ["string details", (pair) => (pair.occurrences = "not-an-array")],
+      [
+        "details without string IDs",
+        (pair) => (pair.occurrences = [{ ...occurrence, id: 1 }]),
+      ],
+      [
+        "details without usage",
+        (pair) => {
+          pair.occurrences = [{ ...occurrence }];
+          delete pair.occurrences[0].usage;
+        },
+      ],
+      [
+        "unknown surface context",
+        (pair) =>
+          (pair.occurrences = [
+            { ...occurrence, surfaceContext: "body-default" },
+          ]),
+      ],
+      [
+        "empty source chain",
+        (pair) => (pair.occurrences = [{ ...occurrence, chain: [] }]),
+      ],
+      [
+        "unexpected detail property",
+        (pair) => (pair.occurrences = [{ ...occurrence, waiver: true }]),
+      ],
+      [
+        "both arrays missing",
+        (pair) => {
+          delete pair.occurrenceIds;
+          delete pair.occurrences;
+        },
+      ],
+    ];
+
+    for (const [label, mutate] of malformed) {
+      const pair = makePair();
+      mutate(pair);
+      assert.ok(
+        validatePairManifest([pair], () => source, observed).some((failure) =>
+          failure.includes("well-shaped occurrence records"),
+        ),
+        label,
       );
     }
   });
@@ -1095,6 +1181,7 @@ describe("G3 contrast inventory and math", () => {
             surfaceContext: "nearest-opaque-ancestor",
             category: "body",
             chain: ["first.tsx:First", "jsx:p[0]>bg-card"],
+            backdropLayers: [],
           },
           {
             id: "Second::p[0]::text-primary#0",
@@ -1102,7 +1189,12 @@ describe("G3 contrast inventory and math", () => {
             surfaceContext: "nearest-opaque-ancestor",
             category: "body",
             chain: ["second.tsx:Second", "jsx:p[0]>bg-card"],
+            backdropLayers: [],
           },
+        ],
+        occurrenceIds: [
+          "First::p[0]::text-primary#0",
+          "Second::p[0]::text-primary#0",
         ],
       },
     ];
@@ -1340,19 +1432,6 @@ describe("G3 contrast inventory and math", () => {
   it("inventories nested arbitrary state variants as real surface classes", () => {
     const activeSurface = "[:active,[data-pressed]]:bg-card";
     const usage = `<div className={\`text-secondary-foreground ${activeSurface}\`} />`;
-    const manifest = [
-      {
-        fg: "--color-secondary-foreground",
-        bg: "--color-card",
-        category: "body",
-        minRatio: 4.5,
-        themes: ["light", "dark"],
-        usage: "fixture.tsx",
-        backdrop: "--color-background",
-        foregroundClass: "text-secondary-foreground",
-        backgroundClass: { light: activeSurface, dark: activeSurface },
-      },
-    ];
     const observed = observedPairsInSources(
       [usage],
       new Set(["card", "secondary-foreground"]),
@@ -1366,10 +1445,6 @@ describe("G3 contrast inventory and math", () => {
       observed.has(
         `--color-secondary-foreground|--color-card|${activeSurface}|dark`,
       ),
-    );
-    assert.deepEqual(
-      validatePairManifest(manifest, () => usage, observed),
-      [],
     );
   });
 
