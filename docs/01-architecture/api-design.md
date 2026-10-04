@@ -170,18 +170,33 @@ replacement across those categories.
 ```json
 { "configVersion": 7, "kind": "settings", "enabled": false }
 { "configVersion": 7, "kind": "settings", "allowedResources": ["users", "groups"], "lifecyclePolicy": "end_memberships" }
+{ "configVersion": 7, "kind": "settings", "matchAttributes": ["externalId", "userName", "displayName"] }
 { "configVersion": 7, "kind": "mapping_create", "externalGroupId": "provider-group-id", "externalGroupNameSnapshot": null, "roleId": "...", "scope": "workspace", "scopeId": "...", "enabled": true }
 { "configVersion": 7, "kind": "mapping_update", "mappingId": "...", "externalGroupNameSnapshot": null, "roleId": "...", "scopeId": "...", "enabled": false }
 { "configVersion": 7, "kind": "attribute_mapping", "attributeMapping": { "version": 1, "name": "displayName", "email": "emails.primary.value", "jobTitle": "title", "locale": "preferredLanguage" } }
 ```
 
-`settings` requires at least one of `enabled`, `allowedResources`, `lifecyclePolicy`.
+`settings` requires at least one of `enabled`, `allowedResources`, `lifecyclePolicy`,
+`matchAttributes`.
 `enabled` is boolean. `allowedResources` is a canonical set in the fixed order `users`,
 `groups`: `users` is required; `groups` is optional; duplicates and other values fail
 validation. `lifecyclePolicy` is `end_memberships` or `keep_memberships` and governs future
 SCIM person deactivation only. Omitting a settings property preserves its stored value;
 explicit null never clears it. A settings request that changes no persisted value is
 rejected `422`, so a successful write always advances the version once.
+
+`matchAttributes` is a nonempty, duplicate-free, case-sensitive array containing only
+`externalId`, `userName`, `displayName`, `name.formatted`, `title`, and
+`preferredLanguage`. It must contain both `externalId` and `userName`. Storage and response
+order is canonical: those required names first, followed by optional names in the order
+listed above. Omission preserves the persisted array; the default is
+`["externalId", "userName"]`. This list permits optional names in the SCIM `/Users` `eq`
+filter only; it does not add profile fields or identity lookups. Supported sources and the
+explicitly unsupported `emails.value` and `locale` paths are specified in
+[`identity-provisioning.md`](../03-features/identity-provisioning.md#scim-endpoint).
+Invalid or duplicate names, missing required names, and an unchanged effective setting
+return `422`; successful writes use the same parent `configVersion` CAS and audit semantics
+as other settings edits.
 
 `mapping_create` requires `externalGroupId`, `roleId` and `scope`; `enabled` defaults true
 and `externalGroupNameSnapshot` defaults null. `mapping_update` requires a mapping id

@@ -31,10 +31,11 @@ const originalEncryptionKey = process.env.TASKDESK_ENCRYPTION_KEY;
 const originalPreviousEncryptionKey =
   process.env.TASKDESK_ENCRYPTION_KEY_PREVIOUS;
 
-async function createScimProtocolFixture() {
+async function createScimProtocolFixture(
+  connectionId = "scim-protocol-isolated-connection",
+  token = "F".repeat(43),
+) {
   await ensureInternalOrganisation();
-  const connectionId = "scim-protocol-isolated-connection";
-  const token = "F".repeat(43);
   await db.insert(schema.identityConnectionTable).values({
     id: connectionId,
     providerType: "entra",
@@ -67,6 +68,14 @@ async function createScimProtocolFixture() {
 async function createScimProtocolUser(
   app: ReturnType<typeof createApp>["app"],
   token: string,
+  user = {
+    externalId: "isolated-user",
+    userName: "isolated@example.test",
+    displayName: "Isolated User",
+    email: "isolated@example.test",
+    title: undefined as string | undefined,
+    preferredLanguage: undefined as string | undefined,
+  },
 ) {
   const response = await app.request("/scim/v2/Users", {
     method: "POST",
@@ -76,10 +85,14 @@ async function createScimProtocolUser(
     },
     body: JSON.stringify({
       schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
-      externalId: "isolated-user",
-      userName: "isolated@example.test",
-      displayName: "Isolated User",
-      emails: [{ value: "isolated@example.test", primary: true }],
+      externalId: user.externalId,
+      userName: user.userName,
+      displayName: user.displayName,
+      emails: [{ value: user.email, primary: true }],
+      ...(user.title ? { title: user.title } : {}),
+      ...(user.preferredLanguage
+        ? { preferredLanguage: user.preferredLanguage }
+        : {}),
     }),
   });
   if (response.status !== 201)
@@ -204,6 +217,76 @@ describe("SCIM administration API", () => {
       externalId: "isolated-group",
       displayName: "Isolated Group",
     });
+  });
+
+  it("filters only configured, representable attributes within the authenticated SCIM connection", async () => {
+    const { app, token, connectionId } = await createScimProtocolFixture();
+    const ownUser = await createScimProtocolUser(app, token, {
+      externalId: "configured-user",
+      userName: "configured@example.test",
+      displayName: "Configured User",
+      email: "configured@example.test",
+      title: "Support Engineer",
+      preferredLanguage: "en-GB",
+    });
+    const otherConnection = await createScimProtocolFixture(
+      "scim-protocol-other-connection",
+      "G".repeat(43),
+    );
+    await createScimProtocolUser(otherConnection.app, otherConnection.token, {
+      externalId: "other-configured-user",
+      userName: "other-configured@example.test",
+      displayName: "Configured User",
+      email: "other-configured@example.test",
+      title: "Support Engineer",
+      preferredLanguage: "en-GB",
+    });
+    const configuredAttributes = [
+      "externalId",
+      "userName",
+      "displayName",
+      "name.formatted",
+      "title",
+      "preferredLanguage",
+    ];
+    await db
+      .update(schema.scimConnectionTable)
+      .set({ matchAttributes: configuredAttributes })
+      .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId));
+
+    const filter = async (expression: string) =>
+      app.request(`/scim/v2/Users?filter=${encodeURIComponent(expression)}`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+    for (const expression of [
+      'displayName eq "CONFIGURED USER"',
+      'name.formatted eq "Configured User"',
+      'title eq "Support Engineer"',
+      'preferredLanguage eq "EN-gb"',
+      'userName eq "CONFIGURED@EXAMPLE.TEST"',
+      'externalId eq "CONFIGURED-USER"',
+    ]) {
+      const response = await filter(expression);
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        totalResults: 1,
+        Resources: [{ id: ownUser.id }],
+      });
+    }
+
+    for (const expression of [
+      'emails.value eq "configured@example.test"',
+      'locale eq "en"',
+      'displayName eq "Configured User" and title eq "Support"',
+    ]) {
+      expect((await filter(expression)).status).toBe(400);
+    }
+
+    await db
+      .update(schema.scimConnectionTable)
+      .set({ matchAttributes: ["externalId", "userName"] })
+      .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId));
+    expect((await filter('displayName eq "Configured User"')).status).toBe(400);
   });
 
   it("allows a linked account to receive its own SCIM profile replacement", async () => {
@@ -1206,6 +1289,7 @@ describe("SCIM administration API", () => {
       enabled: false,
       allowedResources: ["users", "groups"],
       lifecyclePolicy: "end_memberships",
+      matchAttributes: ["externalId", "userName"],
       mappings: [],
     });
     expect(JSON.stringify(safeSettings)).not.toContain("clientSecret");
@@ -1217,6 +1301,7 @@ describe("SCIM administration API", () => {
       configVersion: 1,
       kind: "settings",
       lifecyclePolicy: "keep_memberships",
+      matchAttributes: ["externalId", "userName", "displayName"],
     } as const;
     const challengeResponse = await csrfRequest(
       app,
@@ -1284,10 +1369,15 @@ describe("SCIM administration API", () => {
     expect(updated.status).toBe(200);
     const updatedSettings = (await updated.json()) as {
       configVersion: number;
-      data: { lifecyclePolicy: string };
+      data: { lifecyclePolicy: string; matchAttributes: string[] };
     };
     expect(updatedSettings.configVersion).toBe(2);
     expect(updatedSettings.data.lifecyclePolicy).toBe("keep_memberships");
+    expect(updatedSettings.data.matchAttributes).toEqual([
+      "externalId",
+      "userName",
+      "displayName",
+    ]);
     expect(JSON.stringify(updatedSettings)).not.toContain(proof.token);
 
     const replay = await patch();

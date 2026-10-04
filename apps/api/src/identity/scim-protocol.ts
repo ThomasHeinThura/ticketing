@@ -2,9 +2,11 @@ import { createId } from "@paralleldrive/cuid2";
 import {
   applyScimPatchOps,
   DEFAULT_SCIM_PROFILE_MAPPING,
+  effectiveScimMatchAttributes,
   mapScimProfile,
   parseScimProfileAttributeMapping,
   parseScimUser,
+  parseScimUserFilter,
   validateScimPutExternalId,
 } from "@taskdesk/domain";
 import { and, eq, isNull, sql, count as sqlCount } from "drizzle-orm";
@@ -84,21 +86,40 @@ function isUniqueViolation(error: unknown): boolean {
 const SCIM_USER_SCHEMA = "urn:ietf:params:scim:schemas:core:2.0:User";
 const SCIM_LIST_SCHEMA = "urn:ietf:params:scim:api:messages:2.0:ListResponse";
 
-function parseUserFilter(value: string | undefined) {
-  if (value === undefined) return null;
-  const match = value.match(
-    /^\s*(userName|externalId)\s+eq\s+"((?:\\.|[^"\\])*)"\s*$/iu,
-  );
-  if (!match) return false;
-  const field = match[1]?.toLowerCase();
-  const raw = match[2];
-  if (!field || raw === undefined) return false;
-  const unescaped = raw.replace(/\\(["\\])/gu, "$1");
-  if (unescaped.includes("\\")) return false;
-  return {
-    field: field === "username" ? "userName" : "externalId",
-    value: unescaped,
-  } as const;
+async function readScimMatchAttributes(connectionId: string) {
+  const [row] = await db
+    .select({ matchAttributes: schema.scimConnectionTable.matchAttributes })
+    .from(schema.scimConnectionTable)
+    .where(eq(schema.scimConnectionTable.identityConnectionId, connectionId))
+    .limit(1);
+  if (!row) return null;
+  const parsed = effectiveScimMatchAttributes(row.matchAttributes);
+  return parsed.ok ? parsed.value : null;
+}
+
+function userFilterPredicate(
+  field:
+    | "externalId"
+    | "userName"
+    | "displayName"
+    | "name.formatted"
+    | "title"
+    | "preferredLanguage",
+  value: string,
+) {
+  switch (field) {
+    case "externalId":
+      return sql`lower(${schema.externalIdentityTable.scimExternalId}) = lower(${value}) and ${schema.externalIdentityTable.scimExternalId} <> ''`;
+    case "userName":
+      return sql`lower(${schema.externalIdentityTable.userNameSnapshot}) = lower(${value})`;
+    case "displayName":
+    case "name.formatted":
+      return sql`lower(${schema.personTable.displayName}) = lower(${value}) and ${schema.personTable.displayName} <> ''`;
+    case "title":
+      return sql`lower(${schema.personTable.jobTitle}) = lower(${value}) and ${schema.personTable.jobTitle} <> ''`;
+    case "preferredLanguage":
+      return sql`lower(${schema.personTable.locale}) = lower(${value}) and ${schema.personTable.locale} <> ''`;
+  }
 }
 
 const userProjection = {
@@ -201,6 +222,7 @@ const userListRoute = createRoute({
     200: jsonResponse("SCIM users", scimListSchema),
     400: jsonResponse("Invalid SCIM filter", scimListSchema),
     403: jsonResponse("SCIM resource is not allowed", scimListSchema),
+    503: jsonResponse("SCIM configuration unavailable", scimListSchema),
   },
 });
 
@@ -749,24 +771,40 @@ export default scim
         ),
       );
     const query = c.req.valid("query");
-    const filter = parseUserFilter(query.filter);
-    if (filter === false)
+    const parsedFilter = parseScimUserFilter(query.filter);
+    if (!parsedFilter.ok)
       return scimResponse(
         c.json(scimErrorBody(400, "Unsupported filter", "invalidFilter"), 400),
       );
+    const filter = parsedFilter.value;
     const predicates = scimUserPredicates(authority);
-    if (filter)
-      predicates.push(
-        filter.field === "userName"
-          ? eq(schema.externalIdentityTable.userNameSnapshot, filter.value)
-          : eq(schema.externalIdentityTable.scimExternalId, filter.value),
+    if (filter) {
+      const matchAttributes = await readScimMatchAttributes(
+        authority.connectionId,
       );
+      if (!matchAttributes)
+        return scimResponse(
+          c.json(scimErrorBody(503, "SCIM configuration unavailable"), 503),
+        );
+      if (!matchAttributes.includes(filter.attribute))
+        return scimResponse(
+          c.json(
+            scimErrorBody(400, "Unsupported filter", "invalidFilter"),
+            400,
+          ),
+        );
+      predicates.push(userFilterPredicate(filter.attribute, filter.value));
+    }
     const startIndex = query.startIndex ?? 1;
     const pageCount = query.count ?? 100;
     const where = and(...predicates);
     const [total] = await db
       .select({ totalResults: sqlCount() })
       .from(schema.externalIdentityTable)
+      .innerJoin(
+        schema.personTable,
+        eq(schema.personTable.id, schema.externalIdentityTable.personId),
+      )
       .where(where);
     const rows = await db
       .select(userProjection)

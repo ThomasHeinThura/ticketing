@@ -29,6 +29,7 @@ export * from "./identity/membership-projection.js";
 export * from "./identity/portal.js";
 export * from "./identity/profile-mapping.js";
 export * from "./identity/scim-admin.js";
+export * from "./identity/scim-match-attributes.js";
 export * from "./identity/types.js";
 export * from "./intake/duplicate.js";
 export * from "./intake/request-type.js";

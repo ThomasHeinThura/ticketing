@@ -22,12 +22,47 @@ describe("IP-6: SCIM administrator PATCH variants", () => {
     });
   });
 
+  it("accepts supported match attributes through the existing versioned settings variant", () => {
+    const parsed = validateScimAdminRequest({
+      configVersion: 4,
+      kind: "settings",
+      matchAttributes: ["externalId", "userName", "displayName"],
+    });
+    expect(parsed).toEqual({
+      ok: true,
+      value: {
+        configVersion: 4,
+        kind: "settings",
+        matchAttributes: ["externalId", "userName", "displayName"],
+      },
+    });
+    if (parsed.ok)
+      expect(canonicalScimAdminRequest("connection", parsed.value)).toContain(
+        '"matchAttributes":["externalId","userName","displayName"]',
+      );
+  });
+
   it.each([
     { configVersion: 0, kind: "settings", enabled: true },
     { configVersion: 1, kind: "settings", enabled: null },
     { configVersion: 1, kind: "settings", allowedResources: ["groups"] },
     { configVersion: 1, kind: "settings", enabled: true, private: true },
     { configVersion: 1, kind: "settings" },
+    {
+      configVersion: 1,
+      kind: "settings",
+      matchAttributes: ["userName", "externalId"],
+    },
+    {
+      configVersion: 1,
+      kind: "settings",
+      matchAttributes: ["externalId", "userName", "emails.value"],
+    },
+    {
+      configVersion: 1,
+      kind: "settings",
+      matchAttributes: ["externalId", "userName", "locale"],
+    },
     {
       configVersion: 1,
       kind: "mapping_create",

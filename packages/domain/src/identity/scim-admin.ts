@@ -1,4 +1,8 @@
 import { parseScimProfileAttributeMapping } from "./profile-mapping.js";
+import {
+  parseScimMatchAttributes,
+  type ScimMatchAttributes,
+} from "./scim-match-attributes.js";
 import type { ScimProfileAttributeMapping } from "./types.js";
 
 export type ScimAdminRequest =
@@ -8,6 +12,7 @@ export type ScimAdminRequest =
       enabled?: boolean;
       allowedResources?: readonly ("users" | "groups")[];
       lifecyclePolicy?: "end_memberships" | "keep_memberships";
+      matchAttributes?: ScimMatchAttributes;
     }
   | {
       configVersion: number;
@@ -97,7 +102,12 @@ export function validateScimAdminRequest(raw: unknown): ScimAdminValidation {
   const configVersion = raw.configVersion as number;
   if (configVersion < 1) return { ok: false, reason: "invalid_version" };
   if (raw.kind === "settings") {
-    const fields = ["enabled", "allowedResources", "lifecyclePolicy"] as const;
+    const fields = [
+      "enabled",
+      "allowedResources",
+      "lifecyclePolicy",
+      "matchAttributes",
+    ] as const;
     if (
       !hasOnlyKeys(raw, ["configVersion", "kind", ...fields]) ||
       !fields.some((field) => Object.hasOwn(raw, field)) ||
@@ -123,6 +133,12 @@ export function validateScimAdminRequest(raw: unknown): ScimAdminValidation {
         ...(raw.allowedResources.includes("groups") ? ["groups" as const] : []),
       ];
     }
+    let matchAttributes: ScimMatchAttributes | undefined;
+    if (Object.hasOwn(raw, "matchAttributes")) {
+      const parsed = parseScimMatchAttributes(raw.matchAttributes);
+      if (!parsed.ok) return { ok: false, reason: "invalid_settings" };
+      matchAttributes = parsed.value;
+    }
     return {
       ok: true,
       value: {
@@ -139,6 +155,7 @@ export function validateScimAdminRequest(raw: unknown): ScimAdminValidation {
                 | "keep_memberships",
             }
           : {}),
+        ...(matchAttributes ? { matchAttributes } : {}),
       },
     };
   }
@@ -268,6 +285,9 @@ export function canonicalScimAdminRequest(
           ...(request.lifecyclePolicy === undefined
             ? {}
             : { lifecyclePolicy: request.lifecyclePolicy }),
+          ...(request.matchAttributes === undefined
+            ? {}
+            : { matchAttributes: request.matchAttributes }),
         };
       case "mapping_create":
         return {

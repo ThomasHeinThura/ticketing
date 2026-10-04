@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import {
   DEFAULT_SCIM_PROFILE_MAPPING,
+  effectiveScimMatchAttributes,
   validateScimAdminRequest,
 } from "@taskdesk/domain";
 import { isCapability } from "@taskdesk/permissions";
@@ -34,6 +35,14 @@ import {
 } from "./membership-projection";
 
 const versionSchema = z.number().int().positive().safe();
+const matchAttributeSchema = z.enum([
+  "externalId",
+  "userName",
+  "displayName",
+  "name.formatted",
+  "title",
+  "preferredLanguage",
+]);
 function canonicalAllowedResources(
   value: unknown,
 ): Array<"users" | "groups"> | null {
@@ -66,6 +75,7 @@ const requestSchema = z.discriminatedUnion("kind", [
       lifecyclePolicy: z
         .enum(["end_memberships", "keep_memberships"])
         .optional(),
+      matchAttributes: z.array(matchAttributeSchema).min(2).optional(),
     })
     .strict(),
   z
@@ -104,6 +114,7 @@ const safeResponseSchema = z.object({
     enabled: z.boolean(),
     allowedResources: z.array(z.enum(["users", "groups"])),
     lifecyclePolicy: z.enum(["end_memberships", "keep_memberships"]),
+    matchAttributes: z.array(matchAttributeSchema).min(2),
     attributeMapping: profileMappingSchema,
     mappings: z.array(
       z.object({
@@ -135,6 +146,7 @@ async function readSafeSettings(connectionId: string) {
       allowedResources: schema.scimConnectionTable.allowedResources,
       lifecyclePolicy: schema.scimConnectionTable.lifecyclePolicy,
       attributeMapping: schema.scimConnectionTable.attributeMapping,
+      matchAttributes: schema.scimConnectionTable.matchAttributes,
     })
     .from(schema.identityConnectionTable)
     .innerJoin(
@@ -149,6 +161,11 @@ async function readSafeSettings(connectionId: string) {
   if (!row) return null;
   const allowedResources = canonicalAllowedResources(row.allowedResources);
   if (!allowedResources)
+    throw new HTTPException(503, {
+      message: "SCIM configuration unavailable",
+    });
+  const matchAttributes = effectiveScimMatchAttributes(row.matchAttributes);
+  if (!matchAttributes.ok)
     throw new HTTPException(503, {
       message: "SCIM configuration unavailable",
     });
@@ -182,6 +199,7 @@ async function readSafeSettings(connectionId: string) {
       allowedResources,
       lifecyclePolicy: row.lifecyclePolicy,
       attributeMapping: row.attributeMapping ?? DEFAULT_SCIM_PROFILE_MAPPING,
+      matchAttributes: matchAttributes.value,
       mappings: resolvedMappings,
     },
     configVersion: row.configVersion,
@@ -516,6 +534,16 @@ const routes = apiRouter()
             validated.value.allowedResources ?? currentAllowed;
           const nextPolicy =
             validated.value.lifecyclePolicy ?? scim.lifecyclePolicy;
+          const currentMatchAttributes = effectiveScimMatchAttributes(
+            scim.matchAttributes,
+          );
+          if (!currentMatchAttributes.ok)
+            return {
+              kind: "invalid" as const,
+              message: "Stored SCIM configuration is invalid",
+            };
+          const nextMatchAttributes =
+            validated.value.matchAttributes ?? currentMatchAttributes.value;
           if (nextEnabled && !scim.tokenHash)
             return {
               kind: "invalid" as const,
@@ -524,7 +552,9 @@ const routes = apiRouter()
           if (
             nextEnabled === scim.enabled &&
             JSON.stringify(nextAllowed) === JSON.stringify(currentAllowed) &&
-            nextPolicy === scim.lifecyclePolicy
+            nextPolicy === scim.lifecyclePolicy &&
+            JSON.stringify(nextMatchAttributes) ===
+              JSON.stringify(currentMatchAttributes.value)
           )
             return { kind: "invalid" as const, message: "No changes" };
           const removesScimGrantEligibility =
@@ -542,12 +572,18 @@ const routes = apiRouter()
             changedKeys.push("allowedResources");
           if (nextPolicy !== scim.lifecyclePolicy)
             changedKeys.push("lifecyclePolicy");
+          if (
+            JSON.stringify(nextMatchAttributes) !==
+            JSON.stringify(currentMatchAttributes.value)
+          )
+            changedKeys.push("matchAttributes");
           await tx
             .update(schema.scimConnectionTable)
             .set({
               enabled: nextEnabled,
               allowedResources: [...nextAllowed],
               lifecyclePolicy: nextPolicy,
+              matchAttributes: [...nextMatchAttributes],
             })
             .where(eq(schema.scimConnectionTable.identityConnectionId, id));
         } else if (validated.value.kind === "attribute_mapping") {

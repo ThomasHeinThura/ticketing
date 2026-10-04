@@ -146,6 +146,13 @@ has not been granted. These are target contracts, not implemented tables.
   values, as specified in that API contract. This is a design contract, not a mounted runtime route; an implementation lacking the
   verifier still fails closed with `403 step_up_unavailable` and makes no mutation. OIDC
   mapping writes remain unconditionally elevated with separate operation bindings.
+
+  The same settings variant may replace the closed `matchAttributes` list used by
+  `GET /Users` equality filters. It uses the same parent `configVersion` compare-and-set,
+  elevation and audit path; omission preserves the stored list. The v1 default is
+  `externalId`, `userName` in that order. This setting controls only which profile
+  attributes this connection may query. It never changes identity matching, linking,
+  membership, role, or authorization behavior.
   Mapping to `instance:admin` or `sees_all` is not elevated — it is **impossible**: the
   mapping editor does not offer it and the server refuses it.
 
@@ -289,9 +296,8 @@ has not been granted. These are target contracts, not implemented tables.
 ### SCIM endpoint
 
 **The SCIM 2.0 server is ours.** better-auth has no SCIM plugin, so the schemas, the
-`PATCH` path expressions, `ListResponse`, the SCIM error bodies and the filter parser —
-hand-written, and only for `eq` on `userName` and `externalId` (`IP-13`) — are our own
-protocol code; only the credential check reuses the platform.
+`PATCH` path expressions, `ListResponse`, the SCIM error bodies and the filter parser are
+hand-written protocol code; only the credential check reuses the platform.
 
 
 - `IP-11` One SCIM 2.0 endpoint family on the agent origin: `/scim/v2/Users`,
@@ -306,7 +312,7 @@ protocol code; only the credential check reuses the platform.
   types and allowed mappings. Raw token values never appear in logs, responses, exports or
   audit detail.
 - `IP-13` Required for Entra interoperability, and the whole first-release surface: `POST
-  /Users`; `GET /Users?filter=userName eq "…"` (and `externalId`, and the configured match
+  /Users`; `GET /Users?filter=userName eq "…"` (and `externalId`, plus configured match
   attributes) returning a correct `ListResponse`; `GET /Users/{id}`; `PATCH /Users/{id}`
   (`active`, profile attributes); `PUT /Users/{id}`; `GET /Users` with `startIndex`/`count`
   pagination; `POST`, `PUT`, `PATCH`, `GET` and `DELETE` for `/Groups` and `/Groups/{id}`;
@@ -316,6 +322,30 @@ protocol code; only the credential check reuses the platform.
   implemented** unless Entra interoperability testing proves it necessary. `DELETE /Users/{id}`
   is accepted and treated as `active=false` (`IP-15`) — SCIM de-provisioning is never a
   hard delete.
+- **User filter contract (v1):** `filter` accepts one case-insensitive attribute name,
+  the `eq` operator, and one quoted string value; compound filters and other operators
+  return SCIM `400 invalidFilter`. String equality follows the core SCIM `caseExact`
+  characteristic; all supported v1 User attributes are case-insensitive. Attribute names
+  and the `eq` operator are case-insensitive. `scim_connection.match_attributes` is a closed,
+  connection-configured list with canonical default `externalId`, `userName`; those two
+  are mandatory in every valid stored list. The only additional v1
+  names are `displayName`, `name.formatted`, `title`, and `preferredLanguage`. An
+  additional name must be explicitly present in the connection's list, otherwise the
+  filter returns `400 invalidFilter`.
+
+  Matching remains inside the authenticated connection and `provisioned_via = 'scim'`.
+  `externalId` and `userName` use that connection's external-identity snapshots;
+  `displayName` and `name.formatted` both compare the same `person.display_name` value
+  emitted by the current profile projection; `title` compares `person.job_title`; and
+  `preferredLanguage` compares `person.locale`, which the current projection emits as
+  `preferredLanguage`. The person profile values are the same profile fields already
+  exposed for the matched same-connection SCIM identity; filters do not perform identity
+  lookup or link people across connections. `emails.value` is deliberately unsupported:
+  the bounded stored snapshot contains only the selected primary email, and cannot truthfully
+  implement SCIM's any-email-value match. `locale` is also unsupported because the response
+  profile emits `preferredLanguage`, not `locale`. Unknown, malformed, or unsupported
+  filters fail closed; invalid persisted configuration returns `503` rather than silently
+  reverting to a broader filter set.
 - `IP-14` Schemas are validated **strictly**: unknown attributes, forbidden attributes
   (`IP-4`) and oversized bodies are rejected with SCIM error responses. Requests are
   rate-limited per connection (anonymous-class limits apply to failed authentication).

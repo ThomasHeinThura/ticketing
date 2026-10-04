@@ -1876,6 +1876,10 @@ export const scimConnectionTable = pgTable(
       .notNull()
       .default(sql`ARRAY['users']::text[]`),
     attributeMapping: jsonb("attribute_mapping"),
+    matchAttributes: text("match_attributes")
+      .array()
+      .notNull()
+      .default(sql`ARRAY['externalId', 'userName']::text[]`),
     lifecyclePolicy: text("lifecycle_policy")
       .notNull()
       .default("end_memberships"),
@@ -1904,6 +1908,19 @@ export const scimConnectionTable = pgTable(
     check(
       "scim_connection_lifecycle_policy_check",
       sql`${table.lifecyclePolicy} in ('end_memberships', 'keep_memberships')`,
+    ),
+    check(
+      "scim_connection_match_attributes_check",
+      sql`array_lower(${table.matchAttributes}, 1) = 1
+        and ${table.matchAttributes}[1:2] = ARRAY['externalId', 'userName']::text[]
+        and ${table.matchAttributes} <@ ARRAY['externalId', 'userName', 'displayName', 'name.formatted', 'title', 'preferredLanguage']::text[]
+        and cardinality(array_positions(${table.matchAttributes}, 'displayName')) <= 1
+        and cardinality(array_positions(${table.matchAttributes}, 'name.formatted')) <= 1
+        and cardinality(array_positions(${table.matchAttributes}, 'title')) <= 1
+        and cardinality(array_positions(${table.matchAttributes}, 'preferredLanguage')) <= 1
+        and (array_position(${table.matchAttributes}, 'displayName') is null or array_position(${table.matchAttributes}, 'name.formatted') is null or array_position(${table.matchAttributes}, 'displayName') < array_position(${table.matchAttributes}, 'name.formatted'))
+        and (array_position(${table.matchAttributes}, 'name.formatted') is null or array_position(${table.matchAttributes}, 'title') is null or array_position(${table.matchAttributes}, 'name.formatted') < array_position(${table.matchAttributes}, 'title'))
+        and (array_position(${table.matchAttributes}, 'title') is null or array_position(${table.matchAttributes}, 'preferredLanguage') is null or array_position(${table.matchAttributes}, 'title') < array_position(${table.matchAttributes}, 'preferredLanguage'))`,
     ),
   ],
 );
