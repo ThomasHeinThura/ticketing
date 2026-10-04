@@ -6,6 +6,35 @@ dependency choices, convention changes, scope calls, gate waivers.
 Newest first.
 
 
+### 2026-10-04 · Pin SLA policy provenance at work-item creation
+
+**Decision:** implement the recommended SLA-1/SLA-3 provenance contract under Thomas's
+standing authorization for recommended decisions. The effective-time instant is
+`work_item.sla_started_at`, as ADR 0009 requires: original accepted submission creation
+time on conversion, otherwise work-item creation time. Reconcile the owning SLA spec's
+ambiguous "creation" wording before code. In the creation/acceptance transaction resolve
+work-item-type override → original accepted request type → project → workspace default,
+then select the published policy version effective at that instant. Register and persist
+`work_item.sla_policy_version_id` in the canonical data model before implementing it, with
+same-workspace integrity. Null means no effective configured version. Never reconstruct a
+missing historical pin from mutable current bindings on reads. Compute state and due time
+from this stored version plus its current live calendar; do not store SLA state/deadline.
+
+Duplicate submissions attach to the existing work item without changing its original SLA
+pin or start time. The accepted/auto-accepted submission that creates the item supplies
+request-type provenance. Existing rows in this unaccepted P2 rollout have no trustworthy
+binding history: leave their pin null and report `none`, without invented historical
+backfill. No P2 SLA evaluation is accepted or deployed by this decision. If separately
+operated SLA data is discovered, stop that data-migration path for an explicit owner data
+policy. Wire the existing `work-item/controllers/create-work-item.ts` transaction and the
+specified SLA read route; absent intake conversion/timer/cache/event writers remain real
+implementation dependencies and are not claimed complete. Add the required canonical
+request-type/submission persistence prerequisites in P2's sequential candidate migration,
+including their integrity constraints. Human review remains deferred to integrated P4;
+normal independent review and migration acceptance are still required after the full batch.
+
+
+
 ### 2026-10-04 · Serialize P2/P3 schema ownership and unaccepted migration composition
 
 **Decision:** implement the complete CAL-8/SLA read path after P3 explicitly yields the
