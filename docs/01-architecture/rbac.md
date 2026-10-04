@@ -228,6 +228,17 @@ extra lookup is disabled with shadow mode, and is never run for mutation routes 
 mutation may have changed or removed the row. The native response, handler reachability, and
 authorization decision are unchanged.
 
+The observer's native denial is evidence for the **legacy** side only. It must never set the
+declarative policy's `inReach` value to `false`: that would make the two sides share the very
+predicate the comparison is intended to test. The policy side independently evaluates
+`reaches()` from the resolved identity and typed, persisted target facts. Where those facts
+cannot be loaded completely, the result is `reach_unavailable`, not a guessed allow or deny.
+In the current schema, direct project membership, workspace membership, and organisation
+reach can be compared from their persisted rows. Project ancestors and owner-team relations
+are not represented in the current project schema; they remain unavailable until their own
+schema and loader exist. A future typed loader may supply those facts, but the observer may
+not infer them from a legacy denial, route URL, or caller input.
+
 This evidence is diagnostic only. The shadow evaluator still applies the registered policy
 to a row scope built from persisted facts and does not grant authority to the legacy caller.
 Where the existing identity adapter lacks a required hierarchy/team/private-item fact, the

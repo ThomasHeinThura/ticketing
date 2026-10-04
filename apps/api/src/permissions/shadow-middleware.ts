@@ -48,6 +48,7 @@ import {
   isCapabilityPolicy,
   isSelfPolicy,
   normaliseRouteKey,
+  type ProjectReachFacts,
 } from "@taskdesk/permissions";
 import { and, eq } from "drizzle-orm";
 import type { Context, Next } from "hono";
@@ -320,8 +321,8 @@ async function runShadowEvaluation(
   const projectIdFromRequest =
     (c.get("projectIdFromRequest") as string | undefined) ?? null;
   const workItemId = (c.get("workItemId") as string | undefined) ?? null;
-  const nativeReachDenialEvidence = c.get("nativeReachDenialEvidence") as
-    | { readonly resource: string; readonly id: string }
+  const projectReachFacts = c.get("projectReachFacts") as
+    | ProjectReachFacts
     | undefined;
   const apiKey = c.get("apiKey") as ApiKeyContextValue;
   const userId = (c.get("userId") as string | undefined) || undefined;
@@ -416,7 +417,7 @@ async function runShadowEvaluation(
       projectIdFromRequest,
       workItemId,
       workspaceMembership,
-      nativeReachDenialEvidence,
+      projectReachFacts,
     });
   } catch (error) {
     await writeErrorRecord({

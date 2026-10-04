@@ -1,3 +1,4 @@
+import type { ProjectReachFacts } from "@taskdesk/permissions";
 import {
   and,
   eq,
@@ -146,7 +147,27 @@ type WorkspaceRowScope = {
   workspaceId: string;
   projectId?: string;
   workItemId?: string;
+  projectReachFacts?: ProjectReachFacts;
 };
+
+/**
+ * Current project schema has no parent-project or owner-team columns. Supplying their
+ * current-schema values explicitly avoids guessing from a legacy denial while keeping
+ * future hierarchy/team support gated on the schema and loader that introduce those facts.
+ */
+function currentProjectReachFacts(
+  projectId: string,
+  workspaceId: string,
+  organisationId: string | null,
+): ProjectReachFacts {
+  return {
+    projectId,
+    workspaceId,
+    organisationId,
+    ancestorProjectIds: [],
+    ownerTeamId: null,
+  };
+}
 
 async function readJsonObjectBody(
   c: Context,
@@ -280,14 +301,10 @@ export function workspaceAccessMiddleware(
               if (observerRow.workItemId) {
                 c.set("workItemId", observerRow.workItemId);
               }
+              if (observerRow.projectReachFacts) {
+                c.set("projectReachFacts", observerRow.projectReachFacts);
+              }
               c.set("policyScopeResource", source.resource);
-              // The exact legacy reach predicate was part of the observer query as
-              // `NOT predicate`. Carry that narrowly typed fact to shadow evaluation;
-              // it is not caller-controlled scope and never affects the native response.
-              c.set("nativeReachDenialEvidence", {
-                resource: anchor.resource,
-                id: anchor.id,
-              });
             }
           }
           if (resolved) {
@@ -306,6 +323,9 @@ export function workspaceAccessMiddleware(
             c.set("workspaceIdSource", "row");
             shadowProjectId = resolved.projectId ?? null;
             shadowWorkItemId = resolved.workItemId ?? null;
+            if (resolved.projectReachFacts) {
+              c.set("projectReachFacts", resolved.projectReachFacts);
+            }
           }
           if (!workspaceId) {
             if (source.resource !== "project") {
@@ -510,8 +530,13 @@ async function lookupWorkspaceId(
           .select({
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.projectTable.id,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.projectTable)
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
+          )
           .where(
             and(
               eq(schema.projectTable.id, id),
@@ -523,7 +548,15 @@ async function lookupWorkspaceId(
           )
           .limit(1);
         return project?.workspaceId
-          ? { workspaceId: project.workspaceId, projectId: project.projectId }
+          ? {
+              workspaceId: project.workspaceId,
+              projectId: project.projectId,
+              projectReachFacts: currentProjectReachFacts(
+                project.projectId,
+                project.workspaceId,
+                project.organisationId,
+              ),
+            }
           : null;
       }
 
@@ -533,11 +566,16 @@ async function lookupWorkspaceId(
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.taskTable.projectId,
             workItemId: schema.taskTable.id,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.taskTable)
           .innerJoin(
             schema.projectTable,
             eq(schema.taskTable.projectId, schema.projectTable.id),
+          )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
           )
           .where(
             and(
@@ -554,6 +592,11 @@ async function lookupWorkspaceId(
               workspaceId: task.workspaceId,
               projectId: task.projectId,
               workItemId: task.workItemId,
+              projectReachFacts: currentProjectReachFacts(
+                task.projectId,
+                task.workspaceId,
+                task.organisationId,
+              ),
             }
           : null;
       }
@@ -578,6 +621,7 @@ async function lookupWorkspaceId(
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.taskTable.projectId,
             workItemId: schema.taskTable.id,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.timeEntryTable)
           .innerJoin(
@@ -587,6 +631,10 @@ async function lookupWorkspaceId(
           .innerJoin(
             schema.projectTable,
             eq(schema.taskTable.projectId, schema.projectTable.id),
+          )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
           )
           .where(
             and(
@@ -603,6 +651,11 @@ async function lookupWorkspaceId(
               workspaceId: timeEntry.workspaceId,
               projectId: timeEntry.projectId,
               workItemId: timeEntry.workItemId,
+              projectReachFacts: currentProjectReachFacts(
+                timeEntry.projectId,
+                timeEntry.workspaceId,
+                timeEntry.organisationId,
+              ),
             }
           : null;
       }
@@ -613,6 +666,7 @@ async function lookupWorkspaceId(
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.taskTable.projectId,
             workItemId: schema.taskTable.id,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.taskActivityTable)
           .innerJoin(
@@ -622,6 +676,10 @@ async function lookupWorkspaceId(
           .innerJoin(
             schema.projectTable,
             eq(schema.taskTable.projectId, schema.projectTable.id),
+          )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
           )
           .where(
             and(
@@ -638,6 +696,11 @@ async function lookupWorkspaceId(
               workspaceId: activity.workspaceId,
               projectId: activity.projectId,
               workItemId: activity.workItemId,
+              projectReachFacts: currentProjectReachFacts(
+                activity.projectId,
+                activity.workspaceId,
+                activity.organisationId,
+              ),
             }
           : null;
       }
@@ -648,6 +711,7 @@ async function lookupWorkspaceId(
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.taskTable.projectId,
             workItemId: schema.taskTable.id,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.taskActivityTable)
           .innerJoin(
@@ -657,6 +721,10 @@ async function lookupWorkspaceId(
           .innerJoin(
             schema.projectTable,
             eq(schema.taskTable.projectId, schema.projectTable.id),
+          )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
           )
           .where(
             and(
@@ -674,6 +742,11 @@ async function lookupWorkspaceId(
               workspaceId: comment.workspaceId,
               projectId: comment.projectId,
               workItemId: comment.workItemId,
+              projectReachFacts: currentProjectReachFacts(
+                comment.projectId,
+                comment.workspaceId,
+                comment.organisationId,
+              ),
             }
           : null;
       }
@@ -683,11 +756,16 @@ async function lookupWorkspaceId(
           .select({
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.columnTable.projectId,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.columnTable)
           .innerJoin(
             schema.projectTable,
             eq(schema.columnTable.projectId, schema.projectTable.id),
+          )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
           )
           .where(
             and(
@@ -700,7 +778,15 @@ async function lookupWorkspaceId(
           )
           .limit(1);
         return column?.workspaceId
-          ? { workspaceId: column.workspaceId, projectId: column.projectId }
+          ? {
+              workspaceId: column.workspaceId,
+              projectId: column.projectId,
+              projectReachFacts: currentProjectReachFacts(
+                column.projectId,
+                column.workspaceId,
+                column.organisationId,
+              ),
+            }
           : null;
       }
 
@@ -709,11 +795,16 @@ async function lookupWorkspaceId(
           .select({
             workspaceId: schema.projectTable.workspaceId,
             projectId: schema.workflowRuleTable.projectId,
+            organisationId: schema.workspaceTable.organisationId,
           })
           .from(schema.workflowRuleTable)
           .innerJoin(
             schema.projectTable,
             eq(schema.workflowRuleTable.projectId, schema.projectTable.id),
+          )
+          .innerJoin(
+            schema.workspaceTable,
+            eq(schema.workspaceTable.id, schema.projectTable.workspaceId),
           )
           .where(
             and(
@@ -729,6 +820,11 @@ async function lookupWorkspaceId(
           ? {
               workspaceId: workflowRule.workspaceId,
               projectId: workflowRule.projectId,
+              projectReachFacts: currentProjectReachFacts(
+                workflowRule.projectId,
+                workflowRule.workspaceId,
+                workflowRule.organisationId,
+              ),
             }
           : null;
       }

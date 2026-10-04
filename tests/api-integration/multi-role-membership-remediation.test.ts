@@ -44,6 +44,15 @@ import { createWorkspaceNative } from "./helpers/workspace-write-http";
 
 type App = ReturnType<typeof createApp>["app"];
 
+async function expectAllFalseCapabilityMap(response: Response): Promise<void> {
+  expect(response.status).toBe(200);
+  const capabilities = (await response.json()) as Record<string, unknown>;
+  expect(Object.keys(capabilities)).toHaveLength(16);
+  expect(Object.values(capabilities).every((value) => value === false)).toBe(
+    true,
+  );
+}
+
 /**
  * Consumes the instance-admin slot.
  *
@@ -216,9 +225,7 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
       `/api/capabilities?workspaceId=${workspace.id}`,
       { headers: { cookie: owner.cookie } },
     );
-    expect(response.status).toBe(409);
-    const body = (await response.json()) as { problem: string };
-    expect(body.problem).toBe("multi-valued");
+    await expectAllFalseCapabilityMap(response);
   });
 
   it("refuses an instance admin whose own workspace membership row is malformed", async () => {
@@ -238,9 +245,7 @@ describe("#82 §1 -- the native evaluator refuses a malformed membership on an O
       `/api/capabilities?workspaceId=${workspace.id}`,
       { headers: { cookie: owner.cookie } },
     );
-    expect(response.status).toBe(409);
-    const body = (await response.json()) as { problem: string };
-    expect(body.problem).toBe("multi-valued");
+    await expectAllFalseCapabilityMap(response);
   });
 });
 
@@ -423,10 +428,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
       `/api/capabilities?workspaceId=${workspace.id}`,
       { headers: { cookie: owner.cookie } },
     );
-    expect(before.status).toBe(409);
-    expect(((await before.json()) as { problem: string }).problem).toBe(
-      "untrimmed",
-    );
+    await expectAllFalseCapabilityMap(before);
 
     // HISTORICAL, NOT PRODUCTION CODE. The ORIGINAL version of the migration's repair rule
     // grouped by DISTINCT TRIMMED segment, so it collapsed a lone padded piece exactly the
@@ -480,7 +482,7 @@ describe("#82 §4 -- the recovery strategy: migration 0050's own SQL, against re
       `/api/capabilities?workspaceId=${workspace.id}`,
       { headers: { cookie: owner.cookie } },
     );
-    expect(stillNoAuthority.status).toBe(409);
+    await expectAllFalseCapabilityMap(stillNoAuthority);
 
     await restoreRoleConstraint();
   });

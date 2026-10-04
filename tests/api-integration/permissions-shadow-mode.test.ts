@@ -404,6 +404,126 @@ describe("request-sourced scope is evaluated with request provenance", () => {
 });
 
 describe("observer-only provenance for masked native read denials", () => {
+  it("evaluates project reach from persisted membership independently of the legacy workspace predicate", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Independent project reach fixture",
+        description: "",
+        status: "to-do",
+        priority: "medium",
+        columnId: columns.todo.id,
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task)
+      throw new Error("observer project reach task insert returned no row");
+
+    const [person] = await fresh.db
+      .select({ id: fresh.schema.personTable.id })
+      .from(fresh.schema.personTable)
+      .where(eq(fresh.schema.personTable.userId, caller.user.id))
+      .limit(1);
+    if (!person)
+      throw new Error("observer caller has no active person fixture");
+    const [role] = await fresh.db
+      .insert(fresh.schema.roleTable)
+      .values({
+        scope: "project",
+        workspaceId: owner.workspace.id,
+        key: `observer-${randomUUID()}`,
+        name: "Observer project reader",
+        rank: 1,
+        capabilities: ["work_item:read"],
+      })
+      .returning();
+    if (!role) throw new Error("observer project role insert returned no row");
+    await fresh.db.insert(fresh.schema.membershipTable).values({
+      personId: person.id,
+      scope: "project",
+      scopeId: project.id,
+      roleId: role.id,
+    });
+
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    // Native access remains deliberately workspace-member constrained and must not
+    // reveal the resource. The independent policy calculation sees the persisted
+    // project membership and records the disagreement without changing that response.
+    const response = await fresh.app.request(`/api/task/${task.id}`);
+    expect(response.status).toBe(404);
+
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(GET_TASK_ROUTE_KEY);
+      return rows.find((row) => row.outcome === "legacy_deny_policy_allow");
+    });
+    expect(tally).toMatchObject({
+      outcome: "legacy_deny_policy_allow",
+      reasonCode: null,
+    });
+    expect(
+      await shadowEventsFor(GET_TASK_ROUTE_KEY, "legacy_deny_policy_allow"),
+    ).toHaveLength(1);
+  });
+
+  it("records policy denial when a workspace member has no project reach", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const caller = await createWorkspaceMember();
+    const owner = await createWorkspaceMember();
+    const { project, columns } = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    await fresh.db.insert(fresh.schema.workspaceUserTable).values({
+      workspaceId: owner.workspace.id,
+      userId: caller.user.id,
+      role: "member",
+      joinedAt: new Date(),
+    });
+    const [task] = await fresh.db
+      .insert(fresh.schema.taskTable)
+      .values({
+        projectId: project.id,
+        title: "Resolved project reach fixture",
+        description: "",
+        status: "to-do",
+        priority: "medium",
+        columnId: columns.todo.id,
+        number: 1,
+        position: 1,
+      })
+      .returning();
+    if (!task)
+      throw new Error("resolved project reach task insert returned no row");
+    await backfillPersons();
+    fresh.mockUser(caller.user);
+
+    const response = await fresh.app.request(`/api/task/${task.id}`);
+    expect(response.status).toBe(200);
+    const tally = await waitForShadowEvidence(async () => {
+      const rows = await shadowTalliesFor(GET_TASK_ROUTE_KEY);
+      return rows.length ? rows : undefined;
+    });
+    expect(tally).toContainEqual(
+      expect.objectContaining({
+        outcome: "legacy_allow_policy_deny",
+        reasonCode: "not_found",
+      }),
+    );
+  });
+
   it("compares a real foreign work item using its persisted row scope while preserving the masked 404", {
     timeout: 60_000,
   }, async () => {
@@ -1095,7 +1215,7 @@ describe("#324 — denied param workspace scope is checked against a verified ro
     expect(disagreements).toHaveLength(1);
   });
 
-  it("tracks project request-scope separately from row-derived workspace scope", {
+  it("tracks request-sourced project scope and independently denies missing project reach", {
     timeout: 60_000,
   }, async () => {
     const fresh = await createAppWithShadow("on");
@@ -1152,20 +1272,12 @@ describe("#324 — denied param workspace scope is checked against a verified ro
     const tallies = await shadowTalliesFor(
       "POST /api/projects/{projectId}/work-items",
     );
-    expect(
-      tallies.some(
-        (row) =>
-          row.outcome === "unevaluated" &&
-          row.reasonCode === "reach_unavailable",
-      ),
-    ).toBe(true);
-    expect(
-      tallies.some(
-        (row) =>
-          row.outcome === "unevaluated" &&
-          row.reasonCode === "scope_source_unavailable",
-      ),
-    ).toBe(false);
+    expect(tallies).toContainEqual(
+      expect.objectContaining({
+        outcome: "legacy_allow_policy_deny",
+        reasonCode: "not_found",
+      }),
+    );
   });
 });
 

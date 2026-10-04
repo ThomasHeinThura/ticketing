@@ -6,6 +6,25 @@ dependency choices, convention changes, scope calls, gate waivers.
 Newest first.
 
 
+### 2026-10-04 · Keep native-denial evidence independent from shadow reach
+
+**Decision:** for issue #8 observer-only native read evidence, the typed observer result may
+establish the native/legacy denial and the persisted row scope only. It must not force the
+declarative side's `inReach` to false. The declarative side evaluates `reaches()` from the
+resolved identity and independently loaded persisted target facts; direct project membership
+is comparable when those facts are present. If hierarchy, owner-team, customer-private
+visibility, or another required fact is unavailable, the shadow outcome is `unevaluated`.
+Do not infer a policy denial from the native predicate, URL, caller input, or HTTP status.
+This changes diagnostic comparison only: native access remains unchanged and a disagreement
+is retained as a disagreement. Shadow-off continues to perform no observer read. The
+contract is detailed in [RBAC § Shadow evidence for native read denials](../01-architecture/rbac.md#shadow-evidence-for-native-read-denials).
+
+For `/api/capabilities`, the selected self-introspection condition remains one exact active
+persisted workspace membership. Instance-admin global reach is not membership. An unambiguous
+member with a malformed/unknown role receives an all-false capability map, while ordinary
+write routes continue to reject that membership. This is not a new authority grant.
+
+
 ### 2026-10-04 · Bound observer-only provenance reads for shadowed native read denials
 
 **Decision:** under the standing authorization to implement recommended P0 resolutions, a
