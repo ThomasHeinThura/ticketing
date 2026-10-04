@@ -87,6 +87,29 @@ export type WorkItemListSearch = {
 
 export type ServiceCalendarListSearch = { cursor?: string };
 export type SlaPolicyListSearch = { cursor?: string };
+export type IdentityConnectionEventsSearch = { eventsCursor?: string };
+
+export function parseIdentityConnectionEventsSearch(
+  raw: unknown,
+): IdentityConnectionEventsSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  const eventsCursor =
+    typeof candidate.eventsCursor === "string" &&
+    candidate.eventsCursor.length > 0 &&
+    candidate.eventsCursor.length <= 512
+      ? candidate.eventsCursor
+      : undefined;
+  return { eventsCursor };
+}
+
+export function parseIdentityConnectionEventsSearchFromQueryString(
+  queryString: string,
+) {
+  const params = new URLSearchParams(queryString);
+  return parseIdentityConnectionEventsSearch({
+    eventsCursor: params.get("eventsCursor"),
+  });
+}
 
 export function parseSlaPolicyListSearch(raw: unknown): SlaPolicyListSearch {
   const candidate = (raw ?? {}) as Record<string, unknown>;
@@ -235,8 +258,18 @@ export const routes = {
   },
   identityConnectionSettings: {
     path: "/god-mode/authentication/$id" as const,
-    build: (params: { id: string }) =>
-      `/god-mode/authentication/${encodeURIComponent(params.id)}`,
+    build: (
+      params: { id: string },
+      search: IdentityConnectionEventsSearch = {},
+    ) => {
+      const pathname = `/god-mode/authentication/${encodeURIComponent(params.id)}`;
+      const resolved = parseIdentityConnectionEventsSearch(search);
+      if (!resolved.eventsCursor) return pathname;
+      const query = new URLSearchParams({
+        eventsCursor: resolved.eventsCursor,
+      });
+      return `${pathname}?${query.toString()}`;
+    },
   },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {

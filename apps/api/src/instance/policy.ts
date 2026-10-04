@@ -21,6 +21,18 @@ export const instancePolicies = {
     elevationExemptionReason:
       "safe identity DTO omits client secrets and raw provider claims",
   },
+  "GET /api/instance/identity-connections/{id}/events": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "provisioning event history is scoped to an identity connection",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only event summaries omit identifiers, traces, and structured details",
+  },
   "GET /api/instance/organisations/{id}/identity": {
     capability: "instance:admin",
     scope: "instance",

@@ -29,6 +29,24 @@ combinations or cursors return `400`; they never widen the selection. The route 
 `instance:admin`, `scope: instance`, `sessionOnly: true`, read-only/elevation-exempt because
 it returns only selector metadata and performs no mutation.
 
+## Identity connection provisioning-event history
+
+`GET /api/instance/identity-connections/{id}/events` returns a connection-scoped page of
+the persisted provisioning ledger to an instance administrator. The parent connection is
+looked up first; a missing connection returns the same `404` as an unavailable connection.
+The optional `limit` defaults to 25 and is bounded to 1–100. The optional opaque version-1
+cursor is bound to the path connection id and the last `(created_at,id)` pair, preserving
+PostgreSQL timestamp precision in its continuation. Pages sort descending by both fields,
+so equal timestamps remain deterministic. A malformed cursor or one made for another
+connection returns `400`.
+
+The response is `{data: EventSummary[], page: {nextCursor, hasMore}}`; each summary contains
+exactly `kind`, `outcome`, `actorType`, and ISO `createdAt`. It deliberately omits database
+event ids, trace ids, structured `detail`, and a total count. Event detail is internal
+write-side evidence and is not rendered by this endpoint. The endpoint is read-only,
+instance-admin-only, and elevation-exempt; the browser follows `nextCursor` in the existing
+identity-editor URL query state.
+
 REST over HTTP, described by an OpenAPI document generated from Zod schemas via
 `@hono/zod-openapi`. **The OpenAPI document is the published contract for third parties**
 (MCP clients, importers, customers' integrations, the Scalar reference); **the in-repo

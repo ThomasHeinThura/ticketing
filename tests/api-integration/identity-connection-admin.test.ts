@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import {
@@ -227,6 +227,155 @@ afterEach(() => {
 });
 
 describe("identity connection administration", () => {
+  it("lists only safe connection-scoped event summaries in stable cursor pages", async () => {
+    const { sessionCookie } = await setupAdmin();
+    const app = createApp().app;
+    const connectionId = "identity-event-history-connection";
+    const otherConnectionId = "identity-event-history-other";
+    await createConnection(connectionId, true);
+    await createConnection(otherConnectionId, true);
+    const timestamp = new Date("2026-10-05T10:00:00.000Z");
+    const older = new Date("2026-10-04T10:00:00.000Z");
+    await db.insert(schema.provisioningEventTable).values([
+      {
+        id: "event-history-a",
+        identityConnectionId: connectionId,
+        kind: "user.created",
+        outcome: "succeeded",
+        detail: { privateNote: "never returned" },
+        actorType: "scim",
+        traceId: "private-trace-id",
+        createdAt: older,
+      },
+      {
+        id: "event-history-b",
+        identityConnectionId: connectionId,
+        kind: "group.member_added",
+        outcome: "succeeded",
+        detail: { internalReference: "not part of the read DTO" },
+        actorType: "scim",
+        createdAt: timestamp,
+      },
+      {
+        id: "event-history-c",
+        identityConnectionId: connectionId,
+        kind: "connection.changed",
+        outcome: "succeeded",
+        detail: { changed: ["enabled"] },
+        actorType: "person",
+        createdAt: timestamp,
+      },
+      {
+        id: "event-history-other",
+        identityConnectionId: otherConnectionId,
+        kind: "auth.failed",
+        outcome: "denied",
+        detail: {},
+        actorType: "oidc",
+        createdAt: timestamp,
+      },
+    ]);
+    await db.execute(sql`
+      update provisioning_event
+      set created_at = case id
+        when 'event-history-b' then '2026-10-05T10:00:00.000001Z'::timestamptz
+        when 'event-history-c' then '2026-10-05T10:00:00.000002Z'::timestamptz
+        else created_at
+      end
+      where id in ('event-history-b', 'event-history-c')
+    `);
+
+    const firstResponse = await app.request(
+      `/api/instance/identity-connections/${connectionId}/events?limit=2`,
+      { headers: { cookie: sessionCookie } },
+    );
+    expect(firstResponse.status).toBe(200);
+    const first = (await firstResponse.json()) as {
+      data: Array<Record<string, unknown>>;
+      page: { nextCursor: string | null; hasMore: boolean };
+    };
+    expect(first.data).toEqual([
+      {
+        kind: "connection.changed",
+        outcome: "succeeded",
+        actorType: "person",
+        createdAt: timestamp.toISOString(),
+      },
+      {
+        kind: "group.member_added",
+        outcome: "succeeded",
+        actorType: "scim",
+        createdAt: timestamp.toISOString(),
+      },
+    ]);
+    expect(first.page.hasMore).toBe(true);
+    expect(first.page.nextCursor).toBeTruthy();
+    expect(JSON.stringify(first)).not.toContain("event-history");
+    expect(JSON.stringify(first)).not.toContain("private-trace-id");
+    expect(JSON.stringify(first)).not.toContain("privateNote");
+    expect(JSON.stringify(first)).not.toContain("internalReference");
+
+    const nextResponse = await app.request(
+      `/api/instance/identity-connections/${connectionId}/events?limit=2&cursor=${encodeURIComponent(first.page.nextCursor ?? "")}`,
+      { headers: { cookie: sessionCookie } },
+    );
+    expect(nextResponse.status).toBe(200);
+    expect(await nextResponse.json()).toEqual({
+      data: [
+        {
+          kind: "user.created",
+          outcome: "succeeded",
+          actorType: "scim",
+          createdAt: older.toISOString(),
+        },
+      ],
+      page: { nextCursor: null, hasMore: false },
+    });
+
+    const wrongConnectionCursor = await app.request(
+      `/api/instance/identity-connections/${otherConnectionId}/events?cursor=${encodeURIComponent(first.page.nextCursor ?? "")}`,
+      { headers: { cookie: sessionCookie } },
+    );
+    expect(wrongConnectionCursor.status).toBe(400);
+    const malformedCursor = await app.request(
+      `/api/instance/identity-connections/${connectionId}/events?cursor=not-a-cursor`,
+      { headers: { cookie: sessionCookie } },
+    );
+    expect(malformedCursor.status).toBe(400);
+    const missingConnection = await app.request(
+      "/api/instance/identity-connections/missing/events",
+      { headers: { cookie: sessionCookie } },
+    );
+    expect(missingConnection.status).toBe(404);
+    const invalidLimit = await app.request(
+      `/api/instance/identity-connections/${connectionId}/events?limit=101`,
+      { headers: { cookie: sessionCookie } },
+    );
+    expect(invalidLimit.status).toBe(400);
+
+    const [ordinaryUser] = await db
+      .insert(schema.userTable)
+      .values({
+        id: "identity-event-history-non-admin",
+        name: "Non-admin reader",
+        email: "event-reader@example.test",
+        role: "member",
+      })
+      .returning();
+    if (!ordinaryUser) throw new Error("Reader fixture was not created");
+    await ensureStaffPersonForUser(ordinaryUser.id);
+    mockAuthenticatedSession(ordinaryUser);
+    const forbidden = await app.request(
+      `/api/instance/identity-connections/${connectionId}/events`,
+      {
+        headers: {
+          cookie: `__Host-tdk_agent_session=token-${ordinaryUser.id}`,
+        },
+      },
+    );
+    expect(forbidden.status).toBe(403);
+  });
+
   it("tags a session issued by the native OIDC callback with the exact source connection", async () => {
     await setupAdmin();
     const app = createApp().app;

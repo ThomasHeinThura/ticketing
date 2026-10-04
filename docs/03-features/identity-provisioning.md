@@ -719,8 +719,20 @@ It pages every eligible target and role, and submits the existing `mapping_creat
 `scim_admin_update` PA-15 operation. It never accepts a role, target, scope, or grant
 outside the exact `validateScimMappingRole` constraints used by those writes.
 
+The connection event ledger is read through
+`GET /api/instance/identity-connections/{id}/events`. It is instance-admin-only and
+requires the connection to exist; absent connections use the same `404` response. The
+query accepts an optional opaque version-1 cursor and `limit` (default 25, maximum 100),
+ordered descending by `(created_at, id)`. The cursor is bound to its connection. The
+response contains only `kind`, `outcome`, `actorType`, and `createdAt`, plus
+`page.nextCursor` and `page.hasMore`; it does not expose event ids, trace ids, event
+`detail`, or a total count. The existing persisted detail remains write-side evidence and
+is not part of this read contract. The UI follows the cursor in its registered route query
+state and renders only this safe projection.
+
 ```
 GET    /api/instance/identity-connections                         instance:admin
+GET    /api/instance/identity-connections/{id}/events             instance:admin      (safe provisioning events, cursor-paged)
 POST   /api/instance/identity-connections                         instance:admin  E
 PATCH  /api/instance/identity-connections/{id}                    instance:admin  E
 DELETE /api/instance/identity-connections/{id}                    instance:admin  E  (pending action — typed name + step-up)

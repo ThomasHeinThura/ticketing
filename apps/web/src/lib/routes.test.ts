@@ -4,6 +4,8 @@ import {
   buildGeneratedRouteUrl,
   DEFAULT_WORK_ITEM_LIST_SEARCH,
   parseGeneratedRouteUrl,
+  parseIdentityConnectionEventsSearch,
+  parseIdentityConnectionEventsSearchFromQueryString,
   parseServiceCalendarListSearchFromQueryString,
   parseSlaPolicyListSearch,
   parseWorkItemListSearch,
@@ -212,6 +214,21 @@ describe("routes.identityConnections", () => {
     expect(
       routes.identityConnectionSettings.build({ id: "connection/a" }),
     ).toBe("/god-mode/authentication/connection%2Fa");
+    const eventUrl = routes.identityConnectionSettings.build(
+      { id: "connection/a" },
+      { eventsCursor: "opaque/a+b" },
+    );
+    expect(eventUrl).toBe(
+      "/god-mode/authentication/connection%2Fa?eventsCursor=opaque%2Fa%2Bb",
+    );
+    expect(
+      parseIdentityConnectionEventsSearchFromQueryString(
+        eventUrl.split("?")[1] ?? "",
+      ),
+    ).toEqual({ eventsCursor: "opaque/a+b" });
+    expect(
+      parseIdentityConnectionEventsSearch({ eventsCursor: "x".repeat(513) }),
+    ).toEqual({ eventsCursor: undefined });
     expect(generatedRouteMetadata.agent).toContain(
       routes.identityConnections.path,
     );

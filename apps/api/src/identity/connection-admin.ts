@@ -4,7 +4,7 @@ import {
   parseIdentityClaimMapping,
   parseIdentityJitPolicy,
 } from "@taskdesk/domain";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import { appendStepUpAudit } from "../auth/step-up-audit";
@@ -86,6 +86,126 @@ const connectionListRoute = createRoute({
     ),
   },
 });
+
+const eventKinds = [
+  "user.created",
+  "user.updated",
+  "user.deactivated",
+  "user.reactivated",
+  "group.directory_changed",
+  "group.mapping_changed",
+  "group.member_added",
+  "group.member_removed",
+  "request.denied",
+  "auth.failed",
+  "token.rotated",
+  "token.revoked",
+  "connection.changed",
+  "sync.failed",
+] as const;
+
+const eventHistoryLimit = z.coerce.number().int().min(1).max(100).default(25);
+const eventHistoryQuery = z
+  .object({
+    cursor: z.string().min(1).max(512).optional(),
+    limit: eventHistoryLimit,
+  })
+  .strict();
+const eventSummary = z.object({
+  kind: z.enum(eventKinds),
+  outcome: z.string().min(1).max(64),
+  actorType: z.enum(["person", "scim", "oidc"]),
+  createdAt: z.string().datetime(),
+});
+const eventHistoryRoute = createRoute({
+  method: "get",
+  path: "/identity-connections/{id}/events",
+  operationId: "listIdentityConnectionEvents",
+  tags: ["Identity connections"],
+  summary: "List safe provisioning event summaries for an identity connection",
+  request: {
+    params: z.object({ id: z.string().min(1).max(128) }),
+    query: eventHistoryQuery,
+  },
+  responses: {
+    200: jsonResponse(
+      "Provisioning event summaries",
+      z.object({
+        data: z.array(eventSummary),
+        page: z.object({
+          nextCursor: z.string().nullable(),
+          hasMore: z.boolean(),
+        }),
+      }),
+    ),
+    400: jsonResponse(
+      "Invalid cursor or limit",
+      z.object({ message: z.string() }),
+    ),
+    403: jsonResponse("Forbidden", z.object({ message: z.string() })),
+    404: jsonResponse(
+      "Connection unavailable",
+      z.object({ message: z.string() }),
+    ),
+  },
+});
+
+type EventHistoryCursor = {
+  v: 1;
+  connectionId: string;
+  /** PostgreSQL UTC timestamp with six fractional digits, preserving the ordering key. */
+  createdAt: string;
+  id: string;
+};
+
+function encodeEventHistoryCursor(cursor: EventHistoryCursor) {
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+}
+
+function decodeEventHistoryCursor(
+  value: string | undefined,
+  connectionId: string,
+): EventHistoryCursor | null | false {
+  if (value === undefined) return null;
+  try {
+    if (!/^[A-Za-z0-9_-]{1,512}$/u.test(value)) return false;
+    const candidate: unknown = JSON.parse(
+      Buffer.from(value, "base64url").toString("utf8"),
+    );
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate))
+      return false;
+    const cursor = candidate as Record<string, unknown>;
+    if (
+      Object.keys(cursor).sort().join(",") !== "connectionId,createdAt,id,v" ||
+      cursor.v !== 1 ||
+      cursor.connectionId !== connectionId ||
+      typeof cursor.createdAt !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/u.test(
+        cursor.createdAt,
+      ) ||
+      typeof cursor.id !== "string" ||
+      cursor.id.length < 1 ||
+      cursor.id.length > 128
+    )
+      return false;
+    const createdAt = new Date(cursor.createdAt);
+    const parsed: EventHistoryCursor = {
+      v: 1,
+      connectionId,
+      createdAt: cursor.createdAt,
+      id: cursor.id,
+    };
+    if (
+      Number.isNaN(createdAt.getTime()) ||
+      createdAt.toISOString().slice(0, 23) !== cursor.createdAt.slice(0, 23) ||
+      encodeEventHistoryCursor(parsed) !== value
+    )
+      return false;
+    return parsed;
+  } catch {
+    return false;
+  }
+}
 
 const organisationIdentityRoute = createRoute({
   method: "get",
@@ -480,6 +600,91 @@ router.openapi(connectionListRoute, async (c) => {
       schema.identityConnectionTable.id,
     );
   return c.json({ data: rows.map((row) => toSafeConnection(row)) }, 200);
+});
+
+router.openapi(eventHistoryRoute, async (c) => {
+  c.header("Cache-Control", "no-store");
+  await requireCurrentInstanceAdmin(
+    c,
+    "GET",
+    "/api/instance/identity-connections/{id}/events",
+  );
+  const { id: connectionId } = c.req.valid("param");
+  const { cursor: cursorValue, limit } = c.req.valid("query");
+  const [connection] = await db
+    .select({ id: schema.identityConnectionTable.id })
+    .from(schema.identityConnectionTable)
+    .where(eq(schema.identityConnectionTable.id, connectionId))
+    .limit(1);
+  if (!connection) return c.json({ message: "Connection unavailable" }, 404);
+
+  const cursor = decodeEventHistoryCursor(cursorValue, connectionId);
+  if (cursor === false)
+    return c.json({ message: "Invalid cursor or limit" }, 400);
+  const after = cursor
+    ? or(
+        lt(
+          schema.provisioningEventTable.createdAt,
+          sql`${cursor.createdAt}::timestamptz`,
+        ),
+        and(
+          eq(
+            schema.provisioningEventTable.createdAt,
+            sql`${cursor.createdAt}::timestamptz`,
+          ),
+          lt(schema.provisioningEventTable.id, cursor.id),
+        ),
+      )
+    : undefined;
+  const conditions = [
+    eq(schema.provisioningEventTable.identityConnectionId, connectionId),
+  ];
+  if (after) conditions.push(after);
+  const rows = await db
+    .select({
+      id: schema.provisioningEventTable.id,
+      cursorCreatedAt: sql<string>`to_char(
+        ${schema.provisioningEventTable.createdAt} at time zone 'UTC',
+        'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+      )`,
+      kind: schema.provisioningEventTable.kind,
+      outcome: schema.provisioningEventTable.outcome,
+      actorType: schema.provisioningEventTable.actorType,
+      createdAt: schema.provisioningEventTable.createdAt,
+    })
+    .from(schema.provisioningEventTable)
+    .where(and(...conditions))
+    .orderBy(
+      desc(schema.provisioningEventTable.createdAt),
+      desc(schema.provisioningEventTable.id),
+    )
+    .limit(limit + 1);
+  const hasMore = rows.length > limit;
+  const pageRows = hasMore ? rows.slice(0, limit) : rows;
+  const last = pageRows.at(-1);
+  return c.json(
+    {
+      data: pageRows.map((row) => ({
+        kind: row.kind as (typeof eventKinds)[number],
+        outcome: row.outcome,
+        actorType: row.actorType as "person" | "scim" | "oidc",
+        createdAt: row.createdAt.toISOString(),
+      })),
+      page: {
+        nextCursor:
+          hasMore && last
+            ? encodeEventHistoryCursor({
+                v: 1,
+                connectionId,
+                createdAt: last.cursorCreatedAt,
+                id: last.id,
+              })
+            : null,
+        hasMore,
+      },
+    },
+    200,
+  );
 });
 
 router.openapi(organisationIdentityRoute, async (c) => {

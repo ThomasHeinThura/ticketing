@@ -1,16 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Button } from "@taskdesk/ui";
 import { IdentityConnectionEditor } from "@/components/god-mode/identity-connection-editor";
+import { IdentityConnectionEvents } from "@/components/god-mode/identity-connection-events";
 import { ScimMatchAttributesSettings } from "@/components/god-mode/scim-match-attributes-settings";
 import PageTitle from "@/components/page-title";
-import { routes } from "@/lib/routes";
+import { parseIdentityConnectionEventsSearch, routes } from "@/lib/routes";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/god-mode/authentication/$id",
-)({ component: IdentityConnectionEditorRoute });
+)({
+  validateSearch: parseIdentityConnectionEventsSearch,
+  component: IdentityConnectionEditorRoute,
+});
 
 function IdentityConnectionEditorRoute() {
   const { id } = Route.useParams();
+  const { eventsCursor } = Route.useSearch();
+  const navigate = Route.useNavigate();
   const creating = id === "new";
 
   return (
@@ -27,7 +33,20 @@ function IdentityConnectionEditorRoute() {
         Back to identity connections
       </Button>
       <IdentityConnectionEditor connectionId={creating ? null : id} />
-      {!creating ? <ScimMatchAttributesSettings connectionId={id} /> : null}
+      {!creating ? (
+        <>
+          <ScimMatchAttributesSettings connectionId={id} />
+          <IdentityConnectionEvents
+            connectionId={id}
+            cursor={eventsCursor}
+            onCursorChange={(nextCursor) =>
+              void navigate({
+                search: { eventsCursor: nextCursor },
+              })
+            }
+          />
+        </>
+      ) : null}
     </main>
   );
 }
