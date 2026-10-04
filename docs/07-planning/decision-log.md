@@ -5,6 +5,21 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-04 · Keep reviewed development delivery separate from protected acceptance
+
+**Decision:** apply Thomas's explicit OrbStack development deployment authorization to a
+reviewed implementation candidate with verified image boot, migration, health and real
+PostgreSQL/authentication evidence. Preserve data, runtime secrets, certificates and shadow
+mode; retain encrypted backups and source-bound deployment receipts. A development refresh
+makes implemented features available for UAT and does not certify protected merge, passing
+performance budgets, clean traffic dates, strict cutover or phase completion. Required
+reviews, exact-head checks and the Sol phase finalizer remain acceptance gates. Complete
+related performance/source fixes before one risk-sized bulk delta review; no comfort review
+is added for individual edits. This records the existing development authorization and
+implementation cadence, not a gate waiver.
+
+
+
 
 ### 2026-10-04 · Preserve canonical project reach when repairing native project reads
 
