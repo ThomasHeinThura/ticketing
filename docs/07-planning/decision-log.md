@@ -6,6 +6,18 @@ dependency choices, convention changes, scope calls, gate waivers.
 Newest first.
 
 
+### 2026-10-04 · Close the server lifecycle logging defect class structurally
+
+**Decision:** register finite `http.lifecycle_failure` in the observability log contract,
+using the existing HTTP module, fixed error level and failed result. HTTP startup/close/forced
+close errors must use a no-argument helper with no raw exceptions or context. Realtime retains
+its separate finite failure event. Preserve shutdown behavior and prove injected sensitive
+errors cannot escape through lifecycle catches. Add a structural regression rather than
+repeat narrow special-case fixes. This is an autonomous routine remediation under the user's
+complete-batch instruction, not a quality-gate waiver. The required independent Sol pass
+may close narrower instances after the structural correction under the standing review rule.
+
+
 ### 2026-10-04 · Complete native realtime invalidation and safe logging in one batch
 
 **Decision:** the documented internal `taskdesk:control` channel is the selected seam for

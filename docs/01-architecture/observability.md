@@ -51,6 +51,16 @@ bodies containing custom field values, attachment contents, or arbitrary excepti
 Log level is configurable at runtime in God Mode, per module, so debugging production
 does not require a restart.
 
+HTTP server lifecycle failures use the fixed `http.lifecycle_failure` message, module
+`http`, level `error` and result `failed`. This covers startup, graceful HTTP close and
+forced connection close failures. The lifecycle helper accepts no error or context argument;
+it emits no request route, duration, identifier, configuration, payload or exception text.
+It does not alter propagation, shutdown deadlines, forced-close decisions or completion.
+Structural and injected-failure regressions must reject raw exception serialization in the
+API server lifecycle; successful startup/shutdown messages may remain finite informational
+text. Realtime failures continue to use `realtime.failure`.
+
+
 ## P0 metrics contract (candidate implementation; not accepted runtime)
 
 P0 starts with bounded HTTP request metrics and the audit-write-failure counter below. The
@@ -120,7 +130,7 @@ that the accepted runtime serves them.
 Until implementation and verification, use the container, database and application logs in
 the [runbook](../05-operations/runbook.md).
 
-The finite structured log `msg` values are `http.request`, `auth.failure`,
+The finite structured log `msg` values are `http.request`, `http.lifecycle_failure`, `auth.failure`,
 `database.failure`, `jobs.failure`, `audit.write_failure`, `plugins.failure`,
 `realtime.failure`,
 `observability.config_refresh_failure`, and `observability.listener_bind_failure`.
