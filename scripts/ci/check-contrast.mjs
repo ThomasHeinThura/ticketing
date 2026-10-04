@@ -359,6 +359,24 @@ function classNameLiteralGroups(source) {
   return groups;
 }
 
+function wrappedFunctionInitializer(initializer) {
+  if (ts.isArrowFunction(initializer) || ts.isFunctionExpression(initializer))
+    return initializer;
+  if (
+    ts.isCallExpression(initializer) &&
+    ts.isIdentifier(initializer.expression) &&
+    initializer.expression.text === "memo"
+  ) {
+    const [wrapped] = initializer.arguments;
+    if (
+      wrapped &&
+      (ts.isArrowFunction(wrapped) || ts.isFunctionExpression(wrapped))
+    )
+      return wrapped;
+  }
+  return undefined;
+}
+
 function sourceUsesPair(source, foregroundClass, backgroundClass, theme) {
   for (const classText of classNameLiteralGroups(source)) {
     const classes = classText.split(/\s+/).map(parseClassToken);
@@ -970,6 +988,82 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
       ...new Map(tokens.map((token) => [token.className, token])).values(),
     ];
   }
+  function hasStateAttribute(node, sourceFile, attributeName, expectedValue) {
+    const attributes = ts.isJsxElement(node)
+      ? node.openingElement.attributes
+      : ts.isJsxSelfClosingElement(node)
+        ? node.attributes
+        : undefined;
+    if (!attributes) return false;
+    const matching = attributes.properties.filter(
+      (attribute) =>
+        ts.isJsxAttribute(attribute) &&
+        attribute.name.getText(sourceFile) === attributeName,
+    );
+    if (matching.length > 0)
+      return expectedValue === undefined
+        ? true
+        : matching.some((attribute) =>
+            attribute
+              .getText(sourceFile)
+              .includes(JSON.stringify(expectedValue)),
+          );
+    if (expectedValue !== undefined) return false;
+
+    // Base UI emits highlighted state on its menu item primitives. The source
+    // wrapper must import that primitive and forward its props to the host.
+    const tagName = ts.isJsxElement(node)
+      ? node.openingElement.tagName.getText(sourceFile)
+      : node.tagName.getText(sourceFile);
+    if (
+      attributeName === "data-highlighted" &&
+      /^MenuPrimitive\.(?:Item|CheckboxItem|RadioItem)$/u.test(tagName) &&
+      sourceFile
+        .getText(sourceFile)
+        .includes(
+          'import { Menu as MenuPrimitive } from "@base-ui/react/menu"',
+        ) &&
+      attributes.properties.some(
+        (attribute) =>
+          ts.isJsxSpreadAttribute(attribute) &&
+          attribute.expression.getText(sourceFile) === "props",
+      )
+    )
+      return true;
+    const sourcePath = path.relative(repoRoot, sourceFile.fileName);
+    const importedTarget = importsByPath.get(sourcePath)?.get(tagName);
+    const primitiveByWrapper = {
+      MenuItem: "Item",
+      MenuCheckboxItem: "CheckboxItem",
+      MenuRadioItem: "RadioItem",
+    };
+    const primitive =
+      importedTarget?.file === "packages/ui/src/components/menu.tsx"
+        ? primitiveByWrapper[importedTarget.symbol]
+        : undefined;
+    if (!primitive) return false;
+    const wrapperSource = requireFromWeb("node:fs").readFileSync(
+      path.join(repoRoot, importedTarget.file),
+      "utf8",
+    );
+    const wrapperStart = wrapperSource.search(
+      new RegExp(`function ${importedTarget.symbol}\\b`, "u"),
+    );
+    if (wrapperStart < 0) return false;
+    const wrapperTail = wrapperSource.slice(wrapperStart);
+    const nextWrapper = wrapperTail.slice(1).search(/\nfunction [A-Z]/u);
+    const wrapperBody =
+      nextWrapper < 0 ? wrapperTail : wrapperTail.slice(0, nextWrapper + 1);
+    return (
+      wrapperSource.includes(
+        'import { Menu as MenuPrimitive } from "@base-ui/react/menu"',
+      ) &&
+      new RegExp(
+        `<MenuPrimitive\\.${primitive}\\b[\\s\\S]*?\\{\\.\\.\\.props\\}`,
+        "u",
+      ).test(wrapperBody)
+    );
+  }
   function paintedBackgrounds(node, sourceFile) {
     const utility = classTokens(node, sourceFile).filter((entry) =>
       /^bg-[a-z0-9-]+(?:\/\d+)?$/u.test(entry.utility),
@@ -1015,6 +1109,27 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
     );
     if (!classAttribute) return [];
     const classSource = classAttribute.getText(sourceFile);
+    function supportsVariant(variant) {
+      if (["dark", "light", "hover", "active"].includes(variant)) return true;
+      if (/^(?:not-)?supports-\[backdrop-filter\]$/u.test(variant)) return true;
+      const state = variant.match(
+        /^(not-)?data-\[([a-z][a-z0-9-]*)=([a-z0-9_-]+)\]$/u,
+      );
+      if (!state) {
+        const attribute = variant.match(/^(not-)?(data-[a-z][a-z0-9-]*)$/u);
+        return (
+          attribute !== null &&
+          hasStateAttribute(node, sourceFile, attribute[2])
+        );
+      }
+      const [, , attributeName, expectedValue] = state;
+      return hasStateAttribute(
+        node,
+        sourceFile,
+        `data-${attributeName}`,
+        expectedValue,
+      );
+    }
     const options = new Map();
     let hasUnpainted = false;
     for (const group of classNameLiteralGroups(classSource)) {
@@ -1037,6 +1152,7 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
             className: `bg-${token}`,
             variants: [],
             utility: `bg-${token}`,
+            cssClass: className,
           });
       }
       if (backgrounds.length === 0) {
@@ -1053,6 +1169,8 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
         hasUnpainted = true;
       const groups = new Map();
       for (const background of backgrounds) {
+        if (background.variants.some((variant) => !supportsVariant(variant)))
+          return undefined;
         const state = background.variants
           .filter((variant) => variant !== "dark" && variant !== "light")
           .join(":");
@@ -1320,7 +1438,9 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
       return undefined;
     }
     const tail = source.slice(start);
-    const next = tail.search(/\n(?:function|const)\s+[A-Z][A-Za-z0-9_]*\b/u);
+    const next = tail.search(
+      /\n(?:export\s+default\s+)?(?:function|const)\s+[A-Z][A-Za-z0-9_]*\b/u,
+    );
     const body = next > 0 ? tail.slice(0, next) : tail;
     const surfaces = new Set();
     for (const match of body.matchAll(
@@ -1489,7 +1609,7 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
           node.parent?.parent?.parent === sourceFile &&
           node.name &&
           node.initializer &&
-          ts.isArrowFunction(node.initializer)
+          wrappedFunctionInitializer(node.initializer)
         ) {
           owningComponent = node.name.getText(sourceFile);
           currentJsxPath = [];
@@ -1634,17 +1754,20 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
             let importedSurfaceComponent;
             let importedSurfaceTarget;
             const importedTranslucentLayers = [];
-            const translucentAncestors = [];
+            let translucentAncestors = [];
+            let activeSurfaceBranches = [
+              { translucent: [], themes: ["light", "dark"] },
+            ];
+            let unsupportedAncestorSurface = false;
             for (const ancestor of [...jsxAncestors].reverse()) {
-              let ancestorBackgrounds = paintedBackgrounds(
+              const ancestorBackgrounds = paintedBackgroundOptions(
                 ancestor,
                 sourceFile,
-              ).filter((entry) => {
-                const name = entry.utility.match(
-                  /^bg-([a-z0-9-]+)(?:\/\d+)?$/u,
-                )?.[1];
-                return name && tokenNames.has(name);
-              });
+              );
+              if (ancestorBackgrounds === undefined) {
+                unsupportedAncestorSurface = true;
+                break;
+              }
               if (ancestorBackgrounds.length === 0) {
                 const tag = ts.isJsxElement(ancestor)
                   ? ancestor.openingElement.tagName.getText(sourceFile)
@@ -1654,69 +1777,71 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
                   ? callerWrapperSurface(ancestor, sourceFile, target)
                   : undefined;
                 if (!surface) continue;
-                ancestorBackgrounds = [
-                  {
-                    ...parseClassToken(surface),
-                    sourceChain: `${tag}->${target.file}:${target.symbol}`,
-                    sourceWrapper: tag,
-                    wrapper: tag,
-                    wrapperTarget: target,
-                  },
-                ];
+                const wrapperOption = {
+                  ...parseClassToken(surface),
+                  sourceChain: `${tag}->${target.file}:${target.symbol}`,
+                  sourceWrapper: tag,
+                  wrapper: tag,
+                  wrapperTarget: target,
+                };
+                const name = wrapperOption.utility.match(
+                  /^bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+                )?.[1];
+                if (!name || !tokenNames.has(name)) continue;
+                ancestorBackgrounds.push({
+                  ...wrapperOption,
+                  themes: wrapperOption.variants.includes("dark")
+                    ? ["dark"]
+                    : wrapperOption.variants.includes("light")
+                      ? ["light"]
+                      : ["light", "dark"],
+                });
               }
-              const supportedBackgrounds = ancestorBackgrounds.filter(
-                (entry) =>
-                  !entry.variants.some(
-                    (variant) =>
-                      variant !== "dark" &&
-                      variant !== "hover" &&
-                      variant !== "active",
-                  ) &&
-                  !entry.variants.includes("before") &&
-                  !entry.variants.includes("after"),
-              );
-              if (supportedBackgrounds.length !== ancestorBackgrounds.length) {
-                inheritedBackgrounds = [];
-                break;
-              }
-              const opaque = supportedBackgrounds.filter((entry) =>
-                isOpaqueBackgroundUtility(
-                  entry.className,
-                  translucentBackgroundTokens,
-                ),
-              );
-              const translucent = supportedBackgrounds.filter((entry) =>
-                isTranslucentBackgroundUtility(
-                  entry.className,
-                  translucentBackgroundTokens,
-                ),
-              );
-              const pendingAlphaCount = translucentAncestors.length;
-              if (opaque.length > 0) {
-                if (pendingAlphaCount > 0) {
-                  const nearestAlpha = translucentAncestors[0];
-                  inheritedBackgrounds.push({
-                    ...nearestAlpha,
-                    backdropLayers: [
-                      ...translucentAncestors
-                        .slice(1)
-                        .map((layer) => layer.className),
-                      ...opaque.map((layer) => layer.className),
-                    ],
-                    ...(nearestAlpha.sourceChain
-                      ? { sourceChain: nearestAlpha.sourceChain }
-                      : {}),
-                  });
-                } else {
-                  inheritedBackgrounds.push(...opaque);
+              const nextBranches = [];
+              for (const branch of activeSurfaceBranches) {
+                for (const background of ancestorBackgrounds) {
+                  const themes = branch.themes.filter((theme) =>
+                    background.themes.includes(theme),
+                  );
+                  if (themes.length === 0) continue;
+                  if (
+                    isOpaqueBackgroundUtility(
+                      background.className,
+                      translucentBackgroundTokens,
+                    )
+                  ) {
+                    if (branch.translucent.length > 0) {
+                      const nearestAlpha = branch.translucent[0];
+                      inheritedBackgrounds.push({
+                        ...nearestAlpha,
+                        themes,
+                        backdropLayers: [
+                          ...branch.translucent
+                            .slice(1)
+                            .map((layer) => layer.className),
+                          background.className,
+                        ],
+                      });
+                    } else {
+                      inheritedBackgrounds.push({ ...background, themes });
+                    }
+                  } else {
+                    nextBranches.push({
+                      translucent: [...branch.translucent, background],
+                      themes,
+                    });
+                  }
                 }
+                if (ancestorBackgrounds.hasUnpainted === true)
+                  nextBranches.push(branch);
               }
-              if (translucent.length > 0)
-                translucentAncestors.push(...translucent);
-              if (opaque.length > 0 && translucent.length === 0) break;
-              if (translucent.length > 0) continue;
-              if (opaque.length === 0) break;
+              activeSurfaceBranches = nextBranches;
+              if (activeSurfaceBranches.length === 0) break;
             }
+            if (unsupportedAncestorSurface) inheritedBackgrounds = [];
+            translucentAncestors = activeSurfaceBranches.flatMap(
+              (branch) => branch.translucent,
+            );
             if (inheritedBackgrounds.length === 0) {
               for (const ancestor of [...jsxAncestors].reverse()) {
                 const tag = ts.isJsxElement(ancestor)
@@ -1803,6 +1928,8 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
                 )?.[1];
                 if (!bgName) continue;
                 for (const theme of ["light", "dark"]) {
+                  if (background.themes && !background.themes.includes(theme))
+                    continue;
                   const key = contrastPairKey(
                     `--color-${fgName}`,
                     `--color-${bgName}`,
@@ -2061,7 +2188,7 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
             ts.isVariableDeclaration(node) &&
             node.name &&
             node.initializer &&
-            ts.isArrowFunction(node.initializer)
+            wrappedFunctionInitializer(node.initializer)
           ) {
             owner = node.name.getText(sourceFile);
             currentPath = [];
@@ -2147,8 +2274,7 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
           ts.isVariableDeclaration(node) &&
           node.name &&
           node.initializer &&
-          (ts.isArrowFunction(node.initializer) ||
-            ts.isFunctionExpression(node.initializer))
+          wrappedFunctionInitializer(node.initializer)
         )
           currentOwner = node.name.getText(sourceFile);
         const isElement =
@@ -2263,7 +2389,9 @@ export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
           (ts.isArrowFunction(node.initializer) ||
             ts.isFunctionExpression(node.initializer));
         if (namedFunction || variableFunction) {
-          const body = namedFunction ? node.body : node.initializer.body;
+          const body = namedFunction
+            ? node.body
+            : wrappedFunctionInitializer(node.initializer)?.body;
           if (body) {
             function findReturns(current) {
               if (ts.isReturnStatement(current) && current.expression) {
