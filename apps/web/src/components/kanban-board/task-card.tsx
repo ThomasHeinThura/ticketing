@@ -66,6 +66,11 @@ export type TaskCardDisplayPreferences = {
   showTaskItemCounts: boolean;
 };
 
+const EMPTY_TASK_ITEM_STATS = { total: 0, completed: 0 };
+const EMPTY_PULL_REQUESTS: NonNullable<Task["externalLinks"]> = [];
+const DEFAULT_DRAG_TRANSITION =
+  "transform 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94)";
+
 function TaskCard({
   task,
   disableDragDrop = false,
@@ -96,15 +101,14 @@ function TaskCard({
     showLabels,
     showTaskNumbers,
   } = displayPreferences;
-  const taskItemStats = useMemo(
-    () =>
-      displayPreferences.showTaskItemCounts
-        ? getTaskItemStats(task.description)
-        : null,
-    [displayPreferences.showTaskItemCounts, task.description],
-  );
+  const taskItemStats = useMemo(() => {
+    if (!displayPreferences.showTaskItemCounts) return null;
+    if (!task.description) return EMPTY_TASK_ITEM_STATS;
+    return getTaskItemStats(task.description);
+  }, [displayPreferences.showTaskItemCounts, task.description]);
 
   const pullRequests = useMemo(() => {
+    if (!task.externalLinks?.length) return EMPTY_PULL_REQUESTS;
     return (task.externalLinks ?? []).filter(
       (link) => link.resourceType === "pull_request",
     );
@@ -137,14 +141,16 @@ function TaskCard({
     };
   };
 
-  const style: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition:
-      transition || "transform 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-    opacity: isDragging ? 0.6 : 1,
-    touchAction: isDragging ? "none" : "auto",
-    zIndex: isDragging ? 999 : "auto",
-  };
+  const style: CSSProperties | undefined =
+    transform || isDragging
+      ? {
+          transform: CSS.Transform.toString(transform),
+          transition: transition || DEFAULT_DRAG_TRANSITION,
+          opacity: isDragging ? 0.6 : 1,
+          touchAction: isDragging ? "none" : "auto",
+          zIndex: isDragging ? 999 : "auto",
+        }
+      : undefined;
 
   const dueDate = showDueDates && task.dueDate ? new Date(task.dueDate) : null;
   const dueDateStatus = dueDate

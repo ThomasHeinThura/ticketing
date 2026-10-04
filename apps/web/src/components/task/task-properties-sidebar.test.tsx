@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type Task from "@/types/task";
@@ -143,7 +144,14 @@ function setup() {
     projectId: "project-1",
     workspaceId: "workspace-1",
   };
-  const view = render(<TaskPropertiesSidebar {...props} />);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  queryClient.setQueryData(["task", task.id], task);
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  const view = render(<TaskPropertiesSidebar {...props} />, { wrapper });
   return { props, ...view };
 }
 
@@ -179,5 +187,23 @@ describe("TaskPropertiesSidebar responsive controls", () => {
 
     expect(mocks.labelPopoverRender).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("status-popover")).toBeInTheDocument();
+  });
+
+  it("subscribes only to sidebar fields and the move-availability result", () => {
+    setup();
+
+    const taskSelector = mocks.useGetTask.mock.calls[0]?.[1] as (
+      value: Task,
+    ) => Record<string, unknown>;
+    const projectSelector = mocks.useGetProjects.mock.calls[0]?.[2] as (
+      value: Array<{ id: string }>,
+    ) => boolean;
+
+    expect(taskSelector(task)).not.toHaveProperty("description");
+    expect(taskSelector(task)).not.toHaveProperty("version");
+    expect(projectSelector([{ id: "project-1" }])).toBe(false);
+    expect(projectSelector([{ id: "project-1" }, { id: "project-2" }])).toBe(
+      true,
+    );
   });
 });

@@ -22,7 +22,7 @@ import { getStatusLabel } from "@/lib/i18n/domain";
 import type Task from "@/types/task";
 
 type TaskMovePopoverProps = {
-  task: Task;
+  task: Pick<Task, "id" | "projectId" | "status">;
   workspaceId: string;
   triggerClassName?: string;
 };

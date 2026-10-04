@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   KbdSequence,
@@ -7,6 +8,7 @@ import {
   TooltipTrigger,
 } from "@taskdesk/ui";
 import { Copy, GitBranch } from "lucide-react";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import useGetLabelsByTask from "@/hooks/queries/label/use-get-labels-by-task";
@@ -54,6 +56,37 @@ type TaskPropertiesSidebarProps = {
   compact?: boolean;
 };
 
+type TaskPropertiesSummary = Pick<
+  Task,
+  | "id"
+  | "projectId"
+  | "number"
+  | "title"
+  | "status"
+  | "priority"
+  | "userId"
+  | "assigneeId"
+  | "assigneeName"
+  | "startDate"
+  | "dueDate"
+>;
+
+function selectTaskPropertiesSummary(task: Task): TaskPropertiesSummary {
+  return {
+    id: task.id,
+    projectId: task.projectId,
+    number: task.number,
+    title: task.title,
+    status: task.status,
+    priority: task.priority,
+    userId: task.userId,
+    assigneeId: task.assigneeId,
+    assigneeName: task.assigneeName,
+    startDate: task.startDate,
+    dueDate: task.dueDate,
+  };
+}
+
 export default function TaskPropertiesSidebar({
   taskId,
   projectId,
@@ -64,9 +97,10 @@ export default function TaskPropertiesSidebar({
   compact = false,
 }: TaskPropertiesSidebarProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { data: fetchedTask } = useGetTask(
     taskId ?? "",
-    undefined,
+    selectTaskPropertiesSummary,
     !providedTask,
   );
   const { data: fetchedProject } = useGetProject({
@@ -74,6 +108,9 @@ export default function TaskPropertiesSidebar({
     workspaceId,
   });
   const task = providedTask ?? fetchedTask;
+  const taskForMutation =
+    providedTask ??
+    (task ? queryClient.getQueryData<Task>(["task", task.id]) : undefined);
   const project = providedProject ?? fetchedProject;
   const {
     data: columns = [],
@@ -82,9 +119,19 @@ export default function TaskPropertiesSidebar({
   } = useGetColumns(projectId);
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(workspaceId);
   const { data: taskLabels = [] } = useGetLabelsByTask(taskId ?? "");
-  const { data: workspaceProjects = [] } = useGetProjects({ workspaceId });
-  const canMoveTask =
-    Boolean(task) && workspaceProjects.some((p) => p.id !== task?.projectId);
+  const selectCanMoveTask = useCallback(
+    (workspaceProjects: Array<{ id: string }> | undefined) =>
+      Boolean(task?.projectId) &&
+      (workspaceProjects ?? []).some(
+        (workspaceProject) => workspaceProject.id !== task?.projectId,
+      ),
+    [task?.projectId],
+  );
+  const { data: canMoveTask = false } = useGetProjects(
+    { workspaceId },
+    true,
+    selectCanMoveTask,
+  );
   const projectSlug = project?.slug;
   const taskNumber = task?.number;
   // The per-project branch pattern came from the GitHub and Gitea integrations,
@@ -171,6 +218,7 @@ export default function TaskPropertiesSidebar({
 
             <TaskPropertiesControls
               task={task}
+              taskForMutation={taskForMutation}
               columns={columns}
               workspaceUsers={workspaceUsers}
               compact
@@ -295,6 +343,7 @@ export default function TaskPropertiesSidebar({
 
             <TaskPropertiesControls
               task={task}
+              taskForMutation={taskForMutation}
               columns={columns}
               workspaceUsers={workspaceUsers}
               compact={false}
