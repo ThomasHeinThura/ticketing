@@ -8,7 +8,7 @@ import {
   TooltipTrigger,
 } from "@taskdesk/ui";
 import { ArrowUp, Paperclip } from "lucide-react";
-import { useCallback, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
 import useCreateComment from "@/hooks/mutations/comment/use-create-comment";
@@ -20,7 +20,7 @@ type CommentInputProps = {
   taskId: string;
 };
 
-export default function CommentInput({ taskId }: CommentInputProps) {
+function CommentInput({ taskId }: CommentInputProps) {
   const { t } = useTranslation();
   const [content, setContent] = useState("");
   const [attachAction, setAttachAction] = useState<(() => void) | null>(null);
@@ -115,3 +115,5 @@ export default function CommentInput({ taskId }: CommentInputProps) {
     </div>
   );
 }
+
+export default memo(CommentInput);

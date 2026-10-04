@@ -64,7 +64,7 @@ export function ColumnDropzone({
         items={column.tasks}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 [contain:layout_style]">
           {column.tasks.map((task) => (
             <TaskCard
               key={task.id}
