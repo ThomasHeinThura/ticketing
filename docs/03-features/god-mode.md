@@ -254,6 +254,8 @@ inspectable. This is where "SMTP has been down for hours" is visible.
 Instance-wide feature flags, with a **lock** switch that prevents workspaces and projects
 from overriding. This is how editions are sold from one image. The flag list is
 [plugin-architecture.md § Feature toggles](../01-architecture/plugin-architecture.md#feature-toggles).
+The `GET/PATCH /api/instance/features` surface requires `instance:admin` and uses
+version-checked writes with an atomic audit record.
 
 ### Jobs
 

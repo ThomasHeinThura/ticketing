@@ -163,6 +163,10 @@ export const projectTableRelations = relations(
       fields: [projectTable.workspaceId],
       references: [workspaceTable.id],
     }),
+    organisation: one(organisationTable, {
+      fields: [projectTable.organisationId],
+      references: [organisationTable.id],
+    }),
     tasks: many(taskTable),
     assets: many(assetTable),
     columns: many(columnTable),
@@ -501,6 +505,7 @@ export const organisationTableRelations = relations(
   ({ one, many }) => ({
     quota: one(organisationQuotaTable),
     persons: many(personTable),
+    projects: many(projectTable),
   }),
 );
 

@@ -5,6 +5,60 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-04 · Bind customer-serving projects at creation
+
+Under the standing recommended-decision authorization, `project.organisation_id` is a
+nullable FK: null means internal; a non-null value names the one customer organisation
+served by that project. Project creation may choose an active organisation explicitly;
+general project updates cannot rebind it. Existing projects remain null/internal, with no
+inferred backfill. Intake acceptance requires the selected project to have the exact
+submission organisation binding and the same workspace as the pinned request-type version.
+
+This is an implementation contract, not review, merge, or phase acceptance.
+
+### 2026-10-04 · Pin request-type mapping in published submission versions
+
+Publishing a request type snapshots its form schema, work-item type, request-type SLA
+override, and default assignee in an immutable version. A submission uses the version it
+was created against; later edits do not remap queued work. Acceptance revalidates the
+snapshot's referenced type, policy and assignee in the same workspace and fails atomically
+if they are unavailable. The chosen work-item type supplies its workflow; request types do
+not add a workflow override. The accepted work item's SLA policy version is still selected
+using the existing SLA-1 precedence at its SLA start instant, with the original submission
+time preserved for accepted submissions.
+
+This is an implementation contract under the standing recommended-decision authorization,
+not review, merge, or phase acceptance.
+
+### 2026-10-04 · Implement persisted feature-toggle defaults and controls
+
+The three documented flag tables are the runtime source of truth and resolve
+project → workspace → instance → built-in default. Seed all enumerated features off except
+`feature.scim` and `feature.import`; import is on and locked at the instance level. Intake
+stays off until explicitly enabled by an administrator through settings. Instance,
+workspace, and project controls use versioned writes, with change audit in the same
+transaction; locked instance values reject lower-level writes with `409`. Disabled feature
+APIs return generic `404`, and UI navigation hides the feature. Flags do not grant route
+permissions. Browser code shares intake-only pure rules through the internal
+`@taskdesk/domain/intake` entrypoint; the web bundle must not import the Node-only package
+root.
+
+This is implementation direction under the standing recommended-decision authorization,
+not review, merge, or phase acceptance.
+
+### 2026-10-04 · Keep request-type route keys opaque and share intake rules with the portal
+
+**Decision:** under the standing authorization to implement recommended decisions, generate
+`request_type.key` as an immutable CUID2 value independent from the row id and unique across
+the instance. Return it in DTOs; reject it from create/update input. The web package may
+depend on the internal `@taskdesk/domain` workspace package only through its browser-safe
+`@taskdesk/domain/intake` export, so conditional form visibility has one implementation and
+the Node-only package-root audit exports never enter a browser bundle.
+
+This is an implementation contract, not review, merge, or phase acceptance.
+
+**Recorded by:** GPT-6 Luna implementation author, 2026-10-04.
+
 ### 2026-10-04 · Store SCIM directory groups separately from authorization mappings
 
 **Decision:** under the standing authorization to implement recommended decisions, represent
