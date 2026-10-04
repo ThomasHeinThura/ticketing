@@ -5,20 +5,45 @@ vi.mock("../../../apps/api/src/events", () => ({
   publishEvent: vi.fn(),
 }));
 
+const { logTaskDesk } = vi.hoisted(() => ({ logTaskDesk: vi.fn() }));
+const { handleNativeAuthorizationInvalidation } = vi.hoisted(() => ({
+  handleNativeAuthorizationInvalidation: vi.fn(),
+}));
+vi.mock("../../../apps/api/src/instance/observability/runtime", () => ({
+  logTaskDesk: (...args: unknown[]) => logTaskDesk(...args),
+}));
+vi.mock("../../../apps/api/src/ws/native-work-item-realtime", () => ({
+  deliverNativeBroadcast: vi.fn(),
+  handleNativeAuthorizationInvalidation: (...args: unknown[]) =>
+    handleNativeAuthorizationInvalidation(...args),
+  addNativeConnection: vi.fn(),
+  handleNativeFrame: vi.fn(),
+  reauthorizeNativeConnection: vi.fn(),
+  removeNativeConnection: vi.fn(),
+}));
+
 const publish = vi.fn();
 const listeners: Array<(p: string, c: string, d: string) => void> = [];
+const messageListeners: Array<(channel: string, data: string) => void> = [];
 const subscriber = {
   psubscribe: vi.fn().mockResolvedValue(undefined),
   punsubscribe: vi.fn().mockResolvedValue(undefined),
   subscribe: vi.fn().mockResolvedValue(undefined),
   unsubscribe: vi.fn().mockResolvedValue(undefined),
-  on: vi.fn((event: string, fn: (p: string, c: string, d: string) => void) => {
-    if (event === "pmessage") listeners.push(fn);
+  on: vi.fn((event: string, fn: (...args: string[]) => void) => {
+    if (event === "pmessage")
+      listeners.push(fn as (p: string, c: string, d: string) => void);
+    if (event === "message")
+      messageListeners.push(fn as (channel: string, data: string) => void);
   }),
   off: vi.fn(
     (_event: string, fn: (p: string, c: string, d: string) => void) => {
       const i = listeners.indexOf(fn);
       if (i >= 0) listeners.splice(i, 1);
+      const messageIndex = messageListeners.indexOf(
+        fn as (channel: string, data: string) => void,
+      );
+      if (messageIndex >= 0) messageListeners.splice(messageIndex, 1);
     },
   ),
 };
@@ -32,6 +57,7 @@ vi.mock("../../../apps/api/src/redis", () => ({
 
 import {
   addUserConnection,
+  broadcastNativeWorkItemHint,
   broadcastToUser,
   initializeWebSocketAdapter,
   removeUserConnection,
@@ -39,6 +65,7 @@ import {
 } from "../../../apps/api/src/ws/index";
 
 const USER_PATTERN = "taskdesk:ws-user:*:broadcast";
+const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
 
 function makeFakeWs() {
   return {
@@ -65,7 +92,11 @@ function emitUserBroadcast(payload: unknown, channelUserId = "user-1") {
 describe("broadcastToUser with the redis adapter", () => {
   beforeEach(async () => {
     publish.mockReset().mockResolvedValue(1);
+    logTaskDesk.mockClear();
+    consoleError.mockClear();
+    handleNativeAuthorizationInvalidation.mockReset();
     listeners.length = 0;
+    messageListeners.length = 0;
     await initializeWebSocketAdapter();
   });
 
@@ -90,7 +121,8 @@ describe("broadcastToUser with the redis adapter", () => {
   });
 
   it("still delivers locally when the publish fails", async () => {
-    publish.mockRejectedValue(new Error("redis is down"));
+    const sensitiveFailure = new Error("redis credential=do-not-log");
+    publish.mockRejectedValue(sensitiveFailure);
 
     const ws = makeFakeWs();
     const conn = addUserConnection("user-1", ws);
@@ -99,8 +131,74 @@ describe("broadcastToUser with the redis adapter", () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     expect(sendMock(ws)).toHaveBeenCalledTimes(1);
+    expect(logTaskDesk).toHaveBeenCalledWith({
+      module: "realtime",
+      message: "realtime.failure",
+      level: "error",
+      result: "failed",
+    });
+    expect(consoleError).not.toHaveBeenCalled();
 
     removeUserConnection("user-1", conn);
+  });
+
+  it("contains native publish failures to the finite realtime log event", async () => {
+    const sensitiveFailure = new Error("redis token=must-not-appear");
+    publish.mockRejectedValue(sensitiveFailure);
+
+    await broadcastNativeWorkItemHint({
+      projectId: "project-1",
+      topics: ["project:project-1"],
+      eventId: "event-1",
+      eventType: "work_item.updated",
+      at: new Date().toISOString(),
+      key: "project:project-1:work_item.updated:item-1",
+      customerVisible: false,
+    });
+
+    expect(logTaskDesk).toHaveBeenCalledWith({
+      module: "realtime",
+      message: "realtime.failure",
+      level: "error",
+      result: "failed",
+    });
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it("logs malformed subscriber messages without including payload data", async () => {
+    const sensitivePayload = '{"userId":"private-user","token":"do-not-log"';
+    for (const fn of [...listeners]) {
+      fn(USER_PATTERN, "taskdesk:ws-user:user-1:broadcast", sensitivePayload);
+    }
+
+    expect(logTaskDesk).toHaveBeenCalledWith({
+      module: "realtime",
+      message: "realtime.failure",
+      level: "error",
+      result: "failed",
+    });
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it("contains rejected async authorization invalidation handlers", async () => {
+    handleNativeAuthorizationInvalidation.mockRejectedValue(
+      new Error("session-cookie=do-not-log"),
+    );
+    for (const listener of [...messageListeners]) {
+      listener(
+        "taskdesk:control",
+        JSON.stringify({ type: "identity.invalidate", userId: "user-1" }),
+      );
+    }
+    await vi.waitFor(() => expect(logTaskDesk).toHaveBeenCalledTimes(1));
+
+    expect(logTaskDesk).toHaveBeenCalledWith({
+      module: "realtime",
+      message: "realtime.failure",
+      level: "error",
+      result: "failed",
+    });
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   it("ignores its own echo so the socket is written once", async () => {

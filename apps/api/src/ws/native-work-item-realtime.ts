@@ -2,13 +2,13 @@ import { and, eq, isNull } from "drizzle-orm";
 import type { WSContext } from "hono/ws";
 import { z } from "zod";
 import db, { schema } from "../database";
-import { logTaskDesk } from "../instance/observability/runtime";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 import type {
   NativeAuthorizationInvalidation,
   NativeBroadcastMessage,
 } from "./broadcast-adapter";
+import { logRealtimeFailure } from "./log-realtime-failure";
 
 type NativeCredential = {
   userId: string;
@@ -75,12 +75,7 @@ function send(connection: NativeConnection, message: Record<string, unknown>) {
     }
     connection.ws.send(JSON.stringify(message));
   } catch {
-    logTaskDesk({
-      module: "realtime",
-      message: "realtime.failure",
-      level: "error",
-      result: "failed",
-    });
+    logRealtimeFailure();
     connection.ws.close(1011, "realtime delivery failed");
   }
 }
@@ -299,12 +294,7 @@ export async function reauthorizeNativeConnection(
       }
     }
   } catch {
-    logTaskDesk({
-      module: "realtime",
-      message: "realtime.failure",
-      level: "error",
-      result: "failed",
-    });
+    logRealtimeFailure();
     connection.ws.close(1008, "session expired");
     removeNativeConnection(connection);
   }
