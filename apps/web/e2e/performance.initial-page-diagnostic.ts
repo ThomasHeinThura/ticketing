@@ -104,6 +104,142 @@ type InitialDocumentMetrics = {
   longTasks: Array<{ start: number; duration: number }>;
 };
 
+type BrowserTimelineEvent = {
+  name: string;
+  category: string;
+  phase: string;
+  startMicroseconds: number;
+  durationMicroseconds?: number;
+  stack?: Array<{
+    functionName: string;
+    asset: string;
+    line: number;
+  }>;
+};
+
+type RawTimelineEvent = {
+  name?: string;
+  cat?: string;
+  ph?: string;
+  ts?: number;
+  dur?: number;
+  args?: {
+    data?: {
+      url?: string;
+      scriptName?: string;
+      lineNumber?: number;
+      stackTrace?: {
+        callFrames?: Array<{
+          functionName?: string;
+          url?: string;
+          lineNumber?: number;
+        }>;
+      };
+    };
+  };
+};
+
+const TIMELINE_EVENT_NAMES = new Set([
+  "RunTask",
+  "FunctionCall",
+  "EvaluateScript",
+  "UpdateLayoutTree",
+  "RecalculateStyles",
+  "Layout",
+  "PrePaint",
+  "Paint",
+  "CompositeLayers",
+  "EventDispatch",
+  "FireAnimationFrame",
+  "LargestContentfulPaint::Candidate",
+  "ParseHTML",
+  "ParseAuthorStyleSheet",
+]);
+
+function safeTimelineAsset(value: string) {
+  try {
+    const parsed = new URL(value, ORIGIN);
+    return parsed.origin === ORIGIN && parsed.pathname.startsWith("/assets/")
+      ? path.posix.basename(parsed.pathname)
+      : "non-asset";
+  } catch {
+    return "non-asset";
+  }
+}
+
+function sanitizeTimelineEvent(
+  event: RawTimelineEvent,
+): BrowserTimelineEvent | undefined {
+  if (!event.name || !TIMELINE_EVENT_NAMES.has(event.name)) return undefined;
+  const data = event.args?.data;
+  const callFrames = data?.stackTrace?.callFrames;
+  const stack = Array.isArray(callFrames)
+    ? callFrames.slice(0, 12).map((frame) => ({
+        functionName: String(frame.functionName ?? "(anonymous)").slice(0, 120),
+        asset: safeTimelineAsset(String(frame.url ?? "")),
+        line: Number.isFinite(frame.lineNumber) ? frame.lineNumber + 1 : 0,
+      }))
+    : undefined;
+  return {
+    name: event.name,
+    category: String(event.cat ?? "").slice(0, 120),
+    phase: String(event.ph ?? ""),
+    startMicroseconds: Number(event.ts) || 0,
+    ...(Number.isFinite(event.dur) ? { durationMicroseconds: event.dur } : {}),
+    ...(stack?.length ? { stack } : {}),
+    ...(data?.url || data?.scriptName
+      ? {
+          source: {
+            asset: safeTimelineAsset(data.url ?? data.scriptName ?? ""),
+            line: Number.isFinite(data.lineNumber)
+              ? (data.lineNumber ?? 0) + 1
+              : 0,
+          },
+        }
+      : {}),
+  };
+}
+
+const WINDOW_PERFORMANCE_METRICS = [
+  "ScriptDuration",
+  "TaskDuration",
+  "LayoutDuration",
+  "RecalcStyleDuration",
+  "LayoutCount",
+  "RecalcStyleCount",
+  "Nodes",
+  "LayoutObjects",
+] as const;
+
+async function performanceMetricSnapshot(
+  cdp: import("playwright-core").CDPSession,
+) {
+  const { metrics } = await cdp.send("Performance.getMetrics");
+  return Object.fromEntries(
+    metrics
+      .filter((metric: { name: string }) =>
+        (WINDOW_PERFORMANCE_METRICS as readonly string[]).includes(metric.name),
+      )
+      .map((metric: { name: string; value: number }) => [
+        metric.name,
+        metric.value,
+      ]),
+  ) as Record<string, number>;
+}
+
+function metricDeltas(
+  before: Record<string, number>,
+  after: Record<string, number>,
+) {
+  return Object.fromEntries(
+    WINDOW_PERFORMANCE_METRICS.flatMap((name) =>
+      before[name] === undefined || after[name] === undefined
+        ? []
+        : [[name, after[name] - before[name]]],
+    ),
+  );
+}
+
 declare global {
   interface Window {
     __g11InitialDiagnostic?: {
@@ -233,11 +369,58 @@ async function getBuildIdentity(profileAssetNames: Set<string>) {
     .filter((file) => moduleMapSources[path.posix.basename(file)]?.length === 0)
     .map((file) => path.posix.basename(file))
     .sort();
+  const sourcePaths = execFileSync(
+    "git",
+    [
+      "ls-files",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+      "--",
+      "apps/web",
+      "packages/ui",
+      "packages/libs",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+    ],
+    { cwd: ROOT, encoding: "utf8" },
+  )
+    .split("\n")
+    .filter(Boolean)
+    .sort();
+  const sourceTreeHash = createHash("sha256");
+  for (const sourcePath of sourcePaths) {
+    sourceTreeHash.update(sourcePath).update("\0");
+    sourceTreeHash.update(await readFile(path.join(ROOT, sourcePath)));
+    sourceTreeHash.update("\0");
+  }
+  const workingTreeChanges = execFileSync(
+    "git",
+    [
+      "status",
+      "--porcelain",
+      "--untracked-files=all",
+      "--",
+      "apps/web",
+      "packages/ui",
+      "packages/libs",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+    ],
+    { cwd: ROOT, encoding: "utf8" },
+  )
+    .split("\n")
+    .filter(Boolean);
   return {
-    sourceSha: execFileSync("git", ["rev-parse", "HEAD"], {
+    sourceCommitSha: execFileSync("git", ["rev-parse", "HEAD"], {
       cwd: ROOT,
       encoding: "utf8",
     }).trim(),
+    sourceTreeSha256: sourceTreeHash.digest("hex"),
+    sourceTreeFileCount: sourcePaths.length,
+    workingTreeChanges,
     manifestSha256: digest(await readFile(manifestPath)),
     canonicalFixtureSha256: digest(
       await readFile(
@@ -310,6 +493,10 @@ type DiagnosticCapture = {
   profile: CpuProfile;
   metrics: InitialDocumentMetrics;
   network: ReturnType<typeof JSON.parse>;
+  browserPerformance: {
+    metrics: Record<string, number>;
+    timelineEvents: BrowserTimelineEvent[];
+  };
 };
 
 async function withDiagnosticProfile(
@@ -331,6 +518,20 @@ async function withDiagnosticProfile(
   const cdp = await context.newCDPSession(page);
   let profile: CpuProfile | undefined;
   let metrics: InitialDocumentMetrics | undefined;
+  let browserPerformance: DiagnosticCapture["browserPerformance"] | undefined;
+  const timelineEvents: BrowserTimelineEvent[] = [];
+  let timelineOverflow = false;
+  cdp.on("Tracing.dataCollected", ({ value }) => {
+    for (const event of value ?? []) {
+      const sanitized = sanitizeTimelineEvent(event);
+      if (!sanitized) continue;
+      if (timelineEvents.length >= 20_000) {
+        timelineOverflow = true;
+        continue;
+      }
+      timelineEvents.push(sanitized);
+    }
+  });
   await installPerformanceApiFixture(page);
   await page.addInitScript(() => {
     const state = {
@@ -382,25 +583,45 @@ async function withDiagnosticProfile(
       await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
     }
     await prepare(page);
+    await cdp.send("Performance.enable");
+    const beforeMetrics = await performanceMetricSnapshot(cdp);
     await cdp.send("Profiler.enable");
     await cdp.send("Profiler.start");
+    await cdp.send("Tracing.start", {
+      categories:
+        "devtools.timeline,v8.execute,blink.user_timing,disabled-by-default-devtools.timeline",
+      options: "record-as-much-as-possible",
+    });
     console.info(`G11 diagnostic phase started: ${name}`);
     await visit(page);
     const stopped = await cdp.send("Profiler.stop");
     profile = stopped.profile as CpuProfile;
+    const afterMetrics = await performanceMetricSnapshot(cdp);
+    const tracingComplete = new Promise<void>((resolve) =>
+      cdp.once("Tracing.tracingComplete", () => resolve()),
+    );
+    await cdp.send("Tracing.end");
+    await tracingComplete;
+    if (timelineOverflow)
+      throw new Error(`The ${name} browser timeline exceeded its event bound.`);
+    browserPerformance = {
+      metrics: metricDeltas(beforeMetrics, afterMetrics),
+      timelineEvents,
+    };
     metrics = await collectDocumentMetrics(page);
     console.info(`G11 diagnostic phase completed: ${name}`);
   } finally {
     await cdp.detach();
     await context.close();
   }
-  if (!profile || !metrics)
+  if (!profile || !metrics || !browserPerformance)
     throw new Error(`The ${name} diagnostic profile did not finish.`);
   return {
     name,
     profile,
     metrics,
     network: JSON.parse(networkCapture.finish()),
+    browserPerformance,
   };
 }
 
@@ -553,16 +774,18 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     ),
   );
   const build = await getBuildIdentity(profileAssetNames);
-  const profileWindows = captures.map(({ name, profile }) => ({
-    name,
-    topCpuFrames: sampledFrames(profile, build.modulesByAsset),
-    cpuProfileTree: sanitizeCpuProfile(profile),
-  }));
+  const profileWindows = captures.map(
+    ({ name, profile, browserPerformance }) => ({
+      name,
+      topCpuFrames: sampledFrames(profile, build.modulesByAsset),
+      cpuProfileTree: sanitizeCpuProfile(profile),
+      browserPerformance,
+    }),
+  );
   const initial = captures[0];
   const result = {
     schemaVersion: 2,
     diagnosticOnly: true,
-    capturedAfterCanonicalG11: true,
     fixture:
       "canonical G11 installPerformanceApiFixture (500 work items, 200 board cards)",
     sourceAndBuild: build,

@@ -30,7 +30,7 @@ export default function TaskDetailsSheetBody({
 }: TaskDetailsSheetBodyProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data: task } = useGetTask(taskId);
+  const { data: taskNumber } = useGetTask(taskId, (task) => task.number);
   const { data: project } = useGetProject({ id: projectId, workspaceId });
 
   const handleOpenFullPage = useCallback(() => {
@@ -49,7 +49,7 @@ export default function TaskDetailsSheetBody({
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-background shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-sm font-medium text-muted-foreground">
-            {project?.slug}-{task?.number}
+            {project?.slug}-{taskNumber}
           </span>
         </div>
         <div className="flex items-center gap-1">

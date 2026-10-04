@@ -1147,24 +1147,24 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-details-sheet.tsx::TaskDetailsSheet::Sheet[0]/SheetContent[0]/div[0]/div[1]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
-        "usage": "apps/web/src/components/task/task-details-sheet.tsx",
+        "id": "apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[1]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+        "usage": "apps/web/src/components/task/task-details-sheet-body.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[0]/div[1]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]>bg-background"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[0]/div[1]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]>bg-background"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-details-sheet.tsx::TaskDetailsSheet::Sheet[0]/SheetContent[0]/div[0]/div[1]/Button[0]::text-foreground#0",
-        "usage": "apps/web/src/components/task/task-details-sheet.tsx",
+        "id": "apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[1]/Button[0]::text-foreground#0",
+        "usage": "apps/web/src/components/task/task-details-sheet-body.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[0]/div[1]/Button[0]>bg-background"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[0]/div[1]/Button[0]>bg-background"
         ],
         "backdropLayers": []
       },
@@ -2120,24 +2120,24 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-details-sheet.tsx::TaskDetailsSheet::Sheet[0]/SheetContent[0]/div[0]/div[1]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
-        "usage": "apps/web/src/components/task/task-details-sheet.tsx",
+        "id": "apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[1]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+        "usage": "apps/web/src/components/task/task-details-sheet-body.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[0]/div[1]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]>bg-background"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[0]/div[1]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]>bg-background"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-details-sheet.tsx::TaskDetailsSheet::Sheet[0]/SheetContent[0]/div[0]/div[1]/Button[0]::text-foreground#0",
-        "usage": "apps/web/src/components/task/task-details-sheet.tsx",
+        "id": "apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[1]/Button[0]::text-foreground#0",
+        "usage": "apps/web/src/components/task/task-details-sheet-body.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[0]/div[1]/Button[0]>bg-background"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[0]/div[1]/Button[0]>bg-background"
         ],
         "backdropLayers": []
       },
@@ -3500,8 +3500,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -3511,8 +3511,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -3555,8 +3555,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -3566,8 +3566,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -3577,8 +3577,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -3588,8 +3588,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -3599,8 +3599,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -4467,8 +4467,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -4478,8 +4478,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -4522,8 +4522,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -4533,8 +4533,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -4544,8 +4544,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -4555,8 +4555,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -4566,8 +4566,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -6329,13 +6329,13 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-details-sheet.tsx::TaskDetailsSheet::Sheet[0]/SheetContent[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-details-sheet.tsx",
+        "id": "apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/task/task-details-sheet-body.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[0]/div[0]/span[0]>bg-background"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[0]/div[0]/span[0]>bg-background"
         ],
         "backdropLayers": []
       },
@@ -7675,13 +7675,13 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/task/task-details-sheet.tsx::TaskDetailsSheet::Sheet[0]/SheetContent[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
-        "usage": "apps/web/src/components/task/task-details-sheet.tsx",
+        "id": "apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "usage": "apps/web/src/components/task/task-details-sheet-body.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[0]/div[0]/span[0]>bg-background"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[0]/div[0]/span[0]>bg-background"
         ],
         "backdropLayers": []
       },
@@ -23388,8 +23388,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23399,8 +23399,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23410,8 +23410,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23421,8 +23421,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23432,8 +23432,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23443,8 +23443,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23454,8 +23454,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23465,8 +23465,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23476,8 +23476,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23574,8 +23574,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23585,8 +23585,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23596,8 +23596,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23607,8 +23607,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23618,8 +23618,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23629,8 +23629,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23640,8 +23640,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23651,8 +23651,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -23662,8 +23662,8 @@
         "surfaceContext": "caller-chain",
         "category": "body",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       },
@@ -38492,8 +38492,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       }
@@ -38524,8 +38524,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       }
@@ -39984,8 +39984,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       }
@@ -40016,8 +40016,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       }
@@ -41540,8 +41540,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       }
@@ -41572,8 +41572,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       }
@@ -43096,8 +43096,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       }
@@ -43128,8 +43128,8 @@
         "surfaceContext": "caller-chain",
         "category": "non-text",
         "chain": [
-          "apps/web/src/components/task/task-details-sheet.tsx:TaskDetailsSheet",
-          "jsx:Sheet[0]/SheetContent[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
+          "apps/web/src/components/task/task-details-sheet-body.tsx:TaskDetailsSheetBody",
+          "jsx:div[0]/div[1]/TaskPropertiesSidebar[0]:root-className"
         ],
         "backdropLayers": []
       }

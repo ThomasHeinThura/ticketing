@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Timeline } from "@taskdesk/ui";
 import { ArrowUpRight } from "lucide-react";
+import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import Activity from "@/components/activity";
 import CommentInput from "@/components/activity/comment-input";
@@ -26,7 +27,7 @@ type TaskDetailsContentProps = {
   dataTestId?: string;
 };
 
-export default function TaskDetailsContent({
+function TaskDetailsContent({
   taskId,
   projectId,
   workspaceId,
@@ -137,3 +138,5 @@ export default function TaskDetailsContent({
     </div>
   );
 }
+
+export default memo(TaskDetailsContent);

@@ -60,7 +60,17 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
     selectedTaskIds,
     toggleSelection,
     clearFocus,
-  } = useBulkSelectionStore();
+  } = useBulkSelectionStore(
+    useShallow((state) => ({
+      setAvailableTasks: state.setAvailableTasks,
+      focusNext: state.focusNext,
+      focusPrevious: state.focusPrevious,
+      focusedTaskId: state.focusedTaskId,
+      selectedTaskIds: state.selectedTaskIds,
+      toggleSelection: state.toggleSelection,
+      clearFocus: state.clearFocus,
+    })),
+  );
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [contextMenuTaskId, setContextMenuTaskId] = useState<string | null>(
     null,
