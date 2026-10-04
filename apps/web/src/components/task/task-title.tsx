@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Form, FormField } from "@taskdesk/ui";
-import { useCallback, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
@@ -12,10 +12,10 @@ import type Task from "@/types/task";
 
 type TaskTitleProps = {
   taskId: string;
-  task?: Task;
+  task?: Pick<Task, "title">;
 };
 
-export default function TaskTitle({ taskId, task }: TaskTitleProps) {
+function TaskTitle({ taskId, task }: TaskTitleProps) {
   const { t } = useTranslation();
   const { data: fetchedTitle } = useGetTask(
     taskId,
@@ -108,3 +108,5 @@ export default function TaskTitle({ taskId, task }: TaskTitleProps) {
     </Form>
   );
 }
+
+export default memo(TaskTitle);

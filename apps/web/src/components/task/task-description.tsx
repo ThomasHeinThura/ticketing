@@ -92,7 +92,7 @@ import "tippy.js/dist/tippy.css";
 
 type TaskDescriptionProps = {
   taskId: string;
-  task?: Task;
+  task?: Pick<Task, "description">;
 };
 
 type HoveredCodeBlock = {

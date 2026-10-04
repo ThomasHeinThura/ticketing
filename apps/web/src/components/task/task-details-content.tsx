@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Timeline } from "@taskdesk/ui";
 import { ArrowUpRight } from "lucide-react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import Activity from "@/components/activity";
 import CommentInput from "@/components/activity/comment-input";
@@ -22,7 +22,7 @@ import TaskSubtasks from "./task-subtasks";
 import TaskTitle from "./task-title";
 
 type TaskDetailsContentProps = {
-  taskId: string | undefined;
+  taskId: string;
   projectId: string;
   workspaceId: string;
   task?: Task;
@@ -31,6 +31,14 @@ type TaskDetailsContentProps = {
   className?: string;
   dataTestId?: string;
 };
+
+type TaskDetailsSummary = Pick<Task, "number" | "title" | "description">;
+
+export const selectTaskDetailsSummary = (task: Task): TaskDetailsSummary => ({
+  number: task.number,
+  title: task.title,
+  description: task.description,
+});
 
 function TaskDetailsContent({
   taskId,
@@ -44,13 +52,30 @@ function TaskDetailsContent({
 }: TaskDetailsContentProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data: fetchedTask } = useGetTask(taskId ?? "", undefined, !task);
+  const { data: fetchedTask } = useGetTask(
+    taskId ?? "",
+    selectTaskDetailsSummary,
+    !task,
+  );
   const { data: fetchedProject } = useGetProject({
     id: providedProject ? "" : projectId,
     workspaceId,
   });
   const currentTask = task ?? fetchedTask;
   const project = providedProject ?? fetchedProject;
+  const currentTitle = currentTask?.title;
+  const currentDescription = currentTask?.description;
+  const titleTask = useMemo(
+    () => (currentTitle === undefined ? undefined : { title: currentTitle }),
+    [currentTitle],
+  );
+  const descriptionTask = useMemo(
+    () =>
+      currentTitle === undefined
+        ? undefined
+        : { description: currentDescription ?? null },
+    [currentDescription, currentTitle],
+  );
   const { data: externalLinks = [], isLoading: isLoadingExternalLinks } =
     useExternalLinks(taskId ?? "");
   const { data: relations = [] } = useGetTaskRelations(taskId ?? "");
@@ -91,8 +116,8 @@ function TaskDetailsContent({
         <p className="text-xs font-semibold text-foreground">
           {project?.slug}-{currentTask?.number}
         </p>
-        <TaskTitle taskId={taskId} task={currentTask} />
-        <TaskDescription taskId={taskId} task={currentTask} />
+        <TaskTitle taskId={taskId} task={titleTask} />
+        <TaskDescription taskId={taskId} task={descriptionTask} />
       </div>
       {!isLoadingExternalLinks && externalLinks.length > 0 && (
         <div className="mt-4">
