@@ -6,6 +6,22 @@ dependency choices, convention changes, scope calls, gate waivers.
 Newest first.
 
 
+### 2026-10-04 · Serialize P2/P3 schema ownership and unaccepted migration composition
+
+**Decision:** implement the complete CAL-8/SLA read path after P3 explicitly yields the
+shared schema/migration contract. P2 appends candidate migration `0088` after its own
+unaccepted `0087`; it does not skip a journal sequence or import unfinished P3 migrations.
+P3 continues delegated identity/provisioning/UI work during this window and does not edit
+the shared schema/migration contract concurrently. These are branch-local candidate
+numbers, not accepted global migration history. Root composes protected acceptance in
+P0 → P2 → P3 order, resolving only the unaccepted colliding suffix through a normal
+forward commit and checking the actual accepted prefix before each integration. No
+accepted migration is rewritten and no unaccepted migration is applied to persistent
+development. This is implementation coordination under the authorized parallel program,
+not phase acceptance or a migration-gate waiver.
+
+
+
 ### 2026-10-04 · Resolve live calendar evaluation with immutable SLA policy versions
 
 **Decision:** under Thomas's standing authorization to implement recommended decisions,
