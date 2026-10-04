@@ -800,8 +800,8 @@
       "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[3]::text-foreground#0",
       "apps/web/src/components/search.tsx::Search::SidebarGroup[0]/button[0]::text-foreground#0",
       "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/DialogFooter[0]/div[0]/label[0]::hover:text-foreground#0",
-      "apps/web/src/components/task/task-details-sheet.tsx::TaskDetailsSheet::Sheet[0]/SheetContent[0]/div[0]/div[1]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
-      "apps/web/src/components/task/task-details-sheet.tsx::TaskDetailsSheet::Sheet[0]/SheetContent[0]/div[0]/div[1]/Button[0]::text-foreground#0",
+      "apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[1]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+      "apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[1]/Button[0]::text-foreground#0",
       "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/div[0]/span[0]::text-foreground#0",
       "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronDown[0]::text-foreground#0",
       "apps/web/src/main.tsx::RootCrashFallback::div[0]/div[0]/h1[0]::text-foreground#0",
@@ -834,13 +834,23 @@
       "apps/web/src/components/common/header/project-crumb-select.tsx::ProjectCrumbSelect::DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronsUpDown[0]::text-foreground#0",
       "apps/web/src/components/common/header/task-crumb-select.tsx::TaskCrumbSelect::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/common/header/workspace-crumb-select.tsx::WorkspaceCrumbSelect::Button[0]::text-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-foreground#0",
       "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]::text-foreground#0",
       "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]::hover:text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[2]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/p[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
       "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -1533,7 +1543,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -1773,8 +1783,8 @@
       "apps/web/src/components/project-list/projects-page.tsx::ProjectsPage::WorkspaceLayout[0]/DndContext[0]/Table[0]/TableHeader[0]/TableRow[0]/TableHead[3]::text-foreground#0",
       "apps/web/src/components/search.tsx::Search::SidebarGroup[0]/button[0]::text-foreground#0",
       "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/DialogFooter[0]/div[0]/label[0]::hover:text-foreground#0",
-      "apps/web/src/components/task/task-details-sheet.tsx::TaskDetailsSheet::Sheet[0]/SheetContent[0]/div[0]/div[1]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
-      "apps/web/src/components/task/task-details-sheet.tsx::TaskDetailsSheet::Sheet[0]/SheetContent[0]/div[0]/div[1]/Button[0]::text-foreground#0",
+      "apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[1]/TooltipProvider[0]/Tooltip[0]/TooltipTrigger[0]/Button[0]::text-foreground#0",
+      "apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[1]/Button[0]::text-foreground#0",
       "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/div[0]/span[0]::text-foreground#0",
       "apps/web/src/components/workspace-switcher.tsx::WorkspaceSwitcher::div[0]/SidebarMenu[0]/SidebarMenuItem[0]/DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronDown[0]::text-foreground#0",
       "apps/web/src/main.tsx::RootCrashFallback::div[0]/div[0]/h1[0]::text-foreground#0",
@@ -1807,13 +1817,23 @@
       "apps/web/src/components/common/header/project-crumb-select.tsx::ProjectCrumbSelect::DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronsUpDown[0]::text-foreground#0",
       "apps/web/src/components/common/header/task-crumb-select.tsx::TaskCrumbSelect::DropdownMenu[0]/DropdownMenuTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/common/header/workspace-crumb-select.tsx::WorkspaceCrumbSelect::Button[0]::text-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-foreground#0",
       "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]::text-foreground#0",
       "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]::hover:text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[0]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[1]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableHeader[0]/TableRow[0]/TableHead[2]::text-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/p[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0",
       "packages/ui/src/components/select.tsx::SelectPopup::SelectPrimitive.Portal[0]/SelectPrimitive.Positioner[0]/SelectPrimitive.Popup[0]::text-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -2506,7 +2526,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -2776,6 +2796,13 @@
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx::CustomRoleEditor::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/list-view/task-row.tsx::TaskRow::GitPullRequest[0]::text-muted-foreground#0",
       "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-labels-popover.tsx::TaskLabelsPopover::div[0]/div[0]/Search[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-labels-popover.tsx::TaskLabelsPopover::div[0]/div[1]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/theme-toggle-dropdown.tsx::ThemeToggleDropdown::div[0]/div[0]/span[0]::peer-data-[state=checked]:text-muted-foreground#0",
@@ -2788,6 +2815,9 @@
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
       "packages/ui/src/components/accordion.tsx::AccordionPanel::AccordionPrimitive.Panel[0]::text-muted-foreground#0",
       "packages/ui/src/components/sheet.tsx::SheetDescription::SheetPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/sheet.tsx::SheetDescription::SheetPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+      "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
       "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -3743,6 +3773,13 @@
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/settings/workspace/roles.tsx::CustomRoleEditor::div[0]/div[1]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/list-view/task-row.tsx::TaskRow::GitPullRequest[0]::text-muted-foreground#0",
       "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
+      "apps/web/src/components/account/notification-preferences-settings.tsx::ChannelToggle::div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-labels-popover.tsx::TaskLabelsPopover::div[0]/div[0]/Search[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-labels-popover.tsx::TaskLabelsPopover::div[0]/div[1]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/theme-toggle-dropdown.tsx::ThemeToggleDropdown::div[0]/div[0]/span[0]::peer-data-[state=checked]:text-muted-foreground#0",
@@ -3755,6 +3792,9 @@
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
       "packages/ui/src/components/accordion.tsx::AccordionPanel::AccordionPrimitive.Panel[0]::text-muted-foreground#0",
       "packages/ui/src/components/sheet.tsx::SheetDescription::SheetPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/sheet.tsx::SheetDescription::SheetPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
+      "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0",
       "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::hover:text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -4984,7 +5024,8 @@
         "chain": [
           "apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
           "jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]>bg-card"
-        ]
+        ],
+        "backdropLayers": []
       },
       {
         "id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
@@ -4994,7 +5035,8 @@
         "chain": [
           "apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
           "jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]>bg-card"
-        ]
+        ],
+        "backdropLayers": []
       },
       {
         "id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
@@ -5606,7 +5648,8 @@
         "chain": [
           "apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
           "jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[1]/div[0]/Button[0]>bg-card"
-        ]
+        ],
+        "backdropLayers": []
       },
       {
         "id": "apps/web/src/components/project/tasks-import-export.tsx::TasksImportExport::div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]::text-foreground#0",
@@ -5616,7 +5659,8 @@
         "chain": [
           "apps/web/src/components/project/tasks-import-export.tsx:TasksImportExport",
           "jsx:div[0]/Dialog[0]/DialogPopup[0]/div[0]/div[1]/div[2]/DialogClose[0]/Button[0]>bg-card"
-        ]
+        ],
+        "backdropLayers": []
       },
       {
         "id": "apps/web/src/components/shared/modals/archive-tasks-modal.tsx::ArchiveTasksModal::Dialog[0]/DialogContent[0]/div[0]/div[0]/DialogHeader[0]/DialogTitle[0]::text-foreground#0",
@@ -6112,7 +6156,7 @@
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/DialogFooter[0]/div[0]/label[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-details-sheet.tsx::TaskDetailsSheet::Sheet[0]/SheetContent[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/main.tsx::RootCrashFallback::div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -6160,14 +6204,17 @@
       "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormControl[0]/div[0]/button[0]::text-muted-foreground#0",
       "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/FormControl[0]/div[0]/button[0]::text-muted-foreground#0",
       "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]::text-muted-foreground#0",
+      "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]::text-muted-foreground#0",
       "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Trash2[0]::text-muted-foreground#0",
+      "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Trash2[0]::text-muted-foreground#0",
+      "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Archive[0]::text-muted-foreground#0",
       "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Archive[0]::text-muted-foreground#0",
       "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
       "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::div[0]/div[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/common/header/task-crumb-select.tsx::TaskCrumbSelect::DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronsUpDown[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[1]::text-muted-foreground#0",
@@ -6178,13 +6225,33 @@
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#1",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
+      "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
+      "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
       "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
       "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
       "packages/ui/src/components/frame.tsx::FrameDescription::div[0]::text-muted-foreground#0",
       "packages/ui/src/components/input-group.tsx::InputGroupText::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectButton::span[0]::in-data-placeholder:text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
       "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -6990,7 +7057,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -7001,7 +7068,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -7458,7 +7525,7 @@
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/FramePanel[0]/p[0]::text-muted-foreground#1",
       "apps/web/src/components/shared/modals/create-task-modal.tsx::CreateTaskModal::Dialog[0]/DialogContent[0]/form[0]/DialogFooter[0]/div[0]/label[0]::text-muted-foreground#0",
-      "apps/web/src/components/task/task-details-sheet.tsx::TaskDetailsSheet::Sheet[0]/SheetContent[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/task/task-details-sheet-body.tsx::TaskDetailsSheetBody::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/main.tsx::RootCrashFallback::div[0]/div[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/Loader2[0]::text-muted-foreground#0",
       "apps/web/src/routes/agent/_layout/_authenticated/dashboard/invitations.tsx::InvitationsPage::Layout[0]/Layout.Content[0]/div[0]/div[0]/p[0]::text-muted-foreground#0",
@@ -7506,14 +7573,17 @@
       "apps/web/src/components/auth/sign-in-form.tsx::SignInForm::Form[0]/form[0]/div[0]/FormField[1]/FormItem[0]/FormControl[0]/div[0]/button[0]::text-muted-foreground#0",
       "apps/web/src/components/auth/sign-up-form.tsx::SignUpForm::Form[0]/form[0]/div[0]/FormField[2]/FormItem[0]/FormControl[0]/div[0]/button[0]::text-muted-foreground#0",
       "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]::text-muted-foreground#0",
+      "apps/web/src/components/auth/toggle.tsx::AuthToggle::div[0]::text-muted-foreground#0",
       "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Trash2[0]::text-muted-foreground#0",
+      "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Trash2[0]::text-muted-foreground#0",
+      "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Archive[0]::text-muted-foreground#0",
       "apps/web/src/components/bulk-selection/bulk-toolbar.tsx::BulkToolbar::Archive[0]::text-muted-foreground#0",
       "apps/web/src/components/calendar/calendar-toolbar.tsx::CalendarToolbar::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/calendar/day-overflow-popover.tsx::DayOverflowPopover::Popover[0]/PopoverTrigger[0]::text-muted-foreground#0",
       "apps/web/src/components/calendar/month-grid.tsx::MonthGrid::div[0]/div[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/common/header/task-crumb-select.tsx::TaskCrumbSelect::DropdownMenu[0]/DropdownMenuTrigger[0]/ChevronsUpDown[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/list-view/index.tsx::ListView::div[0]/div[0]/button[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]/div[0]/div[1]::text-muted-foreground#0",
@@ -7524,13 +7594,33 @@
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[3]/Menu[0]/MenuTrigger[0]/Button[0]::text-muted-foreground#1",
       "apps/web/src/components/team/members-table.tsx::MembersTable::Table[0]/TableBody[0]/TableRow[0]/TableCell[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
+      "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
+      "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
       "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
       "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
       "packages/ui/src/components/frame.tsx::FrameDescription::div[0]::text-muted-foreground#0",
       "packages/ui/src/components/input-group.tsx::InputGroupText::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectButton::span[0]::in-data-placeholder:text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectValue::SelectPrimitive.Value[0]::data-placeholder:text-muted-foreground#0",
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
       "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -8336,7 +8426,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -8347,7 +8437,7 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -9254,6 +9344,15 @@
       "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0",
       "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
       "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
       "packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0"
     ],
@@ -10943,6 +11042,15 @@
       "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0",
       "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
+      "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
       "packages/ui/src/components/table.tsx::TableHead::th[0]::text-muted-foreground#0",
       "packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0"
     ],
@@ -13572,6 +13680,12 @@
       "apps/web/src/components/task/task-title.tsx::TaskTitle::Form[0]/FormField[0]/input[0]::text-foreground#0",
       "apps/web/src/components/task/task-title.tsx::TaskTitle::Form[0]/FormField[0]/input[0]::placeholder:text-foreground#0",
       "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
       "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0"
     ],
     "surfaceContext": "imported-opaque-wrapper",
@@ -14194,6 +14308,12 @@
       "apps/web/src/components/task/task-title.tsx::TaskTitle::Form[0]/FormField[0]/input[0]::text-foreground#0",
       "apps/web/src/components/task/task-title.tsx::TaskTitle::Form[0]/FormField[0]/input[0]::placeholder:text-foreground#0",
       "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteInput::div[0]::text-foreground#0",
       "packages/ui/src/components/field.tsx::FieldLabel::FieldPrimitive.Label[0]::text-foreground#0"
     ],
     "surfaceContext": "imported-opaque-wrapper",
@@ -14792,8 +14912,8 @@
       "apps/web/src/components/kanban-board/task-card-context-menu/task-card-context-menu-content.tsx::TaskCardContextMenuContent::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#1",
       "apps/web/src/components/kanban-board/task-card-context-menu/task-card-context-menu-content.tsx::TaskCardContextMenuContent::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#2",
       "apps/web/src/components/kanban-board/task-card-context-menu/task-card-context-menu-content.tsx::TaskCardContextMenuContent::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuItem[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
       "apps/web/src/components/keyboard-shortcuts-help.tsx::KeyboardShortcutsHelp::Dialog[0]/DialogContent[0]/div[0]/div[0]/div[0]/h3[0]::text-muted-foreground#0",
       "apps/web/src/components/keyboard-shortcuts-help.tsx::KeyboardShortcutsHelp::Dialog[0]/DialogContent[0]/div[1]::text-muted-foreground#0",
       "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
@@ -14903,31 +15023,103 @@
       "apps/web/src/components/task/task-subtasks.tsx::TaskSubtasks::Collapsible[0]/div[0]/Button[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-subtasks.tsx::TaskSubtasks::Collapsible[0]/CollapsibleContent[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+      "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
+      "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteGroupLabel::AutocompletePrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteGroupLabel::AutocompletePrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteGroupLabel::AutocompletePrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteGroupLabel::AutocompletePrimitive.GroupLabel[0]::text-muted-foreground#0",
       "packages/ui/src/components/autocomplete.tsx::AutocompleteGroupLabel::AutocompletePrimitive.GroupLabel[0]::text-muted-foreground#0",
       "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
+      "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
       "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
       "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0",
       "packages/ui/src/components/combobox.tsx::ComboboxGroupLabel::ComboboxPrimitive.GroupLabel[0]::text-muted-foreground#0",
       "packages/ui/src/components/combobox.tsx::ComboboxEmpty::ComboboxPrimitive.Empty[0]::text-muted-foreground#0",
       "packages/ui/src/components/combobox.tsx::ComboboxStatus::ComboboxPrimitive.Status[0]::text-muted-foreground#0",
       "packages/ui/src/components/command.tsx::CommandShortcut::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/command.tsx::CommandShortcut::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/command.tsx::CommandFooter::div[0]::text-muted-foreground#0",
       "packages/ui/src/components/command.tsx::CommandFooter::div[0]::text-muted-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuLabel::ContextMenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuShortcut::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/field.tsx::FieldDescription::FieldPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/form.tsx::FormDescription::p[0]::text-muted-foreground#0",
       "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuShortcut::kbd[0]::text-muted-foreground#0",
       "packages/ui/src/components/popover.tsx::PopoverDescription::PopoverPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectGroupLabel::SelectPrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0"
     ],
@@ -15150,25 +15342,25 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "body",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
           "HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "body",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]",
           "HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
         ],
         "backdropLayers": []
@@ -17546,8 +17738,8 @@
       "apps/web/src/components/kanban-board/task-card-context-menu/task-card-context-menu-content.tsx::TaskCardContextMenuContent::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#1",
       "apps/web/src/components/kanban-board/task-card-context-menu/task-card-context-menu-content.tsx::TaskCardContextMenuContent::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]::[&_svg]:text-muted-foreground#2",
       "apps/web/src/components/kanban-board/task-card-context-menu/task-card-context-menu-content.tsx::TaskCardContextMenuContent::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuItem[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
       "apps/web/src/components/keyboard-shortcuts-help.tsx::KeyboardShortcutsHelp::Dialog[0]/DialogContent[0]/div[0]/div[0]/div[0]/h3[0]::text-muted-foreground#0",
       "apps/web/src/components/keyboard-shortcuts-help.tsx::KeyboardShortcutsHelp::Dialog[0]/DialogContent[0]/div[1]::text-muted-foreground#0",
       "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
@@ -17657,31 +17849,103 @@
       "apps/web/src/components/task/task-subtasks.tsx::TaskSubtasks::Collapsible[0]/div[0]/Button[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-subtasks.tsx::TaskSubtasks::Collapsible[0]/CollapsibleContent[0]/p[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
+      "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#0",
       "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
+      "apps/web/src/lib/priority.tsx::getPriorityIcon::Minus[0]::text-muted-foreground#1",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/alert-dialog.tsx::AlertDialogDescription::AlertDialogPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/alert.tsx::AlertDescription::div[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteGroupLabel::AutocompletePrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteGroupLabel::AutocompletePrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteGroupLabel::AutocompletePrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteGroupLabel::AutocompletePrimitive.GroupLabel[0]::text-muted-foreground#0",
       "packages/ui/src/components/autocomplete.tsx::AutocompleteGroupLabel::AutocompletePrimitive.GroupLabel[0]::text-muted-foreground#0",
       "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteEmpty::AutocompletePrimitive.Empty[0]::text-muted-foreground#0",
+      "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
+      "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
       "packages/ui/src/components/breadcrumb.tsx::BreadcrumbList::ol[0]::text-muted-foreground#0",
       "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-muted-foreground#0",
       "packages/ui/src/components/combobox.tsx::ComboboxGroupLabel::ComboboxPrimitive.GroupLabel[0]::text-muted-foreground#0",
       "packages/ui/src/components/combobox.tsx::ComboboxEmpty::ComboboxPrimitive.Empty[0]::text-muted-foreground#0",
       "packages/ui/src/components/combobox.tsx::ComboboxStatus::ComboboxPrimitive.Status[0]::text-muted-foreground#0",
       "packages/ui/src/components/command.tsx::CommandShortcut::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/command.tsx::CommandShortcut::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/command.tsx::CommandFooter::div[0]::text-muted-foreground#0",
       "packages/ui/src/components/command.tsx::CommandFooter::div[0]::text-muted-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuLabel::ContextMenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuShortcut::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
+      "packages/ui/src/components/dialog.tsx::DialogDescription::DialogPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/field.tsx::FieldDescription::FieldPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/form.tsx::FormDescription::p[0]::text-muted-foreground#0",
       "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuGroupLabel::MenuPrimitive.GroupLabel[0]::text-muted-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuShortcut::kbd[0]::text-muted-foreground#0",
       "packages/ui/src/components/popover.tsx::PopoverDescription::PopoverPrimitive.Description[0]::text-muted-foreground#0",
       "packages/ui/src/components/select.tsx::SelectGroupLabel::SelectPrimitive.GroupLabel[0]::text-muted-foreground#0",
+      "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/shortcut-number.tsx::ShortcutNumber::span[0]::text-muted-foreground#0",
       "packages/ui/src/components/timeline.tsx::TimelineContent::div[0]::text-muted-foreground#0"
     ],
@@ -17904,25 +18168,25 @@
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "body",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]",
           "HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
         ],
         "backdropLayers": []
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "imported-opaque-wrapper",
         "category": "body",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/div[0]/span[1]",
           "HoverCardContent->packages/ui/src/components/preview-card.tsx:PreviewCardPopup>bg-popover"
         ],
         "backdropLayers": []
@@ -20301,6 +20565,8 @@
       "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
       "apps/web/src/components/activity/comment-card.tsx::CommentCard::TooltipProvider[0]/div[0]/div[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::hover:text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
+      "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
+      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -20598,6 +20864,8 @@
       "packages/ui/src/components/toast.tsx::AnchoredToasts::Toast.Portal[0]/Toast.Viewport[0]/Toast.Positioner[0]/Toast.Root[0]/Toast.Content[0]/div[0]/div[0]/Icon[0]::in-data-[type=error]:text-destructive#0",
       "apps/web/src/components/activity/comment-card.tsx::CommentCard::TooltipProvider[0]/div[0]/div[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::hover:text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
+      "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
+      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -21587,6 +21855,13 @@
       "apps/web/src/components/kanban-board/task-card-context-menu/task-card-context-menu-content.tsx::TaskCardContextMenuContent::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/subtask-assignee-popover.tsx::SubtaskAssigneePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-assignee-popover.tsx::TaskAssigneePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
       "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -21773,6 +22048,13 @@
       "apps/web/src/components/kanban-board/task-card-context-menu/task-card-context-menu-content.tsx::TaskCardContextMenuContent::ContextMenuContent[0]/ContextMenuSub[0]/ContextMenuSubContent[0]/ContextMenuCheckboxItem[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/subtask-assignee-popover.tsx::SubtaskAssigneePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/task/task-assignee-popover.tsx::TaskAssigneePopover::Popover[0]/PopoverContent[0]/div[0]/Button[0]/div[0]/span[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
+      "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0",
       "packages/ui/src/components/kbd.tsx::Kbd::kbd[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -21956,8 +22238,8 @@
       "light": "hover:bg-muted/50"
     },
     "occurrenceIds": [
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
       "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0"
@@ -21968,26 +22250,26 @@
     ],
     "occurrences": [
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]>hover:bg-muted/50"
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]>hover:bg-muted/50"
         ],
         "backdropLayers": [
           "bg-popover"
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]>hover:bg-muted/50"
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]>hover:bg-muted/50"
         ],
         "backdropLayers": [
           "bg-popover"
@@ -22051,8 +22333,8 @@
       "dark": "hover:bg-muted/50"
     },
     "occurrenceIds": [
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
       "apps/web/src/components/list-view/task-row.tsx::TaskRow::div[0]/ContextMenu[0]/ContextMenuTrigger[0]/div[0]/div[0]/div[0]/div[0]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
       "packages/ui/src/components/kbd.tsx::KbdSequence::KbdGroup[0]/span[0]/span[0]::text-muted-foreground#0"
@@ -22063,26 +22345,26 @@
     ],
     "occurrences": [
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]>hover:bg-muted/50"
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/div[0]>hover:bg-muted/50"
         ],
         "backdropLayers": [
           "bg-popover"
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "nearest-opaque-ancestor",
         "category": "body",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]>hover:bg-muted/50"
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardContent[0]/div[0]/button[0]/span[0]>hover:bg-muted/50"
         ],
         "backdropLayers": [
           "bg-popover"
@@ -23155,6 +23437,8 @@
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
       "apps/web/src/components/version-display.tsx::VersionDisplay::div[0]/a[0]::hover:text-foreground#0",
+      "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+      "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
       "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -23341,6 +23625,8 @@
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[1]/div[0]/TooltipProvider[0]/Tooltip[1]/TooltipTrigger[0]/Button[0]::text-foreground#0",
       "apps/web/src/components/task/task-properties-sidebar.tsx::TaskPropertiesSidebar::div[0]/div[0]/div[0]/div[0]/span[0]::text-foreground#0",
       "apps/web/src/components/version-display.tsx::VersionDisplay::div[0]/a[0]::hover:text-foreground#0",
+      "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
+      "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0",
       "packages/ui/src/components/tabs.tsx::TabsTab::TabsPrimitive.Tab[0]::data-active:text-foreground#0"
     ],
     "surfaceContext": "nearest-opaque-ancestor",
@@ -24194,6 +24480,8 @@
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/Button[0]::text-destructive#0",
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/Button[0]::hover:text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
+      "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
+      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
     ],
     "surfaceContext": "imported-opaque-wrapper",
@@ -24322,6 +24610,8 @@
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/Button[0]::text-destructive#0",
       "apps/web/src/components/settings/api-key-table.tsx::ApiKeyTable::Frame[0]/Table[0]/TableBody[0]/TableRow[0]/TableCell[4]/Button[0]::hover:text-destructive#0",
       "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
+      "packages/ui/src/components/form.tsx::FormLabel::Label[0]::text-destructive#0",
+      "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0",
       "packages/ui/src/components/form.tsx::FormMessage::p[0]::text-destructive#0"
     ],
     "surfaceContext": "imported-opaque-wrapper",
@@ -30093,17 +30383,54 @@
     },
     "occurrenceIds": [
       "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/combobox.tsx::ComboboxItem::ComboboxPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuSubTrigger::ContextMenuPrimitive.SubmenuTrigger[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuSubTrigger::ContextMenuPrimitive.SubmenuTrigger[0]::data-popup-open:text-accent-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuItem::ContextMenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/context-menu.tsx::ContextMenuItem::ContextMenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/context-menu.tsx::ContextMenuItem::ContextMenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/context-menu.tsx::ContextMenuItem::ContextMenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuCheckboxItem::ContextMenuPrimitive.CheckboxItem[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuRadioItem::ContextMenuPrimitive.RadioItem[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuCheckboxItem::MenuPrimitive.CheckboxItem[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuCheckboxItem::MenuPrimitive.CheckboxItem[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuRadioItem::MenuPrimitive.RadioItem[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuRadioItem::MenuPrimitive.RadioItem[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuRadioItem::MenuPrimitive.RadioItem[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuSubTrigger::MenuPrimitive.SubmenuTrigger[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuSubTrigger::MenuPrimitive.SubmenuTrigger[0]::data-popup-open:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0"
     ],
     "surfaceContext": "caller-chain",
@@ -30919,17 +31246,54 @@
     },
     "occurrenceIds": [
       "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/autocomplete.tsx::AutocompleteItem::AutocompletePrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/combobox.tsx::ComboboxItem::ComboboxPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuSubTrigger::ContextMenuPrimitive.SubmenuTrigger[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuSubTrigger::ContextMenuPrimitive.SubmenuTrigger[0]::data-popup-open:text-accent-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuItem::ContextMenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/context-menu.tsx::ContextMenuItem::ContextMenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/context-menu.tsx::ContextMenuItem::ContextMenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/context-menu.tsx::ContextMenuItem::ContextMenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuCheckboxItem::ContextMenuPrimitive.CheckboxItem[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/context-menu.tsx::ContextMenuRadioItem::ContextMenuPrimitive.RadioItem[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuCheckboxItem::MenuPrimitive.CheckboxItem[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuCheckboxItem::MenuPrimitive.CheckboxItem[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuRadioItem::MenuPrimitive.RadioItem[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuRadioItem::MenuPrimitive.RadioItem[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuRadioItem::MenuPrimitive.RadioItem[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuSubTrigger::MenuPrimitive.SubmenuTrigger[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuSubTrigger::MenuPrimitive.SubmenuTrigger[0]::data-popup-open:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
+      "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0",
       "packages/ui/src/components/select.tsx::SelectItem::SelectPrimitive.Item[0]::data-highlighted:text-accent-foreground#0"
     ],
     "surfaceContext": "caller-chain",
@@ -32082,6 +32446,19 @@
       "light": "data-highlighted:bg-accent"
     },
     "occurrenceIds": [
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0"
     ],
     "surfaceContext": "caller-chain",
@@ -32316,6 +32693,19 @@
       "dark": "data-highlighted:bg-accent"
     },
     "occurrenceIds": [
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
+      "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0",
       "packages/ui/src/components/menu.tsx::MenuItem::MenuPrimitive.Item[0]::data-[variant=destructive]:text-destructive-foreground#0"
     ],
     "surfaceContext": "caller-chain",
@@ -33114,7 +33504,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33159,7 +33549,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33204,7 +33594,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33249,7 +33639,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33293,7 +33683,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -33334,7 +33724,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -33494,7 +33884,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33513,7 +33903,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33532,7 +33922,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33579,7 +33969,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33598,7 +33988,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33617,7 +34007,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33664,7 +34054,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33683,7 +34073,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33702,7 +34092,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33749,7 +34139,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33768,7 +34158,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33787,7 +34177,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -33833,7 +34223,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -33849,7 +34239,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -33865,7 +34255,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -33908,7 +34298,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -33924,7 +34314,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -33940,7 +34330,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -33982,7 +34372,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -34027,7 +34417,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -34072,7 +34462,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -34117,7 +34507,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -34161,7 +34551,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -34202,7 +34592,7 @@
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:getPRInfo.icon",
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
+          "jsx:div[0]/div[1]/HoverCard[0]/HoverCardTrigger[0]/button[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -34556,6 +34946,11 @@
     "occurrenceIds": [
       "apps/web/src/components/activity/index.tsx::UserHoverName::HoverCard[0]/HoverCardTrigger[0]/span[0]::hover:text-primary#0",
       "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
       "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0"
     ],
     "surfaceContext": "caller-chain",
@@ -34667,6 +35062,11 @@
     "occurrenceIds": [
       "apps/web/src/components/activity/index.tsx::UserHoverName::HoverCard[0]/HoverCardTrigger[0]/span[0]::hover:text-primary#0",
       "packages/ui/src/components/circular-progress.tsx::CircularProgress::svg[0]/circle[0]::text-primary#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
+      "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0",
       "packages/ui/src/components/empty.tsx::EmptyDescription::div[0]::[&>a:hover]:text-primary#0"
     ],
     "surfaceContext": "caller-chain",
@@ -34931,8 +35331,8 @@
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[1]/button[0]/Archive[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[1]/button[0]/Plus[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
@@ -34991,7 +35391,7 @@
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -35007,7 +35407,7 @@
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -35090,8 +35490,8 @@
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[1]/button[0]/Archive[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[1]/button[0]/Plus[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
@@ -35150,7 +35550,7 @@
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -35166,7 +35566,7 @@
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -35249,8 +35649,8 @@
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[1]/button[0]/Archive[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[1]/button[0]/Plus[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
@@ -35309,7 +35709,7 @@
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -35325,7 +35725,7 @@
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -35408,8 +35808,8 @@
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[1]/button[0]/Archive[0]::text-muted-foreground#0",
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[1]/button[0]/Plus[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-muted-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
@@ -35468,7 +35868,7 @@
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -35484,7 +35884,7 @@
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/span[0]::text-muted-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -35565,7 +35965,7 @@
     },
     "occurrenceIds": [
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[0]/span[1]::text-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]::text-foreground#0"
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-foreground#0"
     ],
     "surfaceContext": "caller-chain",
     "backdropLayers": [
@@ -35589,7 +35989,7 @@
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -35622,7 +36022,7 @@
     },
     "occurrenceIds": [
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[0]/span[1]::text-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]::text-foreground#0"
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-foreground#0"
     ],
     "surfaceContext": "caller-chain",
     "backdropLayers": [
@@ -35646,7 +36046,7 @@
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -35679,7 +36079,7 @@
     },
     "occurrenceIds": [
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[0]/span[1]::text-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]::text-foreground#0"
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-foreground#0"
     ],
     "surfaceContext": "caller-chain",
     "backdropLayers": [
@@ -35703,7 +36103,7 @@
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -35736,7 +36136,7 @@
     },
     "occurrenceIds": [
       "apps/web/src/components/kanban-board/column/column-header.tsx::ColumnHeader::div[0]/div[0]/span[1]::text-foreground#0",
-      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]::text-foreground#0"
+      "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-foreground#0"
     ],
     "surfaceContext": "caller-chain",
     "backdropLayers": [
@@ -35760,7 +36160,7 @@
         ]
       },
       {
-        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]/div[0]::text-foreground#0",
+        "id": "apps/web/src/components/kanban-board/task-card.tsx::TaskCard::div[0]/div[0]/div[0]::text-foreground#0",
         "usage": "apps/web/src/components/kanban-board/task-card.tsx",
         "surfaceContext": "caller-chain",
         "category": "body",
@@ -37033,7 +37433,10 @@
     },
     "occurrenceIds": [
       "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "caller-chain",
@@ -37149,7 +37552,10 @@
     },
     "occurrenceIds": [
       "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Icon[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::CheckCircle2[0]::text-muted-foreground#0",
+      "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0",
       "apps/web/src/lib/column.tsx::getColumnIcon::Circle[0]::text-muted-foreground#0"
     ],
     "surfaceContext": "caller-chain",
@@ -37843,7 +38249,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -37887,7 +38293,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -37931,7 +38337,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -37975,7 +38381,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -38018,7 +38424,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -38058,7 +38464,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -39335,7 +39741,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -39379,7 +39785,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -39423,7 +39829,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -39467,7 +39873,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -39510,7 +39916,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -39550,7 +39956,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -40891,7 +41297,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -40935,7 +41341,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -40979,7 +41385,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -41023,7 +41429,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -41066,7 +41472,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -41106,7 +41512,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -42447,7 +42853,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -42491,7 +42897,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -42535,7 +42941,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -42579,7 +42985,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/components/kanban-board/column/index.tsx:Column",
           "jsx:div[0]/div[1]/ColumnDropzone[0]",
           "apps/web/src/components/kanban-board/index.tsx:KanbanBoard",
@@ -42622,7 +43028,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"
@@ -42662,7 +43068,7 @@
         "category": "non-text",
         "chain": [
           "apps/web/src/components/kanban-board/task-card.tsx:TaskCard",
-          "jsx:div[0]/div[0]/div[1]/span[0]",
+          "jsx:div[0]/div[1]/span[0]",
           "apps/web/src/routes/agent/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/board.tsx:RouteComponent",
           "jsx:ProjectLayout[0]/div[0]/div[0]/KanbanBoard[0]",
           "opaque-backdrop:bg-background"

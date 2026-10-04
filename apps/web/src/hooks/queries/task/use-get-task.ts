@@ -6,11 +6,12 @@ type TaskData = Awaited<ReturnType<typeof getTask>>;
 function useGetTask<TSelected = TaskData>(
   taskId: string,
   select?: (task: TaskData) => TSelected,
+  enabled = true,
 ) {
   return useQuery({
     queryKey: ["task", taskId],
     queryFn: ({ signal }) => getTask(taskId, signal),
-    enabled: Boolean(taskId),
+    enabled: enabled && Boolean(taskId),
     refetchOnMount: "always",
     staleTime: 0,
     select,

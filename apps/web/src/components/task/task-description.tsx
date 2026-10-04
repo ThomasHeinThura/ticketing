@@ -92,6 +92,7 @@ import "tippy.js/dist/tippy.css";
 
 type TaskDescriptionProps = {
   taskId: string;
+  task?: Task;
 };
 
 type HoveredCodeBlock = {
@@ -299,9 +300,11 @@ const SLASH_COMMANDS: SlashCommand[] = [
   },
 ];
 
-function TaskDescription({ taskId }: TaskDescriptionProps) {
+function TaskDescription({ taskId, task: providedTask }: TaskDescriptionProps) {
   const { t } = useTranslation();
-  const { data: description } = useGetTask(taskId, (task) => task.description);
+  const { data: fetchedTask } = useGetTask(taskId, undefined, !providedTask);
+  const task = providedTask ?? fetchedTask;
+  const description = task?.description;
   const queryClient = useQueryClient();
   const { mutateAsync: updateTaskDescription } = useUpdateTaskDescription();
   const { canUpdateTasks } = useWorkspacePermission();

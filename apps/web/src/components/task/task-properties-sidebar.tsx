@@ -18,6 +18,8 @@ import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-
 import { cn } from "@/lib/cn";
 import { resolveLabelColor } from "@/lib/label-color";
 import { toast } from "@/lib/toast";
+import type { Project } from "@/types/project";
+import type Task from "@/types/task";
 import TaskLabelsPopover from "./task-labels-popover";
 import TaskMovePopover from "./task-move-popover";
 import TaskPropertiesControls from "./task-properties-controls";
@@ -48,6 +50,8 @@ type TaskPropertiesSidebarProps = {
   taskId: string | undefined;
   projectId: string;
   workspaceId: string;
+  task?: Task;
+  project?: Project;
   className?: string;
   compact?: boolean;
 };
@@ -56,12 +60,23 @@ export default function TaskPropertiesSidebar({
   taskId,
   projectId,
   workspaceId,
+  task: providedTask,
+  project: providedProject,
   className,
   compact = false,
 }: TaskPropertiesSidebarProps) {
   const { t } = useTranslation();
-  const { data: task } = useGetTask(taskId ?? "");
-  const { data: project } = useGetProject({ id: projectId, workspaceId });
+  const { data: fetchedTask } = useGetTask(
+    taskId ?? "",
+    undefined,
+    !providedTask,
+  );
+  const { data: fetchedProject } = useGetProject({
+    id: providedProject ? "" : projectId,
+    workspaceId,
+  });
+  const task = providedTask ?? fetchedTask;
+  const project = providedProject ?? fetchedProject;
   const {
     data: columns = [],
     isLoading: columnsLoading,

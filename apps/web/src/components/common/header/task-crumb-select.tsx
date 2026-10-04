@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@taskdesk/ui";
 import { ChevronsUpDown } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 
@@ -26,7 +27,8 @@ export default function TaskCrumbSelect({
   onSelectTask,
 }: TaskCrumbSelectProps) {
   const { t } = useTranslation();
-  const { data: project } = useGetTasks(projectId);
+  const [open, setOpen] = useState(false);
+  const { data: project } = useGetTasks(projectId, open);
   const tasks = [
     ...(project?.columns?.flatMap((column) => column.tasks) ?? []),
     ...(project?.plannedTasks ?? []),
@@ -34,7 +36,7 @@ export default function TaskCrumbSelect({
   ];
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger
         render={
           <Button

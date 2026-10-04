@@ -12,14 +12,15 @@ import { useTranslation } from "react-i18next";
 import TaskCrumbSelect from "@/components/common/header/task-crumb-select";
 import Layout from "@/components/common/layout";
 import { shortcuts } from "@/constants/shortcuts";
-import useGetProject from "@/hooks/queries/project/use-get-project";
-import useGetTask from "@/hooks/queries/task/use-get-task";
 import { useProjectWebSocket } from "@/hooks/use-project-websocket";
 
 type TaskLayoutProps = {
   taskId: string;
   projectId: string;
   workspaceId: string;
+  projectName?: string;
+  projectSlug?: string;
+  taskNumber?: number | null;
   headerActions?: ReactNode;
   children: ReactNode;
   rightSidebar?: ReactNode;
@@ -29,29 +30,20 @@ export default function TaskLayout({
   taskId,
   projectId,
   workspaceId,
+  projectName,
+  projectSlug,
+  taskNumber,
   headerActions,
   children,
   rightSidebar,
 }: TaskLayoutProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data: project } = useGetProject(
-    { id: projectId, workspaceId },
-    (currentProject) => ({
-      name: currentProject.name,
-      slug: currentProject.slug,
-    }),
-  );
-  const { data: taskNumber } = useGetTask(
-    taskId,
-    (currentTask) => currentTask.number,
-  );
-
   useProjectWebSocket(projectId);
 
   const taskLabel =
-    project?.slug && taskNumber != null
-      ? `${project.slug}-${taskNumber}`
+    projectSlug && taskNumber != null
+      ? `${projectSlug}-${taskNumber}`
       : t("tasks:common.selectTask");
 
   const handleTaskSwitch = (nextTaskId: string) => {
@@ -102,7 +94,7 @@ export default function TaskLayout({
                   }
                   className="max-w-40 truncate text-left text-xs text-foreground hover:underline"
                 >
-                  {project?.name || t("navigation:sidebar.projects")}
+                  {projectName || t("navigation:sidebar.projects")}
                 </button>
                 <span className="text-foreground text-xs">/</span>
                 <TaskCrumbSelect

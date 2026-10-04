@@ -5,6 +5,7 @@ import {
   DragOverlay,
   type DragStartEvent,
   type DropAnimation,
+  defaultAnnouncements,
   defaultDropAnimationSideEffects,
   KeyboardSensor,
   MouseSensor,
@@ -13,6 +14,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
@@ -37,6 +39,19 @@ import type {
 } from "./task-card";
 import TaskCard, { TaskCardDeleteConfirmation } from "./task-card";
 import TaskCardContextMenuContent from "./task-card-context-menu/task-card-context-menu-content";
+
+const boardAnnouncements = {
+  ...defaultAnnouncements,
+  onDragOver({
+    active,
+    over,
+  }: Parameters<typeof defaultAnnouncements.onDragOver>[0]) {
+    if (over?.id === active.id) {
+      return defaultAnnouncements.onDragStart({ active });
+    }
+    return defaultAnnouncements.onDragOver({ active, over });
+  },
+};
 
 type KanbanBoardProps = {
   project: ProjectWithTasks;
@@ -187,7 +202,9 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
         tolerance: 10,
       },
     }),
-    useSensor(KeyboardSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   const dropAnimation: DropAnimation = {
@@ -204,6 +221,10 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id);
+  };
+
+  const handleDragCancel = () => {
+    setActiveId(null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -331,9 +352,11 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
 
   return (
     <DndContext
+      accessibility={{ announcements: boardAnnouncements }}
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
+      onDragCancel={handleDragCancel}
       onDragEnd={handleDragEnd}
     >
       <ContextMenu

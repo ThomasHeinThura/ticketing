@@ -8,12 +8,14 @@ import CommentInput from "@/components/activity/comment-input";
 import { isCommentActivity } from "@/components/activity/utils";
 import { ExternalLinksAccordion } from "@/components/external-links/external-links-accordion";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
-import useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
+import type useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
 import useExternalLinks from "@/hooks/queries/external-link/use-external-links";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetTask from "@/hooks/queries/task/use-get-task";
 import useGetTaskRelations from "@/hooks/queries/task-relation/use-get-task-relations";
 import type { ExternalLink } from "@/types/external-link";
+import type { Project } from "@/types/project";
+import type Task from "@/types/task";
 import TaskDescription from "./task-description";
 import TaskRelations from "./task-relations";
 import TaskSubtasks from "./task-subtasks";
@@ -23,6 +25,9 @@ type TaskDetailsContentProps = {
   taskId: string | undefined;
   projectId: string;
   workspaceId: string;
+  task?: Task;
+  project?: Project;
+  activities: NonNullable<ReturnType<typeof useGetActivitiesByTaskId>["data"]>;
   className?: string;
   dataTestId?: string;
 };
@@ -31,14 +36,21 @@ function TaskDetailsContent({
   taskId,
   projectId,
   workspaceId,
+  task,
+  project: providedProject,
+  activities,
   className,
   dataTestId,
 }: TaskDetailsContentProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data: taskNumber } = useGetTask(taskId ?? "", (task) => task.number);
-  const { data: project } = useGetProject({ id: projectId, workspaceId });
-  const { data: activities = [] } = useGetActivitiesByTaskId(taskId ?? "");
+  const { data: fetchedTask } = useGetTask(taskId ?? "", undefined, !task);
+  const { data: fetchedProject } = useGetProject({
+    id: providedProject ? "" : projectId,
+    workspaceId,
+  });
+  const currentTask = task ?? fetchedTask;
+  const project = providedProject ?? fetchedProject;
   const { data: externalLinks = [], isLoading: isLoadingExternalLinks } =
     useExternalLinks(taskId ?? "");
   const { data: relations = [] } = useGetTaskRelations(taskId ?? "");
@@ -77,10 +89,10 @@ function TaskDetailsContent({
           </button>
         )}
         <p className="text-xs font-semibold text-foreground">
-          {project?.slug}-{taskNumber}
+          {project?.slug}-{currentTask?.number}
         </p>
-        <TaskTitle taskId={taskId} />
-        <TaskDescription taskId={taskId} />
+        <TaskTitle taskId={taskId} task={currentTask} />
+        <TaskDescription taskId={taskId} task={currentTask} />
       </div>
       {!isLoadingExternalLinks && externalLinks.length > 0 && (
         <div className="mt-4">
