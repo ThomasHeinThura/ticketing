@@ -26,11 +26,14 @@ warning-only mode.
 enumeration lives in `packages/permissions/src/route-coverage.ts` and is shared. The job
 belongs in the **fast** stage, as a required check, alongside lint, typecheck and unit.
 
-The permission suite can run with either web output present or absent. `hostRoutingGuard`,
-CORS, compression, and origin-selected static serving are four unconditional registrations
-at `"ALL /*"`; `DECLARED_ROUTER_MIDDLEWARE` records that exact count. A missing selected root
-returns 503 only for document requests and does not change the route inventory or policy
-coverage.
+The permission suite constructs its router with explicit temporary static-root paths, so the
+presence of `apps/web/dist` cannot change route enumeration. The root resolver and app factory
+are also checked against both a real temporary build root and a missing root: the API route keys,
+route registrations, and middleware registrations stay the same. `requestMetricsMiddleware`,
+`hostRoutingGuard`, CORS, compression, and origin-selected static serving are five unconditional
+registrations at `"ALL /*"`; `DECLARED_ROUTER_MIDDLEWARE` records that exact count. A missing
+selected root returns 503 only for document requests; a built root serves its files through the
+same registered middleware.
 
 ## What fails the build
 

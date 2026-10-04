@@ -1,7 +1,10 @@
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   type CoverageBaseline,
+  collectMiddleware,
   collectRoutes,
   computeRouteCoverage,
   createPolicyRegistry,
@@ -65,10 +68,37 @@ describe("route coverage", () => {
     expect(routeCount).toBeGreaterThan(0);
   });
 
-  it("can enumerate the route registry without either web output on disk", async () => {
-    // Static serving is an unconditional declared middleware; absent roots become per-host
-    // 503 responses only when a document request reaches that handler.
-    await expect(loadResolvedStaticRoot()).resolves.toBeUndefined();
+  it("keeps route enumeration stable across built and missing static roots", async () => {
+    const builtRoot = mkdtempSync(
+      join(tmpdir(), "taskdesk-route-coverage-built-"),
+    );
+    writeFileSync(join(builtRoot, "index.html"), "fixture shell");
+
+    try {
+      await expect(
+        loadResolvedStaticRoot([join(builtRoot, "index.html")]),
+      ).resolves.toBeUndefined();
+      await expect(loadResolvedStaticRoot([builtRoot])).resolves.toBe(
+        builtRoot,
+      );
+
+      const [missingRootApp, builtRootApp] = await Promise.all([
+        loadApiApp(),
+        loadApiApp({
+          staticRoot: builtRoot,
+          portalStaticRoot: builtRoot,
+        }),
+      ]);
+      const missingRoutes = collectRoutes(missingRootApp);
+      const builtRoutes = collectRoutes(builtRootApp);
+      expect(builtRoutes).toEqual(missingRoutes);
+      expect(builtRootApp.routes).toHaveLength(missingRootApp.routes.length);
+      expect(collectMiddleware(builtRootApp)).toEqual(
+        collectMiddleware(missingRootApp),
+      );
+    } finally {
+      rmSync(builtRoot, { force: true, recursive: true });
+    }
   });
 
   it("finds the auth guard's own registration index in the real router", () => {
