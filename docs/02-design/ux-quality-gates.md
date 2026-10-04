@@ -26,7 +26,13 @@ Three checks wearing one number — they need three implementations, so they are
 - **G1c — the old directory stays empty.** `scripts/ci/check-ui.mjs` fails if
   `apps/web/src/components/ui` contains any entry after extraction, including ignored and
   untracked files. App-specific compositions live under `apps/web/src/components/`; shared
-  primitives live under `packages/ui`.
+  primitives live under `packages/ui`. The five former app files are not exceptions: the
+  API-aware avatar adapter is `apps/web/src/components/avatar/`, error display/fallback are
+  `apps/web/src/components/errors/`, the session-loading shell is
+  `apps/web/src/components/app-shell/`, and the error-test harness is the route-local
+  `/test-error` module. The route and imported composition remain functional at those
+  locations. This is the selected disposition for #403's five-file residue; it does not
+  approve app-owned primitives inside `packages/ui` or a non-empty legacy directory.
 
 **Why:** v1 hand-wrote every primitive and got inconsistency, missing icons and ad-hoc
 accessibility. See [ADR 0008](../01-architecture/adr/0008-single-design-system.md).
@@ -35,6 +41,13 @@ accessibility. See [ADR 0008](../01-architecture/adr/0008-single-design-system.m
 
 
 ### G2 · Tokens and density slots
+
+**Scope:** G2 enforces semantic color/token use and the registered density slots. It is not a
+repository-wide ban on Tailwind's arbitrary-value syntax, radius or z-index utilities. The
+existing design decision uses Tailwind's built-in spacing, type, shadow and z-index scales
+directly; only repeated rows, shared form fields and `CardPanel` have a density contract.
+This bounded scope is intentional and does not claim arbitrary spacing elsewhere has been
+normalized.
 
 **Fails on:** a hard-coded colour outside `packages/ui/src/styles/`, and on fixed vertical
 padding/gap utilities placed directly on a registered density slot. The shared classes
@@ -52,9 +65,14 @@ owns the class values and the slot inventory.
 ### G3 · Contrast
 
 **Fails on:** any declared, actually used foreground/background pair below WCAG AA in either
-theme, any used pair missing from the manifest, or a stale manifest entry with no observed
-source use. The source inventory currently registers shared Button, Badge, and Input variants;
-it does not claim repository-wide composition coverage.
+theme, any used pair missing from the manifest, a stale manifest entry with no observed
+source use, or a used foreground occurrence whose painted surface is not proven. The source
+inventory covers every shipped TSX/JSX product component and Storybook story under
+`apps/web/src` and `packages/ui/src`; unit-test and spec renderers are excluded because they
+do not establish shipped surface contexts. It follows actual component/caller surfaces,
+including aliases, nested render helpers, state branches and translucent ancestors. Each
+repeated occurrence is bound independently before equivalent numeric pairs are deduplicated.
+No Button/Badge/Input-only limitation remains.
 `packages/ui/src/styles/pairs.json` records token roles, category/threshold, theme coverage,
 usage owner, actual background class by theme, and effective opaque backdrop. The checker
 scans styled TSX/JSX sources under `packages/ui/src` and `apps/web/src`, so an unlisted used
