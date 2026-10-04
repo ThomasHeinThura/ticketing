@@ -36,6 +36,7 @@ import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import useCreateTaskRelation from "@/hooks/mutations/task-relation/use-create-task-relation";
 import useDeleteTaskRelation from "@/hooks/mutations/task-relation/use-delete-task-relation";
+import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import { useGetTasks } from "@/hooks/queries/task/use-get-tasks";
 import useGetTaskRelations from "@/hooks/queries/task-relation/use-get-task-relations";
@@ -79,7 +80,12 @@ function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
   >("related");
 
   const { data: relations = [] } = useGetTaskRelations(taskId);
-  const { data: projectData } = useGetTasks(projectId);
+  // The full project-task query is only needed while the relation picker is
+  // open. Keeping it active on the detail page makes every task-field update
+  // refresh and publish the entire project list, even though the closed panel
+  // only needs column metadata and the embedded relation rows.
+  const { data: projectData } = useGetTasks(projectId, commandOpen);
+  const { data: columns = [] } = useGetColumns(projectId);
   const { data: project } = useGetProject({ id: projectId, workspaceId });
   const { data: workspace } = useActiveWorkspace();
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
@@ -159,30 +165,14 @@ function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
   }, [projectData]);
 
   const finalStatusSlugs = useMemo(() => {
-    if (!projectData) return new Set<string>();
-    if ("columns" in projectData && Array.isArray(projectData.columns)) {
-      return new Set(
-        (projectData.columns as Array<{ id: string; isFinal?: boolean }>)
-          .filter((col) => col.isFinal)
-          .map((col) => col.id),
-      );
-    }
-    return new Set<string>();
-  }, [projectData]);
+    return new Set(
+      columns.filter((column) => column.isFinal).map((column) => column.id),
+    );
+  }, [columns]);
 
   const columnIconBySlug = useMemo(() => {
-    const icons = new Map<string, string | null | undefined>();
-    if (!projectData) return icons;
-    if ("columns" in projectData && Array.isArray(projectData.columns)) {
-      for (const col of projectData.columns as Array<{
-        id: string;
-        icon?: string | null;
-      }>) {
-        icons.set(col.id, col.icon);
-      }
-    }
-    return icons;
-  }, [projectData]);
+    return new Map(columns.map((column) => [column.id, column.icon]));
+  }, [columns]);
 
   const filteredTasks = allTasks.filter(
     (t) => !existingRelatedTaskIds.has(t.id),
