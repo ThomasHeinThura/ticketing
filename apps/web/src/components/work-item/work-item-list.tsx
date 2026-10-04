@@ -401,26 +401,18 @@ function WorkItemList({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="work-item-list-cell-content">
-                    {item.unavailableFields.includes("dueDate") ? (
-                      <UnavailableField field="dueDate" t={t} />
-                    ) : item.dueDate ? (
-                      formatDateShort(item.dueDate)
-                    ) : (
-                      noDueDateLabel
-                    )}
-                  </div>
+                  {item.unavailableFields.includes("dueDate") ? (
+                    <UnavailableField field="dueDate" t={t} />
+                  ) : item.dueDate ? (
+                    formatDateShort(item.dueDate)
+                  ) : (
+                    noDueDateLabel
+                  )}
                 </TableCell>
                 <TableCell>
-                  <div className="work-item-list-cell-content">
-                    <Badge variant="outline">{item.stateName}</Badge>
-                  </div>
+                  <Badge variant="outline">{item.stateName}</Badge>
                 </TableCell>
-                <TableCell>
-                  <div className="work-item-list-cell-content">
-                    {assigneeLabel(item, assigneeLabels)}
-                  </div>
-                </TableCell>
+                <TableCell>{assigneeLabel(item, assigneeLabels)}</TableCell>
               </TableRow>
             );
           })}

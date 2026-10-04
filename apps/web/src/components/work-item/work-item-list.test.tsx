@@ -259,7 +259,7 @@ describe("WorkItemList", () => {
       screen
         .getByTestId("work-item-list-populated")
         .querySelectorAll(".work-item-list-cell-content"),
-    ).toHaveLength(3_000);
+    ).toHaveLength(1_500);
     expect(screen.getAllByRole("link")).toHaveLength(1_000);
     expect(screen.getAllByText("workItems:list.noDueDate")).toHaveLength(500);
     expect(screen.getAllByText("workItems:list.unassigned")).toHaveLength(500);

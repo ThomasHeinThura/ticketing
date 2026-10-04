@@ -35,7 +35,14 @@ export function useUpdateTaskStatus() {
 
       const fetchStatus = queryClient.getQueryState(queryKey)?.fetchStatus;
       if (!fetchStatus || fetchStatus === "idle") return applyUpdate();
-      return queryClient.cancelQueries({ queryKey }).then(applyUpdate);
+
+      // Query cancellation aborts the current fetch synchronously. Start it before
+      // writing so a late response cannot replace this optimistic status, but do not
+      // make the visible update wait for the transport to settle after its signal is
+      // already aborted. Keep the mutation request ordered after cancellation settles.
+      const cancellation = queryClient.cancelQueries({ queryKey });
+      const context = applyUpdate();
+      return cancellation.then(() => context);
     },
     onError: (_error, task, context) => {
       const previousStatus = context?.previousStatus;

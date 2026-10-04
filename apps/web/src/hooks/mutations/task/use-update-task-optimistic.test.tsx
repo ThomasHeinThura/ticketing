@@ -190,4 +190,98 @@ describe("optimistic legacy task updates", () => {
       "in-progress",
     );
   });
+
+  it("shows the optimistic status while a canceled detail transport is still pending", async () => {
+    let resolveFetch!: (value: Task) => void;
+    let resolveMutation!: (
+      value: Awaited<ReturnType<typeof updateTaskStatus>>,
+    ) => void;
+    let fetchSignal: AbortSignal | undefined;
+    vi.mocked(updateTaskStatus).mockImplementation(
+      () => new Promise((resolve) => (resolveMutation = resolve)),
+    );
+    const { result, queryClient } = setup();
+    const pendingFetch = queryClient.fetchQuery({
+      queryKey: ["task", task.id],
+      queryFn: ({ signal }) => {
+        fetchSignal = signal;
+        return new Promise<Task>((resolve) => {
+          resolveFetch = resolve;
+        });
+      },
+    });
+    void pendingFetch.catch(() => undefined);
+    await waitFor(() => {
+      expect(queryClient.isFetching({ queryKey: ["task", task.id] })).toBe(1);
+    });
+
+    let statusRequest!: Promise<unknown>;
+    act(() => {
+      statusRequest = result.current.status.mutateAsync({
+        ...task,
+        status: "in-progress",
+      });
+    });
+
+    expect(fetchSignal?.aborted).toBe(true);
+    expect(queryClient.getQueryData<Task>(["task", task.id])).toEqual({
+      ...task,
+      status: "in-progress",
+    });
+    await waitFor(() => expect(updateTaskStatus).toHaveBeenCalledOnce());
+
+    resolveFetch({ ...task, title: "Late stale response" });
+    await Promise.resolve();
+    expect(queryClient.getQueryData<Task>(["task", task.id])).toEqual({
+      ...task,
+      status: "in-progress",
+    });
+
+    resolveMutation({} as never);
+    await statusRequest;
+    expect(queryClient.getQueryData<Task>(["task", task.id])).toEqual({
+      ...task,
+      status: "in-progress",
+    });
+  });
+
+  it("rolls back after a failed status write without accepting a late canceled read", async () => {
+    let resolveFetch!: (value: Task) => void;
+    let fetchSignal: AbortSignal | undefined;
+    vi.mocked(updateTaskStatus).mockRejectedValue(
+      new Error("status update failed"),
+    );
+    const { result, queryClient } = setup();
+    const pendingFetch = queryClient.fetchQuery({
+      queryKey: ["task", task.id],
+      queryFn: ({ signal }) => {
+        fetchSignal = signal;
+        return new Promise<Task>((resolve) => {
+          resolveFetch = resolve;
+        });
+      },
+    });
+    void pendingFetch.catch(() => undefined);
+    await waitFor(() => {
+      expect(queryClient.isFetching({ queryKey: ["task", task.id] })).toBe(1);
+    });
+
+    let statusRequest!: Promise<unknown>;
+    act(() => {
+      statusRequest = result.current.status.mutateAsync({
+        ...task,
+        status: "in-progress",
+      });
+    });
+
+    expect(fetchSignal?.aborted).toBe(true);
+    expect(queryClient.getQueryData<Task>(["task", task.id])?.status).toBe(
+      "in-progress",
+    );
+    await expect(statusRequest).rejects.toThrow("status update failed");
+
+    resolveFetch({ ...task, title: "Late stale response" });
+    await Promise.resolve();
+    expect(queryClient.getQueryData<Task>(["task", task.id])).toEqual(task);
+  });
 });
