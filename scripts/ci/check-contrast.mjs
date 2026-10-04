@@ -405,6 +405,25 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
       );
       continue;
     }
+    if (Array.isArray(pair.occurrenceIds) && Array.isArray(pair.occurrences)) {
+      const occurrenceIds = [
+        ...new Set(pair.occurrences.map((occurrence) => occurrence?.id)),
+      ];
+      if (
+        occurrenceIds.some((id) => typeof id !== "string") ||
+        pair.occurrenceIds.length !== occurrenceIds.length ||
+        pair.occurrenceIds.some(
+          (id, position) => id !== occurrenceIds[position],
+        )
+      ) {
+        failures.push(
+          violation(
+            manifestPath,
+            `${label} occurrenceIds must match the first-seen unique IDs in occurrences.`,
+          ),
+        );
+      }
+    }
     const expectedRatio = pair.category === "body" ? 4.5 : 3;
     if (
       !["body", "large-text", "non-text"].includes(pair.category) ||
