@@ -9,6 +9,9 @@
  * Lane C's CI job wires `pnpm test:permissions`; it must not write a second route scanner.
  */
 
+import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   authGuardRegistrationIndex,
   type CollectedRoute,
@@ -21,7 +24,14 @@ import {
 
 export async function loadApiApp(): Promise<HonoLikeApp> {
   const module = await import("../../apps/api/src/index");
-  const app = module.default as unknown as HonoLikeApp;
+  // Use the production factory with explicit, unique missing build roots. This preserves the
+  // real route graph while making the fixture independent of ignored `apps/web/dist` output
+  // another lane may have built in this checkout.
+  const fixtureRoot = join(tmpdir(), `taskdesk-route-coverage-${randomUUID()}`);
+  const app = module.createApp({
+    staticRoot: join(fixtureRoot, "agent"),
+    portalStaticRoot: join(fixtureRoot, "portal"),
+  }).app as unknown as HonoLikeApp;
   if (!Array.isArray(app?.routes)) {
     throw new Error(
       "apps/api/src/index.ts no longer default-exports a Hono app with a `routes` array — route coverage cannot enumerate the router",
@@ -68,7 +78,8 @@ export async function loadAuthGuardRegistrationIndex(): Promise<
  */
 export async function loadResolvedStaticRoot(): Promise<string | undefined> {
   const module = await import("../../apps/api/src/index");
-  return module.resolveStaticRoot();
+  const fixtureRoot = join(tmpdir(), `taskdesk-route-coverage-${randomUUID()}`);
+  return module.resolveStaticRoot([fixtureRoot]);
 }
 
 /** The better-auth plugin ids actually constructed, read off the instance. */

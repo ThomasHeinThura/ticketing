@@ -13,6 +13,7 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { signUpUser } from "./helpers/organization-http";
 import { createWorkspaceNative } from "./helpers/workspace-write-http";
@@ -26,10 +27,15 @@ async function activateWorkspaceNative(
   cookie: string,
   workspaceId: string,
 ): Promise<Response> {
-  return app.request(`/api/workspace/${workspaceId}/activate`, {
-    method: "POST",
-    headers: { cookie },
-  });
+  return csrfRequest(
+    app,
+    `/api/workspace/${workspaceId}/activate`,
+    {
+      method: "POST",
+      headers: { cookie },
+    },
+    cookie,
+  );
 }
 
 async function issueApiKey(userId: string): Promise<string> {

@@ -88,7 +88,7 @@ There is **no `apps/mcp`**: the MCP server lives in `packages/mcp` and is mounte
 The dependency graph is acyclic and enforced.
 
 ```
-apps/web  ──► packages/ui, libs, permissions   (locales come from the root i18n/)
+apps/web  ──► packages/ui, libs, permissions, domain/intake   (locales come from the root i18n/)
 apps/api  ──► packages/domain, permissions, plugins-contracts, email, libs, importers
 packages/domain        ──► (nothing — pure)
 packages/permissions   ──► (nothing — pure; kaneo's depends on better-auth, which is why it is
@@ -104,7 +104,7 @@ packages/typescript-config ──► (nothing — shared compiler configuration)
 
 | Workspace | Permitted workspace edges |
 | --- | --- |
-| `@taskdesk/web` | `@taskdesk/ui`, `@taskdesk/libs`, `@taskdesk/permissions` |
+| `@taskdesk/web` | `@taskdesk/ui`, `@taskdesk/libs`, `@taskdesk/permissions`, `@taskdesk/domain` |
 | `@taskdesk/api` | `@taskdesk/domain`, `@taskdesk/permissions`, `@taskdesk/plugins-contracts`, `@taskdesk/email`, `@taskdesk/libs`, `@taskdesk/importers` |
 | `@taskdesk/domain` | (none) |
 | `@taskdesk/permissions` | (none) |
@@ -116,7 +116,9 @@ packages/typescript-config ──► (nothing — shared compiler configuration)
 | `@taskdesk/importers` | (none) |
 | `@taskdesk/typescript-config` | (none) |
 
-The arrows above are the complete permitted workspace-package edges. `check:deps` enforces
+The arrows above are the complete permitted workspace-package edges. The web edge targets the
+`@taskdesk/domain/intake` export only; the package root includes Node-only audit utilities and
+is not a browser import. `check:deps` enforces this subpath restriction and
 each arrow as a positive allowlist, checks the same graph for cycles, and resolves source
 imports through TypeScript configuration, package import maps and workspace aliases before
 checking their targets. Source under each workspace `src/` is parsed and scanned in full;

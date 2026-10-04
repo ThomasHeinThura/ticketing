@@ -5,6 +5,11 @@ const meta = {
   title: "Primitives/Input",
   component: Input,
   args: { "aria-label": "Full name", placeholder: "Jane Doe" },
+  render: (args) => (
+    <div className="bg-background">
+      <Input {...args} />
+    </div>
+  ),
 } satisfies Meta<typeof Input>;
 
 export default meta;

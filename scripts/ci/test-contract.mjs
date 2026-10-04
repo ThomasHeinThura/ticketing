@@ -10,11 +10,37 @@ import { repoRoot } from "./lib/repo.mjs";
 const contract = "tests/api-contract/openapi.json";
 const version = "1.32.1";
 const redoclyConfig = "scripts/ci/redocly.yaml";
-const archiveName = `oasdiff_${version}_linux_amd64.tar.gz`;
-const archiveSha256 =
-  "7c8939fc49b75ee11fec66a5b83b37a2fca6aee109fed85013b1ba2ac2a1ee7f";
+const oasdiffAssets = {
+  "linux-x64": {
+    archiveName: `oasdiff_${version}_linux_amd64.tar.gz`,
+    archiveSha256:
+      "7c8939fc49b75ee11fec66a5b83b37a2fca6aee109fed85013b1ba2ac2a1ee7f",
+  },
+  "darwin-x64": {
+    archiveName: `oasdiff_${version}_darwin_all.tar.gz`,
+    archiveSha256:
+      "e4d74b7e2dfb9d4819e7fc720c905ec86547e4637ac270a2b0187c0f1fb7187e",
+  },
+  "darwin-arm64": {
+    archiveName: `oasdiff_${version}_darwin_all.tar.gz`,
+    archiveSha256:
+      "e4d74b7e2dfb9d4819e7fc720c905ec86547e4637ac270a2b0187c0f1fb7187e",
+  },
+};
 const approvedBreaksPath = "scripts/ci/openapi-approved-breaks.json";
 const redoclyApprovedFindingsPath = "scripts/ci/redocly-approved-findings.json";
+
+/** Select a checksum-pinned official oasdiff asset for a supported host tuple. */
+export function oasdiffAssetFor(platform, arch) {
+  const asset = oasdiffAssets[`${platform}-${arch}`];
+  if (!asset) {
+    throw new Error(
+      `the verified oasdiff ${version} installer does not support ${platform}/${arch}; ` +
+        `install the pinned release manually: https://github.com/oasdiff/oasdiff/releases/tag/v${version}`,
+    );
+  }
+  return asset;
+}
 
 /**
  * Absolute path to the approved-breaks allowlist, resolved against `repoRoot`
@@ -434,7 +460,7 @@ export function hasStableV2Tag(tagNames) {
 
 /**
  * Whether a stable v2.0.0+ release tag exists on `origin`, looked up live rather than from
- * any local file — `package.json`'s version tracks `semantic-release`/kaneo history, not
+ * any local file — `package.json`'s version tracks inherited kaneo history, not
  * this milestone, and after #331 a release is a git tag the manual Release workflow
  * creates, not a version-bump commit.
  *
@@ -762,11 +788,10 @@ async function redoclyLint(baseSpec, newApprovedFindings) {
 }
 
 async function getOasdiff() {
-  if (process.platform !== "linux" || process.arch !== "x64") {
-    throw new Error(
-      `the verified oasdiff ${version} installer supports Linux x64; install the pinned release manually on this platform: https://github.com/oasdiff/oasdiff/releases/tag/v${version}`,
-    );
-  }
+  const { archiveName, archiveSha256 } = oasdiffAssetFor(
+    process.platform,
+    process.arch,
+  );
 
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "taskdesk-oasdiff-"));
   const binary = path.join(tempDir, "oasdiff");

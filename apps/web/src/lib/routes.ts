@@ -1,18 +1,63 @@
-// Canonical route registry (AGENTS.md rule 4): every v2 ("agent") screen has a URL, and
+// Canonical route helpers (AGENTS.md rule 4): every screen has a URL, and
 // any filter/sort state it carries lives in the query string so a reload reproduces it
-// exactly. This is the FIRST entry in this registry -- v2 has exactly one screen so far,
-// the work-item list (issue #23, decision log "2026-09-23 · P1's UI path").
-//
-// `docs/02-design/ux-quality-gates.md` G5 describes a FUTURE state where this file is
-// generated from the router's own route trees (`routeTree.agent.gen.ts` /
-// `routeTree.portal.gen.ts`) and diffed against the screen inventory by `check:inventory`.
-// Neither exists yet: there is no agent/portal router split (G12's own two-router-tree
-// requirement is still open, tracked as P0 infrastructure), so today there is one router
-// tree (`routeTree.gen.ts`) and no generator/checker script. This file is hand-authored
-// until that lands, and kept honest in the meantime by the round-trip test in
-// `routes.test.ts`: every URL this file can build, `parseWorkItemListSearch` can parse
-// back to the exact params/search that built it, and malformed input recovers to a
-// default rather than throwing.
+// exactly. `generatedRouteMetadata` is produced from both TanStack trees and checked
+// against in-progress/complete screen inventory rows by `pnpm check:inventory`; not-started
+// rows remain planned URLs. Builders below define URL state contracts exercised by tests.
+
+export { generatedRouteMetadata } from "./generated-route-metadata";
+
+import { generatedRouteMetadata } from "./generated-route-metadata";
+
+export type RouteSurface = keyof typeof generatedRouteMetadata;
+
+function assertGeneratedRoute(surface: RouteSurface, template: string) {
+  if (
+    !(generatedRouteMetadata[surface] as readonly string[]).includes(template)
+  )
+    throw new Error(`Unknown generated ${surface} route: ${template}`);
+}
+
+/** Builds a path from a generated route template, requiring every dynamic segment. */
+export function buildGeneratedRouteUrl(
+  surface: RouteSurface,
+  template: string,
+  params: Record<string, string> = {},
+): string {
+  assertGeneratedRoute(surface, template);
+  return template.replace(/\$([A-Za-z0-9_]+)/gu, (_match, name: string) => {
+    const value = params[name];
+    if (typeof value !== "string" || value.length === 0)
+      throw new Error(`Route ${template} requires parameter ${name}.`);
+    return encodeURIComponent(value);
+  });
+}
+
+/** Parses a generated route URL and returns decoded dynamic segments, if it matches. */
+export function parseGeneratedRouteUrl(
+  surface: RouteSurface,
+  template: string,
+  input: string,
+): { pathname: string; params: Record<string, string> } | undefined {
+  assertGeneratedRoute(surface, template);
+  const url = new URL(input, "https://route.invalid");
+  const names: string[] = [];
+  const pattern = template
+    .split(/(\$[A-Za-z0-9_]+)/gu)
+    .map((part) => {
+      if (part.startsWith("$")) {
+        names.push(part.slice(1));
+        return "([^/]+)";
+      }
+      return part.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+    })
+    .join("");
+  const match = new RegExp(`^${pattern}$`, "u").exec(url.pathname);
+  if (!match) return undefined;
+  const params = Object.fromEntries(
+    names.map((name, index) => [name, decodeURIComponent(match[index + 1])]),
+  );
+  return { pathname: url.pathname, params };
+}
 
 export const WORK_ITEM_SORT_FIELDS = [
   "key",
@@ -39,6 +84,42 @@ export type WorkItemListSearch = {
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
 };
+
+export type ServiceCalendarListSearch = { cursor?: string };
+export type SlaPolicyListSearch = { cursor?: string };
+
+export function parseSlaPolicyListSearch(raw: unknown): SlaPolicyListSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  const cursor =
+    typeof candidate.cursor === "string" &&
+    candidate.cursor.length > 0 &&
+    candidate.cursor.length <= 2048
+      ? candidate.cursor
+      : undefined;
+  return { cursor };
+}
+
+export function parseServiceCalendarListSearch(
+  raw: unknown,
+): ServiceCalendarListSearch {
+  const candidate = (raw ?? {}) as Record<string, unknown>;
+  const cursor =
+    typeof candidate.cursor === "string" &&
+    candidate.cursor.length > 0 &&
+    candidate.cursor.length <= 2048
+      ? candidate.cursor
+      : undefined;
+  return { cursor };
+}
+
+export function parseServiceCalendarListSearchFromQueryString(
+  queryString: string,
+) {
+  const params = new URLSearchParams(queryString);
+  return parseServiceCalendarListSearch({
+    cursor: params.get("cursor"),
+  });
+}
 
 export const DEFAULT_WORK_ITEM_LIST_SEARCH: WorkItemListSearch = {
   layout: "list",
@@ -97,6 +178,70 @@ export function toggleWorkItemSortDirection(
 }
 
 export const routes = {
+  /** Customer portal's P0 disabled landing page, rooted on its separate origin. */
+  portalHome: {
+    path: "/" as const,
+    build: () => "/",
+    parse: (pathname: string) => (pathname === "/" ? "/" : undefined),
+  },
+  /** `docs/02-design/screen-inventory.md` "Workspace — service calendars". */
+  serviceCalendars: {
+    path: "/agent/settings/calendars" as const,
+    build: (search: ServiceCalendarListSearch = {}) => {
+      const resolved = parseServiceCalendarListSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
+      const suffix = query.toString();
+      return suffix
+        ? `/agent/settings/calendars?${suffix}`
+        : "/agent/settings/calendars";
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "Service calendar editor". */
+  serviceCalendarEditor: {
+    path: "/agent/settings/calendars/$id" as const,
+    build: (params: { id: string }, year?: number) => {
+      const path = `/agent/settings/calendars/${encodeURIComponent(params.id)}`;
+      return year === undefined ? path : `${path}?year=${year}`;
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "Workspace — SLA policies". */
+  slaPolicies: {
+    path: "/agent/settings/sla-policies" as const,
+    build: (search: SlaPolicyListSearch = {}) => {
+      const resolved = parseSlaPolicyListSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
+      const suffix = query.toString();
+      return suffix
+        ? `/agent/settings/sla-policies?${suffix}`
+        : "/agent/settings/sla-policies";
+    },
+  },
+  /** `docs/02-design/screen-inventory.md` "SLA policy editor". */
+  slaPolicyEditor: {
+    path: "/agent/settings/sla-policies/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/sla-policies/${encodeURIComponent(params.id)}`,
+  },
+  requestTypes: {
+    path: "/agent/settings/request-types" as const,
+    build: () => "/agent/settings/request-types",
+  },
+  requestTypeEditor: {
+    path: "/agent/settings/request-types/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/request-types/${encodeURIComponent(params.id)}`,
+  },
+  intakeQueue: {
+    path: "/agent/triage" as const,
+    build: (tab: "intake" = "intake") => `/agent/triage?tab=${tab}`,
+  },
+  intakeSubmission: {
+    path: "/agent/submissions/$ref" as const,
+    build: (params: { ref: string }) =>
+      `/agent/submissions/${encodeURIComponent(params.ref)}`,
+  },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {
     path: "/agent/projects/$projectKey/work" as const,

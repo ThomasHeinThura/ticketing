@@ -73,6 +73,19 @@ test("workspace package names are read from the package segment only", () => {
   assert.equal(workspaceNameForSpecifier("./local"), null);
 });
 
+test("web may consume the browser-safe intake domain export", () => {
+  assert.deepEqual([...WORKSPACE_EDGES.get("@taskdesk/web")].sort(), [
+    "@taskdesk/domain",
+    "@taskdesk/libs",
+    "@taskdesk/permissions",
+    "@taskdesk/ui",
+  ]);
+  assert.equal(
+    workspaceNameForSpecifier("@taskdesk/domain/intake"),
+    "@taskdesk/domain",
+  );
+});
+
 test("workspace analyzer permits libs' type contract and rejects forbidden app imports", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-deps-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -233,7 +246,12 @@ test("source walk includes build, out and generated route trees and rejects syml
   }
   const libs = await packageAt("packages/libs", "@taskdesk/libs");
   await packageAt("apps/api", "@taskdesk/api");
-  for (const relative of ["build/edge.ts", "out/edge.ts", "routeTree.gen.ts"]) {
+  for (const relative of [
+    "build/edge.ts",
+    "out/edge.ts",
+    "routeTree.agent.gen.ts",
+    "routeTree.portal.gen.ts",
+  ]) {
     const sourceFile = path.join(libs, "src", relative);
     await mkdir(path.dirname(sourceFile), { recursive: true });
     await writeFile(sourceFile, 'import { x } from "@taskdesk/api";');
@@ -244,7 +262,8 @@ test("source walk includes build, out and generated route trees and rejects syml
   const { files, violations } = await analyzeDependencies(root);
   assert.ok(files.some((file) => file.endsWith("src/build/edge.ts")));
   assert.ok(files.some((file) => file.endsWith("src/out/edge.ts")));
-  assert.ok(files.some((file) => file.endsWith("src/routeTree.gen.ts")));
+  assert.ok(files.some((file) => file.endsWith("src/routeTree.agent.gen.ts")));
+  assert.ok(files.some((file) => file.endsWith("src/routeTree.portal.gen.ts")));
   assert.match(
     violations.join("\n"),
     /linked\.ts.*symbolic links under workspace src are rejected/s,
@@ -254,10 +273,10 @@ test("source walk includes build, out and generated route trees and rejects syml
       ...violations
         .join("\n")
         .matchAll(
-          /packages\/libs\/src\/(?:build\/edge\.ts|out\/edge\.ts|routeTree\.gen\.ts)\n\s+line \d+ imports .* from apps\/\*\*/g,
+          /packages\/libs\/src\/(?:build\/edge\.ts|out\/edge\.ts|routeTree\.(?:agent|portal)\.gen\.ts)\n\s+line \d+ imports .* from apps\/\*\*/g,
         ),
     ].length,
-    3,
+    4,
   );
 });
 
@@ -643,7 +662,15 @@ test("workspace aliases and tsconfig paths resolve to package targets and matrix
   await writeFile(path.join(email, "src", "index.ts"), "export {};\n");
   await writeFile(
     path.join(web, "src", "edge.ts"),
-    'import "@taskdesk/domain"; import "@taskdesk/email";',
+    'import "@taskdesk/domain/intake";',
+  );
+  await writeFile(
+    path.join(web, "src", "root-edge.ts"),
+    'import "@taskdesk/domain";',
+  );
+  await writeFile(
+    path.join(web, "src", "email-edge.ts"),
+    'import "@taskdesk/email";',
   );
   await writeFile(
     path.join(libs, "src", "edge.ts"),
@@ -657,8 +684,9 @@ test("workspace aliases and tsconfig paths resolve to package targets and matrix
   );
   assert.match(
     messages,
-    /apps\/web\/src\/edge\.ts.*outside the documented workspace edge matrix/s,
+    /apps\/web\/src\/root-edge\.ts.*must use the browser-safe @taskdesk\/domain\/intake export/s,
   );
+  assert.doesNotMatch(messages, /apps\/web\/src\/edge\.ts/);
   assert.match(messages, /packages\/libs\/src\/edge\.ts.*from apps\/\*\*/s);
 });
 

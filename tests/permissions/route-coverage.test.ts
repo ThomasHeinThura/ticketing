@@ -65,13 +65,9 @@ describe("route coverage", () => {
     expect(routeCount).toBeGreaterThan(0);
   });
 
-  it("runs against a router with no built web app to serve (#165, #236)", async () => {
-    // registerStaticServing only adds its catch-all app.use("*", ...) when a build is on
-    // disk, which silently voids DECLARED_ROUTER_MIDDLEWARE's exact-count declaration for
-    // the unrelated CORS/compress registrations at the same key -- see
-    // tests/permissions/README.md. Asserted first and explicitly so that misconfiguration
-    // fails here, at its actual cause, rather than as three oblique downstream failures
-    // with nothing in their messages naming static serving or this constraint.
+  it("can enumerate the route registry without either web output on disk", async () => {
+    // The fixture uses the production app factory with an isolated nonexistent candidate;
+    // ambient ignored web build output must not change this route-coverage test's graph.
     await expect(loadResolvedStaticRoot()).resolves.toBeUndefined();
   });
 
@@ -224,12 +220,48 @@ describe("route coverage", () => {
     }
   });
 
+  it("covers every SCIM endpoint with the dedicated connection-bearer delegation", async () => {
+    const [routes, registry] = await Promise.all([
+      loadRouterRoutes(),
+      loadPolicyRegistry(),
+    ]);
+    const scimRoutes = routes.filter((route) =>
+      route.path.startsWith("/scim/v2/"),
+    );
+    expect(scimRoutes.map((route) => route.routeKey).sort()).toEqual(
+      [
+        "DELETE /scim/v2/Groups/{id}",
+        "DELETE /scim/v2/Users/{id}",
+        "GET /scim/v2/Groups",
+        "GET /scim/v2/Groups/{id}",
+        "GET /scim/v2/ResourceTypes",
+        "GET /scim/v2/Schemas",
+        "GET /scim/v2/ServiceProviderConfig",
+        "GET /scim/v2/Users",
+        "GET /scim/v2/Users/{id}",
+        "PATCH /scim/v2/Groups/{id}",
+        "PATCH /scim/v2/Users/{id}",
+        "POST /scim/v2/Groups",
+        "POST /scim/v2/Users",
+        "PUT /scim/v2/Groups/{id}",
+        "PUT /scim/v2/Users/{id}",
+      ].sort(),
+    );
+    for (const route of scimRoutes) {
+      expect(
+        registry.get(route.routeKey)?.policy,
+        route.routeKey,
+      ).toMatchObject({
+        delegated: "scim",
+      });
+    }
+  });
+
   it("counts middleware as middleware, not as routes", async () => {
     const middleware = await loadRouterMiddleware();
-    // kaneo registers `app.use("*")` for CORS and compression and `api.use("*")` for the
-    // authentication guard. They are chain entries, not endpoints — exactly two distinct
-    // `METHOD path` keys (cors and compress share "ALL /*"), never inferred from arity.
-    expect(middleware).toEqual(["ALL /*", "ALL /api/*"]);
+    // The origin/CORS/compress/static global middlewares, API auth guard and dedicated SCIM bearer middleware are
+    // chain entries, not endpoints; their exact keys remain closed and reviewed.
+    expect(middleware).toEqual(["ALL /*", "ALL /api/*", "ALL /scim/v2/*"]);
   });
 
   it("FAILS when a new route arrives without a policy", async () => {

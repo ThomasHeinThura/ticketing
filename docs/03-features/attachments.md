@@ -18,7 +18,9 @@ This document covers behaviour and interface.
 [`data-model.md`](../01-architecture/data-model.md) is authoritative for every column.
 
 - `attachment` — `work_item_id` \| `comment_id` \| `submission_id` (`CHECK` exactly one),
-  `object_key`, `filename`, `mime_type`, `size`, `state` (`pending`\|`ready`\|`deleted`),
+  nullable `submission_field_key` (the immutable file-field key from the pinned request-type
+  version; retained as provenance after transfer), `object_key`, `filename`, `mime_type`,
+  `size`, `state` (`pending`\|`ready`\|`deleted`),
   `customer_visible`, `uploaded_by`, `deleted_at`, plus the denormalised `workspace_id` and
   `organisation_id` the object-key template, the storage quota sum and `attachment-gc`'s
   legal-hold check all need. A partial index on `state = 'pending'` backs the hourly
@@ -104,7 +106,8 @@ GET    /api/attachments/{id}                   work_item:read → 302 to presign
 PATCH  /api/attachments/{id}                   work_item:update   (visibility, filename)
 DELETE /api/attachments/{id}                   work_item:update
 GET    /api/work-items/{key}/attachments       work_item:read
-POST   /api/portal/requests/{ref}/attachments/presign   { portal: 'customer', predicate: 'own_request' }
+POST   /api/portal/submissions/{ref}/attachments/presign   { portal: 'customer', predicate: 'own_submission' }
+POST   /api/portal/submissions/{ref}/attachments/{id}/complete   { portal: 'customer', predicate: 'own_submission' }
 ```
 
 ## Edge cases
@@ -112,6 +115,7 @@ POST   /api/portal/requests/{ref}/attachments/presign   { portal: 'customer', pr
 | Case | Behaviour |
 | --- | --- |
 | Upload starts, browser closes | Row stays `pending`; cleaned up after an hour |
+| Customer uploads to a file-backed submission | The SUB-n-owned draft presign route requires a field key matching a visible `file` field in that draft's pinned request-type version; it applies `attachment_max_bytes`, `attachment_max_per_item` per submission, allowed extensions, and customer-visible=true. Completion checks stored bytes and magic bytes before `ready`. Field-key provenance remains on the row after its parent transfers to a work item. |
 | Storage unreachable | Presign fails with a clear message; nothing is created |
 | Filename with path separators or nulls | Sanitised for display; the object key is generated regardless |
 | Two files with the same name | Both kept. Display disambiguates with the upload time |

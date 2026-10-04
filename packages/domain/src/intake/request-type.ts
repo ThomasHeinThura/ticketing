@@ -35,6 +35,16 @@ export type SchemaDefect = {
     | "maps_to_missing_native_field";
 };
 
+export type PublishSchemaDefect =
+  | SchemaDefect
+  | {
+      readonly key: string | null;
+      readonly problem:
+        | "title_mapping_required"
+        | "title_mapping_ambiguous"
+        | "title_mapping_invalid";
+    };
+
 const VISIBILITY_OPS = new Set(["eq", "neq", "in", "is_set"]);
 
 /** Whether a `showIf` condition is well-formed: known op, `field_key` set, `in`'s value an array. */
@@ -122,6 +132,37 @@ export function validateFormSchema(
         // declares the native set, an unknown target is a publish defect.
         defects.push({ key, problem: "maps_to_missing_native_field" });
       }
+    }
+  }
+  return defects;
+}
+
+/** RT-6: a published form must supply one stable native title from its own snapshot. */
+export function validatePublishableFormSchema(
+  schema: FormSchema,
+  nativeFields: ReadonlySet<string> = new Set(),
+): readonly PublishSchemaDefect[] {
+  const defects: PublishSchemaDefect[] = [
+    ...validateFormSchema(schema, nativeFields),
+  ];
+  const titleFields = schema.fields.filter(
+    (field) => field.mapsTo?.field === "title",
+  );
+  if (titleFields.length === 0) {
+    defects.push({ key: null, problem: "title_mapping_required" });
+  } else if (titleFields.length > 1) {
+    defects.push({ key: null, problem: "title_mapping_ambiguous" });
+  } else {
+    const [field] = titleFields;
+    if (
+      (field?.type !== "text" && field?.type !== "textarea") ||
+      field.required !== true ||
+      field.showIf != null
+    ) {
+      defects.push({
+        key: field?.key ?? null,
+        problem: "title_mapping_invalid",
+      });
     }
   }
   return defects;
@@ -402,4 +443,32 @@ export function catalogueFor(
       const byGroup = a.group.localeCompare(b.group);
       return byGroup !== 0 ? byGroup : a.position - b.position;
     });
+}
+
+export type SlaPolicyBindingSource =
+  | "work_item_type"
+  | "request_type"
+  | "project"
+  | "workspace";
+
+/** SLA-1: the first configured source wins; a null source falls through. */
+export function resolveSlaPolicyBinding(input: {
+  readonly workItemTypePolicyId: string | null;
+  readonly requestTypePolicyId: string | null;
+  readonly projectPolicyId: string | null;
+  readonly workspacePolicyId: string | null;
+}): {
+  readonly policyId: string;
+  readonly source: SlaPolicyBindingSource;
+} | null {
+  const candidates: readonly [SlaPolicyBindingSource, string | null][] = [
+    ["work_item_type", input.workItemTypePolicyId],
+    ["request_type", input.requestTypePolicyId],
+    ["project", input.projectPolicyId],
+    ["workspace", input.workspacePolicyId],
+  ];
+  const selected = candidates.find(([, policyId]) => policyId !== null);
+  return selected?.[1] === null || selected === undefined
+    ? null
+    : { source: selected[0], policyId: selected[1] };
 }

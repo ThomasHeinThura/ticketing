@@ -365,6 +365,19 @@ reach sources are:
 | `automation` | `automation.run_failed` | Automation id; require current automation/project reach and creator ownership, matching the event recipient rule. |
 | `pending_action` | `pending_action.requested`, `pending_action.executed` | Pending-action id; require requester ownership. `requested` is supported only for `api`/`mcp` origins and `executed` only on failure; an unresolved requester fails closed. |
 | `identity_connection` | `identity.deprovisioned`, `identity.request_denied`, `identity_connection.changed` | Identity-connection id from the event payload; require current `instance:admin`. Do not expose identity-provider payloads or person data in the notification. |
+| `instance` | `audit_write_failed` (instance operational notification type; not a domain-event key) | The fixed id `singleton`; the current instance-admin capability is rechecked on every list/read operation. Payload contains only the closed audit operation and occurrence time. |
+| `person` | `security_alert` (private account-security notice; not a domain-event key) | The affected user's own notification row; read only by that user. Payload is a closed kind with no credentials, factor material, or administrator note. |
+
+`audit_write_failed` is the AU-14 operational notification. It is inserted only after the
+failed audit append's savepoint/transaction has rolled back, in a separate transaction, for
+each user who is an active staff person and currently has `user.role = 'admin'` (the current
+instance-admin authority source). It is not written through the workspace-required outbox
+and does not create a workspace. A failed notification insert is logged/counted and retried
+by the caller's bounded retry path; it never changes the already-successful business
+mutation. Instance-resource notification rows are returned only while the recipient still
+has current instance-admin authority and an active staff person; losing or revoking that
+authority hides the row immediately. They cannot be cleared or read through a caller-chosen
+user id. The event has no external email delivery in this batch.
 
 These mappings name supported event classes; they do not grant permission. The event's
 recipient rule and current resource reach must both pass. Set the discriminator and id from

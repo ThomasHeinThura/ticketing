@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -19,6 +20,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   render: () => (
     <Table>
+      <TableCaption>Current work items</TableCaption>
       <TableHeader>
         <TableRow>
           <TableHead scope="col">Work item</TableHead>

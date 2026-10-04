@@ -18,6 +18,9 @@ export const capabilitiesResponseSchema = z
     inviteUsers: z.boolean(),
     manageTeam: z.boolean(),
     removeMembers: z.boolean(),
+    manageServiceCalendars: z.boolean(),
+    manageRequestTypes: z.boolean(),
+    triageIntake: z.boolean(),
   })
   .openapi("Capabilities");
 
@@ -26,7 +29,7 @@ export const capabilitiesResponseSchema = z
  * can tell 'malformed membership row' from 'role has no such capability'".
  *
  * Before this existed, a member whose `workspace_member.role` held `"owner,admin"` got a
- * 200 carrying the ordinary sixteen-key map with every value `false` — byte-identical to
+ * 200 carrying the ordinary capability map with every value `false` — byte-identical to
  * the answer a correctly-assigned `viewer` gets when correctly denied the same sixteen
  * checks. The two states are not the same and must not look the same: one is authorization
  * working, the other is a corrupt row that no amount of correct role assignment will fix

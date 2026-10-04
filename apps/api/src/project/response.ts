@@ -5,6 +5,7 @@ export const projectSchema = z
   .object({
     id: z.string(),
     workspaceId: z.string(),
+    organisationId: z.string().nullable(),
     slug: z.string().openapi({
       description: "Short prefix used in task identifiers, e.g. KAN-12.",
     }),

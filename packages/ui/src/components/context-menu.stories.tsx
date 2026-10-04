@@ -2,7 +2,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   ContextMenu,
   ContextMenuContent,
+  ContextMenuGroup,
   ContextMenuItem,
+  ContextMenuLabel,
+  ContextMenuRadioGroup,
+  ContextMenuRadioItem,
   ContextMenuSeparator,
   ContextMenuShortcut,
   ContextMenuTrigger,
@@ -23,16 +27,24 @@ export const Default: Story = {
         Right-click here
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem>
-          Copy
-          <ContextMenuShortcut>⌘C</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem>
-          Paste
-          <ContextMenuShortcut>⌘V</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem variant="destructive">Delete</ContextMenuItem>
+        <ContextMenuGroup>
+          <ContextMenuLabel>Actions</ContextMenuLabel>
+          <ContextMenuItem>
+            Copy
+            <ContextMenuShortcut>⌘C</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuItem>
+            Paste
+            <ContextMenuShortcut>⌘V</ContextMenuShortcut>
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem variant="destructive">Delete</ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuRadioGroup value="recent">
+            <ContextMenuRadioItem value="recent">Recent</ContextMenuRadioItem>
+            <ContextMenuRadioItem value="all">All items</ContextMenuRadioItem>
+          </ContextMenuRadioGroup>
+        </ContextMenuGroup>
       </ContextMenuContent>
     </ContextMenu>
   ),
@@ -45,10 +57,18 @@ export const Open: Story = {
         Right-click here
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem>Copy</ContextMenuItem>
-        <ContextMenuItem>Paste</ContextMenuItem>
-        <ContextMenuSeparator />
-        <ContextMenuItem variant="destructive">Delete</ContextMenuItem>
+        <ContextMenuGroup>
+          <ContextMenuLabel>Actions</ContextMenuLabel>
+          <ContextMenuItem>Copy</ContextMenuItem>
+          <ContextMenuItem>Paste</ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem variant="destructive">Delete</ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuRadioGroup value="recent">
+            <ContextMenuRadioItem value="recent">Recent</ContextMenuRadioItem>
+            <ContextMenuRadioItem value="all">All items</ContextMenuRadioItem>
+          </ContextMenuRadioGroup>
+        </ContextMenuGroup>
       </ContextMenuContent>
     </ContextMenu>
   ),

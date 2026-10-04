@@ -91,7 +91,12 @@ const FLAGGED_MESSAGES = {
 const WORKSPACE_EDGES = new Map([
   [
     "@taskdesk/web",
-    new Set(["@taskdesk/ui", "@taskdesk/libs", "@taskdesk/permissions"]),
+    new Set([
+      "@taskdesk/ui",
+      "@taskdesk/libs",
+      "@taskdesk/permissions",
+      "@taskdesk/domain",
+    ]),
   ],
   [
     "@taskdesk/api",
@@ -1244,6 +1249,10 @@ export async function analyzeDependencies(root = repoRoot) {
           owner.name === "@taskdesk/libs" &&
           imported.typeOnly &&
           targetWorkspace === "@taskdesk/api";
+        const isBrowserSafeDomainContract =
+          owner.name === "@taskdesk/web" &&
+          targetWorkspace === "@taskdesk/domain" &&
+          imported.specifier === "@taskdesk/domain/intake";
 
         const permittedEdges = WORKSPACE_EDGES.get(owner.name);
         if (
@@ -1257,6 +1266,19 @@ export async function analyzeDependencies(root = repoRoot) {
             violation(
               relativeFile,
               `line ${imported.line} resolves to workspace "${target.workspace.name}", outside the documented workspace edge matrix`,
+            ),
+          );
+        }
+
+        if (
+          owner.name === "@taskdesk/web" &&
+          targetWorkspace === "@taskdesk/domain" &&
+          !isBrowserSafeDomainContract
+        ) {
+          violations.push(
+            violation(
+              relativeFile,
+              `line ${imported.line} must use the browser-safe @taskdesk/domain/intake export`,
             ),
           );
         }

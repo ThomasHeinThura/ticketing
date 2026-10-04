@@ -20,6 +20,7 @@ import WorkItemList from "./work-item-list";
  */
 
 vi.mock("@tanstack/react-router", () => ({
+  useRouter: () => ({ preloadRoute: vi.fn().mockResolvedValue(undefined) }),
   Link: ({
     children,
     ...props

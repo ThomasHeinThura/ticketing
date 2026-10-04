@@ -10,8 +10,9 @@
  * function that needs "now" takes it as an argument.
  */
 
-/** The six submission states (`intake-queue.md` § Statuses), snake_case as stored. */
+/** Submission states (`intake-queue.md` § Statuses), including the portal-only staging state. */
 export const SUBMISSION_STATES = [
+  "draft",
   "new",
   "clarifying",
   "accepted",

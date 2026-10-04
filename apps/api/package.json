@@ -22,8 +22,9 @@
     "test:permissions": "vitest run --config vitest.permissions.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "tsx scripts/migrate.ts",
     "db:studio": "drizzle-kit studio",
+    "db:identity-provenance-preflight": "tsx scripts/preflight-membership-provenance.ts",
     "db:seed:user-data": "tsx scripts/seed-user-data.ts",
     "openapi:export": "tsx scripts/export-openapi.ts",
     "audit:reserved-role-names": "tsx scripts/audit-reserved-workspace-role-names.ts"
@@ -52,6 +53,8 @@
     "hono": "4.13.12",
     "ioredis": "^6.0.0",
     "pg": "^8.22.0",
+    "pino": "10.4.0",
+    "prom-client": "15.1.3",
     "valibot": "^1.4.2",
     "ws": "8.22.0",
     "zod": "^4.4.3"

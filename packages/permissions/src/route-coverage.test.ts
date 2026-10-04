@@ -51,10 +51,11 @@ const countsOf = (routes: HonoLikeApp["routes"]): Map<string, number> => {
 };
 
 describe("telling middleware from routes", () => {
-  it("treats the declared cors+compress registrations as middleware, whatever their arity", () => {
-    // "ALL /*" is declared with registrations: 2 — cors and compress, in either order, any
-    // arity. Arity is not the signal; the declared key + count is.
-    const routes = [entry("ALL", "/*", 2), entry("ALL", "/*", 0)];
+  it("treats the declared global registrations as middleware, whatever their arity", () => {
+    // Request metrics, host selection, CORS, compression and static serving share this key.
+    const routes = Array.from({ length: 5 }, (_, index) =>
+      entry("ALL", "/*", index % 2 ? 0 : 2),
+    );
     const counts = countsOf(routes);
     expect(isMiddlewareEntry(routes[0], counts)).toBe(true);
     expect(isMiddlewareEntry(routes[1], counts)).toBe(true);
@@ -91,10 +92,12 @@ describe("telling middleware from routes", () => {
   });
 
   it("voids a declared key's exemption when an extra registration crowds it", () => {
-    // A third registration at "/*" (declared count: 2) is what an accidental extra `app.use`
-    // — or a mount colliding with the same path — would produce. Every entry sharing the key
-    // stops being excluded; none of the three gets to keep the exemption silently.
+    // A sixth registration at "/*" crowds the declared five entries. Every entry sharing the
+    // key stops being excluded; none gets to keep the exemption silently.
     const routes = [
+      entry("ALL", "/*", 2),
+      entry("ALL", "/*", 2),
+      entry("ALL", "/*", 2),
       entry("ALL", "/*", 2),
       entry("ALL", "/*", 2),
       entry("ALL", "/*", 2),
@@ -104,7 +107,7 @@ describe("telling middleware from routes", () => {
   });
 
   it("voids a declared key's exemption when a registration goes missing", () => {
-    const routes = [entry("ALL", "/*", 2)]; // declared count is 2; only 1 is present
+    const routes = [entry("ALL", "/*", 2)]; // declared count is 5; only 1 is present
     const counts = countsOf(routes);
     expect(isMiddlewareEntry(routes[0], counts)).toBe(false);
   });
@@ -113,6 +116,7 @@ describe("telling middleware from routes", () => {
     expect(DECLARED_ROUTER_MIDDLEWARE.map((d) => d.key).sort()).toEqual([
       "ALL /*",
       "ALL /api/*",
+      "ALL /scim/v2/*",
     ]);
     for (const declared of DECLARED_ROUTER_MIDDLEWARE) {
       expect(declared.note.length).toBeGreaterThan(0);
@@ -176,7 +180,14 @@ describe("collectRoutes", () => {
   it("reports middleware separately", () => {
     expect(
       collectMiddleware(
-        app([entry("ALL", "/*", 2), entry("ALL", "/*", 2), entry("GET", "/x")]),
+        app([
+          entry("ALL", "/*", 2),
+          entry("ALL", "/*", 2),
+          entry("ALL", "/*", 2),
+          entry("ALL", "/*", 2),
+          entry("ALL", "/*", 2),
+          entry("GET", "/x"),
+        ]),
       ),
     ).toEqual(["ALL /*"]);
   });

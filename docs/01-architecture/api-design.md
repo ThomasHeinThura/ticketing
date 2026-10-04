@@ -33,6 +33,11 @@ claim a version the toolchain cannot produce.
    [security-model.md](security-model.md#sessions-csrf-and-step-up) — this is a citation,
    not a second rule.
 
+   `GET /api/me/csrf-token` issues the current live agent session's same-origin token to the
+   browser with `Cache-Control: no-store`; custom unsafe cookie-session requests must echo it
+   in `X-TaskDesk-CSRF`. Better Auth bootstrap/login endpoints keep their own trusted-origin
+   checks. The detailed token, cookie, fallback and error contract is in the security model.
+
 ## Base paths
 
 | Prefix | Purpose | Policy kind |
@@ -120,14 +125,221 @@ role edit or connection disable into committing stale authority. This ordinary c
 update is not a new PA-15 operation; the two OIDC mapping routes below retain their separate
 operation-bound proof.
 
-The separate administration route `PATCH /api/instance/identity-connections/{id}/scim` has
-a proposed route-wide `instance:admin`, `elevated: true`, `sessionOnly: true` policy. Its
-strict request/response DTO, edit/omission semantics, parent `config_version` CAS, and
-dedicated PA-15 route/body/version binding are not specified by this contract. They are an
-open owner obligation tracked in [issue #561](https://github.com/ThomasHeinThura/ticketing/issues/561).
-Do not infer an operation key or reuse an OIDC/metrics proof. Until that contract is
-specified, a mounted SCIM administration write fails closed with the existing
-`403 step_up_unavailable` response and makes no configuration or grant mutation.
+The strict connection DTO may replace `claimMapping` only with the closed first-release
+profile map `{ "version": 1, "displayName": "name" }`. Missing or null persisted data
+means that exact default; malformed non-null persisted data fails OIDC login closed and is
+repairable by saving the valid map with the current `configVersion`. No arbitrary claim
+selector is accepted. The fixed `oid`/`tid` subject and
+`email` → `preferred_username` → `upn` metadata precedence are not configurable. An absent
+or invalid optional name is omitted; it is never synthesized from email or username. The
+map changes profile metadata only and cannot select identity, tenant, portal, organisation,
+role, capability or reach.
+
+The connection DTO serializes `jitPolicy` as exactly `{ enabled, default_role_id,
+required_entra_app_role }`. `enabled` is boolean, `default_role_id` is a canonical role id or
+null, and `required_entra_app_role` is the exact nonempty Entra app-role value, preserved
+byte-for-byte. Unknown persisted keys are never returned. A customer connection has only
+the Customer role as its default. An enabled agent JIT default must remain within its
+configured ceiling. Agent connections also return `defaultWorkspaceId`, the explicitly configured active internal workspace used for the JIT grant; customer connections return null. The server does not choose a workspace. If a later ceiling reduction makes the role ineligible, it is retained as
+dormant policy and grants nothing. Enabling, saving or logging in with malformed admission
+configuration fails closed.
+
+The separate SCIM administration route uses the same parent version; its complete bounded
+write and proof contract follows. Neither route maintains a child SCIM version. A successful
+SCIM administration write makes a stale OIDC mapping or connection-config writer fail CAS,
+and the reverse holds. Authenticated SCIM provisioning requests do not edit configuration
+or advance this version; they still serialize grant changes under `IP-22`.
+
+### SCIM administration PATCH — issue #561 owner contract
+
+`PATCH /api/instance/identity-connections/{id}/scim` is a God Mode operation with
+`instance:admin`, `scope: instance`, `scopeSource: instance`, `elevated: true`, and
+`sessionOnly: true` for **every** body variant. An API key, MCP key, SCIM bearer or
+impersonation session receives `403 session_required` before proof issuance or mutation.
+Unknown connections, absent SCIM child rows and foreign mapping ids receive the same `404`.
+The route uses RFC 9457 errors and `Cache-Control: no-store`; it is distinct from
+`/scim/v2/*` and never accepts a provisioning payload. No runtime route is authorized by
+this documentation change alone.
+
+The request is one of the following strict, closed objects. Each carries a positive safe
+integer `configVersion`; unknown keys, extra nested keys, explicit `null` outside the one
+nullable display snapshot, and multiple actions are rejected. A request makes exactly one
+settings edit, one group-mapping edit or one attribute-map replacement, never a bulk
+replacement across those categories.
+
+```json
+{ "configVersion": 7, "kind": "settings", "enabled": false }
+{ "configVersion": 7, "kind": "settings", "allowedResources": ["users", "groups"], "lifecyclePolicy": "end_memberships" }
+{ "configVersion": 7, "kind": "mapping_create", "externalGroupId": "provider-group-id", "externalGroupNameSnapshot": null, "roleId": "...", "scope": "workspace", "scopeId": "...", "enabled": true }
+{ "configVersion": 7, "kind": "mapping_update", "mappingId": "...", "externalGroupNameSnapshot": null, "roleId": "...", "scopeId": "...", "enabled": false }
+{ "configVersion": 7, "kind": "attribute_mapping", "attributeMapping": { "version": 1, "name": "displayName", "email": "emails.primary.value", "jobTitle": "title", "locale": "preferredLanguage" } }
+```
+
+`settings` requires at least one of `enabled`, `allowedResources`, `lifecyclePolicy`.
+`enabled` is boolean. `allowedResources` is a canonical set in the fixed order `users`,
+`groups`: `users` is required; `groups` is optional; duplicates and other values fail
+validation. `lifecyclePolicy` is `end_memberships` or `keep_memberships` and governs future
+SCIM person deactivation only. Omitting a settings property preserves its stored value;
+explicit null never clears it. A settings request that changes no persisted value is
+rejected `422`, so a successful write always advances the version once.
+
+`mapping_create` requires `externalGroupId`, `roleId` and `scope`; `enabled` defaults true
+and `externalGroupNameSnapshot` defaults null. `mapping_update` requires a mapping id
+belonging to this SCIM connection and at least one mutable property among
+`externalGroupNameSnapshot`, `roleId`, `scopeId`, `enabled`. The external group id, mapping
+scope, parent connection and customer organisation are immutable. Omission preserves a
+stored property; an explicit null clears only the display snapshot. A create may set that
+snapshot to null; it is display-only and never authority evidence. Mapping updates that
+change no persisted property return `422`. There is no mapping DELETE, bulk edit or
+omission-as-removal: `enabled: false` retains history.
+
+`externalGroupId` is a nonempty provider-opaque identifier of at most 255 UTF-8 bytes,
+without control characters; it is compared byte-for-byte within the SCIM connection, not
+converted from a display name, lowercased or inferred from an OIDC group id. The display
+snapshot is null or a nonempty string of at most 255 UTF-8 bytes without control
+characters. The persisted unique `(scim_connection_id, external_group_id)` prevents
+duplicates; a duplicate create returns `409`. Ids and role references use the existing
+repository id validators. Caller-supplied organisation, portal, person, external identity,
+grant, capability, `seesAll`, token, token hash, `attributeMapping`, sync/health metadata,
+creator and audit fields are rejected as unknown in the existing variants. The dedicated
+`attribute_mapping` variant below is the sole exception; it cannot edit settings or group
+mappings in the same request. Token create/rotate/revoke retain their separate
+routes and proof rules.
+
+`attribute_mapping` requires exactly the version plus four destination fields in the
+`attributeMapping` object shown above
+and changes only `scim_connection.attribute_mapping`. Its grammar is a closed map from
+safe SCIM profile inputs to existing TaskDesk profile fields, not an expression language:
+`version` is exactly integer `1`; `name` is `displayName` or `name.formatted`; `email` is
+`emails.primary.value` or `userName`; `jobTitle` is `title` or `unmapped`; `locale` is
+`preferredLanguage`, `locale`, or `unmapped`. The default stored mapping is the JSON
+object shown above. A legacy null mapping is read as that default and is normalized only
+by an explicit successful write. The four fields are always supplied together; unknown
+paths, mixed-case aliases, wildcards, filters, transformations, nested objects, arrays,
+empty values, and extra keys are rejected. A value of `unmapped` leaves that optional
+profile field unchanged; it is forbidden for name or email. An identical effective
+mapping is a `422` no-op without proof consumption or version advance.
+
+The map's name destination is `person.display_name`, independent of account-wide
+`user.name`; a placeholder can therefore have a profile before it has a login. The email
+destination is the connection-scoped `external_identity.email_snapshot`, never a verified
+login address or an automatic account-link key. Fixed `userName` is retained separately in
+`external_identity.user_name_snapshot`. Job title and locale use the existing `person`
+fields. Reads emit stored `displayName` and `name.formatted` values only; they do not derive
+given/family components or substitute `userName` or email for a missing profile name. Existing
+people without a stored display name remain without one; migration must not synthesize it
+from account-wide names or identity snapshots. Profile data and identity snapshots remain
+available after deactivation/reactivation.
+
+The fixed identity keys (`id`, `externalId`, `userName` for lookup), `active`, group/member
+links, portal, organisation, side, person/user ids, roles, grants, reach and capabilities
+are outside this map and never configurable through it. `userName` as an email profile
+value remains contact metadata only; it never links an account, verifies an address,
+selects an organisation or admits a login. For `emails.primary.value`, choose the unique
+`primary=true` item; with no marked primary, choose only if exactly one email item exists.
+Zero or multiple candidates make a supplied email source invalid and reject that SCIM user
+write without profile or authority mutation. A selected value must pass existing profile
+validation. `POST` and replacement `PUT` require valid mapped name and email values;
+their absence or invalidity fails the write atomically. A partial `PATCH` changes a mapped
+profile field only when its source attribute is supplied; absent sources leave existing
+values unchanged, while a supplied but invalid required source rejects the entire PATCH.
+Missing optional title/locale leaves the current value unchanged. Never fall back to another
+attribute implicitly. Changing a map affects **future** authenticated SCIM user writes
+only; it does not reinterpret old payloads, retroactively rewrite profiles, create grants,
+or alter live sessions. Raw incoming attributes remain untrusted and are never stored in
+the mapping or audit detail.
+
+For a customer connection, mapping `scope` must be `organisation`, `scopeId` is omitted
+on create/update and resolved only from the persisted connection, and `roleId` must name
+the existing customer role. For an agent connection, mapping `scope` must be `workspace`,
+`scopeId` is required on create and, when changing a target, on update. The target must be
+an existing non-deleted workspace owned by the unique active, non-deleted internal
+organisation, with a current approved staff role in that workspace at or below the
+connection's current `max_role_rank`. The persisted portal/organisation, SCIM child
+ownership, role side/scope/rank/capabilities, target lifecycle and administrator authority
+guardrails are rechecked under `IP-22` locks for **all** mapping writes, including a
+disabled row or a display-only edit. `groups` must be allowed and the SCIM child must be
+enabled to create or enable a mapping. A disabled mapping may be edited while the child is
+disabled but remains ineligible. Removing `groups` remains permitted and retires its active
+grants. No mapping can
+grant `instance:admin`, `sees_all` or a role with forbidden external capabilities. The
+provider never chooses a scope, role or organisation. Invalid persisted state fails closed.
+
+`200` returns exactly `{data: ScimAdminDto, configVersion}` where `ScimAdminDto` contains
+`enabled`, `allowedResources`, `lifecyclePolicy`, `attributeMapping` and `mappings`. The
+attribute mapping is the effective validated versioned safe profile map above; it contains
+no provider payload or secret. Each group mapping contains
+exactly `id`, `externalGroupId`, `externalGroupNameSnapshot`, `roleId`, `scope`, `scopeId`,
+`enabled`; mappings are ordered by external group id then id. `scopeId` is the resolved
+persisted organisation id for customer mappings. The response version is the incremented
+parent version. No raw bearer, prefix, token hash, client secret, raw claim, member list,
+sync error detail or unlisted column is returned. The existing God Mode
+connection read must use this same safe SCIM projection when it displays these fields.
+
+The handler compares body `configVersion` to the locked
+`identity_connection.config_version` and increments that parent version exactly once per
+committed request. A stale version returns `409 version_conflict` containing only the
+current safe version and makes no settings, mapping, grant, history, event or proof change.
+Invalid shape or foreign resource fails before mutation; invalid role/scope/authority
+returns `422` without a secret-bearing field echo. The PA-15 proof is mandatory for all
+variants. Challenge and proof completion bind the dedicated `scim_admin_update` operation,
+this fixed PATCH route, path connection id, expected persisted parent version and the
+server-canonical validated body. Canonical JSON is the closed envelope
+`{routeKey, connectionId, request}`. The server serializes fields in the order shown in
+the variants above, omits absent optional properties, preserves explicit display-snapshot
+null, applies create defaults, canonicalizes allowed-resource order, and serializes the
+complete attribute-map object in `version`, `name`, `email`, `jobTitle`, `locale` order
+before hashing UTF-8 bytes. The client supplies neither route key nor hash. Execution recomputes it and
+consumes the one-use proof with CAS and mutation in one transaction; stale CAS or failed
+validation rolls back consumption. An unavailable fresh supported verifier returns
+`403 step_up_unavailable`; no OIDC, MFA-reset or metrics proof is accepted.
+
+### SCIM token rotation and revocation — PA-15 operations
+
+The separate token lifecycle routes are session-only God Mode operations:
+
+```
+POST /api/instance/identity-connections/{id}/scim/rotate-token
+POST /api/instance/identity-connections/{id}/scim/revoke-token
+```
+
+Both accept exactly `{ "version": <positive safe integer> }`, use
+`identity_connection.config_version` as the compare-and-set value, require
+`instance:admin`, and require their distinct `scim_token_rotate` or
+`scim_token_revoke` PA-15 binding. Challenge, proof mint and execution bind the exact route,
+connection id and canonical UTF-8 `{"version":<base-10 integer>}`; no other operation's
+proof is accepted. A stale version returns `409 version_conflict` without consuming proof or
+changing the token. Each committed operation increments the parent version exactly once,
+sets the SCIM child disabled and invalidates the old bearer immediately. Rotation returns
+`{configVersion, token, tokenRotatedAt}` once with `Cache-Control: no-store`; the token is a
+fresh 32-byte random value encoded as unpadded base64url. Revoke returns only
+`{configVersion, revoked: true}`. Revoking an already absent token is a `422` no-op and
+does not consume proof. Re-enabling SCIM requires a later settings PATCH after the upstream
+bearer has been updated.
+
+Both operations record only the changed key and new version in `identity_connection.changed`
+audit detail, and a `token.rotated` or `token.revoked` provisioning event with connection
+id and version. Raw tokens, token prefixes, hashes and bearer header values never enter
+audit, event details, logs or read DTOs. Audit append failure follows AU-14; the mutation
+commits with the durable operational alert. The response and step-up credentials are
+no-store.
+
+`IP-22` governs pre-discovery, total parent-first lock order, closure re-read/retry and
+atomic source-validity projection. Disabling this SCIM child or removing `groups` retires
+only its active `scim_group` grants (`connection_disabled` for child disable;
+`mapping_changed` for removed group eligibility), repairs linked `scim_group_member`
+history/pointers and recomputes each affected effective membership. Attribute-map edits
+change profile interpretation for future SCIM user writes and retire no grant. Disabling,
+retargeting
+or changing a mapping retires only that mapping's active grants (`mapping_disabled` or
+`mapping_changed`); display-only edits and lifecycle-policy edits retire none. Re-enabling
+the child or mapping, or restoring `groups`, creates no grant: later authenticated
+same-connection SCIM evidence is required. Parent connection disable retains its broader
+session-revocation rule. This child-only edit does not revoke OIDC sessions. Existing
+`IP-24` provisioning/audit rows commit with the mutation and existing outbox/authority
+cache invalidation follows commit; details contain ids/changed keys/reasons only. An audit
+append failure follows `AU-14`, not a fabricated rollback claim. No new event key is
+introduced.
 
 ### OIDC group-mapping administration
 

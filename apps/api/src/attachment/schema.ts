@@ -34,3 +34,12 @@ export const presignAttachmentBody = z.object({
       "AT-3: staff uploads default to false (not customer-visible); explicit true is honoured.",
   }),
 });
+
+export const presignSubmissionAttachmentBody = z
+  .object({
+    filename: presignAttachmentBody.shape.filename,
+    contentType: presignAttachmentBody.shape.contentType,
+    size: presignAttachmentBody.shape.size,
+    fieldKey: z.string().min(1).max(120),
+  })
+  .strict();

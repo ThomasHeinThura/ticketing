@@ -1,8 +1,8 @@
 import { Checkbox, ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import TaskCardContextMenuContent from "@/components/kanban-board/task-card-context-menu/task-card-context-menu-content";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getColumnIcon } from "@/lib/column";
 import { getInitials } from "@/lib/get-initials";
 import type Task from "@/types/task";
@@ -89,7 +89,7 @@ export default function SubtaskRow({
               onClick={onNavigate}
             >
               <span
-                className={`text-sm truncate block ${isCompleted ? "line-through text-muted-foreground" : "text-foreground/90"}`}
+                className={`text-sm truncate block ${isCompleted ? "line-through text-muted-foreground" : "text-foreground"}`}
               >
                 {task.title}
               </span>

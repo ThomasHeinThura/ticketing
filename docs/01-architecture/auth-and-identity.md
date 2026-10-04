@@ -6,14 +6,14 @@
 ## Current source status
 
 This table describes current API support separately from the target behavior specified
-below. Current source does not enable the better-auth MFA or passkey plugins.
+below. Current source enables the Better Auth `twoFactor` plugin; it does not enable the passkey plugin.
 
 | Capability | Current API source | Target status and required behavior |
 | --- | --- | --- |
-| TOTP and backup codes | No enabled `twoFactor` plugin or factor verifier; not usable for sign-in enforcement or step-up | Planned P0; implement and test before enabling a required policy |
+| TOTP and backup codes | Better Auth `twoFactor` plugin enabled; policy gate and enrollment/status surface are implemented in this P0 batch; operation-bound step-up verification is being integrated | P0; only the installed Better Auth TOTP and one-use backup-code verifiers may satisfy policy |
 | Passkeys | No enabled plugin or verifier; unavailable | Planned after P0 |
 | Upstream MFA | No verifier for signed `amr` / `acr` or fresh SSO context; static setting is not proof | Verify mapped, signed per-login claims; fail closed when a required method cannot be verified |
-| Enrollment and factor recovery | No current MFA enrollment or reset flow | Planned; required users must enroll before protected use, and unsupported enrollment/verification must fail closed |
+| Enrollment and factor recovery | No current MFA enrollment or reset flow | P0 implementation in progress; required users must enroll before protected use, and unsupported enrollment/verification must fail closed |
 
 Everything else in this document describes the target architecture unless it explicitly
 states current API source status. A configured setting or target UI is not evidence that the
@@ -52,11 +52,11 @@ layer never knows or cares how someone logged in.
 | --- | --- |
 | Works with zero config | ✅ email + password out of the box |
 | Multi-organisation | **Not used.** better-auth's organisation plugin is removed at the fork — our own `organisation` / `membership` / `team` / `invitation` tables are the directory, because identity is always resolved from *our* database. better-auth does authentication only |
-| MFA | better-auth provides a two-factor plugin; TaskDesk integration is **planned for P0 and not enabled in current API source**. TOTP and backup-code support require an implemented and tested adapter |
+| MFA | better-auth provides the two-factor plugin; the current P0 candidate enables it and adds policy/status/enrollment screens, but acceptance still depends on integrated verification of login, session invalidation, and required-policy enforcement |
 | Magic link | ✅ inherited |
 | Email OTP | ✅ inherited |
 | Passkeys | **Planned after P0; not enabled in current API source**; integration and verification remain future work |
-| Arbitrary OIDC | ✅ genericOAuth — **configurable at runtime** |
+| Arbitrary OIDC | **Not enabled in the first release.** Microsoft Entra has a connection-bound implementation; other OIDC providers need their own specified protocol and admission profile. |
 | API keys | ✅ apiKey plugin |
 | Impersonation | ✅ admin plugin — kept **only as a session primitive**; the authority check is ours (see the plugin table) |
 | TypeScript-native, Drizzle adapter | ✅ |
@@ -65,6 +65,19 @@ layer never knows or cares how someone logged in.
 Keycloak is **not** a dependency. It is one OIDC provider among many, added through
 God Mode if a deployment wants it. That is the difference between "we support Keycloak"
 and "we require Keycloak".
+
+**Runtime limitation of better-auth `genericOAuth`.** The generic plugin is present in the
+installed library, but its current runtime implementation is not the Entra connection
+protocol. Its profile path decodes ID-token claims before mapping and does not provide the
+connection-specific signature, immutable `oid`/`tid`, exact app-role/`acct` admission,
+portal/organisation binding, profile-only mapping, or source-isolated grant reconciliation
+required by IP-7/IP-27. Its generic profile/error handling can also surface upstream
+response details through the auth error path. TaskDesk therefore uses a custom Better Auth
+plugin endpoint for the Entra authorization-code flow, with tenant-pinned discovery, PKCE,
+single-use state/nonce, bounded upstream responses, native RS256/JWKS validation and generic
+browser failure redirects. Upstream response bodies, claims, codes, tokens, state, and client
+secrets are never included in TaskDesk logs or public errors. Generic OAuth remains disabled
+for connection sign-in until a separate provider contract and verifier are implemented.
 
 ### The better-auth plugin set — inherited, removed, added
 
@@ -81,15 +94,16 @@ registered in [inherited-features.md](inherited-features.md).
 | `magicLink` | inherited — kept | `auth.magic-link` |
 | `emailOTP` | inherited — kept | `auth.email-otp` |
 | `genericOAuth` | inherited — kept | the protocol implementation every `auth.oidc` connection is built on |
+| `taskdesk-identity-oidc` | added — P3 | Native TaskDesk Entra authorization-code flow; validates connection-bound ID-token signature, nonce, immutable subject/tenant and admission rules before issuing the existing Better Auth session. It adds no role or capability authority |
 | `apiKey` | inherited — kept | the credential only; our `api_key` table owns everything else |
-| `admin` | inherited — kept **as a session primitive only** | its HTTP routes are **not mounted**, `user.role` is **never read**, and `POST /api/instance/users/{id}/impersonate` ([rbac.md](rbac.md)) does the authority check and sets `impersonatedBy`. Using the plugin's own endpoints would reintroduce the second authority source the identity-resolution rule forbids |
+| `admin` | inherited — kept **as a session primitive only** | its HTTP routes are **not mounted**. The application's identity resolver reads the stored `user.role = 'admin'` field as the current source for the instance-scope `instance_admin` grant; authority does not come from a plugin endpoint. `POST /api/instance/users/{id}/impersonate` ([rbac.md](rbac.md)) does the authority check and sets `impersonatedBy` |
 | `openAPI` | **removed at fork** | listed here as *"kept — development only"* until 2026-09-07. It mounts an unauthenticated `/api/auth/reference` that pulls an **unpinned** `cdn.jsdelivr.net/npm/@scalar/api-reference` bundle into the API's own cookie origin — **H19** of the [#13 security review](../07-planning/security-reviews/13-kaneo-import.md), which put it on issue #6's removal list. Removed in #6's inherited-defaults slice. The API's **own** OpenAPI document is `@hono/zod-openapi` at `GET /api/openapi` and is untouched by this |
 | `lastLoginMethod` | inherited — kept | |
 | `anonymous` | **removed at fork** | guest sign-in, on by default in kaneo. An ephemeral-identity surface does not ship dormant |
 | `deviceAuthorization` | **removed at fork** | a device-code grant no v2 spec asks for |
 | `bearer` | **removed at fork** | a second token-bearing authentication surface |
 | `organization` | **removed at fork — P0 step 1b** | see below |
-| `twoFactor` | **planned P0 addition; not enabled in current API source** | TOTP and backup codes require implementation and verification before they can satisfy sign-in or step-up policy |
+| `twoFactor` | **candidate P0 integration** | TOTP and backup codes use Better Auth's verifier; candidate login/session/policy wiring is not accepted until the full runtime and browser evidence passes |
 | `passkey` | **planned later; not enabled in current API source** | Integration and verification remain future work |
 
 **The organization plugin is kaneo's workspace model, not a dormant feature.** In kaneo it
@@ -367,9 +381,12 @@ code; only the credential check reuses the platform. Budget it as such.
   with `__Host-` and with `SameSite=Lax`, and the API is served on each portal's own origin,
   which `/api/portal/*` already implies
   ([decision-log.md](../07-planning/decision-log.md) — environment surface).
-- Every `session` row carries `portal` (`agent` | `customer`), set at issue time. The
-  portal-boundary middleware compares `session.portal` to the request host — that column
-  is the data the check runs on.
+- New `session` rows carry `portal` (`agent` | `customer`), set by the host-selected
+  Better Auth instance at issue time. The additive migration leaves existing rows unbound
+  (`NULL`) rather than infer their origin from identity-side data; those sessions fail
+  closed during authenticated request resolution and at the realtime boundary, requiring
+  a fresh sign-in. The selected host's portal must match `session.portal` even if a cookie
+  value is copied into the other portal's cookie name.
 - **Server-side sessions in Postgres, and this is the honest revocation SLA.**
   better-auth's `session.cookieCache` is **disabled** at the fork — kaneo enables it for
   five minutes, which serves a session from a signed cookie with no database read. Every
@@ -465,28 +482,56 @@ no account.
 
 ## Multi-factor authentication
 
-- **Target local factors:** TOTP and backup codes via better-auth's two-factor plugin;
-  passkeys are planned for a later stage. None is enabled or verified by current API source,
-  so none is currently usable for sign-in enforcement or step-up.
-- **Target policy options:** optional, required for staff, required for a specific role, or
-  required for everyone. Current API source does not expose or enforce these factor policies.
-  When a required policy is introduced, a user without a factor the server can verify must
-  not receive an authenticated session or protected access. Enrollment may be offered before
-  access, but unsupported enrollment or verification must fail closed rather than bypass
-  the requirement.
+- **Local factors:** P0 supports TOTP and one-use backup codes through Better Auth's
+  `twoFactor` plugin. The plugin owns encrypted factor material and verification; TaskDesk
+  owns the policy gate, enrollment confirmation, session consequences and audit records.
+  Passkeys remain planned for a later stage. An enabled plugin alone is not evidence that a
+  required policy is enforced.
+- **Runtime policy:** the singleton `instance_setting.local_factor_policy` is the sole
+  authority, with the closed shape `{ mode, requiredRoleId }`. `mode` is `off`, `optional`,
+  `required_staff`, `required_role`, or `required_everyone`. `requiredRoleId` is null except
+  for `required_role`, when it is the id of an existing role row; role rows have no inactive state, and deletion is blocked while one is the configured target. That policy applies to a
+  person with an active membership holding that role at any supported scope. Deleted or
+  inactive roles make the persisted policy invalid and readiness fails closed. The policy
+  is read at request/login authorization time, never cached beyond the documented runtime
+  refresh interval, and is not customer- or environment-specific.
+  Instance administrators read and update it through
+  `GET/PATCH /api/instance/local-factor-policy`; writes validate the required role before
+  committing and write an `instance.local_factor_policy_changed` audit action.
+- **Enforcement:** `off` does not require enrollment and disables self-service enrollment; `optional` permits
+  self-service enrollment and password-only login for unenrolled accounts. In either mode,
+  an already-enrolled account must complete its factor challenge;
+  each `required_*` mode requires a verified enrolled TOTP or valid backup code before an
+  authenticated session may be used. An unenrolled required user receives only the
+  enrollment/challenge surface, not a usable API session. Customer-portal authentication
+  remains disabled by the P0 CP-19 boundary. Unsupported upstream SSO MFA cannot satisfy a
+  required local-factor policy; it fails closed. Sign-in email OTP, remembered-device state,
+  and client assertions are never second-factor proof.
+- **Enrollment and recovery:** enrollment starts from a real session, returns the setup
+  secret only to that session once, and does not mark the factor enabled until a TOTP is
+  verified. Backup codes are shown once and are server-generated by Better Auth. Successful
+  enrollment invalidates other sessions and requires a fresh sign-in with the new factor.
+  Failed or expired enrollment leaves the account unenrolled. A backup code is consumed
+  once under concurrent requests. Factor disable requires a fresh factor proof and is not
+  available to an unenrolled/required account as a bypass.
 - **Target upstream contract:** a configured IdP's signed, verified `amr` / `acr` evidence
   may satisfy login MFA only when it meets that connection's mapping. A static "MFA satisfied
   upstream" setting is not proof that a particular login used MFA and never establishes
-  fresh step-up proof. Current source has no SSO MFA or step-up verifier; unsupported
-  upstream-MFA policy therefore cannot be treated as satisfied.
-- **Planned second-factor reset** (`POST /api/instance/users/{id}/reset-mfa`) is the
-  most socially-engineered path into an MFA-protected account. The target screen requires the
-  administrator to record *how the requester's identity was verified* (a free-text reason
-  is mandatory, stored in the audit row); the affected person is emailed on every address
-  on file; and the reset revokes all of their sessions and API keys.
-- **Planned enrollment behavior:** before protected use, a user who must have MFA and has no
-  enrolled factor is routed to enrollment. This flow is not implemented in current source;
-  until the enrollment and verification adapter exists, a required-MFA policy fails closed.
+  fresh step-up proof. Current source has no SSO MFA verifier; unsupported upstream-MFA
+  policy therefore cannot be treated as satisfied.
+- **Second-factor reset** (`POST /api/instance/users/{id}/reset-mfa`) is implemented in the
+  P0 candidate as an elevated browser-session-only instance-admin route. It requires a
+  12–1000 character note describing how the administrator verified the person's identity,
+  deletes the factor, invalidates all of that person's sessions and API keys, writes
+  `auth.mfa_reset`, and inserts a private `security_alert` notification before attempting
+  email delivery. The identity model currently has one canonical `user.email` address; the
+  email attempt targets that address. The response reports whether SMTP delivery succeeded;
+  the in-app notice remains durable if SMTP fails after the reset. SMTP must be configured
+  before the mutation starts. Required-factor policy still blocks protected use until the
+  person enrolls and verifies a new factor. The current runtime does not maintain multiple
+  verified addresses on one user record. Audit write failure follows AU-14 and does not undo
+  the reset. `#231` zero-admin bootstrap race remains open; this route does not claim to fix
+  bootstrap ownership.
 
 ## API keys and machine access
 
@@ -527,9 +572,10 @@ Invitations never grant instance-admin. That is deliberate and hard-coded.
 serves a one-time **setup page** at the agent origin, unlocked by a 32-byte token printed
 once in the container log (the pattern Jenkins and Portainer use). The target flow creates
 the first instance administrator and requires verified MFA enrollment before recording
-completion in `instance_setting.setup_completed_at`. Current API source has no setup or
-factor-enrollment implementation; it must not claim enrollment or complete a required-MFA
-setup without a supported verifier.
+completion in `instance_setting.setup_completed_at`. The P0 candidate implements
+factor enrollment but has not changed the existing bootstrap marker sequence to wait for
+verified enrollment; bootstrap MFA completion is still residual and must not be claimed.
+The zero-admin bootstrap race (#231) also remains open.
 — a durable marker, so the page can never be re-opened by deleting user rows. The setup
 token expires after one hour or one use, and **while `setup_completed_at` is null every
 container start prints a fresh token and invalidates the previous one** — so an operator who

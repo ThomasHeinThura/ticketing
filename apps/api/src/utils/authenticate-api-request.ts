@@ -1,7 +1,7 @@
 import { APIError } from "better-auth/api";
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { auth } from "../auth";
+import { authForHost, portalForHost } from "../auth";
 import { verifyApiKey } from "./verify-api-key";
 
 function isAuthRejection(error: unknown) {
@@ -13,21 +13,21 @@ function isAuthRejection(error: unknown) {
 }
 
 async function getSession(headers: Headers) {
+  const auth = authForHost(headers.get("host"));
+  const portal = portalForHost(headers.get("host"));
+  if (!auth || !portal) return null;
   try {
-    return await auth.api.getSession({ headers });
+    const result = await auth.api.getSession({ headers });
+    if (result?.session && result.session.portal !== portal) {
+      throw new HTTPException(403, { message: "Forbidden" });
+    }
+    return result;
   } catch (error) {
     if (isAuthRejection(error)) {
       return null;
     }
     throw error;
   }
-}
-
-async function getSessionFromBearerOnlyHeaders(c: Context) {
-  const headers = new Headers(c.req.raw.headers);
-  headers.delete("cookie");
-
-  return getSession(headers);
 }
 
 function parseBearerToken(authHeader: string | undefined): {
@@ -53,15 +53,28 @@ function parseBearerToken(authHeader: string | undefined): {
   };
 }
 
+export function hasInvalidExplicitCredential(
+  authorization: string | undefined,
+  apiKeyHeader: string | undefined,
+): boolean {
+  const { token, malformed } = parseBearerToken(authorization);
+  return (
+    (authorization !== undefined && (!token || malformed)) ||
+    (apiKeyHeader !== undefined && !apiKeyHeader.trim())
+  );
+}
+
 export async function authenticateApiRequest(c: Context): Promise<void> {
-  const { token, malformed } = parseBearerToken(c.req.header("Authorization"));
-  if (malformed) {
+  const authorization = c.req.header("Authorization");
+  const apiKeyHeader = c.req.header("x-api-key");
+  const { token } = parseBearerToken(authorization);
+  if (hasInvalidExplicitCredential(authorization, apiKeyHeader)) {
     throw new HTTPException(401, { message: "Unauthorized" });
   }
 
-  const apiKeyHeader = c.req.header("x-api-key")?.trim();
-  if (!token && apiKeyHeader) {
-    const apiKeyResult = await verifyApiKey(apiKeyHeader);
+  const normalizedApiKey = apiKeyHeader?.trim();
+  if (!token && normalizedApiKey) {
+    const apiKeyResult = await verifyApiKey(normalizedApiKey);
     if (!apiKeyResult?.valid || !apiKeyResult.key) {
       throw new HTTPException(401, { message: "Unauthorized" });
     }
@@ -95,14 +108,7 @@ export async function authenticateApiRequest(c: Context): Promise<void> {
       });
       return;
     }
-    const sessionResult = await getSessionFromBearerOnlyHeaders(c);
-    if (sessionResult?.user && sessionResult.session) {
-      c.set("user", sessionResult.user);
-      c.set("session", sessionResult.session);
-      c.set("userId", sessionResult.user.id);
-      c.set("userEmail", sessionResult.user.email ?? "");
-      return;
-    }
+    // The pinned Better Auth stack does not accept bearer session tokens here.
     throw new HTTPException(401, { message: "Unauthorized" });
   }
 
@@ -121,12 +127,14 @@ export async function resolveAssetBearerOrCookie(c: Context): Promise<{
   userId: string;
   apiKeyId?: string;
 }> {
-  const { token, malformed } = parseBearerToken(c.req.header("Authorization"));
-  if (malformed) {
+  const authorization = c.req.header("Authorization");
+  const apiKeyHeaderValue = c.req.header("x-api-key");
+  const { token } = parseBearerToken(authorization);
+  if (hasInvalidExplicitCredential(authorization, apiKeyHeaderValue)) {
     throw new HTTPException(401, { message: "Unauthorized" });
   }
 
-  const apiKeyHeader = c.req.header("x-api-key")?.trim();
+  const apiKeyHeader = apiKeyHeaderValue?.trim();
   if (!token && apiKeyHeader) {
     const apiKeyResult = await verifyApiKey(apiKeyHeader);
     if (apiKeyResult?.valid && apiKeyResult.key) {
@@ -145,10 +153,6 @@ export async function resolveAssetBearerOrCookie(c: Context): Promise<{
         userId: apiKeyResult.key.userId,
         apiKeyId: apiKeyResult.key.id,
       };
-    }
-    const sessionResult = await getSessionFromBearerOnlyHeaders(c);
-    if (sessionResult?.user?.id) {
-      return { userId: sessionResult.user.id };
     }
     throw new HTTPException(401, { message: "Unauthorized" });
   }

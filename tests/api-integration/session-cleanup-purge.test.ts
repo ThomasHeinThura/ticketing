@@ -42,6 +42,20 @@ async function makeOrganisation(label: string) {
 
 async function makePerson(userId: string, organisationId: string) {
   const now = new Date();
+  const [existing] = await db
+    .select()
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  if (existing) {
+    const [updated] = await db
+      .update(schema.personTable)
+      .set({ organisationId, side: "staff", active: true, updatedAt: now })
+      .where(eq(schema.personTable.id, existing.id))
+      .returning();
+    if (!updated) throw new Error("makePerson: update returned no row");
+    return updated;
+  }
   return requireRow(
     await db
       .insert(schema.personTable)

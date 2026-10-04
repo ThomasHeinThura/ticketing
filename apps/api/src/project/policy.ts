@@ -75,6 +75,12 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * existing, addressable resource at all; none of the eight routes below are that.
  */
 export const projectPolicies = {
+  "GET /api/project/organisations": {
+    capability: "project:create",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
   // Reading one project. The scope is the project itself: reach decides whether this identity
   // can see it at all (404 if not), and authority decides whether they may read it (403).
   "GET /api/project/{id}": {

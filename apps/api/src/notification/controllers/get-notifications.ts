@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import db from "../../database";
 import {
   notificationTable,
@@ -6,8 +6,16 @@ import {
   taskTable,
   workspaceTable,
 } from "../../database/schema";
+import { isCurrentInstanceAdmin } from "../../instance/observability/audit-failure-notifier";
 
 async function getNotifications(userId: string) {
+  const canReadInstanceAlerts = await isCurrentInstanceAdmin(userId);
+  const visibleToUser = canReadInstanceAlerts
+    ? eq(notificationTable.userId, userId)
+    : and(
+        eq(notificationTable.userId, userId),
+        ne(notificationTable.type, "audit_write_failed"),
+      );
   const rows = await db
     .select({
       notification: notificationTable,
@@ -24,7 +32,7 @@ async function getNotifications(userId: string) {
     )
     .leftJoin(projectTable, eq(taskTable.projectId, projectTable.id))
     .leftJoin(workspaceTable, eq(projectTable.workspaceId, workspaceTable.id))
-    .where(eq(notificationTable.userId, userId))
+    .where(visibleToUser)
     .orderBy(desc(notificationTable.createdAt))
     .limit(50);
 

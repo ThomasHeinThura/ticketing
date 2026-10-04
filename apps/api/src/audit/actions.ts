@@ -30,6 +30,9 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   // Second factor enrolled; reset by an administrator (with the verification note).
   "auth.mfa_enrolled",
   "auth.mfa_reset",
+  "auth.step_up_issued",
+  "auth.step_up_consumed",
+  "auth.step_up_denied",
   // GM-7, GM-11.
   "impersonation.started",
   "impersonation.ended",
@@ -41,6 +44,9 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "membership.sees_all_granted",
   // `owner_team_id` or `parent_id` changed (rbac.md#reach).
   "project.reach_changed",
+  "sla_policy.created",
+  "sla_policy.updated",
+  "sla_policy.published",
   // Invitations.
   "invitation.sent",
   "invitation.redeemed",
@@ -88,6 +94,8 @@ export const AUDIT_ONLY_ACTIONS = new Set<string>([
   "audit.purged",
   // A restore completed (backup-and-restore.md).
   "instance.restored",
+  "instance.observability_changed",
+  "instance.local_factor_policy_changed",
   // The one pending-action transition that is not an event (PA-11).
   "pending_action.viewed",
 ]);

@@ -1,0 +1,2 @@
+ALTER TABLE "project" ADD COLUMN "default_comment_visibility" text DEFAULT 'internal' NOT NULL;--> statement-breakpoint
+ALTER TABLE "project" ADD CONSTRAINT "project_default_comment_visibility_allowed" CHECK ("project"."default_comment_visibility" in ('public', 'internal'));

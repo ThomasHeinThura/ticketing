@@ -4,6 +4,8 @@ import db from "../../database";
 import {
   attachmentTable,
   instanceSettingTable,
+  requestTypeTable,
+  submissionTable,
   workItemTable,
 } from "../../database/schema";
 import {
@@ -28,9 +30,42 @@ const FALLBACK_MAX_BYTES = 25 * 1024 * 1024;
 async function deleteRejectedPendingAttachmentRow(input: {
   attachmentId: string;
   workspaceId: string;
-  workItemId: string;
+  workItemId?: string;
+  submissionId?: string;
 }) {
   return db.transaction(async (tx) => {
+    if (input.submissionId) {
+      const [submission] = await tx
+        .select({
+          state: submissionTable.state,
+          workspaceId: requestTypeTable.workspaceId,
+        })
+        .from(submissionTable)
+        .innerJoin(
+          requestTypeTable,
+          eq(requestTypeTable.id, submissionTable.requestTypeId),
+        )
+        .where(eq(submissionTable.id, input.submissionId))
+        .for("update", { of: submissionTable });
+      if (
+        !submission ||
+        submission.state !== "draft" ||
+        submission.workspaceId !== input.workspaceId
+      ) {
+        throw new HTTPException(404, { message: "Submission not found" });
+      }
+      return tx
+        .delete(attachmentTable)
+        .where(
+          and(
+            eq(attachmentTable.id, input.attachmentId),
+            eq(attachmentTable.workspaceId, input.workspaceId),
+            eq(attachmentTable.submissionId, input.submissionId),
+            eq(attachmentTable.state, "pending"),
+          ),
+        )
+        .returning({ id: attachmentTable.id });
+    }
     const [locked] = await tx
       .select({
         projectId: workItemTable.projectId,
@@ -40,7 +75,7 @@ async function deleteRejectedPendingAttachmentRow(input: {
       .from(workItemTable)
       .where(
         and(
-          eq(workItemTable.id, input.workItemId),
+          eq(workItemTable.id, input.workItemId!),
           eq(workItemTable.workspaceId, input.workspaceId),
         ),
       )
@@ -54,7 +89,7 @@ async function deleteRejectedPendingAttachmentRow(input: {
         and(
           eq(attachmentTable.id, input.attachmentId),
           eq(attachmentTable.workspaceId, input.workspaceId),
-          eq(attachmentTable.workItemId, input.workItemId),
+          eq(attachmentTable.workItemId, input.workItemId!),
           eq(attachmentTable.state, "pending"),
         ),
       )
@@ -65,7 +100,8 @@ async function deleteRejectedPendingAttachmentRow(input: {
 export type CompleteAttachmentInput = {
   attachmentId: string;
   workspaceId: string;
-  workItemId: string;
+  workItemId?: string;
+  submissionId?: string;
   actorId: string;
   actorType: "person" | "api_key";
 };
@@ -78,7 +114,19 @@ export type CompleteAttachmentInput = {
  * declared `mime_type`.
  */
 export async function completeAttachment(input: CompleteAttachmentInput) {
-  const { attachmentId, workspaceId, workItemId, actorId, actorType } = input;
+  const {
+    attachmentId,
+    workspaceId,
+    workItemId,
+    submissionId,
+    actorId,
+    actorType,
+  } = input;
+  if ((workItemId === undefined) === (submissionId === undefined)) {
+    throw new HTTPException(400, {
+      message: "Exactly one upload parent is required",
+    });
+  }
 
   const [attachment] = await db
     .select()
@@ -89,7 +137,9 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
   if (
     !attachment ||
     attachment.workspaceId !== workspaceId ||
-    attachment.workItemId !== workItemId
+    (submissionId
+      ? attachment.submissionId !== submissionId
+      : attachment.workItemId !== workItemId)
   ) {
     throw new HTTPException(404, { message: "Attachment not found" });
   }
@@ -156,6 +206,7 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
         attachmentId,
         workspaceId,
         workItemId,
+        submissionId,
       });
     } catch (error) {
       // Preserve the pending row if the project/work item froze first. The invalid
@@ -178,6 +229,7 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
         attachmentId,
         workspaceId,
         workItemId,
+        submissionId,
       });
     } catch (error) {
       // Preserve the pending row if the project/work item froze first. The invalid
@@ -202,17 +254,39 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
       // activity row) on a dead item. `.for("share")` locks the row so a concurrent
       // soft-delete blocks until this transaction finishes; read-only here, so a shared
       // lock is enough.
-      const [locked] = await tx
-        .select({
-          projectId: workItemTable.projectId,
-          deletedAt: workItemTable.deletedAt,
-          archivedAt: workItemTable.archivedAt,
-        })
-        .from(workItemTable)
-        .where(eq(workItemTable.id, workItemId))
-        .for("share");
-      assertWorkItemStillLive(locked);
-      await assertProjectStillLive(tx, locked.projectId);
+      if (submissionId) {
+        const [submission] = await tx
+          .select({
+            state: submissionTable.state,
+            workspaceId: requestTypeTable.workspaceId,
+          })
+          .from(submissionTable)
+          .innerJoin(
+            requestTypeTable,
+            eq(requestTypeTable.id, submissionTable.requestTypeId),
+          )
+          .where(eq(submissionTable.id, submissionId))
+          .for("update", { of: submissionTable });
+        if (
+          !submission ||
+          submission.state !== "draft" ||
+          submission.workspaceId !== workspaceId
+        ) {
+          throw new HTTPException(404, { message: "Submission not found" });
+        }
+      } else {
+        const [locked] = await tx
+          .select({
+            projectId: workItemTable.projectId,
+            deletedAt: workItemTable.deletedAt,
+            archivedAt: workItemTable.archivedAt,
+          })
+          .from(workItemTable)
+          .where(eq(workItemTable.id, workItemId!))
+          .for("share");
+        assertWorkItemStillLive(locked);
+        await assertProjectStillLive(tx, locked.projectId);
+      }
 
       const rows = await tx
         .update(attachmentTable)
@@ -230,7 +304,7 @@ export async function completeAttachment(input: CompleteAttachmentInput) {
         )
         .returning();
 
-      if (rows.length > 0) {
+      if (rows.length > 0 && workItemId) {
         await recordWorkItemActivity(tx, [
           {
             workspaceId,

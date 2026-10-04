@@ -18,11 +18,17 @@ export {
 export * from "./audit/audit.js";
 export * from "./audit/types.js";
 export * from "./calendar/calendar.js";
+export * from "./calendar/holiday-import.js";
 export * from "./calendar/types.js";
 export * from "./hierarchy/hierarchy.js";
 export * from "./hierarchy/types.js";
+export * from "./identity/claim-mapping.js";
 export * from "./identity/identity.js";
+export * from "./identity/jit-policy.js";
+export * from "./identity/membership-projection.js";
 export * from "./identity/portal.js";
+export * from "./identity/profile-mapping.js";
+export * from "./identity/scim-admin.js";
 export * from "./identity/types.js";
 export * from "./intake/duplicate.js";
 export * from "./intake/request-type.js";

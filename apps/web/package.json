@@ -5,14 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "dev:portal": "vite --mode portal --port 5174",
+    "build": "pnpm build:agent && pnpm build:portal",
+    "build:agent": "vite build --mode agent",
+    "build:portal": "vite build --mode portal",
     "preview": "vite preview",
     "lint": "biome check --write . && node scripts/check-ui-boundaries.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:e2e": "playwright test --config playwright.config.ts",
-    "test:visual": "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual"
+    "test:e2e:portal": "playwright test --config playwright.portal.config.ts",
+    "test:visual": "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual",
+    "test:perf": "playwright test --config playwright.perf.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -47,6 +52,7 @@
     "@tanstack/react-router": "^1.170.21",
     "@tanstack/router-devtools": "^1.167.1",
     "@tanstack/router-plugin": "^1.168.26",
+    "@taskdesk/domain": "workspace:*",
     "@tiptap/core": "~3.30.5",
     "@tiptap/extension-code-block-lowlight": "^3.29.2",
     "@tiptap/extension-image": "^3.29.2",

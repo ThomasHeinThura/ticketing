@@ -347,7 +347,10 @@ Self-assignment by a `member` is `work_item:update` on an item where the new ass
 the actor — the `orSelfTarget` body predicate below, not `work_item:assign`
 ([assignment.md](../03-features/assignment.md)).
 
-Instance scope has one system role: `instance_admin`, holding `instance:*`.
+Instance scope has one system role: `instance_admin`, holding `instance:*`. In the current
+runtime, the existing Better Auth `user.role = 'admin'` field is the sole instance-admin
+authority source; identity resolution projects it to this instance-scope grant. The Better
+Auth admin plugin's HTTP endpoints are not mounted and are not a second grant path.
 
 ## The customer role is special
 
@@ -704,9 +707,9 @@ the first day.
 | Action | Route |
 | --- | --- |
 | Creating or changing an identity connection (OIDC) or a non-OIDC auth plugin | `POST /api/instance/identity-connections`, `PATCH /api/instance/identity-connections/{id}`; `POST/PATCH /api/instance/plugins/{id}` for `auth.*` |
-| Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `…/scim/rotate-token`, `…/scim/revoke-token` |
+| Creating, rotating or revoking a **SCIM token** | `POST /api/instance/identity-connections/{id}/scim`, `POST /api/instance/identity-connections/{id}/scim/rotate-token`, `POST /api/instance/identity-connections/{id}/scim/revoke-token` |
 | OIDC mapping administration — every create, edit, enable and disable is unconditionally elevated, session-only and audited, including customer/display-only changes; forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-34`) | `POST /api/instance/identity-connections/{id}/oidc-group-mappings`, `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` |
-| Every SCIM administration PATCH is route-wide elevated, session-only and audited; the route remains unusable until its strict DTO, parent-version CAS and dedicated PA-15 binding are specified in [issue #561](https://github.com/ThomasHeinThura/ticketing/issues/561), and fails closed meanwhile. Forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-20`–`IP-22`; [api-design.md](api-design.md#identity-connection-configuration-compare-and-set)) | `PATCH /api/instance/identity-connections/{id}/scim` |
+| Every SCIM administration PATCH is route-wide elevated, session-only and audited, with strict DTO, parent-version CAS and dedicated `scim_admin_update` PA-15 proof. An implementation lacking its verifier fails closed. Forbidden authority remains impossible ([identity-provisioning.md](../03-features/identity-provisioning.md) `IP-6`, `IP-20`–`IP-22`; [api-design.md](api-design.md#scim-administration-patch--issue-561-owner-contract)) | `PATCH /api/instance/identity-connections/{id}/scim` |
 | Granting `instance:admin` | `POST /api/instance/users/{id}/grant-admin` |
 | Resetting another person's second factor | Planned `POST /api/instance/users/{id}/reset-mfa` — with a mandatory verification note; unavailable until the factor adapter exists |
 | Creating a workspace **service** API key | `POST /api/workspaces/{id}/api-keys` — bounded by the creator's authority |

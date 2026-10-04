@@ -262,7 +262,7 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                   <Button variant="ghost" size="icon" className="relative">
                     <Bell className="h-4 w-4" />
                     {unreadNotifications.length > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-semibold leading-none text-white ring-2 ring-sidebar transition-[scale,opacity] duration-200 ease-out starting:scale-75 starting:opacity-0 motion-reduce:starting:scale-100">
+                      <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-destructive-strong px-1 text-[9px] font-semibold leading-none text-destructive-strong-foreground ring-2 ring-sidebar transition-[scale,opacity] duration-200 ease-out starting:scale-75 starting:opacity-0 motion-reduce:starting:scale-100">
                         {unreadNotifications.length > 99
                           ? "99+"
                           : unreadNotifications.length}
@@ -308,11 +308,11 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
               <div className="relative max-h-80 overflow-y-auto p-1">
                 {!hasNotifications ? (
                   <div className="flex flex-col items-center gap-1 py-10 text-center">
-                    <Bell className="mb-1 size-5 text-muted-foreground/40" />
+                    <Bell className="mb-1 size-5 text-muted-foreground" />
                     <p className="text-muted-foreground text-sm">
                       {t("notifications:emptyTitle")}
                     </p>
-                    <p className="text-muted-foreground/60 text-xs">
+                    <p className="text-muted-foreground text-xs">
                       {t("notifications:emptySubtitle")}
                     </p>
                   </div>
@@ -337,7 +337,7 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                             >
                               {getNotificationTitle(notification, t)}
                             </span>
-                            <span className="ml-auto shrink-0 text-[11px] text-muted-foreground/70">
+                            <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
                               {formatRelativeTime(notification.createdAt)}
                             </span>
                             {!notification.isRead && (
@@ -349,7 +349,7 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                               className={cn(
                                 "mt-0.5 line-clamp-1 text-xs transition-colors duration-150",
                                 notification.isRead
-                                  ? "text-muted-foreground/60"
+                                  ? "text-muted-foreground"
                                   : "text-muted-foreground",
                               )}
                             >
@@ -366,7 +366,7 @@ const NotificationDropdown = forwardRef<NotificationDropdownRef>(
                 <div className="border-border/50 border-t p-1">
                   <DropdownMenuItem
                     onClick={() => setShowClearDialog(true)}
-                    className="min-h-0 cursor-pointer justify-center rounded-md px-2 py-1 text-muted-foreground/70 text-xs sm:min-h-0 sm:text-xs data-highlighted:text-destructive"
+                    className="min-h-0 cursor-pointer justify-center rounded-md px-2 py-1 text-muted-foreground text-xs sm:min-h-0 sm:text-xs data-highlighted:text-destructive"
                   >
                     {t("notifications:clearAll")}
                   </DropdownMenuItem>

@@ -13,6 +13,7 @@ import {
   assertProjectStillLive,
   projectNotDeletedClause,
 } from "../assert-work-item-live";
+import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 // The 409 shape is the assign route's own (`assignment.md`'s conditional-write conflict:
 // "the assignee changed while this request was in flight"). One class, two action routes
 // that clear or move the same field -- the extraction the reviewers asked for when the
@@ -102,6 +103,9 @@ export async function unassignWorkItem(
 
   const previousAssigneeId = item.assigneeId;
 
+  let realtimeEvent:
+    | Awaited<ReturnType<typeof recordWorkItemEvent>>
+    | undefined;
   const cleared = await db.transaction(async (tx) => {
     await assertProjectStillLive(tx, item.projectId);
     const [updated] = await tx
@@ -186,6 +190,22 @@ export async function unassignWorkItem(
       after: { assigneeId: null },
     });
 
+    realtimeEvent = await recordWorkItemEvent(tx, {
+      kind: "work_item.unassigned",
+      workItemId: item.id,
+      key: updated.key,
+      workspaceId,
+      projectId: item.projectId,
+      actorId,
+      actorType,
+      customerVisible: true,
+      payload: {
+        key: updated.key,
+        url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
+        previousAssigneeId,
+      },
+    });
+
     return {
       key: updated.key,
       assigneeId: null,
@@ -205,6 +225,14 @@ export async function unassignWorkItem(
     actorId,
     actorType,
   });
+  if (realtimeEvent) {
+    await publishWorkItemHint(realtimeEvent, {
+      kind: "work_item.unassigned",
+      key: item.key,
+      projectId: item.projectId,
+      customerVisible: true,
+    });
+  }
 
   return cleared;
 }
