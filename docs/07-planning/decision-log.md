@@ -5,6 +5,37 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-05 · Select the P4 God Mode Users routine-administration contract
+
+**Decision:** implement the Users directory with an allowlisted DTO, opaque cursor paging
+(default 50, maximum 200), trimmed case-insensitive name/email substring search, exact
+`side`/`active`/`organisationId` filters, stable creation-time/id ordering, and a cursor
+bound to the normalized query. Accounts without a linked `person` remain visible with a
+null person projection. Force sign-out revokes sessions only. Reversible suspension uses
+the existing Better Auth ban fields, revokes every current session and personal API/MCP key,
+and unsuspension never restores a session or key. These operations remain separate from
+IP-15 person deactivation.
+
+The in-app `grant-admin` operation follows the existing #230 eligibility and serialization
+invariants: existing non-anonymous, unbanned user; exactly one active staff person; existing
+`user.role='admin'` authority source; shared advisory lock 2026; locked re-read; idempotent
+already-admin result. Browser grant requires a one-use PA-15 proof bound to actor/person/
+session, target, exact route, fixed operation/version and strict empty request body. The
+role change, audit and durable alerts to current administrators and the target commit
+together. Existing authority is preserved; no additional last-administrator guardrail is
+introduced by this batch. User deactivation is a server-owned pending action, fixed to the
+current target email plus step-up, revalidated at execution, and uses IP-15's
+`end_memberships` policy; SCIM continues to use its configured policy.
+
+**Authorization and status:** the orchestrator selects these recommended implementation
+contracts under Thomas's standing authorization to proceed with documented decisions. This
+is implementation direction, not integrated P4 design approval, independent review,
+security clearance, or a claim that the feature is complete. Export, anonymisation and
+legal-hold mutation remain out of scope until their complete relation/retention contract is
+decided. Deactivation implementation waits for P3's shared person-level lifecycle service.
+Impersonation implementation remains open pending the cross-portal cookie-switch and
+expiry/restore contract.
+
 ### 2026-10-04 · Unify denied password-signup responses across bootstrap state (#232)
 
 **Decision:** every unauthenticated password-signup attempt denied by registration policy,

@@ -283,9 +283,44 @@ Which keys, how many calls, which tools, error rates, auto-disabled keys
 ### Users
 
 Every account on the instance, across organisations. Search, view, suspend, unsuspend,
-force sign-out, reset MFA (planned; unavailable until a factor adapter exists), delete
-(deactivate — people are never hard-deleted), export a person's data, anonymise a person,
-and **impersonate**.
+force sign-out, reset MFA, grant instance administrator, deactivate, export a person's
+data, anonymise a person, and **impersonate**. The P4 Users implementation follows the
+contracts below; deactivation follows the identity-provisioning lifecycle contract. Export,
+anonymisation and legal-hold operations are not
+part of this batch until their complete relation and retention contracts are implemented.
+
+The directory uses `GET /api/instance/users` with opaque cursor pagination (`limit` defaults
+to 50 and is capped at 200). `q` is trimmed and searched as a case-insensitive substring of
+name or email. Optional `side`, `active` and `organisationId` filters are exact matches.
+Results are ordered by account creation time descending, then user id descending; the cursor
+is bound to the normalized query and filters. The response is `{data, page:{nextCursor,
+hasMore}}` with no total count. Each `data` item contains only `id`, `name`, `email`,
+`emailVerified`, `createdAt`, `locale`, `isInstanceAdmin`, `isSuspended`,
+`suspensionExpiresAt`, `twoFactorEnabled`, and `person`. `person` is null for an unlinked
+account; otherwise it contains only `id`, `side`, `organisationId`, `organisationName`,
+`active`, and `isPlaceholder`. `isSuspended` reflects a current ban (not a ban whose expiry
+has passed). `GET /api/instance/users/{id}` returns the same allowlisted shape. Responses
+never include credentials, session identifiers, IP or user-agent data, raw auth roles, or
+ban reasons.
+
+Suspension is reversible and distinct from person deactivation. Suspending sets the existing
+`user.banned` fields, records a bounded reason and optional expiry, revokes all current
+sessions, and revokes all personal API and MCP keys. Unsuspending clears the ban fields; it
+does not recreate sessions or keys. Deactivation sets `person.active = false` and follows
+`identity-provisioning.md` IP-15, including its membership and external-grant lifecycle.
+There is no God Mode unsuspend for a deactivated person; reactivation follows IP-16.
+Force sign-out deletes all current target sessions, including impersonation sessions, and
+does not change keys or account status. It is safe to repeat and reports only the count of
+revoked sessions.
+
+Granting `instance:admin` uses the recovery contract's existing eligibility and concurrency
+invariants: the target is an existing non-anonymous, unbanned user with exactly one active
+staff person. The operation changes only `user.role`, uses the shared promotion lock and
+re-reads eligibility while holding the user/person rows. Already-admin is an audited
+idempotent result. The browser operation requires a current agent session and one-use
+PA-15 step-up bound to the acting user/person/session, target id, exact route, and canonical
+request body. The grant, audit append, and durable security alerts commit in one transaction;
+email is not required by this route.
 
 ### Audit
 
@@ -315,7 +350,19 @@ Import runs and their history. See [import strategy](../06-data-import/import-st
   ([pending-actions.md](../01-architecture/pending-actions.md)): the request returns `202`,
   the server chooses the confirmation level, and for God Mode targets — organisations,
   identity connections, auth plugins, hard purge — that level is **typed exact name +
-  step-up**. The client cannot lower it.
+  step-up**. Deactivating a user is also a server-owned pending action: the request returns
+  `202`, target type is `user`, and the required confirmation is the exact current account
+  email plus operation-bound step-up. The client cannot lower or select the confirmation.
+
+  God Mode deactivation resolves the current target user/person and captures that person's
+  current email as part of the pending-action payload. Approval rechecks the target id,
+  exact current email, `person.active` state and current instance-admin policy; any change
+  invalidates the action and requires a fresh request. The executor uses the fixed server
+  lifecycle policy `end_memberships` and the shared IP-15 person-deactivation transaction.
+  It retires direct grants, external grants and effective memberships, revokes sessions and
+  personal API/MCP keys, preserves authored history, and never hard-deletes the person or
+  user. SCIM continues to use each connection's configured lifecycle policy. Reactivation
+  remains limited to IP-16; this action does not restore grants.
 
 **Impersonation**
 
@@ -421,12 +468,13 @@ POST   /api/instance/identity-connections/{id}/scim/test          instance:admin
 GET    /api/instance/identity-connections/{id}/events             instance:admin
 POST   /api/instance/purge                                        instance:admin  E  (PA-13 — legal hold checked)
 GET    /api/instance/users                            instance:admin
+GET    /api/instance/users/{id}                       instance:admin
 POST   /api/instance/users/{id}/suspend               instance:admin
 POST   /api/instance/users/{id}/unsuspend             instance:admin
 POST   /api/instance/users/{id}/sign-out              instance:admin
-POST   /api/instance/users/{id}/reset-mfa             instance:admin  E  (planned; unavailable until the factor adapter exists)
+POST   /api/instance/users/{id}/reset-mfa             instance:admin  E
 POST   /api/instance/users/{id}/grant-admin           instance:admin  E
-POST   /api/instance/users/{id}/deactivate            instance:admin
+POST   /api/instance/users/{id}/deactivate            instance:admin  E  (PA; target email + step-up)
 GET    /api/instance/users/{id}/export                instance:admin  E
 POST   /api/instance/users/{id}/anonymise             instance:admin  E
 POST   /api/instance/users/{id}/impersonate           instance:admin  E

@@ -76,6 +76,16 @@ thing that is hashed or executed.
   `pending`, writes `pending_action.requested` to the audit log, and responds **`202
   Accepted`** with `{ pendingActionId, action, summary, confirmation, expiresAt,
   approveUrl }`. **Nothing is deleted at this point**, whatever the client.
+- God Mode user deactivation uses this same state machine with `action = 'delete'`,
+  `target_type = 'user'`, and exactly one target user id. The request route is
+  `POST /api/instance/users/{id}/deactivate`; it creates the pending action and does not
+  change the account. The server fixes the confirmation to the exact current target email
+  plus step-up (`typed_name_step_up`). Approval revalidates that the target id and current
+  email still match the stored request, the person remains active, and the route's current
+  `instance:admin` policy still permits execution. A mismatch invalidates the action. The
+  executor uses IP-15 with the server-selected `end_memberships` lifecycle policy and the
+  shared person-deactivation transaction. SCIM deactivation keeps its connection-selected
+  lifecycle policy.
 - `PA-3` A **web-UI** request opens the approval dialog immediately in the same browser
   session, rendered from the server's `summary` (never from client state). To the person it
   is a confirm dialog; underneath it is `PA-6`.
@@ -173,7 +183,7 @@ thing that is hashed or executed.
   (`authenticated + self`, session-only) creates a five-minute challenge for either the
   current requester's pending action or an explicitly registered operation. The operation
   allowlist is `metrics_token_rotate`, `oidc_group_mapping_create`,
-  `oidc_group_mapping_update`, and `mfa_reset`. Pending-action binding uses its existing `pending_action.id`
+  `oidc_group_mapping_update`, `mfa_reset`, and `instance_admin_grant`. Pending-action binding uses its existing `pending_action.id`
   and `payload_hash`; operation binding uses the exact fixed route key, operation key,
   expected resource version and server-computed canonical request-binding hash. The client
   cannot choose a route or submit a hash. The response contains an opaque challenge id and a
@@ -253,6 +263,7 @@ thing that is hashed or executed.
   | --- | --- | --- |
   | `metrics_token_rotate` | `POST /api/instance/observability/metrics-token/rotate` | `observability_config_version` |
   | `mfa_reset` | `POST /api/instance/users/{id}/reset-mfa` | fixed operation version `1` |
+  | `instance_admin_grant` | `POST /api/instance/users/{id}/grant-admin` | fixed operation version `1` |
   | `oidc_group_mapping_create` | `POST /api/instance/identity-connections/{id}/oidc-group-mappings` | `identity_connection.config_version` |
   | `oidc_group_mapping_update` | `PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}` | `identity_connection.config_version` |
 
@@ -281,6 +292,14 @@ thing that is hashed or executed.
   consumes the one-use token in the same transaction that locks the target, clears the
   factor, revokes sessions and keys, and inserts the target's private security notification.
   A stale, missing, replayed, wrong-target or wrong-note proof makes no reset change.
+
+  For `instance_admin_grant`, both challenge and proof bind the target user id from the
+  route and the strict empty JSON body `{}`. The canonical request hash covers the fixed
+  route, operation key, fixed version, target user id, and empty body. The route recomputes
+  the binding and consumes the proof in the same transaction that locks and revalidates the
+  target user/person and shared instance-admin promotion lock before changing
+  `user.role`. A stale, missing, replayed, wrong-target or wrong-session proof makes no
+  authority change.
 
   The metrics operation uses `X-TaskDesk-Step-Up-Token` and recomputes the canonical
   request hash server-side.
@@ -347,6 +366,7 @@ cannot lower it. The dialog always shows the **exact target** and the **action**
 | Project | Affected work items, members, attachments, integrations; recovery and purge behaviour | **Typed project key or exact name + step-up** |
 | Workspace, organisation | Full operational and security impact | **Typed exact name + step-up** |
 | API key, webhook, identity connection / provider | Who and what depends on it; what stops working | **Typed exact name + step-up** |
+| God Mode user deactivation | Current target account email; that sessions and personal API/MCP keys are revoked, direct and external grants are retired, memberships end, and history is preserved | **Typed exact email + step-up** (`typed_name_step_up`), `instance:admin` |
 | Hard purge (`PA-13`) | What will be irrecoverably removed; legal-hold and retention check result | **Typed exact name + step-up**, `instance:admin` |
 | MCP destructive that is not a deletion (`PA-14`: `decide_approval`, bulk > 50 items) | The decision or the batch, and the work items it touches | Explicit click |
 | **Any other single deletable record** — role (with its holders reassigned, `RL-8`), custom field (`CF-8`), team, service calendar, automation rule, time entry, shared or team saved view, label, relation | Exact target and its dependants | Explicit click |
