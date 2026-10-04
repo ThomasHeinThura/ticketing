@@ -75,6 +75,41 @@ const bcrypt = apiRequire("bcryptjs") as {
 };
 const heldHttpStaticRoots = new Set<string>();
 
+async function grantNativeProjectRead(
+  userId: string,
+  workspaceId: string,
+  projectId: string,
+) {
+  const person = requireRow(
+    await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, userId))
+      .limit(1),
+    "native project read fixture person",
+  );
+  const role = requireRow(
+    await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "project",
+        workspaceId,
+        key: `native-project-read-${randomUUID()}`,
+        name: "Native project read fixture role",
+        rank: 1,
+        capabilities: ["project:read", "work_item:read"],
+      })
+      .returning(),
+    "native project read fixture role",
+  );
+  await db.insert(schema.membershipTable).values({
+    personId: person.id,
+    scope: "project",
+    scopeId: projectId,
+    roleId: role.id,
+  });
+}
+
 function listening(server: ReturnType<typeof createNodeServer>["server"]) {
   return new Promise<void>((resolve, reject) => {
     server.once("listening", resolve);
@@ -414,6 +449,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const project = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantNativeProjectRead(
+      member.user.id,
+      member.workspace.id,
+      project.project.id,
+    );
     const type = requireRow(
       await db
         .insert(schema.workItemTypeTable)
@@ -683,6 +723,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const project = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantNativeProjectRead(
+      member.user.id,
+      member.workspace.id,
+      project.project.id,
+    );
     mockAuthenticatedSession(member.user);
     const { app } = createApp();
     const node = createNodeServer(app);
@@ -734,6 +779,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       "member",
     );
     const project = await createProjectFixture({ workspaceId: workspace.id });
+    await grantNativeProjectRead(
+      member.user.id,
+      workspace.id,
+      project.project.id,
+    );
     const socket = await openSocket(websocketUrl(node.server, "/api/ws"), {
       host: "localhost:1337",
       origin: "http://localhost:1337",
@@ -773,6 +823,11 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     const project = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantNativeProjectRead(
+      member.user.id,
+      member.workspace.id,
+      project.project.id,
+    );
     const outsider = await createWorkspaceMember();
     const foreignProject = await createProjectFixture({
       workspaceId: outsider.workspace.id,
@@ -887,6 +942,16 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
       role: "member",
       joinedAt: new Date(),
     });
+    await grantNativeProjectRead(
+      first.user.id,
+      first.workspace.id,
+      project.project.id,
+    );
+    await grantNativeProjectRead(
+      secondUser.id,
+      first.workspace.id,
+      project.project.id,
+    );
     const sessionNow = new Date();
     for (const user of [first.user, secondUser]) {
       await db.insert(schema.sessionTable).values({
