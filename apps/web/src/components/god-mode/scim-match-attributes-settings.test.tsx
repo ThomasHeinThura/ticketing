@@ -45,6 +45,12 @@ function jsonResponse(status: number, body: unknown) {
   });
 }
 
+function pickOption(option: HTMLElement) {
+  fireEvent.pointerDown(option);
+  fireEvent.pointerUp(option);
+  fireEvent.click(option);
+}
+
 describe("ScimMatchAttributesSettings", () => {
   beforeEach(() => apiFetch.mockReset());
   afterEach(cleanup);
@@ -138,5 +144,97 @@ describe("ScimMatchAttributesSettings", () => {
     await waitFor(() =>
       expect(screen.getByText("Configuration version 5")).toBeTruthy(),
     );
+  });
+
+  it("saves the closed profile-only attribute map with connection-bound step-up", async () => {
+    const changedMapping = {
+      version: 1 as const,
+      name: "name.formatted" as const,
+      email: "userName" as const,
+      jobTitle: "unmapped" as const,
+      locale: "unmapped" as const,
+    };
+    const updated = {
+      ...config(5),
+      data: { ...config(5).data, attributeMapping: changedMapping },
+    };
+    apiFetch
+      .mockResolvedValueOnce(jsonResponse(200, config()))
+      .mockResolvedValueOnce(
+        jsonResponse(200, { challengeId: "challenge", nonce: "nonce" }),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, { token: "proof" }))
+      .mockResolvedValueOnce(jsonResponse(200, updated))
+      .mockResolvedValueOnce(
+        jsonResponse(200, { challengeId: "challenge-2", nonce: "nonce-2" }),
+      )
+      .mockResolvedValueOnce(jsonResponse(200, { token: "proof-2" }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          ...updated,
+          configVersion: 6,
+          data: {
+            ...updated.data,
+            matchAttributes: ["externalId", "userName", "title"],
+          },
+        }),
+      );
+
+    render(<ScimMatchAttributesSettings connectionId="connection/one" />);
+    fireEvent.click(await screen.findByRole("checkbox", { name: "title" }));
+    fireEvent.click(
+      await screen.findByRole("combobox", { name: "Display name source" }),
+    );
+    pickOption(await screen.findByRole("option", { name: "name.formatted" }));
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "correct horse" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save profile mapping" }),
+    );
+
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(4));
+    const request = {
+      configVersion: 4,
+      kind: "attribute_mapping",
+      attributeMapping: changedMapping,
+    };
+    expect(JSON.parse(String(apiFetch.mock.calls[1]?.[1]?.body))).toEqual({
+      kind: "operation",
+      operation: "scim_admin_update",
+      connectionId: "connection/one",
+      request,
+    });
+    expect(apiFetch.mock.calls[3]?.[0]).toBe(
+      "https://api.test/instance/identity-connections/connection%2Fone/scim",
+    );
+    expect(apiFetch.mock.calls[3]?.[1]?.method).toBe("PATCH");
+    expect(JSON.parse(String(apiFetch.mock.calls[3]?.[1]?.body))).toEqual(
+      request,
+    );
+    expect(screen.getByText("Configuration version 5")).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "title" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "correct horse" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save match attributes" }),
+    );
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(7));
+    expect(JSON.parse(String(apiFetch.mock.calls[4]?.[1]?.body))).toEqual({
+      kind: "operation",
+      operation: "scim_admin_update",
+      connectionId: "connection/one",
+      request: {
+        configVersion: 5,
+        kind: "settings",
+        matchAttributes: ["externalId", "userName", "title"],
+      },
+    });
+    expect(screen.getByText("Configuration version 6")).toBeTruthy();
   });
 });

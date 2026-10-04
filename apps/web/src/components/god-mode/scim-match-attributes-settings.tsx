@@ -28,6 +28,14 @@ type OptionalMatchAttribute = (typeof OPTIONAL_MATCH_ATTRIBUTES)[number];
 type MatchAttribute =
   | (typeof REQUIRED_MATCH_ATTRIBUTES)[number]
   | OptionalMatchAttribute;
+type ProfileMapping = ScimSettings["attributeMapping"];
+
+const PROFILE_MAPPING_OPTIONS = {
+  name: ["displayName", "name.formatted"],
+  email: ["emails.primary.value", "userName"],
+  jobTitle: ["title", "unmapped"],
+  locale: ["preferredLanguage", "locale", "unmapped"],
+} as const;
 
 type ScimSettings = {
   enabled: boolean;
@@ -104,6 +112,7 @@ export function ScimMatchAttributesSettings({
 }) {
   const [settings, setSettings] = useState<ScimSettingsResponse | null>(null);
   const [draft, setDraft] = useState<MatchAttribute[]>([]);
+  const [profileDraft, setProfileDraft] = useState<ProfileMapping | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,6 +136,7 @@ export function ScimMatchAttributesSettings({
       const response = await requestJson<ScimSettingsResponse>(apiPath);
       setSettings(response);
       setDraft([...response.data.matchAttributes]);
+      setProfileDraft({ ...response.data.attributeMapping });
       setSaveError(null);
     } catch (error) {
       setLoadError(errorText(error, "load"));
@@ -142,6 +152,12 @@ export function ScimMatchAttributesSettings({
 
   const changed = Boolean(
     settings && hasChanged(settings.data.matchAttributes, draft),
+  );
+  const profileChanged = Boolean(
+    settings &&
+      profileDraft &&
+      JSON.stringify(settings.data.attributeMapping) !==
+        JSON.stringify(profileDraft),
   );
 
   function recordTokenMutation(configVersion: number, enabled: boolean) {
@@ -216,6 +232,67 @@ export function ScimMatchAttributesSettings({
       });
       setSettings(updated);
       setDraft([...updated.data.matchAttributes]);
+      setPassword("");
+      setCode("");
+    } catch (error) {
+      setSaveError(errorText(error, "save"));
+      setPassword("");
+      setCode("");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function saveProfileMapping(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!settings || !profileDraft || !profileChanged) return;
+    const request = {
+      configVersion: settings.configVersion,
+      kind: "attribute_mapping" as const,
+      attributeMapping: profileDraft,
+    };
+    if (authMethod === "password" ? !password : !code) {
+      setSaveError(
+        authMethod === "password"
+          ? "Enter your password to confirm this change."
+          : "Enter a fresh authenticator or backup code to confirm this change.",
+      );
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const binding = {
+        kind: "operation" as const,
+        operation: "scim_admin_update" as const,
+        connectionId,
+        request,
+      };
+      const challenge = await requestJson<{
+        challengeId: string;
+        nonce: string;
+      }>("me/step-up/challenges", {
+        method: "POST",
+        body: JSON.stringify(binding),
+      });
+      const proof = await requestJson<{ token: string }>("me/step-up", {
+        method: "POST",
+        body: JSON.stringify({
+          ...binding,
+          challengeId: challenge.challengeId,
+          nonce: challenge.nonce,
+          method: authMethod,
+          ...(authMethod === "password" ? { password } : { code }),
+        }),
+      });
+      const updated = await requestJson<ScimSettingsResponse>(apiPath, {
+        method: "PATCH",
+        headers: { "x-taskdesk-step-up-token": proof.token },
+        body: JSON.stringify(request),
+      });
+      setSettings(updated);
+      setProfileDraft({ ...updated.data.attributeMapping });
       setPassword("");
       setCode("");
     } catch (error) {
@@ -352,7 +429,7 @@ export function ScimMatchAttributesSettings({
         </div>
         {saveError ? (
           <Alert variant="error">
-            <AlertTitle>SCIM settings were not saved</AlertTitle>
+            <AlertTitle>SCIM configuration was not saved</AlertTitle>
             <AlertDescription>{saveError}</AlertDescription>
           </Alert>
         ) : null}
@@ -375,6 +452,74 @@ export function ScimMatchAttributesSettings({
           </span>
         </div>
       </form>
+
+      {profileDraft ? (
+        <form
+          aria-labelledby="scim-profile-mapping-heading"
+          className="space-y-4 rounded-md border p-4"
+          onSubmit={saveProfileMapping}
+        >
+          <header className="space-y-1">
+            <h3 className="font-medium" id="scim-profile-mapping-heading">
+              SCIM profile attribute mapping
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Choose fixed SCIM profile fields for TaskDesk profile data.
+              Changes affect future authenticated SCIM user writes only; they do
+              not alter identity matching, account linking, or authority.
+            </p>
+          </header>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(
+              [
+                ["name", "Display name source"],
+                ["email", "Contact email source"],
+                ["jobTitle", "Job title source"],
+                ["locale", "Locale source"],
+              ] as const
+            ).map(([field, label]) => (
+              <div className="space-y-2" key={field}>
+                <Label htmlFor={`scim-profile-${field}`}>{label}</Label>
+                <Select
+                  onValueChange={(value) =>
+                    setProfileDraft((current) =>
+                      current
+                        ? {
+                            ...current,
+                            [field]: value,
+                          }
+                        : current,
+                    )
+                  }
+                  value={profileDraft[field]}
+                >
+                  <SelectTrigger
+                    aria-label={label}
+                    id={`scim-profile-${field}`}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PROFILE_MAPPING_OPTIONS[field].map((option) => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button disabled={!profileChanged || isSaving} type="submit">
+              {isSaving ? "Saving…" : "Save profile mapping"}
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              No raw SCIM profile data is stored in this mapping.
+            </span>
+          </div>
+        </form>
+      ) : null}
 
       <ScimTokenSettings
         configVersion={settings.configVersion}

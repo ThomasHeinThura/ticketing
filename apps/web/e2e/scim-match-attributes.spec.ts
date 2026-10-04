@@ -23,20 +23,24 @@ const session = {
   },
 };
 
-function settings(configVersion: number, matchAttributes: string[]) {
+function settings(
+  configVersion: number,
+  matchAttributes: string[],
+  attributeMapping = {
+    version: 1,
+    name: "displayName",
+    email: "userName",
+    jobTitle: "unmapped",
+    locale: "unmapped",
+  },
+) {
   return {
     data: {
       enabled: true,
       allowedResources: ["users"],
       lifecyclePolicy: "end_memberships",
       matchAttributes,
-      attributeMapping: {
-        version: 1,
-        name: "displayName",
-        email: "userName",
-        jobTitle: "unmapped",
-        locale: "unmapped",
-      },
+      attributeMapping,
       mappings: [],
     },
     configVersion,
@@ -56,6 +60,13 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
   const requiredMatchAttributes = ["externalId", "userName"];
   let configVersion = 4;
   let matchAttributes = [...requiredMatchAttributes];
+  let attributeMapping = {
+    version: 1,
+    name: "displayName",
+    email: "userName",
+    jobTitle: "unmapped",
+    locale: "unmapped",
+  };
 
   page.on("response", (response) => {
     const url = new URL(response.url());
@@ -197,14 +208,19 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify(settings(configVersion, matchAttributes)),
+          body: JSON.stringify(
+            settings(configVersion, matchAttributes, attributeMapping),
+          ),
         });
         return;
       }
       const request = route.request().postDataJSON() as Record<string, unknown>;
       if (request.enabled === true) {
         enableRequest = request;
-        configVersion = 7;
+        configVersion = 8;
+      } else if (request.kind === "attribute_mapping") {
+        attributeMapping = request.attributeMapping;
+        configVersion = 6;
       } else {
         savedRequest = request;
         configVersion = 5;
@@ -213,7 +229,9 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(settings(configVersion, matchAttributes)),
+        body: JSON.stringify(
+          settings(configVersion, matchAttributes, attributeMapping),
+        ),
       });
     },
   );
@@ -241,7 +259,7 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
     `**/api/instance/identity-connections/${connectionId}/scim/rotate-token`,
     async (route) => {
       rotateRequest = route.request().postDataJSON() as Record<string, unknown>;
-      configVersion = 6;
+      configVersion = 7;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -258,7 +276,7 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
     `**/api/instance/identity-connections/${connectionId}/scim/revoke-token`,
     async (route) => {
       revokeRequest = route.request().postDataJSON() as Record<string, unknown>;
-      configVersion = 8;
+      configVersion = 9;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -302,32 +320,54 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
     matchAttributes: ["externalId", "userName", "title"],
   });
 
+  await page.getByRole("combobox", { name: "Display name source" }).click();
+  await page.getByRole("option", { name: "name.formatted" }).click();
+  await page.getByLabel("Password", { exact: true }).fill("test-only-password");
+  await page.getByRole("button", { name: "Save profile mapping" }).click();
+  await expect(page.getByText("Configuration version 6")).toBeVisible();
+  expect(stepUpBindings[1]).toEqual({
+    kind: "operation",
+    operation: "scim_admin_update",
+    connectionId,
+    request: {
+      configVersion: 5,
+      kind: "attribute_mapping",
+      attributeMapping: {
+        version: 1,
+        name: "name.formatted",
+        email: "userName",
+        jobTitle: "unmapped",
+        locale: "unmapped",
+      },
+    },
+  });
+
   await page.getByLabel("Token operation password").fill("test-only-password");
   await page.getByRole("button", { name: "Issue or rotate token" }).click();
   await expect(page.getByLabel("New token — copy it now")).toHaveValue(
     "one-time-fixture-bearer",
   );
-  expect(stepUpBindings[1]).toEqual({
+  expect(stepUpBindings[2]).toEqual({
     kind: "operation",
     operation: "scim_token_rotate",
     connectionId,
-    version: 5,
+    version: 6,
   });
-  expect(rotateRequest).toEqual({ version: 5 });
+  expect(rotateRequest).toEqual({ version: 6 });
 
   await page.getByLabel("Token operation password").fill("test-only-password");
   await page.getByRole("button", { name: "Re-enable SCIM" }).click();
   await expect(
     page.getByText("SCIM is enabled with the current bearer token."),
   ).toBeVisible();
-  expect(stepUpBindings[2]).toEqual({
+  expect(stepUpBindings[3]).toEqual({
     kind: "operation",
     operation: "scim_admin_update",
     connectionId,
-    request: { configVersion: 6, kind: "settings", enabled: true },
+    request: { configVersion: 7, kind: "settings", enabled: true },
   });
   expect(enableRequest).toEqual({
-    configVersion: 6,
+    configVersion: 7,
     kind: "settings",
     enabled: true,
   });
@@ -335,12 +375,12 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
   await page.getByLabel("Token operation password").fill("test-only-password");
   await page.getByRole("button", { name: "Revoke token" }).click();
   await expect(page.getByText(/bearer was revoked/u)).toBeVisible();
-  expect(stepUpBindings[3]).toEqual({
+  expect(stepUpBindings[4]).toEqual({
     kind: "operation",
     operation: "scim_token_revoke",
     connectionId,
-    version: 7,
+    version: 8,
   });
-  expect(revokeRequest).toEqual({ version: 7 });
+  expect(revokeRequest).toEqual({ version: 8 });
   expect(unexpectedApiRequests).toEqual([]);
 });
