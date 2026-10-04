@@ -953,6 +953,82 @@ describe("G3 contrast inventory and math", () => {
     );
   });
 
+  it("keeps occurrence summaries as ordered unique IDs without dropping detail contexts", () => {
+    const key = "--color-foreground|--color-background|bg-background|light";
+    const firstId = "Fixture::p[0]::text-foreground#0";
+    const secondId = "Fixture::p[1]::text-foreground#0";
+    const occurrences = [
+      {
+        id: firstId,
+        usage: "fixture.tsx",
+        surfaceContext: "nearest-opaque-ancestor",
+        category: "body",
+        chain: ["fixture.tsx:Fixture", "jsx:p[0]>bg-background"],
+        backdropLayers: [],
+      },
+      {
+        id: firstId,
+        usage: "fixture.tsx",
+        surfaceContext: "nearest-opaque-ancestor",
+        category: "body",
+        chain: ["fixture.tsx:OtherFixture", "jsx:p[0]>bg-background"],
+        backdropLayers: [],
+      },
+      {
+        id: secondId,
+        usage: "fixture.tsx",
+        surfaceContext: "nearest-opaque-ancestor",
+        category: "body",
+        chain: ["fixture.tsx:Fixture", "jsx:p[1]>bg-background"],
+        backdropLayers: [],
+      },
+    ];
+    const observed = new Set([key]);
+    observed.occurrences = new Map([[key, occurrences]]);
+    const makePair = (occurrenceIds) => ({
+      fg: "--color-foreground",
+      bg: "--color-background",
+      category: "body",
+      minRatio: 4.5,
+      themes: ["light"],
+      usage: "fixture.tsx",
+      backdrop: "--color-background",
+      foregroundClass: "text-foreground",
+      backgroundClass: { light: "bg-background" },
+      surfaceContext: "nearest-opaque-ancestor",
+      occurrenceIds,
+      occurrences,
+    });
+    const source =
+      '<main className="bg-background"><p className="text-foreground">One</p><p className="text-foreground">Two</p></main>';
+
+    assert.deepEqual(
+      validatePairManifest(
+        [makePair([firstId, secondId])],
+        () => source,
+        observed,
+      ),
+      [],
+      "repeated detailed paint contexts collapse to one summary ID in first-seen order",
+    );
+
+    for (const summary of [
+      [firstId],
+      [firstId, secondId, "Fixture::p[2]::text-foreground#0"],
+      [secondId, firstId],
+    ]) {
+      assert.ok(
+        validatePairManifest([makePair(summary)], () => source, observed).some(
+          (failure) =>
+            failure.includes(
+              "occurrenceIds must match the first-seen unique IDs in occurrences",
+            ),
+        ),
+        `rejects a missing, extra, or reordered summary: ${summary.join(", ")}`,
+      );
+    }
+  });
+
   it("keeps source occurrence bindings separate for foreground opacity states", async () => {
     const fixture = `apps/web/src/components/.contrast-alpha-identity-${process.pid}.tsx`;
     try {
