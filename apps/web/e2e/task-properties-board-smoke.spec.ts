@@ -36,9 +36,11 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
         .getByRole("button", { name: /^In progress/ })
         .last()
         .click();
-      await expect(
-        page.getByRole("button", { name: "In progress", exact: true }),
-      ).toBeVisible();
+      const selectedStatus = page
+        .locator('[data-slot="popover-trigger"]:visible')
+        .filter({ hasText: "In progress" });
+      await expect(selectedStatus).toHaveCount(1);
+      await expect(selectedStatus).toHaveAttribute("aria-expanded", "false");
 
       await page
         .getByRole("button", { name: /Unassigned/ })
@@ -48,9 +50,11 @@ test("responsive task properties, real fixture writes, help, and 200-card board"
         .getByRole("button", { name: /G11 Agent/ })
         .last()
         .click();
-      await expect(
-        page.getByRole("button", { name: /G11 Agent/ }),
-      ).toBeVisible();
+      const selectedAssignee = page
+        .locator('[data-slot="popover-trigger"]:visible')
+        .filter({ hasText: "G11 Agent" });
+      await expect(selectedAssignee).toHaveCount(1);
+      await expect(selectedAssignee).toHaveAttribute("aria-expanded", "false");
       await expect
         .poll(() => writes)
         .toEqual([

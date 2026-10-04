@@ -62,7 +62,11 @@ export default function TaskPropertiesSidebar({
   const { t } = useTranslation();
   const { data: task } = useGetTask(taskId ?? "");
   const { data: project } = useGetProject({ id: projectId, workspaceId });
-  const { data: columns = [] } = useGetColumns(projectId);
+  const {
+    data: columns = [],
+    isLoading: columnsLoading,
+    isError: columnsError,
+  } = useGetColumns(projectId);
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(workspaceId);
   const { data: taskLabels = [] } = useGetLabelsByTask(taskId ?? "");
   const { data: workspaceProjects = [] } = useGetProjects({ workspaceId });
@@ -156,8 +160,9 @@ export default function TaskPropertiesSidebar({
               task={task}
               columns={columns}
               workspaceUsers={workspaceUsers}
-              workspaceId={workspaceId}
               compact
+              columnsLoading={columnsLoading}
+              columnsError={columnsError}
             />
           </div>
         )}
@@ -279,8 +284,9 @@ export default function TaskPropertiesSidebar({
               task={task}
               columns={columns}
               workspaceUsers={workspaceUsers}
-              workspaceId={workspaceId}
               compact={false}
+              columnsLoading={columnsLoading}
+              columnsError={columnsError}
             />
           </div>
         )}

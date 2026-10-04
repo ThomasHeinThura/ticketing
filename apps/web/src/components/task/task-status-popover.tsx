@@ -9,7 +9,7 @@ import { Check } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUpdateTaskStatus } from "@/hooks/mutations/task/use-update-task-status";
-import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
+import type { useGetColumns } from "@/hooks/queries/column/use-get-columns";
 import { useNumberedShortcuts } from "@/hooks/use-numbered-shortcuts";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getColumnIcon } from "@/lib/column";
@@ -19,16 +19,21 @@ import type Task from "@/types/task";
 
 type TaskStatusPopoverProps = {
   task: Task;
+  columns: NonNullable<ReturnType<typeof useGetColumns>["data"]>;
+  isLoading: boolean;
+  isError: boolean;
   children: React.ReactNode;
 };
 
 export default function TaskStatusPopover({
   task,
+  columns,
+  isLoading,
+  isError,
   children,
 }: TaskStatusPopoverProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const { data: columns, isLoading, isError } = useGetColumns(task.projectId);
   const statusOptions = useMemo(
     () =>
       (columns ?? []).map((col) => ({

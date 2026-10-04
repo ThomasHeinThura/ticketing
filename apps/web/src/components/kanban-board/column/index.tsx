@@ -1,7 +1,11 @@
 import type { TFunction } from "i18next";
 import { memo, useState } from "react";
 import type { ProjectWithTasks } from "@/types/project";
-import type { TaskCardDisplayPreferences, TaskCardProps } from "../task-card";
+import type {
+  TaskCardDisplayPreferences,
+  TaskCardProps,
+  TaskCardWorkspaceUser,
+} from "../task-card";
 import { ColumnDropzone } from "./column-dropzone";
 import { ColumnHeader } from "./column-header";
 
@@ -15,7 +19,7 @@ type ColumnProps = {
   toggleSelection: TaskCardProps["toggleSelection"];
   disableDragDrop?: boolean;
   workspaceId?: string;
-  workspaceUsers: TaskCardProps["workspaceUsers"];
+  workspaceUsersById: ReadonlyMap<string, TaskCardWorkspaceUser>;
   onContextMenuTask: TaskCardProps["onContextMenuTask"];
   onOpenTask: TaskCardProps["onOpenTask"];
   t: TFunction;
@@ -31,7 +35,7 @@ function Column({
   toggleSelection,
   disableDragDrop = false,
   workspaceId,
-  workspaceUsers,
+  workspaceUsersById,
   onContextMenuTask,
   onOpenTask,
   t,
@@ -62,7 +66,7 @@ function Column({
           disableDragDrop={disableDragDrop}
           onIsOverChange={setIsDropzoneOver}
           workspaceId={workspaceId}
-          workspaceUsers={workspaceUsers}
+          workspaceUsersById={workspaceUsersById}
           onContextMenuTask={onContextMenuTask}
           onOpenTask={onOpenTask}
           t={t}
