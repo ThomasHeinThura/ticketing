@@ -1,3 +1,7 @@
+### 2026-10-04 · Bounded follow-ups for the remaining actual P0 evidence dates
+
+Under Thomas's standing instruction to continue work and use three actual issue-free development/UAT observation dates, the orchestrator schedules two quiet thread heartbeat runs (`p0-remaining-evidence-dates`) for the remaining October 5/6 observations at local 21:30. Each must acquire actual source-bound traffic, compare tested policy behavior with the retained October 4 manifest, preserve immutable records, reconcile complete outcomes/events and eligible source coverage, and record explicit normative explanations. Current-day partial coverage is not a full-day or 72-hour claim. Time passing neither clears known failures nor authorizes protected merge, enforcement or stage completion. Required independent review, exact CI and the additional Sol finalizer remain. The follow-ups stay quiet unless there is a meaningful failure, a user-only blocker or completed acceptance; they do not create separate user-owned chats or message others.
+
 # Decision log
 
 Decisions too small for an [ADR](../01-architecture/adr/README.md) but worth recording:
