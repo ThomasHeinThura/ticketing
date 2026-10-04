@@ -87,6 +87,29 @@ test("customer can find a request type, submit its form, and receive a durable r
   await page.getByRole("option", { name: "My team" }).click();
   await expect(page.getByLabel("More detail")).toBeVisible();
   await page.getByLabel("More detail").fill("Several teammates are blocked.");
+  const draftStorageKey =
+    "taskdesk:portal-request-draft:v1:request-key-opaque:3";
+  await expect
+    .poll(() =>
+      page.evaluate((key) => localStorage.getItem(key), draftStorageKey),
+    )
+    .toBe(
+      JSON.stringify({
+        summary: "Can't access the finance workspace",
+        impact: "My team",
+        details: "Several teammates are blocked.",
+      }),
+    );
+  await page.reload();
+  await expect(page.getByLabel("What happened? (Required)")).toHaveValue(
+    "Can't access the finance workspace",
+  );
+  await expect(page.getByLabel("Who is affected? (Required)")).toContainText(
+    "My team",
+  );
+  await expect(page.getByLabel("More detail")).toHaveValue(
+    "Several teammates are blocked.",
+  );
   await page.getByRole("button", { name: "Send request" }).click();
   await expect(
     page.getByRole("alert").filter({ hasText: "Request received" }),
@@ -96,12 +119,20 @@ test("customer can find a request type, submit its form, and receive a durable r
     impact: "My team",
     details: "Several teammates are blocked.",
   });
+  await expect
+    .poll(() =>
+      page.evaluate((key) => localStorage.getItem(key), draftStorageKey),
+    )
+    .toBeNull();
   await expect(page.getByText(/SUB-314/)).toBeVisible();
 });
 
-test("file-backed forms disclose the unavailable upload seam and cannot discard attachments", async ({
+test("file-backed form stages, completes, and submits its owned attachment", async ({
   page,
 }) => {
+  const calls: Array<{ path: string; method: string; body: unknown }> = [];
+  const draftRef = "SUB-315";
+  const attachmentId = "attachment-staged-315";
   await page.route("**/api/portal/catalogue", async (route) => {
     await route.fulfill({
       json: {
@@ -127,10 +158,16 @@ test("file-backed forms disclose the unavailable upload seam and cannot discard 
           formSchema: {
             fields: [
               {
+                key: "summary",
+                type: "text",
+                label: "What happened?",
+                required: true,
+              },
+              {
                 key: "proof",
                 type: "file",
                 label: "Screenshot",
-                multiple: true,
+                required: true,
               },
             ],
           },
@@ -138,13 +175,119 @@ test("file-backed forms disclose the unavailable upload seam and cannot discard 
       });
     },
   );
+  await page.route("**/api/me/csrf-token", async (route) => {
+    await route.fulfill({
+      json: { token: "test-csrf-token", expiresAt: "2099-01-01T00:00:00.000Z" },
+    });
+  });
+  await page.route("**/api/portal/submissions/drafts", async (route) => {
+    calls.push({
+      path: new URL(route.request().url()).pathname,
+      method: route.request().method(),
+      body: route.request().postDataJSON(),
+    });
+    await route.fulfill({
+      json: {
+        ref: draftRef,
+        state: "draft",
+        workItemKey: null,
+        createdAt: "2026-10-04T10:00:00.000Z",
+      },
+    });
+  });
+  await page.route(
+    "**/api/portal/submissions/SUB-315/attachments/presign",
+    async (route) => {
+      calls.push({
+        path: new URL(route.request().url()).pathname,
+        method: route.request().method(),
+        body: route.request().postDataJSON(),
+      });
+      await route.fulfill({
+        json: {
+          attachmentId,
+          fieldKey: "proof",
+          uploadUrl: "https://upload.example.test/object",
+          uploadHeaders: { "content-type": "image/png" },
+        },
+      });
+    },
+  );
+  await page.route("https://upload.example.test/object", async (route) => {
+    calls.push({
+      path: "/signed-object-put",
+      method: route.request().method(),
+      body: null,
+    });
+    await route.fulfill({ status: 200, body: "" });
+  });
+  await page.route(
+    `**/api/portal/submissions/${draftRef}/attachments/${attachmentId}/complete`,
+    async (route) => {
+      calls.push({
+        path: new URL(route.request().url()).pathname,
+        method: route.request().method(),
+        body: null,
+      });
+      await route.fulfill({ json: { id: attachmentId, state: "ready" } });
+    },
+  );
+  let submittedBody: Record<string, unknown> | undefined;
+  await page.route(
+    `**/api/portal/submissions/${draftRef}/submit`,
+    async (route) => {
+      submittedBody = route.request().postDataJSON() as Record<string, unknown>;
+      calls.push({
+        path: new URL(route.request().url()).pathname,
+        method: route.request().method(),
+        body: submittedBody,
+      });
+      await route.fulfill({
+        json: {
+          ref: draftRef,
+          state: "new",
+          workItemKey: null,
+          createdAt: "2026-10-04T10:00:00.000Z",
+        },
+      });
+    },
+  );
 
   await page.goto("/");
   await page.getByRole("link", { name: requestType.name }).click();
+  await page.getByLabel("What happened? (Required)").fill("Access is blocked");
+  await page.getByLabel("Screenshot (Required)").setInputFiles({
+    name: "evidence.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("test image bytes"),
+  });
+
+  await page.getByRole("button", { name: "Send request" }).click();
+
   await expect(
-    page.getByText(/which are not available on this portal build yet/i),
+    page.getByRole("alert").filter({ hasText: "Request received" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Send request" }),
-  ).toBeDisabled();
+  expect(submittedBody).toEqual({
+    formData: { summary: "Access is blocked", proof: attachmentId },
+  });
+  expect(calls.map(({ path, method }) => `${method} ${path}`)).toEqual([
+    "POST /api/portal/submissions/drafts",
+    "POST /api/portal/submissions/SUB-315/attachments/presign",
+    "PUT /signed-object-put",
+    "POST /api/portal/submissions/SUB-315/attachments/attachment-staged-315/complete",
+    "POST /api/portal/submissions/SUB-315/submit",
+  ]);
+  expect(calls[0]?.body).toEqual({
+    requestTypeKey: requestType.key,
+    formData: { summary: "Access is blocked" },
+  });
+  expect(calls[1]?.body).toMatchObject({
+    fieldKey: "proof",
+    filename: "evidence.png",
+    contentType: "image/png",
+  });
+  expect(calls[1]?.body).toHaveProperty(
+    "size",
+    Buffer.byteLength("test image bytes"),
+  );
 });

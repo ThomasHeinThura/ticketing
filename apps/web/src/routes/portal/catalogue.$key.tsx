@@ -18,6 +18,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RequestTypeFields } from "@/components/request-type/request-type-fields";
 import { getApiUrl } from "@/fetchers/get-api-url";
+import {
+  clearPortalRequestDraft,
+  portalRequestDraftStorage,
+  portalRequestDraftStorageKey,
+  readPortalRequestDraft,
+  writePortalRequestDraft,
+} from "@/lib/portal-request-draft";
 
 export const Route = createFileRoute("/catalogue/$key")({
   component: RequestForm,
@@ -58,6 +65,7 @@ function RequestForm() {
     Record<string, string[]>
   >({});
   const [draftRef, setDraftRef] = useState<string | null>(null);
+  const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,6 +89,46 @@ function RequestForm() {
     void load();
   }, [load]);
 
+  const draftStorageKey = requestType
+    ? portalRequestDraftStorageKey(requestType.key, requestType.version)
+    : null;
+
+  useEffect(() => {
+    if (!requestType || requestType.key !== key) return;
+    const storageKey = portalRequestDraftStorageKey(
+      requestType.key,
+      requestType.version,
+    );
+    setValues(
+      readPortalRequestDraft(
+        portalRequestDraftStorage(),
+        storageKey,
+        requestType.formSchema,
+      ),
+    );
+    setErrors({});
+    setSelectedFiles({});
+    setUploadedFileIds({});
+    setDraftRef(null);
+    setHydratedDraftKey(storageKey);
+  }, [key, requestType]);
+
+  useEffect(() => {
+    if (
+      !requestType ||
+      !draftStorageKey ||
+      hydratedDraftKey !== draftStorageKey ||
+      receipt
+    )
+      return;
+    writePortalRequestDraft(
+      portalRequestDraftStorage(),
+      draftStorageKey,
+      requestType.formSchema,
+      values,
+    );
+  }, [draftStorageKey, hydratedDraftKey, receipt, requestType, values]);
+
   const hasFileFields = useMemo(
     () =>
       requestType?.formSchema.fields.some((field) => field.type === "file") ??
@@ -102,6 +150,10 @@ function RequestForm() {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!requestType) return;
+    const submissionDraftKey = portalRequestDraftStorageKey(
+      requestType.key,
+      requestType.version,
+    );
     const validationSchema = hasFileFields
       ? {
           ...requestType.formSchema,
@@ -136,7 +188,12 @@ function RequestForm() {
           }),
         });
         if (!response.ok) throw new Error("submission unavailable");
-        setReceipt((await response.json()) as SubmissionReceipt);
+        const submissionReceipt = (await response.json()) as SubmissionReceipt;
+        clearPortalRequestDraft(
+          portalRequestDraftStorage(),
+          submissionDraftKey,
+        );
+        setReceipt(submissionReceipt);
       } else {
         let ref = draftRef;
         if (!ref) {
@@ -227,7 +284,13 @@ function RequestForm() {
           },
         );
         if (!finalResponse.ok) throw new Error("submission unavailable");
-        setReceipt((await finalResponse.json()) as SubmissionReceipt);
+        const submissionReceipt =
+          (await finalResponse.json()) as SubmissionReceipt;
+        clearPortalRequestDraft(
+          portalRequestDraftStorage(),
+          submissionDraftKey,
+        );
+        setReceipt(submissionReceipt);
       }
     } catch {
       setFailed(true);
