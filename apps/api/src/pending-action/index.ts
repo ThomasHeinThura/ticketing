@@ -6,6 +6,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { normaliseTraceId } from "../permissions/shadow-middleware";
 import { requireSessionOnly } from "../utils/require-session-only";
 import {
@@ -129,17 +130,16 @@ async function decidePendingAction(
 }
 
 const pendingAction = apiRouter()
-  .openapi(listPendingActionsRoute, async (c) =>
-    c.json(
-      await getOwnPendingActions(
-        c.get("userId"),
-        c.req.valid("query"),
-        c.get("apiKey"),
-        readAuditContext(c),
-      ),
-      200,
-    ),
-  )
+  .openapi(listPendingActionsRoute, async (c) => {
+    const result = await getOwnPendingActions(
+      c.get("userId"),
+      c.req.valid("query"),
+      c.get("apiKey"),
+      readAuditContext(c),
+    );
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.json(result, 200);
+  })
   .openapi(getPendingActionRoute, async (c) =>
     c.json(
       await getOwnPendingAction(

@@ -239,6 +239,16 @@ are not represented in the current project schema; they remain unavailable until
 schema and loader exist. A future typed loader may supply those facts, but the observer may
 not infer them from a legacy denial, route URL, or caller input.
 
+For matched native routes that do not use a separate reach middleware, the route handler may
+record explicit shadow evidence only at the point where its existing authorization/read
+predicate has actually completed: a failed native guard records `denied`, and a successful
+owner-scoped or capability-guarded read records `allowed` after its persisted query succeeds.
+This is a marker from the handler's real predicate, not a conclusion drawn from the response
+status. Public, delegated, authentication-guard short-circuits, malformed requests, and
+failed or incomplete reads remain unknown unless their own documented handler explicitly
+provides comparable evidence. Shadow-off follows the existing query path without observer
+lookups or additional database reads.
+
 This evidence is diagnostic only. The shadow evaluator still applies the registered policy
 to a row scope built from persisted facts and does not grant authority to the legacy caller.
 Where the existing identity adapter lacks a required hierarchy/team/private-item fact, the

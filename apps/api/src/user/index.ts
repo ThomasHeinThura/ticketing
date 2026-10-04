@@ -5,6 +5,7 @@ import {
   errorResponse,
   jsonResponse,
 } from "../openapi";
+import { setShadowLegacyAuthorization } from "../permissions/shadow-context";
 import { MAX_AVATAR_BYTES } from "./avatar";
 import deleteAvatar from "./controllers/delete-avatar";
 import saveAvatar from "./controllers/save-avatar";
@@ -51,10 +52,13 @@ const user = apiRouter()
   .openapi(uploadAvatarRoute, async (c) => {
     const { contentType, data } = c.req.valid("json");
     try {
-      return c.json(
-        await saveAvatar({ userId: c.get("userId"), contentType, data }),
-        200,
-      );
+      const result = await saveAvatar({
+        userId: c.get("userId"),
+        contentType,
+        data,
+      });
+      setShadowLegacyAuthorization(c, "allowed");
+      return c.json(result, 200);
     } catch (error) {
       throw new HTTPException(400, {
         message:
@@ -62,8 +66,10 @@ const user = apiRouter()
       });
     }
   })
-  .openapi(deleteAvatarRoute, async (c) =>
-    c.json(await deleteAvatar(c.get("userId")), 200),
-  );
+  .openapi(deleteAvatarRoute, async (c) => {
+    const result = await deleteAvatar(c.get("userId"));
+    setShadowLegacyAuthorization(c, "allowed");
+    return c.json(result, 200);
+  });
 
 export default user;

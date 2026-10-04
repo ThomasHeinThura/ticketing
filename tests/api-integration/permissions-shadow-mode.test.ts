@@ -588,6 +588,57 @@ describe("observer-only provenance for masked native read denials", () => {
     );
   });
 
+  it("records successful native self reads and the instance audit gate explicitly", {
+    timeout: 60_000,
+  }, async () => {
+    const fresh = await createAppWithShadow("on");
+    const member = await createWorkspaceMember({ role: "owner" });
+    await fresh.db
+      .update(fresh.schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(fresh.schema.userTable.id, member.user.id));
+    await backfillPersons();
+    fresh.mockUser({ ...member.user, role: "admin" });
+
+    const audit = await fresh.app.request("/api/instance/audit");
+    expect(audit.status).toBe(200);
+    const token = await fresh.app.request("/api/oauth/id-token");
+    expect(token.status).toBe(200);
+    const pending = await fresh.app.request("/api/me/pending-actions");
+    expect(pending.status).toBe(200);
+    const avatar = await fresh.app.request("/api/user/avatar", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        contentType: "image/png",
+        data: Buffer.from([
+          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x01, 0x02,
+        ]).toString("base64"),
+      }),
+    });
+    expect(avatar.status).toBe(200);
+    const deleted = await fresh.app.request("/api/user/avatar", {
+      method: "DELETE",
+    });
+    expect(deleted.status).toBe(200);
+
+    const routes = [
+      "GET /api/instance/audit",
+      "GET /api/oauth/id-token",
+      "GET /api/me/pending-actions",
+      "PUT /api/user/avatar",
+      "DELETE /api/user/avatar",
+    ];
+    for (const routeKey of routes) {
+      const rows = await waitForShadowEvidence(async () => {
+        const tallies = await shadowTalliesFor(routeKey);
+        return tallies.length === 0 ? undefined : tallies;
+      });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ outcome: "agree", count: 1 });
+    }
+  });
+
   it("keeps a soft-deleted containing project unknown for a nonmember read", {
     timeout: 60_000,
   }, async () => {
