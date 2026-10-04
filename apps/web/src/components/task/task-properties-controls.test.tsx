@@ -38,6 +38,9 @@ vi.mock("react-i18next", () => ({
     i18n: { language: translations.language },
   }),
 }));
+vi.mock("@/hooks/queries/task/use-get-task", () => ({
+  default: () => ({ data: undefined }),
+}));
 vi.mock("@/components/avatar", () => ({
   Avatar: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
