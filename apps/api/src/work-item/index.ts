@@ -111,7 +111,7 @@ import {
  * prefixed mount cannot produce. This is a deliberate, narrow exception, not a new
  * convention for every future domain.
  *
- * AUTHORIZATION, and why it is `requireWorkspaceCapability`, not
+ * AUTHORIZATION, and why create/write gates still use `requireWorkspaceCapability`, not
  * `requireWorkspacePermission`. `work_item:create`/`work_item:read` are canonical
  * `@taskdesk/permissions` capabilities (`BUILT_IN_ROLES`), not legacy better-auth-shaped
  * `{resource: action[]}` statements -- `requireWorkspacePermission` cannot evaluate them
@@ -121,10 +121,11 @@ import {
  * data.
  *
  * Project reads use `workspaceAccess.fromProject(..., { requireProjectReach: true })`:
- * the loaded project's persisted scope is resolved against the canonical `reaches()`
- * evaluator before the unchanged workspace capability check. Workspace membership alone
- * does not grant project reach; direct project membership, explicit workspace `sees_all`,
- * instance-admin reach, and customer-organisation reach follow `docs/01-architecture/rbac.md`.
+ * the loaded target's persisted scope and selected capability are resolved against the
+ * canonical `reaches()` / `can()` evaluator. There is no second workspace-role capability
+ * decision on these project-scoped reads. Workspace membership alone does not grant
+ * project reach; direct project membership, explicit workspace `sees_all`, instance-admin
+ * reach, and customer-organisation reach follow `docs/01-architecture/rbac.md`.
  * Create/write routes retain their existing workspace membership and capability checks in
  * this batch.
  *
@@ -132,7 +133,8 @@ import {
  * (`work_item:create`/`work_item:read`, `scope: "project"`/`"work_item"`) -- registered
  * in `policy-registry.ts` for the route-coverage/matrix machinery, same as every other
  * domain's `policy.ts`. Nothing here calls `evaluatePolicy`/the declarative registry at
- * runtime; the actual enforcement is the `requireWorkspaceCapability` middleware below,
+ * runtime; read enforcement comes from the project reach middleware above, while
+ * create/write enforcement remains the `requireWorkspaceCapability` middleware below,
  * exactly the same "declared target, different live mechanism" shape
  * `workspace/policy.ts`'s own file comment documents for its own routes.
  */
@@ -224,7 +226,6 @@ const listWorkItemsRoute = createRoute({
     "`stateCategory` and `assigneeName` (#310) alongside the raw ids.",
   middleware: [
     workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
-    requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: projectIdParam, query: listWorkItemsQuery },
   responses: {
@@ -259,7 +260,6 @@ const getWorkItemRoute = createRoute({
   description: "Get a single work item by its permanent key, e.g. PROJ-123.",
   middleware: [
     requireWorkItemReach("key", { requireProjectReach: true }),
-    requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },
   responses: {
@@ -354,7 +354,6 @@ const listAssignablePeopleRoute = createRoute({
     "neither capability sees an empty list. The client never filters this itself.",
   middleware: [
     workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
-    requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: projectIdParam },
   responses: {
@@ -552,7 +551,6 @@ const getWorkItemTreeRoute = createRoute({
     "response returned) -- see `get-work-item-tree.ts`'s own doc comment.",
   middleware: [
     requireWorkItemReach("key", { requireProjectReach: true }),
-    requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },
   responses: {
@@ -657,7 +655,6 @@ const listWorkItemActivityRoute = createRoute({
     "caller-type filtering is applied yet.",
   middleware: [
     requireWorkItemReach("key", { requireProjectReach: true }),
-    requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam, query: listWorkItemActivityQuery },
   responses: {
@@ -771,7 +768,6 @@ const listWorkItemTransitionsRoute = createRoute({
     "shown disabled -- the UI never computes legality client-side.",
   middleware: [
     requireWorkItemReach("key", { requireProjectReach: true }),
-    requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: workItemKeyParam },
   responses: {

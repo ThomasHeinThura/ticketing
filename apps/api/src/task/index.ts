@@ -21,7 +21,6 @@ import {
   validateTaskAssetUploadInput,
 } from "../storage";
 import { normalizeApiServerUrl } from "../utils/openapi-spec";
-import { requireWorkspaceCapability } from "../utils/require-workspace-capability";
 import { requireWorkspaceMembership } from "../utils/require-workspace-membership";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
@@ -91,7 +90,6 @@ const listTasksRoute = createRoute({
     "Get a project's board: its columns, each with the tasks in it, plus the archived and planned buckets. Filter and paginate with the query parameters.",
   middleware: [
     workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
-    requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: projectIdParam, query: listTasksQuery },
   responses: {
@@ -181,7 +179,6 @@ const getTaskRoute = createRoute({
   description: "Get a single task by ID, with its assignee's name resolved.",
   middleware: [
     workspaceAccess.fromTask("id", { requireProjectReach: true }),
-    requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: taskParam },
   responses: {
@@ -393,7 +390,6 @@ const exportTasksRoute = createRoute({
     "Export a project's tasks, with their labels, as a JSON document.",
   middleware: [
     workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
-    requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: projectIdParam },
   responses: {

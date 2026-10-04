@@ -13,6 +13,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   requireRow,
 } from "./helpers/fixtures";
 
@@ -94,6 +95,7 @@ describe("API integration: project stakeholders", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, ["project:read"]);
     mockAuthenticatedSession(member.user);
 
     const response = await addStakeholder(project.id, {
@@ -110,6 +112,7 @@ describe("API integration: project stakeholders", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, ["project:read"]);
     const person = await makeStaffPerson();
     mockAuthenticatedSession(member.user);
 
@@ -155,6 +158,7 @@ describe("API integration: project stakeholders", () => {
     const { project } = await createProjectFixture({
       workspaceId: member.workspace.id,
     });
+    await grantProjectRole(member.user.id, project.id, ["project:read"]);
     const outsider = await makePersonInAnotherOrganisation();
     mockAuthenticatedSession(member.user);
 

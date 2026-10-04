@@ -17,6 +17,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  grantProjectRole,
   prepareAuthenticatedApiFixture,
   requireRow,
 } from "./helpers/fixtures";
@@ -113,6 +114,10 @@ async function setupProject() {
     role: "admin",
   });
   const { project } = await createProjectFixture({ workspaceId: workspace.id });
+  await grantProjectRole(creator.id, project.id, [
+    "project:read",
+    "work_item:read",
+  ]);
   const type = await makeWorkItemType(workspace.id);
   await makeDefaultState(workspace.id, project.id);
   return { creator, workspace, project, type };
@@ -716,6 +721,7 @@ describe("API integration: work-item attachments (#28, attachments.md)", () => {
       role: "attachment-list-probe",
       permission: JSON.stringify({ workspace: ["read"] }),
     });
+    await grantProjectRole(restrictedUser.id, project.id, ["project:read"]);
 
     mockAuthenticatedSession(restrictedUser);
     const listResponse = await app.request(

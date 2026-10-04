@@ -114,6 +114,35 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     });
   }
 
+  const person = requireRow(
+    await db
+      .select({ id: schema.personTable.id })
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, user.id))
+      .limit(1),
+    "addWorkspaceMember: person",
+  );
+  const authorityRole = requireRow(
+    await db
+      .insert(schema.roleTable)
+      .values({
+        scope: "workspace",
+        workspaceId,
+        key: `assignable-reader-${randomUUID()}`,
+        name: "Assignable project reader",
+        rank: 1,
+        capabilities: ["project:read", "work_item:read"],
+      })
+      .returning(),
+    "addWorkspaceMember: canonical authority role",
+  );
+  await db.insert(schema.membershipTable).values({
+    personId: person.id,
+    scope: "workspace",
+    scopeId: workspaceId,
+    roleId: authorityRole.id,
+    seesAll: true,
+  });
   return user;
 }
 
@@ -551,7 +580,7 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     expect(people.map((entry) => entry.name)).toEqual(["Ada Lovelace"]);
   });
 
-  it("L4, corrected: a member whose only person row is customer-side sees NOTHING — the self branch applies the same staff/roster rules as the list", async () => {
+  it("L4: a customer-side linked user cannot read the agent project roster", async () => {
     const { workspace, project } = await setup();
     const memberUser = await addWorkspaceMember(workspace.id, "member");
 
@@ -600,8 +629,7 @@ describe("API integration: assignable people (#30, assignment.md)", () => {
     mockAuthenticatedSession(memberUser);
     const { app } = createApp();
     const response = await assignableRequest(app, project.id);
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual([]);
+    expect(response.status).toBe(403);
   });
 
   it("the count question and the roster are answered from the SAME predicate as the write", async () => {
