@@ -136,6 +136,7 @@ import {
   removeUserConnection,
   shutdownWebSocketAdapter,
 } from "./ws";
+import { logRealtimeFailure } from "./ws/log-realtime-failure";
 import { checkWebSocketOrigin } from "./ws/origin-policy";
 
 type ApiKey = {
@@ -1762,14 +1763,14 @@ export function createNodeServer(
       for (const client of websocketServer.clients) {
         try {
           client.terminate();
-        } catch (error) {
-          console.error("Failed to terminate a WebSocket client:", error);
+        } catch {
+          logRealtimeFailure();
         }
       }
       try {
         forceAdapter();
-      } catch (error) {
-        console.error("Failed to force-close WebSocket adapter:", error);
+      } catch {
+        logRealtimeFailure();
       }
     };
     deadline = setTimeout(() => {
@@ -1802,14 +1803,14 @@ export function createNodeServer(
     try {
       websocketServer.close((error) => {
         if (error) {
-          console.error("WebSocket server close failed:", error);
+          logRealtimeFailure();
           forceResources("WebSocket server close failed");
         }
         websocketClosed = true;
         finish();
       });
-    } catch (error) {
-      console.error("WebSocket server close threw:", error);
+    } catch {
+      logRealtimeFailure();
       forceResources("WebSocket server close threw");
       websocketClosed = true;
       finish();
@@ -1818,8 +1819,8 @@ export function createNodeServer(
     for (const client of websocketServer.clients) {
       try {
         client.close(1001, "Server shutting down");
-      } catch (error) {
-        console.error("Failed to send WebSocket shutdown close:", error);
+      } catch {
+        logRealtimeFailure();
         forceResources("WebSocket close frame failed");
       }
     }
@@ -1831,8 +1832,8 @@ export function createNodeServer(
           adapterClosed = true;
           finish();
         },
-        (error: unknown) => {
-          console.error("WebSocket adapter shutdown failed:", error);
+        () => {
+          logRealtimeFailure();
           adapterClosed = true;
           forceResources("WebSocket adapter shutdown failed");
           finish();

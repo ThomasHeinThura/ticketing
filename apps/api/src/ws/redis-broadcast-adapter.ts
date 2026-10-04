@@ -14,6 +14,7 @@ import type {
   NativeBroadcastMessage,
   UserBroadcast,
 } from "./broadcast-adapter";
+import { logRealtimeFailure } from "./log-realtime-failure";
 
 const CHANNEL_PREFIX = "taskdesk:ws:";
 const CHANNEL_SUFFIX = ":broadcast";
@@ -134,12 +135,12 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
             !parsed.output.workspaceId &&
             !parsed.output.projectId)
         ) {
-          console.error("Invalid native authorization invalidation");
+          logRealtimeFailure();
           return;
         }
         handler(parsed.output);
       } catch {
-        console.error("Invalid native authorization invalidation");
+        logRealtimeFailure();
       }
     };
     (sub as Redis).on("message", this._controlMessageHandler);
@@ -158,12 +159,12 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
       try {
         const parsed = v.safeParse(nativeBroadcastSchema, JSON.parse(data));
         if (!parsed.success) {
-          console.error("Invalid native realtime broadcast:", parsed.issues);
+          logRealtimeFailure();
           return;
         }
         handler(parsed.output);
-      } catch (error) {
-        console.error("Failed to parse native realtime broadcast:", error);
+      } catch {
+        logRealtimeFailure();
       }
     };
     (sub as Redis).on("message", this._nativeMessageHandler);
@@ -187,12 +188,12 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
       try {
         const parsed = v.safeParse(broadcastMessageSchema, JSON.parse(data));
         if (!parsed.success) {
-          console.error("Invalid broadcast message:", parsed.issues);
+          logRealtimeFailure();
           return;
         }
         handler(parsed.output);
-      } catch (err) {
-        console.error("Failed to parse broadcast message:", err);
+      } catch {
+        logRealtimeFailure();
       }
     };
     (sub as Redis).on("pmessage", this._pmessageHandler);
@@ -214,16 +215,16 @@ export class RedisBroadcastAdapter implements BroadcastAdapter {
       try {
         const parsed = v.safeParse(userBroadcastSchema, JSON.parse(data));
         if (!parsed.success) {
-          console.error("Invalid user broadcast message:", parsed.issues);
+          logRealtimeFailure();
           return;
         }
         if (channel !== this.channelForUser(parsed.output.userId)) {
-          console.error("User broadcast channel and payload disagree");
+          logRealtimeFailure();
           return;
         }
         handler(parsed.output as UserBroadcast);
-      } catch (err) {
-        console.error("Failed to parse user broadcast message:", err);
+      } catch {
+        logRealtimeFailure();
       }
     };
     (sub as Redis).on("pmessage", this._userPmessageHandler);

@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { WSContext } from "hono/ws";
 import { subscribeToEvent } from "../events";
-import { logTaskDesk } from "../instance/observability/runtime";
 import type { RedisClient } from "../redis";
 import { isRedisConfigured } from "../redis";
 import type {
@@ -13,6 +12,7 @@ import type {
   UserBroadcast,
   UserBroadcastMessage,
 } from "./broadcast-adapter";
+import { logRealtimeFailure } from "./log-realtime-failure";
 import {
   deliverNativeBroadcast,
   handleNativeAuthorizationInvalidation,
@@ -74,9 +74,7 @@ export function broadcastToUser(userId: string, message: UserBroadcastMessage) {
 
   void adapter
     .publishToUser({ userId, message, origin: INSTANCE_ID })
-    .catch((err) => {
-      console.error("Failed to publish a user broadcast:", err);
-    });
+    .catch(() => logRealtimeFailure());
 }
 
 function deliverToLocalUserConnections(
@@ -151,11 +149,14 @@ export async function initializeWebSocketAdapter(
     });
     await nextAdapter.subscribeToNative((msg) => deliverNativeBroadcast(msg));
     await nextAdapter.subscribeToControl((message) => {
-      void handleNativeAuthorizationInvalidation(message);
+      void handleNativeAuthorizationInvalidation(message).catch(() =>
+        logRealtimeFailure(),
+      );
     });
-  } catch (err) {
-    await nextAdapter.shutdown().catch(() => {});
-    throw err;
+  } catch {
+    logRealtimeFailure();
+    await nextAdapter.shutdown().catch(() => logRealtimeFailure());
+    throw new Error("WebSocket adapter initialization failed");
   }
 
   adapter = nextAdapter;
@@ -181,12 +182,7 @@ export async function invalidateNativeAuthorization(
     await adapter.publishControl(message);
   } catch {
     // The 60-second native authorization refresh is the recovery floor.
-    logTaskDesk({
-      module: "realtime",
-      message: "realtime.failure",
-      level: "error",
-      result: "failed",
-    });
+    logRealtimeFailure();
   }
 }
 
@@ -292,7 +288,7 @@ export function broadcastToProject(
   excludeInitiatorId?: string,
 ) {
   if (!adapter) {
-    console.warn("broadcastToProject called before adapter initialization");
+    logRealtimeFailure();
     return;
   }
 
@@ -324,12 +320,7 @@ export function broadcastToProject(
           message: msg,
           excludeInitiatorId: exId,
         })
-        .catch((err) => {
-          console.error(
-            `Failed to publish broadcast for project ${projectId}:`,
-            err,
-          );
-        });
+        .catch(() => logRealtimeFailure());
     }
   }, 100);
 
@@ -340,15 +331,13 @@ export async function broadcastNativeWorkItemHint(
   message: NativeBroadcastMessage,
 ) {
   if (!adapter) {
-    console.error(
-      "Native realtime adapter is not initialized; client will recover by refetch",
-    );
+    logRealtimeFailure();
     return;
   }
   try {
     await adapter.publishNative(message);
-  } catch (error) {
-    console.error("Failed to publish native work-item realtime hint:", error);
+  } catch {
+    logRealtimeFailure();
   }
 }
 

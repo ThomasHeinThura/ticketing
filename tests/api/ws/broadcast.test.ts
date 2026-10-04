@@ -6,6 +6,11 @@ vi.mock("../../../apps/api/src/events", () => ({
   publishEvent: vi.fn(),
 }));
 
+const { logTaskDesk } = vi.hoisted(() => ({ logTaskDesk: vi.fn() }));
+vi.mock("../../../apps/api/src/instance/observability/runtime", () => ({
+  logTaskDesk: (...args: unknown[]) => logTaskDesk(...args),
+}));
+
 import {
   addConnection,
   broadcastToProject,
@@ -156,16 +161,18 @@ describe("broadcastToProject", () => {
 
   it("warns when called before adapter initialization", async () => {
     await shutdownWebSocketAdapter();
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    logTaskDesk.mockClear();
 
     broadcastToProject("proj-1", {
       type: "TASK_CREATED",
       projectId: "proj-1",
     });
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      "broadcastToProject called before adapter initialization",
-    );
-    warnSpy.mockRestore();
+    expect(logTaskDesk).toHaveBeenCalledWith({
+      module: "realtime",
+      message: "realtime.failure",
+      level: "error",
+      result: "failed",
+    });
   });
 });
