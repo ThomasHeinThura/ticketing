@@ -37,11 +37,15 @@ import { toast } from "@/lib/toast";
 import type Task from "@/types/task";
 import { TaskLabels } from "./task-labels";
 
+export type TaskCardWorkspaceUser = NonNullable<
+  NonNullable<ReturnType<typeof useGetActiveWorkspaceUsers>["data"]>["members"]
+>[number];
+
 export type TaskCardProps = {
   task: Task;
   disableDragDrop?: boolean;
   workspaceId?: string;
-  workspaceUsers: ReturnType<typeof useGetActiveWorkspaceUsers>["data"];
+  workspaceUsersById: ReadonlyMap<string, TaskCardWorkspaceUser>;
   onContextMenuTask: (taskId: string) => void;
   projectSlug: string;
   taskIsCompleted: boolean;
@@ -66,7 +70,7 @@ function TaskCard({
   task,
   disableDragDrop = false,
   workspaceId,
-  workspaceUsers,
+  workspaceUsersById,
   onContextMenuTask,
   projectSlug,
   taskIsCompleted,
@@ -94,8 +98,11 @@ function TaskCard({
     showTaskItemCounts,
   } = displayPreferences;
   const taskItemStats = useMemo(
-    () => getTaskItemStats(task.description),
-    [task.description],
+    () =>
+      displayPreferences.showTaskItemCounts
+        ? getTaskItemStats(task.description)
+        : null,
+    [displayPreferences.showTaskItemCounts, task.description],
   );
 
   const pullRequests = useMemo(() => {
@@ -141,10 +148,8 @@ function TaskCard({
   };
 
   const assignee = useMemo(() => {
-    return workspaceUsers?.members?.find(
-      (member) => member.userId === task.userId,
-    );
-  }, [workspaceUsers, task.userId]);
+    return task.userId ? workspaceUsersById.get(task.userId) : undefined;
+  }, [workspaceUsersById, task.userId]);
   const dueDate = showDueDates && task.dueDate ? new Date(task.dueDate) : null;
   const dueDateStatus = dueDate
     ? getDueDateStatus(dueDate, taskIsCompleted)
@@ -261,7 +266,7 @@ function TaskCard({
             </span>
           )}
 
-          {showTaskItemCounts && taskItemStats.total > 0 && (
+          {taskItemStats && taskItemStats.total > 0 && (
             <span
               className={cn(
                 "flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-muted/50 text-muted-foreground h-5.5",

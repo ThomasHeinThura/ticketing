@@ -10,7 +10,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { useUpdateTaskAssignee } from "@/hooks/mutations/task/use-update-task-assignee";
-import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import type { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useNumberedShortcuts } from "@/hooks/use-numbered-shortcuts";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { getInitials } from "@/lib/get-initials";
@@ -22,13 +22,13 @@ const VISIBLE_USERS_STEP = 40;
 
 type TaskAssigneePopoverProps = {
   task: Task;
-  workspaceId: string;
+  workspaceUsers: ReturnType<typeof useGetActiveWorkspaceUsers>["data"];
   children: React.ReactNode;
 };
 
 export default function TaskAssigneePopover({
   task,
-  workspaceId,
+  workspaceUsers,
   children,
 }: TaskAssigneePopoverProps) {
   const { t } = useTranslation();
@@ -37,7 +37,6 @@ export default function TaskAssigneePopover({
     INITIAL_VISIBLE_USERS,
   );
   const { mutateAsync: updateTaskAssignee } = useUpdateTaskAssignee();
-  const { data: workspaceUsers } = useGetActiveWorkspaceUsers(workspaceId);
   const { canAssignTasks } = useWorkspacePermission();
   const canAssign = canAssignTasks();
 

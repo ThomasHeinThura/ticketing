@@ -137,7 +137,7 @@ function renderTaskCard() {
       onOpenTask={mocks.openTask}
       t={((key: string) => key) as unknown as TFunction}
       workspaceId="workspace-1"
-      workspaceUsers={undefined}
+      workspaceUsersById={new Map()}
       onContextMenuTask={mocks.openContextMenu}
     />,
   );
@@ -185,7 +185,7 @@ describe("TaskCard keyboard context menu", () => {
       task,
       taskIsCompleted: false,
       workspaceId: "workspace-1",
-      workspaceUsers: undefined,
+      workspaceUsersById: new Map(),
       onContextMenuTask: mocks.openContextMenu,
       displayPreferences,
       isTaskSelected: false,

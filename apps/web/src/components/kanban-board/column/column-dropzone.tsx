@@ -8,6 +8,7 @@ import type { ProjectWithTasks } from "@/types/project";
 import TaskCard, {
   type TaskCardDisplayPreferences,
   type TaskCardProps,
+  type TaskCardWorkspaceUser,
 } from "../task-card";
 
 type ColumnDropzoneProps = {
@@ -21,7 +22,7 @@ type ColumnDropzoneProps = {
   disableDragDrop?: boolean;
   onIsOverChange?: (isOver: boolean) => void;
   workspaceId?: string;
-  workspaceUsers: TaskCardProps["workspaceUsers"];
+  workspaceUsersById: ReadonlyMap<string, TaskCardWorkspaceUser>;
   onContextMenuTask: TaskCardProps["onContextMenuTask"];
   onOpenTask: TaskCardProps["onOpenTask"];
   t: TaskCardProps["t"];
@@ -38,7 +39,7 @@ export function ColumnDropzone({
   disableDragDrop = false,
   onIsOverChange,
   workspaceId,
-  workspaceUsers,
+  workspaceUsersById,
   onContextMenuTask,
   onOpenTask,
   t,
@@ -87,7 +88,7 @@ export function ColumnDropzone({
               toggleSelection={toggleSelection}
               disableDragDrop={disableDragDrop}
               workspaceId={workspaceId}
-              workspaceUsers={workspaceUsers}
+              workspaceUsersById={workspaceUsersById}
               onContextMenuTask={onContextMenuTask}
               onOpenTask={onOpenTask}
               t={t}

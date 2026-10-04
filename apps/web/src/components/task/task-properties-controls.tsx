@@ -29,16 +29,18 @@ type TaskPropertiesControlsProps = {
   task: Task | undefined;
   columns: ColumnData;
   workspaceUsers: WorkspaceUsersData;
-  workspaceId: string;
   compact: boolean;
+  columnsLoading: boolean;
+  columnsError: boolean;
 };
 
 export default function TaskPropertiesControls({
   task,
   columns,
   workspaceUsers,
-  workspaceId,
   compact,
+  columnsLoading,
+  columnsError,
 }: TaskPropertiesControlsProps) {
   const { t } = useTranslation();
 
@@ -67,7 +69,12 @@ export default function TaskPropertiesControls({
         !compact && "lg:flex-col lg:items-stretch lg:gap-2 lg:px-3 lg:py-3",
       )}
     >
-      <TaskStatusPopover task={task}>
+      <TaskStatusPopover
+        task={task}
+        columns={columns}
+        isLoading={columnsLoading}
+        isError={columnsError}
+      >
         <Button variant="ghost" size="sm" className={buttonClassName}>
           {getColumnIcon(
             task.status ?? "",
@@ -85,7 +92,7 @@ export default function TaskPropertiesControls({
           </span>
         </Button>
       </TaskPriorityPopover>
-      <TaskAssigneePopover task={task} workspaceId={workspaceId}>
+      <TaskAssigneePopover task={task} workspaceUsers={workspaceUsers}>
         <Button variant="ghost" size="sm" className={buttonClassName}>
           {task.userId ? (
             <Avatar className="h-[16px] w-[16px]">

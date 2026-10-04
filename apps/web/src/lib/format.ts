@@ -2,6 +2,9 @@ import { i18n } from "./i18n";
 
 type DateInput = Date | string | number;
 
+const DATE_FORMATTER_CACHE_LIMIT = 32;
+const dateFormatters = new Map<string, Intl.DateTimeFormat>();
+
 function toDate(input: DateInput) {
   return input instanceof Date ? input : new Date(input);
 }
@@ -15,9 +18,24 @@ export function formatDate(
   options?: Intl.DateTimeFormatOptions,
   locale?: string,
 ) {
-  return new Intl.DateTimeFormat(getLocale(locale), options).format(
-    toDate(value),
-  );
+  const resolvedLocale = getLocale(locale);
+  const normalizedOptions = options ?? {};
+  const cacheKey = `${resolvedLocale}:${JSON.stringify(normalizedOptions)}`;
+  let formatter = dateFormatters.get(cacheKey);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(resolvedLocale, normalizedOptions);
+    dateFormatters.set(cacheKey, formatter);
+    if (dateFormatters.size > DATE_FORMATTER_CACHE_LIMIT) {
+      const oldestKey = dateFormatters.keys().next().value;
+      if (oldestKey !== undefined) dateFormatters.delete(oldestKey);
+    }
+  } else {
+    // Keep frequently used formatters warm without allowing arbitrary locale and
+    // option combinations to grow this module cache without bound.
+    dateFormatters.delete(cacheKey);
+    dateFormatters.set(cacheKey, formatter);
+  }
+  return formatter.format(toDate(value));
 }
 
 export function formatDateShort(value: DateInput, locale?: string) {

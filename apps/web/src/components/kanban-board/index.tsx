@@ -31,7 +31,10 @@ import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { ProjectWithTasks } from "@/types/project";
 import BulkToolbar from "../bulk-selection/bulk-toolbar";
 import Column from "./column";
-import type { TaskCardDisplayPreferences } from "./task-card";
+import type {
+  TaskCardDisplayPreferences,
+  TaskCardWorkspaceUser,
+} from "./task-card";
 import TaskCard, { TaskCardDeleteConfirmation } from "./task-card";
 import TaskCardContextMenuContent from "./task-card-context-menu/task-card-context-menu-content";
 
@@ -83,6 +86,12 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
     workspace?.id ?? "",
   );
+  const workspaceUsersById = useMemo(() => {
+    const members = workspaceUsers?.members ?? [];
+    return new Map<string, TaskCardWorkspaceUser>(
+      members.map((member) => [member.userId, member]),
+    );
+  }, [workspaceUsers?.members]);
   const { mutate: updateTask } = useUpdateTask();
   const navigate = useNavigate();
   const handleOpenTask = useCallback(
@@ -356,7 +365,7 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                       toggleSelection={toggleSelection}
                       disableDragDrop={disableDragDrop}
                       workspaceId={workspace?.id}
-                      workspaceUsers={workspaceUsers}
+                      workspaceUsersById={workspaceUsersById}
                       onContextMenuTask={openContextMenuForTask}
                       onOpenTask={handleOpenTask}
                       t={t}
@@ -397,7 +406,7 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                 isTaskFocused={focusedTaskId === activeTask.id}
                 toggleSelection={toggleSelection}
                 workspaceId={workspace?.id}
-                workspaceUsers={workspaceUsers}
+                workspaceUsersById={workspaceUsersById}
                 onContextMenuTask={openContextMenuForTask}
                 onOpenTask={handleOpenTask}
                 t={t}

@@ -45,7 +45,7 @@ describe("Kanban column rendering", () => {
       focusedTaskId: null,
       toggleSelection: vi.fn(),
       workspaceId: "workspace-1",
-      workspaceUsers: undefined,
+      workspaceUsersById: new Map(),
       onContextMenuTask,
       onOpenTask: vi.fn(),
       t: ((key: string) => key) as unknown as TFunction,
