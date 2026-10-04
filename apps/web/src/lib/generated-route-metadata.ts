@@ -43,6 +43,7 @@ export const generatedRouteMetadata = {
     "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
     "/dashboard/workspace/$workspaceId/search",
     "/dashboard/workspace/create",
+    "/god-mode/features",
     "/god-mode/observability",
     "/invitation/accept/$inviteId",
     "/invitations",
@@ -50,5 +51,5 @@ export const generatedRouteMetadata = {
     "/profile-setup",
     "/test-error",
   ],
-  portal: ["/"],
+  portal: ["/", "/catalogue/$key", "/submissions", "/submissions/$ref"],
 } as const;

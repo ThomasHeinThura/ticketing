@@ -1,6 +1,16 @@
 /// <reference types="vite/types/importMeta.d.ts" />
 
-import type { AppType } from "@taskdesk/api";
+import type {
+  CoreAppType,
+  CreateRequestTypeInput,
+  FeatureFlagsApiType,
+  IntakeQueueDto,
+  IntakeSubmissionDto,
+  RequestTypeDto,
+  RequestTypeListDto,
+  UpdateRequestTypeInput,
+} from "@taskdesk/api";
+import type { Hono } from "hono";
 import { hc } from "hono/client";
 import { resolveApiBaseUrl } from "./api-url";
 
@@ -196,6 +206,64 @@ export function createApiFetch(
 
 export const apiFetch = createApiFetch();
 
-export const client = hc<AppType>(apiUrl, {
+export const client = hc<CoreAppType>(apiUrl, {
   fetch: apiFetch,
 });
+
+function clientAt<T extends Hono<any, any, any>>(path: string) {
+  return hc<T>(`${apiUrl.replace(/\/$/u, "")}${path}`, { fetch: apiFetch });
+}
+
+// Keep these route families fully typed while avoiding one monolithic Hono
+// client instantiation across the full API route union.
+export const featureFlagsClient = clientAt<FeatureFlagsApiType>("");
+async function apiCall<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await apiFetch(`${apiUrl.replace(/\/$/u, "")}${path}`, init);
+  if (!response.ok) throw new Error(await response.text());
+  return (await response.json()) as T;
+}
+
+async function requestTypeCall<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  return apiCall(`/request-types${path}`, init);
+}
+
+export const intakeApiCall = apiCall;
+export type { IntakeQueueDto, IntakeSubmissionDto };
+
+/** Contract-derived request-type client; recursive form JSON is kept out of Hono's path inference. */
+export const requestTypeClient = {
+  list(input: { workspaceId: string }): Promise<RequestTypeListDto> {
+    const query = new URLSearchParams({ workspaceId: input.workspaceId });
+    return requestTypeCall(`/?${query.toString()}`);
+  },
+  create(input: CreateRequestTypeInput): Promise<RequestTypeDto> {
+    return requestTypeCall("/", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+  update(id: string, input: UpdateRequestTypeInput): Promise<RequestTypeDto> {
+    return requestTypeCall(`/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  },
+  publish(id: string): Promise<RequestTypeDto> {
+    return requestTypeCall(`/${encodeURIComponent(id)}/publish`, {
+      method: "POST",
+    });
+  },
+  unpublish(id: string): Promise<RequestTypeDto> {
+    return requestTypeCall(`/${encodeURIComponent(id)}/unpublish`, {
+      method: "POST",
+    });
+  },
+  delete(id: string): Promise<RequestTypeDto> {
+    return requestTypeCall(`/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  },
+};

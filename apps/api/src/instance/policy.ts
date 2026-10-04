@@ -9,6 +9,29 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * (`docs/01-architecture/rbac.md`, elevation coverage test).
  */
 export const instancePolicies = {
+  "GET /api/instance/features": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide feature settings",
+    },
+    elevated: false,
+    elevationExemptionReason: "feature switches do not grant route permissions",
+  },
+  "PATCH /api/instance/features/{featureKey}": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide feature settings",
+    },
+    elevated: false,
+    elevationExemptionReason: "feature switches do not grant route permissions",
+    sessionOnly: true,
+  },
   "GET /api/instance/identity-connections": {
     capability: "instance:admin",
     scope: "instance",

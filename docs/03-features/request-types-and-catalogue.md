@@ -39,6 +39,21 @@ from the row's primary key and unique across the instance. It is immutable and i
 stable identifier used by portal catalogue routes. Create and update requests cannot set
 or change it; the display name remains editable.
 
+File-backed forms use the staging lifecycle selected in the decision log: a draft
+submission is created before uploads, each upload binds to that `SUB-n` and one visible
+file field in its pinned version through
+`POST /api/portal/submissions/{ref}/attachments/presign`, and finalization occurs only after
+each required file field has an owned, ready attachment. Drafts are not queue items and emit
+no `submission.received` event. `submission.submitted_at` is set once at finalization and is
+the SLA arrival instant; `created_at` remains draft creation time.
+That scoped presign response echoes the field key with the attachment ID and upload URL;
+generic work-item attachment DTOs do not expose request-form field metadata.
+Each presign request names one visible `file` field from the pinned version. The attachment
+row stores that field key with `submission_id`; finalization verifies required-field
+cardinality from owned ready rows and never stores upload IDs in `form_data`. Acceptance
+uses those same rows for required-file validation and atomically transfers them to the
+created work item, retaining the field key as mapping provenance.
+
 ```jsonc
 {
   "fields": [
@@ -105,7 +120,7 @@ substitutes another field. These rules are the RT-3/IQ-8 custom-field dependency
 - `RT-5` Fields support conditional visibility: show this field only when that field has
   this value. See the `showIf` example in Data above.
 - `RT-6` Publishing creates an immutable snapshot of the form schema, mapped work-item
-  type, request-type SLA override and default assignee. Submissions record which version
+  type, default project, auto-accept setting, request-type SLA override and default assignee. Submissions record which version
   they used, so edits to the live request type cannot silently remap a queued submission.
   The selected work-item type still supplies its own workflow; a request type has no
   separate workflow override. Acceptance revalidates that the snapshotted references are
@@ -164,8 +179,13 @@ here, to avoid two specs each defining the same write path differently.
   primary key — [data-model.md](../01-architecture/data-model.md)), the same convention as
   `work_item.number`. Triage turns it into one. See [intake queue](intake-queue.md) `IQ-2`.
 - `RT-15` A request type may be marked **auto-accept** (`request_type.auto_accept boolean` —
-  [data-model.md](../01-architecture/data-model.md)), in which case a work item is created
-  immediately and the submission is closed. Used for well-understood, high-volume requests.
+  [data-model.md](../01-architecture/data-model.md)), in which case finalization applies the
+  pinned version's work-item type, default project, SLA override and default assignee in the
+  same transaction as the submission. A work item is created immediately and the submission
+  becomes accepted; the customer receives its `SUB-n` and work-item key. For file-backed
+  forms, auto-accept happens only after all required file answers are ready. A failed mapping,
+  reference, attachment or work-item write leaves the draft retryable and emits no received
+  or accepted event. The work item's SLA start is `submission.submitted_at`.
 - `RT-16` Drafts are persisted per request type per version, so a half-completed form
   survives a closed tab — stored in `localStorage`, and therefore per device: a draft
   started on one device is not visible on another. Same mechanism as
@@ -205,6 +225,8 @@ DELETE /api/request-types/{id}                   request_type:manage   (refused 
 GET    /api/portal/catalogue                     { portal: 'customer', predicate: 'own_organisation' } — rbac.md kind 3
 GET    /api/portal/catalogue/{key}               { portal: 'customer', predicate: 'own_organisation' }
 POST   /api/portal/submissions                   { portal: 'customer', predicate: 'own_organisation' }
+POST   /api/portal/submissions/drafts            { portal: 'customer', predicate: 'own_organisation' } — file-backed upload staging
+POST   /api/portal/submissions/{ref}/submit      { portal: 'customer', predicate: 'own_submission' } — finalizes and may auto-accept
 GET    /api/portal/kb/deflection?q=…             { portal: 'customer', predicate: 'own_organisation' } — P5, owned by knowledge-base.md (KB-10/KB-12)
 ```
 
@@ -240,7 +262,9 @@ Integration: a submission against version 1 renders correctly after version 2 is
 published; `RT-8a` a request type with no `organisation_request_type` row for the caller's
 organisation is absent from `GET /api/portal/catalogue` **and** refused (not merely
 hidden) by `POST /api/portal/submissions` when submitted directly by key, bypassing the
-catalogue UI entirely.
+catalogue UI entirely. `tests/api-integration/intake-custom-field-mapping.test.ts` covers
+RT-3/IQ-8 mapped custom values and one-time defaults on acceptance, plus atomic refusal when
+the published custom-field mapping has been deleted.
 
 E2E: browse catalogue, see deflection suggestions, complete a conditional form, submit,
 see the reference; draft survives reload.

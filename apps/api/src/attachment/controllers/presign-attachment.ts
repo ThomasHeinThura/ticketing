@@ -1,12 +1,18 @@
 import { createId } from "@paralleldrive/cuid2";
-import { count, eq } from "drizzle-orm";
+import {
+  type FormSchema,
+  type FormValue,
+  visibleFields,
+} from "@taskdesk/domain/intake";
+import { and, count, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
-import db from "../../database";
+import db, { schema } from "../../database";
 import {
   attachmentTable,
   instanceSettingTable,
   organisationTable,
   personTable,
+  submissionTable,
   workItemTable,
   workspaceTable,
 } from "../../database/schema";
@@ -19,7 +25,9 @@ import {
 import { isMimeTypeAllowedForExtension } from "../magic-bytes";
 
 export type PresignAttachmentInput = {
-  workItemId: string;
+  workItemId?: string;
+  submissionId?: string;
+  submissionFieldKey?: string;
   workspaceId: string;
   filename: string;
   contentType: string;
@@ -73,6 +81,8 @@ const FALLBACK_ALLOWED_EXTENSIONS = [
 export async function presignAttachment(input: PresignAttachmentInput) {
   const {
     workItemId,
+    submissionId,
+    submissionFieldKey,
     workspaceId,
     filename,
     contentType,
@@ -81,6 +91,27 @@ export async function presignAttachment(input: PresignAttachmentInput) {
     userId,
     apiBaseUrl,
   } = input;
+
+  if ((workItemId === undefined) === (submissionId === undefined)) {
+    throw new HTTPException(400, {
+      message: "Exactly one upload parent is required",
+    });
+  }
+  if (submissionId && !customerVisible) {
+    throw new HTTPException(400, {
+      message: "Portal uploads must be customer-visible",
+    });
+  }
+  if (submissionId && !submissionFieldKey) {
+    throw new HTTPException(400, {
+      message: "A request form field is required for this upload.",
+    });
+  }
+  if (!submissionId && submissionFieldKey !== undefined) {
+    throw new HTTPException(400, {
+      message: "A request form field is invalid for this upload.",
+    });
+  }
 
   // `attachments.md`'s data section: `organisation_id` is `null` for an internal
   // workspace's own organisation, not merely absent -- every `workspace` row has a
@@ -99,7 +130,7 @@ export async function presignAttachment(input: PresignAttachmentInput) {
     .where(eq(workspaceTable.id, workspaceId))
     .limit(1);
 
-  const organisationId =
+  let organisationId =
     workspaceOrganisation && !workspaceOrganisation.isInternal
       ? workspaceOrganisation.id
       : null;
@@ -152,7 +183,11 @@ export async function presignAttachment(input: PresignAttachmentInput) {
   const [countRow] = await db
     .select({ value: count() })
     .from(attachmentTable)
-    .where(eq(attachmentTable.workItemId, workItemId));
+    .where(
+      submissionId
+        ? eq(attachmentTable.submissionId, submissionId)
+        : eq(attachmentTable.workItemId, workItemId!),
+    );
   const existingCount = countRow?.value ?? 0;
 
   if (existingCount >= maxPerItem) {
@@ -178,8 +213,8 @@ export async function presignAttachment(input: PresignAttachmentInput) {
   const objectKey = [
     "workspace",
     sanitizePathSegment(workspaceId),
-    "work-item",
-    sanitizePathSegment(workItemId),
+    submissionId ? "submission" : "work-item",
+    sanitizePathSegment(submissionId ?? workItemId!),
     "attachment",
     attachmentId,
     sanitizedFilename,
@@ -193,17 +228,97 @@ export async function presignAttachment(input: PresignAttachmentInput) {
   // closing the same reach-check-to-write race #276 closed for `update-work-item.ts` --
   // read-only here (nothing about the work item row is written), so a shared lock suffices.
   const inserted = await db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select({
-        projectId: workItemTable.projectId,
-        deletedAt: workItemTable.deletedAt,
-        archivedAt: workItemTable.archivedAt,
-      })
-      .from(workItemTable)
-      .where(eq(workItemTable.id, workItemId))
-      .for("share");
-    assertWorkItemStillLive(locked);
-    await assertProjectStillLive(tx, locked.projectId);
+    if (submissionId) {
+      const [locked] = await tx
+        .select({
+          organisationId: submissionTable.organisationId,
+          state: submissionTable.state,
+          workspaceId: schema.requestTypeTable.workspaceId,
+          requestTypeId: submissionTable.requestTypeId,
+          requestTypeVersionId: submissionTable.requestTypeVersionId,
+          formData: submissionTable.formData,
+        })
+        .from(submissionTable)
+        .innerJoin(
+          schema.requestTypeTable,
+          eq(schema.requestTypeTable.id, submissionTable.requestTypeId),
+        )
+        .where(eq(submissionTable.id, submissionId))
+        .for("update", { of: submissionTable });
+      if (
+        !locked ||
+        locked.state !== "draft" ||
+        locked.workspaceId !== workspaceId
+      ) {
+        throw new HTTPException(404, { message: "Submission not found" });
+      }
+      const [version] = await tx
+        .select({ formSchema: schema.requestTypeVersionTable.formSchema })
+        .from(schema.requestTypeVersionTable)
+        .where(
+          and(
+            eq(schema.requestTypeVersionTable.id, locked.requestTypeVersionId),
+            eq(
+              schema.requestTypeVersionTable.requestTypeId,
+              locked.requestTypeId,
+            ),
+          ),
+        )
+        .limit(1);
+      const formSchema = version?.formSchema as FormSchema | undefined;
+      const fileField = formSchema?.fields.find(
+        (field) => field.key === submissionFieldKey && field.type === "file",
+      );
+      const isVisible = formSchema
+        ? visibleFields(
+            formSchema,
+            locked.formData as Record<string, FormValue>,
+          ).some((field) => field.key === submissionFieldKey)
+        : false;
+      if (!fileField || !isVisible) {
+        throw new HTTPException(400, {
+          message: "The request form file field is unavailable.",
+        });
+      }
+      organisationId = locked.organisationId;
+      const [currentCount] = await tx
+        .select({ value: count() })
+        .from(attachmentTable)
+        .where(eq(attachmentTable.submissionId, submissionId));
+      if ((currentCount?.value ?? 0) >= maxPerItem) {
+        throw new HTTPException(400, {
+          message: `This submission already has the maximum of ${maxPerItem} attachments.`,
+        });
+      }
+      if (!fileField.multiple) {
+        const [fieldCount] = await tx
+          .select({ value: count() })
+          .from(attachmentTable)
+          .where(
+            and(
+              eq(attachmentTable.submissionId, submissionId),
+              eq(attachmentTable.submissionFieldKey, submissionFieldKey!),
+            ),
+          );
+        if ((fieldCount?.value ?? 0) > 0) {
+          throw new HTTPException(409, {
+            message: "This request form field already has an upload.",
+          });
+        }
+      }
+    } else {
+      const [locked] = await tx
+        .select({
+          projectId: workItemTable.projectId,
+          deletedAt: workItemTable.deletedAt,
+          archivedAt: workItemTable.archivedAt,
+        })
+        .from(workItemTable)
+        .where(eq(workItemTable.id, workItemId!))
+        .for("share");
+      assertWorkItemStillLive(locked);
+      await assertProjectStillLive(tx, locked.projectId);
+    }
 
     const [row] = await tx
       .insert(attachmentTable)
@@ -211,7 +326,9 @@ export async function presignAttachment(input: PresignAttachmentInput) {
         id: attachmentId,
         workspaceId,
         organisationId,
-        workItemId,
+        workItemId: workItemId ?? null,
+        submissionId: submissionId ?? null,
+        submissionFieldKey: submissionFieldKey ?? null,
         objectKey,
         filename: filename.slice(0, 255),
         mimeType: contentType,

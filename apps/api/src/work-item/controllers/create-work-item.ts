@@ -1,3 +1,4 @@
+import { resolveSlaPolicyBinding } from "@taskdesk/domain";
 import { and, desc, eq, isNotNull, isNull, lte } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db from "../../database";
@@ -48,9 +49,23 @@ type CreateWorkItemInput = {
   title: string;
   description?: unknown;
   priority?: "low" | "medium" | "high" | "urgent";
+  dueDate?: Date | null;
+  customerVisibility?: "private" | "organisation";
   /** The person making the request -- `c.get("userId")` at the route (WI-6, CA-9). */
   actorId: string;
   actorType: ActivityActorType;
+  actorSource?: "agent" | "api" | "portal";
+  requesterId?: string | null;
+  assigneeId?: string | null;
+  /** Present when an accepted or auto-accepted submission supplies the next SLA source. */
+  requestTypeSlaPolicyId?: string | null;
+  /** An accepted submission's original creation time; direct creation uses the current time. */
+  slaStartedAt?: Date;
+};
+type WorkItemTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type CreateWorkItemOptions = {
+  transaction?: WorkItemTransaction;
+  afterCommit?: Array<() => Promise<void>>;
 };
 
 /**
@@ -60,7 +75,10 @@ type CreateWorkItemInput = {
  * the DB-level composite FKs (#192) are the backstop, not the primary control a caller
  * ever sees.
  */
-export async function createWorkItem(input: CreateWorkItemInput) {
+export async function createWorkItem(
+  input: CreateWorkItemInput,
+  options: CreateWorkItemOptions = {},
+) {
   const {
     projectId,
     workspaceId,
@@ -77,20 +95,33 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // the transaction below starts -- rather than after the work item and its `created`
   // activity row have already committed, which would 500 a client that just succeeded
   // and risk a duplicate on retry.
-  const source = eventSourceFor(actorType);
+  const source = input.actorSource ?? eventSourceFor(actorType);
+  if (
+    (source === "api" && actorType !== "api_key") ||
+    (source !== "api" && actorType !== "person")
+  ) {
+    throw new Error(
+      `createWorkItem: source ${source} is not valid for actorType ${actorType}`,
+    );
+  }
 
   // `workspaceId` here is the one the route's own middleware already resolved (the
   // project's true workspace, from a DB lookup) -- re-checking it against the freshly
   // loaded project row below closes the same TOCTOU-adjacent class of gap
   // `get-project.ts` closes for reads: the row loaded for the INSERT is scoped by BOTH
   // its id and the workspace the caller was actually authorized against.
-  const project = await db.query.projectTable.findFirst({
-    where: and(
-      eq(projectTable.id, projectId),
-      eq(projectTable.workspaceId, workspaceId),
-      isNull(projectTable.deletedAt),
-    ),
-  });
+  const queryDb = options.transaction ?? db;
+  const [project] = await queryDb
+    .select()
+    .from(projectTable)
+    .where(
+      and(
+        eq(projectTable.id, projectId),
+        eq(projectTable.workspaceId, workspaceId),
+        isNull(projectTable.deletedAt),
+      ),
+    )
+    .limit(1);
 
   if (!project) {
     throw new HTTPException(404, { message: "Project not found" });
@@ -112,12 +143,16 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // checks (`upsert-workflow-rule.ts`'s `columnId`, `reorder-columns.ts`'s `col.id`,
   // confirmed side by side in #307's own Opus review table). A nonexistent id and a
   // real-but-foreign-workspace id now answer byte-identically.
-  const type = await db.query.workItemTypeTable.findFirst({
-    where: and(
-      eq(workItemTypeTable.id, typeId),
-      eq(workItemTypeTable.workspaceId, project.workspaceId),
-    ),
-  });
+  const [type] = await queryDb
+    .select()
+    .from(workItemTypeTable)
+    .where(
+      and(
+        eq(workItemTypeTable.id, typeId),
+        eq(workItemTypeTable.workspaceId, project.workspaceId),
+      ),
+    )
+    .limit(1);
 
   if (!type) {
     throw new HTTPException(400, {
@@ -134,12 +169,13 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // this schema yet", `schema.ts`'s own comment), and `workflows.md` (P2, a later stage)
   // defines no "leaveable" predicate this code could check against. There is nothing to
   // query. This is a TODO for the workflow-engine slice, not an omission in this one.
-  const defaultState = await db.query.stateTable.findFirst({
-    where: and(
-      eq(stateTable.projectId, project.id),
-      eq(stateTable.isDefault, true),
-    ),
-  });
+  const [defaultState] = await queryDb
+    .select()
+    .from(stateTable)
+    .where(
+      and(eq(stateTable.projectId, project.id), eq(stateTable.isDefault, true)),
+    )
+    .limit(1);
 
   if (!defaultState) {
     throw new HTTPException(400, {
@@ -157,8 +193,11 @@ export async function createWorkItem(input: CreateWorkItemInput) {
     | Awaited<ReturnType<typeof recordWorkItemEvent>>
     | undefined;
   try {
-    created = await db.transaction(async (tx) => {
-      const slaStartedAt = new Date();
+    const perform = async (tx: WorkItemTransaction) => {
+      const slaStartedAt = input.slaStartedAt ?? new Date();
+      if (!Number.isFinite(slaStartedAt.getTime())) {
+        throw new HTTPException(400, { message: "Invalid SLA start time" });
+      }
       const [workspace] = await tx
         .select({ slaPolicyId: workspaceTable.defaultSlaPolicyId })
         .from(workspaceTable)
@@ -167,8 +206,13 @@ export async function createWorkItem(input: CreateWorkItemInput) {
       if (!workspace) {
         throw new Error("Work item's workspace disappeared during creation");
       }
-      const policyId =
-        type.slaPolicyId ?? project.slaPolicyId ?? workspace.slaPolicyId;
+      const policyBinding = resolveSlaPolicyBinding({
+        workItemTypePolicyId: type.slaPolicyId,
+        requestTypePolicyId: input.requestTypeSlaPolicyId ?? null,
+        projectPolicyId: project.slaPolicyId,
+        workspacePolicyId: workspace.slaPolicyId,
+      });
+      const policyId = policyBinding?.policyId ?? null;
       if (policyId) {
         const [ownedPolicy] = await tx
           .select({ id: slaPolicyTable.id })
@@ -217,6 +261,10 @@ export async function createWorkItem(input: CreateWorkItemInput) {
           description: description ?? null,
           stateId: defaultState.id,
           priority: priority ?? null,
+          dueDate: input.dueDate ?? null,
+          customerVisibility: input.customerVisibility ?? "private",
+          assigneeId: input.assigneeId ?? null,
+          requesterId: input.requesterId ?? null,
           createdAt: slaStartedAt,
           slaStartedAt,
           slaPolicyVersionId: policyVersion?.id ?? null,
@@ -267,7 +315,10 @@ export async function createWorkItem(input: CreateWorkItemInput) {
       });
 
       return inserted;
-    });
+    };
+    created = options.transaction
+      ? await perform(options.transaction)
+      : await db.transaction(perform);
   } catch (error) {
     // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
     // 2026-09-22, "what would close it" #2): defence in depth. `project_slug_claim`
@@ -321,27 +372,31 @@ export async function createWorkItem(input: CreateWorkItemInput) {
   // `PUBLIC_PAIRS` has `(created, null)` unconditionally (`activity.ts`), so a
   // `work_item.created` event -- one per row, always verb `created`, no field -- is
   // always public, the same way its `activity` row always is.
-  await publishEvent("work_item.created", {
-    workItemId: created.id,
-    key: created.key,
-    workspaceId: created.workspaceId,
-    projectId: created.projectId,
-    typeId: created.typeId,
-    stateId: created.stateId,
-    requesterId: created.requesterId,
-    source,
-    visibility: "public",
-    actorId,
-    actorType,
-  });
-  if (realtimeEvent) {
-    await publishWorkItemHint(realtimeEvent, {
-      kind: "work_item.created",
+  const publish = async () => {
+    await publishEvent("work_item.created", {
+      workItemId: created.id,
       key: created.key,
+      workspaceId: created.workspaceId,
       projectId: created.projectId,
-      customerVisible: true,
+      typeId: created.typeId,
+      stateId: created.stateId,
+      requesterId: created.requesterId,
+      source,
+      visibility: "public",
+      actorId,
+      actorType,
     });
-  }
+    if (realtimeEvent) {
+      await publishWorkItemHint(realtimeEvent, {
+        kind: "work_item.created",
+        key: created.key,
+        projectId: created.projectId,
+        customerVisible: true,
+      });
+    }
+  };
+  if (options.afterCommit) options.afterCommit.push(publish);
+  else await publish();
 
   return created;
 }

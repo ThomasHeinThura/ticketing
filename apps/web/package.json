@@ -15,6 +15,7 @@
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:e2e": "playwright test --config playwright.config.ts",
+    "test:e2e:portal": "playwright test --config playwright.portal.config.ts",
     "test:visual": "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual",
     "test:perf": "playwright test --config playwright.perf.config.ts"
   },
@@ -51,6 +52,7 @@
     "@tanstack/react-router": "^1.170.21",
     "@tanstack/router-devtools": "^1.167.1",
     "@tanstack/router-plugin": "^1.168.26",
+    "@taskdesk/domain": "workspace:*",
     "@tiptap/core": "~3.30.5",
     "@tiptap/extension-code-block-lowlight": "^3.29.2",
     "@tiptap/extension-image": "^3.29.2",

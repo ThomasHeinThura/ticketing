@@ -6,6 +6,8 @@ import { CAPABILITY_CHECKS, type CapabilityName } from "../capability-checks";
 
 export type CapabilityMap = Record<CapabilityName, boolean> & {
   manageServiceCalendars: boolean;
+  manageRequestTypes: boolean;
+  triageIntake: boolean;
 };
 
 /**
@@ -18,19 +20,40 @@ async function getCapabilities(c: Context): Promise<CapabilityMap> {
   const entries = Object.entries(CAPABILITY_CHECKS) as Array<
     [CapabilityName, Record<string, string[]>]
   >;
-  const [results, manageServiceCalendars] = await Promise.all([
-    Promise.all(
-      entries.map(
-        async ([name, permissions]) =>
-          [name, await hasWorkspacePermission(c, permissions)] as const,
+  const [results, manageServiceCalendars, manageRequestTypes, triageIntake] =
+    await Promise.all([
+      Promise.all(
+        entries.map(
+          async ([name, permissions]) =>
+            [name, await hasWorkspacePermission(c, permissions)] as const,
+        ),
       ),
-    ),
-    hasServiceCalendarManageCapability(c),
-  ]);
+      hasServiceCalendarManageCapability(c),
+      hasFeatureCapability(c, "request_type:manage"),
+      hasFeatureCapability(c, "intake:triage"),
+    ]);
   return {
     ...Object.fromEntries(results),
     manageServiceCalendars,
+    manageRequestTypes,
+    triageIntake,
   } as CapabilityMap;
+}
+
+async function hasFeatureCapability(
+  c: Context,
+  capability: "request_type:manage" | "intake:triage",
+): Promise<boolean> {
+  const workspaceId = c.get("workspaceId");
+  const userId = c.get("userId");
+  if (!workspaceId || !userId) return false;
+  try {
+    await assertCallerHasCapability(workspaceId, userId, capability);
+    return true;
+  } catch (error) {
+    if (error instanceof HTTPException && error.status === 403) return false;
+    throw error;
+  }
 }
 
 async function hasServiceCalendarManageCapability(

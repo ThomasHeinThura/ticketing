@@ -11,6 +11,7 @@ import {
   integer,
   jsonb,
   numeric,
+  pgSequence,
   pgTable,
   primaryKey,
   text,
@@ -3916,6 +3917,199 @@ export const watcherTable = pgTable(
 // P2 request catalogue and intake persistence (request-types-and-catalogue.md;
 // intake-queue.md). The opaque `key` is independent from the database id and unique
 // across the instance because it is the portal's stable route identifier.
+// Custom-field definitions are workspace-owned; visibility/requiredness is a
+// per-work-item-type relation and values keep an authorized-parent reach copy.
+export const customFieldSectionTable = pgTable(
+  "custom_field_section",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaceTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    name: text("name").notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    unique("custom_field_section_workspace_id_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    unique("custom_field_section_workspace_name_unique").on(
+      table.workspaceId,
+      table.name,
+    ),
+    index("custom_field_section_workspace_position_idx").on(
+      table.workspaceId,
+      table.position,
+      table.id,
+    ),
+    check(
+      "custom_field_section_position_nonnegative",
+      sql`${table.position} >= 0`,
+    ),
+  ],
+);
+
+export const customFieldTable = pgTable(
+  "custom_field",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    workspaceId: text("workspace_id").notNull(),
+    sectionId: text("section_id").notNull(),
+    entityType: text("entity_type").notNull().default("work_item"),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    format: text("format").notNull(),
+    options: jsonb("options").notNull().default(sql`'[]'::jsonb`),
+    defaultValue: jsonb("default_value"),
+    helpText: text("help_text"),
+    customerVisible: boolean("customer_visible").notNull().default(false),
+    visibilityCondition: jsonb("visibility_condition"),
+    position: integer("position").notNull().default(0),
+    deletedAt: timestamp("deleted_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    foreignKey({
+      name: "custom_field_workspace_section_fk",
+      columns: [table.workspaceId, table.sectionId],
+      foreignColumns: [
+        customFieldSectionTable.workspaceId,
+        customFieldSectionTable.id,
+      ],
+    }).onDelete("restrict"),
+    unique("custom_field_workspace_id_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    unique("custom_field_workspace_key_unique").on(
+      table.workspaceId,
+      table.key,
+    ),
+    index("custom_field_workspace_active_idx").on(
+      table.workspaceId,
+      table.deletedAt,
+      table.position,
+      table.id,
+    ),
+    check(
+      "custom_field_entity_type_allowed",
+      sql`${table.entityType} = 'work_item'`,
+    ),
+    check(
+      "custom_field_format_allowed",
+      sql`${table.format} in ('text', 'long_text', 'number', 'decimal', 'currency', 'date', 'datetime', 'boolean', 'select', 'multi_select', 'user', 'multi_user', 'url', 'email')`,
+    ),
+    check("custom_field_key_nonempty", sql`length(${table.key}) > 0`),
+    check("custom_field_position_nonnegative", sql`${table.position} >= 0`),
+  ],
+);
+
+export const customFieldTypeVisibilityTable = pgTable(
+  "custom_field_type_visibility",
+  {
+    customFieldId: text("custom_field_id")
+      .notNull()
+      .references(() => customFieldTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    workItemTypeId: text("work_item_type_id")
+      .notNull()
+      .references(() => workItemTypeTable.id, {
+        onDelete: "restrict",
+        onUpdate: "cascade",
+      }),
+    visible: boolean("visible").notNull().default(false),
+    required: boolean("required").notNull().default(false),
+  },
+  (table) => [
+    primaryKey({ columns: [table.customFieldId, table.workItemTypeId] }),
+    check(
+      "custom_field_type_visibility_required_visible",
+      sql`not ${table.required} or ${table.visible}`,
+    ),
+    index("custom_field_type_visibility_type_idx").on(
+      table.workItemTypeId,
+      table.customFieldId,
+    ),
+  ],
+);
+
+export const customFieldValueTable = pgTable(
+  "custom_field_value",
+  {
+    id: text("id")
+      .$defaultFn(() => createId())
+      .primaryKey(),
+    customFieldId: text("custom_field_id")
+      .notNull()
+      .references(() => customFieldTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    entityType: text("entity_type").notNull().default("work_item"),
+    entityId: text("entity_id").notNull(),
+    value: jsonb("value").notNull(),
+    projectId: text("project_id").references(() => projectTable.id, {
+      onDelete: "restrict",
+      onUpdate: "no action",
+    }),
+    organisationId: text("organisation_id").references(
+      () => organisationTable.id,
+      { onDelete: "restrict", onUpdate: "no action" },
+    ),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    unique("custom_field_value_field_entity_unique").on(
+      table.customFieldId,
+      table.entityType,
+      table.entityId,
+    ),
+    index("custom_field_value_project_reach_idx").on(
+      table.projectId,
+      table.customFieldId,
+      table.entityId,
+    ),
+    index("custom_field_value_organisation_reach_idx").on(
+      table.organisationId,
+      table.customFieldId,
+      table.entityId,
+    ),
+    check(
+      "custom_field_value_entity_type_allowed",
+      sql`${table.entityType} = 'work_item'`,
+    ),
+  ],
+);
+
 export const requestTypeTable = pgTable(
   "request_type",
   {
@@ -4002,6 +4196,7 @@ export const requestTypeVersionTable = pgTable(
     formSchema: jsonb("form_schema").notNull(),
     workItemTypeId: text("work_item_type_id").notNull(),
     defaultProjectId: text("default_project_id"),
+    autoAccept: boolean("auto_accept").notNull().default(false),
     slaPolicyId: text("sla_policy_id"),
     defaultAssigneeId: text("default_assignee_id").references(
       () => personTable.id,
@@ -4075,13 +4270,24 @@ export const organisationRequestTypeTable = pgTable(
   ],
 );
 
+// Submission references are globally unique and issued by PostgreSQL so concurrent
+// portal submissions and draft finalizations cannot race on MAX(number) + 1.
+export const submissionNumberSequence = pgSequence("submission_number_seq", {
+  startWith: 1,
+  minValue: 1,
+  maxValue: 2_147_483_647,
+});
+
 export const submissionTable = pgTable(
   "submission",
   {
     id: text("id")
       .$defaultFn(() => createId())
       .primaryKey(),
-    number: integer("number").notNull().unique("submission_number_unique"),
+    number: integer("number")
+      .default(sql`nextval('submission_number_seq')`)
+      .notNull()
+      .unique("submission_number_unique"),
     organisationId: text("organisation_id")
       .notNull()
       .references(() => organisationTable.id, {
@@ -4098,6 +4304,10 @@ export const submissionTable = pgTable(
     requestTypeVersionId: text("request_type_version_id").notNull(),
     formData: jsonb("form_data").notNull(),
     state: text("state").notNull().default("new"),
+    submittedAt: timestamp("submitted_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     claimedBy: text("claimed_by").references(() => personTable.id, {
       onDelete: "restrict",
       onUpdate: "cascade",
@@ -4144,7 +4354,11 @@ export const submissionTable = pgTable(
     check("submission_version_positive", sql`${table.version} > 0`),
     check(
       "submission_state_allowed",
-      sql`${table.state} in ('new', 'clarifying', 'accepted', 'declined', 'duplicate', 'withdrawn')`,
+      sql`${table.state} in ('draft', 'new', 'clarifying', 'accepted', 'declined', 'duplicate', 'withdrawn')`,
+    ),
+    check(
+      "submission_submitted_at_state_consistent",
+      sql`(${table.state} = 'draft' and ${table.submittedAt} is null) or (${table.state} <> 'draft' and ${table.submittedAt} is not null)`,
     ),
     check(
       "submission_customer_visibility_allowed",
@@ -4270,6 +4484,8 @@ export const attachmentTable = pgTable(
       onDelete: "cascade",
       onUpdate: "cascade",
     }),
+    // Immutable request-form field provenance, retained after submission transfer.
+    submissionFieldKey: text("submission_field_key"),
     objectKey: text("object_key").notNull(),
     filename: text("filename").notNull(),
     mimeType: text("mime_type").notNull(),

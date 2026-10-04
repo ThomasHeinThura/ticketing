@@ -19,6 +19,8 @@ export const capabilitiesResponseSchema = z
     manageTeam: z.boolean(),
     removeMembers: z.boolean(),
     manageServiceCalendars: z.boolean(),
+    manageRequestTypes: z.boolean(),
+    triageIntake: z.boolean(),
   })
   .openapi("Capabilities");
 

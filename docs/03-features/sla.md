@@ -65,14 +65,14 @@ an event once, and for list filtering. It is never the answer to "what is the st
 - `SLA-2` If no policy resolves, state is `none`.
 - `SLA-3` The **published version effective at `work_item.sla_started_at`** is pinned when
   the work item is created or accepted. That instant is the direct work item's creation
-  time, or the original submission's `created_at` on acceptance (ADR 0009). The selected
+  time, or the original submission's `submitted_at` on acceptance (ADR 0009). The selected
   version is stored on the work item; later policy binding or publication changes never
   rewrite the version used by an existing item.
 
 **Computation**
 
 - `SLA-4` `dueAt` = the instant at which `target_minutes` of covered time have elapsed
-  since `sla_started_at` (copied from the accepted submission's `created_at`, otherwise the
+  since `sla_started_at` (copied from the accepted submission's `submitted_at`, otherwise the
   work item's `created_at` — [data-model.md](../01-architecture/data-model.md)), per the
   calendar, skipping pauses.
 - `SLA-5` Covered time counts only inside the calendar's weekday windows, in the

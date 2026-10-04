@@ -224,6 +224,24 @@ export const routes = {
     build: (params: { id: string }) =>
       `/agent/settings/sla-policies/${encodeURIComponent(params.id)}`,
   },
+  requestTypes: {
+    path: "/agent/settings/request-types" as const,
+    build: () => "/agent/settings/request-types",
+  },
+  requestTypeEditor: {
+    path: "/agent/settings/request-types/$id" as const,
+    build: (params: { id: string }) =>
+      `/agent/settings/request-types/${encodeURIComponent(params.id)}`,
+  },
+  intakeQueue: {
+    path: "/agent/triage" as const,
+    build: (tab: "intake" = "intake") => `/agent/triage?tab=${tab}`,
+  },
+  intakeSubmission: {
+    path: "/agent/submissions/$ref" as const,
+    build: (params: { ref: string }) =>
+      `/agent/submissions/${encodeURIComponent(params.ref)}`,
+  },
   /** `docs/02-design/screen-inventory.md` "Work — list", `/agent/projects/{key}/work`. */
   workItemList: {
     path: "/agent/projects/$projectKey/work" as const,

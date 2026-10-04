@@ -243,8 +243,12 @@ save is one request.
 Unit: `custom-field-visibility.test.ts` → CF-2, CF-3, CF-6; `custom-field-requiredness.test.ts`
 → CF-4.
 
-Additional unit coverage: `custom-field-value-format.test.ts` → stored value validation for every format;
-`custom-field-defaults.test.ts` → CF-5 default precedence, visibility and omission behavior.
+The request-type implementation currently has a pure domain suite at
+`packages/domain/src/intake/custom-fields.test.ts` covering accepted and rejected formats,
+precision/date boundaries, duplicate option/person references, conditional resolution,
+defaults, explicit null, and hidden/nonapplicable definitions. The broader named
+`custom-field-value-format.test.ts` and `custom-field-defaults.test.ts` suites remain part of
+the P4 feature test plan.
 
 Integration: `custom-field-value-reach.test.ts` → CF-11; `custom-field-options.test.ts`
 → CF-7; `custom-field-delete-restore.test.ts` → CF-8; `custom-field-type-visibility.test.ts`
@@ -255,10 +259,9 @@ for one type, confirm the form changes for that type only, and verify that the t
 is blocked when empty.
 
 The request-type/intake dependency test `intake-custom-field-mapping.test.ts` → CF-11,
-RT-3, IQ-8 covers a published custom-field mapping whose definition is later deleted: the
-queued submission retains its pinned raw form value, but acceptance refuses atomically
-rather than dropping or remapping it. These are planned test files; the specification does
-not claim that unimplemented custom-field runtime or tests already exist.
+RT-3, IQ-8 covers mapped values, defaults, reach, and atomic refusal when a pinned mapping
+becomes invalid. This is scoped to the P2 intake dependency and does not imply that the full
+P4 custom-field feature or its management APIs are implemented.
 
 ## Related
 
@@ -281,11 +284,11 @@ None. The P4 work-item-only contract above does not imply later entity types are
 
 ## Readiness disposition
 
-The historical `not-ready` review in
-[`features-governance-design.md`](../07-planning/reviews/2026-09-05/features-governance-design.md)
-has an author disposition candidate in
+The historical `not-ready` verdict and findings remain preserved in
+[`features-governance-design.md`](../07-planning/reviews/2026-09-05/features-governance-design.md).
+An independent GPT-6 Luna returned **READY** for the owning contract at exact source SHA
+`efe21b6defdb5464cc89df0785e106d5e0563bbe`; its report is recorded in
 [`custom-fields-author-disposition.md`](../07-planning/reviews/2026-09-05/custom-fields-author-disposition.md).
-That candidate is not independent readiness clearance. The work-item definition,
-type-visibility, customer-visibility and value-persistence slice required by request-type
-RT-3 / intake IQ-8 remains unimplemented until an independent reviewer verifies the
-updated contract and clears the owning review section.
+That clearance allows implementation but does not claim the full P4 custom-field feature is
+complete. The request-type/intake value-persistence dependency is being implemented and
+verified separately.

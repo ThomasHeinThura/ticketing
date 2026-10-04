@@ -66,6 +66,8 @@ function fullCapabilityMap(overrides: Partial<Record<string, boolean>> = {}) {
     manageTeam: false,
     removeMembers: false,
     manageServiceCalendars: false,
+    manageRequestTypes: false,
+    triageIntake: false,
     ...overrides,
   };
 }

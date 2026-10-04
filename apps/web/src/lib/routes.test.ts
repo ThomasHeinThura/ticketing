@@ -202,3 +202,24 @@ describe("routes.slaPolicies", () => {
     );
   });
 });
+
+describe("request type and intake route contracts", () => {
+  it("registers authoring, queue, and submission detail routes", () => {
+    expect(generatedRouteMetadata.agent).toContain(routes.requestTypes.path);
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.requestTypeEditor.path,
+    );
+    expect(generatedRouteMetadata.agent).toContain(routes.intakeQueue.path);
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.intakeSubmission.path,
+    );
+    expect(routes.requestTypes.build()).toBe("/agent/settings/request-types");
+    expect(routes.requestTypeEditor.build({ id: "type/one" })).toBe(
+      "/agent/settings/request-types/type%2Fone",
+    );
+    expect(routes.intakeQueue.build()).toBe("/agent/triage?tab=intake");
+    expect(routes.intakeSubmission.build({ ref: "SUB-12" })).toBe(
+      "/agent/submissions/SUB-12",
+    );
+  });
+});

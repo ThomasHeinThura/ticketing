@@ -18,8 +18,10 @@ import {
   isFieldVisible,
   isRequestTypeVisible,
   MAX_TEXT_ANSWER_LENGTH,
+  resolveSlaPolicyBinding,
   translateMapsTo,
   validateFormSchema,
+  validatePublishableFormSchema,
   validateSubmissionData,
   visibleFields,
 } from "./request-type.js";
@@ -79,6 +81,17 @@ const IMPACT_SCHEMA: FormSchema = {
 // --- state machine -------------------------------------------------------------
 
 describe("transitionSubmission — staff actions", () => {
+  it("does not allow a staged draft into triage", () => {
+    expect(
+      transition(record({ state: "draft" }), {
+        action: "accept",
+        actor: "triager",
+        now: NOW,
+        workItemId: "WI-1",
+      }),
+    ).toEqual({ ok: false, refusal: "illegal_state" });
+  });
+
   it("clarify: triager only, new→clarifying, stamps clarifyingSince (IQ-6)", () => {
     const r = transition(record(), {
       action: "clarify",
@@ -354,6 +367,97 @@ describe("validateFormSchema (publish time)", () => {
     expect(problems).toContain("select_without_options");
     expect(problems).toContain("show_if_self_reference");
     expect(problems).toContain("maps_to_missing_native_field");
+  });
+});
+
+describe("validatePublishableFormSchema — immutable title mapping (RT-6)", () => {
+  it("requires exactly one required, always-visible text title mapping", () => {
+    expect(
+      validatePublishableFormSchema(
+        {
+          fields: [
+            {
+              key: "summary",
+              type: "text",
+              label: "Summary",
+              required: true,
+              mapsTo: { field: "title" },
+            },
+          ],
+        },
+        new Set(["title"]),
+      ),
+    ).toEqual([]);
+    expect(
+      validatePublishableFormSchema(
+        {
+          fields: [
+            { key: "summary", type: "text", label: "Summary", required: true },
+          ],
+        },
+        new Set(["title"]),
+      ),
+    ).toContainEqual({ key: null, problem: "title_mapping_required" });
+    expect(
+      validatePublishableFormSchema(
+        {
+          fields: [
+            {
+              key: "summary",
+              type: "text",
+              label: "Summary",
+              required: true,
+              mapsTo: { field: "title" },
+            },
+            {
+              key: "other",
+              type: "textarea",
+              label: "Other",
+              required: true,
+              mapsTo: { field: "title" },
+            },
+          ],
+        },
+        new Set(["title"]),
+      ),
+    ).toContainEqual({ key: null, problem: "title_mapping_ambiguous" });
+  });
+
+  it("rejects conditional, optional, and non-text title sources", () => {
+    expect(
+      validatePublishableFormSchema(
+        {
+          fields: [
+            {
+              key: "summary",
+              type: "text",
+              label: "Summary",
+              required: true,
+              showIf: { field_key: "other", op: "is_set" },
+              mapsTo: { field: "title" },
+            },
+            { key: "other", type: "text", label: "Other" },
+          ],
+        },
+        new Set(["title"]),
+      ),
+    ).toContainEqual({ key: "summary", problem: "title_mapping_invalid" });
+    expect(
+      validatePublishableFormSchema(
+        {
+          fields: [
+            {
+              key: "summary",
+              type: "number",
+              label: "Summary",
+              required: true,
+              mapsTo: { field: "title" },
+            },
+          ],
+        },
+        new Set(["title"]),
+      ),
+    ).toContainEqual({ key: "summary", problem: "title_mapping_invalid" });
   });
 });
 
@@ -979,6 +1083,45 @@ describe("catalogue visibility — no row ⇒ not visible and not submittable", 
     expect(result.map((t) => t.key)).toEqual(["vpn", "printer"]); // Access < Hardware, then position
     // Another org sees only what its own rows grant.
     expect(catalogueFor("org_z", types, rows)).toEqual([]);
+  });
+});
+
+describe("resolveSlaPolicyBinding (SLA-1)", () => {
+  it("uses type, request type, project, then workspace, and returns no source when empty", () => {
+    const base = {
+      workItemTypePolicyId: null,
+      requestTypePolicyId: null,
+      projectPolicyId: null,
+      workspacePolicyId: null,
+    };
+    expect(resolveSlaPolicyBinding(base)).toBeNull();
+    expect(
+      resolveSlaPolicyBinding({
+        ...base,
+        projectPolicyId: "project-policy",
+        workspacePolicyId: "workspace-policy",
+      }),
+    ).toEqual({ policyId: "project-policy", source: "project" });
+    expect(
+      resolveSlaPolicyBinding({
+        ...base,
+        requestTypePolicyId: "request-policy",
+        projectPolicyId: "project-policy",
+      }),
+    ).toEqual({ policyId: "request-policy", source: "request_type" });
+    expect(
+      resolveSlaPolicyBinding({
+        ...base,
+        workItemTypePolicyId: "type-policy",
+        requestTypePolicyId: "request-policy",
+      }),
+    ).toEqual({ policyId: "type-policy", source: "work_item_type" });
+    expect(
+      resolveSlaPolicyBinding({
+        ...base,
+        workspacePolicyId: "workspace-policy",
+      }),
+    ).toEqual({ policyId: "workspace-policy", source: "workspace" });
   });
 });
 

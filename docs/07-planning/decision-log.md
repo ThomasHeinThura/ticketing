@@ -5,6 +5,43 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-04 · Stage file-backed portal submissions before submission
+
+Use `POST /api/portal/submissions/{ref}/attachments/presign` with a `SUB-n` reference and
+the existing `own_submission` customer predicate. A file-backed form first creates a
+portal-owned `draft` submission; drafts are not visible to triage and have no
+`submission.received` event or SLA start. Add nullable `submission.submitted_at`: it is null
+only for drafts, and is set atomically when the form is finalized. Existing submissions
+backfill it from `created_at`; accepted work items start SLA from `submitted_at`.
+
+Uploads bind pending rows to that draft, default to customer-visible, obey the configured
+attachment limits and existing complete/magic-byte checks, and are retryable until ready.
+Finalization requires every required file field to reference ready attachments owned by
+that submission; all submitted form values and attachment references are validated before
+the submission becomes `new` or is auto-accepted. Failed upload/finalization creates no
+ready attachment, queued submission, work item, or received/accepted event. On acceptance,
+ready attachments move to the work item in the same transaction as custom values, comments,
+submission state and durable outbox events. Auto-accept performs this same pinned-version
+conversion inside finalization and returns the durable submission reference and work-item
+key.
+
+This follows the standing recommended-decision authorization; it is a contract, not review,
+merge, deployment, or phase acceptance.
+
+### 2026-10-04 · Register the TaskDesk connection-bound OIDC plugin
+
+The native `taskdesk-identity-oidc` Better Auth plugin is an approved P3 addition for
+connection-bound Microsoft Entra sign-in. It uses the existing Better Auth adapter and
+session-cookie flow while enforcing the ID-token signature, nonce, immutable subject/tenant,
+portal/organisation binding and configured admission checks required by IP-7/IP-26/IP-27.
+It does not create roles, memberships, capabilities or administrator authority. Generic
+OAuth remains disabled for connection sign-in until its separate verifier contract is
+implemented. The runtime plugin inventory must include this exact id; the `/api/auth/*`
+allowlist test remains closed against any other plugin.
+
+This registers the selected implementation in the plugin inventory; P3 runtime and security
+acceptance remain pending.
+
 ### 2026-10-04 · Bind customer-serving projects at creation
 
 Under the standing recommended-decision authorization, `project.organisation_id` is a

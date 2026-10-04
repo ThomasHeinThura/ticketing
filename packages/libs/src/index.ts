@@ -1,5 +1,13 @@
 export { resolveApiBaseUrl } from "./api-url";
-export { apiFetch, client, createApiFetch, windowId } from "./hono";
+export type { IntakeQueueDto, IntakeSubmissionDto } from "./hono";
+export {
+  apiFetch,
+  client,
+  createApiFetch,
+  intakeApiCall,
+  requestTypeClient,
+  windowId,
+} from "./hono";
 export type {
   ScimAdministrationDto,
   ScimAdministrationRequest,

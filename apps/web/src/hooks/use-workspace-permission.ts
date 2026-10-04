@@ -37,6 +37,8 @@ const EMPTY_CAPABILITIES = {
   manageTeam: false,
   removeMembers: false,
   manageServiceCalendars: false,
+  manageRequestTypes: false,
+  triageIntake: false,
 } as const satisfies Record<string, boolean>;
 
 export function useWorkspacePermission(workspaceIdOverride?: string | null) {
@@ -102,6 +104,8 @@ export function useWorkspacePermission(workspaceIdOverride?: string | null) {
       canManageTeam: () => can.manageTeam,
       canRemoveMembers: () => can.removeMembers,
       canManageServiceCalendars: () => can.manageServiceCalendars,
+      canManageRequestTypes: () => can.manageRequestTypes,
+      canTriageIntake: () => can.triageIntake,
     };
   }, [can]);
 

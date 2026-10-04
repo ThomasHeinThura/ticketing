@@ -47,9 +47,12 @@ import { resolveMigrationDatabaseConfig } from "./database/resolve-database-url"
 import { waitForDatabase } from "./database/wait-for-database";
 import { eventContext } from "./events";
 import externalLink from "./external-link";
+import featureFlags from "./feature-flags";
+import identityConnectionAdmin from "./identity/connection-admin";
 import scimAdmin from "./identity/scim-admin";
 import scimProtocol from "./identity/scim-protocol";
 import getInstanceStatus from "./instance/controllers/get-instance-status";
+import instanceFeatures from "./instance/features";
 import localFactorPolicy from "./instance/local-factor-policy";
 import observability from "./instance/observability";
 import metricsTokenRotation from "./instance/observability/metrics-token-rotation";
@@ -85,6 +88,17 @@ import { initializePlugins } from "./plugins";
 // the bundler drops it and the check silently stops running.
 import { policyRegistry } from "./policy-registry";
 import project from "./project";
+import requestType from "./request-type";
+import requestPortal from "./request-type/portal";
+import type {
+  requestTypeListSchema,
+  requestTypeSchema,
+} from "./request-type/response";
+import type {
+  createRequestTypeBody,
+  updateRequestTypeBody,
+} from "./request-type/schema";
+import requestTriage from "./request-type/triage";
 import { initializeScheduler, shutdownScheduler } from "./scheduler";
 import search from "./search";
 import serviceCalendar from "./service-calendar";
@@ -1289,6 +1303,19 @@ export function createApp(
   const metricsTokenRotationApi = api.route("/instance", metricsTokenRotation);
   const localFactorPolicyApi = api.route("/instance", localFactorPolicy);
   const resetMfaApi = api.route("/instance", resetMfa);
+  const instanceFeaturesApi = api.route("/instance", instanceFeatures);
+  const identityConnectionAdminApi = api.route(
+    "/instance",
+    identityConnectionAdmin,
+  );
+  api.route("/request-types", requestType as unknown as Hono<ApiVariables>);
+  const requestTypeApi = requestType;
+  api.route("/", featureFlags as unknown as Hono<ApiVariables>);
+  const featureFlagsApi = featureFlags;
+  api.route("/", requestPortal as unknown as Hono<ApiVariables>);
+  const requestPortalApi = requestPortal;
+  api.route("/", requestTriage as unknown as Hono<ApiVariables>);
+  const requestTriageApi = requestTriage;
   const scimAdminApi = api.route("/instance", scimAdmin);
 
   // User-scoped WebSocket endpoint; MUST be registered before /ws/:projectId
@@ -1578,6 +1605,12 @@ export function createApp(
     metricsTokenRotationApi,
     localFactorPolicyApi,
     resetMfaApi,
+    instanceFeaturesApi,
+    identityConnectionAdminApi,
+    requestTypeApi,
+    featureFlagsApi,
+    requestPortalApi,
+    requestTriageApi,
     scimAdminApi,
     scimProtocolApi,
     invitationApi,
@@ -1953,6 +1986,12 @@ const {
   metricsTokenRotationApi,
   localFactorPolicyApi,
   resetMfaApi,
+  instanceFeaturesApi,
+  identityConnectionAdminApi,
+  requestTypeApi,
+  featureFlagsApi,
+  requestPortalApi,
+  requestTriageApi,
   scimAdminApi,
   scimProtocolApi,
   invitationApi,
@@ -2012,7 +2051,7 @@ if (isMainModule) {
   }
 }
 
-export type AppType =
+export type CoreAppType =
   | typeof configApi
   | typeof projectApi
   | typeof taskApi
@@ -2040,6 +2079,8 @@ export type AppType =
   | typeof metricsTokenRotationApi
   | typeof localFactorPolicyApi
   | typeof resetMfaApi
+  | typeof instanceFeaturesApi
+  | typeof identityConnectionAdminApi
   | typeof scimAdminApi
   | typeof scimProtocolApi
   | typeof workflowApi
@@ -2051,5 +2092,25 @@ export type AppType =
   | typeof invitationPublicApi
   | typeof oauthApi
   | typeof capabilitiesApi;
+
+export type RequestTypeApiType = typeof requestTypeApi;
+export type CreateRequestTypeInput = z.input<typeof createRequestTypeBody>;
+export type UpdateRequestTypeInput = z.input<typeof updateRequestTypeBody>;
+export type RequestTypeDto = z.infer<typeof requestTypeSchema>;
+export type RequestTypeListDto = z.infer<typeof requestTypeListSchema>;
+export type FeatureFlagsApiType = typeof featureFlagsApi;
+export type PortalSubmissionsApiType = typeof requestPortalApi;
+export type IntakeTriageApiType = typeof requestTriageApi;
+export type {
+  IntakeQueueDto,
+  IntakeSubmissionDto,
+} from "./request-type/triage";
+
+export type AppType =
+  | CoreAppType
+  | RequestTypeApiType
+  | FeatureFlagsApiType
+  | PortalSubmissionsApiType
+  | IntakeTriageApiType;
 
 export default app;

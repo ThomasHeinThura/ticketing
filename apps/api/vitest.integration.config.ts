@@ -46,6 +46,10 @@ export default defineConfig({
       // lives outside any package, so plain node_modules resolution only works by
       // accident of `apps/api`'s own dependency graph. `audit-log.test.ts` (issue #37)
       // imports `@taskdesk/domain` directly to independently recompute `row_hash`.
+      "@taskdesk/domain/intake": resolve(
+        __dirname,
+        "../../packages/domain/src/intake/index.ts",
+      ),
       "@taskdesk/domain": resolve(
         __dirname,
         "../../packages/domain/src/index.ts",

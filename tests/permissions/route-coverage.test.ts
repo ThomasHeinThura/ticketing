@@ -66,8 +66,8 @@ describe("route coverage", () => {
   });
 
   it("can enumerate the route registry without either web output on disk", async () => {
-    // Static serving is an unconditional declared middleware; absent roots become per-host
-    // 503 responses only when a document request reaches that handler.
+    // The fixture uses the production app factory with an isolated nonexistent candidate;
+    // ambient ignored web build output must not change this route-coverage test's graph.
     await expect(loadResolvedStaticRoot()).resolves.toBeUndefined();
   });
 
@@ -217,6 +217,43 @@ describe("route coverage", () => {
       "GET /api/health",
     ]) {
       expect(registry.has(routeKey), routeKey).toBe(true);
+    }
+  });
+
+  it("covers every SCIM endpoint with the dedicated connection-bearer delegation", async () => {
+    const [routes, registry] = await Promise.all([
+      loadRouterRoutes(),
+      loadPolicyRegistry(),
+    ]);
+    const scimRoutes = routes.filter((route) =>
+      route.path.startsWith("/scim/v2/"),
+    );
+    expect(scimRoutes.map((route) => route.routeKey).sort()).toEqual(
+      [
+        "DELETE /scim/v2/Groups/{id}",
+        "DELETE /scim/v2/Users/{id}",
+        "GET /scim/v2/Groups",
+        "GET /scim/v2/Groups/{id}",
+        "GET /scim/v2/ResourceTypes",
+        "GET /scim/v2/Schemas",
+        "GET /scim/v2/ServiceProviderConfig",
+        "GET /scim/v2/Users",
+        "GET /scim/v2/Users/{id}",
+        "PATCH /scim/v2/Groups/{id}",
+        "PATCH /scim/v2/Users/{id}",
+        "POST /scim/v2/Groups",
+        "POST /scim/v2/Users",
+        "PUT /scim/v2/Groups/{id}",
+        "PUT /scim/v2/Users/{id}",
+      ].sort(),
+    );
+    for (const route of scimRoutes) {
+      expect(
+        registry.get(route.routeKey)?.policy,
+        route.routeKey,
+      ).toMatchObject({
+        delegated: "scim",
+      });
     }
   });
 

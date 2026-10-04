@@ -1,10 +1,9 @@
-# Custom-fields review disposition candidate
+# Custom-fields review disposition and readiness record
 
-**Purpose:** map the findings in `features-governance-design.md` §4 to the current
-normative authorities before an independent readiness check. This is an author disposition
-candidate, not a reviewer verdict. The original findings and the section's `not-ready`
-verdict remain unchanged until a fresh independent context verifies the exact updated
-sources.
+**Purpose:** preserve the findings in `features-governance-design.md` §4, map each to the
+current normative authorities, and record independent readiness evidence. The original
+findings and 2026-09-05 `not-ready` verdict remain historical evidence; the latest current
+contract disposition is below.
 
 ## Source set
 
@@ -34,17 +33,14 @@ sources.
 
 ## Verification boundary
 
-The schema table in `data-model.md` already lists `entity_type`, `visibility_condition`,
-`help_text`, `customer_visible`, and `deleted_at`, and the retention table includes the
-30-day purge window. The API design already defines workspace context. Those source facts
-resolve the historical documentation omissions; they do not mean the corresponding API,
-database runtime schema, retention job, UI, or tests have been implemented. The screen
-inventory has separate list and editor routes as noted above. The feature spec names
-planned test files and does not report them as existing.
+The schema table in `data-model.md` lists the canonical model, and the API design defines
+workspace context. These source facts resolved the historical contract omissions. The
+current P2 implementation scope is recorded below; the broader custom-field management API,
+editor UI, retention job, and full P4 test set remain unimplemented.
 
-The data-model now records the immutable workspace-unique key constraint and default-false
-customer visibility contract. No reviewer or author has cleared the historical `not-ready`
-verdict in this packet.
+The data-model records the immutable workspace-unique key constraint and default-false
+customer visibility contract. The historical `not-ready` verdict is not erased; current
+contract clearance is recorded separately below.
 
 ## Independent readiness delta — 2026-10-04
 
@@ -54,27 +50,41 @@ gaps. Its report is
 `/Users/heinthura/.codex/taskdesk-evidence/2026-10-04/custom-field-owning-readiness-83be1d64/review-report.md`.
 The following author corrections address those findings and the review's bounded
 observations; this is not the independent recheck. The prior 12 dispositions remain
-preserved, and the historical review section remains `not-ready` until fresh verification.
+preserved.
 
 | Delta finding | Author contract correction | Disposition |
 | --- | --- | --- |
-| Requiredness had both a global `custom_field.is_required` and a per-type matrix value | Removed `is_required` from the canonical field row. `custom_field_type_visibility.required` is now explicitly the only requiredness authority for a work-item type. | Pending independent recheck |
-| CF-5 did not define default application or ordering | Defaults materialize once at work-item creation, including intake conversion, only for omitted active/applicable/visible fields; explicit null stays empty. Unconditional defaults resolve before single-level conditions and dependent defaults. They are validated at save and revalidated against current options/roster at materialization; failure aborts creation. They never affect existing reads/edits or submission answers. Portal-form defaults, if separately specified, belong to the immutable request-form version. | Pending independent recheck |
-| Accepted JSON value shapes were incomplete | `custom-fields.md` defines exact accepted JSON for all formats: safe integers; canonical decimal strings with at most 18 digits and 6 fractional places; exact currency object and runtime-supported uppercase code; year-bounded Gregorian dates; offset-bearing RFC 3339 instants with millisecond precision stored as UTC; booleans; active option keys; active `person.id` values on the current project roster with duplicate rejection; bounded plain text; HTTP(S) URLs; and existing invitation-email validation. Invalid input receives a generic 400 with no coercion or truncation, and writes are atomic. | Pending independent recheck; no runtime implementation is claimed |
-| Compliance route lacked exact type input and response | The route row names `workItemTypeId`, cursor and limit inputs; its response is a cursor page of one row per in-reach item with missing required field keys and a reach-filtered total. The selected type must belong to the request workspace. | Pending independent recheck |
-| Fixed-vs-configurable deleted-item retention wording differed | CF-8 and the data-model now use configured deleted-item retention, with a 30-day default, matching the global retention table and God Mode configuration contract. | Pending independent recheck |
-| Format/default tests were not named | The feature spec names planned `custom-field-value-format.test.ts` and `custom-field-defaults.test.ts`. Coverage includes each accepted/rejected format, date/time boundaries, decimal/currency precision and code, duplicate/inactive option/person references, string limits, null versus omission, default precedence, hidden/nonapplicable/deleted fields, intake conversion, and no read/edit reapplication. These test files do not yet exist. | Pending; test names are specification, not completed proof |
+| Requiredness had both a global `custom_field.is_required` and a per-type matrix value | Removed `is_required` from the canonical field row. `custom_field_type_visibility.required` is now explicitly the only requiredness authority for a work-item type. | Cleared by independent readiness review below |
+| CF-5 did not define default application or ordering | Defaults materialize once at work-item creation, including intake conversion, only for omitted active/applicable/visible fields; explicit null stays empty. Unconditional defaults resolve before single-level conditions and dependent defaults. They are validated at save and revalidated against current options/roster at materialization; failure aborts creation. They never affect existing reads/edits or submission answers. Portal-form defaults, if separately specified, belong to the immutable request-form version. | Cleared by independent readiness review below |
+| Accepted JSON value shapes were incomplete | `custom-fields.md` defines exact accepted JSON for all formats: safe integers; canonical decimal strings with at most 18 digits and 6 fractional places; exact currency object and runtime-supported uppercase code; year-bounded Gregorian dates; offset-bearing RFC 3339 instants with millisecond precision stored as UTC; booleans; active option keys; active `person.id` values on the current project roster with duplicate rejection; bounded plain text; HTTP(S) URLs; and existing invitation-email validation. Invalid input receives a generic 400 with no coercion or truncation, and writes are atomic. | Cleared by independent readiness review below |
+| Compliance route lacked exact type input and response | The route row names `workItemTypeId`, cursor and limit inputs; its response is a cursor page of one row per in-reach item with missing required field keys and a reach-filtered total. The selected type must belong to the request workspace. | Cleared by independent readiness review below |
+| Fixed-vs-configurable deleted-item retention wording differed | CF-8 and the data-model now use configured deleted-item retention, with a 30-day default, matching the global retention table and God Mode configuration contract. | Cleared by independent readiness review below |
+| Format/default tests were not named | The feature spec names planned format/default test files and the added pure domain suite exercises each canonical format, boundaries, null versus omission, default precedence, and hidden/nonapplicable definitions. The P2 acceptance dependency now has `tests/api-integration/intake-custom-field-mapping.test.ts` for mapped/default value writes and atomic refusal after deletion of a pinned definition. | Spec gap cleared; P2 focused runtime proof: 2/2 PostgreSQL integration tests |
 
-The owning §4 historical verdict remains `not-ready` until a fresh independent reviewer
-checks this documentation delta at its exact pushed SHA and explicitly clears that section.
-No custom-field schema/runtime, APIs, or UI may be implemented before that clearance.
+### Independent owning-readiness clearance — 2026-10-04
+
+A fresh independent GPT-6 Luna reviewed exact source SHA
+`efe21b6defdb5464cc89df0785e106d5e0563bbe` and returned **READY**, confirming all 12
+original findings and the three contract gaps above are resolved. The complete report is
+`/Users/heinthura/.codex/taskdesk-evidence/2026-10-04/custom-field-owning-readiness-efe21b6d/review-report.md`.
+This is a contract-readiness verdict only: it authorizes implementation and does not claim
+that the custom-field API, editor UI, or runtime tests are complete. The historical
+2026-09-05 `not-ready` verdict and finding text in
+`features-governance-design.md` remain unchanged as historical evidence; current owning §4
+status is cleared by the exact independent review above.
+
+This current READY disposition supersedes the pending author-status cells in the original
+finding map and in the 2026-10-04 author-correction table. The independent report explicitly
+confirmed all 12 original findings and the three contract gaps resolved; no current owning
+§4 contract finding remains active. Runtime/API/UI completion is not implied by readiness.
 
 ## Intake dependency boundary
 
 The only P2 custom-field dependency is work-item definition lookup, published type-visibility
 and conditional validation, customer-visibility for catalogue forms, and atomic custom-value
 writes during acceptance. The canonical RT-3/IQ-8 mapping contract remains authoritative.
-This packet does not authorize unrelated custom-field management UI or imply that any
-custom-field runtime has been implemented. Until independent readiness clears §4, no
-custom-field code, migration, API route, or acceptance path that persists custom-field
-values may be claimed complete.
+This packet authorizes the bounded RT-3/IQ-8 dependency: persisted definitions and
+type-visibility, server validation/default resolution, and atomic value writes during
+submission acceptance. It does not claim the unrelated custom-field management API/editor,
+ordinary work-item value editing, compliance report, deletion/restore job, or full P4 feature
+is implemented.

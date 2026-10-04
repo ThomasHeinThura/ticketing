@@ -28,6 +28,7 @@ Intake is where a human — or an automation — makes that judgement.
 
 | Status | Meaning |
 | --- | --- |
+| `draft` | Portal-owned file-upload staging; never shown in the triage queue and not yet submitted |
 | `new` | Received, not yet looked at |
 | `clarifying` | Waiting on the customer |
 | `accepted` | Converted to a work item |
@@ -38,7 +39,12 @@ Intake is where a human — or an automation — makes that judgement.
 ## Data
 
 `submission`, `submission_message`. A submission holds `form_data` and the request type
-version it was made against. The immutable version also captures the work-item type,
+version it was made against. File-backed portal forms stage as `draft` until every required
+file answer references a ready attachment owned by that submission. Drafts have no
+`submitted_at`, are omitted from triage, and emit no `submission.received`. Finalization
+sets `submitted_at` once; every non-draft status has it. The original `created_at` is kept
+for draft age, while SLA arrival and automatic acceptance use `submitted_at`. The immutable
+version also captures the work-item type,
 request-type SLA override and default assignee selected when the customer submitted; a later
 request-type edit never remaps a queued submission. Acceptance revalidates those same-workspace
 references and fails atomically if a reference is no longer available. It also holds
@@ -65,7 +71,10 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
   changes (`IQ-11`) and stays valid across sign-out/sign-in cycles for that requester —
   not that `SUB-n` alone is a credential. Knowing a reference grants nothing without a
   session scoped to it.
-- `IQ-4` A request type marked auto-accept skips intake entirely.
+- `IQ-4` A request type marked auto-accept skips the triage queue: finalization converts the
+  submission using its immutable version inside the same transaction, then returns the
+  submission reference and work-item key. Mapping, reach, required attachment or work-item
+  failure leaves the draft retryable and emits no received/accepted event.
 
 **Triage**
 
@@ -81,7 +90,9 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
   supplies the work-item title; acceptance fails atomically if that mapping is invalid.
 - `IQ-9` Attachments transfer to the work item, preserving customer visibility
   (`attachment.submission_id` before acceptance, `attachment.work_item_id` after —
-  [data-model.md](../01-architecture/data-model.md)).
+  [data-model.md](../01-architecture/data-model.md)). File-field identity remains on the
+  attachment row after transfer; required file answers are validated against the submitted
+  version and ready rows before conversion, not inferred from filenames or `form_data` IDs.
 - `IQ-10` The submission thread transfers to the work item as public comments, **preserving
   each message's original `created_at`** (not the moment of transfer), so the conversation
   is not lost and so `SLA-7`'s `first_response_at` — set from the earliest public staff
@@ -97,7 +108,7 @@ and `work_item_id` (set on acceptance) — [data-model.md](../01-architecture/da
 - `IQ-13` The customer replies on the submission page. Status returns to `new`.
 - `IQ-14` The first-response SLA clock, if the request type has one, is measured against
   the point of **submission**, not acceptance: on acceptance, `work_item.sla_started_at` is
-  copied from the submission's `created_at` (`SLA-4` — [sla.md](sla.md)), and `dueAt` is
+  copied from the submission's `submitted_at` (`SLA-4` — [sla.md](sla.md)), and `dueAt` is
   computed backdated from that instant. There is no separate pre-acceptance clock or cache
   row on the submission itself — the SLA engine only measures a `work_item`, and none
   exists until acceptance, so covered time between submission and acceptance is counted
@@ -186,6 +197,9 @@ GET    /api/portal/submissions                 { portal: 'customer', predicate: 
 GET    /api/portal/submissions/{ref}           { portal: 'customer', predicate: 'own_submission' }
 POST   /api/portal/submissions/{ref}/messages  { portal: 'customer', predicate: 'own_submission' }
 POST   /api/portal/submissions/{ref}/withdraw  { portal: 'customer', predicate: 'own_submission' }   (requester only)
+POST   /api/portal/submissions/{ref}/attachments/presign  { portal: 'customer', predicate: 'own_submission' } — file-form draft only
+POST   /api/portal/submissions/{ref}/attachments/{id}/complete  { portal: 'customer', predicate: 'own_submission' }
+POST   /api/portal/submissions/{ref}/submit  { portal: 'customer', predicate: 'own_submission' } — validate ready file IDs, finalize or auto-accept
 ```
 
 ## Edge cases
