@@ -95,7 +95,6 @@ function TaskCard({
     showDueDates,
     showLabels,
     showTaskNumbers,
-    showTaskItemCounts,
   } = displayPreferences;
   const taskItemStats = useMemo(
     () =>
