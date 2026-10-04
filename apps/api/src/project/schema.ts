@@ -245,6 +245,7 @@ export const createProjectBody = z.object({
   workspaceId: z.string(),
   icon: z.string(),
   slug: z.string(),
+  organisationId: z.string().nullable().optional(),
 });
 
 export const updateProjectBody = z.object({

@@ -1,4 +1,4 @@
-import type { AppType } from "@taskdesk/api";
+import type { CoreAppType } from "@taskdesk/api";
 import { hc } from "hono/client";
 import { describe, expect, it } from "vitest";
 import { createApiFetch, windowId, withTaskDeskRequestHeaders } from "./hono";
@@ -42,7 +42,7 @@ describe("TaskDesk Hono transport", () => {
       },
       { apiBaseUrl },
     );
-    const apiClient = hc<AppType>(apiBaseUrl, { fetch: apiFetch });
+    const apiClient = hc<CoreAppType>(apiBaseUrl, { fetch: apiFetch });
 
     const response = await apiClient.v2.task[":id"].$put({
       param: { id: "task-1" },

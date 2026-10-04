@@ -113,6 +113,36 @@ const serviceCalendar = {
   holidays: [{ date: "2026-12-25", name: "Winter closure" }],
 };
 
+const visualGoals = [
+  ...(["first_response", "resolution"] as const).flatMap((metric) =>
+    (["low", "medium", "high", "urgent"] as const).map((priority) => ({
+      metric,
+      workItemTypeId: "visual-type",
+      priority,
+      targetMinutes: metric === "first_response" ? 120 : 480,
+    })),
+  ),
+];
+
+const visualSlaPolicy = {
+  id: "visual-sla-policy",
+  workspaceId: workspace.id,
+  name: "Priority support",
+  description: "Response and resolution targets for support incidents.",
+  version: 1,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  activeVersion: {
+    id: "visual-sla-version",
+    number: 1,
+    calendarId: serviceCalendar.id,
+    atRiskThresholdPct: 80,
+    effectiveFrom: "2026-01-01T00:00:00.000Z",
+    goals: visualGoals,
+  },
+  draftVersion: null,
+};
+
 async function installAuthenticatedFixture(page: Page) {
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
@@ -174,6 +204,33 @@ async function installAuthenticatedFixture(page: Page) {
     } else if (path.endsWith("/api/service-calendars")) {
       body = {
         data: [serviceCalendar],
+        page: { previousCursor: null, nextCursor: null, hasMore: false },
+        meta: { total: 1 },
+      };
+    } else if (path.endsWith("/api/sla-policies/visual-sla-policy")) {
+      body = visualSlaPolicy;
+    } else if (path.endsWith("/api/sla-policies")) {
+      body = {
+        data: [
+          {
+            id: visualSlaPolicy.id,
+            workspaceId: workspace.id,
+            name: visualSlaPolicy.name,
+            description: visualSlaPolicy.description,
+            version: visualSlaPolicy.version,
+            createdAt: visualSlaPolicy.createdAt,
+            updatedAt: visualSlaPolicy.updatedAt,
+            activeVersion: {
+              id: visualSlaPolicy.activeVersion.id,
+              number: visualSlaPolicy.activeVersion.number,
+              calendarId: serviceCalendar.id,
+              atRiskThresholdPct: 80,
+              effectiveFrom: visualSlaPolicy.activeVersion.effectiveFrom,
+              goalCount: visualGoals.length,
+            },
+            hasDraft: false,
+          },
+        ],
         page: { previousCursor: null, nextCursor: null, hasMore: false },
         meta: { total: 1 },
       };
@@ -425,6 +482,46 @@ test("observability settings screen @visual", async ({ page }) => {
   ).toBeVisible();
   await expect(page.getByText("No token is configured.")).toBeVisible();
   await expect(page).toHaveScreenshot("observability-settings.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("SLA policy list screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/sla-policies");
+  await expect(
+    page.getByRole("heading", { name: "SLA policies" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Priority support" }),
+  ).toBeVisible();
+  await expect(page.getByText("Active version 1")).toBeVisible();
+  await expect(page).toHaveScreenshot("sla-policy-list.png", {
+    animations: "disabled",
+    caret: "hide",
+    fullPage: true,
+    scale: "css",
+    maxDiffPixels: 0,
+    threshold: 0,
+    includeAA: true,
+  });
+});
+
+test("SLA policy editor screen @visual", async ({ page }) => {
+  await installAuthenticatedFixture(page);
+  await page.goto("/agent/settings/sla-policies/visual-sla-policy");
+  await expect(
+    page.getByRole("heading", { name: "Priority support" }),
+  ).toBeVisible();
+  await expect(page.getByText("Active version 1")).toBeVisible();
+  await expect(page.getByText("First response", { exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot("sla-policy-editor.png", {
     animations: "disabled",
     caret: "hide",
     fullPage: true,

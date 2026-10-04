@@ -42,6 +42,8 @@ const EMPTY_CAPABILITIES = {
   createPublicComments: false,
   createInternalComments: false,
   manageServiceCalendars: false,
+  manageRequestTypes: false,
+  triageIntake: false,
 } as const satisfies Record<string, boolean>;
 
 export function useWorkspacePermission(workspaceIdOverride?: string | null) {
@@ -112,6 +114,8 @@ export function useWorkspacePermission(workspaceIdOverride?: string | null) {
       canCreatePublicComments: () => can.createPublicComments,
       canCreateInternalComments: () => can.createInternalComments,
       canManageServiceCalendars: () => can.manageServiceCalendars,
+      canManageRequestTypes: () => can.manageRequestTypes,
+      canTriageIntake: () => can.triageIntake,
     };
   }, [can]);
 

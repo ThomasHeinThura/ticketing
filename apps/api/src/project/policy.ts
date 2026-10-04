@@ -83,7 +83,12 @@ export const projectPolicies = {
     scopeSource: "row",
     reach: "required",
   },
-
+  "GET /api/project/organisations": {
+    capability: "project:create",
+    scope: "workspace",
+    scopeSource: "request",
+    reach: "required",
+  },
   // Reading one project. The scope is the project itself: reach decides whether this identity
   // can see it at all (404 if not), and authority decides whether they may read it (403).
   "GET /api/project/{id}": {

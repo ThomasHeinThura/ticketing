@@ -42,6 +42,7 @@ import { columnPolicies } from "./column/policy";
 import { commentPolicies } from "./comment/policy";
 import { configPolicies } from "./config/policy";
 import { externalLinkPolicies } from "./external-link/policy";
+import { featureFlagPolicies } from "./feature-flags/policy";
 import { instancePolicies } from "./instance/policy";
 import { invitationPolicies } from "./invitation/policy";
 import { labelPolicies } from "./label/policy";
@@ -50,8 +51,10 @@ import { notificationPreferencesPolicies } from "./notification-preferences/poli
 import { oauthPolicies } from "./oauth/policy";
 import { pendingActionPolicies } from "./pending-action/policy";
 import { projectPolicies } from "./project/policy";
+import { requestTypePolicies } from "./request-type/policy";
 import { searchPolicies } from "./search/policy";
 import { serviceCalendarPolicies } from "./service-calendar/policy";
+import { slaPolicyPolicies } from "./sla-policy/policy";
 import { taskPolicies } from "./task/policy";
 import { taskRelationPolicies } from "./task-relation/policy";
 import { timeEntryPolicies } from "./time-entry/policy";
@@ -96,6 +99,84 @@ export const platformPolicies = {
     delegated: "better-auth",
     reason:
       "better-auth owns authentication; its endpoint set is the approved plugin list",
+  },
+
+  // SCIM is an explicitly delegated mount. Its middleware accepts only the dedicated
+  // per-connection bearer and establishes a fixed connection/tenant context.
+  "GET /scim/v2/ServiceProviderConfig": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "GET /scim/v2/ResourceTypes": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "GET /scim/v2/Schemas": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "GET /scim/v2/Users": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "GET /scim/v2/Users/{id}": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "POST /scim/v2/Users": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "PUT /scim/v2/Users/{id}": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "PATCH /scim/v2/Users/{id}": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "DELETE /scim/v2/Users/{id}": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "GET /scim/v2/Groups": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "GET /scim/v2/Groups/{id}": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "POST /scim/v2/Groups": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "PUT /scim/v2/Groups/{id}": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "PATCH /scim/v2/Groups/{id}": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
+  },
+  "DELETE /scim/v2/Groups/{id}": {
+    delegated: "scim",
+    reason:
+      "dedicated per-connection bearer fixes the SCIM connection and its server-validated tenant and resource authority",
   },
 
   // The websocket surface. The upgrade handler authenticates the request itself before the
@@ -250,6 +331,14 @@ export const POLICY_SOURCES = [
   },
   { name: "apps/api/src/instance/policy.ts", policies: instancePolicies },
   { name: "apps/api/src/project/policy.ts", policies: projectPolicies },
+  {
+    name: "apps/api/src/feature-flags/policy.ts",
+    policies: featureFlagPolicies,
+  },
+  {
+    name: "apps/api/src/request-type/policy.ts",
+    policies: requestTypePolicies,
+  },
   { name: "apps/api/src/workspace/policy.ts", policies: workspacePolicies },
   { name: "apps/api/src/invitation/policy.ts", policies: invitationPolicies },
   { name: "apps/api/src/work-item/policy.ts", policies: workItemPolicies },
@@ -304,6 +393,10 @@ export const POLICY_SOURCES = [
   {
     name: "apps/api/src/service-calendar/policy.ts",
     policies: serviceCalendarPolicies,
+  },
+  {
+    name: "apps/api/src/sla-policy/policy.ts",
+    policies: slaPolicyPolicies,
   },
   { name: "apps/api/src/attachment/policy.ts", policies: attachmentPolicies },
   { name: "apps/api/src/workflow/policy.ts", policies: workflowPolicies },

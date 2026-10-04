@@ -43,6 +43,7 @@ import deleteComment from "./controllers/delete-comment";
 import deleteWorkItem from "./controllers/delete-work-item";
 import detachWorkItemParent from "./controllers/detach-work-item-parent";
 import getWorkItemByKey from "./controllers/get-work-item";
+import { getWorkItemSla } from "./controllers/get-work-item-sla";
 import getWorkItemTree from "./controllers/get-work-item-tree";
 import listAssignablePeople from "./controllers/list-assignable-people";
 import listWorkItemActivity from "./controllers/list-work-item-activity";
@@ -100,6 +101,7 @@ import {
   workItemTreeQuery,
   workspaceIdParam,
 } from "./schema";
+import { workItemSlaSchema } from "./sla-response";
 
 /**
  * #23's first slice: minimal create + read + list for `work_item`
@@ -271,6 +273,29 @@ const getWorkItemRoute = createRoute({
     200: jsonResponse("The work item", workItemDetailSchema),
     403: errorResponse(
       "No workspace access, or missing work_item:read permission",
+    ),
+    404: errorResponse("Work item not found"),
+  },
+});
+
+const getWorkItemSlaRoute = createRoute({
+  method: "get",
+  operationId: "getWorkItemSla",
+  path: "/work-items/{key}/sla",
+  tags: ["Work items"],
+  summary: "Evaluate a work item's pinned SLA policy version",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:read"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse(
+      "The work item's current SLA evaluation",
+      workItemSlaSchema,
+    ),
+    403: errorResponse(
+      "No workspace access or missing work_item:read permission",
     ),
     404: errorResponse("Work item not found"),
   },
@@ -914,6 +939,11 @@ const workItem = apiRouter<
     const workspaceId = c.get("workspaceId");
     const item = await getWorkItemByKey(key, workspaceId);
     return c.json(item, 200);
+  })
+  .openapi(getWorkItemSlaRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const item = await getWorkItemSla(key, c.get("workspaceId"));
+    return c.json(workItemSlaSchema.parse(item), 200);
   })
   .openapi(listWorkItemTypesRoute, async (c) => {
     const { workspaceId } = c.req.valid("param");

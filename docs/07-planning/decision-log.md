@@ -5,7 +5,189 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-04 · Stage file-backed portal submissions before submission
 
+Use `POST /api/portal/submissions/{ref}/attachments/presign` with a `SUB-n` reference and
+the existing `own_submission` customer predicate. A file-backed form first creates a
+portal-owned `draft` submission; drafts are not visible to triage and have no
+`submission.received` event or SLA start. Add nullable `submission.submitted_at`: it is null
+only for drafts, and is set atomically when the form is finalized. Existing submissions
+backfill it from `created_at`; accepted work items start SLA from `submitted_at`.
+
+Uploads bind pending rows to that draft, default to customer-visible, obey the configured
+attachment limits and existing complete/magic-byte checks, and are retryable until ready.
+Finalization requires every required file field to reference ready attachments owned by
+that submission; all submitted form values and attachment references are validated before
+the submission becomes `new` or is auto-accepted. Failed upload/finalization creates no
+ready attachment, queued submission, work item, or received/accepted event. On acceptance,
+ready attachments move to the work item in the same transaction as custom values, comments,
+submission state and durable outbox events. Auto-accept performs this same pinned-version
+conversion inside finalization and returns the durable submission reference and work-item
+key.
+
+This follows the standing recommended-decision authorization; it is a contract, not review,
+merge, deployment, or phase acceptance.
+### 2026-10-04 · Register the TaskDesk connection-bound OIDC plugin
+
+The native `taskdesk-identity-oidc` Better Auth plugin is an approved P3 addition for
+connection-bound Microsoft Entra sign-in. It uses the existing Better Auth adapter and
+session-cookie flow while enforcing the ID-token signature, nonce, immutable subject/tenant,
+portal/organisation binding and configured admission checks required by IP-7/IP-26/IP-27.
+It does not create roles, memberships, capabilities or administrator authority. Generic
+OAuth remains disabled for connection sign-in until its separate verifier contract is
+implemented. The runtime plugin inventory must include this exact id; the `/api/auth/*`
+allowlist test remains closed against any other plugin.
+
+This registers the selected implementation in the plugin inventory; P3 runtime and security
+acceptance remain pending.
+### 2026-10-04 · Bind customer-serving projects at creation
+
+Under the standing recommended-decision authorization, `project.organisation_id` is a
+nullable FK: null means internal; a non-null value names the one customer organisation
+served by that project. Project creation may choose an active organisation explicitly;
+general project updates cannot rebind it. Existing projects remain null/internal, with no
+inferred backfill. Intake acceptance requires the selected project to have the exact
+submission organisation binding and the same workspace as the pinned request-type version.
+
+This is an implementation contract, not review, merge, or phase acceptance.
+### 2026-10-04 · Pin request-type mapping in published submission versions
+
+Publishing a request type snapshots its form schema, work-item type, request-type SLA
+override, and default assignee in an immutable version. A submission uses the version it
+was created against; later edits do not remap queued work. Acceptance revalidates the
+snapshot's referenced type, policy and assignee in the same workspace and fails atomically
+if they are unavailable. The chosen work-item type supplies its workflow; request types do
+not add a workflow override. The accepted work item's SLA policy version is still selected
+using the existing SLA-1 precedence at its SLA start instant, with the original submission
+time preserved for accepted submissions.
+
+This is an implementation contract under the standing recommended-decision authorization,
+not review, merge, or phase acceptance.
+### 2026-10-04 · Implement persisted feature-toggle defaults and controls
+
+The three documented flag tables are the runtime source of truth and resolve
+project → workspace → instance → built-in default. Seed all enumerated features off except
+`feature.scim` and `feature.import`; import is on and locked at the instance level. Intake
+stays off until explicitly enabled by an administrator through settings. Instance,
+workspace, and project controls use versioned writes, with change audit in the same
+transaction; locked instance values reject lower-level writes with `409`. Disabled feature
+APIs return generic `404`, and UI navigation hides the feature. Flags do not grant route
+permissions. Browser code shares intake-only pure rules through the internal
+`@taskdesk/domain/intake` entrypoint; the web bundle must not import the Node-only package
+root.
+
+This is implementation direction under the standing recommended-decision authorization,
+not review, merge, or phase acceptance.
+### 2026-10-04 · Keep request-type route keys opaque and share intake rules with the portal
+
+**Decision:** under the standing authorization to implement recommended decisions, generate
+`request_type.key` as an immutable CUID2 value independent from the row id and unique across
+the instance. Return it in DTOs; reject it from create/update input. The web package may
+depend on the internal `@taskdesk/domain` workspace package only through its browser-safe
+`@taskdesk/domain/intake` export, so conditional form visibility has one implementation and
+the Node-only package-root audit exports never enter a browser bundle.
+
+This is an implementation contract, not review, merge, or phase acceptance.
+
+**Recorded by:** GPT-6 Luna implementation author, 2026-10-04.
+### 2026-10-04 · Store SCIM directory groups separately from authorization mappings
+
+**Decision:** under the standing authorization to implement recommended decisions, represent
+SCIM directory resources in per-connection `scim_group` and
+`scim_group_directory_member` tables, separate from `scim_group_mapping` and its historical
+`scim_group_member` grant links. A group is keyed by the provider's stable external id and
+keeps its display name as opaque directory metadata. Membership points only to an
+`external_identity` from the same connection; it never resolves by email. Store unmapped
+groups without grants. A mapping created before a group is observed grants nothing until a
+later authenticated reconciliation. Removal/deactivation is soft and retains directory
+history; IP-22 retires only matching derived grants atomically with reconciliation. No group
+can add authority or cause a hard delete.
+
+This records implementation direction, not review, acceptance, or phase completion.
+### 2026-10-04 · Keep SCIM display names as per-person profile data
+
+**Decision:** under the standing authorization to implement recommended decisions, map SCIM
+`displayName`/`name.formatted` to nullable `person.display_name`, independent of
+account-wide `user.name`. Do not synthesize a value for existing rows from account names,
+email, username or IdP snapshots. Keep `external_identity` profile snapshots scoped to their
+connection and preserve both profile and snapshots through deactivation/reactivation.
+
+This records implementation direction, not review, acceptance, or phase completion.
+### 2026-10-04 · Register separate PA-15 operations for SCIM token lifecycle
+
+**Decision:** under the standing authorization to implement recommended decisions, register
+`scim_token_rotate` and `scim_token_revoke` as distinct PA-15 operations for the existing
+SCIM token lifecycle routes. Each operation is bound to its exact route, connection id and
+strict positive-version body; neither reuses `scim_admin_update`. Both use the parent
+`identity_connection.config_version` CAS and consume proof atomically with the token change.
+Rotation and revocation disable the SCIM child, increment the shared parent version once and
+invalidate the prior bearer immediately. Rotation returns a fresh bearer once; revocation
+returns no secret. Re-enabling SCIM is a separate settings write after the upstream bearer
+has been updated. No new capability, event key, table, dependency or persistent setting is
+added.
+
+This is a documented implementation recommendation, not an independent review, P4 human
+design approval, or finding/phase acceptance. Exact request, response, audit and failure
+semantics are in [api-design.md](../01-architecture/api-design.md#scim-token-rotation-and-revocation--pa-15-operations)
+and [pending-actions.md](../01-architecture/pending-actions.md#pa-15-step-up-is-single-use-and-bound-to-one-pending-action-or-one-explicitly-registered-operation).
+
+**Recorded by:** GPT-6 Luna implementation author, 2026-10-04.
+### 2026-10-04 · Select P3 grant-provenance reconciliation and closed SCIM profile map
+
+**Decision:** under Thomas's standing authorization to implement documented recommended
+solutions before the integrated P4 human design review, select proposed
+[ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md) as the P3
+membership-grant implementation contract. The migration must classify every legacy
+membership from durable exact-source evidence and use an owner-approved, per-row
+reconciliation record for ambiguity. `derived_from IS NULL` is never a direct-grant
+inference. A changed row, missing evidence, duplicate without approved repair, or
+unresolved record stops the entire cut-over before DDL; final classification and the
+transactional cut-over share a stable database boundary. This selects an implementation
+recommendation, **not** Thomas's ADR approval or permission to guess a row's provenance.
+
+Close the SCIM attribute-mapping syntax in the existing
+[SCIM administration PATCH](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract):
+one version-1 profile-only map replacement variant with fixed enumerated source paths,
+the existing `scim_admin_update` PA-15 proof and parent `config_version` CAS. Identity,
+tenant and authority fields remain unconfigurable. This supersedes only the prior
+2026-10-04 decision's temporary exclusion of attribute mapping from that route; its
+settings/group-mapping and proof contracts otherwise stand. No new route, capability,
+operation key, schema column, event key or dependency is selected.
+
+The [P3 finding handoff](security-reviews/p3-identity-owning-findings-handoff.md)
+maps historical owning findings 81–82 to normative controls and the real acceptance
+proof still required. The author does not close either finding. Runtime implementation,
+migration execution, 25 tests, real Entra/browser verification, independent review, exact
+head checks and P4 human ADR/H1–H6 review remain unclaimed.
+
+**Recorded by:** GPT-6 Sol architecture author, 2026-10-04.
+### 2026-10-04 · Select the bounded SCIM administration PATCH contract for #561
+
+**Decision:** under Thomas's explicit P0–P4 contract-authoring authorization, the existing
+God Mode SCIM PATCH accepts exactly one settings, mapping-create or mapping-update edit per
+request, with closed DTOs and secret-safe projection in
+[api-design.md](../01-architecture/api-design.md#scim-administration-patch--issue-561-owner-contract).
+The write is always `instance:admin`, elevated and session-only. It uses the parent
+`identity_connection.config_version` CAS shared with connection and OIDC mapping writers,
+and the newly registered, route/body/connection/version-bound `scim_admin_update` operation
+in the **single authoritative** [PA-15 allowlist](../01-architecture/pending-actions.md).
+The route does not edit tokens, OIDC config or SCIM attribute mapping; the latter has no
+closed authoritative syntax and needs its own contract before an editor is exposed.
+
+**Source transition:** use `IP-22`'s parent-first total locks, source-validity projection,
+same-source re-evidence and linked SCIM history repair for disable, group-resource removal
+and mapping change. Keep direct/OIDC/JIT and other-connection sources independent. Keep
+existing audit, provisioning, outbox and cache rules. No runtime route is mounted by this
+decision, and an implementation without the fresh PA-15 verifier remains fail-closed.
+
+**Authority status:** this selects a bounded documented recommendation for implementation;
+it does not approve proposed ADR-0015, close owning review findings 81–82, perform the
+P4 human H1–H6 review, claim any of the 25 P3 tests, or satisfy independent bulk/security
+review and exact-head gates. Source projection implementation still depends on the
+ADR-0015 provenance cut-over and owner-approved reconciliation of any ambiguous legacy
+membership rows; no row is classified by guesswork.
+
+**Recorded by:** GPT-6 Sol architecture author, 2026-10-04.
 ### 2026-10-04 · Pin SLA policy provenance at work-item creation
 
 **Decision:** implement the recommended SLA-1/SLA-3 provenance contract under Thomas's
@@ -33,9 +215,6 @@ slice. Add canonical request-type/submission persistence with its complete intak
 feature in a subsequent sequential candidate migration, including integrity constraints;
 the current slice does not claim request-type precedence or acceptance/duplicate writers. Human review remains deferred to integrated P4;
 normal independent review and migration acceptance are still required after the full batch.
-
-
-
 ### 2026-10-04 · Serialize P2/P3 schema ownership and unaccepted migration composition
 
 **Decision:** implement the complete CAL-8/SLA read path after P3 explicitly yields the
@@ -49,9 +228,6 @@ forward commit and checking the actual accepted prefix before each integration. 
 accepted migration is rewritten and no unaccepted migration is applied to persistent
 development. This is implementation coordination under the authorized parallel program,
 not phase acceptance or a migration-gate waiver.
-
-
-
 ### 2026-10-04 · Resolve live calendar evaluation with immutable SLA policy versions
 
 **Decision:** under Thomas's standing authorization to implement recommended decisions,
@@ -69,8 +245,6 @@ scan, cache-writer and event delivery integration still need their own specified
 implementation; this decision and adapter do not claim those mechanisms or P2 complete.
 Human design review remains deferred to integrated P4; independent acceptance remains
 required after the implementation batch.
-
-
 ### 2026-10-04 · Implement opt-in per-policy-source strict enforcement for #8
 
 **Decision:** complete the production request-path ALLOW/DENY integration for issue #8 in
@@ -113,8 +287,6 @@ source stays last in the strict source sequence.
 This selects implementation behavior under Thomas's standing authorization to proceed with
 documented recommendations and finish related P0 work. It does not satisfy the real three-date
 observation, authorize a live cutover, approve human H1–H6, waive a gate, or claim P0 complete.
-
-
 ### 2026-10-03 · Select the bounded P2 holiday-import profile
 
 **Decision:** complete calendar holiday import in a separate full P2 implementation batch
@@ -152,8 +324,6 @@ error/partial-input refusal, translations, cache refresh and real persisted brow
 proof. Keep unavailable impact counts truthful under the existing CAL-13 limitation.
 Country presets and the other documented calendar dependencies remain distinct work.
 This selection is not independent review, protected acceptance or phase completion.
-
-
 ### 2026-10-03 · Select the P1 concrete project-state read contract
 
 **Decision:** complete the v2 board's existing `VW-8` requirement in the full P1
@@ -174,8 +344,6 @@ uses rank. Preserve `WI-4` default-state creation semantics. Publish the OpenAPI
 policy coverage, reach/empty-column/order regression proofs and full URL/keyboard/browser
 journey as one completed batch. This is implementation contract selection, not review,
 acceptance, a gate waiver or a human design approval.
-
-
 ### 2026-10-03 · Select serialized P4 bootstrap admission for #231
 
 **Decision:** under Thomas's standing instruction to implement recommended solutions in
@@ -198,7 +366,6 @@ CLI. Real concurrent distinct-credential regressions must prove no zero-admin/tw
 result, including loser rollback; record image/browser and bulk independent acceptance
 honestly. P0 has priority over this lane's heavy test/build work. This selects implementation
 behavior, not a gate waiver, human design approval or phase-completion claim.
-
 ### 2026-10-03 · Select the bounded P4 bootstrap-factor contract
 
 **Decision:** the orchestrator selects the recommended #229 contract under Thomas's standing
@@ -227,10 +394,6 @@ prepare that recommendation before implementing a new credential-reset or databa
 path. This decision does not claim that recovery scenario complete. The initialized-only
 #230 CLI contract remains intact. Image/TTY proofs, independent bulk reviews and protected
 acceptance remain required; no human approval or gate waiver is recorded here.
-
-
-
-
 ### 2026-10-03 · Select complete P2 SLA-policy and P4 recovery implementation contracts
 
 **Decision:** use Thomas's standing instruction to proceed with recommended decisions and
@@ -254,7 +417,6 @@ alerts. The selected canonical contract is `62710869`. MFA policy remains enforc
 IdP data, activation, linking or parallel authority source grants administration. Complete
 implementation still needs actual image/operator/browser proof and bulk independent review.
 Human P4 design acceptance remains outstanding.
-
 ### 2026-10-03 · Complete the existing cookie CSRF requirement in the P0 implementation batch
 
 **Decision:** implement security-model.md's existing Origin/Referer **and** double-submit
@@ -283,8 +445,6 @@ not independent acceptance or a gate waiver.
 **Authorization:** the orchestrator's recommended implementation choices under Thomas's
 standing direction to finish all necessary P0 features and proceed with recommended
 decisions. The authoritative requirement remains in security-model.md.
-
-
 ### 2026-10-03 · P0 structured logging and metrics dependencies authorized
 
 **Decision:** Thomas explicitly approved adding Pino and prom-client in this chat on
@@ -302,7 +462,6 @@ durable AU-14 administrator alerts, acceptance, deployment or phase completion. 
 implementation is batched before independent review.
 
 **Decided by:** Thomas, explicit dependency-approval reply; recorded by the orchestrator.
-
 ### 2026-10-03 · Native work-item realtime uses one subscribed socket and key-only outbox hints (#570)
 
 **Decision:** P0 work-item subscriptions use `GET /api/ws` on the agent origin and explicit validated `subscribe` / `unsubscribe` frames for `project:{projectId}` and `work_item:{key}`. The separate legacy user socket continues to deliver notifications, and the legacy project socket continues to serve existing Task-model consumers; neither is the native work-item event path. The native server resolves topic resources from persisted project/work-item relationships and applies the same read capabilities and row/project reach as REST. Missing and unreadable topics have the same denial frame. Agent-host session Host/Origin/portal checks remain those in ADR 0004 and `realtime.md`.
@@ -316,33 +475,6 @@ This resolves the route, topic authorization, projection, deduplication, delete 
 **Authorization and status:** the orchestrator authorized these bounded recommended defaults on 2026-10-03. This entry records implementation choices, not review or acceptance evidence.
 
 **Recorded by:** GPT-6 Luna implementation lane, 2026-10-03.
-
-### 2026-10-01 · Keep the P0 portal origin disabled until portal identity exists
-
-**Decision:** the two-entry P0 server selects the agent or portal app only from a
-validated raw Host matched to the configured public origins. Until the separately reviewed
-P3 identity boundary exists, the portal root serves the localized disabled notice, every
-portal API and websocket request returns a generic 404 before handler effects, and only
-the exact existing GET/HEAD health paths remain available on either configured origin and
-on a syntactically valid unknown Host. This exception preserves the loopback probes used by
-Docker and deploy.sh; malformed, missing, duplicate, or upgraded authorities are rejected.
-Static files come only from the selected output root; missing roots fail closed. The agent
-URLs and behavior stay unchanged. See customer-portal.md `CP-19` and phases.md's P0
-acceptance matrix. G5 metadata and inventory scope follow the existing
-[2026-09-28 gate-scope decision](#2026-09-28--10s-gate-scope-semantics-decided-applicable-now-gates-required-future-stage-gates-activate-with-their-prerequisite):
-all generated and inherited routes remain registered and round-trip checked, while only
-in-progress or complete inventory routes are claimed active; planned URLs remain planned.
-
-**Why:** selecting a portal bundle by Host alone would expose the current agent auth/API/
-websocket surface on the portal origin. ADR 0004 requires two origin-scoped portals, while
-P3 owns the portal auth pair and session boundary. The interim response keeps the portal
-unavailable without inventing a customer session, flag, capability, environment variable,
-database field or permission.
-
-**Recorded by:** orchestrator under the standing approval of recommended implementation
-decisions. This records the interim implementation contract; it does not approve H1–H6 or
-claim P0 completion.
-
 ### 2026-10-02 · Implement P0–P3 features before integrated P4 human review
 
 **Decision:** implement the full related P0–P3 feature set first, then conduct its integrated
@@ -373,7 +505,6 @@ promotion; this decision does not change them.
 **Decided by:** Thomas, explicit user instruction, 2026-10-02. See the canonical
 [bulk-review and human-review timing rules](../../AGENTS.md#bulk-implementation-and-review-cadence),
 [SDLC](../../04-engineering/sdlc.md), and [runbook](../05-operations/runbook.md#policy-shadow-summary).
-
 ### 2026-10-02 · Development/P0 policy-shadow verification uses three issue-free UTC dates
 
 **Decision:** for development and P0 verification, use three issue-free UTC calendar-date
@@ -396,7 +527,6 @@ three UTC date buckets; it does not by itself prove 72 hours or full-day coverag
 **Decided by:** Thomas, explicit user instruction, 2026-10-02 15:10 UTC. See the
 [development shadow summary](../05-operations/runbook.md#policy-shadow-summary) and canonical
 [agent instruction](../../AGENTS.md).
-
 ### 2026-10-02 · Bulk implementation and review cadence
 
 **Decision:** implement related approved slices and known-finding fixes in coherent,
@@ -415,7 +545,6 @@ tier.
 **Recorded:** explicit user direction, 2026-10-02 Asia/Yangon (UTC+06:30).
 Canonical rule: [AGENTS.md § Bulk implementation and review cadence](../../AGENTS.md#bulk-implementation-and-review-cadence);
 workflow and OpenAI operating guide cross-reference it.
-
 ### 2026-10-02 · P0 production advisory floors for ip-address and fast-uri (#557)
 
 **Decision:** raise only the existing pnpm override floors for `ip-address` to `^10.7.1`
@@ -437,7 +566,6 @@ these bounded patched-version floors. Registry metadata, lock consumers, and the
 production audit were checked; this entry is not independent review or acceptance evidence.
 
 **Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
-
 ### 2026-10-02 · P0 API upgrades use the patched Node adapter WebSocket helper (#557)
 
 **Decision:** `apps/api` owns direct exact runtime dependencies `hono@4.13.12` (MIT),
@@ -468,7 +596,6 @@ establish runtime acceptance, close the Origin/session-portal gap, waive review 
 claim P0 completion.
 
 **Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
-
 ### 2026-10-02 · Identity grant validity is commit-time; SCIM administration PATCH is route-wide elevated
 
 **Decision:** use `IP-22` as the single proposed source-validity and effective-projection
@@ -504,7 +631,6 @@ browser evidence, independent reviews, H1–H6 or P3 acceptance. See [IP-22](../
 and [ADR 0015](../01-architecture/adr/0015-membership-grant-provenance.md).
 
 **Recorded by:** orchestrator, 2026-10-02.
-
 ### 2026-10-02 · Entra app-role admission applies to every Entra login
 
 **Decision:** extend `IP-27`'s exact Entra app-role and signed `acct=0` admission predicate
@@ -532,7 +658,31 @@ implementation, tests, Entra/browser evidence, H1–H6 or P3 acceptance. See
 [IP-27](../03-features/identity-provisioning.md) for the normative rule.
 
 **Recorded by:** orchestrator, 2026-10-02.
+### 2026-10-01 · Keep the P0 portal origin disabled until portal identity exists
 
+**Decision:** the two-entry P0 server selects the agent or portal app only from a
+validated raw Host matched to the configured public origins. Until the separately reviewed
+P3 identity boundary exists, the portal root serves the localized disabled notice, every
+portal API and websocket request returns a generic 404 before handler effects, and only
+the exact existing GET/HEAD health paths remain available on either configured origin and
+on a syntactically valid unknown Host. This exception preserves the loopback probes used by
+Docker and deploy.sh; malformed, missing, duplicate, or upgraded authorities are rejected.
+Static files come only from the selected output root; missing roots fail closed. The agent
+URLs and behavior stay unchanged. See customer-portal.md `CP-19` and phases.md's P0
+acceptance matrix. G5 metadata and inventory scope follow the existing
+[2026-09-28 gate-scope decision](#2026-09-28--10s-gate-scope-semantics-decided-applicable-now-gates-required-future-stage-gates-activate-with-their-prerequisite):
+all generated and inherited routes remain registered and round-trip checked, while only
+in-progress or complete inventory routes are claimed active; planned URLs remain planned.
+
+**Why:** selecting a portal bundle by Host alone would expose the current agent auth/API/
+websocket surface on the portal origin. ADR 0004 requires two origin-scoped portals, while
+P3 owns the portal auth pair and session boundary. The interim response keeps the portal
+unavailable without inventing a customer session, flag, capability, environment variable,
+database field or permission.
+
+**Recorded by:** orchestrator under the standing approval of recommended implementation
+decisions. This records the interim implementation contract; it does not approve H1–H6 or
+claim P0 completion.
 ### 2026-10-01 · P0 public docs site uses headless Fumadocs and static export
 
 **Decision:** recommend a fresh self-hosted documentation site at `apps/site`, using Next.js static export with headless Fumadocs. `fumadocs-core` supplies source/navigation/search data and `fumadocs-mdx` compiles local MDX; compose interactive controls from `@taskdesk/ui` and existing tokens. Do not import `fumadocs-ui`, copy kaneo's marketing app, or copy Mintlify content. The site is separate from the Vite agent/portal app and does not change its shared route registry.
@@ -578,7 +728,6 @@ of an application speedup or a gate pass.
 
 **Recorded by:** task orchestrator under the bounded G11 measurement-repair assignment,
 2026-10-01.
-
 ### 2026-10-01 · P0 observability uses bounded internal metrics and operation-bound rotation
 
 **Decision:** follow the P0 target contract in [observability.md](../01-architecture/observability.md),
@@ -672,7 +821,6 @@ testing gates.
 
 **Decision-maker:** the orchestrator, adopting its recommended reconciliation under Thomas's
 standing authorization, 2026-10-01.
-
 ### 2026-10-01 · Notification fan-out uses event parents, delivery children and digest groups
 
 **Decision:** retain exactly one `outbox` row per domain event, with
@@ -710,7 +858,6 @@ redelivery remains the explicit per-target action in WH-8.
 
 **Decided by:** Thomas, under the standing recommended-decisions authorization; recorded by
 the orchestrator on 2026-10-01.
-
 ### 2026-10-01 · Pending-action decisions follow the existing AU-14 mutation contract
 
 **Reconciliation:** denial/cancellation mutations preserve the already-decided AU-14
@@ -727,7 +874,6 @@ outbox failure independently. Metric/administrator alerting remains unfinished w
 
 **Recorded by:** orchestrator, reconciling Thomas's existing AU-14 decision and the
 independent ordinary/security reconsiderations for PR #539. No new approval policy is made.
-
 ### 2026-10-01 · Pending-action reads require current owner identity
 
 **Decision:** resolve the current database identity before either pending-action self read,
@@ -743,7 +889,6 @@ using the same response for both self routes exposes no action-existence informa
 
 **Decided by:** Thomas, under the 2026-10-01 standing instruction to use recommended
 decisions; recorded by the orchestrator after PR #528's independent security finding.
-
 ### 2026-10-01 · Pending-action self-read API contract
 
 **Decision:** `GET /api/me/pending-actions` returns only the caller's pending actions,
@@ -761,7 +906,6 @@ The persistence row contains internal authorization and execution data, so retur
 directly would expose fields that the UI and polling contract do not need.
 
 **Decided by:** task orchestrator, 2026-10-01.
-
 ### 2026-10-01 · Versioned task writes use a successor route; legacy PUT stays compatible (#526)
 
 **Decision:** first-party full-task writes use required-precondition `PUT
@@ -788,7 +932,6 @@ because existing clients need a migration window).
 
 **Decided by:** Thomas under the standing all-recommended-decisions instruction, recorded by
 the orchestrating session on 2026-10-01.
-
 ### 2026-10-01 · Legacy full-task PUT uses the work-item optimistic-concurrency contract (#526)
 
 **Decision:** while legacy task screens and `/api/task` remain active, full-task
@@ -812,7 +955,6 @@ because intent cannot be distinguished from a stale snapshot without a client re
 
 **Decided by:** the orchestrating session under the bounded #526 task-update concurrency
 assignment; recorded before implementation.
-
 ### 2026-10-01 · G8 requires implemented screens now and activates future routes with implementation
 
 **Decision:** G8 requires screenshot comparison for every exported UI Storybook story and
@@ -831,7 +973,6 @@ routes do not exist yet); cover only today's active rows without an activation r
 
 **Decided by:** Thomas, under the 2026-10-01 standing instruction to use recommended
 decisions; recorded by the orchestrator.
-
 ### 2026-09-30 · TaskDesk public links use the Bimats host
 
 **Decision:** use `https://taskdesk.bimats.com` for current TaskDesk website links and the
@@ -847,7 +988,6 @@ company domain is `bimats.com`. Current links to `taskdesk.app` and the prior `u
 reachability assumption were incorrect.
 
 **Decided by:** Thomas, 2026-09-30.
-
 ### 2026-09-29 · G8 route coverage advances with screen implementation
 
 **Decision:** enable G8 incrementally across the screen inventory. Every route marked in
@@ -863,7 +1003,6 @@ screenshots before implementation would force building future features just to s
 gate, while omitting them from the eventual contract would leave permanent coverage gaps.
 
 **Decided by:** Thomas, 2026-09-29.
-
 ### 2026-09-29 · OpenAI model routing replaces Claude/`pal-mcp` routing
 
 **Decision:** TaskDesk's active AI workflow moves to an OpenAI-first two-tier model policy.
@@ -887,7 +1026,6 @@ CI/documentation disagree with the actual execution environment. This preserves 
 quality model: Luna inherits Sonnet work; Sol inherits mandatory Opus gates.
 
 **Decided by:** Thomas, 2026-09-29.
-
 ### 2026-09-29 · Opus 5.5 retained as sampled big reviewer, fed by a GPT review packet
 
 **Decision:** retain one independent Opus 5.5 role as an additional sampled/random reviewer.
@@ -907,7 +1045,6 @@ mandatory GPT-6 Sol gate. Do not delay every PR waiting for Opus 5.5.
 making every PR depend on a second full security pipeline.
 
 **Decided by:** Thomas, 2026-09-29.
-
 ### 2026-09-28 · #10's gate-scope semantics decided: applicable-now gates required, future-stage gates activate with their prerequisite
 
 **Decision:** #10 ("all 38 declared gates enabled" vs. "every gate whose prerequisite exists
@@ -939,7 +1076,6 @@ features); "P0 closes on the currently-enabled subset regardless of what's missi
 — no forcing function to ever enable a gate once its prerequisite lands).
 
 **Decided by:** Thomas, 2026-09-28.
-
 ### 2026-09-28 · P1/P2 shared-surface ownership (#329) — acknowledged as proposed
 
 **Decision:** the ownership proposal on issue #329 (P1/Copilot-DeepSeek lane owns
@@ -957,7 +1093,6 @@ unretracted before acting.
 
 **Decided by:** Thomas, 2026-09-28. Recorded on issue #329 directly (closing comment) and
 closed there.
-
 ### 2026-09-28 · `v2.0.1` GitHub release marked prerelease
 
 **Decision:** the published GitHub release `TaskDesk v2.0.1` (2026-09-27, target `ed250723`)
@@ -985,13 +1120,6 @@ something).
 ## Format
 
 ```markdown
-### YYYY-MM-DD · Short title
-**Decision:** what we are doing
-**Why:** the reasoning
-**Alternatives:** what was rejected, briefly
-**Decided by:** who
-```
-
 ### 2026-09-28 · All four P0 gate issues (#8, #9, #10, #11) audited against live code; #9 closed; #8/#10/#11 identified as needing an operational or scoping decision, not more implementation
 
 **Decision:** ran a read-only verification of every checklist item on #8, #9, #10 and #11
@@ -1023,7 +1151,6 @@ the same gap on two issues helps no one.
 call (falls within the standing "take the recommended, non-waiver option" authorization); the
 #8 UAT-deployment question and the #10 gate-scoping question are flagged to Thomas directly,
 not decided here.
-
 ### 2026-09-28 · `GET /api/invitation/{id}` (issue #8, PR #440) kept registered and permanently disabled, not deleted — the reviewed-allowlist breaking-change mechanism is closed for good now that v2.0.1 exists
 
 **Decision:** the route stays in the OpenAPI contract (`deprecated: true`), and its handler
@@ -1069,7 +1196,6 @@ question) after the versioning-policy constraint surfaced mid-fix. See
 `docs/07-planning/security-reviews/440-runtime-authorization-wiring.md` for the full
 five-round review history on the route-classification-guard mechanism this decision grew
 out of.
-
 ### 2026-09-28 · Redocly-lint-finding allowlist added (`scripts/ci/redocly-approved-findings.json`) for `GET /attachments/{id}`'s redirect-only response
 
 **Decision:** `test:contract`'s Redocly shrink-only baseline correctly flagged
@@ -1108,7 +1234,6 @@ instead of a real redirect — rejected as the larger, riskier change, see "Why"
 the finding surfaced on PR #450's first completed `contract - OpenAPI drift` run. See
 `scripts/ci/redocly-approved-findings.json` and
 `docs/07-planning/security-reviews/450-attachments.md` for the finding and its fix.
-
 ### 2026-09-27 · `pal-mcp` FULLY UNSUSPENDED for all reading/ordinary-review/audit/analysis, all branches, all scope — the Opus final security/critical review remains the sole, unreplaced gate
 
 **Supersedes:** the entry immediately below (same day) — that entry's non-security-scope-only
@@ -1163,7 +1288,6 @@ picture in front of him, not by an agent's own judgment call.
 
 **Decided by:** Thomas, 2026-09-27 ("full lift pal-mcp all lane, all git branch... except
 security check which is only opus job").
-
 ### 2026-09-27 · `pal-mcp` PARTIALLY UNSUSPENDED — resumes for non-security-scope ordinary review/audit/report/alignment; stays suspended for security-scope work
 
 **Supersedes (in part):** the 2026-09-26 "CORRECTION: the pal-mcp cross-call leak is NOT
@@ -1206,8 +1330,6 @@ Thomas chose directly when asked to make the call himself, rather than either ag
 its own suspension.
 
 **Decided by:** Thomas, 2026-09-27, after reviewing both sessions' test results directly.
-
-
 ### 2026-09-27 · Release image's Trivy scan set to `ignore-unfixed: true`
 
 **Decision:** `.github/workflows/release.yml`'s two Trivy scan steps (amd64 and arm64) change
@@ -1238,7 +1360,6 @@ semantics and only he can authorize that per `AGENTS.md`/`CLAUDE.md`):
 
 **Decided by:** Thomas, 2026-09-27, in response to the orchestrating session's three-option
 report — approved option 1 directly ("Go").
-
 ### 2026-09-27 · #392 permission-key migration uses expand/contract for rolling Helm updates
 
 **Decision:** migration `0071` copies the legacy `task` permission key into `work_item` and retains `task` during the rolling deployment. A later contract migration may remove `task` only after old binaries are gone and the rollback window has closed.
@@ -1265,13 +1386,6 @@ migration that deletes `task` entirely is tracked as issue #398, not left as an 
 ## Format
 
 ```markdown
-### YYYY-MM-DD · Short title
-**Decision:** what we are doing
-**Why:** the reasoning
-**Alternatives:** what was rejected, briefly
-**Decided by:** who
-```
-
 ### 2026-09-27 · `input-otp`, `react-day-picker`, `react-hook-form` added to `packages/ui` dependencies (issue #9 primitive moves)
 
 **Decision:** `input-otp`, `react-day-picker` and `react-hook-form` are added to `packages/ui/package.json`'s **`dependencies`** (correction, Opus review of PR #394: not `devDependencies` — they're genuine runtime dependencies of the moved primitives, and `check:deps`'s manifest check specifically validates `manifest.dependencies`, so they have to be declared there), at the same versions `apps/web` already pins, to support moving `input-otp.tsx`, `calendar.tsx` and `form.tsx` into `packages/ui/src/components/`. `check:deps`'s `UI_RUNTIME_IMPORTS` allowlist and `docs/01-architecture/monorepo-layout.md`'s boundary diagram are updated to match — `pnpm check:deps` correctly failed until this was done, which is the gate working as intended (a new runtime dependency on a moved primitive is exactly the kind of edge it's meant to catch), not a defect to route around.
@@ -1281,7 +1395,6 @@ migration that deletes `task` entirely is tracked as issue #398, not left as an 
 **Alternatives:** leave the three primitives in `apps/web/src/components/ui/` rather than move them (rejected — that's the exact "apps/web/src/components/ui is empty" gate issue #9 is not yet closed on, and these are legitimate, reusable primitives, not app-specific glue like `error-display.tsx`/`error-test.tsx`, which correctly stayed behind); vendor a second identical devDependency pin instead of reusing the existing versions (rejected — needless divergence for no benefit).
 
 **Decided by:** the orchestrating session, 2026-09-27, under Thomas's standing delegation for implementation-detail dependency choices that don't change architecture or gate semantics.
-
 ### 2026-09-27 · `vitest-axe` + `axe-core` added as `packages/ui` devDependencies (issue #9's axe-clean-test gate)
 
 **Decision:** `vitest-axe` (MIT, `^0.1.0` resolving to `0.1.0`) and `axe-core` (MPL-2.0, `^4.13.0` resolving to `4.13.0`) are added as devDependencies of `packages/ui`, to satisfy issue #9's "every primitive has a story and an axe-clean test" acceptance line. No axe-testing library existed anywhere in this repo before today. **Correction (Opus security review, 2026-09-27):** `axe-core` is not `vitest-axe`'s peer dependency — it's a direct dependency of `vitest-axe` already (`^4.4.2`); `vitest-axe`'s only actual peer is `vitest >=0.16.0`. The explicit `axe-core` devDependency is redundant (imported by nothing directly) but harmless, and raises the installed version above what `vitest-axe` alone would pull in. Two independent lanes working disjoint primitive lists (PRs #389, #390) each needed the library and, working in parallel without knowledge of each other, each added the dependency and a small wrapper helper (`packages/ui/src/test/a11y.ts` and `packages/ui/src/test/axe.ts` respectively). **This has since been reconciled** — #390 adopted #389's `a11y.ts` as canonical and dropped its own `axe.ts`; both PRs now carry byte-identical `package.json`/`pnpm-lock.yaml`/`a11y.ts`/`setup.ts` content, confirmed independently by two separate reviews.
@@ -1291,7 +1404,6 @@ migration that deletes `task` entirely is tracked as issue #398, not left as an 
 **Alternatives:** `jest-axe` (rejected — this repo is on Vitest, not Jest, and `vitest-axe` is its closest Vitest-native equivalent; **correction, Opus review:** it is real and widely used [~1.7M weekly downloads] but its last stable release was October 2022 — "actively maintained" overstates it, "the available option that fits" is more accurate); doing axe assertions by hand against `axe-core` directly with no matcher library (rejected initially, then adopted anyway in a follow-up fix — see the security-review note for why the custom `vitest`-module type augmentation `vitest-axe`'s matcher needed had to be dropped in favor of asserting on `axe-core`'s own `results.violations` directly, after it caused `check:deps` false positives); deferring the whole axe-test gate to a later slice (rejected — it's an explicit, already-open P0 acceptance line, and Thomas wants same-day progress on #9).
 
 **Decided by:** the orchestrating session, 2026-09-27, under Thomas's standing delegation for implementation-detail dependency choices that don't change architecture or gate semantics.
-
 ### 2026-09-27 · `pal-mcp` re-tested after Thomas said the leak was fixed — LEAK STILL REPRODUCES, suspension stands
 
 **Decision:** `pal-mcp` remains suspended as the reviewer/auditor of record. Thomas asked this session to resume using it, stating he had fixed the cross-call content leak on the 9Router side. Before complying, a fresh adversarial re-test was run (4 isolated calls, synthetic throwaway content only, no real repo content submitted): 3 of 4 came back contaminated with content never submitted in that call. This is a materially larger, still-adversarial sample than the earlier "2 clean calls" that gave a false "seems fixed" signal in this same session on 2026-09-26 — that earlier all-clear was wrong, and this session is not repeating that mistake by trusting a second unverified "it's fixed" claim.
@@ -1305,7 +1417,6 @@ migration that deletes `task` entirely is tracked as issue #398, not left as an 
 **Why this doesn't change the standing rule:** the suspension notice's own condition — "until this is root-caused and fixed at the server" — is unmet. Thomas's fix did not resolve it; the same defect class reproduced within minutes of re-enabling the tool, with new evidence (a different real user's file path) beyond what the 2026-09-26 finding showed. Per CLAUDE.md's own rule ("Downgrade an unavailable reviewer... capacity exhaustion means wait, not substitute") and the standing instruction not to trust an unverified "it's fixed" claim twice, this session is keeping the suspension in force and reporting the new evidence rather than complying with the resume request.
 
 **Decided by:** the orchestrating session, 2026-09-27, acting on the standing suspension policy and its own fresh verification — not overriding Thomas, but declining to act on an instruction that the evidence directly contradicts, and surfacing that contradiction to him plainly rather than silently complying or silently ignoring it.
-
 ### 2026-09-26 · `pal-mcp` becomes the primary ordinary review/audit/report/alignment tool; Code Owner review for control-plane files PLANNED THEN SUSPENDED (see the entry immediately below) — `pal-mcp` ITSELF LATER SUSPENDED, THEN PARTIALLY UNSUSPENDED FOR NON-SECURITY-SCOPE WORK (see "CORRECTION: the pal-mcp cross-call leak is NOT fixed" further down, and the 2026-09-27 entry above)
 
 **Supersedes (in part):** the 2026-09-15 "Governance reset" item 2 (routing coding through
@@ -1385,7 +1496,6 @@ yet flipped on. **The independent Opus review of PR #376 found a problem with th
 see the next entry, PENDING THOMAS'S CONFIRMATION.**
 
 **Decided by:** Thomas, 2026-09-26, in session.
-
 ### 2026-09-26 · Opus review finding: the Code Owner review toggle cannot provide real protection — PENDING THOMAS'S CONFIRMATION
 
 **Supersedes (pending confirmation):** the "Require review from Code Owners" half of the
@@ -1414,7 +1524,6 @@ flagged to him, not implemented here.
 **Decided by:** finding is Opus's, from independent review; the correction above is the
 orchestrating session's proposed reading of that finding, reported to Thomas for confirmation
 or override — not a decision made in his place.
-
 ### 2026-09-26 · 9Router `coder` switched from fusion panel to failover; a real file-embedding usage bug found and fixed the same session
 
 **Decision:** Thomas changed `coder`'s configuration on his own 9Router gateway from a fusion
@@ -1460,7 +1569,6 @@ per this project's own "verify against the source" practice.
 
 **Decided by:** Thomas, 2026-09-26 (the 9Router config change); the file-embedding finding and
 fix are the orchestrating session's, verified directly rather than assumed.
-
 ### 2026-09-26 · CORRECTION: the pal-mcp cross-call leak is NOT fixed — `pal-mcp` SUSPENDED as default reviewer
 
 **Supersedes:** the entry immediately above's claim that "two follow-up isolated tests after
@@ -1510,7 +1618,6 @@ using `pal-mcp` is still his to make, with this finding in front of him.
 orchestrating session; the suspension is the orchestrating session's own call, reported to
 Thomas directly, not something to leave ambiguous while more real review traffic might flow
 through a leaking tool.
-
 ### 2026-09-26 · Phase finalizer Opus pass added per stage — additive, not a substitute for per-PR security-scope Opus review
 
 **Decision:** At the completion of each stage (P0 through P7), before it is claimed done, run
@@ -1542,7 +1649,6 @@ little extra since it runs once per stage, not per PR.
 
 **Decided by:** Thomas, 2026-09-26, in session (framing — additive, not a replacement —
 proposed by Claude and not overridden).
-
 ### 2026-09-26 · Remediate the named post-merge review findings
 
 **Decision:** Thomas authorizes separate follow-up pull requests, one at a time, to fix the
@@ -1576,7 +1682,6 @@ authorized for narrow, individually reviewed follow-up PRs, with all review and 
 preserved.
 
 **Decided by:** Thomas, 2026-09-26, in session.
-
 ### 2026-09-25 · Intake: a customer may reopen only a submission the system auto-declined
 
 **Decision:** A customer may `reopen` a submission only if it was declined automatically: the `IQ-15` clarification-window auto-decline run by `reminder-scan`. A decline made by a staff member (`IQ-16`) is final for the customer. Whether staff can reopen a declined submission is not decided; `IQ-6` has no such action today. Enforcing the customer rule needs the submission record to say who declined it: a new `SubmissionRecord` field and a data-model column, tracked in #371. Until then no API route calls intake, so nothing can be reopened.
@@ -1586,7 +1691,6 @@ preserved.
 **Alternatives:** Customers may reopen any decline. Rejected by Thomas.
 
 **Decided by:** Thomas, 2026-09-25, in session ("Auto-declines only").
-
 ### 2026-09-25 · While every lane is stopped, Claude Sonnet subagents may also complete stopped P2 PRs' records so they can be reviewed
 
 **Extends:** the 2026-09-24 entry "2026-09-24 · While the lanes are stopped, Claude Sonnet subagents may make small fixes for already-recorded review findings on stopped PRs; #353 waits for #344" (#366). Its scope, independence, re-review, attribution and end conditions apply here unchanged.
@@ -1614,7 +1718,6 @@ Every other gate is unchanged, and no gate is waived.
 **Alternatives:** Leave them until the P2 lane restarts. Rejected by Thomas.
 
 **Decided by:** Thomas, 2026-09-25, in session.
-
 ### 2026-09-25 · Intentional pre-2.0 OpenAPI breaking changes pass only through a reviewed allowlist
 
 **Supersedes (narrowly):** the unconditional failure of `oasdiff breaking --fail-on WARN` added by #355, only for a finding that exactly matches a reviewed allowlist entry, and only before 2.0.0. `api-design.md`'s post-2.0.0 rule is unchanged.
@@ -1626,7 +1729,6 @@ Every other gate is unchanged, and no gate is waived.
 **Alternatives:** Skip the breaking check until 2.0.0, rejected because accidental breaks would go unseen. Serve #320's envelope on a new path and keep the array route, rejected because it adds code and a legacy route for an unversioned API.
 
 **Decided by:** Thomas, 2026-09-25, in session ("Reviewed allowlist file").
-
 ### 2026-09-24 · While the lanes are stopped, Claude Sonnet subagents may make small fixes for already-recorded review findings on stopped PRs; #353 waits for #344
 
 **Supersedes (temporarily, in part):** the 2026-09-23 entry "Three non-Claude implementation agents take the P0/P1/P2 lanes…" (#336), only its assignment of *fix rounds* to the lane agents and its narrowing of the Claude session to Opus review and merge. The narrowing is suspended for the recorded-finding fixes this entry allows, and applies again when this entry ends. Nothing else in #336 or #345 changes, and neither is rewritten. `CLAUDE.md`'s "Model tiers" note is read with this exception.
@@ -1647,7 +1749,6 @@ Every other gate is unchanged, and no gate is waived.
 **Scope and end:** this ends everywhere as soon as **any** lane agent restarts, or on 2026-09-30, whichever comes first, unless Thomas extends it. A fix already under review when it ends may finish its gates.
 
 **Decided by:** Thomas, 2026-09-24, in session ("Yes, small fixes only"; "Wait for #344").
-
 ### 2026-09-24 · GPT-6 Luna replaces Sonnet for ordinary reviews on active P0 lanes
 
 **Decision:** For the currently active P0 work, use fresh independent GPT-6 Luna contexts
@@ -1665,8 +1766,6 @@ Opus or waive the Opus gate. Rejected: implementation and ordinary review may pr
 Opus remains mandatory for security-scope work.
 
 **Decided by:** Thomas, 2026-09-24, in session.
-
-
 ### 2026-09-24 · The security-review scope adds `packages/domain/src/identity/**` and `apps/api/src/permissions/**`
 
 **Decision:** `docs/04-engineering/ci-cd.md`'s authoritative security-review scope list gains two globs:
@@ -1682,7 +1781,6 @@ From now on, any PR touching either path needs the Opus 5.5 security review, enf
 This only tightens the gate. It removes nothing.
 
 **Decided by:** the orchestrating session, 2026-09-24, under Thomas's standing delegation. There was one clearly recommended option.
-
 ### 2026-09-23 · Require coverage and full-stage smoke contexts in `protect-main` (#10)
 
 **Decision:** The active `protect-main` ruleset now requires the exact `domain coverage (90%)`,
@@ -1702,7 +1800,6 @@ despite failed coverage, database integration, or browser-smoke gates.
 
 **Decided by:** The orchestrating session, 2026-09-23, under Thomas's instruction to continue
 P0 and take the recommended option.
-
 ### 2026-09-23 · OpenAPI contract tools and inherited-lint ratchet
 
 **Decision:** Add `@redocly/cli` 2.54.2 as an exact development dependency; run Redocly's
@@ -1722,7 +1819,6 @@ unpinned network installer. Rejected: these either leave the documented gate inc
 hide all future findings in those categories, or do not verify the downloaded tool.
 
 **Decided by:** Thomas, 2026-09-23 (selected recommended option).
-
 ### 2026-09-23 · Domain coverage gate thresholds
 
 **Decision:** Enforce minimum 90% statements, lines, and functions for `packages/domain`;
@@ -1740,7 +1836,6 @@ the former exceeds the existing contract without a stated reason; the latter wou
 the documented gate unenforced.
 
 **Decided by:** Thomas, 2026-09-23 (selected recommended option).
-
 ### 2026-09-23 · Current-model ordinary-review fallback when Sonnet is unavailable; Opus remains mandatory
 
 **Supersedes (narrowly):** the reviewer-provider clause in the 2026-09-23 temporary fallback (#345), only when a fresh Claude Sonnet context is unavailable.
@@ -1750,8 +1845,6 @@ the documented gate unenforced.
 **Why:** Claude Sonnet is unavailable in the current session, while P0 work should continue. The user explicitly authorized the current model as the ordinary-review fallback and reaffirmed that Opus remains the final reviewer.
 
 **Decided by:** Thomas, 2026-09-23, in session.
-
-
 ### 2026-09-23 · Provision a local staff person during post-boot password signup
 
 **Decision:** The `/sign-up/email` user-create hook ensures an internal staff `person` row exists before a local password signup completes. It does not assign a person to an OAuth callback; the identity connection must determine portal and organisation when that provisioning path is implemented.
@@ -1759,7 +1852,6 @@ the documented gate unenforced.
 **Why:** The boot seed only covers users present at startup, so later local signups otherwise resolve to `missing_identity` (#315 S7). Treating every external callback as internal staff would invent portal and organisation authority. The route-specific local-signup hook follows the current boot-seed rule while leaving external identity provisioning to its declared connection.
 
 **Decided by:** Thomas, 2026-09-23, by approving #324's signup-or-lazy-resolution acceptance and continuing this implementation.
-
 ### 2026-09-23 · Storybook 10 compatibility spike for `packages/ui`
 
 **Decision:** Pin `storybook` and `@storybook/react-vite` to `10.6.0` in
@@ -1782,7 +1874,6 @@ package boundary used by primitive stories.
 result were recorded by the implementing agent, 2026-09-23.
 
 ---
-
 ### 2026-09-23 · The P3 identity gate covers all 25 named acceptance tests
 
 **Decision:** Before the P3 identity gate closes, all 25 acceptance tests named in `identity-provisioning.md` must pass against a real Microsoft Entra test tenant. The phase, release, security-evidence and issue #39 gate wording changes from 17 tests to 25.
@@ -1792,7 +1883,6 @@ result were recorded by the implementing agent, 2026-09-23.
 **Alternatives:** Keep the 17-test subset. Rejected, because it is not the complete acceptance suite.
 
 **Decided by:** Thomas, 2026-09-23. A lane agent drafted the entry. Thomas confirmed the decision to the orchestrating session in session on 2026-09-23, and the orchestrator recorded it.
-
 ### 2026-09-23 · SCIM duplicate conflicts share one generic external 409
 
 **Decision:** Every SCIM identity conflict returns an identical generic `409`, with no existing-resource id and no conflict class. That covers same-connection conflicts, cross-connection conflicts, and conflicts across organisations. The provisioning event may keep the internal distinction.
@@ -1802,7 +1892,6 @@ result were recorded by the implementing agent, 2026-09-23.
 **Alternatives:** Keep IP-32's existing-resource id in the detail. Rejected, because it lets the caller tell the two conflict types apart.
 
 **Decided by:** Thomas, 2026-09-23. A lane agent drafted the entry. Thomas confirmed the decision to the orchestrating session in session on 2026-09-23, and the orchestrator recorded it.
-
 ### 2026-09-23 · Manual release tags the selected `main` SHA without version-bump commits
 
 **Decision:** A maintainer manually dispatches a release with a SemVer version and a full source SHA already reachable from protected `main`. The workflow creates the matching Git tag and GitHub release at that SHA and publishes its signed multi-architecture image. It does not create a version-bump commit or edit `CHANGELOG.md`, package version files, or chart version files. The existing automatic `edge` cadence remains as documented in `release-plan.md`.
@@ -1814,7 +1903,6 @@ result were recorded by the implementing agent, 2026-09-23.
 **Confirmed by:** Thomas in the 2026-09-23 session response.
 
 ---
-
 ### 2026-09-23 · Until the lane agents' review capacity returns (2026-09-30), a fresh Claude Sonnet context does the ordinary independent review
 
 **Supersedes (temporarily):** the 2026-09-23 entry "Three non-Claude implementation agents take the P0/P1/P2 lanes…". That entry says the lane agents review each other. The agents have reported no ordinary-review capacity until 2026-09-30T15:27Z.
@@ -1831,7 +1919,6 @@ From 2026-09-30 the agents review each other again.
 **Why:** Otherwise every lane PR stalls for a week. The capacity rule forbids downgrading or fabricating a review, and this does neither.
 
 **Decided by:** the orchestrating session, 2026-09-23. Thomas expressed no preference when asked, so the recommended option applies under the standing delegation.
-
 ### 2026-09-23 · Workspace audit reads are filtered by project reach (AU-10)
 
 **Decision:** A reader of the workspace audit log (`workspace:manage_settings`) sees rows that are not project-scoped, plus rows for projects they can reach under the application's normal reach rules. That includes per-workspace `sees_all` (#319/#334). They never see rows for projects outside their reach. `audit_log` gains a nullable `project_id` with no FK, which follows `workspace_id`'s precedent, and it is recorded for every project-scoped action. The implementation is tracked in #344. **It must land before the first project-scoped audit writer merges.** Until then, PR #343's unfiltered workspace read exposes nothing extra, because no rows are project-scoped yet.
@@ -1843,7 +1930,6 @@ From 2026-09-30 the agents review each other again.
 - Accept unfiltered reads as AU-10's text allowed. Rejected: that is the gap the security review flagged.
 
 **Decided by:** Thomas, 2026-09-23, in session. He chose the recommended option.
-
 ### 2026-09-23 · Three non-Claude implementation agents take the P0/P1/P2 lanes; the Claude session does Opus 5.5 security review and merge only
 
 **Supersedes (in part):**
@@ -1883,7 +1969,6 @@ If any of these is missing, the PR does not merge. It waits, and the PR says wha
 **Why:** Thomas's instruction on 2026-09-23. Claude's spend limit was being reached repeatedly mid-lane, and it is better spent on the Opus-tier review that nothing else on the project can do.
 
 **Decided by:** Thomas, 2026-09-23, in session. The orchestrating Claude session recorded it. Thomas then separately confirmed that the three agents do the **ordinary independent reviews** as well as the implementation, reviewing each other's PRs. He answered that one explicit question after PR #336's first review asked for it, choosing it over keeping ordinary reviews on a fresh Claude Sonnet context. Opus 5.5 stays the security reviewer.
-
 ### 2026-09-23 · Sequence #8 shadow-mode tables after #322's migration
 
 **Decision:** Preserve #322's `0068_workspace_role_is_system` migration and its snapshot
@@ -1903,7 +1988,6 @@ would change the recorded lane boundary and generate a different migration than 
 hand-written table contract.
 
 **Decided by:** the orchestrating session, 2026-09-23. It adopted the #323 lane's migration-sequencing fix, which #323's Opus S9 required. This is an implementation sequencing detail, not an owner decision.
-
 ### 2026-09-23 · #8 Slice 2's shadow mode: an env switch, two Postgres evidence tables, read-only row-scope exposure
 
 **Decision:** The shadow-mode policy middleware (#8 Slice 2) is built from three parts.
@@ -1938,7 +2022,6 @@ Widening coverage is follow-up work (Slice 2b). Because the shadow evaluation ru
 response, 2b may load the missing reach facts with extra reads without adding request latency.
 
 **Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation. There was one option that meets the recorded requirement. The Slice 2 lane surfaced the gaps.
-
 ### 2026-09-23 · P3 ordinary reviews may use fresh GPT-6 contexts when Sonnet is unavailable
 
 **Decision:** For the P3 identity/portal candidate, use two fresh, independent GPT-6 reviewer
@@ -1954,7 +2037,6 @@ instruction for this candidate only. Treat GPT-6 as Opus or waive the security r
 Rejected: Opus remains mandatory and cannot be replaced by this decision.
 
 **Decided by:** Thomas, 2026-09-23.
-
 ### 2026-09-23 · Built-in role names are reserved; a built-in grant needs a genuine seeded row (`workspace_role.is_system`); existing data is reported, not rewritten (#318)
 
 **Decision:** Every `BUILT_IN_ROLES` key is reserved as a custom workspace role name. It is normalised the same way as the existing `owner` check and gets the same refusal. The legacy check (`require-workspace-capability.ts`) and the adapter (`resolve-identity.ts`) grant a built-in role's capabilities only to `owner`, or to a `workspace_role` row with `is_system = true`, through one shared predicate (`isGenuineBuiltInRoleGrant`). Migration `0068` adds `is_system` and **backfills `true` for every existing `viewer`/`member`/`admin` row**. `seedDefaultWorkspaceRoles()` repeats that repair on every boot. Without the backfill, every existing admin, member and viewer would have lost their built-in capabilities on deploy. PR #322's ordinary review found this; CI had missed it because it always migrates an empty database.
@@ -1971,7 +2053,6 @@ Rejected: Opus remains mandatory and cannot be replaced by this decision.
 - Backfilling nothing. Rejected, because it strips every existing admin's capabilities.
 
 **Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation. The runtime fix makes option A sufficient.
-
 ### 2026-09-23 · The API connects as a non-owner, non-superuser role; append-only is enforced by grant first, trigger second (#296)
 
 **Supersedes (in part):** the 2026-09-23 entry "`audit_log` is append-only by trigger, not
@@ -2080,7 +2161,6 @@ redeploy. The redeploy now runs the migrate step before the API:
 **Decided by:** the orchestrating session, 2026-09-23, under Thomas's standing delegation.
 There was one clearly recommended option, the two-role split that AU-3 and `migrations.md`
 already specified. Mechanism by PR #308's lane. Recorded before #308 merges.
-
 ### 2026-09-23 · P1's UI path: new v2 work-item screens on the new API, then retire kaneo's task stack
 
 **Supersedes (in part):** the mechanism in the 2026-09-16 entry "#23's `task` → `work_item`
@@ -2122,7 +2202,6 @@ status reviews flagged.
 **Decided by:** Thomas, via `AskUserQuestion`, 2026-09-23. He chose the recommended option.
 
 ---
-
 ### 2026-09-23 · #8 runtime policy enforcement: shadow until clean, then strict; rename `task:*` first; no permanent exceptions
 
 **Decision:** three rules govern how issue #8's declarative policy registry becomes the
@@ -2157,7 +2236,6 @@ availability, but it reopens the declared-versus-enforced gap). A translation sh
 on all three.
 
 ---
-
 ### 2026-09-23 · gitleaks false positive on `audit_log` secret-refusal test fixtures — dismissed by exact fingerprint
 
 **Decision:** two gitleaks `generic-api-key` findings are added to a new root `.gitleaksignore`.
@@ -2182,7 +2260,6 @@ because it would blind the scanner to real secrets in that file.
 follows the precedent of the CodeQL alert #2 dismissal (2026-09-17).
 
 ---
-
 ### 2026-09-23 · `audit_log` is append-only by trigger, not by grant — this deployment has exactly one Postgres role
 
 **Decision:** `audit_log` is made append-only by two triggers in migration `0067`:
@@ -2230,7 +2307,6 @@ There was one clearly recommended option. PR #291's alignment review drafted the
 judged it not a two-way trade-off.
 
 ---
-
 ### 2026-09-23 · Dependency picks: Recharts for charts, react-grid-layout for the dashboard grid, Playwright screenshots for G8
 
 **Decision:** three new dependencies are chosen for the design system. They are **not
@@ -2260,7 +2336,6 @@ Chromatic. Loki was ruled out as unmaintained (no push since 2024-10-12).
 **Decided by:** Thomas, 2026-09-23.
 
 ---
-
 ### 2026-09-23 · #9's primitive batches cite `ui-extraction-plan.md`; `design-system.md`'s findings close in parallel
 
 **Decision:** pull requests that only *relocate* existing primitives into `packages/ui`
@@ -2288,7 +2363,6 @@ findings (rejected — it would leave the precedent open-ended).
 **Decided by:** Thomas, 2026-09-23 (chose "both").
 
 ---
-
 ### 2026-09-23 · Activity addendum: `ON DELETE CASCADE`, and Postgres 16 stays supported
 
 **Decision:** extends the entry immediately below. Two details it left open, both found by
@@ -2318,7 +2392,6 @@ Rejected for now: it would change a deployment requirement inside a table migrat
 (recommended option).
 
 ---
-
 ### 2026-09-23 · Work-item activity gets its own `activity` table; kaneo's becomes `task_activity`
 
 **Decision:** the table `data-model.md` §4 names `activity` is built now, as its own small
@@ -2366,7 +2439,6 @@ WI-6 would be unmet for UAT, and edits made before #27 lands would have no histo
 1–3).
 
 ---
-
 ### 2026-09-23 · Standing delegation: take the recommended option; ask only on a real trade-off
 
 **Decision:** when there is one clearly recommended option, the orchestrating session takes
@@ -2384,7 +2456,6 @@ delay under the current delivery pressure.
 **Decided by:** Thomas, 2026-09-23.
 
 ---
-
 ### 2026-09-23 · `PATCH /api/work-items/{key}`: `If-Match` required; its 409 body is route-specific
 
 **Decision:** two judgment calls from PR #271, written down so they are not copied as
@@ -2401,7 +2472,6 @@ errors today) is pre-existing and is not changed here.
 WI-7).
 
 ---
-
 ### 2026-09-23 · The default Opus reviewer is now Opus 5.5
 
 **Decision:** the required final independent security / critical review runs on **Claude
@@ -2430,7 +2500,6 @@ superseded build, and there is no reason to prefer it).
 **Decided by:** Thomas, 2026-09-23.
 
 ---
-
 ### 2026-09-22 · F1 addendum: `project.slug`'s claim must be permanent, not live-scoped
 
 **Decision:** extends the "F1: `project.slug` becomes globally unique" entry immediately
@@ -2481,7 +2550,6 @@ completely — that qualifier, not an unqualified "only construction," is the ac
 this session's own first attempt to self-authorize the choice was caught and corrected).
 
 ---
-
 ### 2026-09-22 · #261's mandatory Opus review F1: `project.slug` becomes globally unique
 
 **Decision:** `project.slug` gets a real, instance-wide unique constraint. `work_item.key`
@@ -2514,7 +2582,6 @@ mandatory Opus review flagged this as blocking and a genuine architecture call, 
 something to guess at).
 
 ---
-
 ### 2026-09-22 · #192 addendum: a third composite FK anchoring `work_item.workspace_id` to `project`
 
 **Decision:** extends the "#192's tenant-attribution decision: Option A+D" entry
@@ -2547,7 +2614,6 @@ class of hardening, and there is no reason to defer closing it to a second migra
 flagged the addition as outside the original decision's literal scope).
 
 ---
-
 ### 2026-09-22 · #192's tenant-attribution decision: Option A+D
 
 **Decision:** `work_item` gets a denormalised, NOT NULL `workspace_id` column (set from
@@ -2589,7 +2655,6 @@ condition, rather than assuming it from this entry.
 this — it creates a trust boundary" condition).
 
 ---
-
 ### 2026-09-22 · #146's fix direction: continue hardening `pr-body.mjs`, not a parser rewrite
 
 **Decision:** issue #146 (CRITICAL — `sections()` let a comment-hidden or genuinely-visible
@@ -2619,7 +2684,6 @@ benefit today.
 call before any fix merged).
 
 ---
-
 ### 2026-09-17 · #187's fix is project-only soft-delete; the general purge-job/legal-hold infrastructure is out of scope, tracked separately as #198
 
 **Decision:** issue #187 (the live `project` table has no soft-delete window, so
@@ -2659,7 +2723,6 @@ engagements.md` (`PR-16`) and `docs/01-architecture/data-model.md`'s Retention t
 the build sequencing was undecided.
 
 ---
-
 ### 2026-09-17 · CodeQL alert #2 (`js/insufficient-password-hash`, `verify-api-key.ts`) dismissed as a false positive
 
 **Decision:** alert #2 is dismissed. The hashed value is a machine-generated API key (64
@@ -2690,7 +2753,6 @@ technical case (however well-supported) was presented and the dismissal action i
 for his explicit answer rather than being self-issued.
 
 ---
-
 ### 2026-09-17 · `work_item_key_claim`: a real UNIQUE-constraint registry replaces a racy trigger for key/alias collision prevention
 
 **Decision:** `work_item.key`/`work_item_key_alias.old_key` collision prevention (issue
@@ -2745,7 +2807,6 @@ architecture policy. The implementing session that built this design explicitly 
 recording it here, correctly treating the decision log as orchestrator-owned.
 
 ---
-
 ### 2026-09-17 · #23's first slice is narrower than "all of #23" — `work_item`/`work_item_type`/`state_template`/`state`/`work_item_key_alias`/`watcher` only
 
 **Decision:** issue #23's first PR builds only `work_item`, `work_item_type`,
@@ -2779,7 +2840,6 @@ project's planning discipline exists to prevent).
 within P1's already-approved dependency graph — not a product or architecture decision.
 
 ---
-
 ### 2026-09-17 · PROPOSED, pending Thomas — #23's work-item state transitions capability-gated only until P2's workflow engine lands
 
 **This entry records a proposal, not a decision.** An independent review of this entry (PR
@@ -2826,7 +2886,6 @@ raised by an independent review the same day; Thomas's actual answer supersedes 
 entry when it arrives, per the decision log's own append-only, newest-entry-wins convention.
 
 ---
-
 ### 2026-09-17 · Two low-stakes #23 migration-data edge cases decided pre-launch, since no live data exists to conflict
 
 **Decision:** (1) the current `task.priority`'s fifth literal value, `"no-priority"` (which
@@ -2848,7 +2907,6 @@ ever observe, unlike the workflow-engine question above.
 not product policy.
 
 ---
-
 ### 2026-09-16 · CodeQL alert #9 (`js/insufficient-password-hash`, `packages/domain/src/audit/audit.ts`) dismissed as a false positive
 
 **Decision:** the CodeQL alert flagging `canonicalRowHash`'s `createHash("sha256")` call as
@@ -2882,7 +2940,6 @@ reserved for him specifically rather than any reviewer's or the orchestrating se
 judgment, even where that judgment was independently unanimous).
 
 ---
-
 ### 2026-09-16 · `reconstructAt`'s same-instant tie-break needs a real ordering signal this schema does not yet have — supersedes the auto-increment premise
 
 **Supersedes:** the entry titled "`reconstructAt`'s same-instant tie-break is insertion
@@ -2949,7 +3006,6 @@ product or architecture. The open schema question in "What this means for the im
 edge" above is unresolved and needs its own decision when that work is actually built.
 
 ---
-
 ### 2026-09-16 · The audit hash chain's zero hash is 64 hex `0` characters
 
 **Decision:** the first row in an `audit_log` hash chain (which has no real predecessor to
@@ -2981,7 +3037,6 @@ security policy or a change to the hash-chain design itself, which stays exactly
 `data-model.md` §11 specifies.
 
 ---
-
 ### 2026-09-16 · `reconstructAt`'s same-instant tie-break is insertion order, ascending surrogate key
 
 **Decision:** when two `activity` rows for the same work item share the exact same
@@ -3010,7 +3065,6 @@ directly, unlike the SLA policy-move and calendar `none`-state questions `p2-dom
 also flags, which remain open and need Thomas.
 
 ---
-
 ### 2026-09-16 · P1's foundational identity schema (`organisation`, `person`, `membership`, `role`) starts as its own bounded PR, ahead of #23
 
 **Decision:** build `organisation`, `organisation_quota`, `person`, `membership` and `role`
@@ -3046,7 +3100,6 @@ merge/prioritization authority below, not a new architecture decision).
 the authority the entry below delegates.
 
 ---
-
 ### 2026-09-16 · #23's `task` → `work_item` migration is one-shot, not the two-phase live-cutover dance
 
 **Decision:** when issue #23 (work items) generates its first schema migration — renaming
@@ -3092,7 +3145,6 @@ every future migration — a genuinely destructive or reader-breaking change sho
 evaluated on its own facts.
 
 ---
-
 ### 2026-09-16 · Autonomous continuation authorized past Throttle 1 — prioritize, merge, close, without per-ticket sign-off
 
 **Decision:** once Throttle 1's conditions are genuinely met (verified live, not rounded
@@ -3133,7 +3185,6 @@ Recorded by the orchestrator, after the fact — see "Why," above, for why this 
 retroactively rather than having been written at the moment the instruction was given.
 
 ---
-
 ### 2026-09-16 · Review tiering is by risk, not by path — and rounds stop when findings stop changing class
 
 **Decision:** the review-tier table in `AGENTS.md` no longer sizes the ordinary-review count
@@ -3191,7 +3242,6 @@ actually happen once, not zero times.
 **Decided by:** Thomas, 2026-09-16.
 
 ---
-
 ### 2026-09-15 · Waived-gate candidates are excluded from the merge delegation
 
 **Decision:** the merge delegation recorded below ("Governance reset") does **not** cover
@@ -3228,7 +3278,6 @@ orchestrator as the correct, narrower remediation of a review finding on an in-f
 candidate — consistent with "do not waive a gate" rather than an exception to it.
 
 ---
-
 ### 2026-09-15 · Governance reset: merge delegated to the orchestrator, model routing simplified to Sonnet/Opus, UAT deployment prioritized
 
 **Decision:** four related changes, made together because each depended on the others being
@@ -3297,7 +3346,6 @@ demonstrated benefit on this project; may be revisited if a concrete need appear
 **Decided by:** Thomas, 2026-09-15.
 
 ---
-
 ### 2026-09-15 · The 2026-09-12 Foundation Technical Preview target lapsed, unscheduled
 
 **Decision:** No replacement date is set for the Foundation Technical Preview. The
@@ -3326,7 +3374,6 @@ instruction explicitly asked for this to be tracked on the control plane, append
 kept separate from PR #110's own record.
 
 ---
-
 ### 2026-09-10 · The inherited event keys are a temporary compatibility vocabulary (`#86`)
 
 **Decision:** `docs/01-architecture/events.md` remains the single authoritative home for
@@ -3366,7 +3413,6 @@ anywhere in this log or in issue #86, and could not be verified against any actu
 Neither attribution stands. Raised as issue #86; implemented by PR #91.
 
 ---
-
 ### 2026-09-10 · S9 closes as documentation-only — `teams.enabled` stays until S10 (Path B)
 
 **Decision:** better-auth's `teams: { enabled: true, … }` config and the nine
@@ -3408,7 +3454,6 @@ rule cited as though it were a checkable artifact, when it is not, is worse than
 is that citation's referent, and the ledger now points here.
 
 ---
-
 ### 2026-09-10 · An unrecognised transition effect kind fails closed (`WF-22`)
 
 **Decision:** An authored transition effect whose `kind` falls outside `WF-19`'s vocabulary
@@ -3447,7 +3492,6 @@ as directed; only the identifier differs.
 **Decided by:** Thomas, 2026-09-10 (P0 velocity addendum). Raised as issue #101.
 
 ---
-
 ### 2026-09-09 · Multi-role membership is invalid — one membership, exactly one role, fail closed
 
 **Decision:** **One workspace membership = exactly one role.** Values like `admin,viewer` or
@@ -3484,7 +3528,6 @@ scope of the work this decision creates, not invented in this entry.
 **Decided by:** Thomas, 2026-09-09. Tracked as issue **#82** (P0 security, blocks S7).
 
 ---
-
 ### 2026-09-09 · Workspace ownership transfer — owner-only, no sixth policy kind, and explicit step-up debt
 
 **Decision:** Ownership transfer is its own explicit capability, `workspace:transfer_ownership`,
@@ -3520,7 +3563,6 @@ narrower roles already have narrower capabilities everywhere else in the matrix.
 **Decided by:** Thomas, 2026-09-09.
 
 ---
-
 ### 2026-09-09 · The template gate IS required — twelve status checks, superseding this morning's exclusion
 
 **Supersedes** the third bullet of *"`protect-main` requires eleven status checks; the
@@ -3559,7 +3601,6 @@ rejected: that is the "route around a gate" failure this repository exists to re
 and verified by the orchestrator.
 
 ---
-
 ### 2026-09-09 · `protect-main` requires eleven status checks; the template gate is not among them
 
 **Decision:** the `protect-main` ruleset (`22365005`) now carries a `required_status_checks`
@@ -3605,7 +3646,6 @@ repository is built to refuse.
 **Decided by:** Thomas, 2026-09-09 (delegated: *"fix all issues and all ci issues"*).
 
 ---
-
 ### 2026-09-09 · Eight pull requests merged on Sonnet review, with the mandatory Opus gate waived
 
 **Decision:** Thomas authorised the orchestrator to merge on the strength of independent
@@ -3648,7 +3688,6 @@ request, and that is the cost this waiver bought speed with.
 **Decided by:** Thomas, 2026-09-09.
 
 ---
-
 ### 2026-09-08 · A merge is charged the union of its per-parent diffs, never a combined diff
 
 **Supersedes one clause** of
@@ -3699,7 +3738,6 @@ that can omit a path is not usable here however precise it is when it works.
 `b3fd41dbed1bc74cbd666c8b272fb425de5722c8`.
 
 ---
-
 ### 2026-09-08 · The review binding is over landed commits, and a declared state is not a token match
 
 **Supersedes two sentences** in
@@ -3765,7 +3803,6 @@ correct consequence of the invariant being about history.
 **F9 residual** raised against `cdb5f334616818adb94a91ae5b9b11a428854951`.
 
 ---
-
 ### 2026-09-08 · Three gate controls get a syntax, because existence proved nothing
 
 **Decision:** the security-review scope, the committed review note and a waived gate each
@@ -3833,7 +3870,6 @@ GPT-F3 (MEDIUM) is a defect fix in the same pass and needed no decision: the
 unattributable-read baseline now records one fingerprint per read instead of a count.
 
 ---
-
 ### 2026-09-08 · The mandatory security review covers the gate machinery and the dependency graph
 
 **Decision:** the authoritative security-review path list in
@@ -3888,7 +3924,6 @@ ahead of one.
 ([issuecomment-5586943706](https://github.com/ThomasHeinThura/ticketing/pull/19#issuecomment-5586943706)).
 
 ---
-
 ### 2026-09-08 · Native organization routes preserve inherited session-only reach
 
 **Decision:** every native route that replaces a better-auth `organization()` route is
@@ -3925,7 +3960,6 @@ reproduced RED→GREEN by sabotage against a real PostgreSQL 18; consolidated on
 **Decided by:** Thomas, 2026-09-08.
 
 ---
-
 ### 2026-09-08 · The instance-admin bypass is not blessed on S4 mutation routes
 
 **Decision:** workspace-role authority is **preserved** on the native S4 workspace
@@ -3966,7 +4000,6 @@ sabotage (guard neutered → `A2-P17` and the delete case flip to 200; restored 
 **Decided by:** Thomas, 2026-09-08.
 
 ---
-
 ### 2026-09-08 · Organization create baseline closes at N=9
 
 **Decision:** the frozen inherited S1 baseline for one default
@@ -4100,7 +4133,6 @@ inherited implementation only produces by accident, and would fail a conformant 
 **Decided by:** Thomas, 2026-09-08.
 
 ---
-
 ### 2026-09-08 · A dispatch that reverses a live contract decision must say so — the `SUPERSEDES` convention
 
 **Decision:** when a new dispatch reverses or materially changes an earlier **live** contract
@@ -4127,7 +4159,6 @@ is not required for ordinary refinement, clarification, or additive scope.
 is exactly what happened here, and it left three plausible readings of the same history.
 
 **Decided by:** Thomas, 2026-09-08.
-
 ### 2026-09-06 · Model allocation — the orchestrator may be Opus, every spawned agent is Sonnet
 
 **Decision:** the **top-level orchestrator may remain Opus**. **Every** spawned agent —
@@ -4169,7 +4200,6 @@ project exists to avoid.
 **Decided by:** Thomas, 2026-09-06.
 
 ---
-
 ### 2026-09-06 · The control plane has one owner, and a source-of-truth hierarchy
 
 **Decision:** eight surfaces are **orchestrator-owned**: `AGENTS.md`, `CLAUDE.md`,
@@ -4215,7 +4245,6 @@ then rots instead of contradicting itself, which is not an improvement.
 **Decided by:** Thomas, 2026-09-06.
 
 ---
-
 ### 2026-09-06 · `status.md` is a durable snapshot, not a work log
 
 **Decision:** the rule that `status.md` is edited at the end of every agent session is
@@ -4238,7 +4267,6 @@ Rejected — the cadence was itself the problem.
 below as history.
 
 ---
-
 ### 2026-09-06 · Merge governance — required approving reviews is zero, and that is deliberate
 
 **Decision:** on `main`, **required approving reviews = 0** and **Require review from Code
@@ -4266,7 +4294,6 @@ wording in `ci-cd.md`, `agent-workflow.md`, `CLAUDE.md`, and the 2026-09-06 entr
 Claude Code while applying the pre-P0 check"*, all of which remain below as history.
 
 ---
-
 ### 2026-09-06 · A pull request is a slice; the issue is the completion gate
 
 **Decision:** pull-request state, issue state and Project-board state are three different
@@ -4297,7 +4324,6 @@ it is the failure this project's throttles exist to prevent.
 **Decided by:** Thomas, 2026-09-06.
 
 ---
-
 ### 2026-09-06 · Throttle 1, stated exactly
 
 **Decision:** Throttle 1 opens when **all five** are true:
@@ -4320,7 +4346,6 @@ in the 2026-09-06 entry *"The P0 working agreement — dependency graph, two thr
 blocking taxonomy"*, which remains below as history.
 
 ---
-
 ### 2026-09-06 · better-auth `organization()` is removed in P0 — final
 
 **Decision:** better-auth's `organization()` plugin is **removed during P0**. This is
@@ -4344,7 +4369,6 @@ mode in a new costume.
 **Decided by:** Thomas, 2026-09-06.
 
 ---
-
 ### 2026-09-06 · The OpenAPI baseline is `tests/api-contract/openapi.json`
 
 **Decision:** the **committed baseline** that the drift check compares against is
@@ -4361,7 +4385,6 @@ against itself.
 on `main`.
 
 ---
-
 ### 2026-09-06 · Lane agents record evidence; they do not decide on Thomas's behalf
 
 **Decision:** a lane agent may record **evidence, findings, implementation properties and
@@ -4400,7 +4423,6 @@ decision gets implemented without the verification step that would have caught i
 **Decided by:** Thomas, 2026-09-06.
 
 ---
-
 ### 2026-09-06 · Deployment skeleton — four calls made while building #11
 
 **Decision:** four things were decided in the course of building the deployment
@@ -4457,7 +4479,6 @@ CRITICAL this project already fixed once.
 **Decided by:** Claude Code (deployment lane, #11), recorded for Thomas.
 
 ---
-
 ### 2026-09-06 · PR #13 merged before its mandatory security review — deviation recorded, not waived
 
 **Decision:** **PR #13 was merged on 2026-09-06 before its mandatory security review had been
@@ -4512,7 +4533,6 @@ depending on anyone remembering.
 **Decided by:** Thomas, 2026-09-06
 
 ---
-
 ### 2026-09-06 · The P0 working agreement — dependency graph, two throttles, blocking taxonomy
 
 **Decision:** the way P0 is sequenced and parallelised is settled and written into
@@ -4576,7 +4596,6 @@ rejected: this is operating guidance for the agent doing the work, and
 **Decided by:** Thomas, 2026-09-06 — settled, not to be reopened.
 
 ---
-
 ### 2026-09-06 · The week-2 scope confirmation is a named moment with an owner
 
 **Decision:** at the end of week 2 of any accelerated window, **Thomas writes two lines in
@@ -4592,7 +4611,6 @@ wrong; this one fires regardless, which is why it catches the case where nothing
 **Decided by:** Thomas, 2026-09-06
 
 ---
-
 ### 2026-09-06 · Repository setup, and the working mode from here on
 
 **Decision:** four things are true about how this repository is operated, and P0 code does
@@ -4628,7 +4646,6 @@ not start until the first two are done.
 **Decided by:** Thomas, 2026-09-06
 
 ---
-
 ### 2026-09-06 · Terminology: stage, workstream, step, state — one word each
 
 **Decision:** the P0–P7 sequence is renamed from **phases** to **stages**, and a stage means
@@ -4664,7 +4681,6 @@ deliberately — they are a record of what was said on a date, not living guidan
 reversible per row.
 
 ---
-
 ### 2026-09-06 · Security status is reported as a breakdown, never as "complete"
 
 **Decision:** [status.md](status.md) no longer says "Security review: complete". It carries
@@ -4683,7 +4699,6 @@ green.
 **Decided by:** Thomas, 2026-09-06
 
 ---
-
 ### 2026-09-06 · The Sep 12 milestone is the "Foundation Technical Preview"
 
 **Decision:** the week-1 milestone is renamed from "UAT ready" to **Foundation Technical
@@ -4698,7 +4713,6 @@ arriving on 12 September expecting to accept a product.
 **Decided by:** Thomas, 2026-09-06
 
 ---
-
 ### 2026-09-06 · The engine boundary — plugin, or domain module plus a flag
 
 **Decision:** [plugin-architecture.md](../01-architecture/plugin-architecture.md) gains one
@@ -4720,7 +4734,6 @@ without the ceremony.
 **Decided by:** Thomas, 2026-09-06
 
 ---
-
 ### 2026-09-06 · PostgreSQL RLS is promoted from deferred to a P0 prototype
 
 **Decision:** row-level security becomes a **P0 prototype** on `work_item`, `comment` and
@@ -4745,7 +4758,6 @@ the deferred list in [roadmap.md](roadmap.md).
 **Decided by:** Thomas, 2026-09-06
 
 ---
-
 ### 2026-09-06 · The person model — one person, one organisation
 
 **Decision:** a `person` belongs to **exactly one organisation**, fixed at creation.
@@ -4782,7 +4794,6 @@ addresses*. That was a needless restriction — the identity key was never the a
 **Decided by:** Thomas, 2026-09-06
 
 ---
-
 ### 2026-09-06 · Small design choices made by Claude Code while applying the pre-P0 check — all reversible
 
 **Decision:** while applying the ≈200 findings, a handful of gaps had no decision behind
@@ -4810,7 +4821,6 @@ silently is how v1 drifted. This table is the middle path — decided, visible, 
 **Decided by:** Claude Code (Fable), 2026-09-06 — each row stands unless Thomas reverses it.
 
 ---
-
 ### 2026-09-05 · kaneo snapshot commit: upstream main `42bb8011` — **confirmed 2026-09-06**
 
 **Decision — CONFIRMED by Thomas, 2026-09-06.** Fork from upstream `main` commit
@@ -4848,7 +4858,6 @@ no release is scheduled and the fork has no upstream relationship to benefit fro
 check; **confirmed by Thomas on 2026-09-06**.
 
 ---
-
 ### 2026-09-05 · Fork-time removal and disable list — the fork is not done until every item is gone
 
 **Decision:** P0 step 1 is not complete, and the route-coverage gate is not trusted, until
@@ -4920,7 +4929,6 @@ plugin that is *on*; only an explicit removal list can.
 sign-in is off and auto-link is off by default"); list drafted by Claude Code (Fable).
 
 ---
-
 ### 2026-09-05 · Session revocation SLA — the inherited five-minute cookie cache is disabled
 
 **Decision:** `session.cookieCache` is **disabled** at fork. Every request that presents a
@@ -4947,7 +4955,6 @@ promises Entra deactivation ends access "within a minute").
 '5 minutes' in the inherited config"); drafted by Claude Code (Fable).
 
 ---
-
 ### 2026-09-05 · Environment surface at the fork — every kaneo variable gets a verdict
 
 **Decision:** kaneo's API reads about eighty distinct environment variables (`KANEO_*`,
@@ -4972,7 +4979,6 @@ mentioned environment variables — the largest single body of P0 step-1 work wa
 **Decided by:** Thomas (message of 2026-09-05, item 5); table drafted by Claude Code (Fable).
 
 ---
-
 ### 2026-09-05 · Migrations: kaneo's history is inherited; removals are additive migrations — confirm with the SHA
 
 **Decision — CONFIRMED by Thomas, 2026-09-06.**
@@ -5001,7 +5007,6 @@ append-only grants) is appended into generated migration files, journal-tracked.
 **Decided by:** Thomas (message of 2026-09-05); wording by Claude Code (Fable).
 
 ---
-
 ### 2026-09-05 · A fresh install uses `storage.filesystem`; SeaweedFS is an opt-in Compose profile
 
 **Decision:** on a new instance the active storage plugin is `storage.filesystem`
@@ -5026,7 +5031,6 @@ now aligned to the decision.
 **Decided by:** Thomas (environment-variables decision); alignment by Claude Code (Fable).
 
 ---
-
 ### 2026-09-05 · Do-not 16 — no commit, push or merge without Thomas's explicit approval in the same session
 
 **Decision:** [AGENTS.md](../../AGENTS.md) gains do-not 16, in Thomas's words: *"Commit,
@@ -5051,7 +5055,6 @@ so "only Thomas merges" has a mechanism, whichever form is in force.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Third absolute — an unavailable reviewer is not a downgraded reviewer
 
 **Decision:** [agent-workflow.md](../04-engineering/agent-workflow.md) § Model tiers gains
@@ -5072,7 +5075,6 @@ becomes the rule — named so it cannot be routed around.
 **Decided by:** Thomas (message of 2026-09-05, suggestion 3)
 
 ---
-
 ### 2026-09-05 · Go-live rehearsal gate — two lanes, timed, before the first real tenant
 
 **Decision:** [definition-of-done.md](../04-engineering/definition-of-done.md) gains a
@@ -5098,7 +5100,6 @@ restore, upgrade and the setup token are shell steps in the deployment design.
 Code (Fable)
 
 ---
-
 ### 2026-09-05 · `notify.email` (SMTP) is core delivery
 
 **Decision:** the SMTP channel (`notify.email`) is **core**, not a future integration.
@@ -5117,7 +5118,6 @@ and consistent across notifications.md, plugin-architecture.md, roadmap.md and g
 **Decided by:** Thomas (confirmed 2026-09-05)
 
 ---
-
 ### 2026-09-05 · Unauthenticated invitation lookup stays, as a `public` route
 
 **Decision:** kaneo's `GET /invitation/public/:id` (`apps/api/src/index.ts:240`) — the
@@ -5134,7 +5134,6 @@ unauthenticated route in kaneo's `index.ts`.
 **Decided by:** Claude Code (Fable) — reversible; Thomas may reverse to "remove" in one line.
 
 ---
-
 ### 2026-09-05 · Pages needs a spec before P5 step 2; the fixed-report count is twenty
 
 **Decision:** "Pages" stays scheduled in P5 and in the screen inventory but is marked
@@ -5152,7 +5151,6 @@ five documents that the owning spec's own tables contradict is how counts drift.
 (Fable) — writing the spec or dropping Pages from P5 remains Thomas's call.
 
 ---
-
 ### 2026-09-05 · Pre-P0 check applied — where each class of finding landed
 
 **Decision:** the pre-P0 check (Fable, 2026-09-05; ≈200 verified findings, eight lenses,
@@ -5177,7 +5175,6 @@ files is either applied in its owning document or named here as a decision.
 applied by Claude Code (Fable) with Sonnet edit agents and Opus review.
 
 ---
-
 ### 2026-09-05 · Confirmed decisions A–N, and Microsoft Entra SCIM/OIDC as core delivery
 
 **Decision:** Thomas's confirmed decision document of 2026-09-05 is **product policy**.
@@ -5237,7 +5234,6 @@ confirmation for deletion. Both are now first-class models with one authoritativ
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Rule-id prefixes are unique per spec; three collisions renumbered
 
 **Decision:** every behaviour-rule prefix belongs to exactly one document, registered in
@@ -5256,7 +5252,6 @@ test named after it, ambiguous.
 **Decided by:** Thomas (convention), applied by Claude Code
 
 ---
-
 ### 2026-09-05 · Spec closure pass: the corpus was not buildable as written, and is now closer
 
 **Decision:** act on the [planning review](review-2026-09-05.md)'s findings before P0
@@ -5305,7 +5300,6 @@ above was a place an implementer would have guessed, and guessed load-bearingly.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Environment variables: five required, six optional, nothing else — and no bootstrap admin email by default
 
 **Decision:** on Thomas's instruction ("I don't like many env values… just db and object
@@ -5328,7 +5322,6 @@ one more thing a customer must edit in a file.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Tech stack versions reviewed against current upstream status; MinIO dropped
 
 **Decision:** after checking every pin in [tech stack](../01-architecture/tech-stack.md)
@@ -5365,7 +5358,6 @@ current when it is not.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · OpenAPI target moved from 3.1 to 3.2
 
 **Decision:** [API design](../01-architecture/api-design.md) targets OpenAPI 3.2, the
@@ -5381,7 +5373,6 @@ it at implementation time.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · P0 produces an inherited-features register; inherited-but-unspecified features ship flagged off
 
 **Decision:** P0 step 1 ([phases.md](phases.md)) now includes a one-page
@@ -5408,7 +5399,6 @@ overstated what was missing (calendar/gantt/time entries/automations are inherit
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Release plan: versions start at 2.0.0-alpha.1; `latest` means stable; images are signed
 
 **Decision:** [release-plan.md](release-plan.md) is the release policy. Three points that
@@ -5443,7 +5433,6 @@ explanation); a `next` branch for pre-releases (rejected — the second long-liv
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Inbound email is a candidate, not P5 — a contradiction corrected
 
 **Decision:** [intake-queue.md](../03-features/intake-queue.md) said inbound email parsing
@@ -5458,7 +5447,6 @@ unnoticed.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · CHANGELOG.md added; release notes formalised alongside the auto-generated log
 
 **Decision:** a `CHANGELOG.md` exists at the repo root from today, in Keep a Changelog
@@ -5479,7 +5467,6 @@ close, [SDLC](../04-engineering/sdlc.md) step 8) is cheaper than reconciling the
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · The engine pattern generalises beyond the six plugin kinds; the calendar is allowed to move, the pattern is not
 
 **Decision:** [plugin-architecture.md § the engine pattern](../01-architecture/plugin-architecture.md#the-engine-pattern--making-any-feature-pluggable)
@@ -5501,7 +5488,6 @@ the architecture.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Model tiers for Claude Code's own subagents; security review is Opus, always
 
 **Decision:** within Claude Code's own orchestration of Task/Agent subagents, the main
@@ -5520,7 +5506,6 @@ and security checkpoints are exactly where a stronger model earns its cost.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Reporting is three tiers, not one report builder
 
 **Decision:** [reports-and-dashboards.md](../03-features/reports-and-dashboards.md) now
@@ -5545,7 +5530,6 @@ exhausting."
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · AWS Marketplace is the first external sales channel; metering is an optional plugin
 
 **Decision:** pursue an AWS Marketplace container-product listing as the first externally
@@ -5574,7 +5558,6 @@ it. The `license` plugin kind (ADR 0013) remains the architecture for whenever t
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · One-line installer wraps `scripts/deploy.sh`, does not replace it
 
 **Decision:** add `curl -fsSL https://get.taskdesk.dev | bash` as the recommended install
@@ -5596,7 +5579,6 @@ must also work for.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Ticket lifecycle engine and terminology are formally separated, both fully renameable
 
 **Decision:** formalise, as [ADR 0011](../01-architecture/adr/0011-ticket-lifecycle-engine.md)
@@ -5622,7 +5604,6 @@ this" about — exactly the ADR criterion.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Customer self-service lifecycle reconfirmed; withdrawal added
 
 **Decision:** reconfirm that customers create their own requests and act on their own
@@ -5645,7 +5626,6 @@ status preserves it.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Documentation corpus created before any code
 
 **Decision:** write the full `docs/` corpus — architecture, design, features, engineering,
@@ -5663,7 +5643,6 @@ excellent documentation *about* a product nobody wanted to use.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Product name provisionally "TaskDesk"
 
 **Decision:** carry v1's name forward for now, as a placeholder.
@@ -5676,7 +5655,6 @@ branding exercise that should not block the build.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · No dates on the roadmap until P1 closes
 
 **Decision:** the roadmap sequences stages but gives no dates.
@@ -5693,7 +5671,6 @@ as a flexible target (section A of the confirmed decisions); the "until P1 close
 no longer applies. Bookkeeping only.
 
 ---
-
 ### 2026-09-05 · No arbitrary limits on navigation or form size
 
 **Decision:** reject a cap on sidebar entries or on fields per form. Quality is gated by
@@ -5710,7 +5687,6 @@ thing.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Formula and rollup custom fields deferred
 
 **Decision:** custom fields support fixed formats only. No formulas in v2.
@@ -5726,7 +5702,6 @@ immediate requests to extend it.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Round-robin assignment out of scope
 
 **Decision:** no automatic load-balanced or round-robin assignment.
@@ -5738,7 +5713,6 @@ project and per request type covers the real need.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Multi-currency conversion out of scope
 
 **Decision:** store currency per row; group by currency in reports; never convert.
@@ -5750,7 +5724,6 @@ converted total computed with an unstated rate is not.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · Postgres full-text before any search engine
 
 **Decision:** ship with Postgres full-text search. A Meilisearch plugin exists as an option
@@ -5763,7 +5736,6 @@ scale. Adding a search engine is a decision to be made with a measurement, not i
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · No row-level security in Postgres
 
 **Decision:** tenant isolation is enforced in the application, through scoped repositories
@@ -5784,7 +5756,6 @@ why it is not the *primary* control; what changed is that "revisit if a customer
 it" became "find out now, while the schema is three tables old".
 
 ---
-
 ### 2026-09-05 · Collaborative editing deferred past P5
 
 **Decision:** no Hocuspocus or CRDT editing in v2. Concurrent description edits use
@@ -5797,7 +5768,6 @@ evidence that people co-edit ticket descriptions.
 **Decided by:** Thomas
 
 ---
-
 ### 2026-09-05 · kaneo's `public-project` is deleted at fork, not feature-flagged
 
 **Decision:** the anonymous public-board router and screens are removed in P0 step 1. The
@@ -5813,7 +5783,6 @@ the routes, handlers, screens, access paths and any dormant code; no feature fla
 version needs a dedicated spec, separate public routes and a security review first.
 
 ---
-
 ### 2026-09-05 · Reach-affecting project fields are `project:manage_members`
 
 **Decision:** `project.parent_id` and `project.owner_team_id` move off `PATCH
@@ -5827,7 +5796,6 @@ route" stays true.
 **Decided by:** Thomas — confirmed in the 2026-09-05 decision document (drafted by Claude Code at the security checkpoint)
 
 ---
-
 ### 2026-09-05 · Service API keys are bounded by their creator
 
 **Decision:** a workspace service key's capability subset cannot exceed the creator's
@@ -5840,7 +5808,6 @@ credential above its creator's authority, outliving their membership.
 **Decided by:** Thomas — confirmed in the 2026-09-05 decision document (drafted by Claude Code at the security checkpoint)
 
 ---
-
 ### 2026-09-05 · MCP destructive tools need out-of-band human approval
 
 **Decision:** `confirm: true` is replaced by a `pending_action_id` the key's owner approves
@@ -5853,7 +5820,6 @@ primary threat on that surface, not an edge case.
 **Decided by:** Thomas — confirmed in the 2026-09-05 decision document (drafted by Claude Code at the security checkpoint)
 
 ---
-
 ### 2026-09-05 · `TASKDESK_TRUST_PROXY` is a hop count; the app port is never published
 
 **Decision:** the variable is an integer number of trusted proxy hops (default `1`), not a
@@ -5867,7 +5833,6 @@ audit log's `actor_ip`.
 **Decided by:** Thomas — confirmed in the 2026-09-05 decision document (drafted by Claude Code at the security checkpoint)
 
 ---
-
 ### 2026-09-05 · Internal red-team pass at the go-live gate
 
 **Decision:** an independent Opus context runs a red-team pass over the authorization
@@ -5883,7 +5848,6 @@ lands — in addition to, not instead of, the external penetration test (R19).
 ## Waivers
 
 Gate waivers, recorded per [UX quality gates](../02-design/ux-quality-gates.md).
-
 ### 2026-09-05 · Gate activities consolidated before `2.0.0` — recorded as a waiver, pending confirmation
 **Gate:** the per-stage manual accessibility pass, fresh-eyes test, four-browser check and k6 baseline ([sdlc.md](../04-engineering/sdlc.md) stage gate)
 **Reason:** [release-plan.md](release-plan.md) runs these four **once, before `2.0.0`**, over the whole surface instead of once per stage. That is a gate waiver granted by a planning document; the waiver procedure ([ux-quality-gates.md](../02-design/ux-quality-gates.md)) was not followed when it was written, so it is recorded here to be visible
@@ -5891,6 +5855,18 @@ Gate waivers, recorded per [UX quality gates](../02-design/ux-quality-gates.md).
 **Approved by:** *pending — Thomas*
 
 ```markdown
+### YYYY-MM-DD · Short title
+**Decision:** what we are doing
+**Why:** the reasoning
+**Alternatives:** what was rejected, briefly
+**Decided by:** who
+```
+### YYYY-MM-DD · Short title
+**Decision:** what we are doing
+**Why:** the reasoning
+**Alternatives:** what was rejected, briefly
+**Decided by:** who
+```
 ### YYYY-MM-DD · Waived <gate> in PR #n
 **Gate:** G-n
 **Reason:**

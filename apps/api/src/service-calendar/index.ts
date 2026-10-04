@@ -1,6 +1,8 @@
 import {
   annualCoverMinutes,
   calendarHasCover,
+  HolidayImportError,
+  parseHolidayIcs,
   type ServiceCalendar,
   validateCalendar,
   weeklyCoverMinutes,
@@ -24,11 +26,13 @@ import { workspaceAccess } from "../utils/workspace-access-middleware";
 import {
   createCalendar,
   getCalendar,
+  importCalendarHolidays,
   listCalendars,
   ServiceCalendarVersionConflictError,
   updateCalendar,
 } from "./repository";
 import {
+  calendarHolidayImportSchema,
   calendarListSchema,
   calendarPreviewSchema,
   calendarSchema,
@@ -38,6 +42,7 @@ import {
   calendarDataSchema,
   calendarIdParam,
   createCalendarBody,
+  importHolidayBody,
   optionalCalendarIfMatchHeader,
   previewQuery,
   updateCalendarBody,
@@ -199,6 +204,42 @@ const previewRoute = createRoute({
   },
 });
 
+const importHolidaysRoute = createRoute({
+  method: "post",
+  path: "/{id}/holidays/import",
+  operationId: "importServiceCalendarHolidays",
+  tags: ["Service calendars"],
+  summary: "Import finite all-day holidays from iCalendar",
+  description:
+    "Accepts the bounded CAL-17 RFC 5545 profile. The complete file is validated before an atomic append.",
+  middleware: [
+    calendarReach,
+    requireApiKeyPermissionScope({ sla_policy: ["manage"] }),
+    requireWorkspaceCapability("sla_policy:manage"),
+  ] as const,
+  request: {
+    params: calendarIdParam,
+    headers: optionalCalendarIfMatchHeader,
+    body: {
+      required: true,
+      content: { "application/json": { schema: importHolidayBody } },
+    },
+  },
+  responses: {
+    200: jsonResponse(
+      "Imported calendar holidays",
+      calendarHolidayImportSchema,
+    ),
+    400: errorResponse("Invalid or unsupported iCalendar file"),
+    403: errorResponse("Missing sla_policy:manage permission"),
+    404: errorResponse("Service calendar not found"),
+    409: jsonResponse(
+      "Calendar version conflict",
+      calendarVersionConflictSchema,
+    ),
+  },
+});
+
 const router = apiRouter<BaseVariables & { workspaceId: string }>()
   .openapi(listRoute, async (c) =>
     c.json(
@@ -281,6 +322,56 @@ const router = apiRouter<BaseVariables & { workspaceId: string }>()
     if (!result)
       throw new HTTPException(404, { message: "Service calendar not found" });
     return c.json(calendarSchema.parse(result.row), 200);
+  })
+  .openapi(importHolidaysRoute, async (c) => {
+    const id = c.req.valid("param").id;
+    const ifMatch = c.req.valid("header")["if-match"];
+    const assertedVersion =
+      ifMatch === undefined ? undefined : Number(ifMatch.slice(1, -1));
+    let imported: ReturnType<typeof parseHolidayIcs>;
+    try {
+      imported = parseHolidayIcs(c.req.valid("json").ics);
+    } catch (error) {
+      if (error instanceof HolidayImportError)
+        throw new HTTPException(400, { message: error.message });
+      throw error;
+    }
+    const apiKey = c.get("apiKey");
+    let result: Awaited<ReturnType<typeof importCalendarHolidays>> | undefined;
+    try {
+      result = await importCalendarHolidays(
+        id,
+        c.get("workspaceId"),
+        imported,
+        assertedVersion,
+        {
+          actorId: c.get("userId"),
+          actorType: apiKey ? "api_key" : "person",
+          apiKeyId: apiKey?.id ?? null,
+        },
+      );
+    } catch (error) {
+      if (error instanceof ServiceCalendarVersionConflictError)
+        return c.json(
+          {
+            message: error.message,
+            assertedVersion: error.assertedVersion,
+            currentVersion: error.currentVersion,
+          },
+          409,
+        );
+      throw error;
+    }
+    if (!result)
+      throw new HTTPException(404, { message: "Service calendar not found" });
+    return c.json(
+      calendarHolidayImportSchema.parse({
+        calendar: result.row,
+        importedCount: result.importedCount,
+        duplicateCount: result.duplicateCount,
+      }),
+      200,
+    );
   })
   .openapi(previewRoute, async (c) => {
     const row = await getCalendar(

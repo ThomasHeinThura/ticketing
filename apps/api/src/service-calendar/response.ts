@@ -32,3 +32,8 @@ export const calendarPreviewSchema = z.object({
   annualCoverMinutes: z.number().int(),
   hasCover: z.boolean(),
 });
+export const calendarHolidayImportSchema = z.object({
+  calendar: calendarSchema,
+  importedCount: z.number().int().min(0),
+  duplicateCount: z.number().int().min(0),
+});

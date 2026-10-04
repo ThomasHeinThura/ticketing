@@ -6,6 +6,7 @@ import {
   parseGeneratedRouteUrl,
   parseServiceCalendarListSearchFromQueryString,
   parseWorkItemActivityFilter,
+  parseSlaPolicyListSearch,
   parseWorkItemListSearch,
   parseWorkItemListSearchFromQueryString,
   routes,
@@ -230,3 +231,51 @@ describe("routes.workItemDetail", () => {
     );
   });
 });
+
+describe("routes.serviceCalendars", () => {
+  it("builds the list route named by the screen inventory", () => {
+    expect(routes.serviceCalendars.build()).toBe("/agent/settings/calendars");
+  });
+  it("round-trips one opaque cursor through URL encoding without page history", () => {
+    const search = { cursor: "cursor/a+b?=" };
+    const url = routes.serviceCalendars.build(search);
+    expect(
+      parseServiceCalendarListSearchFromQueryString(url.split("?")[1] ?? ""),
+    ).toEqual(search);
+    expect(url).not.toContain("history=");
+  it("preserves the editor id and preview year in its URL", () => {
+    const url = routes.serviceCalendarEditor.build({ id: "cal/one" }, 2026);
+    expect(url).toBe("/agent/settings/calendars/cal%2Fone?year=2026");
+      parseCalendarEditorSearch({
+        year: new URL(url, "https://taskdesk.invalid").searchParams.get("year"),
+      }),
+    ).toEqual({ year: 2026 });
+  it("does not add search state when the year is not supplied", () => {
+    expect(routes.serviceCalendarEditor.build({ id: "new" })).toBe(
+      "/agent/settings/calendars/new",
+    );
+});
+describe("routes.slaPolicies", () => {
+  it("round-trips the list cursor and editor id through registered route builders", () => {
+    const url = routes.slaPolicies.build({ cursor: "opaque/a+b" });
+    expect(url).toBe("/agent/settings/sla-policies?cursor=opaque%2Fa%2Bb");
+      parseSlaPolicyListSearch({
+        cursor: new URL(url, "https://taskdesk.invalid").searchParams.get(
+          "cursor",
+        ),
+    ).toEqual({ cursor: "opaque/a+b" });
+    expect(routes.slaPolicyEditor.build({ id: "policy/one" })).toBe(
+      "/agent/settings/sla-policies/policy%2Fone",
+describe("request type and intake route contracts", () => {
+  it("registers authoring, queue, and submission detail routes", () => {
+    expect(generatedRouteMetadata.agent).toContain(routes.requestTypes.path);
+    expect(generatedRouteMetadata.agent).toContain(
+      routes.requestTypeEditor.path,
+    expect(generatedRouteMetadata.agent).toContain(routes.intakeQueue.path);
+      routes.intakeSubmission.path,
+    expect(routes.requestTypes.build()).toBe("/agent/settings/request-types");
+    expect(routes.requestTypeEditor.build({ id: "type/one" })).toBe(
+      "/agent/settings/request-types/type%2Fone",
+    expect(routes.intakeQueue.build()).toBe("/agent/triage?tab=intake");
+    expect(routes.intakeSubmission.build({ ref: "SUB-12" })).toBe(
+      "/agent/submissions/SUB-12",

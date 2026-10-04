@@ -73,6 +73,19 @@ test("workspace package names are read from the package segment only", () => {
   assert.equal(workspaceNameForSpecifier("./local"), null);
 });
 
+test("web may consume the browser-safe intake domain export", () => {
+  assert.deepEqual([...WORKSPACE_EDGES.get("@taskdesk/web")].sort(), [
+    "@taskdesk/domain",
+    "@taskdesk/libs",
+    "@taskdesk/permissions",
+    "@taskdesk/ui",
+  ]);
+  assert.equal(
+    workspaceNameForSpecifier("@taskdesk/domain/intake"),
+    "@taskdesk/domain",
+  );
+});
+
 test("workspace analyzer permits libs' type contract and rejects forbidden app imports", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "taskdesk-deps-"));
   t.after(() => rm(root, { recursive: true, force: true }));
@@ -649,7 +662,15 @@ test("workspace aliases and tsconfig paths resolve to package targets and matrix
   await writeFile(path.join(email, "src", "index.ts"), "export {};\n");
   await writeFile(
     path.join(web, "src", "edge.ts"),
-    'import "@taskdesk/domain"; import "@taskdesk/email";',
+    'import "@taskdesk/domain/intake";',
+  );
+  await writeFile(
+    path.join(web, "src", "root-edge.ts"),
+    'import "@taskdesk/domain";',
+  );
+  await writeFile(
+    path.join(web, "src", "email-edge.ts"),
+    'import "@taskdesk/email";',
   );
   await writeFile(
     path.join(libs, "src", "edge.ts"),
@@ -663,8 +684,9 @@ test("workspace aliases and tsconfig paths resolve to package targets and matrix
   );
   assert.match(
     messages,
-    /apps\/web\/src\/edge\.ts.*outside the documented workspace edge matrix/s,
+    /apps\/web\/src\/root-edge\.ts.*must use the browser-safe @taskdesk\/domain\/intake export/s,
   );
+  assert.doesNotMatch(messages, /apps\/web\/src\/edge\.ts/);
   assert.match(messages, /packages\/libs\/src\/edge\.ts.*from apps\/\*\*/s);
 });
 

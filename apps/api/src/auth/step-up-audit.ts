@@ -8,7 +8,10 @@ export type StepUpOperation =
   | "metrics_token_rotate"
   | "mfa_reset"
   | "oidc_group_mapping_create"
-  | "oidc_group_mapping_update";
+  | "oidc_group_mapping_update"
+  | "scim_admin_update"
+  | "scim_token_rotate"
+  | "scim_token_revoke";
 
 export type StepUpAuditAction =
   | "auth.step_up_issued"
@@ -25,6 +28,11 @@ const operationRoutes: Record<StepUpOperation, string> = {
     "POST /api/instance/identity-connections/{id}/oidc-group-mappings",
   oidc_group_mapping_update:
     "PATCH /api/instance/identity-connections/{id}/oidc-group-mappings/{mappingId}",
+  scim_admin_update: "PATCH /api/instance/identity-connections/{id}/scim",
+  scim_token_rotate:
+    "POST /api/instance/identity-connections/{id}/scim/rotate-token",
+  scim_token_revoke:
+    "POST /api/instance/identity-connections/{id}/scim/revoke-token",
 };
 
 /**

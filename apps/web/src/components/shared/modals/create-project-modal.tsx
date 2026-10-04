@@ -16,11 +16,17 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@taskdesk/ui";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import icons from "@/constants/project-icons";
 import useCreateProject from "@/hooks/mutations/project/use-create-project";
+import useCustomerOrganisations from "@/hooks/queries/project/use-customer-organisations";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { cn } from "@/lib/cn";
 import generateProjectSlug from "@/lib/generate-project-id";
@@ -36,15 +42,20 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [selectedIcon, setSelectedIcon] = useState("Layout");
+  const [organisationId, setOrganisationId] = useState("internal");
   const [iconPopoverOpen, setIconPopoverOpen] = useState(false);
   const [iconSearch, setIconSearch] = useState("");
   const queryClient = useQueryClient();
   const { data: workspace } = useActiveWorkspace();
+  const { data: customerOrganisations = [] } = useCustomerOrganisations(
+    workspace?.id ?? "",
+  );
   const { mutateAsync } = useCreateProject({
     name,
     slug,
     workspaceId: workspace?.id ?? "",
     icon: selectedIcon,
+    organisationId: organisationId === "internal" ? null : organisationId,
   });
   const SelectedIcon =
     icons[selectedIcon as keyof typeof icons] || icons.Layout;
@@ -57,6 +68,7 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
     setName("");
     setSlug("");
     setSelectedIcon("Layout");
+    setOrganisationId("internal");
     setIconPopoverOpen(false);
     setIconSearch("");
     onClose();
@@ -192,6 +204,34 @@ function CreateProjectModal({ open, onClose }: CreateProjectModalProps) {
           </div>
 
           <div className="space-y-3 px-3">
+            <div className="space-y-2">
+              <label
+                className="text-sm font-medium"
+                htmlFor="project-organisation"
+              >
+                {t("common:modals.createProject.organisationLabel")}
+              </label>
+              <Select
+                value={organisationId}
+                onValueChange={(value) => {
+                  if (value !== null) setOrganisationId(value);
+                }}
+              >
+                <SelectTrigger id="project-organisation">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="internal">
+                    {t("common:modals.createProject.internalOrganisation")}
+                  </SelectItem>
+                  {customerOrganisations.map((organisation) => (
+                    <SelectItem key={organisation.id} value={organisation.id}>
+                      {organisation.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground">

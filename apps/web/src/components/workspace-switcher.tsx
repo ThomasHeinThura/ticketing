@@ -194,6 +194,20 @@ export function WorkspaceSwitcher() {
                     </DropdownMenuItem>
                   </>
                 )}
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate({ to: "/god-mode/features" });
+                      }}
+                      className="h-7 text-sm data-highlighted:bg-sidebar-accent data-highlighted:text-sidebar-accent-foreground"
+                    >
+                      <span>Feature availability</span>
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

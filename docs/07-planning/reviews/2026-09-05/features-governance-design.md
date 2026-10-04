@@ -65,6 +65,18 @@ numbered rules describe state the data model cannot store**, which is the cleare
 Data references: `custom_field_section`, `custom_field`, `custom_field_type_visibility`,
 `custom_field_value` all exist ✓. Capability `custom_field:manage` present in `rbac.md` ✓.
 
+### Current owning-contract disposition — 2026-10-04
+
+The `not-ready` verdict and findings above are preserved as the historical 2026-09-05
+audit. A fresh independent GPT-6 Luna readiness review of the corrected contract at exact
+source SHA `efe21b6defdb5464cc89df0785e106d5e0563bbe` returned **READY**, confirming all 12
+original findings and three subsequent contract gaps resolved. The evidence is recorded in
+[`custom-fields-author-disposition.md`](custom-fields-author-disposition.md) and the private
+report at `/Users/heinthura/.codex/taskdesk-evidence/2026-10-04/custom-field-owning-readiness-efe21b6d/review-report.md`.
+No current owning §4 contract finding remains active. This disposition clears specification
+readiness only; it does not claim the full P4 API, editor, retention job, or test suite is
+implemented.
+
 ---
 
 ## 5. `notifications.md`

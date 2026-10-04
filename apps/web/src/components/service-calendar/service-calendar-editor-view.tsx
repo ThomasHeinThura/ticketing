@@ -207,6 +207,9 @@ export function ServiceCalendarEditorView({
               <HolidayListCard
                 holidays={state.holidays}
                 holidayIds={state.holidayIds}
+                calendar={calendar}
+                canImport={state.canManageCalendars && !isNew}
+                onImported={state.applyImportedHolidays}
                 onAdd={state.addHoliday}
                 onChange={state.replaceHoliday}
                 onPatch={state.patchHoliday}

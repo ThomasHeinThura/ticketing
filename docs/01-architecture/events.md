@@ -97,7 +97,7 @@ Columns: **A** — available as an automation trigger · **W** — deliverable b
 
 | Key | Emitted when | A | W | N | Payload |
 | --- | --- | :-: | :-: | :-: | --- |
-| `submission.received` | A submission is created | ✅ | ✅ | ✅ | `ref`, `requestTypeId`, `organisationId` |
+| `submission.received` | A portal submission is finalized (not when an upload draft is created) | ✅ | ✅ | ✅ | `ref`, `requestTypeId`, `organisationId` |
 | `submission.replied` | Either side posts to the submission thread | — | — | ✅ | `ref`, `by: customer\|staff` |
 | `submission.accepted` | Triage converts it to a work item | — | ✅ | ✅ | `ref`, `workItemKey` |
 | `submission.declined` | Triage declines, with a reason | — | ✅ | ✅ | `ref`, `reason` |

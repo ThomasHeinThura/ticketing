@@ -1,4 +1,6 @@
+import { and, eq, isNull } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
+import db, { schema } from "../database";
 import {
   apiRouter,
   type BaseVariables,
@@ -16,6 +18,7 @@ import archiveProjectCtrl from "./controllers/archive-project";
 import createMilestoneCtrl from "./controllers/create-milestone";
 import createPrerequisiteCtrl from "./controllers/create-prerequisite";
 import createProjectCtrl, {
+  InvalidProjectOrganisationError,
   ProjectSlugTakenError,
 } from "./controllers/create-project";
 import deleteDocumentLinkCtrl from "./controllers/delete-document-link";
@@ -102,11 +105,31 @@ const createProjectRoute = createRoute({
   },
   responses: {
     200: jsonResponse("The created project", projectSchema),
-    400: errorResponse("Invalid body, or workspace ID could not be determined"),
+    400: errorResponse("Invalid body, workspace ID, or customer organisation"),
     403: errorResponse(
       "No workspace access, or missing project:create permission",
     ),
     409: errorResponse("That project slug is already taken"),
+  },
+});
+
+const customerOrganisationsRoute = createRoute({
+  method: "get",
+  operationId: "listProjectCustomerOrganisations",
+  path: "/organisations",
+  tags: ["Projects"],
+  summary: "List active customer organisations for project creation",
+  middleware: [
+    workspaceAccess.fromQuery(),
+    requireWorkspacePermission({ project: ["create"] }),
+  ] as const,
+  request: { query: workspaceIdQuery },
+  responses: {
+    200: jsonResponse(
+      "Customer organisations",
+      z.array(z.object({ id: z.string(), name: z.string() })),
+    ),
+    403: errorResponse("No access to the workspace"),
   },
 });
 
@@ -646,6 +669,23 @@ const deleteDocumentLinkRoute = createRoute({
 });
 
 const project = apiRouter<BaseVariables & { workspaceId: string }>()
+  .openapi(customerOrganisationsRoute, async (c) => {
+    const rows = await db
+      .select({
+        id: schema.organisationTable.id,
+        name: schema.organisationTable.name,
+      })
+      .from(schema.organisationTable)
+      .where(
+        and(
+          eq(schema.organisationTable.active, true),
+          eq(schema.organisationTable.isInternal, false),
+          isNull(schema.organisationTable.deletedAt),
+        ),
+      )
+      .orderBy(schema.organisationTable.name);
+    return c.json(rows, 200);
+  })
   .openapi(listProjectsRoute, async (c) => {
     const workspaceId = c.get("workspaceId");
     const { includeArchived } = c.req.valid("query");
@@ -656,15 +696,26 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
     return c.json(projects, 200);
   })
   .openapi(createProjectRoute, async (c) => {
-    const { name, icon, slug } = c.req.valid("json");
+    const { name, icon, slug, organisationId } = c.req.valid("json");
     const workspaceId = c.get("workspaceId");
     try {
-      const newProject = await createProjectCtrl(workspaceId, name, icon, slug);
+      const newProject = await createProjectCtrl(
+        workspaceId,
+        name,
+        icon,
+        slug,
+        organisationId ?? null,
+      );
       return c.json(newProject, 200);
     } catch (error) {
       if (error instanceof ProjectSlugTakenError) {
         throw new HTTPException(409, {
           message: "That project slug is already taken",
+        });
+      }
+      if (error instanceof InvalidProjectOrganisationError) {
+        throw new HTTPException(400, {
+          message: "Invalid customer organisation",
         });
       }
       throw error;

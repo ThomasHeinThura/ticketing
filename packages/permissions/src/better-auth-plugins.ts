@@ -36,6 +36,11 @@ export const BETTER_AUTH_PLUGINS: readonly ApprovedPlugin[] = [
     note: "the protocol implementation every auth.oidc connection is built on",
   },
   {
+    id: "taskdesk-identity-oidc",
+    verdict: "added",
+    note: "P3 connection-bound Entra authorization-code flow with TaskDesk ID-token and admission validation",
+  },
+  {
     id: "api-key",
     verdict: "kept",
     note: "the credential only; our api_key table owns everything else",

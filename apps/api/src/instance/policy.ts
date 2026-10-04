@@ -9,6 +9,99 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * (`docs/01-architecture/rbac.md`, elevation coverage test).
  */
 export const instancePolicies = {
+  "GET /api/instance/features": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide feature settings",
+    },
+    elevated: false,
+    elevationExemptionReason: "feature switches do not grant route permissions",
+  },
+  "PATCH /api/instance/features/{featureKey}": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "instance-wide feature settings",
+    },
+    elevated: false,
+    elevationExemptionReason: "feature switches do not grant route permissions",
+    sessionOnly: true,
+  },
+  "GET /api/instance/identity-connections": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "identity connection inventory is an instance-wide admin view",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "safe identity DTO omits client secrets and raw provider claims",
+  },
+  "GET /api/instance/organisations/{id}/identity": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "identity settings are administered only by instance administrators",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "safe identity DTO omits client secrets and raw provider claims",
+  },
+  "GET /api/instance/identity-connections/{id}/scim": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "safe SCIM configuration read has no tenant resource",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "read-only SCIM settings omit token material and identity payloads",
+  },
+  "PATCH /api/instance/identity-connections/{id}/scim": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "SCIM administration is an instance-wide identity operation",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
+  "POST /api/instance/identity-connections/{id}/scim/rotate-token": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "SCIM token rotation changes instance identity authority",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
+  "POST /api/instance/identity-connections/{id}/scim/revoke-token": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "SCIM token revocation changes instance identity authority",
+    },
+    elevated: true,
+    sessionOnly: true,
+  },
   "POST /api/instance/users/{id}/reset-mfa": {
     capability: "instance:admin",
     scope: "instance",

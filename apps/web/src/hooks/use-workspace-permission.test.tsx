@@ -70,6 +70,8 @@ function fullCapabilityMap(overrides: Partial<Record<string, boolean>> = {}) {
     createPublicComments: false,
     createInternalComments: false,
     manageServiceCalendars: false,
+    manageRequestTypes: false,
+    triageIntake: false,
     ...overrides,
   };
 }

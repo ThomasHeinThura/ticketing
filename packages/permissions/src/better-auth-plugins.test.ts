@@ -18,8 +18,12 @@ describe("the approved plugin list", () => {
   it("passes when the constructed list is exactly the kept set", () => {
     const result = checkPluginList(KEPT);
     expect(result.ok).toBe(true);
-    // P0 two-factor is also an approved addition; passkey is the later-stage addition.
-    expect(result.pendingAddition).toEqual(["passkey", "two-factor"]);
+    // OIDC and two-factor are approved additions; passkey is the later-stage addition.
+    expect(result.pendingAddition).toEqual([
+      "passkey",
+      "taskdesk-identity-oidc",
+      "two-factor",
+    ]);
   });
 
   it("accepts the explicit current P0 plugin construction", () => {
@@ -29,6 +33,7 @@ describe("the approved plugin list", () => {
       "two-factor",
       "email-otp",
       "generic-oauth",
+      "taskdesk-identity-oidc",
       "api-key",
       "admin",
     ]);

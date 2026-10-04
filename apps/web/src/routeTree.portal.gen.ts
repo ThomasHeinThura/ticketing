@@ -10,33 +10,63 @@
 
 import { Route as rootRouteImport } from './routes/portal/__root'
 import { Route as IndexRouteImport } from './routes/portal/index'
+import { Route as SubmissionsRouteImport } from './routes/portal/submissions'
+import { Route as CatalogueKeyRouteImport } from './routes/portal/catalogue.$key'
+import { Route as SubmissionsRefRouteImport } from './routes/portal/submissions.$ref'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SubmissionsRoute = SubmissionsRouteImport.update({
+  id: '/submissions',
+  path: '/submissions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CatalogueKeyRoute = CatalogueKeyRouteImport.update({
+  id: '/catalogue/$key',
+  path: '/catalogue/$key',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SubmissionsRefRoute = SubmissionsRefRouteImport.update({
+  id: '/$ref',
+  path: '/$ref',
+  getParentRoute: () => SubmissionsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/submissions': typeof SubmissionsRouteWithChildren
+  '/catalogue/$key': typeof CatalogueKeyRoute
+  '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/submissions': typeof SubmissionsRouteWithChildren
+  '/catalogue/$key': typeof CatalogueKeyRoute
+  '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/submissions': typeof SubmissionsRouteWithChildren
+  '/catalogue/$key': typeof CatalogueKeyRoute
+  '/submissions/$ref': typeof SubmissionsRefRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/submissions' | '/catalogue/$key' | '/submissions/$ref'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/submissions' | '/catalogue/$key' | '/submissions/$ref'
+  id:
+    '__root__' | '/' | '/submissions' | '/catalogue/$key' | '/submissions/$ref'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SubmissionsRoute: typeof SubmissionsRouteWithChildren
+  CatalogueKeyRoute: typeof CatalogueKeyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +78,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/submissions': {
+      id: '/submissions'
+      path: '/submissions'
+      fullPath: '/submissions'
+      preLoaderRoute: typeof SubmissionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/catalogue/$key': {
+      id: '/catalogue/$key'
+      path: '/catalogue/$key'
+      fullPath: '/catalogue/$key'
+      preLoaderRoute: typeof CatalogueKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/submissions/$ref': {
+      id: '/submissions/$ref'
+      path: '/$ref'
+      fullPath: '/submissions/$ref'
+      preLoaderRoute: typeof SubmissionsRefRouteImport
+      parentRoute: typeof SubmissionsRoute
+    }
   }
 }
 
+interface SubmissionsRouteChildren {
+  SubmissionsRefRoute: typeof SubmissionsRefRoute
+}
+
+const SubmissionsRouteChildren: SubmissionsRouteChildren = {
+  SubmissionsRefRoute: SubmissionsRefRoute,
+}
+
+const SubmissionsRouteWithChildren = SubmissionsRoute._addFileChildren(
+  SubmissionsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SubmissionsRoute: SubmissionsRouteWithChildren,
+  CatalogueKeyRoute: CatalogueKeyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

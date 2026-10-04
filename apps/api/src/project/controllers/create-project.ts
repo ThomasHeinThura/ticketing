@@ -1,7 +1,8 @@
-import { eq, max, sql } from "drizzle-orm";
+import { and, eq, isNull, max, sql } from "drizzle-orm";
 import db from "../../database";
 import {
   columnTable,
+  organisationTable,
   projectSlugClaimTable,
   projectTable,
 } from "../../database/schema";
@@ -36,14 +37,28 @@ export class ProjectSlugTakenError extends Error {
   }
 }
 
+export class InvalidProjectOrganisationError extends Error {
+  constructor() {
+    super("Project organisation must be active and customer-facing");
+    this.name = "InvalidProjectOrganisationError";
+  }
+}
+
 async function createProject(
   workspaceId: string,
   name: string,
   icon: string,
   slug: string,
+  organisationId: string | null = null,
 ) {
   try {
-    return await createProjectRow(workspaceId, name, icon, slug);
+    return await createProjectRow(
+      workspaceId,
+      name,
+      icon,
+      slug,
+      organisationId,
+    );
   } catch (error) {
     // Exact constraint names, not a substring match on `"slug"` (issue #269): this
     // transaction's own inserts can raise EITHER `project`'s `project_slug_unique`
@@ -68,8 +83,24 @@ async function createProjectRow(
   name: string,
   icon: string,
   slug: string,
+  organisationId: string | null,
 ) {
   return db.transaction(async (tx) => {
+    if (organisationId !== null) {
+      const [organisation] = await tx
+        .select({ id: organisationTable.id })
+        .from(organisationTable)
+        .where(
+          and(
+            eq(organisationTable.id, organisationId),
+            eq(organisationTable.active, true),
+            eq(organisationTable.isInternal, false),
+            isNull(organisationTable.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (!organisation) throw new InvalidProjectOrganisationError();
+    }
     // Serialize ordering writes per workspace: without this, two concurrent
     // creates can read the same max(position) and land on the same slot, and a
     // create can interleave with a reorder's renumber. `reorderProjects` takes
@@ -104,6 +135,7 @@ async function createProjectRow(
       .insert(projectTable)
       .values({
         workspaceId,
+        organisationId,
         name,
         icon,
         slug,

@@ -351,6 +351,11 @@ export function useServiceCalendarEditor({
     setHolidayIds((current) => [...current, createFieldId()]);
   }
 
+  function applyImportedHolidays(nextHolidays: Holiday[]) {
+    setHolidays(nextHolidays.map((holiday) => ({ ...holiday })));
+    setHolidayIds(nextHolidays.map(() => createFieldId()));
+  }
+
   function removeHoliday(index: number) {
     setHolidays((current) =>
       current.filter((_, itemIndex) => itemIndex !== index),
@@ -393,6 +398,7 @@ export function useServiceCalendarEditor({
     replaceHoliday,
     patchHoliday,
     removeHoliday,
+    applyImportedHolidays,
     hasCover: WEEKDAYS.some(({ key }) => windows[key].length > 0),
   };
 }

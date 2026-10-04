@@ -6,22 +6,35 @@ import {
   assetTable,
   columnTable,
   documentLinkTable,
+  externalIdentityTable,
   externalLinkTable,
+  identityConnectionTable,
   invitationTable,
   labelTable,
+  membershipGrantTable,
   membershipTable,
   milestoneTable,
   notificationTable,
+  oidcGroupMappingTable,
   organisationQuotaTable,
   organisationTable,
   personTable,
   prerequisiteTable,
   projectSlugClaimTable,
   projectTable,
+  provisioningEventTable,
   roleTable,
   scheduledTransitionTable,
+  scimConnectionTable,
+  scimGroupDirectoryMemberTable,
+  scimGroupMappingTable,
+  scimGroupMemberTable,
+  scimGroupTable,
   serviceCalendarTable,
   sessionTable,
+  slaGoalTable,
+  slaPolicyTable,
+  slaPolicyVersionTable,
   stakeholderTable,
   stateTable,
   stateTemplateTable,
@@ -124,6 +137,8 @@ export const workspaceTableRelations = relations(
     assets: many(assetTable),
     invitations: many(invitationTable),
     notificationWorkspaceRules: many(userNotificationWorkspaceRuleTable),
+    slaPolicies: many(slaPolicyTable),
+    identityConnections: many(identityConnectionTable),
   }),
 );
 
@@ -147,6 +162,10 @@ export const projectTableRelations = relations(
     workspace: one(workspaceTable, {
       fields: [projectTable.workspaceId],
       references: [workspaceTable.id],
+    }),
+    organisation: one(organisationTable, {
+      fields: [projectTable.organisationId],
+      references: [organisationTable.id],
     }),
     tasks: many(taskTable),
     assets: many(assetTable),
@@ -486,6 +505,7 @@ export const organisationTableRelations = relations(
   ({ one, many }) => ({
     quota: one(organisationQuotaTable),
     persons: many(personTable),
+    projects: many(projectTable),
   }),
 );
 
@@ -537,6 +557,200 @@ export const membershipTableRelations = relations(
   }),
 );
 
+export const identityConnectionTableRelations = relations(
+  identityConnectionTable,
+  ({ one, many }) => ({
+    organisation: one(organisationTable, {
+      fields: [identityConnectionTable.organisationId],
+      references: [organisationTable.id],
+    }),
+    defaultWorkspace: one(workspaceTable, {
+      fields: [identityConnectionTable.defaultWorkspaceId],
+      references: [workspaceTable.id],
+    }),
+    scimConnection: one(scimConnectionTable),
+    externalIdentities: many(externalIdentityTable),
+    oidcGroupMappings: many(oidcGroupMappingTable),
+    grants: many(membershipGrantTable),
+    provisioningEvents: many(provisioningEventTable),
+  }),
+);
+
+export const scimConnectionTableRelations = relations(
+  scimConnectionTable,
+  ({ one, many }) => ({
+    identityConnection: one(identityConnectionTable, {
+      fields: [scimConnectionTable.identityConnectionId],
+      references: [identityConnectionTable.id],
+    }),
+    groups: many(scimGroupTable),
+    groupMappings: many(scimGroupMappingTable),
+    provisioningEvents: many(provisioningEventTable),
+  }),
+);
+
+export const externalIdentityTableRelations = relations(
+  externalIdentityTable,
+  ({ one, many }) => ({
+    identityConnection: one(identityConnectionTable, {
+      fields: [externalIdentityTable.identityConnectionId],
+      references: [identityConnectionTable.id],
+    }),
+    person: one(personTable, {
+      fields: [externalIdentityTable.personId],
+      references: [personTable.id],
+    }),
+    user: one(userTable, {
+      fields: [externalIdentityTable.userId],
+      references: [userTable.id],
+    }),
+    grants: many(membershipGrantTable),
+    scimGroupMemberships: many(scimGroupMemberTable),
+    scimDirectoryMemberships: many(scimGroupDirectoryMemberTable),
+    provisioningEvents: many(provisioningEventTable),
+  }),
+);
+
+export const oidcGroupMappingTableRelations = relations(
+  oidcGroupMappingTable,
+  ({ one, many }) => ({
+    identityConnection: one(identityConnectionTable, {
+      fields: [oidcGroupMappingTable.identityConnectionId],
+      references: [identityConnectionTable.id],
+    }),
+    role: one(roleTable, {
+      fields: [oidcGroupMappingTable.roleId],
+      references: [roleTable.id],
+    }),
+    grants: many(membershipGrantTable),
+  }),
+);
+
+export const scimGroupTableRelations = relations(
+  scimGroupTable,
+  ({ one, many }) => ({
+    scimConnection: one(scimConnectionTable, {
+      fields: [scimGroupTable.scimConnectionId],
+      references: [scimConnectionTable.identityConnectionId],
+    }),
+    directoryMembers: many(scimGroupDirectoryMemberTable),
+  }),
+);
+
+export const scimGroupDirectoryMemberTableRelations = relations(
+  scimGroupDirectoryMemberTable,
+  ({ one }) => ({
+    group: one(scimGroupTable, {
+      fields: [
+        scimGroupDirectoryMemberTable.scimConnectionId,
+        scimGroupDirectoryMemberTable.scimGroupId,
+      ],
+      references: [scimGroupTable.scimConnectionId, scimGroupTable.id],
+    }),
+    externalIdentity: one(externalIdentityTable, {
+      fields: [
+        scimGroupDirectoryMemberTable.scimConnectionId,
+        scimGroupDirectoryMemberTable.externalIdentityId,
+      ],
+      references: [
+        externalIdentityTable.identityConnectionId,
+        externalIdentityTable.id,
+      ],
+    }),
+  }),
+);
+
+export const scimGroupMappingTableRelations = relations(
+  scimGroupMappingTable,
+  ({ one, many }) => ({
+    scimConnection: one(scimConnectionTable, {
+      fields: [scimGroupMappingTable.scimConnectionId],
+      references: [scimConnectionTable.identityConnectionId],
+    }),
+    role: one(roleTable, {
+      fields: [scimGroupMappingTable.roleId],
+      references: [roleTable.id],
+    }),
+    grants: many(membershipGrantTable),
+    members: many(scimGroupMemberTable),
+  }),
+);
+
+export const membershipGrantTableRelations = relations(
+  membershipGrantTable,
+  ({ one }) => ({
+    membership: one(membershipTable, {
+      fields: [membershipGrantTable.membershipId],
+      references: [membershipTable.id],
+    }),
+    person: one(personTable, {
+      fields: [membershipGrantTable.personId],
+      references: [personTable.id],
+    }),
+    role: one(roleTable, {
+      fields: [membershipGrantTable.roleId],
+      references: [roleTable.id],
+    }),
+    externalIdentity: one(externalIdentityTable, {
+      fields: [membershipGrantTable.externalIdentityId],
+      references: [externalIdentityTable.id],
+    }),
+    identityConnection: one(identityConnectionTable, {
+      fields: [membershipGrantTable.identityConnectionId],
+      references: [identityConnectionTable.id],
+    }),
+    oidcGroupMapping: one(oidcGroupMappingTable, {
+      fields: [membershipGrantTable.oidcGroupMappingId],
+      references: [oidcGroupMappingTable.id],
+    }),
+    scimGroupMapping: one(scimGroupMappingTable, {
+      fields: [membershipGrantTable.scimGroupMappingId],
+      references: [scimGroupMappingTable.id],
+    }),
+    scimGroupMember: one(scimGroupMemberTable),
+  }),
+);
+
+export const scimGroupMemberTableRelations = relations(
+  scimGroupMemberTable,
+  ({ one }) => ({
+    mapping: one(scimGroupMappingTable, {
+      fields: [scimGroupMemberTable.scimGroupMappingId],
+      references: [scimGroupMappingTable.id],
+    }),
+    externalIdentity: one(externalIdentityTable, {
+      fields: [scimGroupMemberTable.externalIdentityId],
+      references: [externalIdentityTable.id],
+    }),
+    membership: one(membershipTable, {
+      fields: [scimGroupMemberTable.membershipId],
+      references: [membershipTable.id],
+    }),
+    grant: one(membershipGrantTable, {
+      fields: [scimGroupMemberTable.membershipGrantId],
+      references: [membershipGrantTable.id],
+    }),
+  }),
+);
+
+export const provisioningEventTableRelations = relations(
+  provisioningEventTable,
+  ({ one }) => ({
+    identityConnection: one(identityConnectionTable, {
+      fields: [provisioningEventTable.identityConnectionId],
+      references: [identityConnectionTable.id],
+    }),
+    scimConnection: one(scimConnectionTable, {
+      fields: [provisioningEventTable.scimConnectionId],
+      references: [scimConnectionTable.identityConnectionId],
+    }),
+    externalIdentity: one(externalIdentityTable, {
+      fields: [provisioningEventTable.externalIdentityId],
+      references: [externalIdentityTable.id],
+    }),
+  }),
+);
+
 export const workItemTypeTableRelations = relations(
   workItemTypeTable,
   ({ one, many }) => ({
@@ -549,6 +763,7 @@ export const workItemTypeTableRelations = relations(
       references: [workflowTable.id],
     }),
     workItems: many(workItemTable),
+    slaGoals: many(slaGoalTable),
   }),
 );
 
@@ -745,10 +960,54 @@ export const watcherTableRelations = relations(watcherTable, ({ one }) => ({
 
 export const serviceCalendarTableRelations = relations(
   serviceCalendarTable,
-  ({ one }) => ({
+  ({ one, many }) => ({
     workspace: one(workspaceTable, {
       fields: [serviceCalendarTable.workspaceId],
       references: [workspaceTable.id],
     }),
+    slaPolicyVersions: many(slaPolicyVersionTable),
   }),
 );
+
+export const slaPolicyTableRelations = relations(
+  slaPolicyTable,
+  ({ one, many }) => ({
+    workspace: one(workspaceTable, {
+      fields: [slaPolicyTable.workspaceId],
+      references: [workspaceTable.id],
+    }),
+    versions: many(slaPolicyVersionTable),
+  }),
+);
+
+export const slaPolicyVersionTableRelations = relations(
+  slaPolicyVersionTable,
+  ({ one, many }) => ({
+    policy: one(slaPolicyTable, {
+      fields: [
+        slaPolicyVersionTable.workspaceId,
+        slaPolicyVersionTable.policyId,
+      ],
+      references: [slaPolicyTable.workspaceId, slaPolicyTable.id],
+    }),
+    calendar: one(serviceCalendarTable, {
+      fields: [
+        slaPolicyVersionTable.workspaceId,
+        slaPolicyVersionTable.calendarId,
+      ],
+      references: [serviceCalendarTable.workspaceId, serviceCalendarTable.id],
+    }),
+    goals: many(slaGoalTable),
+  }),
+);
+
+export const slaGoalTableRelations = relations(slaGoalTable, ({ one }) => ({
+  version: one(slaPolicyVersionTable, {
+    fields: [slaGoalTable.workspaceId, slaGoalTable.versionId],
+    references: [slaPolicyVersionTable.workspaceId, slaPolicyVersionTable.id],
+  }),
+  workItemType: one(workItemTypeTable, {
+    fields: [slaGoalTable.workspaceId, slaGoalTable.workItemTypeId],
+    references: [workItemTypeTable.workspaceId, workItemTypeTable.id],
+  }),
+}));
