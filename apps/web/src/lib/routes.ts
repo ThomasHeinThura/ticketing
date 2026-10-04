@@ -176,7 +176,57 @@ export const routes = {
     build: (params: { key: string }) =>
       `/agent/work-items/${encodeURIComponent(params.key)}`,
   },
+  /** God Mode Users directory and its query-string-backed selection/filters. */
+  godModeUsers: {
+    path: "/god-mode/users" as const,
+    build: (search: Partial<GodModeUsersSearch> = {}) => {
+      const resolved = parseGodModeUsersSearch(search);
+      const query = new URLSearchParams();
+      if (resolved.q) query.set("q", resolved.q);
+      if (resolved.side) query.set("side", resolved.side);
+      if (resolved.active) query.set("active", resolved.active);
+      if (resolved.organisationId)
+        query.set("organisationId", resolved.organisationId);
+      if (resolved.cursor) query.set("cursor", resolved.cursor);
+      if (resolved.user) query.set("user", resolved.user);
+      const suffix = query.toString();
+      return suffix ? `/god-mode/users?${suffix}` : "/god-mode/users";
+    },
+  },
 };
+
+export type GodModeUsersSearch = {
+  q?: string;
+  side?: "staff" | "customer";
+  active?: "true" | "false";
+  organisationId?: string;
+  cursor?: string;
+  user?: string;
+};
+
+export function parseGodModeUsersSearch(raw: unknown): GodModeUsersSearch {
+  const value = (raw ?? {}) as Record<string, unknown>;
+  return {
+    ...(typeof value.q === "string" && value.q.trim()
+      ? { q: value.q.trim().slice(0, 200) }
+      : {}),
+    ...(value.side === "staff" || value.side === "customer"
+      ? { side: value.side }
+      : {}),
+    ...(value.active === "true" || value.active === "false"
+      ? { active: value.active }
+      : {}),
+    ...(typeof value.organisationId === "string" && value.organisationId
+      ? { organisationId: value.organisationId }
+      : {}),
+    ...(typeof value.cursor === "string" && value.cursor
+      ? { cursor: value.cursor }
+      : {}),
+    ...(typeof value.user === "string" && value.user
+      ? { user: value.user }
+      : {}),
+  };
+}
 
 /** The inverse of `routes.workItemList.build`'s query string, for the round-trip test. */
 export function parseWorkItemListSearchFromQueryString(

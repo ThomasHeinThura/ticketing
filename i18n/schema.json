@@ -1049,6 +1049,142 @@
 						"createAccount"
 					]
 				},
+				"twoFactor": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"subtitle": {
+							"type": "string"
+						},
+						"authenticatorCode": {
+							"type": "string"
+						},
+						"backupCode": {
+							"type": "string"
+						},
+						"verify": {
+							"type": "string"
+						},
+						"verifying": {
+							"type": "string"
+						},
+						"useBackupCode": {
+							"type": "string"
+						},
+						"useAuthenticatorCode": {
+							"type": "string"
+						},
+						"error": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"subtitle",
+						"authenticatorCode",
+						"backupCode",
+						"verify",
+						"verifying",
+						"useBackupCode",
+						"useAuthenticatorCode",
+						"error"
+					]
+				},
+				"accountSecurity": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"pageTitle": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"required": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"enabled": {
+							"type": "string"
+						},
+						"enabledDescription": {
+							"type": "string"
+						},
+						"saveCodes": {
+							"type": "string"
+						},
+						"savedCodes": {
+							"type": "string"
+						},
+						"setupTitle": {
+							"type": "string"
+						},
+						"setupDescription": {
+							"type": "string"
+						},
+						"setupButton": {
+							"type": "string"
+						},
+						"starting": {
+							"type": "string"
+						},
+						"scanTitle": {
+							"type": "string"
+						},
+						"scanDescription": {
+							"type": "string"
+						},
+						"codeLabel": {
+							"type": "string"
+						},
+						"verify": {
+							"type": "string"
+						},
+						"verifying": {
+							"type": "string"
+						},
+						"enrollmentDisabled": {
+							"type": "string"
+						},
+						"enrollmentStartError": {
+							"type": "string"
+						},
+						"codeError": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"pageTitle",
+						"description",
+						"required",
+						"unavailable",
+						"enabled",
+						"enabledDescription",
+						"saveCodes",
+						"savedCodes",
+						"setupTitle",
+						"setupDescription",
+						"setupButton",
+						"starting",
+						"scanTitle",
+						"scanDescription",
+						"codeLabel",
+						"verify",
+						"verifying",
+						"enrollmentDisabled",
+						"enrollmentStartError",
+						"codeError",
+						"loading"
+					]
+				},
 				"invitation": {
 					"type": "object",
 					"additionalProperties": false,
@@ -1323,6 +1459,8 @@
 				"otpSignIn",
 				"signInForm",
 				"signUpForm",
+				"twoFactor",
+				"accountSecurity",
 				"invitation",
 				"onboarding",
 				"profileSetup"
@@ -5404,6 +5542,9 @@
 						"addWorkspace": {
 							"type": "string"
 						},
+						"instanceUsers": {
+							"type": "string"
+						},
 						"selectWorkspace": {
 							"type": "string"
 						}
@@ -5412,6 +5553,7 @@
 						"workspaces",
 						"switching",
 						"addWorkspace",
+						"instanceUsers",
 						"selectWorkspace"
 					]
 				},

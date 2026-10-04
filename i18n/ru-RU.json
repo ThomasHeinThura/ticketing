@@ -1385,7 +1385,8 @@
 			"workspaces": "Рабочие области",
 			"switching": "Переключение...",
 			"addWorkspace": "Добавить рабочую область",
-			"selectWorkspace": "Выберите рабочую область"
+			"selectWorkspace": "Выберите рабочую область",
+			"instanceUsers": "Пользователи экземпляра"
 		},
 		"page": {
 			"projectsTitle": "Проекты",

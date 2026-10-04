@@ -1374,7 +1374,8 @@
 			"workspaces": "Ruang kerja",
 			"switching": "Beralih...",
 			"addWorkspace": "Tambah ruang kerja",
-			"selectWorkspace": "Pilih ruang kerja"
+			"selectWorkspace": "Pilih ruang kerja",
+			"instanceUsers": "Pengguna instans"
 		},
 		"page": {
 			"projectsTitle": "Proyek",

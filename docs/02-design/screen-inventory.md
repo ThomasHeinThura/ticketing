@@ -170,7 +170,7 @@ prerequisite-based scope follows the [2026-09-28 gate-scope decision](../07-plan
 | MCP usage | `/agent/god-mode/mcp` | route | P4 | ⬜ |
 | Audit log | `/agent/god-mode/audit` | route | P2 | ⬜ |
 | Import runs | `/agent/god-mode/import` | route | P6 | ⬜ |
-| Users | `/agent/god-mode/users` | route | P4 | ⬜ |
+| Users | `/god-mode/users` | route | P4 | 🟡 |
 
 ## Portal
 

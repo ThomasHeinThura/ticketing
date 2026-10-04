@@ -1377,7 +1377,8 @@
 			"workspaces": "Робочі простори",
 			"switching": "Перемикання...",
 			"addWorkspace": "Додати робочий простір",
-			"selectWorkspace": "Обрати робочий простір"
+			"selectWorkspace": "Обрати робочий простір",
+			"instanceUsers": "Користувачі екземпляра"
 		},
 		"page": {
 			"projectsTitle": "Проєкти",

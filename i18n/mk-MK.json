@@ -1375,7 +1375,8 @@
 			"workspaces": "Работни простори",
 			"switching": "Се префрлува...",
 			"addWorkspace": "Додади работен простор",
-			"selectWorkspace": "Избери работен простор"
+			"selectWorkspace": "Избери работен простор",
+			"instanceUsers": "Корисници на инстанцата"
 		},
 		"page": {
 			"projectsTitle": "Проекти",

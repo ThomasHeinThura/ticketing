@@ -1375,7 +1375,8 @@
 			"workspaces": "Χώροι εργασίας",
 			"switching": "Γίνεται εναλλαγή...",
 			"addWorkspace": "Προσθήκη χώρου εργασίας",
-			"selectWorkspace": "Επιλέξτε χώρο εργασίας"
+			"selectWorkspace": "Επιλέξτε χώρο εργασίας",
+			"instanceUsers": "Χρήστες στιγμιοτύπου"
 		},
 		"page": {
 			"projectsTitle": "Έργα",

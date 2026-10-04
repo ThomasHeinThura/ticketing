@@ -1375,6 +1375,7 @@
 			"workspaces": "Workspaces",
 			"switching": "Switching...",
 			"addWorkspace": "Add workspace",
+			"instanceUsers": "Instance users",
 			"selectWorkspace": "Select workspace"
 		},
 		"page": {

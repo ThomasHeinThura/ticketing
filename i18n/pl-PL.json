@@ -437,7 +437,8 @@
 			"workspaces": "Obszary robocze",
 			"switching": "Przełączanie...",
 			"addWorkspace": "Dodaj obszar roboczy",
-			"selectWorkspace": "Wybierz obszar roboczy"
+			"selectWorkspace": "Wybierz obszar roboczy",
+			"instanceUsers": "Użytkownicy instancji"
 		},
 		"page": {
 			"projectsTitle": "Projekty",

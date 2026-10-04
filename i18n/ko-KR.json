@@ -1374,7 +1374,8 @@
 			"workspaces": "워크스페이스",
 			"switching": "전환 중...",
 			"addWorkspace": "워크스페이스 추가",
-			"selectWorkspace": "워크스페이스 선택"
+			"selectWorkspace": "워크스페이스 선택",
+			"instanceUsers": "인스턴스 사용자"
 		},
 		"page": {
 			"projectsTitle": "프로젝트",

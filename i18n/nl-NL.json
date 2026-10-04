@@ -1375,7 +1375,8 @@
 			"workspaces": "Werkruimtes",
 			"switching": "Wisselen...",
 			"addWorkspace": "Werkruimte toevoegen",
-			"selectWorkspace": "Werkruimte selecteren"
+			"selectWorkspace": "Werkruimte selecteren",
+			"instanceUsers": "Instantiegebruikers"
 		},
 		"page": {
 			"projectsTitle": "Projecten",
