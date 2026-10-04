@@ -5,6 +5,23 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+### 2026-10-04 · Serialize manual and automatic SLA pauses per metric
+
+Under the standing recommended-decision authorization, `sla_pause` has at most one open
+row per `(work_item_id, metric)`. Manual pause opens all configured metrics that are
+currently running atomically, with reason `manual`; it accepts no free-text reason. If any
+configured metric is already paused, the request conflicts with `409` and makes no
+changes. Manual resume closes only manual rows and conflicts with `409` when none are
+open. Workflow pause/resume and completed/reopen effects never close or replace a manual
+pause; they skip opening an automatic row while a manual row owns that metric. Entering a
+completed state still sets `resolved_at`, and reopening clears it; the manual interval
+continues until explicit manual resume. Successful manual changes write an internal
+`updated` activity entry for `sla_pause`, a `work_item.updated` audit row, and an internal
+`work_item.updated` event in the same transaction. Audit failure rolls back the change;
+no new audit-only action or event key is introduced.
+
+This records implementation direction, not review, merge, or phase acceptance.
+
 ### 2026-10-04 · Stage file-backed portal submissions before submission
 
 Use `POST /api/portal/submissions/{ref}/attachments/presign` with a `SUB-n` reference and

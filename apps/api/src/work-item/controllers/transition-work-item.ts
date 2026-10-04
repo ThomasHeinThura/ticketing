@@ -21,6 +21,7 @@ import {
   workItemTable,
 } from "../../database/schema";
 import { publishEvent } from "../../events";
+import { applyTransitionSlaPauses } from "../../sla-policy/pause-operations";
 import { type ActivityActorType, recordWorkItemActivity } from "../activity";
 import {
   assertProjectStillLive,
@@ -209,13 +210,9 @@ function resolveSetAssigneePersonId(
  * a documented interim state (issue #442's own instruction), not a design decision made
  * here.
  *
- * EFFECTS THIS FUNCTION CANNOT EXECUTE, DISCLOSED (no schema to write to yet):
- * `pause_sla`/`resume_sla` (no `sla_pause` table) and `set_field` (no custom-field/
- * satellite value store) are silently no-ops here -- reading `transition.effects` for
- * either kind and doing nothing, rather than failing the whole transition over a gap in
- * unrelated, not-yet-built infrastructure. `WF-17`/`WF-18`'s automatic mechanism only
- * sets/clears `work_item.resolved_at` for the identical reason -- the `sla_pause` row a
- * real "resolved"/"resumed" write implies does not exist to write.
+ * SLA transition effects are persisted atomically with the state write in `sla_pause`;
+ * `set_field` remains unavailable until its custom-field value store lands. Automatic
+ * resolve/reopen effects also maintain `work_item.resolved_at` in this transaction.
  * `set_assignee`/`clear_assignee` and `schedule_transition` ARE fully wired.
  *
  * `WF-21` (customer-initiated reopen, executed as a system actor): the three call sites
@@ -285,10 +282,13 @@ export async function transitionWorkItem(
   const toGroup =
     ctx.templateGroups.get(match.toStateTemplateId) ?? ctx.currentGroup;
 
+  const transitionAt = new Date();
   const authoredEffects = resolveEffects(match);
   const automaticEffects = resolveAutomaticEffects(ctx.currentGroup, toGroup);
 
   let assigneeIdPatch: string | null | undefined;
+  let pauseWaitingCustomer = false;
+  let resumeWaitingCustomer = false;
   const scheduleEffects: { afterMinutes: number; toStateTemplateId: string }[] =
     [];
   for (const effect of authoredEffects) {
@@ -301,15 +301,18 @@ export async function transitionWorkItem(
         afterMinutes: effect.afterMinutes,
         toStateTemplateId: effect.toStateTemplateId,
       });
+    } else if (effect.kind === "pause_sla") {
+      pauseWaitingCustomer = true;
+    } else if (effect.kind === "resume_sla") {
+      resumeWaitingCustomer = true;
     }
-    // `pause_sla`/`resume_sla`/`set_field`: no backing table yet -- disclosed no-op,
-    // see this function's own doc comment.
+    // `set_field` remains unavailable until its value store lands.
   }
 
   let resolvedAtPatch: Date | null | undefined;
   for (const effect of automaticEffects) {
     if (effect.kind === "resolve_sla") {
-      resolvedAtPatch = new Date();
+      resolvedAtPatch = transitionAt;
     } else if (effect.kind === "reopen_sla") {
       resolvedAtPatch = null;
     }
@@ -331,6 +334,7 @@ export async function transitionWorkItem(
           projectId: workItemTable.projectId,
           deletedAt: workItemTable.deletedAt,
           archivedAt: workItemTable.archivedAt,
+          slaPolicyVersionId: workItemTable.slaPolicyVersionId,
         })
         .from(workItemTable)
         .where(eq(workItemTable.id, ctx.workItem.id))
@@ -492,6 +496,20 @@ export async function transitionWorkItem(
           .limit(1);
         throw new TransitionConflictError(current?.stateId ?? fromStateId);
       }
+
+      await applyTransitionSlaPauses(tx, {
+        workItemId: ctx.workItem.id,
+        hasPinnedSla: locked.slaPolicyVersionId !== null,
+        pauseWaitingCustomer,
+        resumeWaitingCustomer,
+        enterCompleted: automaticEffects.some(
+          (effect) => effect.kind === "resolve_sla",
+        ),
+        leaveCompleted: automaticEffects.some(
+          (effect) => effect.kind === "reopen_sla",
+        ),
+        at: transitionAt,
+      });
 
       for (const schedule of scheduleEffects) {
         const scheduleResolution = resolveStateTemplateForProject(

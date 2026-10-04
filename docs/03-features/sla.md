@@ -100,8 +100,14 @@ an event once, and for list filtering. It is never the answer to "what is the st
 - `SLA-11` `pause_sla` opens an `sla_pause` row (reason `waiting_customer`) per metric;
   `resume_sla` closes it. Entering a `completed`-group state opens one with reason
   `resolved` (`WF-17`) and reopening closes it (`WF-18`). At most one open row per
-  `(work_item, metric, reason kind)`; a manual pause while an automatic one is open returns
-  409, and an automatic close never closes a manual pause.
+  `(work_item, metric)`. A manual pause opens rows for every configured metric that is
+  currently running, atomically, with the closed reason `manual` and no free-text reason
+  input. If any configured metric already has an open pause, the request returns `409`
+  without changing any metric. Manual resume closes only rows whose reason is `manual`;
+  it returns `409` when there are none. Automatic transitions never close or replace a
+  manual pause and do not open a conflicting automatic row while a manual row owns that
+  metric. A completed transition still sets `resolved_at`; reopening clears it, while a
+  manual pause continues to exclude elapsed time until an explicit manual resume.
 - `SLA-12` Paused intervals are subtracted from covered time.
 - `SLA-13` The UI shows "Paused — waiting on customer since Tuesday" rather than a
   frozen countdown with no explanation.
@@ -166,6 +172,18 @@ GET   /api/work-items/{key}/sla                work_item:read
 POST  /api/work-items/{key}/sla/pause          work_item:update
 POST  /api/work-items/{key}/sla/resume         work_item:update
 ```
+
+Manual pause and resume accept no body. They require `work_item:update` and the same
+current work-item reach checks as other work-item writes. Each successful operation
+records an internal `updated` activity entry for `sla_pause`, a `work_item.updated`
+audit row, and an internal `work_item.updated` event in the same transaction as the pause
+rows. The event change has `visibility: internal`; it is not exposed to customers. An audit
+write failure rolls back the pause/resume and activity. The internal activity payload and
+audit record carry the changed metric names, the closed reason `manual`, and the mutation
+timestamp (`startedAt` when pausing, `endedAt` when resuming); resume audit records also
+retain each manually paused metric's prior start timestamp. The existing event envelope
+continues to carry the ordinary field/from/to change and event timestamp. No new event or
+audit-only action key is introduced.
 
 ### Selected policy-authoring contract
 

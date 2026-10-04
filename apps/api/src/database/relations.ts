@@ -33,6 +33,7 @@ import {
   serviceCalendarTable,
   sessionTable,
   slaGoalTable,
+  slaPauseTable,
   slaPolicyTable,
   slaPolicyVersionTable,
   stakeholderTable,
@@ -906,8 +907,16 @@ export const workItemTableRelations = relations(
     // excludes it. #27's read/serializer must drop `seq` itself before this data reaches
     // any API response.
     activities: many(activityTable),
+    slaPauses: many(slaPauseTable),
   }),
 );
+
+export const slaPauseTableRelations = relations(slaPauseTable, ({ one }) => ({
+  workItem: one(workItemTable, {
+    fields: [slaPauseTable.workItemId],
+    references: [workItemTable.id],
+  }),
+}));
 
 // The work-item journal (decision log 2026-09-23, "Work-item activity gets its own
 // `activity` table"). `workItem` here is query-API sugar over the composite FK the

@@ -2,6 +2,7 @@ import type {
   CalendarWindows,
   Holiday,
   SlaMetricState,
+  SlaPause,
   SlaPolicy,
   SlaWorkItemFacts,
 } from "@taskdesk/domain";
@@ -15,19 +16,23 @@ export async function evaluatePinnedWorkItemSla(input: {
   workspaceId: string;
   workItemTypeId: string | null;
   priority: string | null;
-  facts: SlaWorkItemFacts;
+  facts: Omit<SlaWorkItemFacts, "pauses">;
+  pauses: SlaPause[];
   now: Date;
-}): Promise<SlaMetricState[]> {
+}): Promise<{ metrics: SlaMetricState[]; calendarName: string | null }> {
   if (!input.policyVersionId) {
-    return SLA_METRICS.map((metric) => ({
-      metric,
-      state: "none",
-      dueAt: null,
-      targetMinutes: null,
-      consumedMinutes: 0,
-      consumedPct: 0,
-      remainingMinutes: null,
-    }));
+    return {
+      metrics: SLA_METRICS.map((metric) => ({
+        metric,
+        state: "none",
+        dueAt: null,
+        targetMinutes: null,
+        consumedMinutes: 0,
+        consumedPct: 0,
+        remainingMinutes: null,
+      })),
+      calendarName: null,
+    };
   }
 
   const [version] = await db
@@ -57,6 +62,7 @@ export async function evaluatePinnedWorkItemSla(input: {
 
   const [calendar] = await db
     .select({
+      name: schema.serviceCalendarTable.name,
       timezone: schema.serviceCalendarTable.timezone,
       windows: schema.serviceCalendarTable.windows,
       holidays: schema.serviceCalendarTable.holidays,
@@ -101,11 +107,14 @@ export async function evaluatePinnedWorkItemSla(input: {
     goals,
   };
 
-  return computeSlaState(
-    policy,
-    input.facts,
-    input.now,
-    input.workItemTypeId,
-    input.priority,
-  );
+  return {
+    metrics: computeSlaState(
+      policy,
+      { ...input.facts, pauses: input.pauses },
+      input.now,
+      input.workItemTypeId,
+      input.priority,
+    ),
+    calendarName: calendar.name,
+  };
 }

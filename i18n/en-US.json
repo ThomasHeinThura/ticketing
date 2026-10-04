@@ -2324,6 +2324,40 @@
 			"partialNoticeDescription": "Some fields on this work item couldn't be fully loaded. They're marked below.",
 			"realtimeUnavailable": "Live updates are unavailable. This page refreshes every 30 seconds while open."
 		},
+		"sla": {
+			"heading": "Service-level objectives",
+			"calendar": "Calendar: {{name}}",
+			"loading": "Loading SLA status…",
+			"errorTitle": "Couldn't load SLA status",
+			"errorDescription": "The current SLA evaluation is unavailable.",
+			"retry": "Retry",
+			"pause": "Pause clocks",
+			"resume": "Resume clocks",
+			"saving": "Saving…",
+			"changeErrorTitle": "Couldn't change SLA pause",
+			"changeErrorDescription": "A metric may already be paused or no running metric is available.",
+			"metrics": {
+				"first_response": "First response",
+				"resolution": "Resolution"
+			},
+			"states": {
+				"none": "Not configured",
+				"ok": "On track",
+				"at_risk": "At risk",
+				"breached": "Breached",
+				"met": "Met",
+				"missed": "Missed"
+			},
+			"consumed": "SLA time used",
+			"pausedSince": "Paused since {{date}} · {{reason}}",
+			"pauseReasons": {
+				"waiting_customer": "waiting for the customer",
+				"resolved": "work item resolved",
+				"manual": "manually paused"
+			},
+			"dueAt": "Due {{date}} · {{remaining}} minutes remaining",
+			"notConfigured": "No goal is configured for this metric."
+		},
 		"attachments": {
 			"heading": "Attachments",
 			"addFiles": "Add files",

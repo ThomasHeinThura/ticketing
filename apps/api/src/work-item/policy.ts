@@ -356,4 +356,18 @@ export const workItemPolicies = {
     scopeSource: "row",
     reach: "required",
   },
+
+  "POST /api/work-items/{key}/sla/pause": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
+
+  "POST /api/work-items/{key}/sla/resume": {
+    capability: "work_item:update",
+    scope: "work_item",
+    scopeSource: "row",
+    reach: "required",
+  },
 } as const satisfies PolicyMap;

@@ -35,7 +35,7 @@ import { SLA_METRICS } from "./types.js";
  * policy author's intent, and the editor presents the matrix in that order.
  */
 export function matchGoal(
-  policy: SlaPolicy,
+  policy: Pick<SlaPolicy, "goals">,
   metric: (typeof SLA_METRICS)[number],
   workItemTypeId: string | null,
   priority: string | null,

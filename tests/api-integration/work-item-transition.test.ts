@@ -9,6 +9,10 @@ import { Client } from "pg";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import {
+  createPolicy,
+  publishPolicy,
+} from "../../apps/api/src/sla-policy/repository";
 import { ensureInternalOrganisation } from "../../apps/api/src/utils/seed-internal-organisation";
 import { transitionWorkItem } from "../../apps/api/src/work-item/controllers/transition-work-item";
 import { mockAuthenticatedSession } from "./helpers/auth";
@@ -829,7 +833,7 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
     expect(scheduled[0]?.state).toBe("pending");
   });
 
-  it("WF-18: leaving the completed group clears resolved_at", async () => {
+  it("WF-18: resolved pauses close on reopen while manual pauses remain open", async () => {
     const { creator, workspace, project } = await setupProject();
     const backlog = await makeState(workspace.id, project.id, {
       group: "backlog",
@@ -859,6 +863,74 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
     mockAuthenticatedSession(creator);
     const { app } = createApp();
     const { key } = await createWorkItem(app, project.id, type.id);
+    const calendar = requireRow(
+      await db
+        .insert(schema.serviceCalendarTable)
+        .values({
+          workspaceId: workspace.id,
+          name: "Transition pause calendar",
+          timezone: "UTC",
+          windows: {
+            mon: [{ from: 540, to: 1020 }],
+            tue: [{ from: 540, to: 1020 }],
+            wed: [{ from: 540, to: 1020 }],
+            thu: [{ from: 540, to: 1020 }],
+            fri: [{ from: 540, to: 1020 }],
+          },
+          holidays: [],
+        })
+        .returning(),
+      "WF-18 service calendar",
+    );
+    const priorities = ["low", "medium", "high", "urgent"] as const;
+    const goals = (["first_response", "resolution"] as const).flatMap(
+      (metric) =>
+        priorities.map((priority, index) => ({
+          metric,
+          workItemTypeId: type.id,
+          priority,
+          targetMinutes: 60 + index * 60,
+        })),
+    );
+    const policyActor = {
+      actorId: creator.id,
+      actorType: "person" as const,
+      apiKeyId: null,
+    };
+    const draft = await createPolicy(
+      {
+        workspaceId: workspace.id,
+        name: "Transition pause policy",
+        calendarId: calendar.id,
+        atRiskThresholdPct: 75,
+        goals,
+      },
+      policyActor,
+    );
+    if (!draft) throw new Error("WF-18 SLA policy was not created");
+    const policy = await publishPolicy(
+      draft.id,
+      workspace.id,
+      draft.version,
+      policyActor,
+    );
+    if (!policy?.activeVersion)
+      throw new Error("WF-18 SLA policy not published");
+    const [workItem] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, key));
+    if (!workItem) throw new Error("WF-18 work item missing");
+    await db
+      .update(schema.workItemTable)
+      .set({ slaPolicyVersionId: policy.activeVersion.id })
+      .where(eq(schema.workItemTable.id, workItem.id));
+    await db.insert(schema.slaPauseTable).values({
+      workItemId: workItem.id,
+      metric: "first_response",
+      reason: "manual",
+      startedAt: new Date(),
+    });
 
     const toDone = await transitionRequest(app, key, {
       toStateTemplateId: done.stateTemplate.id,
@@ -869,6 +941,28 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.key, key));
     expect(workItemRow?.resolvedAt).not.toBeNull();
+    let pauses = await db
+      .select({
+        metric: schema.slaPauseTable.metric,
+        reason: schema.slaPauseTable.reason,
+        endedAt: schema.slaPauseTable.endedAt,
+      })
+      .from(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, workItem.id));
+    expect(pauses).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metric: "first_response",
+          reason: "manual",
+          endedAt: null,
+        }),
+        expect.objectContaining({
+          metric: "resolution",
+          reason: "resolved",
+          endedAt: null,
+        }),
+      ]),
+    );
 
     const toReopened = await transitionRequest(app, key, {
       toStateTemplateId: reopened.stateTemplate.id,
@@ -879,6 +973,28 @@ describe("API integration: work item transition (#442, workflows.md)", () => {
       .from(schema.workItemTable)
       .where(eq(schema.workItemTable.key, key));
     expect(workItemRow?.resolvedAt).toBeNull();
+    pauses = await db
+      .select({
+        metric: schema.slaPauseTable.metric,
+        reason: schema.slaPauseTable.reason,
+        endedAt: schema.slaPauseTable.endedAt,
+      })
+      .from(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, workItem.id));
+    expect(pauses).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metric: "first_response",
+          reason: "manual",
+          endedAt: null,
+        }),
+        expect.objectContaining({
+          metric: "resolution",
+          reason: "resolved",
+          endedAt: expect.any(Date),
+        }),
+      ]),
+    );
   });
 
   it("D1 (Opus delta review of PR #457): a concurrent child reopen cannot slip past a children_closed guard", async () => {

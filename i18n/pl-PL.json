@@ -2429,6 +2429,40 @@
 			"selectAll": "Select all work items",
 			"selected": "{{count}} selected",
 			"selectItem": "Select {{key}}"
+		},
+		"sla": {
+			"changeErrorDescription": "A metric may already be paused or no running metric is available.",
+			"changeErrorTitle": "Couldn't change SLA pause",
+			"consumed": "SLA time used",
+			"dueAt": "Due {{date}} · {{remaining}} minutes remaining",
+			"errorDescription": "The current SLA evaluation is unavailable.",
+			"errorTitle": "Couldn't load SLA status",
+			"heading": "Service-level objectives",
+			"loading": "Loading SLA status…",
+			"metrics": {
+				"first_response": "First response",
+				"resolution": "Resolution"
+			},
+			"notConfigured": "No goal is configured for this metric.",
+			"pause": "Pause clocks",
+			"pausedSince": "Paused since {{date}} · {{reason}}",
+			"pauseReasons": {
+				"manual": "manually paused",
+				"resolved": "work item resolved",
+				"waiting_customer": "waiting for the customer"
+			},
+			"resume": "Resume clocks",
+			"retry": "Retry",
+			"saving": "Saving…",
+			"states": {
+				"at_risk": "At risk",
+				"breached": "Breached",
+				"met": "Met",
+				"missed": "Missed",
+				"none": "Not configured",
+				"ok": "On track"
+			},
+			"calendar": "Calendar: {{name}}"
 		}
 	},
 	"serviceCalendars": {

@@ -26,6 +26,7 @@ import {
 } from "@/types/work-item";
 import WorkItemAttachments from "./work-item-attachments";
 import WorkItemDetailLoading from "./work-item-detail-loading";
+import WorkItemSlaPanel from "./work-item-sla-panel";
 
 export type WorkItemDetailProps = {
   item: WorkItemDetailRow | undefined;
@@ -240,6 +241,8 @@ function WorkItemDetail({
           </span>
         </div>
       </header>
+
+      <WorkItemSlaPanel keyValue={item.key} workspaceId={item.workspaceId} />
 
       <section className="flex flex-col gap-2">
         <h2 className="font-medium text-lg">

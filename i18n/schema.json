@@ -1057,6 +1057,142 @@
 						"createAccount"
 					]
 				},
+				"twoFactor": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"title": {
+							"type": "string"
+						},
+						"subtitle": {
+							"type": "string"
+						},
+						"authenticatorCode": {
+							"type": "string"
+						},
+						"backupCode": {
+							"type": "string"
+						},
+						"verify": {
+							"type": "string"
+						},
+						"verifying": {
+							"type": "string"
+						},
+						"useBackupCode": {
+							"type": "string"
+						},
+						"useAuthenticatorCode": {
+							"type": "string"
+						},
+						"error": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"title",
+						"subtitle",
+						"authenticatorCode",
+						"backupCode",
+						"verify",
+						"verifying",
+						"useBackupCode",
+						"useAuthenticatorCode",
+						"error"
+					]
+				},
+				"accountSecurity": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"pageTitle": {
+							"type": "string"
+						},
+						"description": {
+							"type": "string"
+						},
+						"required": {
+							"type": "string"
+						},
+						"unavailable": {
+							"type": "string"
+						},
+						"enabled": {
+							"type": "string"
+						},
+						"enabledDescription": {
+							"type": "string"
+						},
+						"saveCodes": {
+							"type": "string"
+						},
+						"savedCodes": {
+							"type": "string"
+						},
+						"setupTitle": {
+							"type": "string"
+						},
+						"setupDescription": {
+							"type": "string"
+						},
+						"setupButton": {
+							"type": "string"
+						},
+						"starting": {
+							"type": "string"
+						},
+						"scanTitle": {
+							"type": "string"
+						},
+						"scanDescription": {
+							"type": "string"
+						},
+						"codeLabel": {
+							"type": "string"
+						},
+						"verify": {
+							"type": "string"
+						},
+						"verifying": {
+							"type": "string"
+						},
+						"enrollmentDisabled": {
+							"type": "string"
+						},
+						"enrollmentStartError": {
+							"type": "string"
+						},
+						"codeError": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"pageTitle",
+						"description",
+						"required",
+						"unavailable",
+						"enabled",
+						"enabledDescription",
+						"saveCodes",
+						"savedCodes",
+						"setupTitle",
+						"setupDescription",
+						"setupButton",
+						"starting",
+						"scanTitle",
+						"scanDescription",
+						"codeLabel",
+						"verify",
+						"verifying",
+						"enrollmentDisabled",
+						"enrollmentStartError",
+						"codeError",
+						"loading"
+					]
+				},
 				"invitation": {
 					"type": "object",
 					"additionalProperties": false,
@@ -1319,142 +1455,6 @@
 						"toast",
 						"validation"
 					]
-				},
-				"twoFactor": {
-					"type": "object",
-					"additionalProperties": false,
-					"properties": {
-						"title": {
-							"type": "string"
-						},
-						"subtitle": {
-							"type": "string"
-						},
-						"authenticatorCode": {
-							"type": "string"
-						},
-						"backupCode": {
-							"type": "string"
-						},
-						"verify": {
-							"type": "string"
-						},
-						"verifying": {
-							"type": "string"
-						},
-						"useBackupCode": {
-							"type": "string"
-						},
-						"useAuthenticatorCode": {
-							"type": "string"
-						},
-						"error": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"title",
-						"subtitle",
-						"authenticatorCode",
-						"backupCode",
-						"verify",
-						"verifying",
-						"useBackupCode",
-						"useAuthenticatorCode",
-						"error"
-					]
-				},
-				"accountSecurity": {
-					"type": "object",
-					"additionalProperties": false,
-					"properties": {
-						"pageTitle": {
-							"type": "string"
-						},
-						"description": {
-							"type": "string"
-						},
-						"required": {
-							"type": "string"
-						},
-						"unavailable": {
-							"type": "string"
-						},
-						"enabled": {
-							"type": "string"
-						},
-						"enabledDescription": {
-							"type": "string"
-						},
-						"saveCodes": {
-							"type": "string"
-						},
-						"savedCodes": {
-							"type": "string"
-						},
-						"setupTitle": {
-							"type": "string"
-						},
-						"setupDescription": {
-							"type": "string"
-						},
-						"setupButton": {
-							"type": "string"
-						},
-						"starting": {
-							"type": "string"
-						},
-						"scanTitle": {
-							"type": "string"
-						},
-						"scanDescription": {
-							"type": "string"
-						},
-						"codeLabel": {
-							"type": "string"
-						},
-						"verify": {
-							"type": "string"
-						},
-						"verifying": {
-							"type": "string"
-						},
-						"enrollmentDisabled": {
-							"type": "string"
-						},
-						"enrollmentStartError": {
-							"type": "string"
-						},
-						"codeError": {
-							"type": "string"
-						},
-						"loading": {
-							"type": "string"
-						}
-					},
-					"required": [
-						"pageTitle",
-						"description",
-						"required",
-						"unavailable",
-						"enabled",
-						"enabledDescription",
-						"saveCodes",
-						"savedCodes",
-						"setupTitle",
-						"setupDescription",
-						"setupButton",
-						"starting",
-						"scanTitle",
-						"scanDescription",
-						"codeLabel",
-						"verify",
-						"verifying",
-						"enrollmentDisabled",
-						"enrollmentStartError",
-						"codeError",
-						"loading"
-					]
 				}
 			},
 			"required": [
@@ -1467,11 +1467,11 @@
 				"otpSignIn",
 				"signInForm",
 				"signUpForm",
+				"twoFactor",
+				"accountSecurity",
 				"invitation",
 				"onboarding",
-				"profileSetup",
-				"twoFactor",
-				"accountSecurity"
+				"profileSetup"
 			]
 		},
 		"settings": {
@@ -9109,6 +9109,12 @@
 						"heading": {
 							"type": "string"
 						},
+						"boardLayout": {
+							"type": "string"
+						},
+						"listLayout": {
+							"type": "string"
+						},
 						"columnKey": {
 							"type": "string"
 						},
@@ -9193,6 +9199,8 @@
 						"pageTitle",
 						"pageTitleWithProject",
 						"heading",
+						"boardLayout",
+						"listLayout",
 						"columnKey",
 						"columnTitle",
 						"columnPriority",
@@ -9214,6 +9222,151 @@
 						"unavailableFieldLabel",
 						"partialNoticeTitle",
 						"partialNoticeDescription"
+					]
+				},
+				"bulk": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"selectAll": {
+							"type": "string"
+						},
+						"selectItem": {
+							"type": "string"
+						},
+						"selected": {
+							"type": "string"
+						},
+						"selected_zero": {
+							"type": "string"
+						},
+						"selected_one": {
+							"type": "string"
+						},
+						"selected_two": {
+							"type": "string"
+						},
+						"selected_few": {
+							"type": "string"
+						},
+						"selected_many": {
+							"type": "string"
+						},
+						"selected_other": {
+							"type": "string"
+						},
+						"assignee": {
+							"type": "string"
+						},
+						"assign": {
+							"type": "string"
+						},
+						"result": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"selectAll",
+						"selectItem",
+						"assignee",
+						"assign",
+						"result"
+					]
+				},
+				"board": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"loadErrorTitle": {
+							"type": "string"
+						},
+						"loadErrorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"noStatesTitle": {
+							"type": "string"
+						},
+						"noStatesDescription": {
+							"type": "string"
+						},
+						"emptyColumn": {
+							"type": "string"
+						},
+						"selectColumn": {
+							"type": "string"
+						},
+						"loadMore": {
+							"type": "string"
+						},
+						"loadingMore": {
+							"type": "string"
+						},
+						"changeState": {
+							"type": "string"
+						},
+						"chooseState": {
+							"type": "string"
+						},
+						"chooseStatePlaceholder": {
+							"type": "string"
+						},
+						"loadingTransitions": {
+							"type": "string"
+						},
+						"transitionLoadError": {
+							"type": "string"
+						},
+						"moveState": {
+							"type": "string"
+						},
+						"currentState": {
+							"type": "string"
+						},
+						"transitionForbidden": {
+							"type": "string"
+						},
+						"transitionUnavailable": {
+							"type": "string"
+						},
+						"transitionBlocked": {
+							"type": "string"
+						},
+						"transitionSaved": {
+							"type": "string"
+						},
+						"rankSaved": {
+							"type": "string"
+						},
+						"moveFailed": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"loadErrorTitle",
+						"loadErrorDescription",
+						"retry",
+						"noStatesTitle",
+						"noStatesDescription",
+						"emptyColumn",
+						"selectColumn",
+						"loadMore",
+						"loadingMore",
+						"changeState",
+						"chooseState",
+						"chooseStatePlaceholder",
+						"loadingTransitions",
+						"transitionLoadError",
+						"moveState",
+						"currentState",
+						"transitionForbidden",
+						"transitionUnavailable",
+						"transitionBlocked",
+						"transitionSaved",
+						"rankSaved",
+						"moveFailed"
 					]
 				},
 				"create": {
@@ -9440,6 +9593,272 @@
 						"realtimeUnavailable"
 					]
 				},
+				"sla": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"heading": {
+							"type": "string"
+						},
+						"calendar": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"errorTitle": {
+							"type": "string"
+						},
+						"errorDescription": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"pause": {
+							"type": "string"
+						},
+						"resume": {
+							"type": "string"
+						},
+						"saving": {
+							"type": "string"
+						},
+						"changeErrorTitle": {
+							"type": "string"
+						},
+						"changeErrorDescription": {
+							"type": "string"
+						},
+						"metrics": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"first_response": {
+									"type": "string"
+								},
+								"resolution": {
+									"type": "string"
+								}
+							},
+							"required": ["first_response", "resolution"]
+						},
+						"states": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"none": {
+									"type": "string"
+								},
+								"ok": {
+									"type": "string"
+								},
+								"at_risk": {
+									"type": "string"
+								},
+								"breached": {
+									"type": "string"
+								},
+								"met": {
+									"type": "string"
+								},
+								"missed": {
+									"type": "string"
+								}
+							},
+							"required": ["none", "ok", "at_risk", "breached", "met", "missed"]
+						},
+						"consumed": {
+							"type": "string"
+						},
+						"pausedSince": {
+							"type": "string"
+						},
+						"pauseReasons": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"waiting_customer": {
+									"type": "string"
+								},
+								"resolved": {
+									"type": "string"
+								},
+								"manual": {
+									"type": "string"
+								}
+							},
+							"required": ["waiting_customer", "resolved", "manual"]
+						},
+						"dueAt": {
+							"type": "string"
+						},
+						"notConfigured": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"heading",
+						"calendar",
+						"loading",
+						"errorTitle",
+						"errorDescription",
+						"retry",
+						"pause",
+						"resume",
+						"saving",
+						"changeErrorTitle",
+						"changeErrorDescription",
+						"metrics",
+						"states",
+						"consumed",
+						"pausedSince",
+						"pauseReasons",
+						"dueAt",
+						"notConfigured"
+					]
+				},
+				"attachments": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"heading": {
+							"type": "string"
+						},
+						"addFiles": {
+							"type": "string"
+						},
+						"dropHint": {
+							"type": "string"
+						},
+						"dropNow": {
+							"type": "string"
+						},
+						"loading": {
+							"type": "string"
+						},
+						"loadError": {
+							"type": "string"
+						},
+						"emptyTitle": {
+							"type": "string"
+						},
+						"emptyDescription": {
+							"type": "string"
+						},
+						"preview": {
+							"type": "string"
+						},
+						"previewAction": {
+							"type": "string"
+						},
+						"previewTitle": {
+							"type": "string"
+						},
+						"download": {
+							"type": "string"
+						},
+						"downloadAction": {
+							"type": "string"
+						},
+						"uploader": {
+							"type": "string"
+						},
+						"customerVisible": {
+							"type": "string"
+						},
+						"internalOnly": {
+							"type": "string"
+						},
+						"uploadsLabel": {
+							"type": "string"
+						},
+						"uploadProgress": {
+							"type": "string"
+						},
+						"uploadComplete": {
+							"type": "string"
+						},
+						"cancel": {
+							"type": "string"
+						},
+						"cancelled": {
+							"type": "string"
+						},
+						"cancelledLeavingApp": {
+							"type": "string"
+						},
+						"retry": {
+							"type": "string"
+						},
+						"status": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"preparing": {
+									"type": "string"
+								},
+								"uploading": {
+									"type": "string"
+								},
+								"validating": {
+									"type": "string"
+								}
+							},
+							"required": ["preparing", "uploading", "validating"]
+						},
+						"delete": {
+							"type": "string"
+						},
+						"deleteTitle": {
+							"type": "string"
+						},
+						"deleteDescription": {
+							"type": "string"
+						},
+						"deleteAction": {
+							"type": "string"
+						},
+						"deleting": {
+							"type": "string"
+						},
+						"deleteError": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"heading",
+						"addFiles",
+						"dropHint",
+						"dropNow",
+						"loading",
+						"loadError",
+						"emptyTitle",
+						"emptyDescription",
+						"preview",
+						"previewAction",
+						"previewTitle",
+						"download",
+						"downloadAction",
+						"uploader",
+						"customerVisible",
+						"internalOnly",
+						"uploadsLabel",
+						"uploadProgress",
+						"uploadComplete",
+						"cancel",
+						"cancelled",
+						"cancelledLeavingApp",
+						"retry",
+						"status",
+						"delete",
+						"deleteTitle",
+						"deleteDescription",
+						"deleteAction",
+						"deleting",
+						"deleteError"
+					]
+				},
 				"journey": {
 					"type": "object",
 					"additionalProperties": false,
@@ -9478,6 +9897,18 @@
 							"type": "string"
 						},
 						"saveError": {
+							"type": "string"
+						},
+						"transitionPlaceholder": {
+							"type": "string"
+						},
+						"transitionNote": {
+							"type": "string"
+						},
+						"transitionNoteRequired": {
+							"type": "string"
+						},
+						"transitionBlocked": {
 							"type": "string"
 						},
 						"assignmentHeading": {
@@ -9608,6 +10039,10 @@
 						"saveAttention",
 						"editConflict",
 						"saveError",
+						"transitionPlaceholder",
+						"transitionNote",
+						"transitionNoteRequired",
+						"transitionBlocked",
 						"assignmentHeading",
 						"assignee",
 						"assigneePlaceholder",
@@ -9649,7 +10084,16 @@
 					]
 				}
 			},
-			"required": ["list", "create", "detail", "journey"]
+			"required": [
+				"list",
+				"bulk",
+				"board",
+				"create",
+				"detail",
+				"sla",
+				"attachments",
+				"journey"
+			]
 		},
 		"serviceCalendars": {
 			"type": "object",
@@ -10643,6 +11087,12 @@
 								}
 							},
 							"required": ["customer", "triager"]
+						},
+						"attachments": {
+							"type": "string"
+						},
+						"downloadAttachment": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -10659,7 +11109,9 @@
 						"sending",
 						"send",
 						"acceptedAs",
-						"actor"
+						"actor",
+						"attachments",
+						"downloadAttachment"
 					]
 				},
 				"state": {
@@ -11072,6 +11524,27 @@
 						"workItemType": {
 							"type": "string"
 						},
+						"defaultProject": {
+							"type": "string"
+						},
+						"noDefaultProject": {
+							"type": "string"
+						},
+						"slaPolicy": {
+							"type": "string"
+						},
+						"noSlaPolicy": {
+							"type": "string"
+						},
+						"autoAccept": {
+							"type": "string"
+						},
+						"customerVisible": {
+							"type": "string"
+						},
+						"forcePrivate": {
+							"type": "string"
+						},
 						"form": {
 							"type": "string"
 						},
@@ -11097,6 +11570,9 @@
 							"type": "string"
 						},
 						"fieldType": {
+							"type": "string"
+						},
+						"options": {
 							"type": "string"
 						},
 						"required": {
@@ -11128,6 +11604,85 @@
 						},
 						"noWorkItemTypes": {
 							"type": "string"
+						},
+						"defaultAssignee": {
+							"type": "string"
+						},
+						"noDefaultAssignee": {
+							"type": "string"
+						},
+						"assigneesUnavailable": {
+							"type": "string"
+						},
+						"mapsTo": {
+							"type": "string"
+						},
+						"noMapping": {
+							"type": "string"
+						},
+						"nativeTitle": {
+							"type": "string"
+						},
+						"nativeDescription": {
+							"type": "string"
+						},
+						"nativePriority": {
+							"type": "string"
+						},
+						"nativeDueDate": {
+							"type": "string"
+						},
+						"valueMapping": {
+							"type": "string"
+						},
+						"valueMappingPlaceholder": {
+							"type": "string"
+						},
+						"conditionalVisibility": {
+							"type": "string"
+						},
+						"alwaysVisible": {
+							"type": "string"
+						},
+						"conditionOperator": {
+							"type": "string"
+						},
+						"conditionValue": {
+							"type": "string"
+						},
+						"conditionOperators": {
+							"type": "object",
+							"additionalProperties": false,
+							"properties": {
+								"is_set": {
+									"type": "string"
+								},
+								"eq": {
+									"type": "string"
+								},
+								"neq": {
+									"type": "string"
+								},
+								"in": {
+									"type": "string"
+								}
+							},
+							"required": ["is_set", "eq", "neq", "in"]
+						},
+						"helpText": {
+							"type": "string"
+						},
+						"allowMultiple": {
+							"type": "string"
+						},
+						"customField": {
+							"type": "string"
+						},
+						"customFieldKey": {
+							"type": "string"
+						},
+						"customFieldKeyPlaceholder": {
+							"type": "string"
 						}
 					},
 					"required": [
@@ -11137,6 +11692,13 @@
 						"description",
 						"group",
 						"workItemType",
+						"defaultProject",
+						"noDefaultProject",
+						"slaPolicy",
+						"noSlaPolicy",
+						"autoAccept",
+						"customerVisible",
+						"forcePrivate",
 						"form",
 						"preview",
 						"addField",
@@ -11146,6 +11708,7 @@
 						"fieldLabel",
 						"fieldKey",
 						"fieldType",
+						"options",
 						"required",
 						"save",
 						"saving",
@@ -11155,7 +11718,28 @@
 						"saved",
 						"publishedMessage",
 						"back",
-						"noWorkItemTypes"
+						"noWorkItemTypes",
+						"defaultAssignee",
+						"noDefaultAssignee",
+						"assigneesUnavailable",
+						"mapsTo",
+						"noMapping",
+						"nativeTitle",
+						"nativeDescription",
+						"nativePriority",
+						"nativeDueDate",
+						"valueMapping",
+						"valueMappingPlaceholder",
+						"conditionalVisibility",
+						"alwaysVisible",
+						"conditionOperator",
+						"conditionValue",
+						"conditionOperators",
+						"helpText",
+						"allowMultiple",
+						"customField",
+						"customFieldKey",
+						"customFieldKeyPlaceholder"
 					]
 				}
 			},
@@ -11179,6 +11763,221 @@
 				"delete",
 				"editor"
 			]
+		},
+		"intakeTriage": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"title": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				},
+				"loading": {
+					"type": "string"
+				},
+				"loadError": {
+					"type": "string"
+				},
+				"retry": {
+					"type": "string"
+				},
+				"empty": {
+					"type": "string"
+				},
+				"reference": {
+					"type": "string"
+				},
+				"requestType": {
+					"type": "string"
+				},
+				"state": {
+					"type": "string"
+				},
+				"created": {
+					"type": "string"
+				},
+				"open": {
+					"type": "string"
+				},
+				"claim": {
+					"type": "string"
+				},
+				"accept": {
+					"type": "string"
+				},
+				"project": {
+					"type": "string"
+				},
+				"workItemType": {
+					"type": "string"
+				},
+				"noProjects": {
+					"type": "string"
+				},
+				"actionUnavailable": {
+					"type": "string"
+				},
+				"claimed": {
+					"type": "string"
+				},
+				"claimError": {
+					"type": "string"
+				},
+				"message": {
+					"type": "string"
+				},
+				"messagePlaceholder": {
+					"type": "string"
+				},
+				"sendMessage": {
+					"type": "string"
+				},
+				"decline": {
+					"type": "string"
+				},
+				"declinePlaceholder": {
+					"type": "string"
+				},
+				"declineError": {
+					"type": "string"
+				},
+				"answers": {
+					"type": "string"
+				},
+				"thread": {
+					"type": "string"
+				},
+				"back": {
+					"type": "string"
+				},
+				"next": {
+					"type": "string"
+				},
+				"previous": {
+					"type": "string"
+				},
+				"states": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"new": {
+							"type": "string"
+						},
+						"clarifying": {
+							"type": "string"
+						},
+						"accepted": {
+							"type": "string"
+						},
+						"declined": {
+							"type": "string"
+						},
+						"duplicate": {
+							"type": "string"
+						},
+						"withdrawn": {
+							"type": "string"
+						}
+					},
+					"required": [
+						"new",
+						"clarifying",
+						"accepted",
+						"declined",
+						"duplicate",
+						"withdrawn"
+					]
+				},
+				"actor": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"customer": {
+							"type": "string"
+						},
+						"triager": {
+							"type": "string"
+						}
+					},
+					"required": ["customer", "triager"]
+				},
+				"attachments": {
+					"type": "string"
+				},
+				"downloadAttachment": {
+					"type": "string"
+				},
+				"customer": {
+					"type": "string"
+				},
+				"organisation": {
+					"type": "string"
+				},
+				"submittedAt": {
+					"type": "string"
+				},
+				"suggestedDuplicates": {
+					"type": "string"
+				},
+				"acceptedWorkItem": {
+					"type": "string"
+				},
+				"markDuplicate": {
+					"type": "string"
+				},
+				"resolving": {
+					"type": "string"
+				},
+				"duplicateWorkItem": {
+					"type": "string"
+				}
+			},
+			"required": [
+				"title",
+				"description",
+				"loading",
+				"loadError",
+				"retry",
+				"empty",
+				"reference",
+				"requestType",
+				"state",
+				"created",
+				"open",
+				"claim",
+				"accept",
+				"project",
+				"workItemType",
+				"noProjects",
+				"actionUnavailable",
+				"claimed",
+				"claimError",
+				"message",
+				"messagePlaceholder",
+				"sendMessage",
+				"decline",
+				"declinePlaceholder",
+				"declineError",
+				"answers",
+				"thread",
+				"back",
+				"next",
+				"previous",
+				"states",
+				"actor",
+				"attachments",
+				"downloadAttachment",
+				"customer",
+				"organisation",
+				"submittedAt",
+				"suggestedDuplicates",
+				"acceptedWorkItem",
+				"markDuplicate",
+				"resolving",
+				"duplicateWorkItem"
+			]
 		}
 	},
 	"required": [
@@ -11197,6 +11996,7 @@
 		"serviceCalendars",
 		"portal",
 		"slaPolicies",
-		"requestTypes"
+		"requestTypes",
+		"intakeTriage"
 	]
 }

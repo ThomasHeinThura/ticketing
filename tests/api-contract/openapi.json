@@ -19877,6 +19877,12 @@
                       "type": "string",
                       "format": "date-time"
                     },
+                    "calendarName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "metrics": {
                       "type": "array",
                       "items": {
@@ -19927,6 +19933,30 @@
                               "null"
                             ],
                             "minimum": 0
+                          },
+                          "pause": {
+                            "type": [
+                              "object",
+                              "null"
+                            ],
+                            "properties": {
+                              "startedAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "reason": {
+                                "type": "string",
+                                "enum": [
+                                  "waiting_customer",
+                                  "resolved",
+                                  "manual"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "startedAt",
+                              "reason"
+                            ]
                           }
                         },
                         "required": [
@@ -19936,7 +19966,8 @@
                           "targetMinutes",
                           "consumedMinutes",
                           "consumedPct",
-                          "remainingMinutes"
+                          "remainingMinutes",
+                          "pause"
                         ]
                       }
                     }
@@ -19945,6 +19976,7 @@
                     "key",
                     "startedAt",
                     "evaluatedAt",
+                    "calendarName",
                     "metrics"
                   ]
                 }
@@ -19966,6 +19998,182 @@
           },
           "404": {
             "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/sla/pause": {
+      "post": {
+        "operationId": "pauseWorkItemSla",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Pause running SLA metrics manually",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The SLA metrics paused",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "changedMetrics": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "first_response",
+                          "resolution"
+                        ]
+                      }
+                    },
+                    "changedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "changedMetrics",
+                    "changedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No work-item access or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No running metric can be paused or one is already paused",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/work-items/{key}/sla/resume": {
+      "post": {
+        "operationId": "resumeWorkItemSla",
+        "tags": [
+          "Work items"
+        ],
+        "summary": "Resume manually paused SLA metrics",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "key",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The manually paused SLA metrics resumed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string"
+                    },
+                    "changedMetrics": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "first_response",
+                          "resolution"
+                        ]
+                      }
+                    },
+                    "changedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "key",
+                    "changedMetrics",
+                    "changedAt"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials"
+          },
+          "403": {
+            "description": "No work-item access or missing work_item:update permission",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Work item not found",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "No manually paused metric can be resumed",
             "content": {
               "text/plain": {
                 "schema": {
@@ -20904,7 +21112,7 @@
           "Work items"
         ],
         "summary": "Transition work item",
-        "description": "Move a work item to a new state through its type's active workflow version (`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see `GET .../transitions`). INTERIM, until issue #36 (approvals) lands: a transition whose `requires_approval` or `requires_cab` is set can never complete through this route -- both gates are treated as permanently unsatisfied. Guard resolution is also partial today: `no_open_blockers` (no `work_item_relation` table yet), `field_required` (no custom-field/satellite value store yet) and `change_risk_at_most` (no change-risk column yet) always fail closed (blocked), never fabricated as satisfied. `pause_sla`/`resume_sla`/`set_field` effects are silent no-ops (no backing table yet); `set_assignee`'s `'default'` always resolves to no assignee (no project/type default-assignee column yet).",
+        "description": "Move a work item to a new state through its type's active workflow version (`workflows.md`). `toStateTemplateId` is the target `state_template.id` (see `GET .../transitions`). INTERIM, until issue #36 (approvals) lands: a transition whose `requires_approval` or `requires_cab` is set can never complete through this route -- both gates are treated as permanently unsatisfied. Guard resolution is also partial today: `no_open_blockers` (no `work_item_relation` table yet), `field_required` (no custom-field/satellite value store yet) and `change_risk_at_most` (no change-risk column yet) always fail closed (blocked), never fabricated as satisfied. `pause_sla`/`resume_sla` effects are persisted atomically; `set_field` remains unavailable until its value store exists. `set_assignee`'s `'default'` always resolves to no assignee (no project/type default-assignee column yet).",
         "parameters": [
           {
             "schema": {

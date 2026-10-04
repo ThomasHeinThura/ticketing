@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
@@ -82,6 +82,12 @@ describe("API integration: SLA policy authoring contract", () => {
   });
 
   afterEach(async () => {
+    await db.execute(
+      sql`DROP TRIGGER IF EXISTS sla_manual_audit_probe ON audit_log`,
+    );
+    await db.execute(
+      sql`DROP FUNCTION IF EXISTS sla_manual_audit_probe_function()`,
+    );
     await db.execute(
       sql`DROP TRIGGER IF EXISTS sla_policy_audit_probe ON audit_log`,
     );
@@ -598,6 +604,262 @@ describe("API integration: SLA policy authoring contract", () => {
     expect(
       new Date(published.activeVersion.effectiveFrom).getTime(),
     ).toBeLessThan(startedAt.getTime());
+
+    await db.insert(schema.slaPauseTable).values({
+      workItemId: item.id,
+      metric: "resolution",
+      reason: "waiting_customer",
+      startedAt: new Date(),
+    });
+    const pauseOverAutomatic = await csrfRequest(
+      app,
+      `/api/work-items/${item.key}/sla/pause`,
+      { method: "POST", headers: { cookie: sessionCookie } },
+      sessionCookie,
+    );
+    expect(pauseOverAutomatic.status).toBe(409);
+    const automaticRows = await db
+      .select({
+        metric: schema.slaPauseTable.metric,
+        reason: schema.slaPauseTable.reason,
+        endedAt: schema.slaPauseTable.endedAt,
+      })
+      .from(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
+    expect(automaticRows).toEqual([
+      expect.objectContaining({
+        metric: "resolution",
+        reason: "waiting_customer",
+        endedAt: null,
+      }),
+    ]);
+    await db
+      .update(schema.slaPauseTable)
+      .set({ endedAt: new Date() })
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
+
+    const pauseResponse = await csrfRequest(
+      app,
+      `/api/work-items/${item.key}/sla/pause`,
+      { method: "POST", headers: { cookie: sessionCookie } },
+      sessionCookie,
+    );
+    expect(pauseResponse.status).toBe(200);
+    const pauseResult = await pauseResponse.json();
+    expect(pauseResult.changedMetrics).toEqual([
+      "first_response",
+      "resolution",
+    ]);
+    const pausedResponse = await getEvaluation();
+    expect(pausedResponse.status).toBe(200);
+    const paused = await pausedResponse.json();
+    expect(paused.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metric: "first_response",
+          pause: expect.objectContaining({ reason: "manual" }),
+        }),
+        expect.objectContaining({
+          metric: "resolution",
+          pause: expect.objectContaining({ reason: "manual" }),
+        }),
+      ]),
+    );
+
+    const conflictingPause = await csrfRequest(
+      app,
+      `/api/work-items/${item.key}/sla/pause`,
+      { method: "POST", headers: { cookie: sessionCookie } },
+      sessionCookie,
+    );
+    expect(conflictingPause.status).toBe(409);
+
+    const resumeResponse = await csrfRequest(
+      app,
+      `/api/work-items/${item.key}/sla/resume`,
+      { method: "POST", headers: { cookie: sessionCookie } },
+      sessionCookie,
+    );
+    expect(resumeResponse.status).toBe(200);
+    const resumedRows = await db
+      .select({
+        metric: schema.slaPauseTable.metric,
+        endedAt: schema.slaPauseTable.endedAt,
+      })
+      .from(schema.slaPauseTable)
+      .where(eq(schema.slaPauseTable.workItemId, item.id));
+    expect(resumedRows).toHaveLength(3);
+    expect(resumedRows.every((row) => row.endedAt !== null)).toBe(true);
+    const activity = await db
+      .select({
+        verb: schema.activityTable.verb,
+        field: schema.activityTable.field,
+        visibility: schema.activityTable.visibility,
+        payload: schema.activityTable.payload,
+      })
+      .from(schema.activityTable)
+      .where(
+        and(
+          eq(schema.activityTable.workItemId, item.id),
+          eq(schema.activityTable.field, "sla_pause"),
+        ),
+      );
+    expect(activity).toHaveLength(2);
+    expect(activity.every((row) => row.verb === "updated")).toBe(true);
+    expect(activity.every((row) => row.visibility === "internal")).toBe(true);
+    expect(activity.map((row) => row.payload)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metrics: expect.arrayContaining(["first_response", "resolution"]),
+          reason: "manual",
+          startedAt: expect.any(String),
+        }),
+        expect.objectContaining({
+          metrics: expect.arrayContaining(["first_response", "resolution"]),
+          reason: "manual",
+          endedAt: expect.any(String),
+        }),
+      ]),
+    );
+    const auditRows = await db
+      .select({
+        action: schema.auditLogTable.action,
+        before: schema.auditLogTable.before,
+        after: schema.auditLogTable.after,
+      })
+      .from(schema.auditLogTable)
+      .where(
+        and(
+          eq(schema.auditLogTable.entityId, item.id),
+          eq(schema.auditLogTable.action, "work_item.updated"),
+        ),
+      );
+    expect(auditRows).toHaveLength(2);
+    expect(auditRows.map((row) => row.after)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metrics: expect.arrayContaining(["first_response", "resolution"]),
+          reason: "manual",
+          startedAt: expect.any(String),
+        }),
+        expect.objectContaining({
+          metrics: expect.arrayContaining(["first_response", "resolution"]),
+          reason: "manual",
+          endedAt: expect.any(String),
+        }),
+      ]),
+    );
+    const outboxRows = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.workspaceId, owner.workspace.id),
+          eq(schema.outboxTable.kind, "work_item.updated"),
+        ),
+      );
+    const slaOutboxRows = outboxRows.filter((row) => {
+      const payload = row.payload as {
+        payload?: {
+          key?: unknown;
+          changes?: Array<{ field?: unknown; visibility?: unknown }>;
+        };
+      };
+      return (
+        payload.payload?.key === item.key &&
+        payload.payload.changes?.some(
+          (change) =>
+            change.field === "sla_pause" && change.visibility === "internal",
+        ) === true
+      );
+    });
+    expect(slaOutboxRows).toHaveLength(2);
+
+    const noManualResume = await csrfRequest(
+      app,
+      `/api/work-items/${item.key}/sla/resume`,
+      { method: "POST", headers: { cookie: sessionCookie } },
+      sessionCookie,
+    );
+    expect(noManualResume.status).toBe(409);
+
+    await db.execute(
+      sql.raw(`
+        CREATE FUNCTION sla_manual_audit_probe_function() RETURNS trigger AS $$
+        BEGIN
+          IF NEW.entity_id = '${item.id}' AND NEW.action = 'work_item.updated'
+            AND NEW.after->>'field' = 'sla_pause' THEN
+            RAISE EXCEPTION 'manual SLA audit probe';
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+      `),
+    );
+    await db.execute(
+      sql.raw(
+        "CREATE TRIGGER sla_manual_audit_probe BEFORE INSERT ON audit_log FOR EACH ROW EXECUTE FUNCTION sla_manual_audit_probe_function()",
+      ),
+    );
+    const auditFailure = await csrfRequest(
+      app,
+      `/api/work-items/${item.key}/sla/pause`,
+      { method: "POST", headers: { cookie: sessionCookie } },
+      sessionCookie,
+    );
+    expect(auditFailure.status).toBe(500);
+    const afterAuditFailure = await db
+      .select({ metric: schema.slaPauseTable.metric })
+      .from(schema.slaPauseTable)
+      .where(
+        and(
+          eq(schema.slaPauseTable.workItemId, item.id),
+          isNull(schema.slaPauseTable.endedAt),
+        ),
+      );
+    expect(afterAuditFailure).toHaveLength(0);
+    const activityAfterAuditFailure = await db
+      .select({ id: schema.activityTable.id })
+      .from(schema.activityTable)
+      .where(
+        and(
+          eq(schema.activityTable.workItemId, item.id),
+          eq(schema.activityTable.field, "sla_pause"),
+        ),
+      );
+    expect(activityAfterAuditFailure).toHaveLength(2);
+    const outboxAfterAuditFailure = await db
+      .select({ payload: schema.outboxTable.payload })
+      .from(schema.outboxTable)
+      .where(
+        and(
+          eq(schema.outboxTable.workspaceId, owner.workspace.id),
+          eq(schema.outboxTable.kind, "work_item.updated"),
+        ),
+      );
+    expect(
+      outboxAfterAuditFailure.filter((row) => {
+        const payload = row.payload as {
+          payload?: {
+            key?: unknown;
+            changes?: Array<{ field?: unknown; visibility?: unknown }>;
+          };
+        };
+        return (
+          payload.payload?.key === item.key &&
+          payload.payload.changes?.some(
+            (change) =>
+              change.field === "sla_pause" && change.visibility === "internal",
+          ) === true
+        );
+      }),
+    ).toHaveLength(2);
+    await db.execute(
+      sql.raw("DROP TRIGGER IF EXISTS sla_manual_audit_probe ON audit_log"),
+    );
+    await db.execute(
+      sql.raw("DROP FUNCTION IF EXISTS sla_manual_audit_probe_function()"),
+    );
   });
 
   it("commits a policy when a real audit INSERT trigger fails inside its savepoint", async () => {

@@ -37,6 +37,7 @@ import assignWorkItem, {
   WorkItemAssigneeConflictError,
 } from "./controllers/assign-work-item";
 import bulkWorkItems from "./controllers/bulk-work-items";
+import { changeManualSlaPause } from "./controllers/change-manual-sla-pause";
 import createComment from "./controllers/create-comment";
 import createWorkItem from "./controllers/create-work-item";
 import deleteComment from "./controllers/delete-comment";
@@ -101,7 +102,10 @@ import {
   workItemTreeQuery,
   workspaceIdParam,
 } from "./schema";
-import { workItemSlaSchema } from "./sla-response";
+import {
+  workItemSlaPauseChangeSchema,
+  workItemSlaSchema,
+} from "./sla-response";
 
 /**
  * #23's first slice: minimal create + read + list for `work_item`
@@ -298,6 +302,53 @@ const getWorkItemSlaRoute = createRoute({
       "No workspace access or missing work_item:read permission",
     ),
     404: errorResponse("Work item not found"),
+  },
+});
+
+const pauseWorkItemSlaRoute = createRoute({
+  method: "post",
+  operationId: "pauseWorkItemSla",
+  path: "/work-items/{key}/sla/pause",
+  tags: ["Work items"],
+  summary: "Pause running SLA metrics manually",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse("The SLA metrics paused", workItemSlaPauseChangeSchema),
+    403: errorResponse(
+      "No work-item access or missing work_item:update permission",
+    ),
+    404: errorResponse("Work item not found"),
+    409: errorResponse(
+      "No running metric can be paused or one is already paused",
+    ),
+  },
+});
+
+const resumeWorkItemSlaRoute = createRoute({
+  method: "post",
+  operationId: "resumeWorkItemSla",
+  path: "/work-items/{key}/sla/resume",
+  tags: ["Work items"],
+  summary: "Resume manually paused SLA metrics",
+  middleware: [
+    requireWorkItemReach(),
+    requireWorkspaceCapability("work_item:update"),
+  ] as const,
+  request: { params: workItemKeyParam },
+  responses: {
+    200: jsonResponse(
+      "The manually paused SLA metrics resumed",
+      workItemSlaPauseChangeSchema,
+    ),
+    403: errorResponse(
+      "No work-item access or missing work_item:update permission",
+    ),
+    404: errorResponse("Work item not found"),
+    409: errorResponse("No manually paused metric can be resumed"),
   },
 });
 
@@ -756,8 +807,9 @@ const transitionWorkItemRoute = createRoute({
     "also partial today: `no_open_blockers` (no `work_item_relation` table yet), " +
     "`field_required` (no custom-field/satellite value store yet) and " +
     "`change_risk_at_most` (no change-risk column yet) always fail closed (blocked), " +
-    "never fabricated as satisfied. `pause_sla`/`resume_sla`/`set_field` effects are " +
-    "silent no-ops (no backing table yet); `set_assignee`'s `'default'` always resolves " +
+    "never fabricated as satisfied. `pause_sla`/`resume_sla` effects are persisted " +
+    "atomically; `set_field` remains unavailable until its value store exists. " +
+    "`set_assignee`'s `'default'` always resolves " +
     "to no assignee (no project/type default-assignee column yet).",
   middleware: [
     requireWorkItemReach(),
@@ -944,6 +996,26 @@ const workItem = apiRouter<
     const { key } = c.req.valid("param");
     const item = await getWorkItemSla(key, c.get("workspaceId"));
     return c.json(workItemSlaSchema.parse(item), 200);
+  })
+  .openapi(pauseWorkItemSlaRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const result = await changeManualSlaPause({
+      key,
+      workspaceId: c.get("workspaceId"),
+      ...resolveActor(c.get("userId"), c.get("apiKey")),
+      operation: "pause",
+    });
+    return c.json(workItemSlaPauseChangeSchema.parse(result), 200);
+  })
+  .openapi(resumeWorkItemSlaRoute, async (c) => {
+    const { key } = c.req.valid("param");
+    const result = await changeManualSlaPause({
+      key,
+      workspaceId: c.get("workspaceId"),
+      ...resolveActor(c.get("userId"), c.get("apiKey")),
+      operation: "resume",
+    });
+    return c.json(workItemSlaPauseChangeSchema.parse(result), 200);
   })
   .openapi(listWorkItemTypesRoute, async (c) => {
     const { workspaceId } = c.req.valid("param");

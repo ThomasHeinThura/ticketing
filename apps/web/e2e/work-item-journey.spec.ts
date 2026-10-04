@@ -62,6 +62,7 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
   let accessDenied = false;
   let postedComment = false;
   let projectDefaultCommentVisibility: "public" | "internal" = "internal";
+  let manualSlaPause: string | null = null;
   const activity: Array<Record<string, unknown>> = [];
   const richComment = {
     id: "comment-rich",
@@ -442,6 +443,49 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
         assigneeName: "Existing colleague",
       });
     }
+    if (path === "/api/work-items/WLP-1/sla" && request.method() === "GET") {
+      const now = "2026-09-29T10:00:00.000Z";
+      return json({
+        key: "WLP-1",
+        startedAt: "2026-09-29T09:00:00.000Z",
+        evaluatedAt: now,
+        calendarName: "Support hours",
+        metrics: (["first_response", "resolution"] as const).map((metric) => ({
+          metric,
+          state: "ok",
+          dueAt: "2026-09-30T10:00:00.000Z",
+          targetMinutes: metric === "first_response" ? 60 : 240,
+          consumedMinutes: 30,
+          consumedPct: 50,
+          remainingMinutes: metric === "first_response" ? 30 : 120,
+          pause: manualSlaPause
+            ? { startedAt: manualSlaPause, reason: "manual" }
+            : null,
+        })),
+      });
+    }
+    if (
+      path === "/api/work-items/WLP-1/sla/pause" &&
+      request.method() === "POST"
+    ) {
+      manualSlaPause = "2026-09-29T10:01:00.000Z";
+      return json({
+        key: "WLP-1",
+        changedMetrics: ["first_response", "resolution"],
+        changedAt: manualSlaPause,
+      });
+    }
+    if (
+      path === "/api/work-items/WLP-1/sla/resume" &&
+      request.method() === "POST"
+    ) {
+      manualSlaPause = null;
+      return json({
+        key: "WLP-1",
+        changedMetrics: ["first_response", "resolution"],
+        changedAt: "2026-09-29T10:02:00.000Z",
+      });
+    }
     if (path === "/api/work-items/WLP-1" && request.method() === "PATCH") {
       const headers = await request.allHeaders();
       expect(headers["if-match"], JSON.stringify(headers)).toBe(
@@ -658,6 +702,17 @@ test("staff can create, list, edit, assign, and read work-item activity", async 
     page.getByTestId("work-item-detail"),
     JSON.stringify(routeCalls),
   ).toBeVisible();
+  await expect(page.getByTestId("work-item-sla-calendar")).toContainText(
+    "Support hours",
+  );
+  await page.getByRole("button", { name: "Pause clocks" }).click();
+  await expect(page.getByText(/Paused since .*manually paused/)).toHaveCount(2);
+  expect(routeCalls).toContain("POST /api/work-items/WLP-1/sla/pause");
+  await page.getByRole("button", { name: "Resume clocks" }).click();
+  await expect(
+    page.getByRole("button", { name: "Pause clocks" }),
+  ).toBeVisible();
+  expect(routeCalls).toContain("POST /api/work-items/WLP-1/sla/resume");
   await expect(page.getByText("evidence.png", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Download evidence.png" }),

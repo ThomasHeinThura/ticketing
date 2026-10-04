@@ -3813,6 +3813,52 @@ export const slaGoalTable = pgTable(
   ],
 );
 
+export const slaPauseTable = pgTable(
+  "sla_pause",
+  {
+    workItemId: text("work_item_id")
+      .notNull()
+      .references(() => workItemTable.id, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    metric: text("metric", {
+      enum: ["first_response", "resolution"],
+    }).notNull(),
+    startedAt: timestamp("started_at", {
+      mode: "date",
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
+    endedAt: timestamp("ended_at", { mode: "date", withTimezone: true }),
+    reason: text("reason", {
+      enum: ["waiting_customer", "resolved", "manual"],
+    }).notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "sla_pause_work_item_metric_started_at_pk",
+      columns: [table.workItemId, table.metric, table.startedAt],
+    }),
+    uniqueIndex("sla_pause_one_open_per_work_item_metric_unique")
+      .on(table.workItemId, table.metric)
+      .where(sql`${table.endedAt} is null`),
+    check(
+      "sla_pause_metric_allowed",
+      sql`${table.metric} in ('first_response', 'resolution')`,
+    ),
+    check(
+      "sla_pause_reason_allowed",
+      sql`${table.reason} in ('waiting_customer', 'resolved', 'manual')`,
+    ),
+    check(
+      "sla_pause_ended_after_started",
+      sql`${table.endedAt} is null or ${table.endedAt} >= ${table.startedAt}`,
+    ),
+  ],
+);
+
 export const workItemKeyAliasTable = pgTable(
   "work_item_key_alias",
   {

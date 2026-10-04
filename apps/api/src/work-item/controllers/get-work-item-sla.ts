@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { HTTPException } from "hono/http-exception";
 import db, { schema } from "../../database";
 import { evaluatePinnedWorkItemSla } from "../../sla-policy/evaluation";
@@ -30,7 +30,17 @@ export async function getWorkItemSla(key: string, workspaceId: string) {
 
   const now = new Date();
   const startedAt = item.slaStartedAt ?? item.createdAt;
-  const metrics = await evaluatePinnedWorkItemSla({
+  const pauses = await db
+    .select({
+      metric: schema.slaPauseTable.metric,
+      startedAt: schema.slaPauseTable.startedAt,
+      endedAt: schema.slaPauseTable.endedAt,
+      reason: schema.slaPauseTable.reason,
+    })
+    .from(schema.slaPauseTable)
+    .where(eq(schema.slaPauseTable.workItemId, item.id))
+    .orderBy(asc(schema.slaPauseTable.startedAt));
+  const evaluation = await evaluatePinnedWorkItemSla({
     policyVersionId: item.slaPolicyVersionId,
     workspaceId: item.workspaceId,
     workItemTypeId: item.typeId,
@@ -39,10 +49,27 @@ export async function getWorkItemSla(key: string, workspaceId: string) {
       startedAt,
       firstResponseAt: item.firstResponseAt,
       resolvedAt: item.resolvedAt,
-      pauses: [],
     },
+    pauses,
     now,
   });
 
-  return { key: item.key, startedAt, evaluatedAt: now, metrics };
+  return {
+    key: item.key,
+    startedAt,
+    evaluatedAt: now,
+    calendarName: evaluation.calendarName,
+    metrics: evaluation.metrics.map((metric) => ({
+      ...metric,
+      pause: (() => {
+        const pause = pauses.find(
+          (candidate) =>
+            candidate.metric === metric.metric && candidate.endedAt === null,
+        );
+        return pause
+          ? { startedAt: pause.startedAt, reason: pause.reason }
+          : null;
+      })(),
+    })),
+  };
 }
