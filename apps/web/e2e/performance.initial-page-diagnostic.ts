@@ -26,6 +26,7 @@ const RESULT_DIR = path.join(
 type CpuProfile = {
   nodes: Array<{
     id: number;
+    children?: number[];
     callFrame: {
       functionName: string;
       url: string;
@@ -36,6 +37,48 @@ type CpuProfile = {
   samples?: number[];
   timeDeltas?: number[];
 };
+
+function sanitizeCpuProfile(profile: CpuProfile) {
+  const nodeIds = new Set(profile.nodes.map((node) => node.id));
+  const samples = profile.samples ?? [];
+  const timeDeltas = profile.timeDeltas ?? [];
+  if (samples.length !== timeDeltas.length)
+    throw new Error("The diagnostic CPU profile has unpaired samples.");
+  for (const node of profile.nodes) {
+    if (node.children?.some((childId) => !nodeIds.has(childId)))
+      throw new Error("The diagnostic CPU profile contains an unknown child.");
+  }
+  if (samples.some((nodeId) => !nodeIds.has(nodeId)))
+    throw new Error("The diagnostic CPU profile contains an unknown sample.");
+
+  return {
+    nodes: profile.nodes.map((node) => {
+      let asset = "runtime";
+      if (node.callFrame.url) {
+        try {
+          const frameUrl = new URL(node.callFrame.url, ORIGIN);
+          asset =
+            frameUrl.origin === ORIGIN &&
+            frameUrl.pathname.startsWith("/assets/")
+              ? path.posix.basename(frameUrl.pathname)
+              : "non-asset";
+        } catch {
+          asset = "non-asset";
+        }
+      }
+      return {
+        id: node.id,
+        children: node.children ?? [],
+        functionName: node.callFrame.functionName.slice(0, 160),
+        asset,
+        line: node.callFrame.lineNumber + 1,
+        column: node.callFrame.columnNumber + 1,
+      };
+    }),
+    samples,
+    timeDeltasMicroseconds: timeDeltas,
+  };
+}
 
 type InitialDocumentMetrics = {
   lcp: {
@@ -435,6 +478,31 @@ async function visitBoard(page: Page) {
   );
 }
 
+async function visitBoardTaskDetailsSheet(page: Page) {
+  await page.goto(
+    `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/board`,
+    { waitUntil: "domcontentloaded" },
+  );
+  const firstTaskCard = page.locator('[data-task-id^="legacy-task-"]').first();
+  await expect(firstTaskCard).toBeVisible({ timeout: 30_000 });
+  const taskId = await firstTaskCard.getAttribute("data-task-id");
+  if (!taskId) throw new Error("The first board card had no task identity.");
+
+  await firstTaskCard.click();
+  await expect(page).toHaveURL(new RegExp(`[?&]taskId=${taskId}(?:&|$)`));
+  await expect(
+    page.locator('.taskdesk-tiptap-prose[contenteditable="true"]'),
+  ).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.keyboard.press("Escape");
+  await expect(page).not.toHaveURL(/[?&]taskId=/);
+  await expect(
+    page.locator('.taskdesk-tiptap-prose[contenteditable="true"]'),
+  ).toHaveCount(0);
+}
+
 test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   browser,
 }) => {
@@ -468,6 +536,13 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
       async () => {},
       visitBoard,
     ),
+    await withDiagnosticProfile(
+      browser,
+      "board task selection opens editor and Escape closes sheet",
+      false,
+      async () => {},
+      visitBoardTaskDetailsSheet,
+    ),
   ];
   const profileAssetNames = new Set(
     captures.flatMap(({ profile }) =>
@@ -481,10 +556,11 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
   const profileWindows = captures.map(({ name, profile }) => ({
     name,
     topCpuFrames: sampledFrames(profile, build.modulesByAsset),
+    cpuProfileTree: sanitizeCpuProfile(profile),
   }));
   const initial = captures[0];
   const result = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     diagnosticOnly: true,
     capturedAfterCanonicalG11: true,
     fixture:
@@ -519,7 +595,7 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     initial.metrics.heading.found,
     "The real work-list heading must be visible.",
   ).toBe(true);
-  expect(profileWindows).toHaveLength(4);
+  expect(profileWindows).toHaveLength(5);
   expect(
     profileWindows.every((window) => window.topCpuFrames.length > 0),
     "Each hosted failure class must include sampled app JavaScript frames.",
