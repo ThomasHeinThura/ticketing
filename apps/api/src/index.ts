@@ -1293,6 +1293,8 @@ export function createApp(
         return {
           userId: c.get("userId") as string,
           apiKeyId: apiKey?.id,
+          apiKeyEnabled: apiKey?.enabled,
+          apiKeyOwnerUserId: apiKey?.userId,
           apiKeyPermissions: apiKey?.permissions,
           portal: session?.portal ?? null,
         };

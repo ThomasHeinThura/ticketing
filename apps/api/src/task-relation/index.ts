@@ -143,7 +143,7 @@ const getTaskRelationsRoute = createRoute({
   description:
     "Get every relation where the task is the source or the target, each with a summary of both linked tasks. Relations pointing outside the caller's workspace are omitted.",
   middleware: [
-    workspaceAccess.fromTaskId("taskId"),
+    workspaceAccess.fromTaskId("taskId", { requireProjectReach: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: taskIdParam },

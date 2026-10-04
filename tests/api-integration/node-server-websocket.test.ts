@@ -7,6 +7,7 @@ import type { AddressInfo, Socket } from "node:net";
 import { createConnection } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
+import { defaultRolePayloads } from "@taskdesk/permissions";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { auth, portalAuth } from "../../apps/api/src/auth";
@@ -20,6 +21,7 @@ import {
   broadcastToProject,
   broadcastToUser,
   initializeWebSocketAdapter,
+  invalidateNativeAuthorization,
   shutdownWebSocketAdapter,
 } from "../../apps/api/src/ws";
 import { authorizeNativeTopic } from "../../apps/api/src/ws/native-work-item-realtime";
@@ -469,6 +471,211 @@ describe("P0 #557: real Node HTTP and WebSocket adapter", () => {
     await expect(
       authorizeNativeTopic(credential, `work_item:${item.key}`),
     ).resolves.toBeNull();
+  });
+
+  it("requires canonical project reach and selected role capability for native topics", async () => {
+    const owner = await createWorkspaceMember({ role: "admin" });
+    const project = await createProjectFixture({
+      workspaceId: owner.workspace.id,
+    });
+    const type = requireRow(
+      await db
+        .insert(schema.workItemTypeTable)
+        .values({
+          workspaceId: owner.workspace.id,
+          key: `realtime-policy-${randomUUID()}`,
+          name: "Realtime policy fixture",
+          category: "service",
+        })
+        .returning(),
+      "native realtime project policy type",
+    );
+    const template = requireRow(
+      await db
+        .insert(schema.stateTemplateTable)
+        .values({
+          workspaceId: owner.workspace.id,
+          key: `realtime-policy-${randomUUID()}`,
+          name: "Open",
+          group: "backlog",
+        })
+        .returning(),
+      "native realtime project policy state template",
+    );
+    await db.insert(schema.stateTable).values({
+      projectId: project.project.id,
+      stateTemplateId: template.id,
+      isDefault: true,
+    });
+    const item = await createWorkItem({
+      projectId: project.project.id,
+      workspaceId: owner.workspace.id,
+      typeId: type.id,
+      title: "Realtime policy item",
+      actorId: owner.user.id,
+      actorType: "person",
+    });
+
+    async function actorWithProjectRole(capabilities: string[] | null) {
+      const actor = await createWorkspaceMember({ role: "admin" });
+      await db.insert(schema.workspaceUserTable).values({
+        workspaceId: owner.workspace.id,
+        userId: actor.user.id,
+        role: "admin",
+        joinedAt: new Date(),
+      });
+      await db
+        .insert(schema.workspaceRoleTable)
+        .values({
+          workspaceId: owner.workspace.id,
+          role: "admin",
+          permission: JSON.stringify(defaultRolePayloads.admin),
+          isSystem: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .onConflictDoNothing({
+          target: [
+            schema.workspaceRoleTable.workspaceId,
+            schema.workspaceRoleTable.role,
+          ],
+        });
+      const person = requireRow(
+        await db
+          .select({ id: schema.personTable.id })
+          .from(schema.personTable)
+          .where(eq(schema.personTable.userId, actor.user.id))
+          .limit(1),
+        "native realtime project policy person",
+      );
+      const role = requireRow(
+        await db
+          .insert(schema.roleTable)
+          .values({
+            scope: "project",
+            workspaceId: owner.workspace.id,
+            key: `realtime-project-${randomUUID()}`,
+            name: "Realtime project policy role",
+            rank: 1,
+            capabilities: capabilities ?? ["project:read", "work_item:read"],
+          })
+          .returning(),
+        "native realtime project policy role",
+      );
+      await db.insert(schema.membershipTable).values({
+        personId: person.id,
+        scope: "project",
+        scopeId: project.project.id,
+        roleId: role.id,
+      });
+      return { ...actor, role };
+    }
+
+    const direct = await actorWithProjectRole([
+      "project:read",
+      "work_item:read",
+    ]);
+    const ordinary = await createWorkspaceMember({ role: "admin" });
+    await db.insert(schema.workspaceUserTable).values({
+      workspaceId: owner.workspace.id,
+      userId: ordinary.user.id,
+      role: "admin",
+      joinedAt: new Date(),
+    });
+    const limited = await actorWithProjectRole(["project:read"]);
+
+    const { app } = createApp();
+    const node = createNodeServer(app);
+    closeServer = node.close;
+    await listening(node.server);
+    const url = websocketUrl(node.server, "/api/ws");
+    const headers = {
+      host: "localhost:1337",
+      origin: "http://localhost:1337",
+      cookie: "__Host-tdk_agent_session=integration-session",
+    };
+
+    mockAuthenticatedSession(direct.user);
+    const directSocket = await openSocket(url, headers);
+    const directProject = nextMessage(directSocket);
+    directSocket.send(
+      JSON.stringify({
+        type: "subscribe",
+        topic: `project:${project.project.id}`,
+      }),
+    );
+    await expect(directProject).resolves.toEqual({
+      type: "subscribed",
+      topic: `project:${project.project.id}`,
+    });
+    const directItem = nextMessage(directSocket);
+    directSocket.send(
+      JSON.stringify({ type: "subscribe", topic: `work_item:${item.key}` }),
+    );
+    await expect(directItem).resolves.toEqual({
+      type: "subscribed",
+      topic: `work_item:${item.key}`,
+    });
+
+    mockAuthenticatedSession(ordinary.user);
+    const ordinarySocket = await openSocket(url, headers);
+    const ordinaryProject = nextMessage(ordinarySocket);
+    ordinarySocket.send(
+      JSON.stringify({
+        type: "subscribe",
+        topic: `project:${project.project.id}`,
+      }),
+    );
+    await expect(ordinaryProject).resolves.toEqual({
+      type: "subscription_denied",
+    });
+    const ordinaryItem = nextMessage(ordinarySocket);
+    ordinarySocket.send(
+      JSON.stringify({ type: "subscribe", topic: `work_item:${item.key}` }),
+    );
+    await expect(ordinaryItem).resolves.toEqual({
+      type: "subscription_denied",
+    });
+
+    mockAuthenticatedSession(limited.user);
+    const limitedSocket = await openSocket(url, headers);
+    const limitedProject = nextMessage(limitedSocket);
+    limitedSocket.send(
+      JSON.stringify({
+        type: "subscribe",
+        topic: `project:${project.project.id}`,
+      }),
+    );
+    await expect(limitedProject).resolves.toEqual({
+      type: "subscribed",
+      topic: `project:${project.project.id}`,
+    });
+    const limitedItem = nextMessage(limitedSocket);
+    limitedSocket.send(
+      JSON.stringify({ type: "subscribe", topic: `work_item:${item.key}` }),
+    );
+    await expect(limitedItem).resolves.toEqual({
+      type: "subscription_denied",
+    });
+
+    const revoked = nextMessage(limitedSocket);
+    await db
+      .update(schema.roleTable)
+      .set({ capabilities: [] })
+      .where(eq(schema.roleTable.id, limited.role.id));
+    await invalidateNativeAuthorization({
+      userId: limited.user.id,
+      projectId: project.project.id,
+    });
+    await expect(revoked).resolves.toEqual({ type: "subscription_denied" });
+
+    for (const socket of [directSocket, ordinarySocket, limitedSocket]) {
+      const closed = new Promise<void>((resolve) =>
+        socket.once("close", () => resolve()),
+      );
+      socket.close();
+      await closed;
+    }
   });
 
   it("drops an archived project subscription on its committed invalidation", async () => {

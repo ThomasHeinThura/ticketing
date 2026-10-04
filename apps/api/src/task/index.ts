@@ -90,7 +90,7 @@ const listTasksRoute = createRoute({
   description:
     "Get a project's board: its columns, each with the tasks in it, plus the archived and planned buckets. Filter and paginate with the query parameters.",
   middleware: [
-    workspaceAccess.fromProject("projectId"),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: projectIdParam, query: listTasksQuery },
@@ -180,7 +180,7 @@ const getTaskRoute = createRoute({
   summary: "Get task",
   description: "Get a single task by ID, with its assignee's name resolved.",
   middleware: [
-    workspaceAccess.fromTask(),
+    workspaceAccess.fromTask("id", { requireProjectReach: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: taskParam },
@@ -392,7 +392,7 @@ const exportTasksRoute = createRoute({
   description:
     "Export a project's tasks, with their labels, as a JSON document.",
   middleware: [
-    workspaceAccess.fromProject("projectId"),
+    workspaceAccess.fromProject("projectId", { requireProjectReach: true }),
     requireWorkspaceCapability("work_item:read"),
   ] as const,
   request: { params: projectIdParam },

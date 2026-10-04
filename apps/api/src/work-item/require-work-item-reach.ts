@@ -7,6 +7,7 @@ import {
   markShadowLegacyAuthorizationUnknown,
   setShadowLegacyAuthorization,
 } from "../permissions/shadow-context";
+import { projectReadDecision } from "../utils/has-project-reach";
 import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
 
 /**
@@ -45,7 +46,10 @@ import { validateWorkspaceAccess } from "../utils/validate-workspace-access";
  * its own middleware, and its identifier is newly guessable, so closing the gap here does
  * not require touching the shared `workspace-access-middleware.ts` other routes still use.
  */
-export function requireWorkItemReach(idKey = "key") {
+export function requireWorkItemReach(
+  idKey = "key",
+  options: { readonly requireProjectReach?: boolean } = {},
+) {
   return async (c: Context, next: Next) => {
     markShadowLegacyAuthorizationUnknown(c);
     const userId = c.get("userId");
@@ -102,34 +106,35 @@ export function requireWorkItemReach(idKey = "key") {
     // see a genuine, already-loaded work-item/project scope for this route. Read only by
     // `apps/api/src/permissions/shadow-middleware.ts`; the legacy check below still reads
     // `workItem.workspaceId` alone, unchanged.
-    const workItemQuery = policyShadowEnabled
-      ? db
-          .select({
-            id: schema.workItemTable.id,
-            projectId: schema.workItemTable.projectId,
-            workspaceId: schema.workItemTable.workspaceId,
-            organisationId: schema.workspaceTable.organisationId,
-          })
-          .from(schema.workItemTable)
-          .innerJoin(
-            schema.projectTable,
-            eq(schema.workItemTable.projectId, schema.projectTable.id),
-          )
-          .innerJoin(
-            schema.workspaceTable,
-            eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
-          )
-      : db
-          .select({
-            id: schema.workItemTable.id,
-            projectId: schema.workItemTable.projectId,
-            workspaceId: schema.workItemTable.workspaceId,
-          })
-          .from(schema.workItemTable)
-          .innerJoin(
-            schema.projectTable,
-            eq(schema.workItemTable.projectId, schema.projectTable.id),
-          );
+    const workItemQuery =
+      policyShadowEnabled || options.requireProjectReach
+        ? db
+            .select({
+              id: schema.workItemTable.id,
+              projectId: schema.workItemTable.projectId,
+              workspaceId: schema.workItemTable.workspaceId,
+              organisationId: schema.workspaceTable.organisationId,
+            })
+            .from(schema.workItemTable)
+            .innerJoin(
+              schema.projectTable,
+              eq(schema.workItemTable.projectId, schema.projectTable.id),
+            )
+            .innerJoin(
+              schema.workspaceTable,
+              eq(schema.workspaceTable.id, schema.workItemTable.workspaceId),
+            )
+        : db
+            .select({
+              id: schema.workItemTable.id,
+              projectId: schema.workItemTable.projectId,
+              workspaceId: schema.workItemTable.workspaceId,
+            })
+            .from(schema.workItemTable)
+            .innerJoin(
+              schema.projectTable,
+              eq(schema.workItemTable.projectId, schema.projectTable.id),
+            );
     const [workItem] = await workItemQuery
       .where(
         and(
@@ -175,6 +180,36 @@ export function requireWorkItemReach(idKey = "key") {
         throw new HTTPException(404, { message: "Work item not found" });
       }
       throw error;
+    }
+
+    if (options.requireProjectReach) {
+      const organisationId =
+        "organisationId" in workItem &&
+        (typeof workItem.organisationId === "string" ||
+          workItem.organisationId === null)
+          ? workItem.organisationId
+          : null;
+      const decision = await projectReadDecision(c, userId, {
+        projectId: workItem.projectId,
+        workspaceId: workItem.workspaceId,
+        organisationId,
+        workItemId: workItem.id,
+        ancestorProjectIds: [],
+        ownerTeamId: null,
+      });
+      if (!decision) {
+        throw new HTTPException(500, {
+          message: "Project read policy could not be determined",
+        });
+      }
+      if (!decision.reachable) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
+      if (!decision.capable) {
+        setShadowLegacyAuthorization(c, "denied");
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
     }
 
     setShadowLegacyAuthorization(c, "allowed");
