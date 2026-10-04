@@ -14,6 +14,7 @@ import {
 export type WorkItemTransitionOffer = {
   transitionId: string;
   toStateTemplateId: string;
+  toStateName: string;
   toStateId: string;
   notePolicy: "none" | "optional" | "required";
   noteVisibility: "public" | "internal";
@@ -87,6 +88,9 @@ export async function listWorkItemTransitions(
     results.push({
       transitionId: transition.id,
       toStateTemplateId: transition.toStateTemplateId,
+      toStateName:
+        ctx.templateNames.get(transition.toStateTemplateId) ??
+        transition.toStateTemplateId,
       toStateId: resolution.stateId,
       notePolicy: transition.notePolicy,
       noteVisibility: transition.noteVisibility,

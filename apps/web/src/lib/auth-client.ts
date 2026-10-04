@@ -7,6 +7,7 @@ import {
   inferAdditionalFields,
   lastLoginMethodClient,
   magicLinkClient,
+  twoFactorClient,
 } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
@@ -35,6 +36,7 @@ export const authClient = createAuthClient({
     deviceAuthorizationClient(),
     apiKeyClient(),
     adminClient(),
+    twoFactorClient({ twoFactorPage: "/auth/two-factor" }),
     inferAdditionalFields({
       user: {
         locale: {

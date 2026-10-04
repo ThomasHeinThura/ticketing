@@ -46,6 +46,90 @@ function countNodes(value: unknown): number {
   return 0;
 }
 
+/** Links are stored as caller-supplied Tiptap JSON, so paste-time URL validation is not
+ * enough. Accept same-origin absolute paths and absolute HTTP(S) URLs only. A single
+ * leading slash is app-relative; `//host`, backslash-normalised paths, control characters,
+ * other schemes, and credential-bearing URLs are rejected. */
+function containsUnsafeUrlCharacters(value: string) {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code === 0x5c || code < 0x20 || code === 0x7f) return true;
+  }
+  return false;
+}
+
+function isSafeCommentLinkUrl(value: unknown): value is string {
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.trim() !== value ||
+    containsUnsafeUrlCharacters(value)
+  ) {
+    return false;
+  }
+
+  if (value.startsWith("/")) {
+    return value === "/" || (value.length > 1 && value[1] !== "/");
+  }
+
+  try {
+    const url = new URL(value);
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      url.username.length === 0 &&
+      url.password.length === 0
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** `CA-15`: comment images must reference TaskDesk's authenticated asset route.
+ * Arbitrary HTTP(S) image hosts would let a comment load third-party tracking pixels. */
+function isAppAttachmentUrl(value: unknown): value is string {
+  return (
+    typeof value === "string" && /^\/api\/asset\/[A-Za-z0-9_-]+$/.test(value)
+  );
+}
+
+/** Inspect both content nodes and marks without recursive calls. The document is size
+ * bounded above, and this iterative walk also avoids stack growth on hostile nested JSON. */
+function containsUnsafeCommentLink(value: unknown): boolean {
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (Array.isArray(current)) {
+      pending.push(...current);
+      continue;
+    }
+    if (current === null || typeof current !== "object") continue;
+
+    const record = current as Record<string, unknown>;
+    const attrs =
+      record.attrs !== null && typeof record.attrs === "object"
+        ? (record.attrs as Record<string, unknown>)
+        : undefined;
+
+    if (record.type === "link" && !isSafeCommentLinkUrl(attrs?.href)) {
+      return true;
+    }
+    if (
+      record.type === "taskdeskIssueLink" &&
+      attrs?.url !== undefined &&
+      attrs.url !== "" &&
+      !isSafeCommentLinkUrl(attrs.url)
+    ) {
+      return true;
+    }
+    if (record.type === "image") {
+      if (!isAppAttachmentUrl(attrs?.src)) return true;
+    }
+
+    pending.push(...Object.values(record));
+  }
+  return false;
+}
+
 // `CA-11`: rich-text body, opaque Tiptap JSON (this route does not validate document
 // shape beyond the size/node caps) -- same "accept as opaque JSON" treatment
 // `work-item/schema.ts`'s `workItemDescription` gives `work_item.description`.
@@ -59,6 +143,10 @@ export const commentBody = z
   .refine(
     (value) => countNodes(value) <= COMMENT_BODY_MAX_NODES,
     `body must not exceed ${COMMENT_BODY_MAX_NODES} nodes`,
+  )
+  .refine(
+    (value) => !containsUnsafeCommentLink(value),
+    "body contains a link with an unsafe URL",
   );
 
 // `CA-1`: "Visibility is chosen explicitly at composition" -- required, no default.

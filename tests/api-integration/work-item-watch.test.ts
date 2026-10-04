@@ -98,6 +98,25 @@ function unwatchRequest(app: ReturnType<typeof createApp>["app"], key: string) {
 async function givePersonProfile(userId: string) {
   const organisation = await ensureInternalOrganisation();
   const now = new Date();
+  const [existing] = await db
+    .select()
+    .from(schema.personTable)
+    .where(eq(schema.personTable.userId, userId))
+    .limit(1);
+  if (existing) {
+    const [person] = await db
+      .update(schema.personTable)
+      .set({
+        organisationId: organisation.id,
+        side: "staff",
+        active: true,
+        updatedAt: now,
+      })
+      .where(eq(schema.personTable.id, existing.id))
+      .returning();
+    if (!person) throw new Error("givePersonProfile: update returned no row");
+    return person;
+  }
   const [person] = await db
     .insert(schema.personTable)
     .values({
@@ -356,21 +375,39 @@ describe("API integration: work item watch/unwatch (#23 fourth slice)", () => {
     expect(body.watching).toBe(false);
   });
 
-  it("400s when the caller has no person profile", async () => {
+  it("fails closed before watch dispatch when the caller identity has no active person profile", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
-    // Deliberately no `givePersonProfile` call.
     mockAuthenticatedSession(creator.user);
     const { app } = createApp();
 
-    const created = (await (
-      await createWorkItemRequest(app, project.id, {
-        typeId: type.id,
-        title: "No person",
-      })
-    ).json()) as { key: string };
+    // Create the target while the caller still has its normal initialized identity;
+    // the route under test is the subsequent watch request without a profile.
+    const createResponse = await createWorkItemRequest(app, project.id, {
+      typeId: type.id,
+      title: "No person",
+    });
+    expect(createResponse.status).toBe(200);
+    const created = (await createResponse.json()) as { key: string };
+
+    // The ordinary authenticated fixture creates a staff identity. Delete it here to
+    // model the intentionally missing-profile state this request is meant to exercise.
+    await db
+      .delete(schema.personTable)
+      .where(eq(schema.personTable.userId, creator.user.id));
 
     const response = await watchRequest(app, created.key);
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(503);
+    expect(await response.text()).toContain("factor_policy_unavailable");
+
+    const [workItem] = await db
+      .select({ id: schema.workItemTable.id })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.key, created.key));
+    const watchers = await db
+      .select()
+      .from(schema.watcherTable)
+      .where(eq(schema.watcherTable.workItemId, workItem?.id ?? ""));
+    expect(watchers).toHaveLength(0);
   });
 
   it("404s on a nonexistent key", async () => {

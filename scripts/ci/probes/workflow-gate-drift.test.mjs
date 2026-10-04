@@ -224,6 +224,43 @@ describe("M2 — three-way gate reconciliation", () => {
   });
 });
 
+describe("G11 — the performance suite is an enabled full-stage gate", () => {
+  it("is enabled and fails reconciliation when its workflow step is missing or skipped", () => {
+    const shipped = repoWithWorkflows("g11-enabled");
+    const enabled = runChecker(shipped, "test-all.mjs", ["--list"]);
+    assert.equal(enabled.status, 0, enabled.output);
+
+    const missing = repoWithWorkflows("g11-missing", (repo) => {
+      write(
+        repo,
+        ".github/workflows/ci-full.yml",
+        readFullWorkflow(repo)
+          .split("\n")
+          .filter((line) => !line.includes("run: pnpm test:perf"))
+          .join("\n"),
+      );
+    });
+    const absent = runChecker(missing, "test-all.mjs", ["--list"]);
+    assert.equal(absent.status, 1, absent.output);
+    assert.match(
+      absent.output,
+      /marks "pnpm test:perf" ENABLED and NO workflow executes it/,
+    );
+
+    const skipped = repoWithWorkflows("g11-skipped", (repo) => {
+      write(
+        repo,
+        ".github/workflows/ci-full.yml",
+        withJobKey(readFullWorkflow(repo), "run: pnpm test:perf", "if: false"),
+      );
+    });
+    const nonExecuting = runChecker(skipped, "test-all.mjs", ["--list"]);
+    assert.equal(nonExecuting.status, 1, nonExecuting.output);
+    assert.match(nonExecuting.output, /CANNOT FAIL A PULL REQUEST/);
+    assert.match(nonExecuting.output, /never runs/);
+  });
+});
+
 /** Wrap the job that runs `gate` in a condition, by inserting a job-level key. */
 function withJobKey(source, gateLine, key) {
   const lines = source.split("\n");

@@ -5,10 +5,13 @@ import {
   ComboboxChips,
   ComboboxChipsInput,
   ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxGroupLabel,
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
   ComboboxPopup,
+  ComboboxStatus,
 } from "./combobox";
 
 const fruits = ["Apple", "Banana", "Cherry"];
@@ -26,9 +29,13 @@ export const Default: Story = {
     <Combobox defaultValue="Apple" items={fruits}>
       <ComboboxInput aria-label="Fruit" showTrigger />
       <ComboboxPopup>
-        <ComboboxList>
-          {(item: string) => <ComboboxItem key={item}>{item}</ComboboxItem>}
-        </ComboboxList>
+        <ComboboxGroup>
+          <ComboboxGroupLabel>Fruit</ComboboxGroupLabel>
+          <ComboboxStatus>Choose a fruit.</ComboboxStatus>
+          <ComboboxList>
+            {(item: string) => <ComboboxItem key={item}>{item}</ComboboxItem>}
+          </ComboboxList>
+        </ComboboxGroup>
         <ComboboxEmpty>No matches found.</ComboboxEmpty>
       </ComboboxPopup>
     </Combobox>

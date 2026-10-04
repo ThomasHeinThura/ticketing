@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate, useRouter } from "@tanstack/react-router";
 import {
   Command,
   CommandCollection,
@@ -18,18 +18,35 @@ import {
   KbdGroup,
 } from "@taskdesk/ui";
 import { ArrowDownIcon, ArrowUpIcon, CornerDownLeftIcon } from "lucide-react";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Fragment,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
-import SearchCommandMenu from "@/components/search-command-menu";
-import CreateTaskModal from "@/components/shared/modals/create-task-modal";
-import CreateWorkspaceModal from "@/components/shared/modals/create-workspace-modal";
 import { shortcuts } from "@/constants/shortcuts";
 import useGetConfig from "@/hooks/queries/config/use-get-config";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
-import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { authClient } from "@/lib/auth-client";
 import { useUserPreferencesStore } from "@/store/user-preferences";
-import CreateProjectModal from "../shared/modals/create-project-modal";
+
+const SearchCommandMenu = lazy(
+  () => import("@/components/search-command-menu"),
+);
+const CreateTaskModal = lazy(
+  () => import("@/components/shared/modals/create-task-modal"),
+);
+const CreateWorkspaceModal = lazy(
+  () => import("@/components/shared/modals/create-workspace-modal"),
+);
+const CreateProjectModal = lazy(
+  () => import("../shared/modals/create-project-modal"),
+);
 
 type PaletteActionItem = {
   value: string;
@@ -44,73 +61,137 @@ type PaletteGroup = {
   items: PaletteActionItem[];
 };
 
-function CommandPalette() {
+export type CommandPaletteIntent =
+  | "open"
+  | "close"
+  | "search"
+  | "projects"
+  | "create-project"
+  | "create-task"
+  | "create-workspace";
+export type CommandPaletteRequest = {
+  id: number;
+  intent: CommandPaletteIntent;
+};
+
+export function CommandPalette({
+  open,
+  onOpenChange,
+  request,
+  onRequestHandled,
+  keepMounted,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  request: CommandPaletteRequest | null;
+  onRequestHandled: (id: number) => void;
+  keepMounted: boolean;
+}) {
   const { t } = useTranslation();
   const { setTheme } = useUserPreferencesStore();
   const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
   const { data: workspace } = useActiveWorkspace();
   const { data: session } = authClient.useSession();
   const { data: config } = useGetConfig();
   const isAdmin = session?.user?.role === "admin";
   const canCreateWorkspace =
     isAdmin || (config !== undefined && !config.disableWorkspaceCreation);
-  const [open, setOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
-  const projectIdFromRoute =
-    location.pathname.match(/\/project\/([^/]+)/)?.[1] ?? undefined;
-  const isBacklogView = location.pathname.endsWith("/backlog");
-
-  useRegisterShortcuts({
-    // No entry for `shortcuts.help.key` ("?") here: `KeyboardShortcutsHelp`
-    // already listens for the real "?" keydown directly and opens its own
-    // dialog (apps/web/src/components/keyboard-shortcuts-help.tsx). A
-    // registered "?" handler that re-dispatched a synthetic "?" keydown used
-    // to live here, but `KeyboardShortcutsProvider`'s single document-level
-    // listener picks up that synthetic event too, finds "?" registered
-    // again, and calls the handler again -- infinite recursion
-    // (RangeError: Maximum call stack size exceeded, #294). The
-    // "keyboard-shortcuts" palette item below still dispatches a synthetic
-    // "?" on demand (needed for a mouse/Enter selection, which has no real
-    // keydown to piggyback on) -- that one-shot dispatch isn't itself
-    // listening for "?", so it doesn't recurse.
-    modifierShortcuts: {
-      [shortcuts.palette.prefix]: {
-        [shortcuts.palette.open]: () => {
-          setOpen((prev) => !prev);
-        },
-      },
-    },
-    sequentialShortcuts: {
-      [shortcuts.project.prefix]: {
-        [shortcuts.project.list]: () => {
-          if (!workspace?.id) return;
+  const handledRequest = useRef<number | null>(null);
+  useEffect(() => {
+    if (!request || handledRequest.current === request.id) return;
+    if (
+      request.intent === "create-workspace" &&
+      !canCreateWorkspace &&
+      config === undefined &&
+      !isAdmin
+    )
+      return;
+    if (request.intent === "projects" && !workspace?.id) return;
+    handledRequest.current = request.id;
+    switch (request.intent) {
+      case "open":
+        onOpenChange(true);
+        break;
+      case "close":
+        onOpenChange(false);
+        break;
+      case "search":
+        setIsSearchOpen(true);
+        break;
+      case "projects":
+        if (workspace?.id) {
           navigate({
             to: "/dashboard/workspace/$workspaceId",
             params: { workspaceId: workspace.id },
           });
-        },
-        [shortcuts.project.create]: () => setIsCreateProjectOpen(true),
-      },
-      [shortcuts.task.prefix]: {
-        [shortcuts.task.create]: () => setIsCreateTaskOpen(true),
-      },
-      [shortcuts.workspace.prefix]: {
-        [shortcuts.workspace.create]: () => {
-          if (!canCreateWorkspace) return;
-          setIsCreateWorkspaceOpen(true);
-        },
-      },
-    },
-  });
+        }
+        break;
+      case "create-project":
+        setIsCreateProjectOpen(true);
+        break;
+      case "create-task":
+        setIsCreateTaskOpen(true);
+        break;
+      case "create-workspace":
+        if (canCreateWorkspace) setIsCreateWorkspaceOpen(true);
+        break;
+    }
+    onRequestHandled(request.id);
+  }, [
+    request,
+    canCreateWorkspace,
+    config,
+    isAdmin,
+    workspace?.id,
+    navigate,
+    onOpenChange,
+    onRequestHandled,
+  ]);
 
-  const runCommand = useCallback((command: () => void) => {
-    command();
-    setOpen(false);
-  }, []);
+  const preloadProjectsPage = useCallback(() => {
+    if (!workspace?.id) return;
+    // TanStack's auto-split route component and its nested React.lazy page are
+    // separate chunks; warm both as soon as keyboard or pointer intent is clear.
+    void router
+      .preloadRoute({
+        to: "/dashboard/workspace/$workspaceId",
+        params: { workspaceId: workspace.id },
+      })
+      .catch(() => {});
+    void import("@/components/project-list/projects-page").catch(() => {});
+  }, [router, workspace?.id]);
+
+  const handleItemHighlighted = useCallback(
+    (value: unknown, { reason }: { reason: string }) => {
+      const highlightedValue =
+        typeof value === "object" && value !== null && "value" in value
+          ? value.value
+          : value;
+      if (
+        highlightedValue === "projects" &&
+        (reason === "keyboard" || reason === "pointer")
+      ) {
+        // Load the route after explicit destination intent. This keeps route
+        // work off the palette's opening path and lets keyboard/pointer users
+        // warm the route before activating the highlighted command.
+        preloadProjectsPage();
+      }
+    },
+    [preloadProjectsPage],
+  );
+
+  const runCommand = useCallback(
+    (command: () => void) => {
+      command();
+      onOpenChange(false);
+    },
+    [onOpenChange],
+  );
 
   const groupedItems = useMemo<PaletteGroup[]>(
     () => [
@@ -264,10 +345,18 @@ function CommandPalette() {
 
   return (
     <>
-      <CommandDialog open={open} onOpenChange={setOpen}>
-        <CommandDialogPopup instant>
-          <Command items={groupedItems}>
+      <CommandDialog open={open} onOpenChange={onOpenChange}>
+        <CommandDialogPopup
+          instant
+          keepMounted={keepMounted}
+          blurBackdrop={false}
+        >
+          <Command
+            items={groupedItems}
+            onItemHighlighted={handleItemHighlighted}
+          >
             <CommandInput
+              autoFocus={false}
               placeholder={t("navigation:commandPalette.inputPlaceholder")}
             />
             <CommandPanel>
@@ -335,22 +424,42 @@ function CommandPalette() {
         </CommandDialogPopup>
       </CommandDialog>
 
-      <SearchCommandMenu open={isSearchOpen} setOpen={setIsSearchOpen} />
-      <CreateTaskModal
-        open={isCreateTaskOpen}
-        projectId={projectIdFromRoute}
-        status={isBacklogView ? "planned" : undefined}
-        onClose={() => setIsCreateTaskOpen(false)}
-      />
-      <CreateWorkspaceModal
-        open={isCreateWorkspaceOpen}
-        onClose={() => setIsCreateWorkspaceOpen(false)}
-      />
-      <CreateProjectModal
-        open={isCreateProjectOpen}
-        onClose={() => setIsCreateProjectOpen(false)}
-      />
+      <Suspense fallback={null}>
+        {isSearchOpen ? (
+          <SearchCommandMenu open setOpen={setIsSearchOpen} />
+        ) : null}
+        {isCreateTaskOpen ? (
+          <CreateTaskRouteModal onClose={() => setIsCreateTaskOpen(false)} />
+        ) : null}
+        {isCreateWorkspaceOpen ? (
+          <CreateWorkspaceModal
+            open
+            onClose={() => setIsCreateWorkspaceOpen(false)}
+          />
+        ) : null}
+        {isCreateProjectOpen ? (
+          <CreateProjectModal
+            open
+            onClose={() => setIsCreateProjectOpen(false)}
+          />
+        ) : null}
+      </Suspense>
     </>
+  );
+}
+
+function CreateTaskRouteModal({ onClose }: { onClose: () => void }) {
+  const { pathname } = useLocation();
+  const projectId = pathname.match(/\/project\/([^/]+)/)?.[1] ?? undefined;
+  const status = pathname.endsWith("/backlog") ? "planned" : undefined;
+
+  return (
+    <CreateTaskModal
+      open
+      projectId={projectId}
+      status={status}
+      onClose={onClose}
+    />
   );
 }
 

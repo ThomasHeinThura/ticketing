@@ -14,6 +14,8 @@ import {
   workspaceTable,
 } from "../database/schema";
 import { enqueueOutboxEvent } from "../events/outbox";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "../instance/observability/audit-failure-notifier";
+import { recordAuditWriteFailure } from "../instance/observability/runtime";
 import { resolveIdentity } from "../permissions/resolve-identity";
 import { policyRegistry } from "../policy-registry";
 import { assertCallerHasCapability } from "../utils/require-workspace-capability";
@@ -57,8 +59,13 @@ export async function createPendingAction(input: CreatePendingActionInput) {
   const id = createId();
   const traceId = createId();
   const conflictTargetIds = [...input.targetIds].sort();
+  let requestAuditFailure = false;
   let created:
-    | { confirmation: ConfirmationKind; summary: Record<string, unknown> }
+    | {
+        confirmation: ConfirmationKind;
+        summary: Record<string, unknown>;
+        auditFailure: boolean;
+      }
     | undefined;
 
   if (input.targetVersions !== undefined && input.targetVersions !== null) {
@@ -172,13 +179,22 @@ export async function createPendingAction(input: CreatePendingActionInput) {
               expiresAt: new Date(now.getTime() + ACTION_TTL_MS).toISOString(),
             },
           });
-        } catch (error) {
-          console.error("AU-14: pending-action audit write failed", error);
+        } catch {
+          requestAuditFailure = true;
         }
-        return { confirmation, summary: scope.summary };
+        return {
+          confirmation,
+          summary: scope.summary,
+          auditFailure: requestAuditFailure,
+        };
       });
       break;
     } catch (error) {
+      if (requestAuditFailure) {
+        recordAuditWriteFailure("mutation");
+        await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+        requestAuditFailure = false;
+      }
       if (!isUniqueViolation(error)) throw error;
 
       const [existing] = await db
@@ -203,6 +219,10 @@ export async function createPendingAction(input: CreatePendingActionInput) {
   }
 
   if (!created) throw new Error("Pending action request did not commit");
+  if (created.auditFailure) {
+    recordAuditWriteFailure("mutation");
+    await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+  }
 
   return {
     pendingActionId: id,
@@ -454,6 +474,7 @@ export async function decideOwnPendingAction(input: {
       depth: 0,
       originAutomationId: null,
     });
+    let auditFailure = false;
     try {
       await appendAuditLog(tx, {
         actorId: input.requesterPersonId,
@@ -468,13 +489,18 @@ export async function decideOwnPendingAction(input: {
         before: { state: "pending" },
         after: { state: outcome },
       });
-    } catch (error) {
-      console.error("AU-14: pending-action decision audit write failed", error);
+    } catch {
+      auditFailure = true;
     }
-    return updated;
+    return { updated, auditFailure };
   });
 
-  return toPublicPendingAction(result);
+  if (result.auditFailure) {
+    recordAuditWriteFailure("pending_action_decision");
+    await notifyCurrentInstanceAdminsOfAuditFailure("pending_action_decision");
+  }
+
+  return toPublicPendingAction(result.updated);
 }
 
 async function auditViewed(
@@ -483,19 +509,25 @@ async function auditViewed(
   actorId: string,
   auditContext: { apiKeyId: string | null; traceId: string },
 ) {
-  await appendAuditLog(db, {
-    actorId,
-    actorType: auditContext.apiKeyId === null ? "person" : "api_key",
-    apiKeyId: auditContext.apiKeyId,
-    traceId: auditContext.traceId,
-    workspaceId: row.workspaceId,
-    projectId: row.projectId,
-    organisationId: row.organisationId,
-    action: "pending_action.viewed",
-    entityType: "pending_action",
-    entityId: id,
-    after: { rendered: true },
-  });
+  try {
+    await appendAuditLog(db, {
+      actorId,
+      actorType: auditContext.apiKeyId === null ? "person" : "api_key",
+      apiKeyId: auditContext.apiKeyId,
+      traceId: auditContext.traceId,
+      workspaceId: row.workspaceId,
+      projectId: row.projectId,
+      organisationId: row.organisationId,
+      action: "pending_action.viewed",
+      entityType: "pending_action",
+      entityId: id,
+      after: { rendered: true },
+    });
+  } catch {
+    recordAuditWriteFailure("pending_action_self_read");
+    await notifyCurrentInstanceAdminsOfAuditFailure("pending_action_self_read");
+    throw new HTTPException(500, { message: "Audit log unavailable" });
+  }
 }
 
 type PendingActionCursor = {

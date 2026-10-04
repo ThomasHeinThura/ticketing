@@ -7,6 +7,7 @@ import {
   jsonResponse,
   z,
 } from "../openapi";
+import { assertCallerHasCapability } from "../utils/require-workspace-capability";
 import { requireWorkspacePermission } from "../utils/require-workspace-permission";
 import { workspaceAccess } from "../utils/workspace-access-middleware";
 import addDocumentLinkCtrl from "./controllers/add-document-link";
@@ -26,6 +27,7 @@ import getProjectsCtrl from "./controllers/get-projects";
 import listDocumentLinksCtrl from "./controllers/list-document-links";
 import listMilestonesCtrl from "./controllers/list-milestones";
 import listPrerequisitesCtrl from "./controllers/list-prerequisites";
+import listProjectStatesCtrl from "./controllers/list-project-states";
 import listStakeholdersCtrl from "./controllers/list-stakeholders";
 import reorderProjectsCtrl from "./controllers/reorder-projects";
 import standDownStakeholderCtrl from "./controllers/stand-down-stakeholder";
@@ -40,6 +42,7 @@ import {
   prerequisiteSchema,
   projectListSchema,
   projectSchema,
+  projectStateSchema,
   stakeholderSchema,
 } from "./response";
 import {
@@ -127,6 +130,32 @@ const getProjectRoute = createRoute({
   },
 });
 
+const listProjectStatesRoute = createRoute({
+  method: "get",
+  operationId: "listProjectStates",
+  path: "/{projectId}/states",
+  tags: ["Projects"],
+  summary: "List a project's active states",
+  description:
+    "Returns every active concrete project state, including empty board columns, in project order. " +
+    "An archived state template remains represented while its concrete project state is active.",
+  middleware: [
+    workspaceAccess.fromProject("projectId"),
+    requireWorkspacePermission({ project: ["read"] }),
+  ] as const,
+  request: { params: z.object({ projectId: z.string() }) },
+  responses: {
+    200: jsonResponse(
+      "The project's active states",
+      z.array(projectStateSchema),
+    ),
+    400: errorResponse(
+      "Unknown project, or its workspace could not be determined",
+    ),
+    403: errorResponse("Missing project:read permission"),
+  },
+});
+
 const reorderProjectsRoute = createRoute({
   method: "put",
   operationId: "reorderProjects",
@@ -164,7 +193,7 @@ const updateProjectRoute = createRoute({
   tags: ["Projects"],
   summary: "Update project",
   description:
-    "Replace a project's name, icon, slug, description, and visibility.",
+    "Replace a project's name, icon, slug, and description; optionally configure its default comment visibility.",
   middleware: [
     workspaceAccess.fromProject(),
     requireWorkspacePermission({ project: ["update"] }),
@@ -655,8 +684,31 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
   })
   .openapi(updateProjectRoute, async (c) => {
     const { id } = c.req.valid("param");
-    const { name, icon, slug, description } = c.req.valid("json");
+    const { name, icon, slug, description, defaultCommentVisibility } =
+      c.req.valid("json");
     const workspaceId = c.get("workspaceId");
+    if (defaultCommentVisibility !== undefined) {
+      const userId = c.get("userId");
+      if (!workspaceId || !userId) {
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
+
+      // API-key scopes intersect the caller's current capability, just as the
+      // route-level project:update scope does above. A key that was not granted
+      // this setting action cannot acquire it from its owner's role.
+      const apiKey = c.get("apiKey") as
+        | { permissions?: Record<string, string[]> | null }
+        | undefined;
+      if (apiKey && !apiKey.permissions?.project?.includes("manage_settings")) {
+        throw new HTTPException(403, { message: "Insufficient permissions" });
+      }
+
+      await assertCallerHasCapability(
+        workspaceId,
+        userId,
+        "project:manage_settings",
+      );
+    }
     try {
       const updatedProject = await updateProjectCtrl(
         id,
@@ -665,6 +717,7 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
         slug,
         description,
         workspaceId,
+        defaultCommentVisibility,
       );
       return c.json(updatedProject, 200);
     } catch (error) {
@@ -820,3 +873,12 @@ const project = apiRouter<BaseVariables & { workspaceId: string }>()
   });
 
 export default project;
+
+export const projectStates = apiRouter<BaseVariables>().openapi(
+  listProjectStatesRoute,
+  async (c) => {
+    const { projectId } = c.req.valid("param");
+    const states = await listProjectStatesCtrl(projectId);
+    return c.json(states, 200);
+  },
+);

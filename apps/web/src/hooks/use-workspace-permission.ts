@@ -7,9 +7,9 @@ import { useGetActiveWorkspaceUser } from "@/hooks/queries/workspace-users/use-a
 export type PermissionLevel = "owner" | "admin" | "member";
 
 // S3 (issue #6, retrofit plan §3, matrix row 15): native replacement for the
-// 16-way authClient.organization.hasPermission() fan-out, replaced by one
+// authClient.organization.hasPermission() fan-out, replaced by one
 // call to GET /api/capabilities (apps/api/src/capabilities/index.ts), which
-// computes the exact same 16 keys server-side over hasWorkspacePermission --
+// computes the same capability keys server-side over hasWorkspacePermission --
 // see apps/api/src/capabilities/capability-checks.ts, a deliberate
 // server-side duplicate of the map this file used to carry.
 type Capability = keyof typeof EMPTY_CAPABILITIES;
@@ -21,10 +21,13 @@ type CapabilityMap = Record<Capability, boolean>;
 // always come from the server.
 const EMPTY_CAPABILITIES = {
   manageProjects: false,
+  manageProjectSettings: false,
   createProjects: false,
   updateProjects: false,
   deleteProjects: false,
   updateTasks: false,
+  transitionTasks: false,
+  rankTasks: false,
   createTasks: false,
   deleteTasks: false,
   assignTasks: false,
@@ -36,15 +39,21 @@ const EMPTY_CAPABILITIES = {
   inviteUsers: false,
   manageTeam: false,
   removeMembers: false,
+  createPublicComments: false,
+  createInternalComments: false,
+  manageServiceCalendars: false,
 } as const satisfies Record<string, boolean>;
 
-export function useWorkspacePermission() {
+export function useWorkspacePermission(workspaceIdOverride?: string | null) {
   const { data: activeWorkspace } = useActiveWorkspace();
   const { data: activeMember } = useGetActiveWorkspaceUser();
-  const workspaceId = activeWorkspace?.id;
+  const usesWorkspaceOverride = workspaceIdOverride !== undefined;
+  const workspaceId = usesWorkspaceOverride
+    ? (workspaceIdOverride ?? undefined)
+    : activeWorkspace?.id;
   const role = activeMember?.role as string | undefined;
 
-  // One query per (workspaceId, role) that replaces all 16 round trips with
+  // One query per (workspaceId, role) that replaces all round trips with
   // a single GET /api/capabilities call. Refetches when either changes,
   // e.g. when the admin edits the role's permissions in the Roles UI and we
   // invalidate this key -- see use-update-workspace-user-role.ts and
@@ -57,8 +66,12 @@ export function useWorkspacePermission() {
     isLoading,
     isFetching,
   } = useQuery({
-    queryKey: ["workspace-capabilities", workspaceId, role],
-    enabled: Boolean(workspaceId && role),
+    queryKey: [
+      "workspace-capabilities",
+      workspaceId,
+      usesWorkspaceOverride ? null : role,
+    ],
+    enabled: Boolean(workspaceId && (usesWorkspaceOverride || role)),
     staleTime: 5 * 60 * 1000,
     queryFn: async (): Promise<CapabilityMap> => {
       const response = await client.capabilities.$get({
@@ -78,10 +91,13 @@ export function useWorkspacePermission() {
   const helpers = useMemo(() => {
     return {
       canManageProjects: () => can.manageProjects,
+      canManageProjectSettings: () => can.manageProjectSettings,
       canCreateProjects: () => can.createProjects,
       canUpdateProjects: () => can.updateProjects,
       canDeleteProjects: () => can.deleteProjects,
       canUpdateTasks: () => can.updateTasks,
+      canTransitionTasks: () => can.transitionTasks,
+      canRankTasks: () => can.rankTasks,
       canCreateTasks: () => can.createTasks,
       canDeleteTasks: () => can.deleteTasks,
       canAssignTasks: () => can.assignTasks,
@@ -93,6 +109,9 @@ export function useWorkspacePermission() {
       canInviteUsers: () => can.inviteUsers,
       canManageTeam: () => can.manageTeam,
       canRemoveMembers: () => can.removeMembers,
+      canCreatePublicComments: () => can.createPublicComments,
+      canCreateInternalComments: () => can.createInternalComments,
+      canManageServiceCalendars: () => can.manageServiceCalendars,
     };
   }, [can]);
 
@@ -107,7 +126,8 @@ export function useWorkspacePermission() {
     // action UI during the initial render instead of flashing it on then
     // off when the server check resolves.
     isCheckingPermissions:
-      Boolean(workspaceId && role) && (isLoading || !capabilities),
+      Boolean(workspaceId && (usesWorkspaceOverride || role)) &&
+      (isLoading || !capabilities),
     isRefetchingPermissions: isFetching,
   };
 }

@@ -1,4 +1,11 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkItemField } from "@/types/work-item";
 import WorkItemList from "./work-item-list";
@@ -8,18 +15,30 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+const mocks = vi.hoisted(() => ({
+  loadDetail: vi.fn().mockResolvedValue({ default: () => null }),
+  getWorkItem: vi.fn().mockResolvedValue({}),
+  preloadRoute: vi.fn().mockResolvedValue(undefined),
+  navigate: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({
-    children,
-    ...props
-  }: React.PropsWithChildren<Record<string, unknown>>) => (
-    <a {...props}>{children}</a>
-  ),
+  useRouter: () => ({
+    preloadRoute: mocks.preloadRoute,
+    navigate: mocks.navigate,
+  }),
 }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
+    t: (key: string, options?: string | Record<string, unknown>) => {
+      if (typeof options === "string") return options;
+      const fallback = options?.defaultValue;
+      if (typeof fallback === "string") {
+        return fallback.replace("{{key}}", String(options?.key ?? ""));
+      }
+      return key;
+    },
   }),
   initReactI18next: { type: "3rdParty", init: () => {} },
 }));
@@ -30,6 +49,24 @@ const baseProps = {
   onSortChange: vi.fn(),
   onRetry: vi.fn(),
 };
+
+vi.mock("@/components/work-item/load-work-item-detail", () => ({
+  default: mocks.loadDetail,
+}));
+vi.mock("@/fetchers/work-item/get-work-item", () => ({
+  default: mocks.getWorkItem,
+}));
+
+function renderWithQueryClient(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    ),
+  });
+}
 
 const workItem = {
   id: "wi_1",
@@ -61,8 +98,100 @@ const workItem = {
 };
 
 describe("WorkItemList", () => {
+  it("WI-24: exposes row selection for authorized bulk assignment", () => {
+    const onSelectionChange = vi.fn();
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+        canBulkAssign
+        selectedKeys={[]}
+        onSelectionChange={onSelectionChange}
+      />,
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: "Select PROJ-123" });
+    fireEvent.click(checkbox);
+    expect(onSelectionChange).toHaveBeenCalledWith("PROJ-123", true);
+  });
+
+  it("keeps real detail URLs and uses client navigation for an unmodified click", () => {
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    const link = screen.getByRole("link", { name: "PROJ-123" });
+    expect(link).toHaveAttribute("href", "/agent/work-items/PROJ-123");
+
+    fireEvent.click(link, { button: 0 });
+
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/agent/work-items/$key",
+      params: { key: "PROJ-123" },
+    });
+
+    mocks.navigate.mockClear();
+    fireEvent.click(link, { button: 0, metaKey: true });
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it("preloads detail code and data when a reachable row receives pointer intent", async () => {
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    expect(mocks.preloadRoute).not.toHaveBeenCalled();
+
+    fireEvent.mouseOver(
+      screen.getByText("PROJ-123").closest("a") as HTMLElement,
+    );
+
+    await waitFor(() =>
+      expect(mocks.preloadRoute).toHaveBeenCalledWith({
+        to: "/agent/work-items/$key",
+        params: { key: "PROJ-123" },
+      }),
+    );
+    await waitFor(() => expect(mocks.loadDetail).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.getWorkItem).toHaveBeenCalledOnce());
+
+    fireEvent.focus(
+      screen.getByText("Fix the thing").closest("a") as HTMLElement,
+    );
+
+    await waitFor(() => expect(mocks.loadDetail).toHaveBeenCalledTimes(2));
+    expect(mocks.getWorkItem).toHaveBeenCalledOnce();
+  });
+
+  it("does not preload detail code for the first row before navigation intent", () => {
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    expect(mocks.preloadRoute).not.toHaveBeenCalled();
+    expect(mocks.loadDetail).not.toHaveBeenCalled();
+    expect(mocks.getWorkItem).not.toHaveBeenCalled();
+  });
+
   it("renders the loading skeleton state", () => {
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         workItems={undefined}
@@ -71,14 +200,17 @@ describe("WorkItemList", () => {
       />,
     );
 
-    expect(screen.getByTestId("work-item-list-loading")).toBeInTheDocument();
+    const loading = screen.getByTestId("work-item-list-loading");
+    expect(loading).toBeInTheDocument();
+    expect(loading).toHaveAttribute("aria-busy", "true");
+    expect(loading).toHaveAttribute("aria-live", "polite");
     expect(
       screen.queryByTestId("work-item-list-populated"),
     ).not.toBeInTheDocument();
   });
 
   it("renders the error state, with a retry action", () => {
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         workItems={undefined}
@@ -94,7 +226,7 @@ describe("WorkItemList", () => {
   });
 
   it("renders the empty state when there are no work items", () => {
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         workItems={[]}
@@ -107,7 +239,7 @@ describe("WorkItemList", () => {
   });
 
   it("renders the populated state with a table row per work item", () => {
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
@@ -126,6 +258,33 @@ describe("WorkItemList", () => {
     expect(screen.getByText("workItems:list.unassigned")).toBeInTheDocument();
   });
 
+  it("renders all 500 rows and repeated empty-field labels", () => {
+    const workItems = Array.from({ length: 500 }, (_, index) => ({
+      ...workItem,
+      id: `wi_${index + 1}`,
+      number: index + 1,
+      key: `PROJ-${index + 1}`,
+      priority: (index + 1) % 4 === 0 ? null : "medium",
+      dueDate: null,
+    }));
+
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        // biome-ignore lint/suspicious/noExplicitAny: generated list uses the valid fixture shape
+        workItems={workItems as any}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    expect(screen.getAllByRole("row")).toHaveLength(501);
+    expect(screen.getAllByText("workItems:list.noDueDate")).toHaveLength(500);
+    expect(screen.getAllByText("workItems:list.unassigned")).toHaveLength(500);
+    expect(screen.getAllByText("medium")).toHaveLength(375);
+    expect(screen.getAllByText("workItems:list.noPriority")).toHaveLength(125);
+  }, 15_000);
+
   it("#310: renders the resolved assignee name when present", () => {
     const assignedItem = {
       ...workItem,
@@ -133,7 +292,7 @@ describe("WorkItemList", () => {
       assigneeName: "Jane Agent",
     };
 
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
@@ -159,7 +318,7 @@ describe("WorkItemList", () => {
       assigneeName: null,
     };
 
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
@@ -193,7 +352,7 @@ describe("WorkItemList", () => {
       unavailableFields: ["title", "priority", "dueDate"] as WorkItemField[],
     };
 
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
@@ -233,7 +392,7 @@ describe("WorkItemList", () => {
       unavailableFields: ["key"] as WorkItemField[],
     };
 
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         // biome-ignore lint/suspicious/noExplicitAny: partial fixture, full shape not needed
@@ -259,7 +418,7 @@ describe("WorkItemList", () => {
 
   it("calls onSortChange with the toggled direction when a header is clicked twice", () => {
     const onSortChange = vi.fn();
-    render(
+    renderWithQueryClient(
       <WorkItemList
         {...baseProps}
         onSortChange={onSortChange}

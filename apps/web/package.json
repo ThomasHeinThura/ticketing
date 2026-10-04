@@ -5,14 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "dev:portal": "vite --mode portal --port 5174",
+    "build": "pnpm build:agent && pnpm build:portal",
+    "build:agent": "vite build --mode agent",
+    "build:portal": "vite build --mode portal",
     "preview": "vite preview",
     "lint": "biome check --write . && node scripts/check-ui-boundaries.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "test:e2e": "playwright test --config playwright.config.ts",
-    "test:visual": "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual"
+    "test:visual": "playwright test --config playwright.visual.config.ts --grep @visual && playwright test --config playwright.storybook.config.ts --grep @visual",
+    "test:perf": "playwright test --config playwright.perf.config.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

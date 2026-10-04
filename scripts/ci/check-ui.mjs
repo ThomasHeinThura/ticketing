@@ -1,18 +1,10 @@
 #!/usr/bin/env node
 /**
- * check:ui — the Radix-dependency tracking half of gate G1.
+ * check:ui — G1b Radix import tracking and G1c empty-directory enforcement.
  *
- * docs/04-engineering/ci-cd.md's G1 is "no bespoke primitives; no Radix/Base UI import
- * outside packages/ui; Radix only per KNOWN-RADIX.md". `packages/ui` has 18 of 63 primitives
- * moved so far (#9); "no bespoke primitives" and "no Radix/Base UI import outside
- * packages/ui" have nothing to be true of yet — the other 44 files under
- * `apps/web/src/components/ui/` are still legitimately there. **This script checks only the
- * Radix-tracking half**, which is already fully true today: every real `@radix-ui/*` /
- * `radix-ui` import in the repository was removed in the same change that added this script
- * (#9 — `apps/web/src/components/ui/form.tsx` and `timeline.tsx` both moved to a local
- * `Slot` in `apps/web/src/lib/slot.tsx`). The other two clauses of G1 are for whichever
- * later #9 slice finishes moving the remaining primitives and empties
- * `apps/web/src/components/ui`.
+ * G1c asserts that `apps/web/src/components/ui` is empty after extraction. G1b keeps every
+ * live Radix import registered in KNOWN-RADIX.md and rejects new/untracked usage. G1a raw
+ * element enforcement remains a separate check; this script does not claim to implement it.
  *
  * The rule this enforces: any file that imports `@radix-ui/*` or the bare `radix-ui`
  * umbrella package must be listed in the fixed-column table at the top level
@@ -50,6 +42,7 @@
  */
 
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -301,6 +294,28 @@ export function parseKnownRadixTable(source) {
 async function main() {
   const failures = [];
   const knownRadixPath = path.join(repoRoot, KNOWN_RADIX_RELATIVE_PATH);
+  const legacyUiDirectory = path.join(repoRoot, "apps/web/src/components/ui");
+
+  try {
+    const entries = await readdir(legacyUiDirectory);
+    if (entries.length > 0) {
+      failures.push(
+        violation(
+          "apps/web/src/components/ui",
+          `must be empty after extraction; found ${entries.length} entr${entries.length === 1 ? "y" : "ies"}. Move app compositions to apps/web and shared primitives to packages/ui.`,
+        ),
+      );
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      failures.push(
+        violation(
+          "apps/web/src/components/ui",
+          `could not inspect the legacy directory (${error.code ?? error.message}).`,
+        ),
+      );
+    }
+  }
 
   let knownSource;
   try {
@@ -417,7 +432,7 @@ async function main() {
   finish({
     name: NAME,
     failures,
-    ok: `0 unlisted Radix import(s), ${knownRows.length} tracked row(s), all current.`,
+    ok: `legacy UI directory empty; 0 unlisted Radix import(s), ${knownRows.length} tracked row(s), all current.`,
   });
 }
 

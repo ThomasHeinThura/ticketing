@@ -13,9 +13,9 @@ import { ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import CommentEditor from "@/components/activity/comment-editor";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import { GithubIcon } from "@/components/icons/github-icon";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import useDeleteComment from "@/hooks/mutations/comment/use-delete-comment";
 import useUpdateComment from "@/hooks/mutations/comment/use-update-comment";
 import { formatDateTime, formatRelativeTime } from "@/lib/format";
@@ -119,7 +119,7 @@ export default function CommentCard({
                     {getInitials(user?.name)}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium text-foreground/92 hover:text-foreground transition-colors">
+                <span className="text-sm font-medium text-foreground hover:text-foreground transition-colors">
                   {user?.name}
                 </span>
               </div>
@@ -169,7 +169,7 @@ export default function CommentCard({
             <TooltipTrigger asChild>
               <button
                 type="button"
-                className="cursor-default text-xs text-muted-foreground/62 outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="cursor-default text-xs text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 aria-label={fullTimestamp}
                 title={fullTimestamp}
               >
@@ -185,7 +185,7 @@ export default function CommentCard({
 
           {commentUrl && (
             <>
-              <span className="text-xs text-muted-foreground/40">·</span>
+              <span className="text-xs text-muted-foreground">·</span>
               <a
                 href={commentUrl}
                 target="_blank"

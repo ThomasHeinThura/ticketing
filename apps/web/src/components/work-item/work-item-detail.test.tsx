@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { formatDateMedium } from "@/lib/format";
 import type { WorkItemDetailRow } from "@/types/work-item";
@@ -81,6 +87,30 @@ describe("WorkItemDetail", () => {
 
     expect(screen.getByTestId("work-item-detail-error")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button"));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps cached content visible and offers retry after a transient error", () => {
+    const onRetry = vi.fn();
+    render(
+      <WorkItemDetail
+        {...baseProps}
+        item={makeItem()}
+        isError={true}
+        onRetry={onRetry}
+      />,
+    );
+
+    expect(screen.getByTestId("work-item-detail")).toBeInTheDocument();
+    expect(screen.getByText("Fix the thing")).toBeInTheDocument();
+    expect(
+      screen.getByTestId("work-item-detail-stale-error"),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      within(screen.getByTestId("work-item-detail-stale-error")).getByRole(
+        "button",
+      ),
+    );
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 

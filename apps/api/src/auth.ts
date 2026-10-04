@@ -1,20 +1,30 @@
+import { createHmac } from "node:crypto";
 import { apiKey } from "@better-auth/api-key";
 import { sendMagicLinkEmail, sendOtpEmail } from "@taskdesk/email";
 import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
+import { deleteSessionCookie } from "better-auth/cookies";
 import {
   admin as adminPlugin,
   emailOTP,
   genericOAuth,
   lastLoginMethod,
   magicLink,
+  twoFactor as twoFactorPlugin,
 } from "better-auth/plugins";
 import type { UserWithAnonymous } from "better-auth/plugins/anonymous";
 import { config } from "dotenv-mono";
-import { count, eq, sql } from "drizzle-orm";
+import { and, count, eq, ne, sql } from "drizzle-orm";
+import { appendAuditLog } from "./audit/audit-writer";
+import { loadLocalFactorState } from "./auth/local-factor-service";
 import db, { schema } from "./database";
+import { notifyCurrentInstanceAdminsOfAuditFailure } from "./instance/observability/audit-failure-notifier";
+import {
+  logTaskDesk,
+  recordAuditWriteFailure,
+} from "./instance/observability/runtime";
 import {
   isBootstrapAdminEmail,
   isSetupCompleted,
@@ -33,6 +43,13 @@ import { isLocalSignInPath } from "./utils/is-local-sign-in-path";
 import { resolveAuthSecret } from "./utils/require-auth-secret";
 import { TRUSTED_CLIENT_IP_HEADER } from "./utils/resolve-client-ip";
 import { ensureStaffPersonForUser } from "./utils/seed-internal-organisation";
+
+export function assertCookieDomainIsNotConfiguredForHostIsolation() {
+  if (process.env.COOKIE_DOMAIN)
+    throw new Error(
+      "COOKIE_DOMAIN is incompatible with the host-isolated agent and portal origins.",
+    );
+}
 
 config();
 
@@ -57,26 +74,10 @@ function isOAuthCallbackPath(path: unknown): boolean {
   return path.startsWith("/callback/") || path.startsWith("/oauth2/callback/");
 }
 
-const apiUrl = process.env.KANEO_API_URL || "http://localhost:1337";
-const clientUrl = process.env.TASKDESK_AGENT_URL || "http://localhost:5173";
-
-const trustedOrigins = [clientUrl];
-try {
-  const apiOrigin = new URL(apiUrl);
-  const apiOriginString = `${apiOrigin.protocol}//${apiOrigin.host}`;
-  if (!trustedOrigins.includes(apiOriginString)) {
-    trustedOrigins.push(apiOriginString);
-  }
-} catch {}
-
-const baseURLWithoutPath = (() => {
-  try {
-    const url = new URL(apiUrl);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return apiUrl.split("/").slice(0, 3).join("/"); // Get protocol://host
-  }
-})();
+export type AuthPortal = "agent" | "customer";
+const agentOrigin = process.env.TASKDESK_AGENT_URL || "http://localhost:5173";
+const customerOrigin =
+  process.env.TASKDESK_PORTAL_URL || "http://localhost:5174";
 
 const authSecretResult = resolveAuthSecret(process.env.TASKDESK_AUTH_SECRET);
 
@@ -86,6 +87,18 @@ if (!authSecretResult.ok) {
 }
 
 const authSecret = authSecretResult.secret;
+
+/** Sign narrowly scoped CSRF tokens without exposing Better Auth's root secret. */
+export function signCsrfPayload(payload: string): string {
+  return createHmac("sha256", authSecret)
+    .update("taskdesk:csrf:v1\0", "utf8")
+    .update(payload, "utf8")
+    .digest("base64url");
+}
+
+export function getConfiguredAgentOrigin(): string {
+  return new URL(agentOrigin).origin;
+}
 
 async function getUserLocale(email: string) {
   const [user] = await db
@@ -135,508 +148,627 @@ function getAuthEmailCopy(locale?: string | null) {
   };
 }
 
-export const auth = betterAuth({
-  baseURL: baseURLWithoutPath,
-  trustedOrigins,
-  secret: authSecret,
-  basePath: "/api/auth",
-  database: drizzleAdapter(db, {
-    provider: "pg",
-    schema: {
-      ...schema,
-      user: schema.userTable,
-      account: schema.accountTable,
-      session: schema.sessionTable,
-      verification: schema.verificationTable,
-      apikey: schema.apikeyTable,
-    },
-  }),
-  user: {
-    additionalFields: {
-      locale: {
-        type: "string",
-        input: true,
-        required: false,
-      },
-    },
-    deleteUser: {
-      enabled: true,
-      beforeDelete: async (user) => {
-        await deleteAccountData(user.id);
-      },
-    },
-  },
-  account: {
-    accountLinking: {
-      // Disabled in #6. kaneo shipped `enabled: true` with `trustedProviders`
-      // including "custom" — the generic OIDC provider an operator configures.
-      // Trusting it means anyone who can register the victim's email address at
-      // that provider takes over the existing local account. The
-      // `requireLocalEmailVerified` mitigation did not close it either: kaneo
-      // enforces no email verification anywhere, and magic-link and email-OTP
-      // sign-in both set emailVerified: true, so nearly every account already
-      // satisfied the precondition.
-      //
-      // TaskDesk's identity design is Microsoft Entra OIDC with explicit
-      // connection configuration; deliberate linking, if it is ever wanted,
-      // gets its own specification.
-      enabled: false,
-    },
-  },
-  emailAndPassword: {
-    enabled: true,
-    autoSignIn: true,
-    password: {
-      hash: async (password) => {
-        return await bcrypt.hash(password, 10);
-      },
-      verify: async ({ hash, password }) => {
-        return await bcrypt.compare(password, hash);
-      },
-    },
-  },
-  socialProviders: {
-    github: {
-      clientId: githubSso.clientId,
-      clientSecret: githubSso.clientSecret,
-      scope: ["user:email"],
-    },
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-    },
-    discord: {
-      clientId: process.env.DISCORD_CLIENT_ID || "",
-      clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
-    },
-  },
-  plugins: [
-    // anonymous() guest sign-in removed in #6. kaneo enabled it BY DEFAULT —
-    // it was opt-OUT via DISABLE_GUEST_ACCESS. It minted a real user row, which
-    // also let a guest arriving first consume the zero-user first-run window and
-    // permanently lock an instance out of ever gaining an admin (see #18).
-    lastLoginMethod(),
-    magicLink({
-      sendMagicLink: async ({ email, url }) => {
-        try {
-          const locale = await getUserLocale(email);
-          const copy = getAuthEmailCopy(locale);
-          await sendMagicLinkEmail(email, copy.magicLinkSubject, {
-            magicLink: url,
-            locale,
-          });
-        } catch (error) {
-          console.error(error);
-        }
+function createAuth(portal: AuthPortal) {
+  const baseURL = portal === "agent" ? agentOrigin : customerOrigin;
+  return betterAuth({
+    baseURL,
+    trustedOrigins: [baseURL],
+    secret: authSecret,
+    basePath: "/api/auth",
+    database: drizzleAdapter(db, {
+      provider: "pg",
+      schema: {
+        ...schema,
+        user: schema.userTable,
+        account: schema.accountTable,
+        session: schema.sessionTable,
+        verification: schema.verificationTable,
+        twoFactor: schema.twoFactorTable,
+        apikey: schema.apikeyTable,
       },
     }),
-    ...(isEmailOtpSignInDisabled
-      ? []
-      : [
-          emailOTP({
-            async sendVerificationOTP({ email, otp, type }) {
-              if (type === "sign-in") {
-                const locale = await getUserLocale(email);
-                const copy = getAuthEmailCopy(locale);
-                await sendOtpEmail(email, copy.otpSubject, {
-                  otp,
-                  locale,
-                });
-              }
-            },
-          }),
-        ]),
-    genericOAuth({
-      config: [
-        {
-          providerId: "custom",
-          clientId: process.env.CUSTOM_OAUTH_CLIENT_ID || "",
-          clientSecret: process.env.CUSTOM_OAUTH_CLIENT_SECRET,
-          authorizationUrl: process.env.CUSTOM_OAUTH_AUTHORIZATION_URL || "",
-          tokenUrl: process.env.CUSTOM_OAUTH_TOKEN_URL || "",
-          userInfoUrl: process.env.CUSTOM_OAUTH_USER_INFO_URL || "",
-          scopes: process.env.CUSTOM_OAUTH_SCOPES?.split(",")
-            .map((s) => s.trim())
-            .filter(Boolean) || ["profile", "email"],
-          responseType: process.env.CUSTOM_OAUTH_RESPONSE_TYPE || "code",
-          discoveryUrl: process.env.CUSTOM_OAUTH_DISCOVERY_URL || "",
-          pkce: process.env.CUSTOM_AUTH_PKCE !== "false",
-          mapProfileToUser: mapCustomOAuthProfileToUser,
-        },
-      ],
-    }),
-    // bearer() removed in #6. It emitted the raw session token in a
-    // `set-auth-token` response header with Access-Control-Expose-Headers on
-    // every auth response. Combined with kaneo's credentialed CORS reflection
-    // that was cross-origin session theft with no XSS required — finding C3 of
-    // the PR #13 review. The CORS fix broke the chain; this closes it.
-    apiKey({
-      // NEVER true. webhooks-and-api-keys.md specifies `sessionOnly` routes that
-      // must answer "403 session_required from an API or MCP key" — which is
-      // only possible if a key is not a session. kaneo minted a full session
-      // from an API key, making it a third authentication surface larger than
-      // the two removed above.
-      enableSessionForAPIKeys: false,
-      apiKeyHeaders: "x-api-key",
-      rateLimit: {
-        enabled: true,
-        maxRequests: 100,
-        timeWindow: 60 * 1000,
-      },
-    }),
-    // deviceAuthorization() removed in #6. mcp-server.md MC-3 puts an OAuth
-    // device flow explicitly out of scope — "a whole authentication mechanism".
-    // It also laundered an API key into a session token that outlived the key's
-    // own revocation (#17).
-    adminPlugin({
-      defaultRole: "user",
-      adminRoles: ["admin"],
-    }),
-    // openAPI() removed in #6. It mounted an unauthenticated
-    // /api/auth/reference that pulls an UNPINNED @scalar/api-reference bundle
-    // from a third-party CDN into the API's own cookie origin.
-  ],
-  session: {
-    // Cookie cache disabled in #6. kaneo cached the session in the cookie for
-    // five minutes, and that path returns session data with NO database read —
-    // so a revoked session kept working for up to five minutes, and a forged
-    // cookie was never compared against any row. Revocation has to be immediate.
-    cookieCache: {
-      enabled: false,
-    },
-    // S10: `activeOrganizationId` is a genuine, permanent column
-    // (schema.ts's sessionTable) that this app's own hooks write directly via
-    // Drizzle -- it was never owned by the `organization()` plugin. But
-    // better-auth's `GET /get-session` response is filtered through
-    // `parseSessionOutput`, which only returns a session column if it is
-    // either one of better-auth's own core fields or explicitly declared
-    // here or by a still-registered plugin's own `schema.session.fields`
-    // (`db/schema.mjs`'s `getFields`). The `organization()` plugin used to
-    // declare this field as a side effect of its own schema, so removing it
-    // silently dropped `activeOrganizationId` from every session response
-    // the client ever sees -- the column and the value are both still
-    // written and read correctly server-side, but the client's
-    // `useActiveWorkspace()` (via `getActiveOrganizationId`) saw `undefined`
-    // for it on any page with no workspace id in its own URL. Declaring it
-    // here restores exactly the visibility the plugin used to provide for
-    // free, now that nothing else does.
-    //
-    // `input: false` IS LOAD-BEARING, not copied boilerplate. The
-    // organization() plugin declared this exact field with `input: false`
-    // too (organization.mjs:827-832) -- the first version of this fix
-    // omitted it, and an independent review caught, then proved, the
-    // consequence: better-auth's generic `POST /api/auth/update-session`
-    // reads `getFields(..., "input")`, which only refuses a field when
-    // `input === false`; without it, ANY authenticated caller could
-    // overwrite their OWN session's `activeOrganizationId` to a workspace
-    // they are not a member of, with no membership check at all --
-    // bypassing the one sanctioned path (`POST /api/workspace/{id}/activate`,
-    // gated by `requireWorkspaceMembership`) entirely. `input: false` here
-    // makes `update-session` refuse the field with 400 `FIELD_NOT_ALLOWED`,
-    // exactly matching the plugin's own prior behaviour, while leaving the
-    // OUTPUT side (what this field exists for) completely unaffected --
-    // `getFields`'s "output" mode does not consult `input` at all.
-    //
-    // `activeTeamId` deliberately gets NO equivalent declaration here. The
-    // plugin exposed it too, but nothing ever reads it -- confirmed by
-    // grepping the whole of apps/api/src and apps/web/src -- so it is now
-    // silently absent from `GET /get-session`'s response, same column,
-    // same write path, just no longer visible to a client that never asked
-    // for it. If a future consumer needs it, add it here the same way.
-    additionalFields: {
-      activeOrganizationId: {
-        type: "string",
-        required: false,
-        input: false,
-      },
-    },
-  },
-  rateLimit: {
-    // Enabled for EVERY deployment. kaneo used `enabled: isCloud()`, so
-    // authentication abuse protection was off for exactly the shape TaskDesk
-    // ships — self-hosted — and the sign-up and invite throttles below, which
-    // exist specifically to stop abuse, were inert.
-    //
-    // This is deliberately landed in the SAME change as the client-IP fix
-    // above. Enabling a limiter whose key a caller can choose achieves
-    // nothing: it would only have handed attackers a free key-rotation
-    // primitive. Identity first, then the limit.
-    enabled: true,
-    window: 10,
-    max: 100,
-    customRules: {
-      "/sign-up/email": { window: 60, max: 3 },
-    },
-  },
-  databaseHooks: {
     user: {
-      create: {
-        before: async (user, ctx) => {
-          // The anonymous() plugin creates ephemeral users for guest
-          // access; registration limits don't apply to them (guest
-          // availability is governed by DISABLE_GUEST_ACCESS instead).
-          // `isAnonymous` is `input: false` in the plugin schema, so a
-          // regular signup request cannot spoof it.
-          const userWithAnonymous = user as Partial<UserWithAnonymous>;
-          if (userWithAnonymous.isAnonymous) {
-            return;
+      additionalFields: {
+        locale: {
+          type: "string",
+          input: true,
+          required: false,
+        },
+      },
+      deleteUser: {
+        enabled: true,
+        beforeDelete: async (user) => {
+          await deleteAccountData(user.id);
+        },
+      },
+    },
+    account: {
+      accountLinking: {
+        // Disabled in #6. kaneo shipped `enabled: true` with `trustedProviders`
+        // including "custom" — the generic OIDC provider an operator configures.
+        // Trusting it means anyone who can register the victim's email address at
+        // that provider takes over the existing local account. The
+        // `requireLocalEmailVerified` mitigation did not close it either: kaneo
+        // enforces no email verification anywhere, and magic-link and email-OTP
+        // sign-in both set emailVerified: true, so nearly every account already
+        // satisfied the precondition.
+        //
+        // TaskDesk's identity design is Microsoft Entra OIDC with explicit
+        // connection configuration; deliberate linking, if it is ever wanted,
+        // gets its own specification.
+        enabled: false,
+      },
+    },
+    emailAndPassword: {
+      enabled: true,
+      autoSignIn: true,
+      password: {
+        hash: async (password) => {
+          return await bcrypt.hash(password, 10);
+        },
+        verify: async ({ hash, password }) => {
+          return await bcrypt.compare(password, hash);
+        },
+      },
+    },
+    socialProviders: {
+      github: {
+        clientId: githubSso.clientId,
+        clientSecret: githubSso.clientSecret,
+        scope: ["user:email"],
+      },
+      google: {
+        clientId: process.env.GOOGLE_CLIENT_ID || "",
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      },
+      discord: {
+        clientId: process.env.DISCORD_CLIENT_ID || "",
+        clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
+      },
+    },
+    plugins: [
+      // anonymous() guest sign-in removed in #6. kaneo enabled it BY DEFAULT —
+      // it was opt-OUT via DISABLE_GUEST_ACCESS. It minted a real user row, which
+      // also let a guest arriving first consume the zero-user first-run window and
+      // permanently lock an instance out of ever gaining an admin (see #18).
+      lastLoginMethod(),
+      magicLink({
+        sendMagicLink: async ({ email, url }) => {
+          try {
+            const locale = await getUserLocale(email);
+            const copy = getAuthEmailCopy(locale);
+            await sendMagicLinkEmail(email, copy.magicLinkSubject, {
+              magicLink: url,
+              locale,
+            });
+          } catch {
+            logTaskDesk({
+              module: "auth",
+              message: "auth.failure",
+              level: "error",
+              result: "failed",
+            });
           }
-
-          // Zero users can mean two different things, and only one of them
-          // is the legitimate first-run bootstrap (#18):
-          //   - a genuinely fresh instance, never set up -- OR
-          //   - every admin was deleted from an instance that WAS already
-          //     set up, which must never re-open this window.
-          // `instance_setting.setup_completed_at` is the durable marker that
-          // tells them apart; it is never cleared by deleting user rows.
-          const [userCountRow] = await db
-            .select({ value: count() })
-            .from(schema.userTable);
-          const existingUserCount = userCountRow?.value ?? 0;
-
-          // Computed once, up front, so the SAME call with the SAME
-          // arguments is what decides every refusal message below --
-          // zero-user or not. See the #18 security review (D1) comment on
-          // the throw sites for why this matters.
-          const invitationId = normalizeInvitationId(
-            ctx?.body?.invitationId ||
-              ctx?.query?.invitationId ||
-              ctx?.headers?.get("x-invitation-id"),
-          );
-
-          if (existingUserCount === 0 && !(await isSetupCompleted())) {
-            // This is the one-time bootstrap. It is allowed through even
-            // when DISABLE_REGISTRATION / DISABLE_PASSWORD_REGISTRATION are
-            // set -- but ONLY on proof of authorization: the operator's
-            // headless-install email, or the setup token printed to the
-            // container log (auth-and-identity.md § Break-glass). There is
-            // no other bypass; an unauthorized zero-user signup is refused
-            // below exactly like any other signup would be.
-            if (isBootstrapAdminEmail(user.email)) {
+        },
+      }),
+      twoFactorPlugin({
+        issuer: "TaskDesk",
+        skipVerificationOnEnable: false,
+        // Trusted-device cookies would create a factor bypass across session
+        // revocation and runtime policy changes. Every protected login must verify.
+        trustDeviceMaxAge: 0,
+      }),
+      ...(isEmailOtpSignInDisabled
+        ? []
+        : [
+            emailOTP({
+              async sendVerificationOTP({ email, otp, type }) {
+                if (type === "sign-in") {
+                  const locale = await getUserLocale(email);
+                  const copy = getAuthEmailCopy(locale);
+                  await sendOtpEmail(email, copy.otpSubject, {
+                    otp,
+                    locale,
+                  });
+                }
+              },
+            }),
+          ]),
+      genericOAuth({
+        config: [
+          {
+            providerId: "custom",
+            clientId: process.env.CUSTOM_OAUTH_CLIENT_ID || "",
+            clientSecret: process.env.CUSTOM_OAUTH_CLIENT_SECRET,
+            authorizationUrl: process.env.CUSTOM_OAUTH_AUTHORIZATION_URL || "",
+            tokenUrl: process.env.CUSTOM_OAUTH_TOKEN_URL || "",
+            userInfoUrl: process.env.CUSTOM_OAUTH_USER_INFO_URL || "",
+            scopes: process.env.CUSTOM_OAUTH_SCOPES?.split(",")
+              .map((s) => s.trim())
+              .filter(Boolean) || ["profile", "email"],
+            responseType: process.env.CUSTOM_OAUTH_RESPONSE_TYPE || "code",
+            discoveryUrl: process.env.CUSTOM_OAUTH_DISCOVERY_URL || "",
+            pkce: process.env.CUSTOM_AUTH_PKCE !== "false",
+            mapProfileToUser: mapCustomOAuthProfileToUser,
+          },
+        ],
+      }),
+      // bearer() removed in #6. It emitted the raw session token in a
+      // `set-auth-token` response header with Access-Control-Expose-Headers on
+      // every auth response. Combined with kaneo's credentialed CORS reflection
+      // that was cross-origin session theft with no XSS required — finding C3 of
+      // the PR #13 review. The CORS fix broke the chain; this closes it.
+      apiKey({
+        // NEVER true. webhooks-and-api-keys.md specifies `sessionOnly` routes that
+        // must answer "403 session_required from an API or MCP key" — which is
+        // only possible if a key is not a session. kaneo minted a full session
+        // from an API key, making it a third authentication surface larger than
+        // the two removed above.
+        enableSessionForAPIKeys: false,
+        apiKeyHeaders: "x-api-key",
+        rateLimit: {
+          enabled: true,
+          maxRequests: 100,
+          timeWindow: 60 * 1000,
+        },
+      }),
+      // deviceAuthorization() removed in #6. mcp-server.md MC-3 puts an OAuth
+      // device flow explicitly out of scope — "a whole authentication mechanism".
+      // It also laundered an API key into a session token that outlived the key's
+      // own revocation (#17).
+      adminPlugin({
+        defaultRole: "user",
+        adminRoles: ["admin"],
+      }),
+      // openAPI() removed in #6. It mounted an unauthenticated
+      // /api/auth/reference that pulls an UNPINNED @scalar/api-reference bundle
+      // from a third-party CDN into the API's own cookie origin.
+    ],
+    session: {
+      // Cookie cache disabled in #6. kaneo cached the session in the cookie for
+      // five minutes, and that path returns session data with NO database read —
+      // so a revoked session kept working for up to five minutes, and a forged
+      // cookie was never compared against any row. Revocation has to be immediate.
+      cookieCache: {
+        enabled: false,
+      },
+      // S10: `activeOrganizationId` is a genuine, permanent column
+      // (schema.ts's sessionTable) that this app's own hooks write directly via
+      // Drizzle -- it was never owned by the `organization()` plugin. But
+      // better-auth's `GET /get-session` response is filtered through
+      // `parseSessionOutput`, which only returns a session column if it is
+      // either one of better-auth's own core fields or explicitly declared
+      // here or by a still-registered plugin's own `schema.session.fields`
+      // (`db/schema.mjs`'s `getFields`). The `organization()` plugin used to
+      // declare this field as a side effect of its own schema, so removing it
+      // silently dropped `activeOrganizationId` from every session response
+      // the client ever sees -- the column and the value are both still
+      // written and read correctly server-side, but the client's
+      // `useActiveWorkspace()` (via `getActiveOrganizationId`) saw `undefined`
+      // for it on any page with no workspace id in its own URL. Declaring it
+      // here restores exactly the visibility the plugin used to provide for
+      // free, now that nothing else does.
+      //
+      // `input: false` IS LOAD-BEARING, not copied boilerplate. The
+      // organization() plugin declared this exact field with `input: false`
+      // too (organization.mjs:827-832) -- the first version of this fix
+      // omitted it, and an independent review caught, then proved, the
+      // consequence: better-auth's generic `POST /api/auth/update-session`
+      // reads `getFields(..., "input")`, which only refuses a field when
+      // `input === false`; without it, ANY authenticated caller could
+      // overwrite their OWN session's `activeOrganizationId` to a workspace
+      // they are not a member of, with no membership check at all --
+      // bypassing the one sanctioned path (`POST /api/workspace/{id}/activate`,
+      // gated by `requireWorkspaceMembership`) entirely. `input: false` here
+      // makes `update-session` refuse the field with 400 `FIELD_NOT_ALLOWED`,
+      // exactly matching the plugin's own prior behaviour, while leaving the
+      // OUTPUT side (what this field exists for) completely unaffected --
+      // `getFields`'s "output" mode does not consult `input` at all.
+      //
+      // `activeTeamId` deliberately gets NO equivalent declaration here. The
+      // plugin exposed it too, but nothing ever reads it -- confirmed by
+      // grepping the whole of apps/api/src and apps/web/src -- so it is now
+      // silently absent from `GET /get-session`'s response, same column,
+      // same write path, just no longer visible to a client that never asked
+      // for it. If a future consumer needs it, add it here the same way.
+      additionalFields: {
+        portal: {
+          type: "string",
+          required: true,
+          defaultValue: portal,
+          input: false,
+        },
+        activeOrganizationId: {
+          type: "string",
+          required: false,
+          input: false,
+        },
+      },
+    },
+    rateLimit: {
+      // Enabled for EVERY deployment. kaneo used `enabled: isCloud()`, so
+      // authentication abuse protection was off for exactly the shape TaskDesk
+      // ships — self-hosted — and the sign-up and invite throttles below, which
+      // exist specifically to stop abuse, were inert.
+      //
+      // This is deliberately landed in the SAME change as the client-IP fix
+      // above. Enabling a limiter whose key a caller can choose achieves
+      // nothing: it would only have handed attackers a free key-rotation
+      // primitive. Identity first, then the limit.
+      enabled: true,
+      window: 10,
+      max: 100,
+      customRules: {
+        "/sign-up/email": { window: 60, max: 3 },
+      },
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => ({ data: { ...session, portal } }),
+        },
+      },
+      user: {
+        create: {
+          before: async (user, ctx) => {
+            // The anonymous() plugin creates ephemeral users for guest
+            // access; registration limits don't apply to them (guest
+            // availability is governed by DISABLE_GUEST_ACCESS instead).
+            // `isAnonymous` is `input: false` in the plugin schema, so a
+            // regular signup request cannot spoof it.
+            const userWithAnonymous = user as Partial<UserWithAnonymous>;
+            if (userWithAnonymous.isAnonymous) {
               return;
             }
 
-            const presentedToken = ctx?.headers?.get(SETUP_TOKEN_HEADER);
-            if (await verifyAndConsumeSetupToken(presentedToken)) {
-              return;
+            // Zero users can mean two different things, and only one of them
+            // is the legitimate first-run bootstrap (#18):
+            //   - a genuinely fresh instance, never set up -- OR
+            //   - every admin was deleted from an instance that WAS already
+            //     set up, which must never re-open this window.
+            // `instance_setting.setup_completed_at` is the durable marker that
+            // tells them apart; it is never cleared by deleting user rows.
+            const [userCountRow] = await db
+              .select({ value: count() })
+              .from(schema.userTable);
+            const existingUserCount = userCountRow?.value ?? 0;
+
+            // Computed once, up front, so the SAME call with the SAME
+            // arguments is what decides every refusal message below --
+            // zero-user or not. See the #18 security review (D1) comment on
+            // the throw sites for why this matters.
+            const invitationId = normalizeInvitationId(
+              ctx?.body?.invitationId ||
+                ctx?.query?.invitationId ||
+                ctx?.headers?.get("x-invitation-id"),
+            );
+
+            if (existingUserCount === 0 && !(await isSetupCompleted())) {
+              // This is the one-time bootstrap. It is allowed through even
+              // when DISABLE_REGISTRATION / DISABLE_PASSWORD_REGISTRATION are
+              // set -- but ONLY on proof of authorization: the operator's
+              // headless-install email, or the setup token printed to the
+              // container log (auth-and-identity.md § Break-glass). There is
+              // no other bypass; an unauthorized zero-user signup is refused
+              // below exactly like any other signup would be.
+              if (isBootstrapAdminEmail(user.email)) {
+                return;
+              }
+
+              const presentedToken = ctx?.headers?.get(SETUP_TOKEN_HEADER);
+              if (await verifyAndConsumeSetupToken(presentedToken)) {
+                return;
+              }
+
+              // #18 security review (B1, then D1): this refusal must be
+              // impossible to distinguish from an ordinary registration
+              // refusal, for EVERY shape of request, not just the plain one.
+              // B1's first fix hard-coded one fixed message here -- which
+              // closed the plain case but reopened the same oracle the moment
+              // a caller added an `invitationId`: checkRegistrationAllowed
+              // below has two different messages (no invitation attempted vs.
+              // an invitation that didn't resolve), and a claimed instance
+              // reaches it while an unclaimed one used to short-circuit here
+              // first with only ever the first message -- so which of the two
+              // messages came back told an attacker claimed from unclaimed
+              // just as reliably as the original, more obviously-named one
+              // did. On a genuinely empty instance no invitation can ever
+              // exist (nothing has created a workspace or sent one yet), so
+              // calling the SAME function with the SAME arguments here always
+              // reproduces whichever of its two refusal messages a claimed
+              // instance would give for that identical request shape, because
+              // it is literally the same call. When registration is open
+              // (DISABLE_REGISTRATION=false), that call would itself say
+              // "allowed" -- but there is no message to mirror in that branch
+              // either, since a claimed+open instance would answer with 200,
+              // not an error body, so this falls back to the same fixed
+              // refusal text as before; the remaining 200-vs-403 signal in
+              // that specific configuration is inherent to never letting an
+              // unauthenticated signup through on an unclaimed instance, not
+              // something a message change can close. The setup URL and token
+              // are still printed to the boot log (ensureSetupToken) and
+              // documented in the runbook -- an operator never needs this
+              // response to learn them.
+              const bootstrapRefusal = await checkRegistrationAllowed(
+                user.email,
+                invitationId,
+                { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
+              );
+              throw new APIError("FORBIDDEN", {
+                message: bootstrapRefusal.allowed
+                  ? "Registration is currently disabled. Please use a valid invitation link to create an account."
+                  : bootstrapRefusal.reason,
+              });
             }
 
-            // #18 security review (B1, then D1): this refusal must be
-            // impossible to distinguish from an ordinary registration
-            // refusal, for EVERY shape of request, not just the plain one.
-            // B1's first fix hard-coded one fixed message here -- which
-            // closed the plain case but reopened the same oracle the moment
-            // a caller added an `invitationId`: checkRegistrationAllowed
-            // below has two different messages (no invitation attempted vs.
-            // an invitation that didn't resolve), and a claimed instance
-            // reaches it while an unclaimed one used to short-circuit here
-            // first with only ever the first message -- so which of the two
-            // messages came back told an attacker claimed from unclaimed
-            // just as reliably as the original, more obviously-named one
-            // did. On a genuinely empty instance no invitation can ever
-            // exist (nothing has created a workspace or sent one yet), so
-            // calling the SAME function with the SAME arguments here always
-            // reproduces whichever of its two refusal messages a claimed
-            // instance would give for that identical request shape, because
-            // it is literally the same call. When registration is open
-            // (DISABLE_REGISTRATION=false), that call would itself say
-            // "allowed" -- but there is no message to mirror in that branch
-            // either, since a claimed+open instance would answer with 200,
-            // not an error body, so this falls back to the same fixed
-            // refusal text as before; the remaining 200-vs-403 signal in
-            // that specific configuration is inherent to never letting an
-            // unauthenticated signup through on an unclaimed instance, not
-            // something a message change can close. The setup URL and token
-            // are still printed to the boot log (ensureSetupToken) and
-            // documented in the runbook -- an operator never needs this
-            // response to learn them.
-            const bootstrapRefusal = await checkRegistrationAllowed(
+            const result = await checkRegistrationAllowed(
               user.email,
               invitationId,
               { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
             );
+            if (!result.allowed) {
+              throw new APIError("FORBIDDEN", {
+                message: result.reason,
+              });
+            }
+          },
+          after: async (user, context) => {
+            // The anonymous() plugin creates ephemeral users for guest
+            // access; never promote one to instance admin even if no
+            // real admin exists yet. `isAnonymous` is contributed by the
+            // anonymous plugin's `additionalFields` and isn't part of the
+            // base User type, so we narrow through `UserWithAnonymous`.
+            const userWithAnonymous = user as Partial<UserWithAnonymous>;
+            if (userWithAnonymous.isAnonymous) {
+              return;
+            }
+
+            // Promote the first user to instance admin atomically.
+            //
+            // A previous version of this code checked the user count in
+            // the `before` hook and returned `role: "admin"`, but the
+            // count and the eventual INSERT happened in separate
+            // transactions, so two concurrent first-signups could both
+            // see count=0 and both become admins (qodo bot #5).
+            //
+            // We now run the check + promote inside a single transaction
+            // guarded by a Postgres advisory lock. Whichever transaction
+            // wins the lock first promotes its user; any concurrent
+            // transaction then sees totalUserCount > 1 and skips.
+            //
+            // Note: we count total users (not admins) so that upgrading
+            // an existing instance (where every existing user has
+            // role=NULL from the new column) doesn't promote the next
+            // signup to admin (qodo bot #4).
+            //
+            // #18: also re-check `setup_completed_at` INSIDE the lock. Without
+            // this, deleting every admin from an already-set-up instance would
+            // let the next signup silently re-trigger admin auto-promotion --
+            // exactly the durable-marker guarantee this column exists for.
+            await db.transaction(async (tx) => {
+              await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
+
+              const totalRows = await tx
+                .select({ value: count() })
+                .from(schema.userTable);
+              const totalUserCount = totalRows[0]?.value ?? 0;
+
+              const [setting] = await tx
+                .select({
+                  setupCompletedAt:
+                    schema.instanceSettingTable.setupCompletedAt,
+                })
+                .from(schema.instanceSettingTable)
+                .limit(1);
+              const setupAlreadyCompleted = setting?.setupCompletedAt != null;
+
+              // This hook runs after the user row is inserted, so the
+              // just-created user is included in the count. If they are
+              // the only row in the table, and the instance has never
+              // completed setup, this is the fresh-instance bootstrap and
+              // they get promoted to admin.
+              if (totalUserCount === 1 && !setupAlreadyCompleted) {
+                await tx
+                  .update(schema.userTable)
+                  .set({ role: "admin" })
+                  .where(eq(schema.userTable.id, user.id));
+
+                await tx
+                  .insert(schema.instanceSettingTable)
+                  .values({
+                    id: SETUP_TOKEN_SINGLETON_ID,
+                    setupCompletedAt: new Date(),
+                    setupTokenHash: null,
+                    setupTokenExpiresAt: null,
+                  })
+                  .onConflictDoUpdate({
+                    target: schema.instanceSettingTable.id,
+                    set: {
+                      setupCompletedAt: new Date(),
+                      setupTokenHash: null,
+                      setupTokenExpiresAt: null,
+                      updatedAt: new Date(),
+                    },
+                  });
+              }
+            });
+
+            // #315 S7 / #324: boot seeding alone misses local users who register
+            // after startup. The current local password-signup path creates ordinary
+            // internal staff identities. Do not infer a staff identity for OAuth
+            // callbacks: their portal and organisation must come from a configured
+            // identity connection, which owns that provisioning decision.
+            if (context?.path === "/sign-up/email") {
+              await ensureStaffPersonForUser(user.id);
+            }
+          },
+        },
+      },
+    },
+    hooks: {
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path === "/two-factor/enable" && ctx.context.session?.user.id) {
+          const state = await loadLocalFactorState(ctx.context.session.user.id);
+          if (state.policy.mode === "off") {
             throw new APIError("FORBIDDEN", {
-              message: bootstrapRefusal.allowed
-                ? "Registration is currently disabled. Please use a valid invitation link to create an account."
-                : bootstrapRefusal.reason,
+              message:
+                "Local factor enrollment is disabled by instance policy.",
+            });
+          }
+        }
+
+        if (
+          ctx.path === "/two-factor/disable" ||
+          ctx.path === "/two-factor/generate-backup-codes"
+        ) {
+          throw new APIError("FORBIDDEN", {
+            message:
+              "A factor-bound confirmation is required for this operation.",
+          });
+        }
+
+        if (
+          ctx.path === "/two-factor/enable" &&
+          ctx.context.session?.user.twoFactorEnabled
+        ) {
+          throw new APIError("FORBIDDEN", {
+            message:
+              "An enrolled factor cannot be replaced through enrollment.",
+          });
+        }
+
+        if (isLoginFormDisabled && isLocalSignInPath(ctx.path)) {
+          throw new APIError("FORBIDDEN", {
+            message:
+              "Local sign-in is disabled. Please use a configured social or OIDC sign-in method.",
+          });
+        }
+
+        const isSignUpPath =
+          ctx.path === "/sign-up/email" ||
+          ctx.path.startsWith("/callback/") ||
+          ctx.path.startsWith("/sign-in/social");
+
+        if (!isSignUpPath) {
+          return;
+        }
+
+        const userCountRows = await db
+          .select({ value: count() })
+          .from(schema.userTable);
+        const existingUserCount = userCountRows[0]?.value ?? 0;
+        const isInstanceAdminSetup = existingUserCount === 0;
+
+        if (ctx.path === "/sign-up/email") {
+          if (isPasswordRegistrationDisabled && !isInstanceAdminSetup) {
+            throw new APIError("FORBIDDEN", {
+              message:
+                "Password registration is currently disabled. Please use a configured social or OIDC sign-in method.",
             });
           }
 
-          const result = await checkRegistrationAllowed(
-            user.email,
-            invitationId,
-            { allowInvitationByEmail: isOAuthCallbackPath(ctx?.path) },
-          );
+          // Cloud-only abuse gates on password signup. Self-hosted instances
+          // leave KANEO_CLOUD unset and skip it.
+          if (isCloud() && !isInstanceAdminSetup) {
+            const signupEmail = (ctx.body?.email as string | undefined) ?? "";
+            if (signupEmail && isDisposableEmail(signupEmail)) {
+              throw new APIError("BAD_REQUEST", {
+                message:
+                  "Sign-up with disposable email addresses is not allowed.",
+              });
+            }
+          }
+        }
+
+        if (!isRegistrationDisabled || isInstanceAdminSetup) {
+          return;
+        }
+
+        const email =
+          ctx.body?.email ||
+          ctx.query?.email ||
+          ctx.headers?.get("x-invitation-email");
+        const invitationId = normalizeInvitationId(
+          ctx.body?.invitationId ||
+            ctx.query?.invitationId ||
+            ctx.headers?.get("x-invitation-id"),
+        );
+
+        if (ctx.path === "/sign-up/email") {
+          const result = await checkRegistrationAllowed(email, invitationId);
           if (!result.allowed) {
             throw new APIError("FORBIDDEN", {
               message: result.reason,
             });
           }
-        },
-        after: async (user, context) => {
-          // The anonymous() plugin creates ephemeral users for guest
-          // access; never promote one to instance admin even if no
-          // real admin exists yet. `isAnonymous` is contributed by the
-          // anonymous plugin's `additionalFields` and isn't part of the
-          // base User type, so we narrow through `UserWithAnonymous`.
-          const userWithAnonymous = user as Partial<UserWithAnonymous>;
-          if (userWithAnonymous.isAnonymous) {
-            return;
-          }
-
-          // Promote the first user to instance admin atomically.
-          //
-          // A previous version of this code checked the user count in
-          // the `before` hook and returned `role: "admin"`, but the
-          // count and the eventual INSERT happened in separate
-          // transactions, so two concurrent first-signups could both
-          // see count=0 and both become admins (qodo bot #5).
-          //
-          // We now run the check + promote inside a single transaction
-          // guarded by a Postgres advisory lock. Whichever transaction
-          // wins the lock first promotes its user; any concurrent
-          // transaction then sees totalUserCount > 1 and skips.
-          //
-          // Note: we count total users (not admins) so that upgrading
-          // an existing instance (where every existing user has
-          // role=NULL from the new column) doesn't promote the next
-          // signup to admin (qodo bot #4).
-          //
-          // #18: also re-check `setup_completed_at` INSIDE the lock. Without
-          // this, deleting every admin from an already-set-up instance would
-          // let the next signup silently re-trigger admin auto-promotion --
-          // exactly the durable-marker guarantee this column exists for.
-          await db.transaction(async (tx) => {
-            await tx.execute(sql`SELECT pg_advisory_xact_lock(2026)`);
-
-            const totalRows = await tx
-              .select({ value: count() })
-              .from(schema.userTable);
-            const totalUserCount = totalRows[0]?.value ?? 0;
-
-            const [setting] = await tx
-              .select({
-                setupCompletedAt: schema.instanceSettingTable.setupCompletedAt,
-              })
-              .from(schema.instanceSettingTable)
-              .limit(1);
-            const setupAlreadyCompleted = setting?.setupCompletedAt != null;
-
-            // This hook runs after the user row is inserted, so the
-            // just-created user is included in the count. If they are
-            // the only row in the table, and the instance has never
-            // completed setup, this is the fresh-instance bootstrap and
-            // they get promoted to admin.
-            if (totalUserCount === 1 && !setupAlreadyCompleted) {
-              await tx
-                .update(schema.userTable)
-                .set({ role: "admin" })
-                .where(eq(schema.userTable.id, user.id));
-
-              await tx
-                .insert(schema.instanceSettingTable)
-                .values({
-                  id: SETUP_TOKEN_SINGLETON_ID,
-                  setupCompletedAt: new Date(),
-                  setupTokenHash: null,
-                  setupTokenExpiresAt: null,
-                })
-                .onConflictDoUpdate({
-                  target: schema.instanceSettingTable.id,
-                  set: {
-                    setupCompletedAt: new Date(),
-                    setupTokenHash: null,
-                    setupTokenExpiresAt: null,
-                    updatedAt: new Date(),
-                  },
-                });
-            }
-          });
-
-          // #315 S7 / #324: boot seeding alone misses local users who register
-          // after startup. The current local password-signup path creates ordinary
-          // internal staff identities. Do not infer a staff identity for OAuth
-          // callbacks: their portal and organisation must come from a configured
-          // identity connection, which owns that provisioning decision.
-          if (context?.path === "/sign-up/email") {
-            await ensureStaffPersonForUser(user.id);
-          }
-        },
-      },
-    },
-  },
-  hooks: {
-    before: createAuthMiddleware(async (ctx) => {
-      if (isLoginFormDisabled && isLocalSignInPath(ctx.path)) {
-        throw new APIError("FORBIDDEN", {
-          message:
-            "Local sign-in is disabled. Please use a configured social or OIDC sign-in method.",
-        });
-      }
-
-      const isSignUpPath =
-        ctx.path === "/sign-up/email" ||
-        ctx.path.startsWith("/callback/") ||
-        ctx.path.startsWith("/sign-in/social");
-
-      if (!isSignUpPath) {
-        return;
-      }
-
-      const userCountRows = await db
-        .select({ value: count() })
-        .from(schema.userTable);
-      const existingUserCount = userCountRows[0]?.value ?? 0;
-      const isInstanceAdminSetup = existingUserCount === 0;
-
-      if (ctx.path === "/sign-up/email") {
-        if (isPasswordRegistrationDisabled && !isInstanceAdminSetup) {
-          throw new APIError("FORBIDDEN", {
-            message:
-              "Password registration is currently disabled. Please use a configured social or OIDC sign-in method.",
-          });
         }
-
-        // Cloud-only abuse gates on password signup. Self-hosted instances
-        // leave KANEO_CLOUD unset and skip it.
-        if (isCloud() && !isInstanceAdminSetup) {
-          const signupEmail = (ctx.body?.email as string | undefined) ?? "";
-          if (signupEmail && isDisposableEmail(signupEmail)) {
-            throw new APIError("BAD_REQUEST", {
-              message:
-                "Sign-up with disposable email addresses is not allowed.",
-            });
-          }
-        }
-      }
-
-      if (!isRegistrationDisabled || isInstanceAdminSetup) {
-        return;
-      }
-
-      const email =
-        ctx.body?.email ||
-        ctx.query?.email ||
-        ctx.headers?.get("x-invitation-email");
-      const invitationId = normalizeInvitationId(
-        ctx.body?.invitationId ||
-          ctx.query?.invitationId ||
-          ctx.headers?.get("x-invitation-id"),
-      );
-
-      if (ctx.path === "/sign-up/email") {
-        const result = await checkRegistrationAllowed(email, invitationId);
-        if (!result.allowed) {
-          throw new APIError("FORBIDDEN", {
-            message: result.reason,
-          });
-        }
-      }
-    }),
-    after: createAuthMiddleware(async (ctx) => {
-      if (ctx.path.startsWith("/sign-up") || ctx.path.startsWith("/sign-in")) {
+      }),
+      after: createAuthMiddleware(async (ctx) => {
         const newSession = ctx.context.newSession;
-        if (newSession) {
+        const previousSession = ctx.context.session;
+        const completedEnrollment =
+          ctx.path === "/two-factor/verify-totp" &&
+          previousSession?.user.twoFactorEnabled !== true &&
+          newSession?.user.twoFactorEnabled === true;
+        if (completedEnrollment && newSession) {
+          // Better Auth replaces the session used to verify enrollment. Revoke any
+          // other sessions as well so the newly verified factor gates every device.
+          await db
+            .delete(schema.sessionTable)
+            .where(
+              and(
+                eq(schema.sessionTable.userId, newSession.user.id),
+                ne(schema.sessionTable.id, newSession.session.id),
+              ),
+            );
+          await appendAuditLog(db, {
+            action: "auth.mfa_enrolled",
+            actorId: newSession.user.id,
+            actorType: "person",
+            workspaceId: null,
+            entityType: "person",
+            entityId: newSession.user.id,
+            after: { method: "totp" },
+          }).catch(async () => {
+            recordAuditWriteFailure("mutation");
+            await notifyCurrentInstanceAdminsOfAuditFailure("mutation");
+          });
+        }
+        if (!newSession) return;
+
+        const factorVerifiedEndpoint =
+          ctx.path === "/two-factor/verify-totp" ||
+          ctx.path === "/two-factor/verify-backup-code";
+        const passwordSignInPath =
+          ctx.path === "/sign-in/email" ||
+          ctx.path === "/sign-in/username" ||
+          ctx.path === "/sign-in/phone-number";
+        if (
+          newSession.user.twoFactorEnabled &&
+          !factorVerifiedEndpoint &&
+          !passwordSignInPath
+        ) {
+          // The plugin's built-in sign-in gate covers password sign-in. Other
+          // credential flows may not establish that challenge; refuse their
+          // session rather than let a local factor be skipped.
+          await ctx.context.internalAdapter.deleteSession(
+            newSession.session.token,
+          );
+          deleteSessionCookie(ctx, true);
+          ctx.context.setNewSession(null);
+          return;
+        }
+
+        await db
+          .update(schema.sessionTable)
+          .set({ portal })
+          .where(eq(schema.sessionTable.id, newSession.session.id));
+
+        if (
+          ctx.path.startsWith("/sign-up") ||
+          ctx.path.startsWith("/sign-in") ||
+          factorVerifiedEndpoint
+        ) {
           const workspaceMember = await db
             .select({ workspaceId: schema.workspaceUserTable.workspaceId })
             .from(schema.workspaceUserTable)
@@ -652,29 +784,77 @@ export const auth = betterAuth({
               .where(eq(schema.sessionTable.id, newSession.session.id));
           }
         }
-      }
-    }),
-  },
-  advanced: {
-    ipAddress: {
-      // ONLY the internal header, which utils/auth-request.ts strips from every
-      // inbound request and then sets from utils/resolve-client-ip.ts.
-      //
-      // kaneo read ["cf-connecting-ip", "x-forwarded-for"] against a CIDR set
-      // that defaulted to all of RFC1918. `cf-connecting-ip` is single-valued
-      // and unvalidatable, so a caller chose its own rate-limit bucket and
-      // could rotate it per request; and a CIDR set is the wrong shape anyway,
-      // because on a shared cluster every pod is inside RFC1918.
-      //
-      // TASKDESK_TRUST_PROXY is a HOP COUNT, per configuration-reference.md,
-      // and counting from the right is the only derivation a caller cannot
-      // prepend to. No trustedProxies list: the value here is already resolved.
-      ipAddressHeaders: [TRUSTED_CLIENT_IP_HEADER],
+      }),
     },
-    defaultCookieAttributes: getDefaultCookieAttributes({
-      apiUrl,
-      clientUrl,
-      cookieDomain: process.env.COOKIE_DOMAIN,
-    }),
-  },
-});
+    advanced: {
+      ipAddress: {
+        // ONLY the internal header, which utils/auth-request.ts strips from every
+        // inbound request and then sets from utils/resolve-client-ip.ts.
+        //
+        // kaneo read ["cf-connecting-ip", "x-forwarded-for"] against a CIDR set
+        // that defaulted to all of RFC1918. `cf-connecting-ip` is single-valued
+        // and unvalidatable, so a caller chose its own rate-limit bucket and
+        // could rotate it per request; and a CIDR set is the wrong shape anyway,
+        // because on a shared cluster every pod is inside RFC1918.
+        //
+        // TASKDESK_TRUST_PROXY is a HOP COUNT, per configuration-reference.md,
+        // and counting from the right is the only derivation a caller cannot
+        // prepend to. No trustedProxies list: the value here is already resolved.
+        ipAddressHeaders: [TRUSTED_CLIENT_IP_HEADER],
+      },
+      // The explicit __Host names already carry the secure prefix; suppress
+      // Better Auth's automatic __Secure- name prefix while keeping Secure attrs.
+      useSecureCookies: false,
+      cookiePrefix: "",
+      cookies: {
+        session_token: {
+          name:
+            portal === "agent"
+              ? "__Host-tdk_agent_session"
+              : "__Host-tdk_portal_session",
+          attributes: {
+            path: "/",
+            secure: true,
+            httpOnly: true,
+            sameSite: "lax",
+          },
+        },
+      },
+      defaultCookieAttributes: getDefaultCookieAttributes(),
+    },
+  });
+}
+
+export const auth = createAuth("agent");
+export const portalAuth = createAuth("customer");
+
+export function portalForHost(
+  host: string | null | undefined,
+): AuthPortal | null {
+  if (!host) {
+    return process.env.NODE_ENV === "test" &&
+      new URL(agentOrigin).hostname === "localhost"
+      ? "agent"
+      : null;
+  }
+  const normalized = host.toLowerCase();
+  for (const [portal, origin] of [
+    ["agent", agentOrigin],
+    ["customer", customerOrigin],
+  ] as const) {
+    try {
+      if (new URL(origin).host.toLowerCase() === normalized) {
+        return portal;
+      }
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export function authForHost(host: string | null | undefined) {
+  const portal = portalForHost(host);
+  if (!portal) return null;
+  return portal === "agent" ? auth : portalAuth;
+}

@@ -204,6 +204,7 @@ export type WorkItemTreeNodeResponse = {
   stateName: string;
   stateCategory: string;
   isCurrent: boolean;
+  hasChildren: boolean;
   children: WorkItemTreeNodeResponse[];
 };
 
@@ -220,27 +221,27 @@ export const workItemTreeNodeSchema: z.ZodType<WorkItemTreeNodeResponse> =
             "state_template.group: one of backlog, unstarted, started, completed, cancelled.",
         }),
         isCurrent: z.boolean().openapi({
-          description: "True for the one node matching the requested {key}.",
+          description: "True for the requested {key} node.",
+        }),
+        hasChildren: z.boolean().openapi({
+          description:
+            "True when this node has children; request its key to load them.",
         }),
         children: z.array(workItemTreeNodeSchema),
       })
       .openapi("WorkItemTreeNode"),
   );
 
-// The route's actual response envelope. `truncated` is the fix for an ordinary-review
-// finding on this PR (medium severity): `relations-and-hierarchy.md`'s own edge-cases
-// table requires "200 children on one parent -- The list paginates", but `RH-7` only
-// bounds depth, not breadth -- see `../hierarchy.ts`'s `MAX_TREE_NODES` and
-// `get-work-item-tree.ts`'s own doc comment for the full reasoning and the deferred-
-// pagination follow-up (issue #434).
+// Each response is one parent's bounded direct-child page. `hasMore` and
+// `nextCursor` apply to that parent's children; nested nodes are loaded by key.
 export const workItemTreeResponseSchema = z
   .object({
     root: workItemTreeNodeSchema,
     truncated: z.boolean().openapi({
       description:
-        "True when the tree exceeded the server's size cap and this is a prefix, not " +
-        "the whole subtree. Real pagination is tracked separately (issue #434).",
+        "True when this response omits any part of the requested item's full tree.",
     }),
+    page: workItemPageSchema,
   })
   .openapi("WorkItemTree");
 
@@ -424,6 +425,7 @@ export const workItemTransitionOfferSchema = z
   .object({
     transitionId: z.string(),
     toStateTemplateId: z.string(),
+    toStateName: z.string(),
     toStateId: z.string(),
     notePolicy: z.enum(["none", "optional", "required"]),
     noteVisibility: z.enum(["public", "internal"]),

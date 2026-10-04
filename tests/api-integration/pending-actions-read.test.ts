@@ -3,12 +3,14 @@ import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 
 beforeEach(async () => {
   await resetTestDatabase();
+  await db.insert(schema.instanceSettingTable).values({ id: "singleton" });
 });
 
 function hashApiKeyForTest(key: string): string {
@@ -73,23 +75,32 @@ async function createPendingAction(
   );
 }
 
-async function createPersonFor(
+async function ensurePersonFor(
   userId: string,
   organisationId: string,
 ): Promise<void> {
-  await db.insert(schema.personTable).values({
-    userId,
-    organisationId,
-    side: "staff",
-  });
+  await ensureStaffPersonForUser(userId);
+  const person = requireRow(
+    await db
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, userId))
+      .limit(1),
+    "pending-action requester person",
+  );
+  if (person.organisationId !== organisationId || !person.active) {
+    throw new Error(
+      "pending-action requester fixture requires active internal staff identity",
+    );
+  }
 }
 
 describe("GET /api/me/pending-actions", () => {
   it("returns only the caller's pending actions with stable pages, a safe DTO, and viewed audits", async () => {
     const { user, workspace } = await createWorkspaceMember();
     const other = await createWorkspaceMember();
-    await createPersonFor(user.id, workspace.organisationId);
-    await createPersonFor(other.user.id, other.workspace.organisationId);
+    await ensurePersonFor(user.id, workspace.organisationId);
+    await ensurePersonFor(other.user.id, other.workspace.organisationId);
     const key = requireRow(
       await db
         .insert(schema.apikeyTable)
@@ -217,7 +228,7 @@ describe("GET /api/me/pending-actions", () => {
 
   it("rejects an explicitly empty cursor and limits above the collection maximum", async () => {
     const { user, workspace } = await createWorkspaceMember();
-    await createPersonFor(user.id, workspace.organisationId);
+    await ensurePersonFor(user.id, workspace.organisationId);
     mockAuthenticatedSession(user);
     const { app } = createApp();
 
@@ -232,8 +243,8 @@ describe("GET /api/me/pending-actions", () => {
   it("returns any own state for polling and hides another requester's id", async () => {
     const owner = await createWorkspaceMember();
     const caller = await createWorkspaceMember();
-    await createPersonFor(owner.user.id, owner.workspace.organisationId);
-    await createPersonFor(caller.user.id, caller.workspace.organisationId);
+    await ensurePersonFor(owner.user.id, owner.workspace.organisationId);
+    await ensurePersonFor(caller.user.id, caller.workspace.organisationId);
     const terminal = await createPendingAction(owner.user.id, {
       id: "pa-terminal",
       state: "executed",
@@ -289,7 +300,7 @@ describe("GET /api/me/pending-actions", () => {
 
   it("attributes API-key list and detail reads to the current key and request trace", async () => {
     const { user, workspace } = await createWorkspaceMember();
-    await createPersonFor(user.id, workspace.organisationId);
+    await ensurePersonFor(user.id, workspace.organisationId);
     const pending = await createPendingAction(user.id, {
       id: "pa-api-key-read",
     });
@@ -384,7 +395,7 @@ describe("GET /api/me/pending-actions", () => {
 
     for (const lifecycle of scenarios) {
       const { user, workspace } = await createWorkspaceMember();
-      await createPersonFor(user.id, workspace.organisationId);
+      await ensurePersonFor(user.id, workspace.organisationId);
       const pending = await createPendingAction(user.id, {
         id: `pa-owner-${lifecycle}`,
         payloadSummary: {
@@ -448,7 +459,11 @@ describe("GET /api/me/pending-actions", () => {
 
   it("does not return a summary when its viewed audit write fails", async () => {
     const { user, workspace } = await createWorkspaceMember();
-    await createPersonFor(user.id, workspace.organisationId);
+    await ensurePersonFor(user.id, workspace.organisationId);
+    await db
+      .update(schema.userTable)
+      .set({ role: "admin" })
+      .where(eq(schema.userTable.id, user.id));
     const pending = await createPendingAction(user.id, {
       id: "pa-audit-failure",
       payloadSummary: { secret: "SUMMARY_MUST_NOT_ESCAPE" },
@@ -482,6 +497,14 @@ describe("GET /api/me/pending-actions", () => {
       );
       expect(response.status).toBe(500);
       expect(await response.text()).not.toContain("SUMMARY_MUST_NOT_ESCAPE");
+      const alerts = await db
+        .select({ eventData: schema.notificationTable.eventData })
+        .from(schema.notificationTable)
+        .where(eq(schema.notificationTable.type, "audit_write_failed"));
+      expect(alerts).toHaveLength(1);
+      expect(alerts[0]?.eventData).toMatchObject({
+        operation: "pending_action_self_read",
+      });
     } finally {
       await db.execute(
         sql.raw(

@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Button,
   Dialog,
@@ -52,6 +53,7 @@ import {
 } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import {
+  memo,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -60,9 +62,10 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { bundledLanguages, type Highlighter } from "shiki";
+import type { Highlighter } from "shiki";
 import { useUpdateTaskDescription } from "@/hooks/mutations/task/use-update-task-description";
 import useGetTask from "@/hooks/queries/task/use-get-task";
+import { useShikiHighlighterForCode } from "@/hooks/use-shiki-highlighter-for-code";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 import { cn } from "@/lib/cn";
 import { parseTaskListMarkdownToNodes } from "@/lib/editor-task-list-paste";
@@ -73,9 +76,9 @@ import {
   normalizeUrl,
 } from "@/lib/editor-url-utils";
 import { isInCodeBlockLanguagePicker } from "@/lib/is-in-codeblock-language-picker";
-import { getSharedShikiHighlighter } from "@/lib/shiki-highlighter";
 import { toast } from "@/lib/toast";
 import { uploadTaskImage } from "@/lib/upload-task-image";
+import type Task from "@/types/task";
 import { AttachmentCard } from "./extensions/attachment-card";
 import { EmbedBlock } from "./extensions/embed-block";
 import { MermaidBlock } from "./extensions/mermaid-block";
@@ -296,9 +299,10 @@ const SLASH_COMMANDS: SlashCommand[] = [
   },
 ];
 
-export default function TaskDescription({ taskId }: TaskDescriptionProps) {
+function TaskDescription({ taskId }: TaskDescriptionProps) {
   const { t } = useTranslation();
-  const { data: task } = useGetTask(taskId);
+  const { data: description } = useGetTask(taskId, (task) => task.description);
+  const queryClient = useQueryClient();
   const { mutateAsync: updateTaskDescription } = useUpdateTaskDescription();
   const { canUpdateTasks } = useWorkspacePermission();
   const canEdit = canUpdateTasks();
@@ -308,7 +312,6 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
   const editorShellRef = useRef<HTMLDivElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const dragDepthRef = useRef(0);
-  const taskRef = useRef(task);
   const taskIdRef = useRef(taskId);
   const updateTaskRef = useRef(updateTaskDescription);
   const activeTaskIdRef = useRef<string | null>(null);
@@ -327,9 +330,6 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
   const [isCodeLanguageMenuOpen, setIsCodeLanguageMenuOpen] = useState(false);
   const codeCopyResetTimeoutRef = useRef<number | null>(null);
   const [isCodeCopied, setIsCodeCopied] = useState(false);
-  const [shikiHighlighter, setShikiHighlighter] = useState<Highlighter | null>(
-    null,
-  );
   const shikiHighlighterRef = useRef<Highlighter | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
   const [embedComposer, setEmbedComposer] = useState<EmbedComposerState | null>(
@@ -344,13 +344,18 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
   const slashMenuRef = useRef<SlashMenuState | null>(null);
 
   useLayoutEffect(() => {
-    taskRef.current = task;
     taskIdRef.current = taskId;
     updateTaskRef.current = updateTaskDescription;
-  }, [task, taskId, updateTaskDescription]);
+  }, [taskId, updateTaskDescription]);
 
   const shikiSupportedLanguages = useMemo(
-    () => new Set([...Object.keys(bundledLanguages), "text"]),
+    () =>
+      new Set([
+        ...CODE_LANGUAGE_OPTIONS.map(
+          ({ value }) => SHIKI_LANGUAGE_ALIASES[value] || value,
+        ),
+        "text",
+      ]),
     [],
   );
   const toShikiLanguage = useCallback(
@@ -557,61 +562,49 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
     [openImagePicker, t],
   );
 
-  useEffect(() => {
-    let isDisposed = false;
-
-    void getSharedShikiHighlighter()
-      .then((nextHighlighter) => {
-        shikiHighlighterRef.current = nextHighlighter;
-        if (!isDisposed) {
-          setShikiHighlighter(nextHighlighter);
-        }
-      })
-      .catch((error) => {
-        console.error("Failed to initialize Shiki highlighter:", error);
-      });
-
-    return () => {
-      isDisposed = true;
-    };
-  }, []);
-
   const pendingDescriptionSavesRef = useRef(
     new Map<string, ReturnType<typeof setTimeout>>(),
   );
 
-  const scheduleDescriptionSave = useCallback((markdown: string) => {
-    if (!canEditRef.current) return;
+  const scheduleDescriptionSave = useCallback(
+    (markdown: string) => {
+      if (!canEditRef.current) return;
 
-    const editedTask = taskRef.current;
-    if (!editedTask) return;
+      const editedTask = queryClient.getQueryData<Task>(["task", taskId]);
+      if (!editedTask) return;
 
-    const timers = pendingDescriptionSavesRef.current;
-    const pending = timers.get(editedTask.id);
-    if (pending) clearTimeout(pending);
+      const timers = pendingDescriptionSavesRef.current;
+      const pending = timers.get(editedTask.id);
+      if (pending) clearTimeout(pending);
 
-    timers.set(
-      editedTask.id,
-      setTimeout(async () => {
-        timers.delete(editedTask.id);
+      timers.set(
+        editedTask.id,
+        setTimeout(async () => {
+          timers.delete(editedTask.id);
 
-        const updateTaskFn = updateTaskRef.current;
-        if (!updateTaskFn) return;
+          const updateTaskFn = updateTaskRef.current;
+          if (!updateTaskFn) return;
 
-        const latestTask = taskRef.current;
-        const base = latestTask?.id === editedTask.id ? latestTask : editedTask;
+          const latestTask = queryClient.getQueryData<Task>([
+            "task",
+            editedTask.id,
+          ]);
+          const base =
+            latestTask?.id === editedTask.id ? latestTask : editedTask;
 
-        try {
-          await updateTaskFn({
-            ...base,
-            description: markdown,
-          });
-        } catch (error) {
-          console.error("Failed to update description:", error);
-        }
-      }, DESCRIPTION_SAVE_DEBOUNCE_MS),
-    );
-  }, []);
+          try {
+            await updateTaskFn({
+              ...base,
+              description: markdown,
+            });
+          } catch (error) {
+            console.error("Failed to update description:", error);
+          }
+        }, DESCRIPTION_SAVE_DEBOUNCE_MS),
+      );
+    },
+    [queryClient, taskId],
+  );
 
   const editor = useEditor(
     {
@@ -824,6 +817,9 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
     [getOverlayPosition, handleAssetFileUpload, t, toShikiLanguage],
   );
 
+  const shikiHighlighter = useShikiHighlighterForCode(editor);
+  shikiHighlighterRef.current = shikiHighlighter;
+
   useEffect(() => {
     if (!editor || !shikiHighlighter) return;
     editor.view.dispatch(
@@ -1033,7 +1029,7 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
       latestSyncedMarkdownRef.current = "";
     }
 
-    const incomingMarkdown = formatMarkdown(task?.description || "");
+    const incomingMarkdown = formatMarkdown(description || "");
     if (!hasHydratedRef.current) {
       isSyncingExternalContentRef.current = true;
       latestSyncedMarkdownRef.current = incomingMarkdown;
@@ -1057,7 +1053,7 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
     requestAnimationFrame(() => {
       isSyncingExternalContentRef.current = false;
     });
-  }, [editor, taskId, task?.description]);
+  }, [editor, taskId, description]);
 
   useEffect(() => {
     if (!editor) return;
@@ -1981,3 +1977,5 @@ export default function TaskDescription({ taskId }: TaskDescriptionProps) {
     </section>
   );
 }
+
+export default memo(TaskDescription);

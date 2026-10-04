@@ -12,6 +12,7 @@ async function updateProject(
   slug: string,
   description: string,
   workspaceId: string,
+  defaultCommentVisibility?: "public" | "internal",
 ) {
   // #23's mandatory Opus security review of PR #261, F1's delta-confirmation (D1,
   // 2026-09-22): the claim check and the claim write for the NEW slug now have to commit
@@ -79,6 +80,7 @@ async function updateProject(
           icon,
           slug,
           description,
+          ...(defaultCommentVisibility ? { defaultCommentVisibility } : {}),
         })
         .where(eq(projectTable.id, id))
         .returning();

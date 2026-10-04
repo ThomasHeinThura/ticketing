@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "../src/styles/tokens.css";
 @import "../src/styles/theme.css";
+@import "../src/styles/density.css";
 @import "../src/styles/motion.css";
 
 @source "../src";
+
+:root,
+body,
+#storybook-root {
+  background-color: var(--background);
+  color: var(--foreground);
+}

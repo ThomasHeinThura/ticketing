@@ -42,9 +42,7 @@ function KbdSequence({
         <span key={key} className="inline-flex items-center gap-1">
           <Kbd>{key}</Kbd>
           {separator && index < keys.length - 1 ? (
-            <span className="text-muted-foreground/72 text-xs">
-              {separator}
-            </span>
+            <span className="text-muted-foreground text-xs">{separator}</span>
           ) : null}
         </span>
       ))}

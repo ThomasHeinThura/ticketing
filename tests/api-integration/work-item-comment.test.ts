@@ -15,6 +15,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 import {
   raceProjectArchive,
@@ -93,6 +94,8 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     })
     .returning();
   if (!user) throw new Error("addWorkspaceMember: no user row");
+
+  await prepareAuthenticatedApiFixture(user.id);
 
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
@@ -304,6 +307,96 @@ describe("API integration: work-item comments (#27)", () => {
       visibility: "internal",
     });
     expect(response.status).toBe(400);
+  });
+
+  it("CA-11: rejects unsafe rich-text URLs from direct JSON submissions", async () => {
+    const { app, workItem } = await setupWorkItem("member");
+    const safe = await postComment(app, workItem.key, {
+      body: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "safe link",
+                marks: [
+                  { type: "link", attrs: { href: "/dashboard/work-items/1" } },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      visibility: "internal",
+    });
+    expect(safe.status).toBe(200);
+
+    const unsafeBodies = [
+      {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "click",
+                marks: [
+                  {
+                    type: "link",
+                    attrs: { href: "javascript:alert(document.domain)" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "taskdeskIssueLink",
+                attrs: { url: "//attacker.example/path", issueKey: "EVIL-1" },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: "credential link",
+                marks: [
+                  {
+                    type: "link",
+                    attrs: { href: "https://user:pass@example.test/path" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    for (const body of unsafeBodies) {
+      const response = await postComment(app, workItem.key, {
+        body,
+        visibility: "internal",
+      });
+      expect(response.status).toBe(400);
+    }
   });
 
   it("CA-11: 400s a body over the 256 KiB cap", async () => {

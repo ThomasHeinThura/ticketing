@@ -34,7 +34,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import db from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import { resetTestDatabase } from "./helpers/database";
@@ -120,6 +120,21 @@ async function rowsFor(
 beforeEach(async () => {
   await resetTestDatabase();
   await withoutRoleUniqueConstraint();
+});
+
+afterEach(async () => {
+  // A failed assertion or intentionally refused migration must not leak the
+  // pre-migration schema state into later integration files sharing this DB.
+  // Clear test rows first, then restore the exact shipped uniqueness invariant.
+  await resetTestDatabase();
+  if (!(await constraintExists())) {
+    await db.execute(sql`
+      ALTER TABLE "workspace_role"
+      ADD CONSTRAINT "workspace_role_workspace_id_role_unique"
+      UNIQUE ("workspace_id", "role")
+    `);
+  }
+  expect(await constraintExists()).toBe(true);
 });
 
 describe("#118 A -- NON-VACUITY: the defect is reachable before the constraint exists", () => {

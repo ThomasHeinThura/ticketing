@@ -15,6 +15,7 @@ import {
   assertProjectStillLive,
   projectNotDeletedClause,
 } from "../assert-work-item-live";
+import { publishWorkItemHint, recordWorkItemEvent } from "../native-event";
 
 export type UpdateWorkItemInput = {
   title?: string;
@@ -134,101 +135,134 @@ export async function updateWorkItem(
   if (input.startDate !== undefined) values.startDate = input.startDate;
   if (input.dueDate !== undefined) values.dueDate = input.dueDate;
 
-  const { updated, activityRows } = await db.transaction(async (tx) => {
-    const [locked] = await tx
-      .select()
-      .from(workItemTable)
-      .where(
-        and(
-          eq(workItemTable.key, key),
-          eq(workItemTable.workspaceId, workspaceId),
-          // Issue #276: same guard `requireWorkItemReach()` applies before this
-          // transaction starts, re-checked here to close the reach-check-to-lock race --
-          // see this function's own doc comment above for why one check suffices for
-          // these two columns.
-          isNull(workItemTable.deletedAt),
-          isNull(workItemTable.archivedAt),
-        ),
-      )
-      .for("update");
+  const { updated, activityRows, realtimeEvent } = await db.transaction(
+    async (tx) => {
+      const [locked] = await tx
+        .select()
+        .from(workItemTable)
+        .where(
+          and(
+            eq(workItemTable.key, key),
+            eq(workItemTable.workspaceId, workspaceId),
+            // Issue #276: same guard `requireWorkItemReach()` applies before this
+            // transaction starts, re-checked here to close the reach-check-to-lock race --
+            // see this function's own doc comment above for why one check suffices for
+            // these two columns.
+            isNull(workItemTable.deletedAt),
+            isNull(workItemTable.archivedAt),
+          ),
+        )
+        .for("update");
 
-    if (!locked) {
-      // Genuinely gone -- deleted, archived, or moved out of this workspace -- since the
-      // reach-check middleware ran. 404, matching that middleware's own "not there"
-      // outcome for this route.
-      throw new HTTPException(404, { message: "Work item not found" });
-    }
+      if (!locked) {
+        // Genuinely gone -- deleted, archived, or moved out of this workspace -- since the
+        // reach-check middleware ran. 404, matching that middleware's own "not there"
+        // outcome for this route.
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
 
-    // Its project may have been soft-deleted since the reach-check middleware ran (or
-    // is already soft-deleted and the middleware raced) -- 404, not a version conflict.
-    await assertProjectStillLive(tx, locked.projectId);
+      // Its project may have been soft-deleted since the reach-check middleware ran (or
+      // is already soft-deleted and the middleware raced) -- 404, not a version conflict.
+      await assertProjectStillLive(tx, locked.projectId);
 
-    if (locked.version !== assertedVersion) {
-      throw new WorkItemVersionConflictError(assertedVersion, locked.version);
-    }
+      if (locked.version !== assertedVersion) {
+        throw new WorkItemVersionConflictError(assertedVersion, locked.version);
+      }
 
-    const [updated] = await tx
-      .update(workItemTable)
-      .set({ ...values, version: sql`${workItemTable.version} + 1` })
-      .where(
-        and(
-          eq(workItemTable.id, locked.id),
-          eq(workItemTable.version, assertedVersion),
-          projectNotDeletedClause,
-        ),
-      )
-      .returning();
+      const [updated] = await tx
+        .update(workItemTable)
+        .set({ ...values, version: sql`${workItemTable.version} + 1` })
+        .where(
+          and(
+            eq(workItemTable.id, locked.id),
+            eq(workItemTable.version, assertedVersion),
+            projectNotDeletedClause,
+          ),
+        )
+        .returning();
 
-    if (!updated) {
-      // The version matched moments ago under the row lock, and the row itself is not
-      // gone (we are updating by `id`, not re-resolving `key`), so the only remaining
-      // reason the `WHERE` can fail to match is `projectNotDeleted` -- the project was
-      // soft-deleted in the window between the lock above and this statement, by a
-      // concurrent transaction that does not touch `work_item` and so was never blocked
-      // by the lock. Same outcome as the "already soft-deleted" case: 404.
-      throw new HTTPException(404, { message: "Work item not found" });
-    }
+      if (!updated) {
+        // The version matched moments ago under the row lock, and the row itself is not
+        // gone (we are updating by `id`, not re-resolving `key`), so the only remaining
+        // reason the `WHERE` can fail to match is `projectNotDeleted` -- the project was
+        // soft-deleted in the window between the lock above and this statement, by a
+        // concurrent transaction that does not touch `work_item` and so was never blocked
+        // by the lock. Same outcome as the "already soft-deleted" case: 404.
+        throw new HTTPException(404, { message: "Work item not found" });
+      }
 
-    // WI-6/CA-6: one `updated` row per changed field named in `DIFFABLE_FIELDS`, built
-    // from ONLY the fields this PATCH actually supplied (matching the partial-update
-    // semantics already applied to `values` above) -- an unsupplied field is "not part
-    // of this update", not a change to/from `undefined`.
-    const before: WorkItemFieldSnapshot = {};
-    const after: WorkItemFieldSnapshot = {};
-    if (input.title !== undefined) {
-      before.title = locked.title;
-      after.title = updated.title;
-    }
-    if (input.description !== undefined) {
-      before.description = locked.description;
-      after.description = updated.description;
-    }
-    if (input.priority !== undefined) {
-      before.priority = locked.priority;
-      after.priority = updated.priority;
-    }
-    if (input.dueDate !== undefined) {
-      before.dueDate = locked.dueDate;
-      after.dueDate = updated.dueDate;
-    }
-    if (input.startDate !== undefined) {
-      before.startDate = locked.startDate;
-      after.startDate = updated.startDate;
-    }
+      // WI-6/CA-6: one `updated` row per changed field named in `DIFFABLE_FIELDS`, built
+      // from ONLY the fields this PATCH actually supplied (matching the partial-update
+      // semantics already applied to `values` above) -- an unsupplied field is "not part
+      // of this update", not a change to/from `undefined`.
+      const before: WorkItemFieldSnapshot = {};
+      const after: WorkItemFieldSnapshot = {};
+      if (input.title !== undefined) {
+        before.title = locked.title;
+        after.title = updated.title;
+      }
+      if (input.description !== undefined) {
+        before.description = locked.description;
+        after.description = updated.description;
+      }
+      if (input.priority !== undefined) {
+        before.priority = locked.priority;
+        after.priority = updated.priority;
+      }
+      if (input.dueDate !== undefined) {
+        before.dueDate = locked.dueDate;
+        after.dueDate = updated.dueDate;
+      }
+      if (input.startDate !== undefined) {
+        before.startDate = locked.startDate;
+        after.startDate = updated.startDate;
+      }
 
-    const activityRows = diffWorkItemFieldChanges(before, after, {
-      workspaceId: updated.workspaceId,
-      workItemId: updated.id,
-      actorId,
-      actorType,
-    });
+      const activityRows = diffWorkItemFieldChanges(before, after, {
+        workspaceId: updated.workspaceId,
+        workItemId: updated.id,
+        actorId,
+        actorType,
+      });
 
-    if (activityRows.length > 0) {
-      await recordWorkItemActivity(tx, activityRows);
-    }
+      if (activityRows.length > 0) {
+        await recordWorkItemActivity(tx, activityRows);
+      }
 
-    return { updated, activityRows };
-  });
+      const visibleChanges = activityRows
+        .filter(
+          (row) => row.verb === "updated" && typeof row.field === "string",
+        )
+        .map((row) => ({
+          field: row.field,
+          from: row.oldValue,
+          to: row.newValue,
+          visibility: resolveVisibility(row),
+        }));
+      const realtimeEvent =
+        visibleChanges.length > 0
+          ? await recordWorkItemEvent(tx, {
+              kind: "work_item.updated",
+              workItemId: updated.id,
+              key: updated.key,
+              workspaceId: updated.workspaceId,
+              projectId: updated.projectId,
+              actorId,
+              actorType,
+              customerVisible: visibleChanges.some(
+                (change) => change.visibility === "public",
+              ),
+              payload: {
+                key: updated.key,
+                url: `/agent/work-items/${encodeURIComponent(updated.key)}`,
+                changes: visibleChanges,
+              },
+            })
+          : undefined;
+
+      return { updated, activityRows, realtimeEvent, visibleChanges };
+    },
+  );
 
   // `changes: [{ field, from, to }]` per `events.md`'s declared `work_item.updated`
   // payload -- built from the same `activityRows` used for the `activity` table write
@@ -262,6 +296,16 @@ export async function updateWorkItem(
       actorId,
       actorType,
     });
+    if (realtimeEvent) {
+      await publishWorkItemHint(realtimeEvent, {
+        kind: "work_item.updated",
+        key: updated.key,
+        projectId: updated.projectId,
+        customerVisible: changes.some(
+          (change) => change.visibility === "public",
+        ),
+      });
+    }
   }
 
   return updated;

@@ -13,7 +13,7 @@ import { createWorkspaceMember } from "./helpers/fixtures";
 // CAPABILITY_CHECKS itself, so they cannot catch a capability being pointed
 // at the WRONG permission (both sides of that comparison would move
 // together). This is the test that actually catches that: an edit to
-// capability-checks.ts that changes what any of the 16 keys checks, without
+// capability-checks.ts that changes what any key checks, without
 // updating the client to match, fails here first.
 const EXPECTED_CAPABILITY_CHECKS: Record<string, Record<string, string[]>> = {
   manageProjects: { project: ["create", "update", "delete"] },
@@ -21,6 +21,7 @@ const EXPECTED_CAPABILITY_CHECKS: Record<string, Record<string, string[]>> = {
   updateProjects: { project: ["update"] },
   deleteProjects: { project: ["delete"] },
   updateTasks: { work_item: ["update"] },
+  transitionTasks: { work_item: ["transition"] },
   createTasks: { work_item: ["create"] },
   deleteTasks: { work_item: ["delete"] },
   assignTasks: { work_item: ["assign"] },
@@ -32,9 +33,11 @@ const EXPECTED_CAPABILITY_CHECKS: Record<string, Record<string, string[]>> = {
   inviteUsers: { invitation: ["create"] },
   manageTeam: { member: ["update", "delete"] },
   removeMembers: { member: ["delete"] },
+  createPublicComments: { comment: ["create"] },
+  createInternalComments: { comment: ["create_internal"] },
 };
 
-// GET /api/capabilities -- one call replacing the client's 16-way
+// GET /api/capabilities -- one call replacing the client's
 // has-permission fan-out (retrofit plan, S2 row / matrix row 15, issue
 // #6). Scope tests: it must never answer for a workspace other than the
 // one asked about.
@@ -56,13 +59,72 @@ beforeEach(async () => {
   await resetTestDatabase();
 });
 
-describe("the 16-key capability vocabulary matches the client's fan-out exactly (A1-P5)", () => {
+describe("the capability vocabulary matches the client's fan-out exactly (A1-P5)", () => {
   it("checks the exact same permission map per key as apps/web/src/hooks/use-workspace-permission.ts", () => {
     expect(CAPABILITY_CHECKS).toEqual(EXPECTED_CAPABILITY_CHECKS);
   });
 });
 
 describe("GET /api/capabilities", () => {
+  it("exposes project settings authority separately from project update", async () => {
+    const manager = await createWorkspaceMember({ role: "manager" });
+    const lead = await createWorkspaceMember({ role: "lead" });
+    const now = new Date();
+    for (const member of [manager, lead]) {
+      await db.insert(schema.workspaceRoleTable).values({
+        workspaceId: member.workspace.id,
+        role: member.workspace.id === manager.workspace.id ? "manager" : "lead",
+        permission: JSON.stringify({}),
+        isSystem: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    mockAuthenticatedSession(manager.user);
+    const { app } = createApp();
+    const managerResponse = await app.request(
+      `/api/capabilities?workspaceId=${manager.workspace.id}`,
+    );
+    expect(managerResponse.status).toBe(200);
+    await expect(managerResponse.json()).resolves.toMatchObject({
+      manageProjectSettings: true,
+    });
+
+    mockAuthenticatedSession(lead.user);
+    const leadResponse = await app.request(
+      `/api/capabilities?workspaceId=${lead.workspace.id}`,
+    );
+    expect(leadResponse.status).toBe(200);
+    await expect(leadResponse.json()).resolves.toMatchObject({
+      manageProjectSettings: false,
+    });
+  });
+
+  it("reports exact service-calendar management for an admin", async () => {
+    const admin = await createWorkspaceMember({ role: "admin" });
+    mockAuthenticatedSession(admin.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/capabilities?workspaceId=${admin.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()).manageServiceCalendars).toBe(true);
+  });
+
+  it("denies service-calendar management to a viewer", async () => {
+    const viewer = await createWorkspaceMember({ role: "viewer" });
+    mockAuthenticatedSession(viewer.user);
+    const { app } = createApp();
+
+    const response = await app.request(
+      `/api/capabilities?workspaceId=${viewer.workspace.id}`,
+    );
+    expect(response.status).toBe(200);
+    expect((await response.json()).manageServiceCalendars).toBe(false);
+  });
+
   it("scopes to the requested workspace -- same user, different roles in two workspaces, different answers (A1-P4)", async () => {
     const owner = await createWorkspaceMember({
       workspaceName: "Workspace Owner-side",

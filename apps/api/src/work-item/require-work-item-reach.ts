@@ -133,6 +133,7 @@ export function requireWorkItemReach(idKey = "key") {
     c.set("workspaceIdSource", "row");
     c.set("workItemId", workItem.id);
     c.set("projectId", workItem.projectId);
+    c.set("policyScopeResource", "work_item");
 
     const apiKey = c.get("apiKey");
     try {

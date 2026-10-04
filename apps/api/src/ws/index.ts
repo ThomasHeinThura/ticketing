@@ -6,10 +6,20 @@ import { isRedisConfigured } from "../redis";
 import type {
   BroadcastAdapter,
   BroadcastMessage,
+  NativeBroadcastMessage,
   ProjectBroadcastMessage,
   UserBroadcast,
   UserBroadcastMessage,
 } from "./broadcast-adapter";
+import { deliverNativeBroadcast } from "./native-work-item-realtime";
+
+export {
+  addNativeConnection,
+  handleNativeFrame,
+  reauthorizeNativeConnection,
+  removeNativeConnection,
+} from "./native-work-item-realtime";
+
 import { InMemoryBroadcastAdapter } from "./in-memory-broadcast-adapter";
 import { RedisBroadcastAdapter } from "./redis-broadcast-adapter";
 
@@ -134,6 +144,7 @@ export async function initializeWebSocketAdapter(
       }
       deliverToLocalUserConnections(msg.userId, msg.message);
     });
+    await nextAdapter.subscribeToNative((msg) => deliverNativeBroadcast(msg));
   } catch (err) {
     await nextAdapter.shutdown().catch(() => {});
     throw err;
@@ -287,6 +298,22 @@ export function broadcastToProject(
   }, 100);
 
   projectBroadcastTimeouts.set(projectId, timeout);
+}
+
+export async function broadcastNativeWorkItemHint(
+  message: NativeBroadcastMessage,
+) {
+  if (!adapter) {
+    console.error(
+      "Native realtime adapter is not initialized; client will recover by refetch",
+    );
+    return;
+  }
+  try {
+    await adapter.publishNative(message);
+  } catch (error) {
+    console.error("Failed to publish native work-item realtime hint:", error);
+  }
 }
 
 type TaskEvent = {

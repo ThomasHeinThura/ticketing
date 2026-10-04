@@ -19,6 +19,7 @@ import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 import { raceProjectSoftDelete } from "./helpers/race-soft-delete";
 
@@ -97,6 +98,8 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     .returning();
   if (!user) throw new Error("addWorkspaceMember: user insert returned no row");
 
+  await prepareAuthenticatedApiFixture(user.id);
+
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
     userId: user.id,
@@ -142,6 +145,8 @@ async function addWorkspaceMemberWithoutGenuineRow(
     );
   }
 
+  await prepareAuthenticatedApiFixture(user.id);
+
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
     userId: user.id,
@@ -179,6 +184,92 @@ function createWorkItemRequest(
 describe("API integration: work item create/read/list (#23)", () => {
   beforeEach(async () => {
     await resetTestDatabase();
+  });
+
+  it("lists ordered active project states, including empty states and archived templates", async () => {
+    const {
+      creator,
+      project,
+      state: first,
+    } = await setupProjectWithDefaultState();
+    const now = new Date();
+    const [archivedTemplate] = await db
+      .insert(schema.stateTemplateTable)
+      .values({
+        workspaceId: creator.workspace.id,
+        key: `state-${randomUUID()}`,
+        name: "In progress",
+        group: "started",
+        archivedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    const [emptyTemplate] = await db
+      .insert(schema.stateTemplateTable)
+      .values({
+        workspaceId: creator.workspace.id,
+        key: `state-${randomUUID()}`,
+        name: "Ready",
+        group: "unstarted",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!archivedTemplate || !emptyTemplate)
+      throw new Error("state template insert failed");
+    const [second] = await db
+      .insert(schema.stateTable)
+      .values({
+        projectId: project.id,
+        stateTemplateId: archivedTemplate.id,
+        position: 2,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    const [empty] = await db
+      .insert(schema.stateTable)
+      .values({
+        projectId: project.id,
+        stateTemplateId: emptyTemplate.id,
+        position: 1,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    if (!second || !empty) throw new Error("state insert failed");
+
+    mockAuthenticatedSession(creator.user);
+    const { app } = createApp();
+    const response = await app.request(`/api/projects/${project.id}/states`);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([
+      {
+        id: first.id,
+        stateTemplateId: first.stateTemplateId,
+        name: "Backlog",
+        group: "backlog",
+        position: 0,
+        isDefault: true,
+      },
+      {
+        id: empty.id,
+        stateTemplateId: emptyTemplate.id,
+        name: "Ready",
+        group: "unstarted",
+        position: 1,
+        isDefault: false,
+      },
+      {
+        id: second.id,
+        stateTemplateId: archivedTemplate.id,
+        name: "In progress",
+        group: "started",
+        position: 2,
+        isDefault: false,
+      },
+    ]);
   });
 
   it("creates a work item with the right key format and shape", async () => {

@@ -7,13 +7,14 @@ import queryClient from "@/query-client";
 import "@/index.css";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import { AppErrorBoundary } from "./components/app-error-boundary";
-import { KeyboardShortcutsHelp } from "./components/keyboard-shortcuts-help";
+import KeyboardShortcutsHelpLauncher from "./components/keyboard-shortcuts-help-launcher";
 import AuthProvider from "./components/providers/auth-provider";
 import { ThemeProvider } from "./components/providers/theme-provider";
 import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
 import { captureCheckoutIntent } from "./lib/checkout-intent";
 import { AppI18nProvider } from "./lib/i18n/provider";
-import { routeTree } from "./routeTree.gen";
+import { parseWorkItemListSearchFromQueryString } from "./lib/routes";
+import { routeTree } from "./routeTree.agent.gen";
 
 // Capture a pricing-page `?checkout=<plan>-<interval>` deep link before the
 // router runs and strips it across the sign-up → onboarding redirect chain.
@@ -49,6 +50,30 @@ const router = createRouter({
     queryClient,
   },
 });
+
+// The project work route is the agent's primary seeded list surface. TanStack's
+// automatic route splitting puts its screen component behind a separate chunk;
+// preload that chunk as soon as the router is created on a direct work-list visit
+// so it can download while the router/provider mounts, before the route renders.
+const workRoute = location.pathname.match(
+  /^\/agent\/projects\/([^/]+)\/work\/?$/,
+);
+if (workRoute) {
+  try {
+    const projectKey = decodeURIComponent(workRoute[1]);
+    // Route preloading still executes route `beforeLoad` checks; it does not mount
+    // the screen or run its query hooks. A malformed URL simply skips this hint.
+    void router
+      .preloadRoute({
+        to: "/agent/projects/$projectKey/work",
+        params: { projectKey },
+        search: parseWorkItemListSearchFromQueryString(location.search),
+      })
+      .catch(() => {});
+  } catch {
+    // Leave malformed percent-encoding to normal router error handling.
+  }
+}
 
 function App() {
   const { user } = useAuth();
@@ -100,7 +125,7 @@ if (!rootElement.innerHTML) {
               <AppI18nProvider>
                 <KeyboardShortcutsProvider>
                   <App />
-                  <KeyboardShortcutsHelp />
+                  <KeyboardShortcutsHelpLauncher />
                 </KeyboardShortcutsProvider>
               </AppI18nProvider>
             </AuthProvider>

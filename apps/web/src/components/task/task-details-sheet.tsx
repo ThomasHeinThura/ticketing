@@ -1,21 +1,12 @@
-import { useNavigate } from "@tanstack/react-router";
-import {
-  Button,
-  Sheet,
-  SheetContent,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@taskdesk/ui";
-import { Maximize2, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { Sheet, SheetContent } from "@taskdesk/ui";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import useGetProject from "@/hooks/queries/project/use-get-project";
-import useGetTask from "@/hooks/queries/task/use-get-task";
-import TaskDeleteButton from "./task-delete-button";
-import TaskDetailsContent from "./task-details-content";
-import TaskPropertiesSidebar from "./task-properties-sidebar";
+import {
+  TaskDetailsSkeleton,
+  TaskPropertiesSidebarSkeleton,
+} from "./task-page-skeleton";
+
+const TaskDetailsSheetBody = lazy(() => import("./task-details-sheet-body"));
 
 type TaskDetailsSheetProps = {
   taskId: string | undefined;
@@ -24,6 +15,26 @@ type TaskDetailsSheetProps = {
   onClose: () => void;
 };
 
+function TaskDetailsSheetLoading() {
+  return (
+    <div
+      aria-busy="true"
+      className="flex flex-col flex-1 min-h-0 overflow-hidden"
+    >
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-background shrink-0">
+        <div className="h-4 w-24 rounded bg-muted" />
+        <div className="h-8 w-20 rounded bg-muted" />
+      </div>
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        <TaskPropertiesSidebarSkeleton className="w-full bg-sidebar border-b border-border flex flex-col gap-0 overflow-y-auto shrink-0" />
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <TaskDetailsSkeleton className="px-4 py-4" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TaskDetailsSheet({
   taskId,
   projectId,
@@ -31,13 +42,9 @@ export default function TaskDetailsSheet({
   onClose,
 }: TaskDetailsSheetProps) {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [currentTaskId, setCurrentTaskId] = useState<string | undefined>(
     taskId,
   );
-
-  const { data: task } = useGetTask(currentTaskId ?? "");
-  const { data: project } = useGetProject({ id: projectId, workspaceId });
 
   useEffect(() => {
     if (taskId) {
@@ -52,17 +59,7 @@ export default function TaskDetailsSheet({
     }
   }, [taskId]);
 
-  const handleOpenFullPage = useCallback(() => {
-    if (!currentTaskId) return;
-    navigate({
-      to: "/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId",
-      params: {
-        workspaceId,
-        projectId,
-        taskId: currentTaskId,
-      },
-    });
-  }, [navigate, workspaceId, projectId, currentTaskId]);
+  const visibleTaskId = taskId ?? currentTaskId;
 
   return (
     <Sheet open={!!taskId} onOpenChange={(open) => !open && onClose()}>
@@ -71,67 +68,17 @@ export default function TaskDetailsSheet({
         className="w-full max-w-full sm:max-w-lg md:max-w-2xl lg:max-w-4xl p-0 gap-0 [&>button]:hidden"
         closeLabel={t("common:actions.close")}
       >
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-background shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-muted-foreground">
-              {project?.slug}-{task?.number}
-            </span>
-          </div>
-          <div className="flex items-center gap-1">
-            {currentTaskId && (
-              <TaskDeleteButton taskId={currentTaskId} onDeleted={onClose} />
-            )}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleOpenFullPage}
-                    className="text-foreground"
-                  >
-                    <Maximize2 className="size-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {t("tasks:detail.openInFullPage")}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="text-foreground"
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
-        </div>
-
-        <div
-          className="flex flex-col flex-1 min-h-0 overflow-hidden"
-          key={currentTaskId}
-        >
-          <TaskPropertiesSidebar
-            taskId={currentTaskId}
-            projectId={projectId}
-            workspaceId={workspaceId}
-            className="w-full bg-sidebar border-b border-border flex flex-col gap-0 overflow-y-auto shrink-0"
-            compact={true}
-          />
-
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <div className="px-4 py-4">
-              <TaskDetailsContent
-                taskId={currentTaskId}
-                projectId={projectId}
-                workspaceId={workspaceId}
-                className="flex flex-col gap-3"
-              />
-            </div>
-          </div>
-        </div>
+        {visibleTaskId ? (
+          <Suspense fallback={<TaskDetailsSheetLoading />}>
+            <TaskDetailsSheetBody
+              key={visibleTaskId}
+              taskId={visibleTaskId}
+              projectId={projectId}
+              workspaceId={workspaceId}
+              onClose={onClose}
+            />
+          </Suspense>
+        ) : null}
       </SheetContent>
     </Sheet>
   );

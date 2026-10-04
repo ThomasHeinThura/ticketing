@@ -15,6 +15,11 @@ describe("getDueDateStatus", () => {
     expect(getDueDateStatus(null)).toBe("no-due-date");
   });
 
+  it("accepts a parsed date so card rendering can reuse its date value", () => {
+    const dueDate = new Date(TOMORROW);
+    expect(getDueDateStatus(dueDate)).toBe(getDueDateStatus(TOMORROW));
+  });
+
   it("never warns about a completed task, however overdue", () => {
     expect(getDueDateStatus(YESTERDAY, true)).toBe("far-future");
     expect(getDueDateStatus(TOMORROW, true)).toBe("far-future");

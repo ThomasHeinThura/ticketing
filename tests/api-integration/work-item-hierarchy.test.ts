@@ -13,15 +13,13 @@ import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
 import detachWorkItemParent from "../../apps/api/src/work-item/controllers/detach-work-item-parent";
 import setWorkItemParent from "../../apps/api/src/work-item/controllers/set-work-item-parent";
-import {
-  ancestorChain,
-  MAX_TREE_NODES,
-} from "../../apps/api/src/work-item/hierarchy";
+import { ancestorChain } from "../../apps/api/src/work-item/hierarchy";
 import { mockAuthenticatedSession } from "./helpers/auth";
 import { resetTestDatabase } from "./helpers/database";
 import {
   createProjectFixture,
   createWorkspaceMember,
+  prepareAuthenticatedApiFixture,
 } from "./helpers/fixtures";
 import { raceWorkItemSoftDelete } from "./helpers/race-soft-delete";
 
@@ -85,6 +83,8 @@ async function addWorkspaceMember(workspaceId: string, role: string) {
     })
     .returning();
   if (!user) throw new Error("addWorkspaceMember: user insert returned no row");
+
+  await prepareAuthenticatedApiFixture(user.id);
 
   await db.insert(schema.workspaceUserTable).values({
     workspaceId,
@@ -151,8 +151,12 @@ function detachParentRequest(
   return app.request(`/api/work-items/${key}/parent`, { method: "DELETE" });
 }
 
-function treeRequest(app: ReturnType<typeof createApp>["app"], key: string) {
-  return app.request(`/api/work-items/${key}/tree`);
+function treeRequest(
+  app: ReturnType<typeof createApp>["app"],
+  key: string,
+  query = "",
+) {
+  return app.request(`/api/work-items/${key}/tree${query}`);
 }
 
 /**
@@ -218,22 +222,51 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
       .where(eq(schema.workItemTable.key, child.key));
     expect(row?.version).toBe(2);
 
-    const treeResponse = await treeRequest(app, child.key);
+    const treeResponse = await treeRequest(app, parent.key);
     expect(treeResponse.status).toBe(200);
     const treeBody = (await treeResponse.json()) as {
+      page: { hasMore: boolean; nextCursor: string | null };
+      root: {
+        key: string;
+        isCurrent: boolean;
+        hasChildren: boolean;
+        children: Array<{ key: string; isCurrent: boolean }>;
+      };
+    };
+    expect(treeBody.root.key).toBe(parent.key);
+    expect(treeBody.root.isCurrent).toBe(true);
+    expect(treeBody.root.hasChildren).toBe(true);
+    expect(treeBody.root.children).toHaveLength(1);
+    expect(treeBody.root.children[0]?.key).toBe(child.key);
+    expect(treeBody.root.children[0]?.isCurrent).toBe(false);
+    expect(treeBody.page).toEqual({ hasMore: false, nextCursor: null });
+
+    const leafResponse = await treeRequest(app, child.key);
+    expect(leafResponse.status).toBe(200);
+    const leafBody = (await leafResponse.json()) as {
       truncated: boolean;
       root: {
         key: string;
         isCurrent: boolean;
-        children: Array<{ key: string; isCurrent: boolean }>;
+        hasChildren: boolean;
+        children: Array<{
+          key: string;
+          isCurrent: boolean;
+          hasChildren: boolean;
+          children: unknown[];
+        }>;
       };
     };
-    expect(treeBody.truncated).toBe(false);
-    expect(treeBody.root.key).toBe(parent.key);
-    expect(treeBody.root.isCurrent).toBe(false);
-    expect(treeBody.root.children).toHaveLength(1);
-    expect(treeBody.root.children[0]?.key).toBe(child.key);
-    expect(treeBody.root.children[0]?.isCurrent).toBe(true);
+    expect(leafBody.truncated).toBe(false);
+    expect(leafBody.root.key).toBe(parent.key);
+    expect(leafBody.root.isCurrent).toBe(false);
+    expect(leafBody.root.children).toHaveLength(1);
+    expect(leafBody.root.children[0]).toMatchObject({
+      key: child.key,
+      isCurrent: true,
+      hasChildren: false,
+      children: [],
+    });
   });
 
   it("RH-11/RH-12: detaches a parent, and detaching an already-parentless item is idempotent", async () => {
@@ -399,6 +432,12 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
         title: "Mid",
       })
     ).json()) as CreatedWorkItem;
+    const rootSibling = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Root sibling",
+      })
+    ).json()) as CreatedWorkItem;
     const leafA = (await (
       await createWorkItemRequest(app, project.id, {
         typeId: type.id,
@@ -413,14 +452,47 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     ).json()) as CreatedWorkItem;
 
     expect((await setParentRequest(app, mid.key, root.key)).status).toBe(200);
+    expect(
+      (await setParentRequest(app, rootSibling.key, root.key)).status,
+    ).toBe(200);
     expect((await setParentRequest(app, leafA.key, mid.key)).status).toBe(200);
     expect((await setParentRequest(app, leafB.key, mid.key)).status).toBe(200);
 
-    // Requested from a leaf: the tree still resolves to the true root and shows the
-    // whole subtree, not merely the leaf's own direct ancestry.
-    const response = await treeRequest(app, leafA.key);
+    // Each request paginates one node's own children. Loading a child key is how the
+    // client expands the next level; no response recursively expands the subtree.
+    const response = await treeRequest(app, root.key);
     expect(response.status).toBe(200);
     const treeBody = (await response.json()) as {
+      truncated: boolean;
+      page: { hasMore: boolean; nextCursor: string | null };
+      root: {
+        key: string;
+        isCurrent: boolean;
+        hasChildren: boolean;
+        children: Array<{
+          key: string;
+          isCurrent: boolean;
+          hasChildren: boolean;
+          children: Array<{ key: string; isCurrent: boolean }>;
+        }>;
+      };
+    };
+
+    expect(treeBody.root.key).toBe(root.key);
+    expect(treeBody.root.isCurrent).toBe(true);
+    expect(treeBody.root.hasChildren).toBe(true);
+    expect(treeBody.truncated).toBe(true);
+    expect(treeBody.root.children).toHaveLength(2);
+    expect(treeBody.page.hasMore).toBe(false);
+    const midNode = treeBody.root.children.find((node) => node.key === mid.key);
+    expect(midNode?.key).toBe(mid.key);
+    expect(midNode?.isCurrent).toBe(false);
+    expect(midNode?.hasChildren).toBe(true);
+    expect(midNode?.children).toHaveLength(0);
+
+    const midResponse = await treeRequest(app, mid.key);
+    expect(midResponse.status).toBe(200);
+    const midBody = (await midResponse.json()) as {
       truncated: boolean;
       root: {
         key: string;
@@ -428,25 +500,21 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
         children: Array<{
           key: string;
           isCurrent: boolean;
-          children: Array<{ key: string; isCurrent: boolean }>;
+          hasChildren: boolean;
+          children: Array<{ key: string; hasChildren: boolean }>;
         }>;
       };
     };
-
-    expect(treeBody.truncated).toBe(false);
-    expect(treeBody.root.key).toBe(root.key);
-    expect(treeBody.root.isCurrent).toBe(false);
-    expect(treeBody.root.children).toHaveLength(1);
-    const midNode = treeBody.root.children[0];
-    expect(midNode?.key).toBe(mid.key);
-    expect(midNode?.isCurrent).toBe(false);
-    expect(midNode?.children).toHaveLength(2);
-    const leafKeys = midNode?.children.map((n) => n.key).sort();
+    expect(midBody.root.key).toBe(root.key);
+    expect(midBody.root.isCurrent).toBe(false);
+    expect(midBody.truncated).toBe(true);
+    const currentMid = midBody.root.children[0];
+    expect(currentMid?.key).toBe(mid.key);
+    expect(currentMid?.isCurrent).toBe(true);
+    expect(currentMid?.children).toHaveLength(2);
+    const leafKeys = currentMid?.children.map((n) => n.key).sort();
     expect(leafKeys).toEqual([leafA.key, leafB.key].sort());
-    const currentNode = midNode?.children.find((n) => n.key === leafA.key);
-    expect(currentNode?.isCurrent).toBe(true);
-    const otherNode = midNode?.children.find((n) => n.key === leafB.key);
-    expect(otherNode?.isCurrent).toBe(false);
+    expect(currentMid?.children.every((n) => !n.hasChildren)).toBe(true);
   });
 
   it("RH-6: rejects a parent from a different project at 400", async () => {
@@ -747,7 +815,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     expect(row?.parentId).toBeNull();
   });
 
-  it("GET tree: caps total response size and reports truncated:true for a wide subtree past MAX_TREE_NODES (spec edge case: '200 children on one parent -- the list paginates')", async () => {
+  it("GET tree: cursor-pages every direct child and binds each cursor to its parent", async () => {
     const { creator, project, type } = await setupProjectWithDefaultState();
     mockAuthenticatedSession(creator.user);
     const { app } = createApp();
@@ -774,7 +842,7 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
     // which would make this test far slower for no extra coverage) -- one more child than
     // the cap, so the cap is the thing that trips, not a coincidental exact match.
     const now = new Date();
-    const childCount = MAX_TREE_NODES; // + the parent itself (already counted) == cap + 1 available
+    const childCount = 500;
     const values = Array.from({ length: childCount }, (_, i) => ({
       projectId: project.id,
       workspaceId: project.workspaceId,
@@ -784,23 +852,79 @@ describe("API integration: work item hierarchy (#26 third slice)", () => {
       title: `Wide child ${i}`,
       stateId: state.id,
       parentId: parentRow.id,
-      position: String(i),
+      position: "0",
       createdAt: now,
       updatedAt: now,
     }));
     await db.insert(schema.workItemTable).values(values);
 
-    const response = await treeRequest(app, parent.key);
-    expect(response.status).toBe(200);
-    const treeBody = (await response.json()) as {
-      truncated: boolean;
-      root: { key: string; children: unknown[] };
+    const defaultPageResponse = await treeRequest(app, parent.key);
+    expect(defaultPageResponse.status).toBe(200);
+    const defaultPage = (await defaultPageResponse.json()) as {
+      root: { children: unknown[] };
+      page: { hasMore: boolean; nextCursor: string | null };
     };
+    expect(defaultPage.root.children).toHaveLength(50);
+    expect(defaultPage.page.hasMore).toBe(true);
+    expect(defaultPage.page.nextCursor).not.toBeNull();
 
-    expect(treeBody.truncated).toBe(true);
-    // The root itself counts against the cap, so only `MAX_TREE_NODES - 1` of the
-    // `MAX_TREE_NODES` children fit.
-    expect(treeBody.root.children).toHaveLength(MAX_TREE_NODES - 1);
+    const expectedChildren = await db
+      .select({ key: schema.workItemTable.key })
+      .from(schema.workItemTable)
+      .where(eq(schema.workItemTable.parentId, parentRow.id))
+      .orderBy(schema.workItemTable.position, schema.workItemTable.id);
+
+    const received = new Set<string>();
+    const receivedInOrder: string[] = [];
+    let cursor: string | null = null;
+    let firstCursor: string | null = null;
+    do {
+      const query = new URLSearchParams({ limit: "200" });
+      if (cursor) query.set("cursor", cursor);
+      const response = await treeRequest(app, parent.key, `?${query}`);
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as {
+        truncated: boolean;
+        root: {
+          key: string;
+          isCurrent: boolean;
+          children: Array<{ key: string }>;
+        };
+        page: { nextCursor: string | null; hasMore: boolean };
+      };
+      expect(body.root).toMatchObject({ key: parent.key, isCurrent: true });
+      expect(body.truncated).toBe(true);
+      for (const child of body.root.children) {
+        expect(received.has(child.key)).toBe(false);
+        received.add(child.key);
+        receivedInOrder.push(child.key);
+      }
+      expect(body.root.children.length).toBeLessThanOrEqual(200);
+      if (firstCursor === null) firstCursor = body.page.nextCursor;
+      cursor = body.page.nextCursor;
+      expect(body.page.hasMore).toBe(cursor !== null);
+    } while (cursor !== null);
+
+    expect(received.size).toBe(childCount);
+    expect(receivedInOrder).toEqual(expectedChildren.map((child) => child.key));
+    expect(
+      (await treeRequest(app, parent.key, "?cursor=not-a-cursor")).status,
+    ).toBe(400);
+    expect((await treeRequest(app, parent.key, "?limit=201")).status).toBe(400);
+
+    const otherParent = (await (
+      await createWorkItemRequest(app, project.id, {
+        typeId: type.id,
+        title: "Other parent",
+      })
+    ).json()) as CreatedWorkItem;
+    expect(firstCursor).not.toBeNull();
+    const replay = await treeRequest(
+      app,
+      otherParent.key,
+      `?cursor=${encodeURIComponent(firstCursor ?? "")}`,
+    );
+    expect(replay.status).toBe(400);
   });
 
   it("RH-7 concurrency (Opus security review of PR #432, F1, reproduced live): two concurrent reparents that would EACH individually pass the depth check, but jointly exceed it, resolve to exactly one success and one 422 -- never both succeeding", async () => {

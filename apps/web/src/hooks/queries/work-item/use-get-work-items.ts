@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
-import getWorkItems from "@/fetchers/work-item/get-work-items";
+import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
 
 /**
@@ -33,20 +33,37 @@ function useGetWorkItems({
   projectId,
   sort,
   dir,
+  realtimeStatus = "connecting",
+  enabled = true,
 }: {
   projectId: string | undefined;
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
+  /** Stay on the conservative foreground polling fallback until list realtime is ready. */
+  realtimeStatus?: WorkItemRealtimeStatus;
+  enabled?: boolean;
 }) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["work-items", projectId, sort, dir],
-    queryFn: () => getWorkItems(projectId as string, sort, dir),
-    enabled: !!projectId,
+    queryFn: async () => {
+      const { default: getWorkItems } = await import(
+        "@/fetchers/work-item/get-work-items"
+      );
+      return getWorkItems(projectId as string, sort, dir);
+    },
+    enabled: !!projectId && enabled,
+    refetchInterval: realtimeStatus === "available" ? false : 30_000,
+    refetchIntervalInBackground: false,
     placeholderData: (
       previousData: WorkItemsResult | undefined,
       previousQuery,
     ) => (previousQuery?.queryKey[1] === projectId ? previousData : undefined),
   });
+  return {
+    ...query,
+    realtimeStatus,
+    isRealtimeUnavailable: realtimeStatus === "unavailable",
+  };
 }
 
 export default useGetWorkItems;

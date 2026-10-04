@@ -65,6 +65,7 @@ describe("API integration: project list payload", () => {
     // the payload grows without bound as a project fills up.
     const entry = requireRow(payload, "payload");
     expect(entry.tasks).toBeUndefined();
+    expect(entry.defaultCommentVisibility).toBe("internal");
   });
 
   it("still reports accurate task statistics without embedding tasks", async () => {

@@ -6,7 +6,7 @@ import {
 } from "react";
 import { authClient } from "@/lib/auth-client";
 import type { User } from "@/types/user";
-import { LoadingSkeleton } from "../../ui/loading-skeleton";
+import { LoadingSkeleton } from "../../app-shell/loading-skeleton";
 
 const { useSession } = authClient;
 
