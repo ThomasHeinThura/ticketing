@@ -16,7 +16,7 @@ import {
 } from "@taskdesk/ui";
 import { AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import useCreateTask from "@/hooks/mutations/task/use-create-task";
 import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
@@ -40,7 +40,7 @@ type TaskSubtasksProps = {
   parentStatus?: string;
 };
 
-export default function TaskSubtasks({
+function TaskSubtasks({
   taskId,
   projectId,
   workspaceId,
@@ -486,3 +486,5 @@ export default function TaskSubtasks({
     </>
   );
 }
+
+export default memo(TaskSubtasks);

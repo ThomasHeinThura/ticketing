@@ -307,10 +307,19 @@ function WorkItemList({
       )}
       <Table
         data-testid="work-item-list-populated"
+        className="table-fixed"
         onMouseOver={handleListMouseOver}
         onFocusCapture={handleListFocus}
         onClickCapture={handleListClick}
       >
+        <colgroup>
+          <col className="w-[11%]" />
+          <col className="w-[32%]" />
+          <col className="w-[12%]" />
+          <col className="w-[13%]" />
+          <col className="w-[15%]" />
+          <col className="w-[17%]" />
+        </colgroup>
         <TableHeader>
           <TableRow>
             {SORT_COLUMNS.map(({ field, labelKey }) => (

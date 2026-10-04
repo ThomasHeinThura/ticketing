@@ -31,7 +31,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, memo, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/avatar";
 import useCreateTaskRelation from "@/hooks/mutations/task-relation/use-create-task-relation";
@@ -68,11 +68,7 @@ type TaskGroup = {
   items: TaskItem[];
 };
 
-export default function TaskRelations({
-  taskId,
-  projectId,
-  workspaceId,
-}: TaskRelationsProps) {
+function TaskRelations({ taskId, projectId, workspaceId }: TaskRelationsProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(true);
@@ -484,3 +480,5 @@ export default function TaskRelations({
     </>
   );
 }
+
+export default memo(TaskRelations);
