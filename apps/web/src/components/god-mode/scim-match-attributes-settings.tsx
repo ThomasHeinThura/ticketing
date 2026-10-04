@@ -29,6 +29,7 @@ type MatchAttribute =
   | (typeof REQUIRED_MATCH_ATTRIBUTES)[number]
   | OptionalMatchAttribute;
 type ProfileMapping = ScimSettings["attributeMapping"];
+type LifecyclePolicy = ScimSettings["lifecyclePolicy"];
 
 const PROFILE_MAPPING_OPTIONS = {
   name: ["displayName", "name.formatted"],
@@ -112,6 +113,9 @@ export function ScimMatchAttributesSettings({
 }) {
   const [settings, setSettings] = useState<ScimSettingsResponse | null>(null);
   const [draft, setDraft] = useState<MatchAttribute[]>([]);
+  const [groupsAllowed, setGroupsAllowed] = useState(false);
+  const [lifecycleDraft, setLifecycleDraft] =
+    useState<LifecyclePolicy>("end_memberships");
   const [profileDraft, setProfileDraft] = useState<ProfileMapping | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -136,6 +140,8 @@ export function ScimMatchAttributesSettings({
       const response = await requestJson<ScimSettingsResponse>(apiPath);
       setSettings(response);
       setDraft([...response.data.matchAttributes]);
+      setGroupsAllowed(response.data.allowedResources.includes("groups"));
+      setLifecycleDraft(response.data.lifecyclePolicy);
       setProfileDraft({ ...response.data.attributeMapping });
       setSaveError(null);
     } catch (error) {
@@ -151,7 +157,10 @@ export function ScimMatchAttributesSettings({
   }, [refresh]);
 
   const changed = Boolean(
-    settings && hasChanged(settings.data.matchAttributes, draft),
+    settings &&
+      (hasChanged(settings.data.matchAttributes, draft) ||
+        settings.data.allowedResources.includes("groups") !== groupsAllowed ||
+        settings.data.lifecyclePolicy !== lifecycleDraft),
   );
   const profileChanged = Boolean(
     settings &&
@@ -188,7 +197,20 @@ export function ScimMatchAttributesSettings({
     const request = {
       configVersion: settings.configVersion,
       kind: "settings" as const,
-      matchAttributes: draft,
+      ...(settings.data.allowedResources.includes("groups") === groupsAllowed
+        ? {}
+        : {
+            allowedResources: [
+              "users" as const,
+              ...(groupsAllowed ? (["groups"] as const) : []),
+            ],
+          }),
+      ...(settings.data.lifecyclePolicy === lifecycleDraft
+        ? {}
+        : { lifecyclePolicy: lifecycleDraft }),
+      ...(hasChanged(settings.data.matchAttributes, draft)
+        ? { matchAttributes: draft }
+        : {}),
     };
     if (authMethod === "password" ? !password : !code) {
       setSaveError(
@@ -232,6 +254,8 @@ export function ScimMatchAttributesSettings({
       });
       setSettings(updated);
       setDraft([...updated.data.matchAttributes]);
+      setGroupsAllowed(updated.data.allowedResources.includes("groups"));
+      setLifecycleDraft(updated.data.lifecyclePolicy);
       setPassword("");
       setCode("");
     } catch (error) {
@@ -332,14 +356,66 @@ export function ScimMatchAttributesSettings({
           className="text-lg font-semibold"
           id="scim-match-attributes-heading"
         >
-          SCIM user lookup attributes
+          SCIM configuration
         </h2>
         <p className="text-sm text-muted-foreground">
-          Choose which supported user attributes Entra may use to find a user
-          within this connection. External ID and user name are always required.
-          This setting does not change identity linking or authority.
+          Configure this connection’s available SCIM resources, deactivation
+          behavior, and supported user lookup attributes. These settings do not
+          change identity linking or authority.
         </p>
       </header>
+
+      <fieldset className="space-y-3" disabled={isSaving}>
+        <legend className="font-medium">Provisioned resources</legend>
+        <div className="flex items-start gap-3">
+          <Checkbox checked disabled id="scim-resource-users" />
+          <div className="space-y-0.5">
+            <Label htmlFor="scim-resource-users">Users</Label>
+            <p className="text-sm text-muted-foreground">
+              Required by the SCIM connection.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <Checkbox
+            checked={groupsAllowed}
+            id="scim-resource-groups"
+            onCheckedChange={(checked) => setGroupsAllowed(checked === true)}
+          />
+          <Label htmlFor="scim-resource-groups">Groups</Label>
+        </div>
+      </fieldset>
+
+      <div className="max-w-md space-y-2">
+        <Label htmlFor="scim-lifecycle-policy">User deactivation policy</Label>
+        <Select
+          disabled={isSaving}
+          onValueChange={(value) => {
+            if (value === "end_memberships" || value === "keep_memberships") {
+              setLifecycleDraft(value);
+            }
+          }}
+          value={lifecycleDraft}
+        >
+          <SelectTrigger
+            aria-label="User deactivation policy"
+            id="scim-lifecycle-policy"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="end_memberships">
+              End sourced memberships
+            </SelectItem>
+            <SelectItem value="keep_memberships">
+              Keep sourced memberships
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-sm text-muted-foreground">
+          This controls future SCIM user deactivation only.
+        </p>
+      </div>
 
       <fieldset className="space-y-3" disabled={isSaving}>
         <legend className="font-medium">Supported match attributes</legend>
@@ -435,7 +511,7 @@ export function ScimMatchAttributesSettings({
         ) : null}
         <div className="flex flex-wrap gap-2">
           <Button disabled={!changed || isSaving} type="submit">
-            {isSaving ? "Saving…" : "Save match attributes"}
+            {isSaving ? "Saving…" : "Save SCIM settings"}
           </Button>
           {saveError?.includes("changed in another session") ? (
             <Button
@@ -481,6 +557,7 @@ export function ScimMatchAttributesSettings({
               <div className="space-y-2" key={field}>
                 <Label htmlFor={`scim-profile-${field}`}>{label}</Label>
                 <Select
+                  disabled={isSaving}
                   onValueChange={(value) =>
                     setProfileDraft((current) =>
                       current

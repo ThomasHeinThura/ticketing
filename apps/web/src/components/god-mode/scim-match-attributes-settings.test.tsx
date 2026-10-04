@@ -20,11 +20,13 @@ vi.mock("@/fetchers/get-api-url", () => ({
 const config = (
   configVersion = 4,
   matchAttributes = ["externalId", "userName"],
+  allowedResources = ["users"],
+  lifecyclePolicy: "end_memberships" | "keep_memberships" = "end_memberships",
 ) => ({
   data: {
     enabled: true,
-    allowedResources: ["users"],
-    lifecyclePolicy: "end_memberships",
+    allowedResources,
+    lifecyclePolicy,
     matchAttributes,
     attributeMapping: {
       version: 1,
@@ -55,7 +57,7 @@ describe("ScimMatchAttributesSettings", () => {
   beforeEach(() => apiFetch.mockReset());
   afterEach(cleanup);
 
-  it("binds step-up and save to the exact connection, version, and draft", async () => {
+  it("binds SCIM settings step-up and save to the exact connection, version, and draft", async () => {
     apiFetch
       .mockResolvedValueOnce(jsonResponse(200, config()))
       .mockResolvedValueOnce(
@@ -63,18 +65,31 @@ describe("ScimMatchAttributesSettings", () => {
       )
       .mockResolvedValueOnce(jsonResponse(200, { token: "proof" }))
       .mockResolvedValueOnce(
-        jsonResponse(200, config(5, ["externalId", "userName", "title"])),
+        jsonResponse(
+          200,
+          config(
+            5,
+            ["externalId", "userName", "title"],
+            ["users", "groups"],
+            "keep_memberships",
+          ),
+        ),
       );
 
     render(<ScimMatchAttributesSettings connectionId="connection/one" />);
     const title = await screen.findByRole("checkbox", { name: "title" });
     fireEvent.click(title);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Groups" }));
+    fireEvent.click(
+      screen.getByRole("combobox", { name: "User deactivation policy" }),
+    );
+    pickOption(
+      await screen.findByRole("option", { name: "Keep sourced memberships" }),
+    );
     fireEvent.change(screen.getByLabelText("Password"), {
       target: { value: "correct horse" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Save match attributes" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Save SCIM settings" }));
 
     await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(4));
     const requests = apiFetch.mock.calls.map(([url, init]) => ({
@@ -88,6 +103,8 @@ describe("ScimMatchAttributesSettings", () => {
       request: {
         configVersion: 4,
         kind: "settings",
+        allowedResources: ["users", "groups"],
+        lifecyclePolicy: "keep_memberships",
         matchAttributes: ["externalId", "userName", "title"],
       },
     };
@@ -129,9 +146,7 @@ describe("ScimMatchAttributesSettings", () => {
     fireEvent.change(screen.getByLabelText("Password"), {
       target: { value: "secret" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Save match attributes" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Save SCIM settings" }));
 
     const reload = await screen.findByRole("button", {
       name: "Reload latest settings",
@@ -221,9 +236,7 @@ describe("ScimMatchAttributesSettings", () => {
     fireEvent.change(screen.getByLabelText("Password"), {
       target: { value: "correct horse" },
     });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Save match attributes" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Save SCIM settings" }));
     await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(7));
     expect(JSON.parse(String(apiFetch.mock.calls[4]?.[1]?.body))).toEqual({
       kind: "operation",

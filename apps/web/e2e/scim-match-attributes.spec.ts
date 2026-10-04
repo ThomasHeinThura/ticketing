@@ -26,6 +26,8 @@ const session = {
 function settings(
   configVersion: number,
   matchAttributes: string[],
+  allowedResources: string[],
+  lifecyclePolicy: "end_memberships" | "keep_memberships",
   attributeMapping = {
     version: 1,
     name: "displayName",
@@ -37,8 +39,8 @@ function settings(
   return {
     data: {
       enabled: true,
-      allowedResources: ["users"],
-      lifecyclePolicy: "end_memberships",
+      allowedResources,
+      lifecyclePolicy,
       matchAttributes,
       attributeMapping,
       mappings: [],
@@ -60,6 +62,9 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
   const requiredMatchAttributes = ["externalId", "userName"];
   let configVersion = 4;
   let matchAttributes = [...requiredMatchAttributes];
+  let allowedResources = ["users"];
+  let lifecyclePolicy: "end_memberships" | "keep_memberships" =
+    "end_memberships";
   let attributeMapping = {
     version: 1,
     name: "displayName",
@@ -209,7 +214,13 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
           status: 200,
           contentType: "application/json",
           body: JSON.stringify(
-            settings(configVersion, matchAttributes, attributeMapping),
+            settings(
+              configVersion,
+              matchAttributes,
+              allowedResources,
+              lifecyclePolicy,
+              attributeMapping,
+            ),
           ),
         });
         return;
@@ -224,13 +235,21 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
       } else {
         savedRequest = request;
         configVersion = 5;
-        matchAttributes = ["externalId", "userName", "title"];
+        matchAttributes = request.matchAttributes;
+        allowedResources = request.allowedResources;
+        lifecyclePolicy = request.lifecyclePolicy;
       }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(
-          settings(configVersion, matchAttributes, attributeMapping),
+          settings(
+            configVersion,
+            matchAttributes,
+            allowedResources,
+            lifecyclePolicy,
+            attributeMapping,
+          ),
         ),
       });
     },
@@ -293,12 +312,17 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
   ).toBeVisible();
   await page.getByRole("link", { name: "SCIM settings" }).click();
   await expect(
-    page.getByRole("heading", { name: "SCIM user lookup attributes" }),
+    page.getByRole("heading", { name: "SCIM configuration" }),
   ).toBeVisible();
 
   await page.getByRole("checkbox", { name: "title" }).click();
+  await page.getByRole("checkbox", { name: "Groups" }).click();
+  await page
+    .getByRole("combobox", { name: "User deactivation policy" })
+    .click();
+  await page.getByRole("option", { name: "Keep sourced memberships" }).click();
   await page.getByLabel("Password", { exact: true }).fill("test-only-password");
-  await page.getByRole("button", { name: "Save match attributes" }).click();
+  await page.getByRole("button", { name: "Save SCIM settings" }).click();
 
   await expect(
     page.getByText("Configuration version 5"),
@@ -311,12 +335,16 @@ test("God Mode SCIM settings and token lifecycle use distinct bound step-up oper
     request: {
       configVersion: 4,
       kind: "settings",
+      allowedResources: ["users", "groups"],
+      lifecyclePolicy: "keep_memberships",
       matchAttributes: ["externalId", "userName", "title"],
     },
   });
   expect(savedRequest).toEqual({
     configVersion: 4,
     kind: "settings",
+    allowedResources: ["users", "groups"],
+    lifecyclePolicy: "keep_memberships",
     matchAttributes: ["externalId", "userName", "title"],
   });
 
