@@ -30,7 +30,7 @@ sources.
 | CF-4 does not state cancellation behavior | CF-4 now explicitly exempts the `cancelled` state group. | Pending |
 | “Publish validation” is used for field deletion | The conditional-controller edge now states deletion is refused while active dependent fields exist and describes the bounded response. | Pending |
 | CF-10 lacks saved-view query key linkage | CF-10 now names `cf.<key>` and links to `search-and-saved-views.md`; its reach/filter inference constraint is explicit. | Pending |
-| RT-3 does not specify the custom-field target representation needed by this dependency | `request-types-and-catalogue.md` now defines `mapsTo.field = "cf.<key>"`, workspace binding, required publish checks, immutable key pinning, and atomic refusal at acceptance if the definition becomes invalid. `custom-fields.md` states that the key is immutable and workspace-unique. | Pending; `data-model.md` key uniqueness annotation requires coordination with its current owner |
+| RT-3 does not specify the custom-field target representation needed by this dependency | `request-types-and-catalogue.md` defines `mapsTo.field = "cf.<key>"`, workspace binding, required publish checks, immutable key pinning, and atomic refusal at acceptance if the definition becomes invalid. `custom-fields.md` states that the key is immutable and workspace-unique. | Pending independent recheck |
 
 ## Verification boundary
 
@@ -42,10 +42,32 @@ database runtime schema, retention job, UI, or tests have been implemented. The 
 inventory has separate list and editor routes as noted above. The feature spec names
 planned test files and does not report them as existing.
 
-The data-model owner has been asked to record the immutable workspace-unique key constraint
-and default-false customer visibility contract. That binding remains pending until the
-owner's data-model checkpoint is frozen. No reviewer or author has cleared the historical
-`not-ready` verdict in this packet.
+The data-model now records the immutable workspace-unique key constraint and default-false
+customer visibility contract. No reviewer or author has cleared the historical `not-ready`
+verdict in this packet.
+
+## Independent readiness delta — 2026-10-04
+
+The fresh GPT-6 Luna readiness review of `83be1d64032bda676a56444ffcb0ce1f4ef7c094`
+confirmed all 12 original findings were resolved and identified three additional contract
+gaps. Its report is
+`/Users/heinthura/.codex/taskdesk-evidence/2026-10-04/custom-field-owning-readiness-83be1d64/review-report.md`.
+The following author corrections address those findings and the review's bounded
+observations; this is not the independent recheck. The prior 12 dispositions remain
+preserved, and the historical review section remains `not-ready` until fresh verification.
+
+| Delta finding | Author contract correction | Disposition |
+| --- | --- | --- |
+| Requiredness had both a global `custom_field.is_required` and a per-type matrix value | Removed `is_required` from the canonical field row. `custom_field_type_visibility.required` is now explicitly the only requiredness authority for a work-item type. | Pending independent recheck |
+| CF-5 did not define default application or ordering | Defaults materialize once at work-item creation, including intake conversion, only for omitted active/applicable/visible fields; explicit null stays empty. Unconditional defaults resolve before single-level conditions and dependent defaults. They are validated at save and revalidated against current options/roster at materialization; failure aborts creation. They never affect existing reads/edits or submission answers. Portal-form defaults, if separately specified, belong to the immutable request-form version. | Pending independent recheck |
+| Accepted JSON value shapes were incomplete | `custom-fields.md` defines exact accepted JSON for all formats: safe integers; canonical decimal strings with at most 18 digits and 6 fractional places; exact currency object and runtime-supported uppercase code; year-bounded Gregorian dates; offset-bearing RFC 3339 instants with millisecond precision stored as UTC; booleans; active option keys; active `person.id` values on the current project roster with duplicate rejection; bounded plain text; HTTP(S) URLs; and existing invitation-email validation. Invalid input receives a generic 400 with no coercion or truncation, and writes are atomic. | Pending independent recheck; no runtime implementation is claimed |
+| Compliance route lacked exact type input and response | The route row names `workItemTypeId`, cursor and limit inputs; its response is a cursor page of one row per in-reach item with missing required field keys and a reach-filtered total. The selected type must belong to the request workspace. | Pending independent recheck |
+| Fixed-vs-configurable deleted-item retention wording differed | CF-8 and the data-model now use configured deleted-item retention, with a 30-day default, matching the global retention table and God Mode configuration contract. | Pending independent recheck |
+| Format/default tests were not named | The feature spec names planned `custom-field-value-format.test.ts` and `custom-field-defaults.test.ts`. Coverage includes each accepted/rejected format, date/time boundaries, decimal/currency precision and code, duplicate/inactive option/person references, string limits, null versus omission, default precedence, hidden/nonapplicable/deleted fields, intake conversion, and no read/edit reapplication. These test files do not yet exist. | Pending; test names are specification, not completed proof |
+
+The owning §4 historical verdict remains `not-ready` until a fresh independent reviewer
+checks this documentation delta at its exact pushed SHA and explicitly clears that section.
+No custom-field schema/runtime, APIs, or UI may be implemented before that clearance.
 
 ## Intake dependency boundary
 

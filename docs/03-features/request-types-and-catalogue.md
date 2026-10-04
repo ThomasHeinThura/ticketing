@@ -66,6 +66,19 @@ as the form itself.
 
 For `mapsTo`, native work-item columns use their canonical names (`title`, `description`,
 `priority`, `due_date`). A custom work-item field uses `cf.<key>`, where `<key>` is the
+immutable workspace-unique `custom_field.key`. Publishing requires the target to be active,
+in the request type's workspace, customer-visible, and visible for the mapped work-item
+type. The published form version pins this key in its schema. Acceptance resolves it again
+in that same workspace and requires it to remain active and applicable; if it was deleted,
+hidden, made internal, or moved out of scope, acceptance fails atomically and leaves the
+submission queued. It never drops the submitted answer or substitutes another field. The
+original `submission.form_data` remains unchanged. A custom-field definition default may
+populate only the resulting work item's value when the mapped answer is absent; it never
+rewrites the submission or acts as a portal form default. See [custom-fields.md](custom-fields.md)
+CF-2/CF-5/CF-6/CF-11 and [intake-queue.md](intake-queue.md) IQ-8.
+
+For `mapsTo`, native work-item columns use their canonical names (`title`, `description`,
+`priority`, `due_date`). A custom work-item field uses `cf.<key>`, where `<key>` is the
 immutable workspace-unique `custom_field.key`. Publishing requires that the target field
 be active, in the request type's workspace, customer-visible, and visible for the mapped
 work-item type. The published form version pins this key in its schema. Acceptance resolves

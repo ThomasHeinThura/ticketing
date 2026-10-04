@@ -351,7 +351,7 @@ state_template.id = state.state_template_id where state_template.group in
 | Table | Key columns |
 | --- | --- |
 | `custom_field_section` | `workspace_id`, `name`, `position` |
-| `custom_field` | `workspace_id`, `section_id`, `entity_type` (`work_item` in P4; `project`, `person`, `time_entry`, `cycle` later), `key` (immutable; unique with `workspace_id`), `name`, `format`, `options jsonb`, `is_required`, `default_value`, `help_text`, `customer_visible` (not null, default false), `visibility_condition jsonb` null (single-level: `{ field_key, op: eq\|neq\|in\|is_set, value }`), `position`, `deleted_at` (soft-deleted, restorable 30 days — the convention above; there is no `archived_at` here, because "hidden but live" is not a custom-field state we offer) |
+| `custom_field` | `workspace_id`, `section_id`, `entity_type` (`work_item` in P4; `project`, `person`, `time_entry`, `cycle` later), `key` (immutable; unique with `workspace_id`), `name`, `format`, `options jsonb`, `default_value`, `help_text`, `customer_visible` (not null, default false), `visibility_condition jsonb` null (single-level: `{ field_key, op: eq\|neq\|in\|is_set, value }`), `position`, `deleted_at` (soft-deleted, restorable through the configured deleted-item retention period, 30 days by default; there is no `archived_at` here, because "hidden but live" is not a custom-field state we offer) |
 | `custom_field_type_visibility` | `custom_field_id`, `work_item_type_id`, `visible`, `required` — applies only when `entity_type = 'work_item'` |
 | `custom_field_value` | `custom_field_id`, `entity_type`, `entity_id`, `value jsonb`, `project_id` null, `organisation_id` null — the last two denormalised at insert from the parent entity, so this polymorphic table can be reach-filtered ([multi-tenancy.md](multi-tenancy.md), [rbac.md](rbac.md)) without a per-`entity_type` join |
 
@@ -832,7 +832,7 @@ create index on work_item using gin (search_vector);
 | `automation_run` | 30 days | Yes |
 | `idempotency_key` | 24 hours | No |
 | `session` | On expiry | Yes |
-| Soft-deleted work items, projects, workspaces, custom fields, comments | 30 days, then purged | Yes |
+| Soft-deleted work items, projects, workspaces, custom fields, comments | Configured deleted-item retention (30 days by default), then purged | Yes |
 | Held audit, notification, notification delivery/digest, outbox, attachment, and soft-deleted history rows | Not retention-purged while the matching hold is open | No |
 | Expired `outbox_dedupe_reservation` | Physically removed by daily cleanup after lease expiry, even under legal hold | No |
 | `metric_snapshot` | 24 months at daily grain; hourly grain 90 days | Yes |
