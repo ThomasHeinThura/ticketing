@@ -253,18 +253,21 @@ describe("WorkItemList", () => {
       />,
     );
 
-    const rows = screen.getAllByRole("row");
-    expect(rows).toHaveLength(501);
-    expect(
-      screen
-        .getByTestId("work-item-list-populated")
-        .querySelectorAll(".work-item-list-cell-content"),
-    ).toHaveLength(1_500);
-    expect(screen.getAllByRole("link")).toHaveLength(1_000);
-    expect(screen.getAllByText("workItems:list.noDueDate")).toHaveLength(500);
-    expect(screen.getAllByText("workItems:list.unassigned")).toHaveLength(500);
-    expect(screen.getAllByText("medium")).toHaveLength(375);
-    expect(screen.getAllByText("workItems:list.noPriority")).toHaveLength(125);
+    const table = screen.getByTestId("work-item-list-populated");
+    expect(table.tagName).toBe("TABLE");
+    expect(table.querySelectorAll("thead tr, tbody tr")).toHaveLength(501);
+    expect(table.querySelectorAll(".work-item-list-cell-content")).toHaveLength(
+      1_500,
+    );
+    expect(table.querySelectorAll("a[data-work-item-key]")).toHaveLength(1_000);
+    const countCellText = (label: string) =>
+      Array.from(table.querySelectorAll("td")).filter(
+        (cell) => cell.textContent?.trim() === label,
+      ).length;
+    expect(countCellText("workItems:list.noDueDate")).toBe(500);
+    expect(countCellText("workItems:list.unassigned")).toBe(500);
+    expect(countCellText("medium")).toBe(375);
+    expect(countCellText("workItems:list.noPriority")).toBe(125);
   }, 15_000);
 
   it("#310: renders the resolved assignee name when present", () => {

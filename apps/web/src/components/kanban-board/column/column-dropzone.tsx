@@ -3,7 +3,7 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import type { ProjectWithTasks } from "@/types/project";
 import TaskCard, {
   type TaskCardDisplayPreferences,
@@ -64,33 +64,69 @@ export function ColumnDropzone({
         items={column.tasks}
         strategy={verticalListSortingStrategy}
       >
-        <div className="flex flex-col gap-2 [contain:layout_style]">
-          {column.tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              projectSlug={projectSlug}
-              taskIsCompleted={
-                projectColumns.length > 0
-                  ? (columnCompletionBySlug.get(task.status) ?? false)
-                  : task.status === "done" || task.status === "archived"
-              }
-              displayPreferences={displayPreferences}
-              isTaskSelected={selectedTaskIds.has(task.id)}
-              isTaskFocused={focusedTaskId === task.id}
-              toggleSelection={toggleSelection}
-              disableDragDrop={disableDragDrop}
-              workspaceId={workspaceId}
-              assignee={
-                task.userId ? workspaceUsersById.get(task.userId) : undefined
-              }
-              onContextMenuTask={onContextMenuTask}
-              onOpenTask={onOpenTask}
-              t={t}
-            />
-          ))}
-        </div>
+        <TaskCardList
+          column={column}
+          projectSlug={projectSlug}
+          projectColumns={projectColumns}
+          columnCompletionBySlug={columnCompletionBySlug}
+          displayPreferences={displayPreferences}
+          selectedTaskIds={selectedTaskIds}
+          focusedTaskId={focusedTaskId}
+          toggleSelection={toggleSelection}
+          disableDragDrop={disableDragDrop}
+          workspaceId={workspaceId}
+          workspaceUsersById={workspaceUsersById}
+          onContextMenuTask={onContextMenuTask}
+          onOpenTask={onOpenTask}
+          t={t}
+        />
       </SortableContext>
     </div>
   );
 }
+
+const TaskCardList = memo(function TaskCardList({
+  column,
+  projectSlug,
+  projectColumns,
+  columnCompletionBySlug,
+  displayPreferences,
+  selectedTaskIds,
+  focusedTaskId,
+  toggleSelection,
+  disableDragDrop = false,
+  workspaceId,
+  workspaceUsersById,
+  onContextMenuTask,
+  onOpenTask,
+  t,
+}: ColumnDropzoneProps) {
+  return (
+    <div className="flex flex-col gap-2 [contain:layout_style]">
+      {column.tasks.map((task) => (
+        <TaskCard
+          key={task.id}
+          task={task}
+          projectSlug={projectSlug}
+          taskIsCompleted={
+            projectColumns.length > 0
+              ? (columnCompletionBySlug.get(task.status) ?? false)
+              : task.status === "done" || task.status === "archived"
+          }
+          displayPreferences={displayPreferences}
+          isTaskSelected={selectedTaskIds.has(task.id)}
+          isTaskFocused={focusedTaskId === task.id}
+          toggleSelection={toggleSelection}
+          disableDragDrop={disableDragDrop}
+          workspaceId={workspaceId}
+          assignee={
+            task.userId ? workspaceUsersById.get(task.userId) : undefined
+          }
+          onContextMenuTask={onContextMenuTask}
+          onOpenTask={onOpenTask}
+          t={t}
+        />
+      ))}
+    </div>
+  );
+});

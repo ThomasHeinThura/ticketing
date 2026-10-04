@@ -1,14 +1,11 @@
 import { Alert, AlertDescription } from "@taskdesk/ui";
-import { lazy, Suspense } from "react";
+import { lazy, memo, Suspense } from "react";
 import { useTranslation } from "react-i18next";
 import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import type { WorkItemsResult } from "@/fetchers/work-item/get-work-items";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import type { WorkItemSortDirection, WorkItemSortField } from "@/lib/routes";
 
-const CreateWorkItemDialog = lazy(
-  () => import("@/components/work-item/create-work-item-dialog"),
-);
 const WorkItemListRealtime = lazy(
   () => import("@/components/work-item/work-item-list-realtime"),
 );
@@ -18,7 +15,6 @@ const WorkItemList = lazy(
 
 type WorkItemsPanelProps = {
   project: { id: string; name: string } | undefined;
-  workspaceId: string | undefined;
   workItemsResult: WorkItemsResult | undefined;
   isLoading: boolean;
   isError: boolean;
@@ -28,8 +24,6 @@ type WorkItemsPanelProps = {
     | undefined;
   sort: WorkItemSortField;
   dir: WorkItemSortDirection;
-  isCreateOpen: boolean;
-  onCloseCreate: () => void;
   onSortChange: (sort: WorkItemSortField, dir: WorkItemSortDirection) => void;
   onRealtimeAvailabilityChange: (
     projectId: string,
@@ -38,9 +32,8 @@ type WorkItemsPanelProps = {
   onRetry: () => void;
 };
 
-export default function WorkItemsPanel({
+function WorkItemsPanel({
   project,
-  workspaceId,
   workItemsResult,
   isLoading,
   isError,
@@ -48,8 +41,6 @@ export default function WorkItemsPanel({
   realtimeStatus,
   sort,
   dir,
-  isCreateOpen,
-  onCloseCreate,
   onSortChange,
   onRealtimeAvailabilityChange,
   onRetry,
@@ -93,16 +84,8 @@ export default function WorkItemsPanel({
           />
         </Suspense>
       ) : null}
-      {project && isCreateOpen ? (
-        <Suspense fallback={null}>
-          <CreateWorkItemDialog
-            open
-            onClose={onCloseCreate}
-            projectId={project.id}
-            workspaceId={workspaceId}
-          />
-        </Suspense>
-      ) : null}
     </>
   );
 }
+
+export default memo(WorkItemsPanel);

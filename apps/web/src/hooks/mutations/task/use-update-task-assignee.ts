@@ -44,7 +44,14 @@ export function useUpdateTaskAssignee() {
 
       const fetchStatus = queryClient.getQueryState(queryKey)?.fetchStatus;
       if (!fetchStatus || fetchStatus === "idle") return applyUpdate();
-      return queryClient.cancelQueries({ queryKey }).then(applyUpdate);
+
+      // Abort an older detail read before the mutation is sent, but let the
+      // optimistic assignee render while that canceled transport settles. The
+      // canceled query cannot replace the cache afterward; `onMutate` still
+      // resolves only after cancellation, so the write remains ordered safely.
+      const cancellation = queryClient.cancelQueries({ queryKey });
+      const context = applyUpdate();
+      return cancellation.then(() => context);
     },
     onError: (_error, task, context) => {
       const previousAssignee = context?.previousAssignee;
