@@ -125,6 +125,25 @@ role edit or connection disable into committing stale authority. This ordinary c
 update is not a new PA-15 operation; the two OIDC mapping routes below retain their separate
 operation-bound proof.
 
+The strict connection DTO may replace `claimMapping` only with the closed first-release
+profile map `{ "version": 1, "displayName": "name" }`. Missing or null persisted data
+means that exact default; malformed non-null persisted data fails OIDC login closed and is
+repairable by saving the valid map with the current `configVersion`. No arbitrary claim
+selector is accepted. The fixed `oid`/`tid` subject and
+`email` → `preferred_username` → `upn` metadata precedence are not configurable. An absent
+or invalid optional name is omitted; it is never synthesized from email or username. The
+map changes profile metadata only and cannot select identity, tenant, portal, organisation,
+role, capability or reach.
+
+The connection DTO serializes `jitPolicy` as exactly `{ enabled, default_role_id,
+required_entra_app_role }`. `enabled` is boolean, `default_role_id` is a canonical role id or
+null, and `required_entra_app_role` is the exact nonempty Entra app-role value, preserved
+byte-for-byte. Unknown persisted keys are never returned. A customer connection has only
+the Customer role as its default. An enabled agent JIT default must remain within its
+configured ceiling. Agent connections also return `defaultWorkspaceId`, the explicitly configured active internal workspace used for the JIT grant; customer connections return null. The server does not choose a workspace. If a later ceiling reduction makes the role ineligible, it is retained as
+dormant policy and grants nothing. Enabling, saving or logging in with malformed admission
+configuration fails closed.
+
 The separate SCIM administration route uses the same parent version; its complete bounded
 write and proof contract follows. Neither route maintains a child SCIM version. A successful
 SCIM administration write makes a stale OIDC mapping or connection-config writer fail CAS,

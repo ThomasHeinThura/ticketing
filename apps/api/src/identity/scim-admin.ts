@@ -188,7 +188,7 @@ async function readSafeSettings(connectionId: string) {
   });
 }
 
-async function validateMappingRole(
+export async function validateScimMappingRole(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   input: {
     portalScope: string;
@@ -579,7 +579,7 @@ const routes = apiRouter()
               ? (connection.organisationId ?? undefined)
               : map.scopeId;
           if (
-            !(await validateMappingRole(tx, {
+            !(await validateScimMappingRole(tx, {
               portalScope: connection.portalScope,
               organisationId: connection.organisationId,
               maxRoleRank: connection.maxRoleRank,
@@ -660,7 +660,7 @@ const routes = apiRouter()
               ? (connection.organisationId ?? "")
               : (map.scopeId ?? existing.scopeId);
           if (
-            !(await validateMappingRole(tx, {
+            !(await validateScimMappingRole(tx, {
               portalScope: connection.portalScope,
               organisationId: connection.organisationId,
               maxRoleRank: connection.maxRoleRank,

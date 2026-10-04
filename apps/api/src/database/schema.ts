@@ -1770,6 +1770,10 @@ export const identityConnectionTable = pgTable(
       () => organisationTable.id,
       { onDelete: "restrict", onUpdate: "cascade" },
     ),
+    defaultWorkspaceId: text("default_workspace_id").references(
+      () => workspaceTable.id,
+      { onDelete: "restrict", onUpdate: "cascade" },
+    ),
     displayName: text("display_name").notNull(),
     issuer: text("issuer").notNull(),
     tenantId: text("tenant_id"),
@@ -1817,6 +1821,10 @@ export const identityConnectionTable = pgTable(
     check(
       "identity_connection_portal_organisation_check",
       sql`(${table.portalScope} = 'customer' and ${table.organisationId} is not null) or (${table.portalScope} = 'agent' and ${table.organisationId} is null)`,
+    ),
+    check(
+      "identity_connection_customer_default_workspace_check",
+      sql`${table.portalScope} <> 'customer' or ${table.defaultWorkspaceId} is null`,
     ),
     check(
       "identity_connection_rank_check",

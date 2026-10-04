@@ -56,6 +56,11 @@ export async function lockScimGrantClosure(
     proposedScope?: string;
     proposedScopeId?: string;
     mappingId?: string;
+    additionalProjectionKeys?: readonly (MembershipProjectionKey & {
+      roleId: string;
+      externalIdentityId: string;
+    })[];
+    scimGroupIds?: readonly string[];
   },
 ) {
   const discovered = await tx
@@ -84,14 +89,16 @@ export async function lockScimGrantClosure(
     );
   const projectionKeys = [
     ...new Map(
-      discovered.map((grant) => [
-        `${grant.personId}\0${grant.scope}\0${grant.scopeId}`,
-        {
-          personId: grant.personId,
-          scope: grant.scope,
-          scopeId: grant.scopeId,
-        },
-      ]),
+      [...discovered, ...(input.additionalProjectionKeys ?? [])].map(
+        (grant) => [
+          `${grant.personId}\0${grant.scope}\0${grant.scopeId}`,
+          {
+            personId: grant.personId,
+            scope: grant.scope,
+            scopeId: grant.scopeId,
+          },
+        ],
+      ),
     ).values(),
   ];
   const projectionPredicates = projectionKeys.map((key) =>
@@ -123,6 +130,7 @@ export async function lockScimGrantClosure(
   const sourceConnectionIds = [
     ...new Set([
       input.connectionId,
+      ...(input.additionalProjectionKeys ?? []).map(() => input.connectionId),
       ...projectionGrants.flatMap((grant) =>
         grant.identityConnectionId ? [grant.identityConnectionId] : [],
       ),
@@ -149,6 +157,7 @@ export async function lockScimGrantClosure(
   const personIds = [
     ...new Set([
       ...discovered.map((grant) => grant.personId),
+      ...(input.additionalProjectionKeys ?? []).map((grant) => grant.personId),
       ...(input.actorPersonId ? [input.actorPersonId] : []),
     ]),
   ].sort();
@@ -188,6 +197,9 @@ export async function lockScimGrantClosure(
       ...projectionGrants
         .filter((grant) => grant.scope === "workspace")
         .map((grant) => grant.scopeId),
+      ...projectionKeys
+        .filter((key) => key.scope === "workspace")
+        .map((key) => key.scopeId),
       ...mappings
         .filter((mapping) => mapping.scope === "workspace")
         .map((mapping) => mapping.scopeId),
@@ -215,6 +227,7 @@ export async function lockScimGrantClosure(
   const roleIds = [
     ...new Set([
       ...projectionGrants.map((grant) => grant.roleId),
+      ...(input.additionalProjectionKeys ?? []).map((grant) => grant.roleId),
       ...mappings.map((mapping) => mapping.roleId),
       ...(input.proposedRoleId ? [input.proposedRoleId] : []),
     ]),
@@ -275,6 +288,19 @@ export async function lockScimGrantClosure(
     )
     .orderBy(schema.scimConnectionTable.identityConnectionId)
     .for("update");
+  if (input.scimGroupIds?.length) {
+    await tx
+      .select({ id: schema.scimGroupTable.id })
+      .from(schema.scimGroupTable)
+      .where(
+        and(
+          eq(schema.scimGroupTable.scimConnectionId, input.connectionId),
+          inArray(schema.scimGroupTable.id, [...input.scimGroupIds].sort()),
+        ),
+      )
+      .orderBy(schema.scimGroupTable.id)
+      .for("update");
+  }
   const currentMappings = await tx
     .select({
       id: schema.scimGroupMappingTable.id,
@@ -300,11 +326,14 @@ export async function lockScimGrantClosure(
     throw new IdentityGrantClosureChangedError();
   }
   const identityIds = [
-    ...new Set(
-      projectionGrants.flatMap((grant) =>
+    ...new Set([
+      ...projectionGrants.flatMap((grant) =>
         grant.externalIdentityId ? [grant.externalIdentityId] : [],
       ),
-    ),
+      ...(input.additionalProjectionKeys ?? []).map(
+        (grant) => grant.externalIdentityId,
+      ),
+    ]),
   ].sort();
   if (identityIds.length) {
     await tx
@@ -312,6 +341,25 @@ export async function lockScimGrantClosure(
       .from(schema.externalIdentityTable)
       .where(inArray(schema.externalIdentityTable.id, identityIds))
       .orderBy(schema.externalIdentityTable.id)
+      .for("update");
+  }
+  if (input.scimGroupIds?.length) {
+    await tx
+      .select({ id: schema.scimGroupDirectoryMemberTable.id })
+      .from(schema.scimGroupDirectoryMemberTable)
+      .where(
+        and(
+          eq(
+            schema.scimGroupDirectoryMemberTable.scimConnectionId,
+            input.connectionId,
+          ),
+          inArray(
+            schema.scimGroupDirectoryMemberTable.scimGroupId,
+            [...input.scimGroupIds].sort(),
+          ),
+        ),
+      )
+      .orderBy(schema.scimGroupDirectoryMemberTable.id)
       .for("update");
   }
   const membershipPredicates = projectionKeys.map((key) =>
@@ -548,11 +596,21 @@ export async function retireScimGroupGrants(
   tx: IdentityTransaction,
   input: {
     mappingIds?: readonly string[];
+    externalIdentityIds?: readonly string[];
     connectionId?: string;
-    reason: "mapping_changed" | "mapping_disabled" | "connection_disabled";
+    reason:
+      | "mapping_changed"
+      | "mapping_disabled"
+      | "connection_disabled"
+      | "scim_group_removed";
   },
 ) {
-  if (!input.mappingIds?.length && !input.connectionId) return [];
+  if (
+    (!input.mappingIds?.length && !input.connectionId) ||
+    (input.externalIdentityIds !== undefined &&
+      input.externalIdentityIds.length === 0)
+  )
+    return [];
   const active = await tx
     .select({
       id: schema.membershipGrantTable.id,
@@ -573,6 +631,11 @@ export async function retireScimGroupGrants(
               schema.membershipGrantTable.identityConnectionId,
               input.connectionId as string,
             ),
+        input.externalIdentityIds?.length
+          ? inArray(schema.membershipGrantTable.externalIdentityId, [
+              ...input.externalIdentityIds,
+            ])
+          : undefined,
       ),
     )
     .for("update");

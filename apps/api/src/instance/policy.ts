@@ -9,6 +9,31 @@ import type { PolicyMap } from "@taskdesk/permissions";
  * (`docs/01-architecture/rbac.md`, elevation coverage test).
  */
 export const instancePolicies = {
+  "GET /api/instance/identity-connections": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason: "identity connection inventory is an instance-wide admin view",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "safe identity DTO omits client secrets and raw provider claims",
+  },
+  "GET /api/instance/organisations/{id}/identity": {
+    capability: "instance:admin",
+    scope: "instance",
+    scopeSource: "instance",
+    reach: {
+      exempt: "no_single_resource",
+      reason:
+        "identity settings are administered only by instance administrators",
+    },
+    elevated: false,
+    elevationExemptionReason:
+      "safe identity DTO omits client secrets and raw provider claims",
+  },
   "GET /api/instance/identity-connections/{id}/scim": {
     capability: "instance:admin",
     scope: "instance",

@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   canonicalScimAdminBody,
@@ -77,7 +77,7 @@ describe("SCIM administration API", () => {
       tokenHash: sha256(token),
       tokenPrefix: token.slice(0, 8),
       tokenCreatedAt: new Date(),
-      allowedResources: ["users"],
+      allowedResources: ["users", "groups"],
       enabled: true,
     });
 
@@ -116,6 +116,7 @@ describe("SCIM administration API", () => {
         id: personId,
         organisationId: internalOrganisation.id,
         side: "staff",
+        displayName: index === 0 ? "Alpha Staff" : null,
         isPlaceholder: true,
       });
       await db.insert(schema.externalIdentityTable).values({
@@ -144,7 +145,12 @@ describe("SCIM administration API", () => {
       startIndex: 1,
       itemsPerPage: 3,
       Resources: [
-        { externalId: "external-1", userName: "alpha@example.test" },
+        {
+          externalId: "external-1",
+          userName: "alpha@example.test",
+          displayName: "Alpha Staff",
+          name: { formatted: "Alpha Staff" },
+        },
         { externalId: "external-2", userName: "beta@example.test" },
         { externalId: "external-3", userName: "gamma@example.test" },
       ],
@@ -170,6 +176,484 @@ describe("SCIM administration API", () => {
       totalResults: 1,
       Resources: [{ externalId: "external-2" }],
     });
+
+    const provisioned = await app.request("/scim/v2/Users", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/scim+json",
+      },
+      body: JSON.stringify({
+        schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+        externalId: "created-external",
+        userName: "created@example.test",
+        displayName: "Created Person",
+        emails: [{ value: "created@example.test", primary: true }],
+      }),
+    });
+    expect(provisioned.status).toBe(201);
+    const provisionedResource = (await provisioned.json()) as {
+      id: string;
+      displayName: string;
+    };
+    expect(provisionedResource.displayName).toBe("Created Person");
+
+    const groupCreate = await app.request("/scim/v2/Groups", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/scim+json",
+      },
+      body: JSON.stringify({
+        schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+        externalId: "support-team",
+        displayName: "Support team",
+        members: [{ value: provisionedResource.id, type: "User" }],
+      }),
+    });
+    expect(groupCreate.status).toBe(201);
+    const groupResource = (await groupCreate.json()) as {
+      id: string;
+      members: Array<{ value: string }>;
+    };
+    expect(groupResource.members).toEqual([
+      {
+        value: provisionedResource.id,
+        type: "User",
+        display: "Created Person",
+      },
+    ]);
+    const duplicateGroup = await app.request("/scim/v2/Groups", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/scim+json",
+      },
+      body: JSON.stringify({
+        schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+        externalId: "support-team",
+        displayName: "Support team",
+        members: [],
+      }),
+    });
+    expect(duplicateGroup.status).toBe(409);
+    expect(await duplicateGroup.json()).not.toHaveProperty("id");
+
+    await db.insert(schema.identityConnectionTable).values({
+      id: "scim-protocol-foreign-connection",
+      providerType: "entra",
+      portalScope: "agent",
+      organisationId: null,
+      displayName: "Foreign SCIM connection",
+      issuer: "https://identity.example.test/foreign",
+      tenantId: "foreign-tenant",
+      clientId: "foreign-client",
+      clientSecret: encryptIdentityClientSecret(
+        "scim-protocol-foreign-connection",
+        "fixture",
+      ),
+      redirectUri: "http://localhost:1337/api/identity/callback",
+      scopes: ["openid"],
+      claimMapping: {},
+      domainBindings: [],
+      jitPolicy: { enabled: false, requiredEntraAppRole: "staff" },
+      maxRoleRank: 10,
+      enabled: true,
+    });
+    await db.insert(schema.externalIdentityTable).values({
+      id: "scim-protocol-foreign-identity",
+      identityConnectionId: "scim-protocol-foreign-connection",
+      personId: "scim-protocol-person-2",
+      issuer: "https://identity.example.test/foreign",
+      subject: "foreign-subject",
+      scimExternalId: "foreign-external",
+      userNameSnapshot: "foreign@example.test",
+      emailSnapshot: "foreign@example.test",
+      provisionedVia: "scim",
+      active: true,
+    });
+    const foreignMember = await app.request("/scim/v2/Groups", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/scim+json",
+      },
+      body: JSON.stringify({
+        schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+        externalId: "foreign-member-group",
+        displayName: "Foreign member group",
+        members: [{ value: "scim-protocol-foreign-identity", type: "User" }],
+      }),
+    });
+    expect(foreignMember.status).toBe(400);
+    const [rejectedGroup] = await db
+      .select({ id: schema.scimGroupTable.id })
+      .from(schema.scimGroupTable)
+      .where(eq(schema.scimGroupTable.externalId, "foreign-member-group"));
+    expect(rejectedGroup).toBeUndefined();
+    const [unmappedGrant] = await db
+      .select({ id: schema.membershipGrantTable.id })
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(
+            schema.membershipGrantTable.externalIdentityId,
+            provisionedResource.id,
+          ),
+          isNull(schema.membershipGrantTable.revokedAt),
+        ),
+      );
+    expect(unmappedGrant).toBeUndefined();
+
+    const internalOrg = await ensureInternalOrganisation();
+    const [workspace] = await db
+      .insert(schema.workspaceTable)
+      .values({
+        id: "scim-protocol-group-workspace",
+        organisationId: internalOrg.id,
+        name: "SCIM group workspace",
+        slug: "scim-protocol-group-workspace",
+        createdAt: new Date(),
+      })
+      .returning({ id: schema.workspaceTable.id });
+    if (!workspace) throw new Error("SCIM test workspace was not created");
+    await db.insert(schema.roleTable).values({
+      id: "scim-protocol-group-role",
+      scope: "workspace",
+      workspaceId: workspace.id,
+      key: "scim-protocol-group-role",
+      name: "SCIM group role",
+      rank: 2,
+      capabilities: [],
+    });
+    await db.insert(schema.scimGroupMappingTable).values({
+      id: "scim-protocol-group-mapping",
+      scimConnectionId: CONNECTION_ID,
+      externalGroupId: "support-team",
+      roleId: "scim-protocol-group-role",
+      scope: "workspace",
+      scopeId: workspace.id,
+    });
+    const reconciled = await app.request(
+      `/scim/v2/Groups/${groupResource.id}`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/scim+json",
+        },
+        body: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+          externalId: "support-team",
+          displayName: "Support team",
+          members: [{ value: provisionedResource.id, type: "User" }],
+        }),
+      },
+    );
+    expect(reconciled.status).toBe(200);
+    const [activeGroupGrant] = await db
+      .select({ id: schema.membershipGrantTable.id })
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(
+            schema.membershipGrantTable.externalIdentityId,
+            provisionedResource.id,
+          ),
+          isNull(schema.membershipGrantTable.revokedAt),
+        ),
+      );
+    expect(activeGroupGrant).toBeDefined();
+
+    const removedMember = await app.request(
+      `/scim/v2/Groups/${groupResource.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/scim+json",
+        },
+        body: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+          Operations: [
+            {
+              op: "remove",
+              path: `members[value eq "${provisionedResource.id}"]`,
+            },
+          ],
+        }),
+      },
+    );
+    expect(removedMember.status).toBe(200);
+    expect((await removedMember.json()).members).toEqual([]);
+    const [retiredGroupGrant] = await db
+      .select({ id: schema.membershipGrantTable.id })
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(
+            schema.membershipGrantTable.externalIdentityId,
+            provisionedResource.id,
+          ),
+          isNull(schema.membershipGrantTable.revokedAt),
+        ),
+      );
+    expect(retiredGroupGrant).toBeUndefined();
+    const [retainedGroupHistory] = await db
+      .select({ revokedAt: schema.scimGroupMemberTable.revokedAt })
+      .from(schema.scimGroupMemberTable)
+      .where(
+        eq(
+          schema.scimGroupMemberTable.externalIdentityId,
+          provisionedResource.id,
+        ),
+      );
+    expect(retainedGroupHistory?.revokedAt).toBeInstanceOf(Date);
+
+    await db.insert(schema.userTable).values({
+      id: "scim-protocol-linked-user",
+      name: "Created Person Account",
+      email: "created@example.test",
+      role: null,
+    });
+    const [createdIdentity] = await db
+      .select({ personId: schema.externalIdentityTable.personId })
+      .from(schema.externalIdentityTable)
+      .where(eq(schema.externalIdentityTable.id, provisionedResource.id));
+    if (!createdIdentity) throw new Error("SCIM identity was not persisted");
+    await db
+      .update(schema.personTable)
+      .set({ userId: "scim-protocol-linked-user" })
+      .where(eq(schema.personTable.id, createdIdentity.personId));
+    const now = new Date();
+    await db.insert(schema.sessionTable).values({
+      id: "scim-protocol-linked-session",
+      token: "scim-protocol-linked-session-token",
+      userId: "scim-protocol-linked-user",
+      portal: "agent",
+      expiresAt: new Date(now.getTime() + 60_000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    await db.insert(schema.apikeyTable).values({
+      id: "scim-protocol-linked-key",
+      referenceId: "scim-protocol-linked-user",
+      userId: "scim-protocol-linked-user",
+      key: "scim-protocol-linked-api-key",
+      enabled: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await db.insert(schema.membershipGrantTable).values({
+      id: "scim-protocol-linked-direct-grant",
+      personId: createdIdentity.personId,
+      scope: "workspace",
+      scopeId: workspace.id,
+      roleId: "scim-protocol-group-role",
+      sourceKind: "direct",
+      directOrigin: "admin",
+      grantedByPersonId: createdIdentity.personId,
+      seesAll: false,
+    });
+
+    const restoreMembership = await app.request(
+      `/scim/v2/Groups/${groupResource.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/scim+json",
+        },
+        body: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+          Operations: [
+            {
+              op: "add",
+              path: "members",
+              value: [{ value: provisionedResource.id, type: "User" }],
+            },
+          ],
+        }),
+      },
+    );
+    expect(restoreMembership.status).toBe(200);
+
+    const replaced = await app.request(
+      `/scim/v2/Users/${provisionedResource.id}`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/scim+json",
+        },
+        body: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+          externalId: "created-external",
+          userName: "created@example.test",
+          displayName: "Created Person Updated",
+          emails: [{ value: "created@example.test", primary: true }],
+        }),
+      },
+    );
+    expect(replaced.status).toBe(200);
+    expect(await replaced.json()).toMatchObject({
+      displayName: "Created Person Updated",
+    });
+
+    const patched = await app.request(
+      `/scim/v2/Users/${provisionedResource.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/scim+json",
+        },
+        body: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+          Operations: [{ op: "replace", path: "title", value: "Support" }],
+        }),
+      },
+    );
+    expect(patched.status).toBe(200);
+    expect(await patched.json()).toMatchObject({ title: "Support" });
+
+    const deactivated = await app.request(
+      `/scim/v2/Users/${provisionedResource.id}`,
+      { method: "DELETE", headers: { authorization: `Bearer ${token}` } },
+    );
+    expect(deactivated.status).toBe(204);
+    const deactivatedRow = await db
+      .select({ active: schema.personTable.active })
+      .from(schema.externalIdentityTable)
+      .innerJoin(
+        schema.personTable,
+        eq(schema.personTable.id, schema.externalIdentityTable.personId),
+      )
+      .where(eq(schema.externalIdentityTable.id, provisionedResource.id));
+    expect(deactivatedRow).toEqual([{ active: false }]);
+    const [revokedSession] = await db
+      .select({ id: schema.sessionTable.id })
+      .from(schema.sessionTable)
+      .where(eq(schema.sessionTable.id, "scim-protocol-linked-session"));
+    expect(revokedSession).toBeUndefined();
+    const [disabledApiKey] = await db
+      .select({ enabled: schema.apikeyTable.enabled })
+      .from(schema.apikeyTable)
+      .where(eq(schema.apikeyTable.id, "scim-protocol-linked-key"));
+    expect(disabledApiKey?.enabled).toBe(false);
+    const remainingExternalGrants = await db
+      .select({ id: schema.membershipGrantTable.id })
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(
+            schema.membershipGrantTable.externalIdentityId,
+            provisionedResource.id,
+          ),
+          isNull(schema.membershipGrantTable.revokedAt),
+        ),
+      );
+    expect(remainingExternalGrants).toEqual([]);
+    const [retiredDirectGrant] = await db
+      .select({
+        revokedAt: schema.membershipGrantTable.revokedAt,
+        reason: schema.membershipGrantTable.revocationReason,
+      })
+      .from(schema.membershipGrantTable)
+      .where(
+        eq(schema.membershipGrantTable.id, "scim-protocol-linked-direct-grant"),
+      );
+    expect(retiredDirectGrant).toEqual({
+      revokedAt: expect.any(Date),
+      reason: "direct_removed",
+    });
+
+    const reactivated = await app.request(
+      `/scim/v2/Users/${provisionedResource.id}`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/scim+json",
+        },
+        body: JSON.stringify({
+          schemas: ["urn:ietf:params:scim:schemas:core:2.0:User"],
+          externalId: "created-external",
+          userName: "created@example.test",
+          displayName: "Created Person Updated",
+          emails: [{ value: "created@example.test", primary: true }],
+          active: true,
+        }),
+      },
+    );
+    expect(reactivated.status).toBe(200);
+    expect(await reactivated.json()).toMatchObject({ active: true });
+    const [stillNoGrant] = await db
+      .select({ id: schema.membershipGrantTable.id })
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(
+            schema.membershipGrantTable.externalIdentityId,
+            provisionedResource.id,
+          ),
+          isNull(schema.membershipGrantTable.revokedAt),
+        ),
+      );
+    expect(stillNoGrant).toBeUndefined();
+    const resynced = await app.request(`/scim/v2/Groups/${groupResource.id}`, {
+      method: "PUT",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/scim+json",
+      },
+      body: JSON.stringify({
+        schemas: ["urn:ietf:params:scim:schemas:core:2.0:Group"],
+        externalId: "support-team",
+        displayName: "Support team",
+        members: [{ value: provisionedResource.id, type: "User" }],
+      }),
+    });
+    expect(resynced.status).toBe(200);
+    const [resyncedGrant] = await db
+      .select({ id: schema.membershipGrantTable.id })
+      .from(schema.membershipGrantTable)
+      .where(
+        and(
+          eq(
+            schema.membershipGrantTable.externalIdentityId,
+            provisionedResource.id,
+          ),
+          isNull(schema.membershipGrantTable.revokedAt),
+        ),
+      );
+    expect(resyncedGrant).toBeDefined();
+    const deletedGroup = await app.request(
+      `/scim/v2/Groups/${groupResource.id}`,
+      { method: "DELETE", headers: { authorization: `Bearer ${token}` } },
+    );
+    expect(deletedGroup.status).toBe(204);
+    const [softDeletedGroup] = await db
+      .select({ active: schema.scimGroupTable.active })
+      .from(schema.scimGroupTable)
+      .where(eq(schema.scimGroupTable.id, groupResource.id));
+    expect(softDeletedGroup?.active).toBe(false);
+    const [removedDirectoryMembership] = await db
+      .select({ active: schema.scimGroupDirectoryMemberTable.active })
+      .from(schema.scimGroupDirectoryMemberTable)
+      .where(
+        and(
+          eq(
+            schema.scimGroupDirectoryMemberTable.scimGroupId,
+            groupResource.id,
+          ),
+          eq(
+            schema.scimGroupDirectoryMemberTable.externalIdentityId,
+            provisionedResource.id,
+          ),
+        ),
+      );
+    expect(removedDirectoryMembership?.active).toBe(false);
 
     const invalidFilter = await app.request(
       `/scim/v2/Users?filter=${encodeURIComponent('groups eq "staff"')}`,

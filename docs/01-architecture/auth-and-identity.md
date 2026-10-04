@@ -56,7 +56,7 @@ layer never knows or cares how someone logged in.
 | Magic link | ✅ inherited |
 | Email OTP | ✅ inherited |
 | Passkeys | **Planned after P0; not enabled in current API source**; integration and verification remain future work |
-| Arbitrary OIDC | ✅ genericOAuth — **configurable at runtime** |
+| Arbitrary OIDC | **Not enabled in the first release.** Microsoft Entra has a connection-bound implementation; other OIDC providers need their own specified protocol and admission profile. |
 | API keys | ✅ apiKey plugin |
 | Impersonation | ✅ admin plugin — kept **only as a session primitive**; the authority check is ours (see the plugin table) |
 | TypeScript-native, Drizzle adapter | ✅ |
@@ -65,6 +65,19 @@ layer never knows or cares how someone logged in.
 Keycloak is **not** a dependency. It is one OIDC provider among many, added through
 God Mode if a deployment wants it. That is the difference between "we support Keycloak"
 and "we require Keycloak".
+
+**Runtime limitation of better-auth `genericOAuth`.** The generic plugin is present in the
+installed library, but its current runtime implementation is not the Entra connection
+protocol. Its profile path decodes ID-token claims before mapping and does not provide the
+connection-specific signature, immutable `oid`/`tid`, exact app-role/`acct` admission,
+portal/organisation binding, profile-only mapping, or source-isolated grant reconciliation
+required by IP-7/IP-27. Its generic profile/error handling can also surface upstream
+response details through the auth error path. TaskDesk therefore uses a custom Better Auth
+plugin endpoint for the Entra authorization-code flow, with tenant-pinned discovery, PKCE,
+single-use state/nonce, bounded upstream responses, native RS256/JWKS validation and generic
+browser failure redirects. Upstream response bodies, claims, codes, tokens, state, and client
+secrets are never included in TaskDesk logs or public errors. Generic OAuth remains disabled
+for connection sign-in until a separate provider contract and verifier are implemented.
 
 ### The better-auth plugin set — inherited, removed, added
 
