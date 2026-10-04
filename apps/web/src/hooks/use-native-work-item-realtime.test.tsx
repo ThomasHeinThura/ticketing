@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -185,12 +185,46 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
 describe("work-item list realtime composition", () => {
+  it("starts the project subscription while the first work-item query is pending", async () => {
+    const pendingItems = deferred<WorkItemsResult>();
+    mocks.getWorkItems.mockReturnValueOnce(pendingItems.promise);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(<ComposedWorkItemList projectId="project-early" realtimeMounted />, {
+      wrapper: wrapperFor(client),
+    });
+
+    expect(screen.getByTestId("query-state")).toHaveTextContent("loading");
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    expect(queryInterval(client, "project-early")).toBe(30_000);
+
+    const socket = MockWebSocket.instances[0];
+    if (!socket) throw new Error("Expected early work-item list socket");
+    act(() => socket.onerror?.());
+    expect(screen.getByTestId("realtime-state")).toHaveTextContent(
+      "unavailable",
+    );
+    expect(screen.getByTestId("realtime-warning")).toBeInTheDocument();
+    expect(queryInterval(client, "project-early")).toBe(30_000);
+
+    pendingItems.resolve(makeResult("project-early-item"));
+    await waitFor(() =>
+      expect(screen.getByTestId("query-state")).toHaveTextContent(
+        "project-early-item",
+      ),
+    );
+    expect(screen.getByTestId("realtime-warning")).toBeInTheDocument();
+    expect(queryInterval(client, "project-early")).toBe(30_000);
+  });
+
   it("keeps foreground polling during lazy connection, stops only after subscription acknowledgement, recovers, and cleans up on project switch", async () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },

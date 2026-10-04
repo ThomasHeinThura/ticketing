@@ -1,73 +1,23 @@
 import { cleanup, render, screen } from "@testing-library/react";
+import type { TFunction } from "i18next";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type Task from "@/types/task";
 import TaskRow from "./task-row";
 
-const useExternalLinks = vi.fn((_taskId: string) => ({ data: [] }));
-const useGetLabelsByTask = vi.fn((_taskId: string) => ({ data: [] }));
-
-afterEach(() => {
-  cleanup();
-  vi.clearAllMocks();
-});
-
-vi.mock("@tanstack/react-router", () => ({
-  useNavigate: () => vi.fn(),
-}));
-
-vi.mock("@/hooks/queries/external-link/use-external-links", () => ({
-  default: (taskId: string) => useExternalLinks(taskId),
-}));
-
-vi.mock("@/hooks/queries/label/use-get-labels-by-task", () => ({
-  default: (taskId: string) => useGetLabelsByTask(taskId),
-}));
-
-vi.mock("@/hooks/mutations/task/use-delete-task", () => ({
-  useDeleteTask: () => ({ mutateAsync: vi.fn() }),
-}));
-
-vi.mock("@/hooks/queries/workspace/use-active-workspace", () => ({
-  default: () => ({ data: { id: "workspace-1" } }),
-}));
-
-vi.mock(
-  "@/hooks/queries/workspace-users/use-get-active-workspace-users",
-  () => ({
-    useGetActiveWorkspaceUsers: () => ({ data: { members: [] } }),
-  }),
-);
-
-vi.mock(
-  "../kanban-board/task-card-context-menu/task-card-context-menu-content",
-  () => ({ default: () => null }),
-);
-
 vi.mock("@/store/bulk-selection", () => ({
-  default: () => ({
-    toggleSelection: vi.fn(),
-    isSelected: () => false,
-    isFocused: () => false,
-  }),
-}));
-
-vi.mock("@/store/project", () => ({
-  default: () => ({ project: { id: "project-1", slug: "kan" } }),
-}));
-
-vi.mock("@/store/user-preferences", () => ({
-  useUserPreferencesStore: () => ({
-    showAssignees: true,
-    showDueDates: true,
-    showLabels: true,
-    showTaskNumbers: true,
-  }),
+  default: (selector: (state: { toggleSelection: () => void }) => unknown) =>
+    selector({ toggleSelection: vi.fn() }),
 }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
   initReactI18next: { type: "3rdParty", init: vi.fn() },
 }));
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 const task: Task = {
   id: "task-1",
@@ -85,7 +35,7 @@ const task: Task = {
   assigneeId: null,
   assigneeName: null,
   projectId: "project-1",
-  labels: [{ id: "label-1", name: "Bug", color: "red" }],
+  labels: [{ id: "label-1", name: "Bug", color: "purple" }],
   externalLinks: [
     {
       id: "link-1",
@@ -100,12 +50,59 @@ const task: Task = {
 };
 
 describe("TaskRow", () => {
-  it("renders labels and pull requests from the task payload without per-row requests", () => {
-    render(<TaskRow task={task} projectSlug="kan" />);
+  it("renders row details from its shared parent-provided context", () => {
+    render(
+      <TaskRow
+        task={task}
+        projectSlug="kan"
+        taskIsCompleted={false}
+        displayPreferences={{
+          showAssignees: true,
+          showPriority: true,
+          showDueDates: true,
+          showLabels: true,
+          showTaskNumbers: true,
+        }}
+        focused={false}
+        selected={false}
+        onOpenTask={vi.fn()}
+        t={((key: string) => key) as unknown as TFunction}
+      />,
+    );
 
     expect(screen.getByText("Bug")).toBeVisible();
     expect(screen.getByText("#42")).toBeVisible();
-    expect(useExternalLinks).not.toHaveBeenCalled();
-    expect(useGetLabelsByTask).not.toHaveBeenCalled();
+    expect(screen.getByText("Row from payload")).toBeVisible();
+    expect(screen.getByText("kan-7")).toBeVisible();
+  });
+
+  it("keeps focus, selection, and row opening behavior on the memoized row", async () => {
+    const onOpenTask = vi.fn();
+    render(
+      <TaskRow
+        task={task}
+        projectSlug="kan"
+        taskIsCompleted={false}
+        displayPreferences={{
+          showAssignees: true,
+          showPriority: true,
+          showDueDates: true,
+          showLabels: true,
+          showTaskNumbers: true,
+        }}
+        focused
+        selected
+        onOpenTask={onOpenTask}
+        t={((key: string) => key) as unknown as TFunction}
+      />,
+    );
+
+    const title = screen.getByText("Row from payload");
+    const row = title.closest<HTMLElement>("[data-task-id]");
+    expect(row).toHaveAttribute("data-task-id", task.id);
+    expect(row).toHaveClass("bg-accent/60", "ring-2");
+
+    title.click();
+    expect(onOpenTask).toHaveBeenCalledWith(task.id);
   });
 });
