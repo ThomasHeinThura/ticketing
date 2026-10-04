@@ -64,6 +64,17 @@ rather than inventing a second conditional vocabulary for request-type forms. Bo
 publish validator and the portal renderer evaluate it against the same field-key namespace
 as the form itself.
 
+For `mapsTo`, native work-item columns use their canonical names (`title`, `description`,
+`priority`, `due_date`). A custom work-item field uses `cf.<key>`, where `<key>` is the
+immutable workspace-unique `custom_field.key`. Publishing requires that the target field
+be active, in the request type's workspace, customer-visible, and visible for the mapped
+work-item type. The published form version pins this key in its schema. Acceptance resolves
+it again in the same workspace and requires it to remain active and applicable; if the
+definition was deleted, hidden, made internal, or moved out of scope, acceptance fails
+atomically and leaves the submission queued. It never drops the submitted value or
+substitutes another field. These rules are the RT-3/IQ-8 custom-field dependency; see
+[custom-fields.md](custom-fields.md) CF-2/CF-6/CF-11.
+
 ## Behaviour
 
 **Definition**
@@ -74,7 +85,8 @@ as the form itself.
 - `RT-1` A request type maps to exactly one work item type, which supplies the workflow.
 - `RT-2` It may override the SLA policy inherited from the project.
 - `RT-3` A form field either maps to a native field (`mapsTo`), maps to a custom field, or
-  is stored in `submission.form_data` and rendered into the work item description.
+  is stored in `submission.form_data` and rendered into the work item description. A custom
+  target uses the `cf.<key>` syntax above.
 - `RT-4` `mapsTo` may translate values, as in the impact-to-priority example. This is how
   you avoid asking customers to choose a priority, which they always get wrong.
 - `RT-5` Fields support conditional visibility: show this field only when that field has
@@ -198,7 +210,7 @@ Per-organisation catalogue assignment is a God Mode action, not a route on this 
 | Required field added in a new version | Applies only to new submissions |
 | Customer's organisation has no catalogue entries | The portal shows an explanatory empty state with the support email, not a blank page |
 | Conditional field whose controlling field is removed | Validation at publish rejects it |
-| `mapsTo` a custom field that is later deleted | Publish validation rejects it; an already-published version stores the raw value |
+| `mapsTo` a custom field that is deleted, made internal, or no longer visible for the pinned type | Publish validation refuses invalid new versions; an already-published submission keeps its raw form value, and acceptance fails atomically without creating the work item |
 | Very long option lists | The select becomes a searchable combobox above 10 options |
 
 ## Out of scope

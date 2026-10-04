@@ -350,12 +350,20 @@ state_template.id = state.state_template_id where state_template.group in
 | Table | Key columns |
 | --- | --- |
 | `custom_field_section` | `workspace_id`, `name`, `position` |
-| `custom_field` | `workspace_id`, `section_id`, `entity_type` (`work_item` in P4; `project`, `person`, `time_entry`, `cycle` later), `key`, `name`, `format`, `options jsonb`, `is_required`, `default_value`, `help_text`, `customer_visible`, `visibility_condition jsonb` null (single-level: `{ field_key, op: eq\|neq\|in\|is_set, value }`), `position`, `deleted_at` (soft-deleted, restorable 30 days — the convention above; there is no `archived_at` here, because "hidden but live" is not a custom-field state we offer) |
+| `custom_field` | `workspace_id`, `section_id`, `entity_type` (`work_item` in P4; `project`, `person`, `time_entry`, `cycle` later), `key` (immutable; unique with `workspace_id`), `name`, `format`, `options jsonb`, `is_required`, `default_value`, `help_text`, `customer_visible` (not null, default false), `visibility_condition jsonb` null (single-level: `{ field_key, op: eq\|neq\|in\|is_set, value }`), `position`, `deleted_at` (soft-deleted, restorable 30 days — the convention above; there is no `archived_at` here, because "hidden but live" is not a custom-field state we offer) |
 | `custom_field_type_visibility` | `custom_field_id`, `work_item_type_id`, `visible`, `required` — applies only when `entity_type = 'work_item'` |
 | `custom_field_value` | `custom_field_id`, `entity_type`, `entity_id`, `value jsonb`, `project_id` null, `organisation_id` null — the last two denormalised at insert from the parent entity, so this polymorphic table can be reach-filtered ([multi-tenancy.md](multi-tenancy.md), [rbac.md](rbac.md)) without a per-`entity_type` join |
 
 Formats: `text`, `long_text`, `number`, `decimal`, `date`, `datetime`, `boolean`,
 `select`, `multi_select`, `user`, `multi_user`, `url`, `email`, `currency`.
+
+For `custom_field`, `(workspace_id, key)` is unique and the key is immutable after create;
+display-name changes do not change saved-view `cf.<key>` references or request-type
+version mappings. A field's `customer_visible` flag defaults to false. Conditional
+visibility is one-level only, with a non-conditional controller in the same work-item type;
+the server remains authoritative for requiredness and value acceptance. These rules are
+defined in [custom-fields.md](../03-features/custom-fields.md) CF-1, CF-4, CF-6, CF-7,
+CF-8, and CF-11.
 
 ## 6. Workflow — the lifecycle engine
 
