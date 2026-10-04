@@ -9,6 +9,9 @@
  * Lane C's CI job wires `pnpm test:permissions`; it must not write a second route scanner.
  */
 
+import { randomUUID } from "node:crypto";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   authGuardRegistrationIndex,
   type CollectedRoute,
@@ -19,15 +22,22 @@ import {
   type RouteKey,
 } from "@taskdesk/permissions";
 
-export async function loadApiApp(): Promise<HonoLikeApp> {
+export async function loadApiApp(
+  options: { staticRoot?: string; portalStaticRoot?: string } = {},
+): Promise<HonoLikeApp> {
   const module = await import("../../apps/api/src/index");
-  const app = module.default as unknown as HonoLikeApp;
-  if (!Array.isArray(app?.routes)) {
+  const fixtureRoot = join(tmpdir(), `taskdesk-route-coverage-${randomUUID()}`);
+  const { app } = module.createApp({
+    staticRoot: options.staticRoot ?? join(fixtureRoot, "agent"),
+    portalStaticRoot: options.portalStaticRoot ?? join(fixtureRoot, "portal"),
+  });
+  const routeApp = app as unknown as HonoLikeApp;
+  if (!Array.isArray(routeApp?.routes)) {
     throw new Error(
-      "apps/api/src/index.ts no longer default-exports a Hono app with a `routes` array — route coverage cannot enumerate the router",
+      "apps/api/src/index.ts no longer constructs a Hono app with a `routes` array — route coverage cannot enumerate the router",
     );
   }
-  return app;
+  return routeApp;
 }
 
 export async function loadPolicyRegistry(): Promise<PolicyRegistry> {
@@ -56,19 +66,16 @@ export async function loadAuthGuardRegistrationIndex(): Promise<
 }
 
 /**
- * The directory the running router would serve a built web app from, or `undefined` when
- * none is present — `apps/api/src/index.ts`'s own `resolveStaticRoot()`, called with its
- * real default candidates (never a test fixture). #165 / issue #236: `test:permissions`
- * must run against a router that cannot see a built `apps/web/dist`, because
- * `registerStaticServing` only adds its catch-all `app.use("*", ...)` when one exists,
- * which silently voids `DECLARED_ROUTER_MIDDLEWARE`'s exact-count declaration for the
- * unrelated CORS/compress registrations at the same key. `route-coverage.test.ts` asserts
- * this is `undefined` so that misconfiguration fails at its actual cause, not as three
- * oblique downstream assertion failures.
+ * The directory the running router would serve from a candidate list, or `undefined` when
+ * none qualifies. Omitting candidates uses the API's real default paths; passing candidates
+ * lets tests exercise existing, missing, and malformed build roots independently of
+ * `apps/web/dist`.
  */
-export async function loadResolvedStaticRoot(): Promise<string | undefined> {
+export async function loadResolvedStaticRoot(
+  candidates?: string[],
+): Promise<string | undefined> {
   const module = await import("../../apps/api/src/index");
-  return module.resolveStaticRoot();
+  return module.resolveStaticRoot(candidates);
 }
 
 /** The better-auth plugin ids actually constructed, read off the instance. */
