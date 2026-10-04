@@ -11,6 +11,7 @@ import {
   WORK_LIST_PATH,
   WORKSPACE_ID,
 } from "./helpers/g11-performance-fixture";
+import { installLastItemPaintRecorder } from "./helpers/last-item-paint-recorder";
 import { attachPerformanceNetworkCapture } from "./helpers/performance-network-summary";
 
 const ROOT = path.resolve(
@@ -23,62 +24,25 @@ const RESULT_DIR = path.join(
   "apps/web/test-results/g11-initial-page-diagnostic",
 );
 
-type CpuProfile = {
-  nodes: Array<{
-    id: number;
-    children?: number[];
-    callFrame: {
-      functionName: string;
-      url: string;
-      lineNumber: number;
-      columnNumber: number;
-    };
-  }>;
-  samples?: number[];
-  timeDeltas?: number[];
+type TraceCpuNode = {
+  id: number;
+  children?: number[];
+  callFrame: {
+    functionName: string;
+    url: string;
+    lineNumber: number;
+    columnNumber: number;
+  };
 };
 
-function sanitizeCpuProfile(profile: CpuProfile) {
-  const nodeIds = new Set(profile.nodes.map((node) => node.id));
-  const samples = profile.samples ?? [];
-  const timeDeltas = profile.timeDeltas ?? [];
-  if (samples.length !== timeDeltas.length)
-    throw new Error("The diagnostic CPU profile has unpaired samples.");
-  for (const node of profile.nodes) {
-    if (node.children?.some((childId) => !nodeIds.has(childId)))
-      throw new Error("The diagnostic CPU profile contains an unknown child.");
-  }
-  if (samples.some((nodeId) => !nodeIds.has(nodeId)))
-    throw new Error("The diagnostic CPU profile contains an unknown sample.");
-
-  return {
-    nodes: profile.nodes.map((node) => {
-      let asset = "runtime";
-      if (node.callFrame.url) {
-        try {
-          const frameUrl = new URL(node.callFrame.url, ORIGIN);
-          asset =
-            frameUrl.origin === ORIGIN &&
-            frameUrl.pathname.startsWith("/assets/")
-              ? path.posix.basename(frameUrl.pathname)
-              : "non-asset";
-        } catch {
-          asset = "non-asset";
-        }
-      }
-      return {
-        id: node.id,
-        children: node.children ?? [],
-        functionName: node.callFrame.functionName.slice(0, 160),
-        asset,
-        line: node.callFrame.lineNumber + 1,
-        column: node.callFrame.columnNumber + 1,
-      };
-    }),
-    samples,
-    timeDeltasMicroseconds: timeDeltas,
-  };
-}
+type TraceCpuProfile = {
+  id: string;
+  source: string;
+  pid: number;
+  tid: number;
+  nodes: Map<number, TraceCpuNode>;
+  samples: Array<{ nodeId: number; start: number; duration: number }>;
+};
 
 type InitialDocumentMetrics = {
   lcp: {
@@ -110,14 +74,20 @@ type BrowserTimelineEvent = {
   phase: string;
   startMicroseconds: number;
   durationMicroseconds?: number;
+  mark?: string;
+  markDocumentId?: string;
   stack?: Array<{
     functionName: string;
     asset: string;
     line: number;
+    column: number;
   }>;
 };
 
 type RawTimelineEvent = {
+  id?: string | number;
+  pid?: number;
+  tid?: number;
   name?: string;
   cat?: string;
   ph?: string;
@@ -133,8 +103,11 @@ type RawTimelineEvent = {
           functionName?: string;
           url?: string;
           lineNumber?: number;
+          columnNumber?: number;
         }>;
       };
+      name?: string;
+      message?: string;
     };
   };
 };
@@ -154,6 +127,18 @@ const TIMELINE_EVENT_NAMES = new Set([
   "LargestContentfulPaint::Candidate",
   "ParseHTML",
   "ParseAuthorStyleSheet",
+  "TimeStamp",
+  "UserTiming",
+]);
+
+const CLOCK_MARKS = new Set([
+  "document-start",
+  "initial-lcp",
+  "state-start",
+  "state-paint",
+  "assignment-start",
+  "assignment-paint",
+  "board-paint",
 ]);
 
 function safeTimelineAsset(value: string) {
@@ -170,14 +155,26 @@ function safeTimelineAsset(value: string) {
 function sanitizeTimelineEvent(
   event: RawTimelineEvent,
 ): BrowserTimelineEvent | undefined {
-  if (!event.name || !TIMELINE_EVENT_NAMES.has(event.name)) return undefined;
+  if (!event.name) return undefined;
   const data = event.args?.data;
+  const rawMark = data?.name ?? data?.message;
+  const markerMatch =
+    typeof rawMark === "string"
+      ? /^g11-diagnostic:([a-f0-9]{16}):([a-z-]+)$/.exec(rawMark)
+      : null;
+  const markDocumentId = markerMatch?.[1];
+  const mark = markerMatch?.[2];
+  if (markerMatch && (!mark || !CLOCK_MARKS.has(mark))) return undefined;
+  if (!mark && !TIMELINE_EVENT_NAMES.has(event.name)) return undefined;
   const callFrames = data?.stackTrace?.callFrames;
   const stack = Array.isArray(callFrames)
     ? callFrames.slice(0, 12).map((frame) => ({
         functionName: String(frame.functionName ?? "(anonymous)").slice(0, 120),
         asset: safeTimelineAsset(String(frame.url ?? "")),
         line: Number.isFinite(frame.lineNumber) ? frame.lineNumber + 1 : 0,
+        column: Number.isFinite(frame.columnNumber)
+          ? frame.columnNumber + 1
+          : 0,
       }))
     : undefined;
   return {
@@ -186,6 +183,8 @@ function sanitizeTimelineEvent(
     phase: String(event.ph ?? ""),
     startMicroseconds: Number(event.ts) || 0,
     ...(Number.isFinite(event.dur) ? { durationMicroseconds: event.dur } : {}),
+    ...(mark ? { mark } : {}),
+    ...(markDocumentId ? { markDocumentId } : {}),
     ...(stack?.length ? { stack } : {}),
     ...(data?.url || data?.scriptName
       ? {
@@ -263,35 +262,269 @@ function safeAssetName(value: string) {
   }
 }
 
-function sampledFrames(
-  profile: CpuProfile,
+function sampledTraceFrames(
+  profiles: ReturnType<typeof sanitizeTraceCpuProfile>[],
   modulesByAsset: Record<string, string[]>,
 ) {
-  const nodes = new Map(profile.nodes.map((node) => [node.id, node]));
-  const weights = new Map<number, number>();
-  for (const [index, nodeId] of (profile.samples ?? []).entries()) {
-    weights.set(
-      nodeId,
-      (weights.get(nodeId) ?? 0) + (profile.timeDeltas?.[index] ?? 0),
-    );
-  }
-  return [...weights]
-    .map(([nodeId, sampledMicroseconds]) => {
-      const frame = nodes.get(nodeId)?.callFrame;
-      if (!frame?.url.startsWith(`${ORIGIN}/assets/`)) return undefined;
-      const asset = safeAssetName(frame.url);
-      return {
-        asset,
-        functionName: frame.functionName || "(anonymous)",
-        line: frame.lineNumber + 1,
-        column: frame.columnNumber + 1,
-        sampledMicroseconds,
-        sourceModuleCount: modulesByAsset[asset]?.length ?? 0,
+  const totals = new Map<
+    string,
+    {
+      asset: string;
+      functionName: string;
+      line: number;
+      column: number;
+      sampledMicroseconds: number;
+    }
+  >();
+  for (const profile of profiles) {
+    if (!profile) continue;
+    const nodes = new Map(profile.nodes.map((node) => [node.id, node]));
+    for (const sample of profile.samples) {
+      const frame = nodes.get(sample.nodeId);
+      if (!frame || frame.asset === "runtime" || frame.asset === "non-asset")
+        continue;
+      const key = `${frame.asset}:${frame.functionName}:${frame.line}:${frame.column}`;
+      const total = totals.get(key) ?? {
+        asset: frame.asset,
+        functionName: frame.functionName,
+        line: frame.line,
+        column: frame.column,
+        sampledMicroseconds: 0,
       };
-    })
-    .filter((frame): frame is NonNullable<typeof frame> => frame !== undefined)
+      total.sampledMicroseconds += sample.durationMicroseconds;
+      totals.set(key, total);
+    }
+  }
+  return [...totals.values()]
+    .map((frame) => ({
+      ...frame,
+      sourceModuleCount: modulesByAsset[frame.asset]?.length ?? 0,
+    }))
     .sort((left, right) => right.sampledMicroseconds - left.sampledMicroseconds)
     .slice(0, 60);
+}
+
+function alignBoundaryToTrace(capture: DiagnosticCapture) {
+  const boundary = capture.boundary;
+  if (!boundary) return null;
+  const markerEvents = capture.browserPerformance.timelineEvents
+    .filter((event) => event.mark)
+    .sort((left, right) => left.startMicroseconds - right.startMicroseconds);
+  const startMarks = capture.clockMarks.filter(
+    (mark) => mark.name === boundary.startMark,
+  );
+  const endMarks = capture.clockMarks.filter(
+    (mark) => mark.name === boundary.endMark,
+  );
+  if (startMarks.length === 0 || endMarks.length === 0)
+    throw new Error(`${capture.name} did not record both browser clock marks.`);
+
+  const candidates = startMarks.flatMap((startMark) =>
+    endMarks
+      .filter((endMark) => endMark.documentId === startMark.documentId)
+      .flatMap((endMark) =>
+        markerEvents
+          .filter(
+            (event) =>
+              event.mark === startMark.name &&
+              event.markDocumentId === startMark.documentId,
+          )
+          .flatMap((startEvent) =>
+            markerEvents
+              .filter(
+                (event) =>
+                  event.mark === endMark.name &&
+                  event.markDocumentId === endMark.documentId,
+              )
+              .flatMap((endEvent) => {
+                const startMidpoint =
+                  (startMark.beforeMarkPerformanceNowMs +
+                    startMark.afterMarkPerformanceNowMs) /
+                  2;
+                const endMidpoint =
+                  (endMark.beforeMarkPerformanceNowMs +
+                    endMark.afterMarkPerformanceNowMs) /
+                  2;
+                const elapsedPerformanceMs = endMidpoint - startMidpoint;
+                const elapsedTraceMicroseconds =
+                  endEvent.startMicroseconds - startEvent.startMicroseconds;
+                if (elapsedPerformanceMs <= 0 || elapsedTraceMicroseconds <= 0)
+                  return [];
+                const microsecondsPerMillisecond =
+                  elapsedTraceMicroseconds / elapsedPerformanceMs;
+                return [
+                  {
+                    startMark,
+                    endMark,
+                    startEvent,
+                    endEvent,
+                    startMidpoint,
+                    endMidpoint,
+                    microsecondsPerMillisecond,
+                    score: Math.abs(microsecondsPerMillisecond - 1000),
+                  },
+                ];
+              }),
+          ),
+      ),
+  );
+  if (candidates.length === 0)
+    throw new Error(`${capture.name} did not emit both CDP clock marks.`);
+  const pair = candidates.sort((left, right) => left.score - right.score)[0];
+  if (!pair || Math.abs(pair.microsecondsPerMillisecond - 1000) > 5)
+    throw new Error(
+      `${capture.name} clock alignment was outside the monotonic-clock tolerance (scale=${pair?.microsecondsPerMillisecond ?? "none"}).`,
+    );
+  const offsetMicroseconds =
+    pair.startEvent.startMicroseconds -
+    pair.microsecondsPerMillisecond * pair.startMidpoint;
+  const toTraceMicroseconds = (performanceNowMs: number) =>
+    offsetMicroseconds + pair.microsecondsPerMillisecond * performanceNowMs;
+  const markerUncertaintyMicroseconds = (mark: (typeof pair)["startMark"]) =>
+    ((mark.afterMarkPerformanceNowMs - mark.beforeMarkPerformanceNowMs) / 2) *
+      pair.microsecondsPerMillisecond +
+    2;
+  const elapsedPerformanceMs = pair.endMidpoint - pair.startMidpoint;
+  const scaleUncertaintyMicrosecondsPerMillisecond =
+    (pair.microsecondsPerMillisecond *
+      ((pair.startMark.afterMarkPerformanceNowMs -
+        pair.startMark.beforeMarkPerformanceNowMs +
+        pair.endMark.afterMarkPerformanceNowMs -
+        pair.endMark.beforeMarkPerformanceNowMs) /
+        2)) /
+    elapsedPerformanceMs;
+  const extrapolationMs = Math.max(
+    Math.abs(boundary.startPerformanceNowMs - pair.startMidpoint),
+    Math.abs(boundary.endPerformanceNowMs - pair.endMidpoint),
+  );
+  const startTraceMicroseconds = toTraceMicroseconds(
+    boundary.startPerformanceNowMs,
+  );
+  const endTraceMicroseconds = toTraceMicroseconds(
+    boundary.endPerformanceNowMs,
+  );
+  const uncertaintyMicroseconds =
+    Math.max(
+      markerUncertaintyMicroseconds(pair.startMark),
+      markerUncertaintyMicroseconds(pair.endMark),
+    ) +
+    extrapolationMs * scaleUncertaintyMicrosecondsPerMillisecond;
+  if (endTraceMicroseconds <= startTraceMicroseconds)
+    throw new Error(`${capture.name} had an empty or inverted paint interval.`);
+  return {
+    boundary,
+    documentId: pair.startMark.documentId,
+    transform: {
+      from: "window.performance.now() milliseconds",
+      to: "CDP trace monotonic microseconds",
+      microsecondsPerMillisecond: pair.microsecondsPerMillisecond,
+      scaleUncertaintyMicrosecondsPerMillisecond,
+      extrapolationMilliseconds: extrapolationMs,
+      offsetMicroseconds,
+      uncertaintyMicroseconds,
+      measuredAgainstMarkers: [
+        {
+          name: boundary.startMark,
+          documentId: pair.startMark.documentId,
+          performanceNowBeforeMarkMs: pair.startMark.beforeMarkPerformanceNowMs,
+          performanceNowAfterMarkMs: pair.startMark.afterMarkPerformanceNowMs,
+          traceTimestampMicroseconds: pair.startEvent.startMicroseconds,
+        },
+        {
+          name: boundary.endMark,
+          documentId: pair.endMark.documentId,
+          performanceNowBeforeMarkMs: pair.endMark.beforeMarkPerformanceNowMs,
+          performanceNowAfterMarkMs: pair.endMark.afterMarkPerformanceNowMs,
+          traceTimestampMicroseconds: pair.endEvent.startMicroseconds,
+        },
+      ],
+    },
+    startTraceMicroseconds,
+    endTraceMicroseconds,
+  };
+}
+
+function clipTimelineEvents(
+  events: BrowserTimelineEvent[],
+  startTraceMicroseconds: number,
+  endTraceMicroseconds: number,
+) {
+  return events.flatMap((event) => {
+    const duration = event.durationMicroseconds ?? 0;
+    const eventEnd = event.startMicroseconds + duration;
+    const start = Math.max(event.startMicroseconds, startTraceMicroseconds);
+    const end = Math.min(eventEnd, endTraceMicroseconds);
+    if (duration > 0 && end <= start) return [];
+    if (
+      duration === 0 &&
+      (event.startMicroseconds < startTraceMicroseconds ||
+        event.startMicroseconds > endTraceMicroseconds)
+    )
+      return [];
+    return [
+      {
+        ...event,
+        startMicroseconds: start,
+        ...(duration > 0 ? { durationMicroseconds: end - start } : {}),
+      },
+    ];
+  });
+}
+
+function sanitizeTraceCpuProfile(
+  profile: TraceCpuProfile,
+  startMicroseconds?: number,
+  endMicroseconds?: number,
+  uncertaintyMicroseconds = 0,
+) {
+  const samples = profile.samples.flatMap((sample) => {
+    const start = startMicroseconds ?? Number.NEGATIVE_INFINITY;
+    const end = endMicroseconds ?? Number.POSITIVE_INFINITY;
+    const clippedStart = Math.max(
+      sample.start,
+      start - uncertaintyMicroseconds,
+    );
+    const clippedEnd = Math.min(
+      sample.start + sample.duration,
+      end + uncertaintyMicroseconds,
+    );
+    return clippedEnd > clippedStart
+      ? [
+          {
+            nodeId: sample.nodeId,
+            startMicroseconds: clippedStart,
+            durationMicroseconds: clippedEnd - clippedStart,
+          },
+        ]
+      : [];
+  });
+  if (samples.length === 0) return undefined;
+  return {
+    nodes: [...profile.nodes.values()].map((node) => {
+      let asset = "runtime";
+      try {
+        const frameUrl = new URL(node.callFrame?.url ?? "", ORIGIN);
+        asset =
+          frameUrl.origin === ORIGIN && frameUrl.pathname.startsWith("/assets/")
+            ? path.posix.basename(frameUrl.pathname)
+            : "non-asset";
+      } catch {
+        asset = "non-asset";
+      }
+      return {
+        id: node.id,
+        children: node.children ?? [],
+        functionName: (node.callFrame?.functionName ?? "(unknown)").slice(
+          0,
+          160,
+        ),
+        asset,
+        line: (node.callFrame?.lineNumber ?? -1) + 1,
+        column: (node.callFrame?.columnNumber ?? -1) + 1,
+      };
+    }),
+    samples,
+  };
 }
 
 async function getBuildIdentity(profileAssetNames: Set<string>) {
@@ -490,21 +723,37 @@ async function collectDocumentMetrics(
 
 type DiagnosticCapture = {
   name: string;
-  profile: CpuProfile;
   metrics: InitialDocumentMetrics;
   network: ReturnType<typeof JSON.parse>;
   browserPerformance: {
     metrics: Record<string, number>;
     timelineEvents: BrowserTimelineEvent[];
   };
+  traceCpuProfiles: TraceCpuProfile[];
+  clockMarks: Array<{
+    name: string;
+    documentId: string;
+    boundaryPerformanceNowMs: number;
+    beforeMarkPerformanceNowMs: number;
+    afterMarkPerformanceNowMs: number;
+  }>;
+  boundary: DiagnosticBoundary;
 };
+
+type DiagnosticBoundary = {
+  startMark: string;
+  endMark: string;
+  startPerformanceNowMs: number;
+  endPerformanceNowMs: number;
+  source: string;
+} | null;
 
 async function withDiagnosticProfile(
   browser: import("@playwright/test").Browser,
   name: string,
   throttled: boolean,
   prepare: (page: Page) => Promise<void>,
-  visit: (page: Page) => Promise<void>,
+  visit: (page: Page) => Promise<DiagnosticBoundary>,
 ): Promise<DiagnosticCapture> {
   const context = await browser.newContext({
     baseURL: ORIGIN,
@@ -516,13 +765,57 @@ async function withDiagnosticProfile(
     maxAttachmentBytes: 128 * 1024,
   });
   const cdp = await context.newCDPSession(page);
-  let profile: CpuProfile | undefined;
+  let boundary: DiagnosticBoundary | undefined;
   let metrics: InitialDocumentMetrics | undefined;
   let browserPerformance: DiagnosticCapture["browserPerformance"] | undefined;
   const timelineEvents: BrowserTimelineEvent[] = [];
+  const traceCpuProfilesByThread = new Map<string, TraceCpuProfile>();
+  let clockMarks: DiagnosticCapture["clockMarks"] = [];
   let timelineOverflow = false;
   cdp.on("Tracing.dataCollected", ({ value }) => {
     for (const event of value ?? []) {
+      if (event.name === "ProfileChunk") {
+        const data = (
+          event.args as { data?: Record<string, unknown> } | undefined
+        )?.data;
+        const cpuProfile = data?.cpuProfile as
+          | { nodes?: TraceCpuNode[]; samples?: number[] }
+          | undefined;
+        const timeDeltas = data?.timeDeltas as number[] | undefined;
+        const source = String(data?.source ?? "unknown");
+        const pid = Number(event.pid) || 0;
+        const tid = Number(event.tid) || 0;
+        const id = String(event.id ?? "profile");
+        const key = `${pid}:${tid}:${source}:${id}`;
+        let traceProfile = traceCpuProfilesByThread.get(key);
+        if (!traceProfile) {
+          traceProfile = {
+            id,
+            source,
+            pid,
+            tid,
+            nodes: new Map(),
+            samples: [],
+          };
+          traceCpuProfilesByThread.set(key, traceProfile);
+        }
+        for (const node of cpuProfile?.nodes ?? [])
+          traceProfile.nodes.set(node.id, node);
+        const samples = cpuProfile?.samples ?? [];
+        if (
+          Array.isArray(timeDeltas) &&
+          samples.length === timeDeltas.length &&
+          Number.isFinite(event.ts)
+        ) {
+          let sampleTime =
+            (event.ts as number) - timeDeltas.reduce((a, b) => a + b, 0);
+          for (const [index, nodeId] of samples.entries()) {
+            const duration = timeDeltas[index] ?? 0;
+            traceProfile.samples.push({ nodeId, start: sampleTime, duration });
+            sampleTime += duration;
+          }
+        }
+      }
       const sanitized = sanitizeTimelineEvent(event);
       if (!sanitized) continue;
       if (timelineEvents.length >= 20_000) {
@@ -534,6 +827,75 @@ async function withDiagnosticProfile(
   });
   await installPerformanceApiFixture(page);
   await page.addInitScript(() => {
+    const allowedMarks = new Set([
+      "document-start",
+      "initial-lcp",
+      "state-start",
+      "state-paint",
+      "assignment-start",
+      "assignment-paint",
+      "board-paint",
+    ]);
+    const marks: Array<{
+      name: string;
+      documentId: string;
+      boundaryPerformanceNowMs: number;
+      beforeMarkPerformanceNowMs: number;
+      afterMarkPerformanceNowMs: number;
+    }> = [];
+    const documentId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map((value) => value.toString(16).padStart(2, "0"))
+      .join("");
+    const mark = (name: string, boundaryPerformanceNowMs: number) => {
+      if (!allowedMarks.has(name) || !Number.isFinite(boundaryPerformanceNowMs))
+        return;
+      const beforeMarkPerformanceNowMs = performance.now();
+      console.timeStamp(`g11-diagnostic:${documentId}:${name}`);
+      const afterMarkPerformanceNowMs = performance.now();
+      marks.push({
+        name,
+        documentId,
+        boundaryPerformanceNowMs,
+        beforeMarkPerformanceNowMs,
+        afterMarkPerformanceNowMs,
+      });
+    };
+    (
+      window as Window & { __g11DiagnosticClockMarks?: typeof marks }
+    ).__g11DiagnosticClockMarks = marks;
+    const metrics = (
+      window as Window & {
+        __g11Metrics?: Record<string, number>;
+      }
+    ).__g11Metrics;
+    if (metrics) {
+      mark("document-start", metrics.documentStart);
+      for (const [key, startKey, suffix] of [
+        ["stateStart", "", "state-start"],
+        ["statePaint", "stateStart", "state-paint"],
+        ["assignmentStart", "", "assignment-start"],
+        ["assignmentPaint", "assignmentStart", "assignment-paint"],
+        ["boardPaint", "documentStart", "board-paint"],
+      ] as const) {
+        const descriptor = Object.getOwnPropertyDescriptor(metrics, key);
+        if (!descriptor || !("value" in descriptor))
+          throw new Error(
+            `The canonical ${key} recorder field is unavailable.`,
+          );
+        let current = descriptor.value;
+        Object.defineProperty(metrics, key, {
+          configurable: descriptor.configurable,
+          enumerable: descriptor.enumerable,
+          get: () => current,
+          set: (next: number) => {
+            current = next;
+            if (typeof next !== "number" || next <= 0) return;
+            const boundaryValue = startKey ? metrics[startKey] + next : next;
+            mark(suffix, boundaryValue);
+          },
+        });
+      }
+    }
     const state = {
       lcp: null as {
         startTime: number;
@@ -553,6 +915,7 @@ async function withDiagnosticProfile(
           element: candidate.element?.tagName.toLowerCase() ?? "no-element",
           textLength: candidate.element?.textContent?.trim().length ?? 0,
         };
+        mark("initial-lcp", candidate.startTime);
       }
     }).observe({ type: "largest-contentful-paint", buffered: true });
     try {
@@ -585,17 +948,21 @@ async function withDiagnosticProfile(
     await prepare(page);
     await cdp.send("Performance.enable");
     const beforeMetrics = await performanceMetricSnapshot(cdp);
-    await cdp.send("Profiler.enable");
-    await cdp.send("Profiler.start");
     await cdp.send("Tracing.start", {
       categories:
-        "devtools.timeline,v8.execute,blink.user_timing,disabled-by-default-devtools.timeline",
+        "devtools.timeline,v8.execute,blink.user_timing,disabled-by-default-devtools.timeline,disabled-by-default-v8.cpu_profiler",
       options: "record-as-much-as-possible",
     });
     console.info(`G11 diagnostic phase started: ${name}`);
-    await visit(page);
-    const stopped = await cdp.send("Profiler.stop");
-    profile = stopped.profile as CpuProfile;
+    boundary = await visit(page);
+    clockMarks = await page.evaluate(
+      () =>
+        (
+          window as Window & {
+            __g11DiagnosticClockMarks?: DiagnosticCapture["clockMarks"];
+          }
+        ).__g11DiagnosticClockMarks ?? [],
+    );
     const afterMetrics = await performanceMetricSnapshot(cdp);
     const tracingComplete = new Promise<void>((resolve) =>
       cdp.once("Tracing.tracingComplete", () => resolve()),
@@ -614,14 +981,23 @@ async function withDiagnosticProfile(
     await cdp.detach();
     await context.close();
   }
-  if (!profile || !metrics || !browserPerformance)
+  if (!metrics || !browserPerformance)
     throw new Error(`The ${name} diagnostic profile did not finish.`);
+  if (boundary) {
+    const markCount = clockMarks.filter(
+      (mark) => mark.name === boundary?.startMark,
+    ).length;
+    if (markCount === 0)
+      throw new Error(`The ${name} start clock marker was not captured.`);
+  }
   return {
     name,
-    profile,
     metrics,
     network: JSON.parse(networkCapture.finish()),
     browserPerformance,
+    traceCpuProfiles: [...traceCpuProfilesByThread.values()],
+    clockMarks,
+    boundary,
   };
 }
 
@@ -640,6 +1016,26 @@ async function visitInitialWorkList(page: Page) {
     () =>
       new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
   );
+  return page.evaluate(() => {
+    const metrics = (
+      window as Window & {
+        __g11Metrics?: { documentStart: number };
+      }
+    ).__g11Metrics;
+    const lcp = window.__g11InitialDiagnostic?.lcp;
+    const navigation = performance.getEntriesByType("navigation")[0] as
+      | PerformanceNavigationTiming
+      | undefined;
+    if (!metrics || !lcp || !navigation)
+      throw new Error("The initial navigation paint boundary is incomplete.");
+    return {
+      startMark: "document-start",
+      endMark: "initial-lcp",
+      startPerformanceNowMs: navigation.startTime,
+      endPerformanceNowMs: lcp.startTime,
+      source: "navigation startTime through the observed real LCP entry",
+    };
+  });
 }
 
 async function prepareTaskState(page: Page) {
@@ -663,6 +1059,22 @@ async function visitTaskState(page: Page) {
       hasText: "In progress",
     }),
   ).toBeVisible();
+  return page.evaluate(() => {
+    const metrics = (
+      window as Window & {
+        __g11Metrics?: { stateStart: number; statePaint: number };
+      }
+    ).__g11Metrics;
+    if (!metrics || metrics.stateStart <= 0 || metrics.statePaint <= 0)
+      throw new Error("The canonical state paint boundary is incomplete.");
+    return {
+      startMark: "state-start",
+      endMark: "state-paint",
+      startPerformanceNowMs: metrics.stateStart,
+      endPerformanceNowMs: metrics.stateStart + metrics.statePaint,
+      source: "canonical stateStart and statePaint recorder fields (ms)",
+    };
+  });
 }
 
 async function prepareTaskAssignment(page: Page) {
@@ -686,9 +1098,35 @@ async function visitTaskAssignment(page: Page) {
       hasText: "G11 Agent",
     }),
   ).toBeVisible();
+  return page.evaluate(() => {
+    const metrics = (
+      window as Window & {
+        __g11Metrics?: { assignmentStart: number; assignmentPaint: number };
+      }
+    ).__g11Metrics;
+    if (
+      !metrics ||
+      metrics.assignmentStart <= 0 ||
+      metrics.assignmentPaint <= 0
+    )
+      throw new Error("The canonical assignment paint boundary is incomplete.");
+    return {
+      startMark: "assignment-start",
+      endMark: "assignment-paint",
+      startPerformanceNowMs: metrics.assignmentStart,
+      endPerformanceNowMs: metrics.assignmentStart + metrics.assignmentPaint,
+      source:
+        "canonical assignmentStart and assignmentPaint recorder fields (ms)",
+    };
+  });
 }
 
 async function visitBoard(page: Page) {
+  await installLastItemPaintRecorder(page, {
+    kind: "board",
+    expectedCount: 200,
+    metric: "boardPaint",
+  });
   await page.goto(
     `/dashboard/workspace/${WORKSPACE_ID}/project/${PROJECT_ID}/board`,
     { waitUntil: "domcontentloaded" },
@@ -697,6 +1135,31 @@ async function visitBoard(page: Page) {
     200,
     { timeout: 30_000 },
   );
+  await page.waitForFunction(
+    () =>
+      (window as Window & { __g11Metrics?: { boardPaint: number } })
+        .__g11Metrics?.boardPaint > 0,
+    undefined,
+    { timeout: 15_000 },
+  );
+  return page.evaluate(() => {
+    const metrics = (
+      window as Window & {
+        __g11Metrics?: { documentStart: number; boardPaint: number };
+      }
+    ).__g11Metrics;
+    if (!metrics || metrics.documentStart <= 0 || metrics.boardPaint <= 0)
+      throw new Error(
+        "The canonical 200-card board paint boundary is incomplete.",
+      );
+    return {
+      startMark: "document-start",
+      endMark: "board-paint",
+      startPerformanceNowMs: metrics.documentStart,
+      endPerformanceNowMs: metrics.boardPaint,
+      source: "canonical documentStart through boardPaint recorder fields (ms)",
+    };
+  });
 }
 
 async function visitBoardTaskDetailsSheet(page: Page) {
@@ -722,6 +1185,12 @@ async function visitBoardTaskDetailsSheet(page: Page) {
   await expect(
     page.locator('.taskdesk-tiptap-prose[contenteditable="true"]'),
   ).toHaveCount(0);
+  await page.keyboard.press("?");
+  const helpDialog = page.getByRole("dialog");
+  await expect(helpDialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(helpDialog).toHaveCount(0);
+  return null;
 }
 
 test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
@@ -766,25 +1235,125 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
     ),
   ];
   const profileAssetNames = new Set(
-    captures.flatMap(({ profile }) =>
-      profile.nodes
-        .map((node) => node.callFrame.url)
-        .filter((url) => url.startsWith(`${ORIGIN}/assets/`))
-        .map(safeAssetName),
-    ),
+    captures.flatMap(({ traceCpuProfiles }) => [
+      ...traceCpuProfiles.flatMap((traceProfile) =>
+        [...traceProfile.nodes.values()]
+          .map((node) => node.callFrame?.url)
+          .filter(
+            (url): url is string =>
+              typeof url === "string" && url.startsWith(`${ORIGIN}/assets/`),
+          )
+          .map(safeAssetName),
+      ),
+    ]),
   );
   const build = await getBuildIdentity(profileAssetNames);
-  const profileWindows = captures.map(
-    ({ name, profile, browserPerformance }) => ({
+  const profileWindows = captures.map((capture) => {
+    const { name, browserPerformance } = capture;
+    const alignment = alignBoundaryToTrace(capture);
+    if (!alignment)
+      return {
+        name,
+        scope: "supplementary full-window context; no canonical G11 metric",
+        recorderBoundary: null,
+        clockAlignment: null,
+        topCpuFrames: sampledTraceFrames(
+          capture.traceCpuProfiles
+            .map((traceProfile) => sanitizeTraceCpuProfile(traceProfile))
+            .filter((value) => value !== undefined),
+          build.modulesByAsset,
+        ),
+        traceCpuProfiles: capture.traceCpuProfiles
+          .map((traceProfile) => sanitizeTraceCpuProfile(traceProfile))
+          .filter((value) => value !== undefined),
+        timelineEvents: browserPerformance.timelineEvents,
+        wholeWindowPerformanceMetrics: {
+          scope:
+            "context-only cumulative deltas; not a click-to-paint interval",
+          values: browserPerformance.metrics,
+        },
+      };
+
+    const clippedTraceCpuProfiles = capture.traceCpuProfiles
+      .map((traceProfile) =>
+        sanitizeTraceCpuProfile(
+          traceProfile,
+          alignment.startTraceMicroseconds,
+          alignment.endTraceMicroseconds,
+          alignment.transform.uncertaintyMicroseconds,
+        ),
+      )
+      .filter((value) => value !== undefined);
+    const clippedTimeline = clipTimelineEvents(
+      browserPerformance.timelineEvents,
+      alignment.startTraceMicroseconds,
+      alignment.endTraceMicroseconds,
+    );
+    const clippedSamples = clippedTraceCpuProfiles.flatMap((traceProfile) =>
+      traceProfile.samples.map((sample) => ({
+        start: sample.startMicroseconds,
+        end: sample.startMicroseconds + sample.durationMicroseconds,
+      })),
+    );
+    const observedIntervals = clippedSamples
+      .sort((left, right) => left.start - right.start)
+      .reduce<Array<{ start: number; end: number }>>((intervals, next) => {
+        const previous = intervals.at(-1);
+        if (previous && next.start <= previous.end) {
+          previous.end = Math.max(previous.end, next.end);
+        } else {
+          intervals.push({ ...next });
+        }
+        return intervals;
+      }, []);
+    const sampledStart = observedIntervals[0]?.start;
+    const sampledEnd = observedIntervals.at(-1)?.end;
+    return {
       name,
-      topCpuFrames: sampledFrames(profile, build.modulesByAsset),
-      cpuProfileTree: sanitizeCpuProfile(profile),
-      browserPerformance,
-    }),
-  );
+      documentId: alignment.documentId,
+      scope: "canonical recorder boundary",
+      recorderBoundary: alignment.boundary,
+      clockAlignment: {
+        ...alignment.transform,
+        calibratedStartTraceMicroseconds: alignment.startTraceMicroseconds,
+        calibratedEndTraceMicroseconds: alignment.endTraceMicroseconds,
+        v8TraceProfileCount: capture.traceCpuProfiles.length,
+      },
+      cpuSampleCoverage: {
+        scope:
+          "observed trace ProfileChunk samples; not a completeness guarantee",
+        intervalStartMicroseconds: alignment.startTraceMicroseconds,
+        intervalEndMicroseconds: alignment.endTraceMicroseconds,
+        observedStartMicroseconds: sampledStart ?? null,
+        observedEndMicroseconds: sampledEnd ?? null,
+        uncoveredPrefixMicroseconds:
+          sampledStart === undefined
+            ? alignment.endTraceMicroseconds - alignment.startTraceMicroseconds
+            : Math.max(0, sampledStart - alignment.startTraceMicroseconds),
+        uncoveredSuffixMicroseconds:
+          sampledEnd === undefined
+            ? alignment.endTraceMicroseconds - alignment.startTraceMicroseconds
+            : Math.max(0, alignment.endTraceMicroseconds - sampledEnd),
+        unionCoverageMicroseconds: observedIntervals.reduce(
+          (total, interval) => total + interval.end - interval.start,
+          0,
+        ),
+      },
+      topCpuFrames: sampledTraceFrames(
+        clippedTraceCpuProfiles,
+        build.modulesByAsset,
+      ),
+      traceCpuProfiles: clippedTraceCpuProfiles,
+      timelineEvents: clippedTimeline,
+      wholeWindowPerformanceMetrics: {
+        scope: "context-only cumulative deltas; not a click-to-paint interval",
+        values: browserPerformance.metrics,
+      },
+    };
+  });
   const initial = captures[0];
   const result = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     diagnosticOnly: true,
     fixture:
       "canonical G11 installPerformanceApiFixture (500 work items, 200 board cards)",
@@ -793,6 +1362,18 @@ test("diagnostic: source-bound G11 failure-path CPU profiles", async ({
       lcpStateAssignment: "150ms latency, 200KB/s down, 93.75KB/s up, 4x CPU",
       boardRender:
         "unthrottled, matching canonical G11 board-render measurement",
+    },
+    attributionMethod: {
+      browserClock: "window.performance.now() milliseconds",
+      traceClock: "CDP trace monotonic microseconds",
+      transform:
+        "Two diagnostic CDP TimeStamp markers on the same document, measured around window.performance.now(); affine scale and offset map canonical recorder values to trace time. Uncertainty includes marker-call brackets plus measured slope uncertainty propagated across extrapolated distance.",
+      cpuProfileClock:
+        "Sanitized V8 ProfileChunk sample intervals are derived from each chunk's CDP trace timestamp and timeDeltas, then clipped to the aligned recorder span. Coverage reports observed sample bounds and uncovered prefixes/suffixes.",
+      contextMetrics:
+        "Performance.getMetrics is cumulative over each entire profiler window and is reported as context only; it is not clipped or described as interval data.",
+      sensitiveData:
+        "Only fixed diagnostic marker labels, function names, generated asset basenames, line/column, event names, and timestamps are retained. Raw trace args, DOM, network payloads, and auth values are excluded.",
     },
     route: WORK_LIST_PATH,
     profileWindows,
