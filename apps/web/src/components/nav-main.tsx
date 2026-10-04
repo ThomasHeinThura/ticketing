@@ -59,7 +59,7 @@ export function NavMain() {
           }
         >
           <span>{t("navigation:sidebar.overview")}</span>
-          <ChevronRight className="h-3.5 w-3.5 text-sidebar-foreground/60 transition-transform duration-200" />
+          <ChevronRight className="h-3.5 w-3.5 text-sidebar-foreground transition-transform duration-200" />
         </CollapsibleTrigger>
         <CollapsiblePanel>
           <SidebarGroupContent>
@@ -75,7 +75,7 @@ export function NavMain() {
                   >
                     <span>{item.title}</span>
                     {item.badge !== null && (
-                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-sm border border-sidebar-border/60 px-1 text-[11px] font-medium text-sidebar-foreground/80">
+                      <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-sm border border-sidebar-border/60 px-1 text-[11px] font-medium text-sidebar-foreground">
                         {item.badge}
                       </span>
                     )}

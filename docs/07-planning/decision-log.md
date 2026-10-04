@@ -5,6 +5,155 @@ dependency choices, convention changes, scope calls, gate waivers.
 
 Newest first.
 
+
+### 2026-10-04 · Pin SLA policy provenance at work-item creation
+
+**Decision:** implement the recommended SLA-1/SLA-3 provenance contract under Thomas's
+standing authorization for recommended decisions. The effective-time instant is
+`work_item.sla_started_at`, as ADR 0009 requires: original accepted submission creation
+time on conversion, otherwise work-item creation time. Reconcile the owning SLA spec's
+ambiguous "creation" wording before code. In the creation/acceptance transaction resolve
+work-item-type override → original accepted request type → project → workspace default,
+then select the published policy version effective at that instant. Register and persist
+`work_item.sla_policy_version_id` in the canonical data model before implementing it, with
+same-workspace integrity. Null means no effective configured version. Never reconstruct a
+missing historical pin from mutable current bindings on reads. Compute state and due time
+from this stored version plus its current live calendar; do not store SLA state/deadline.
+
+Duplicate submissions attach to the existing work item without changing its original SLA
+pin or start time. The accepted/auto-accepted submission that creates the item supplies
+request-type provenance. Existing rows in this unaccepted P2 rollout have no trustworthy
+binding history: leave their pin null and report `none`, without invented historical
+backfill. No P2 SLA evaluation is accepted or deployed by this decision. If separately
+operated SLA data is discovered, stop that data-migration path for an explicit owner data
+policy. Wire the existing `work-item/controllers/create-work-item.ts` transaction and the
+specified SLA read route; absent intake conversion/timer/cache/event writers remain real
+implementation dependencies and are not claimed complete. Stage candidate0088 as the four binding/pin columns for the current direct-create/read
+slice. Add canonical request-type/submission persistence with its complete intake conversion
+feature in a subsequent sequential candidate migration, including integrity constraints;
+the current slice does not claim request-type precedence or acceptance/duplicate writers. Human review remains deferred to integrated P4;
+normal independent review and migration acceptance are still required after the full batch.
+
+
+
+### 2026-10-04 · Serialize P2/P3 schema ownership and unaccepted migration composition
+
+**Decision:** implement the complete CAL-8/SLA read path after P3 explicitly yields the
+shared schema/migration contract. P2 appends candidate migration `0088` after its own
+unaccepted `0087`; it does not skip a journal sequence or import unfinished P3 migrations.
+P3 continues delegated identity/provisioning/UI work during this window and does not edit
+the shared schema/migration contract concurrently. These are branch-local candidate
+numbers, not accepted global migration history. Root composes protected acceptance in
+P0 → P2 → P3 order, resolving only the unaccepted colliding suffix through a normal
+forward commit and checking the actual accepted prefix before each integration. No
+accepted migration is rewritten and no unaccepted migration is applied to persistent
+development. This is implementation coordination under the authorized parallel program,
+not phase acceptance or a migration-gate waiver.
+
+
+
+### 2026-10-04 · Resolve live calendar evaluation with immutable SLA policy versions
+
+**Decision:** under Thomas's standing authorization to implement recommended decisions,
+resolve CAL-8 and SLA's published-version calendar wording as follows: a published
+`sla_policy_version` immutably pins its `calendar_id`, goals and threshold; it does not
+copy the referenced `service_calendar` definition. On every SLA evaluation, resolve that
+pinned calendar ID to the current same-workspace calendar row and pass its current
+timezone, windows and holidays to `packages/domain`'s pure evaluator. A calendar edit
+therefore immediately affects all SLAs whose effective policy version references that
+calendar, without updating any published SLA version. Drafts and published versions
+continue to store only the selected calendar ID. Record this rule in both owning feature
+specifications before implementing the evaluator adapter and its persisted regressions.
+No new table, endpoint, migration or dependency is selected by this resolution. Timer,
+scan, cache-writer and event delivery integration still need their own specified complete
+implementation; this decision and adapter do not claim those mechanisms or P2 complete.
+Human design review remains deferred to integrated P4; independent acceptance remains
+required after the implementation batch.
+
+
+### 2026-10-04 · Implement opt-in per-policy-source strict enforcement for #8
+
+**Decision:** complete the production request-path ALLOW/DENY integration for issue #8 in
+the current P0 implementation batch. Keep the existing hand-written guards in place beside
+strict evaluation until the later removal slice. Strict mode is an explicit bootstrap
+setting, `TASKDESK_POLICY_ENFORCE`, containing a comma-separated set of exact registered
+policy-source paths. It defaults to empty. Unknown, duplicate, whitespace-padded, empty
+members, or a request to enable `apps/api/src/task/policy.ts` before every other registered
+source is enabled fail startup. A source can be added only after the existing shadow evidence
+and the three-issue-free-UTC-date P0 verification rule below have been satisfied against the
+same deployed policy/source behavior; no dates or traffic are synthesized by code. This is
+an operational cutover control, not an automatic finding waiver or authorization to activate
+it now. No persistent development/UAT/production setting is changed by this implementation.
+
+The setting is a narrow temporary bridge because the specified per-scope feature-flag store
+in `plugin-architecture.md` is not implemented and the existing `TASKDESK_POLICY_SHADOW`
+switch cannot express one-router-at-a-time enforcement. It is bootstrap-only, read and
+validated before serving, and must be replaced by the approved feature-flag mechanism when
+that mechanism is delivered. The exact source-path vocabulary is the registry's
+`RegistryEntry.source`; there is no independent alias, per-customer branch, exception list,
+or capability translation.
+
+Every enabled route is evaluated after its route-specific validators and authoritative
+scope loaders but before its terminal handler can mutate state. Missing identity, malformed
+context, unknown scope provenance, unavailable reach/predicate evidence, unsupported required
+step-up binding, or an evaluator error denies before the handler. Persisted-row scopes may
+use only row-derived facts; request hints never substitute for missing row facts. The existing
+session-only, API-key capability ceiling, portal, CSRF, and operation-bound step-up controls
+remain in force. Delegated handlers retain their own protocol authorization. Registry denial
+does not invoke the terminal handler.
+
+For `GET /api/invitation/{id}`, implement the documented 2026-09-28 recommendation already
+present in `invitation/policy.ts`: retain the stable URL as deprecated and permanently
+disabled; its real row-scope `member:invite` and session-only middleware runs, then its handler
+refuses unconditionally. Do not introduce a sixth policy kind or expose invitation data.
+Keep the #392 `task` → `work_item` re-key and persisted backfill; do not contract away the
+legacy key while #398's deployment/rollback prerequisites remain unverified. The task policy
+source stays last in the strict source sequence.
+
+This selects implementation behavior under Thomas's standing authorization to proceed with
+documented recommendations and finish related P0 work. It does not satisfy the real three-date
+observation, authorize a live cutover, approve human H1–H6, waive a gate, or claim P0 complete.
+
+
+### 2026-10-03 · Select the bounded P2 holiday-import profile
+
+**Decision:** complete calendar holiday import in a separate full P2 implementation batch
+under Thomas's standing authorization for recommended decisions. Record the profile and
+API DTO in `service-calendars.md` before implementation. The initial profile accepts UTF-8
+RFC 5545 VCALENDAR version 2.0 containing finite all-day VEVENTs. DTSTART is required with
+`VALUE=DATE`; optional DATE DTEND is exclusive and defaults to the next day. Preserve an
+inclusive stored range after converting that exclusive endpoint. SUMMARY is optional plain
+text, with RFC unfolding/escaping and safe rendering. Require syntactically valid UID and
+DTSTAMP metadata; they confer no authority. This is a holiday-file importer, not scheduling:
+reject timed/TZID values, recurrence/exception properties, DURATION, non-VEVENT/nested
+components and malformed or unsupported properties with an actionable error. Permit only
+the documented safe calendar/event metadata allowlist; never fetch URLs or execute data.
+No partial successful import, silently dropped event or invented recurrence interpretation.
+Reference: [RFC 5545](https://www.rfc-editor.org/rfc/rfc5545.html), sections 3.1, 3.3.4,
+3.3.11 and 3.6.1. The supported subset and resource limits below are product decisions.
+
+Bound decoded input to 256 KiB UTF-8, 1,000 events, 8 KiB per unfolded content line,
+120 characters per holiday name and 366 covered dates per finite event. Reject an empty
+file/event set and out-of-range real dates; reuse canonical calendar date bounds. Preserve
+existing holidays. Deduplicate exact canonical holiday identities (shape/date or range or
+annual tuple plus normalized name); report added and duplicate counts. Different named
+holidays on the same day remain legitimate. Identical retries are no-op imports: do not
+advance version or emit mutation effects for zero additions. A supplied If-Match must still
+be validated under the row lock before reporting a no-op.
+
+Use existing `POST /api/service-calendars/{id}/holidays/import`, `sla_policy:manage` and
+workspace reach, with JSON `{ics: string}` and optional canonical If-Match. Register the
+response `{calendar, importedCount, duplicateCount}` using the existing safe calendar DTO.
+Parse/validate before mutation, then recheck reach/concurrency and append under the existing
+calendar lock, audit-savepoint, durable event and administrator-alert behavior. Reuse the
+registered calendar-update action/event; no new identifier, dependency, migration, external
+service or direct deletion is selected. Finish shared-UI file selection, confirmation/preview,
+error/partial-input refusal, translations, cache refresh and real persisted browser/API
+proof. Keep unavailable impact counts truthful under the existing CAL-13 limitation.
+Country presets and the other documented calendar dependencies remain distinct work.
+This selection is not independent review, protected acceptance or phase completion.
+
+
 ### 2026-10-03 · Select the P1 concrete project-state read contract
 
 **Decision:** complete the v2 board's existing `VW-8` requirement in the full P1
@@ -26,6 +175,85 @@ policy coverage, reach/empty-column/order regression proofs and full URL/keyboar
 journey as one completed batch. This is implementation contract selection, not review,
 acceptance, a gate waiver or a human design approval.
 
+
+### 2026-10-03 · Select serialized P4 bootstrap admission for #231
+
+**Decision:** under Thomas's standing instruction to implement recommended solutions in
+parallel before bulk review, complete #231 in the isolated P4 bootstrap/recovery branch.
+Write the selected contract in its authoritative auth/data-model documents before code.
+The product invariant is one successful local first-user bootstrap admission and exactly
+one pending administrator when valid token and headless-email signups race. A losing signup
+must be refused without leaving another committed ordinary user. Validate authorization
+from trusted server credential handling; never accept a client role/flag or IdP grant.
+Serialize the first-user admission against authoritative database state using the existing
+promotion lock, and make user creation plus administrator grant atomic; an in-memory lock
+or a separately committed before-hook check is insufficient. Recheck stale/expired state
+inside that boundary. If the adapter needs a bounded database guard, document the mechanism
+and identifiers before generating its migration. No dependency is authorized here.
+
+Preserve #229: the setup-completed marker remains unset until actual verified TOTP, pending
+bootstrap requires enrollment even when policy is off, and additional registration is closed.
+Preserve initialized installation/provider behavior and the initialized-only #230 recovery
+CLI. Real concurrent distinct-credential regressions must prove no zero-admin/two-user
+result, including loser rollback; record image/browser and bulk independent acceptance
+honestly. P0 has priority over this lane's heavy test/build work. This selects implementation
+behavior, not a gate waiver, human design approval or phase-completion claim.
+
+### 2026-10-03 · Select the bounded P4 bootstrap-factor contract
+
+**Decision:** the orchestrator selects the recommended #229 contract under Thomas's standing
+instruction to proceed with recommended decisions and full implementation before bulk review.
+Record the canonical contract in the isolated P4 branch before implementation. This changes
+neither the P0 candidate's runtime nor the timing of Thomas's P4 design review.
+
+Keep the setup-completed marker unset until the exact first bootstrap administrator verifies
+its real TOTP enrollment. While that bootstrap remains pending, require enrollment regardless
+of the configured factor-policy mode, restrict that session to the documented authentication
+and enrollment surfaces, and return the existing `mfa_enrollment_required` from protected
+custom APIs. Finalize under the existing promotion lock after rechecking the first admin,
+active staff person and verified factor; clear setup-token fields then and preserve the stored
+policy. Apply the same ordering to headless bootstrap. The initial zero-user creation
+channel is local credential sign-up; enforce it on the server, including OAuth callbacks
+and email-OTP auto-creation, so initial TOTP enrollment has a real local credential and
+identity-provider data never supplies an administrator grant. Existing initialized provider
+behavior remains. Issue setup tokens only while there
+are zero users; refuse additional registrations after the first user exists until setup is
+complete. Never reopen an initialized marker. Do not invent a schema field, new role source,
+identity-provider administrator grant or repair of the separately disclosed #231 race.
+
+Existing credential recovery remains available. A first administrator losing both password
+and email access before enrollment needs a separately documented operator recovery contract;
+prepare that recommendation before implementing a new credential-reset or database-repair
+path. This decision does not claim that recovery scenario complete. The initialized-only
+#230 CLI contract remains intact. Image/TTY proofs, independent bulk reviews and protected
+acceptance remain required; no human approval or gate waiver is recorded here.
+
+
+
+
+### 2026-10-03 · Select complete P2 SLA-policy and P4 recovery implementation contracts
+
+**Decision:** use Thomas's standing instruction to proceed with recommended decisions and
+complete implementation batches. This authorizes the selected contracts in the isolated
+feature branches; it does not mark a human design review approved, waive a gate, or claim
+later phases complete.
+
+P2 policy authoring uses reachable workspace scope in the collection query, one editable
+draft, immutable published versions with their own calendar and threshold snapshots,
+complete metric/priority goal matrices for at least one type at publication, row-locked
+version/CAS semantics and the canonical optional If-Match mismatch response. The selected
+spec/data-model checkpoint is `e198fd12e2823ec062e4ef59c85cb615ef0d04d0`; no project policy FK,
+new domain event or direct deletion route is invented. The sole audit-contract author
+registered the three configuration actions before their writers in `ec400c25`.
+
+P4 recovery uses the existing instance-admin source, exactly one eligible active staff
+identity, service-process attribution plus host operator audit, interactive confirmation
+outside database locks, and revalidation under the shared promotion lock. Grant, audit and
+durable alerts are atomic; post-commit email failure reports the committed state and retains
+alerts. The selected canonical contract is `62710869`. MFA policy remains enforced and no
+IdP data, activation, linking or parallel authority source grants administration. Complete
+implementation still needs actual image/operator/browser proof and bulk independent review.
+Human P4 design acceptance remains outstanding.
 
 ### 2026-10-03 · Complete the existing cookie CSRF requirement in the P0 implementation batch
 
@@ -88,52 +316,6 @@ This resolves the route, topic authorization, projection, deduplication, delete 
 **Authorization and status:** the orchestrator authorized these bounded recommended defaults on 2026-10-03. This entry records implementation choices, not review or acceptance evidence.
 
 **Recorded by:** GPT-6 Luna implementation lane, 2026-10-03.
-
-### 2026-10-02 · CAL-16 uses server-issued bidirectional tuple cursors (#513 review remediation)
-### 2026-10-02 · CAL-16 uses server-issued bidirectional tuple cursors (#513 review remediation)
-
-**Decision:** CAL-16's paginated `GET /api/service-calendars` includes
-`page.previousCursor` and `page.nextCursor`. The server binds each opaque cursor to its
-workspace, `(name, id)` boundary and seek direction. Both seek directions return rows in
-ascending `(name, id)` order; `hasMore` is equivalent to a non-null `nextCursor`. The web
-URL holds one cursor, with no accumulated client history or page-depth limit. The list uses
-the named non-unique B-tree index
-`service_calendar_workspace_name_id_idx` on `(workspace_id, name, id)`.
-
-**Why:** client-maintained cursor history required an unbounded URL value and dropped
-Previous navigation after arbitrary client-side thresholds. A direction-bound cursor
-supports forward and backward keyset seeks at constant URL size. The composite index
-supports both seek directions while retaining workspace-prefix scans. The exact `meta.total`
-remains a separate workspace-scoped count and is not claimed to be constant-time. Pages are
-not a snapshot while rows are created, renamed, or deleted concurrently.
-
-This supersedes the earlier 2026-10-02 CAL-16 visited-page-history wording. It is a bounded
-technical refinement, not H1 approval, a product waiver, or a claim that the API is accepted
-on main.
-
-**Authorization:** Thomas's standing recommended-routine-decision authorization covers this
-bounded CAL-16 implementation.
-
-**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
-
-### 2026-10-02 · Service-calendar list uses the shared cursor collection contract (#513)
-
-**Decision:** introduce `GET /api/service-calendars` with the shared `{data, page, meta}`
-cursor envelope. Pages default to 50 and
-accept limits 1–200; ordering is `(name ASC, id ASC)` and the workspace-bound cursor
-continues after that tuple. The calendar list keeps cursor navigation and visited-page
-history in its URL.
-
-**Why:** the endpoint otherwise reads an unbounded workspace collection. The existing API
-design already standardizes cursor pagination, and stable ordering by both name and id
-prevents duplicate names from being skipped between pages. Accepted main has no calendar
-GET operation, so this introduces the route with its paginated response and does not break
-an accepted-main contract. This is not H1 approval or a quality-gate waiver.
-
-**Authorization:** Thomas's standing recommended-routine-decision authorization covers
-this application of the established cursor contract.
-
-**Recorded by:** GPT-6 Luna implementation lane, 2026-10-02.
 
 ### 2026-10-01 · Keep the P0 portal origin disabled until portal identity exists
 
@@ -528,27 +710,6 @@ redelivery remains the explicit per-target action in WH-8.
 
 **Decided by:** Thomas, under the standing recommended-decisions authorization; recorded by
 the orchestrator on 2026-10-01.
-
-### 2026-10-01 · Calendar lifecycle delivery wording and optimistic concurrency
-
-**Clarification:** the 2026-09-29 decision saying the calendar slice “emits no
-service-calendar events” refers to the post-commit in-memory `publishEvent` emitter.
-Create and update now persist their event envelopes to the durable outbox in the same
-transaction as the calendar mutation, as required by EV-1; this does not claim that outbox
-delivery or AU-14 alerting/administrator notification is complete. The older decision is
-preserved as historical context.
-
-**Decision:** service calendars follow the shared mutable-resource model: required lifecycle
-timestamps, an integer `version`, and optional quoted `If-Match` on PATCH. A stale version
-returns 409 with asserted/current versions and commits no calendar, audit or event changes.
-The editor retains the draft and requires an explicit reload or resubmission against the
-latest version.
-
-**Why:** the shared data-model and API-design contracts already define lifecycle columns
-and optimistic concurrency. Aligning this new resource with those conventions prevents
-concurrent calendar edits from silently overwriting each other.
-
-**Recorded by:** implementation lane, 2026-10-01.
 
 ### 2026-10-01 · Pending-action decisions follow the existing AU-14 mutation contract
 

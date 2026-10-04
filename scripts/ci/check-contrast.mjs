@@ -4,7 +4,9 @@ import { readdir, readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { repoRoot, violation } from "./lib/repo.mjs";
+import * as ts from "typescript/unstable/ast";
+import { API } from "typescript/unstable/sync";
+import { repoRoot, violation, walk } from "./lib/repo.mjs";
 
 const manifestPath = "packages/ui/src/styles/pairs.json";
 const requireFromWeb = createRequire(
@@ -32,9 +34,98 @@ function parseClassToken(className) {
   };
 }
 
+function isTranslucentBackgroundUtility(className, tokenNames = new Set()) {
+  const utility = parseClassToken(className).utility;
+  const match = utility.match(/^bg-([a-z0-9-]+)(?:\/(\d+))?$/u);
+  if (!match) return false;
+  const opacity = Number(match[2] ?? 100);
+  return opacity < 100 || tokenNames.has(match[1]);
+}
+
+function isOpaqueBackgroundUtility(className, tokenNames = new Set()) {
+  return !isTranslucentBackgroundUtility(className, tokenNames);
+}
+
+function parseForegroundUtility(parsed, tokenNames) {
+  const match = parsed.utility.match(/^text-([a-z0-9-]+)(?:\/(.*))?$/u);
+  if (!match || !tokenNames.has(match[1])) {
+    // Tailwind's arbitrary `text-*` utility is ambiguous: some forms set font
+    // size and others set color. Detect the concrete color syntaxes we can
+    // recognize and reject them until they have an explicit measured token.
+    if (
+      /^text-\[/u.test(parsed.utility) &&
+      !/^text-\[(?:length:)?-?\d+(?:\.\d+)?(?:px|rem|em|vh|vw|%)\]$/u.test(
+        parsed.utility,
+      )
+    )
+      return { unsupported: true, token: parsed.utility };
+    return undefined;
+  }
+  if (match[2] !== undefined && !/^\d+$/u.test(match[2]))
+    return { unsupported: true, token: match[1] };
+  if (match[2] !== undefined && Number(match[2]) > 100)
+    return { unsupported: true, token: match[1] };
+  return {
+    name: match[1],
+    className: parsed.className,
+    opacity: match[2] === undefined ? 100 : Number(match[2]),
+  };
+}
+
+function contrastPairKey(
+  fg,
+  bg,
+  backgroundClass,
+  theme,
+  foregroundClass,
+  backdropLayers = [],
+) {
+  const tokenClass = fg.replace(/^--color-/, "text-");
+  const key = `${fg}|${bg}|${backgroundClass}|${theme}${
+    backdropLayers.length ? `|backdrop:${backdropLayers.join(">")}` : ""
+  }`;
+  const foregroundUtility = foregroundClass
+    ? parseClassToken(foregroundClass).utility
+    : tokenClass;
+  return foregroundUtility !== tokenClass ? `${key}|${foregroundUtility}` : key;
+}
+
+function classAvailableInTheme(className, theme) {
+  const variants = parseClassToken(className).variants;
+  return !variants.includes(theme === "light" ? "dark" : "light");
+}
+
+export function probeSurfaceDescriptor(className) {
+  const descendant = className.startsWith("*:");
+  return {
+    className: descendant ? className.slice(2) : className,
+    descendant,
+  };
+}
+
 function classLiteralGroups(source) {
   const literal = /(["'`])([\s\S]*?)\1/g;
-  const groups = [...source.matchAll(literal)].map((match) => match[2]);
+  const groups = [];
+  for (const match of source.matchAll(literal)) {
+    if (match[1] !== "`" || !match[2].includes("${")) {
+      groups.push(match[2]);
+      continue;
+    }
+    let variants = [match[2]];
+    for (const interpolation of match[2].matchAll(/\$\{([\s\S]*?)\}/gu)) {
+      const expression = interpolation[1] ?? "";
+      const conditional = expression.match(
+        /^([\s\S]*?)\?\s*(["'])([\s\S]*?)\2\s*:\s*(["'])([\s\S]*?)\4\s*$/u,
+      );
+      const choices = conditional ? [conditional[3], conditional[5]] : [""];
+      variants = variants.flatMap((variant) =>
+        choices.map((choice) =>
+          variant.replace(interpolation[0], ` ${choice} `),
+        ),
+      );
+    }
+    groups.push(...variants);
+  }
   function directArguments(body) {
     const args = [];
     let start = 0;
@@ -65,36 +156,93 @@ function classLiteralGroups(source) {
     function addLiteral(text, guard, argIndex) {
       branches.push({ text, guard: guard?.trim() || null, argIndex });
     }
-    for (const [argIndex, argument] of args.entries()) {
-      const trimmed = argument.trim();
-      const quote = trimmed[0];
-      if (
-        (quote === '"' || quote === "'" || quote === "`") &&
-        trimmed.at(-1) === quote
-      ) {
-        addLiteral(trimmed.slice(1, -1), null, argIndex);
-      } else {
-        const objectEntries = [
-          ...trimmed.matchAll(/(["'`])([^"'`]+)\1\s*:\s*([^,}]+)/g),
-        ];
-        if (objectEntries.length > 0) {
-          for (const entry of objectEntries)
-            addLiteral(entry[2], entry[3], argIndex);
+    function splitConditional(expression) {
+      let depth = 0;
+      let quote = "";
+      let escaped = false;
+      let question = -1;
+      let nested = 0;
+      for (let index = 0; index < expression.length; index += 1) {
+        const character = expression[index];
+        if (quote) {
+          if (escaped) escaped = false;
+          else if (character === "\\") escaped = true;
+          else if (character === quote) quote = "";
           continue;
         }
-        const ternary = trimmed.match(
-          /^(.+?)\?\s*["'`]([\s\S]*?)["'`]\s*:\s*["'`]([\s\S]*?)["'`]$/,
-        );
-        if (ternary) {
-          addLiteral(ternary[2], ternary[1], argIndex);
-          addLiteral(ternary[3], `!(${ternary[1]})`, argIndex);
+        if (character === "'" || character === '"' || character === "`") {
+          quote = character;
           continue;
         }
-        const and = trimmed.indexOf("&&");
-        const guard = and >= 0 ? trimmed.slice(0, and) : `__arg_${argIndex}`;
-        const values = [...trimmed.matchAll(literal)].map((match) => match[2]);
-        for (const value of values) addLiteral(value, guard, argIndex);
+        if (character === "(" || character === "[" || character === "{") {
+          depth += 1;
+          continue;
+        }
+        if (character === ")" || character === "]" || character === "}") {
+          depth -= 1;
+          continue;
+        }
+        if (depth !== 0) continue;
+        if (character === "?" && expression[index + 1] !== ".") {
+          if (question < 0) question = index;
+          else nested += 1;
+        } else if (character === ":" && question >= 0) {
+          if (nested === 0)
+            return [
+              expression.slice(0, question),
+              expression.slice(question + 1, index),
+              expression.slice(index + 1),
+            ];
+          nested -= 1;
+        }
       }
+      return undefined;
+    }
+    function combineGuard(parent, condition) {
+      return [parent, condition].filter(Boolean).join(" && ");
+    }
+    function addExpression(expression, guard, argIndex) {
+      const trimmed = expression
+        .trim()
+        .replace(/^\((.*)\)$/u, "$1")
+        .trim();
+      const conditional = splitConditional(trimmed);
+      if (conditional) {
+        addExpression(
+          conditional[1],
+          combineGuard(guard, conditional[0].trim()),
+          argIndex,
+        );
+        addExpression(
+          conditional[2],
+          combineGuard(guard, `!(${conditional[0].trim()})`),
+          argIndex,
+        );
+        return;
+      }
+      const literalValue = trimmed.match(/^(["'`])([\s\S]*)\1$/u);
+      if (literalValue) {
+        addLiteral(literalValue[2], guard, argIndex);
+        return;
+      }
+      const and = trimmed.match(/^([\s\S]*?)&&\s*(["'`])([\s\S]*)\2$/u);
+      if (and) {
+        addLiteral(and[3], combineGuard(guard, and[1].trim()), argIndex);
+        return;
+      }
+      const objectEntries = [
+        ...trimmed.matchAll(/(["'`])([^"'`]+)\1\s*:\s*([^,}]+)/g),
+      ];
+      if (objectEntries.length > 0) {
+        for (const entry of objectEntries)
+          addLiteral(entry[2], combineGuard(guard, entry[3]), argIndex);
+        return;
+      }
+      const values = [...trimmed.matchAll(literal)].map((match) => match[2]);
+      for (const value of values) addLiteral(value, guard, argIndex);
+    }
+    for (const [argIndex, argument] of args.entries()) {
+      addExpression(argument, null, argIndex);
     }
     return branches;
   }
@@ -103,6 +251,14 @@ function classLiteralGroups(source) {
     const normalize = (guard) => guard.replace(/[()\s]/g, "");
     const leftNormalized = normalize(left);
     const rightNormalized = normalize(right);
+    const leftAtoms = leftNormalized.split("&&");
+    const rightAtoms = rightNormalized.split("&&");
+    if (
+      leftAtoms.some((atom) =>
+        rightAtoms.includes(atom.startsWith("!") ? atom.slice(1) : `!${atom}`),
+      )
+    )
+      return false;
     if (
       leftNormalized === `!${rightNormalized}` ||
       rightNormalized === `!${leftNormalized}`
@@ -164,13 +320,53 @@ function classLiteralGroups(source) {
   return groups;
 }
 
+function classNameLiteralGroups(source) {
+  const groups = [];
+  const attributes = /\bclassName\s*=\s*/g;
+  for (const attribute of source.matchAll(attributes)) {
+    const valueStart = attribute.index + attribute[0].length;
+    const opening = source[valueStart];
+    if (opening === '"' || opening === "'") {
+      let end = valueStart + 1;
+      while (end < source.length) {
+        if (source[end] === "\\") end += 2;
+        else if (source[end] === opening) break;
+        else end += 1;
+      }
+      groups.push(...classLiteralGroups(source.slice(valueStart, end + 1)));
+      continue;
+    }
+    if (opening !== "{") continue;
+    let depth = 1;
+    let quote = "";
+    let escaped = false;
+    let end = valueStart + 1;
+    for (; end < source.length && depth > 0; end += 1) {
+      const character = source[end];
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (character === "\\") escaped = true;
+        else if (character === quote) quote = "";
+        continue;
+      }
+      if (character === '"' || character === "'" || character === "`")
+        quote = character;
+      else if (character === "{") depth += 1;
+      else if (character === "}") depth -= 1;
+    }
+    groups.push(...classLiteralGroups(source.slice(valueStart + 1, end - 1)));
+  }
+  return groups;
+}
+
 function sourceUsesPair(source, foregroundClass, backgroundClass, theme) {
-  for (const classText of classLiteralGroups(source)) {
+  for (const classText of classNameLiteralGroups(source)) {
     const classes = classText.split(/\s+/).map(parseClassToken);
     const foregroundFound = classes.some((parsed) => {
       const darkScoped = parsed.variants.includes("dark");
       return (
-        parsed.utility === foregroundClass && (!darkScoped || theme === "dark")
+        parsed.className === foregroundClass &&
+        (!darkScoped || theme === "dark")
       );
     });
     if (!foregroundFound) continue;
@@ -192,6 +388,15 @@ function sourceUsesPair(source, foregroundClass, backgroundClass, theme) {
 export function validatePairManifest(pairs, readUsage, observedPairs) {
   const failures = [];
   const seen = new Set();
+  const themeSource = requireFromWeb("node:fs").readFileSync(
+    path.join(repoRoot, "packages/ui/src/styles/theme.css"),
+    "utf8",
+  );
+  const intrinsicAlphaTokens = new Set(
+    [...themeSource.matchAll(/--([a-z0-9-]+)\s*:\s*--alpha\(/gu)].map(
+      (match) => match[1],
+    ),
+  );
   for (const [index, pair] of pairs.entries()) {
     const label = `${manifestPath} entry ${index + 1}`;
     if (!pair || typeof pair.fg !== "string" || typeof pair.bg !== "string") {
@@ -232,13 +437,39 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
           `${label} needs a real usage owner and opaque backdrop token.`,
         ),
       );
-    const usage = pair.usage ? readUsage(pair.usage) : "";
-    const fgClass = pair.fg.replace(/^--color-/, "text-");
-    if (pair.foregroundClass !== fgClass)
+    const occurrenceOwners = Array.isArray(pair.occurrences)
+      ? [
+          ...new Set(
+            pair.occurrences
+              .map((occurrence) => occurrence.usage)
+              .filter((usagePath) => typeof usagePath === "string"),
+          ),
+        ]
+      : [];
+    const usagePaths = occurrenceOwners.length
+      ? occurrenceOwners
+      : pair.usage
+        ? [pair.usage]
+        : [];
+    const usageSources = new Map(
+      usagePaths.map((usagePath) => [usagePath, readUsage(usagePath)]),
+    );
+    const usage = pair.usage
+      ? (usageSources.get(pair.usage) ?? readUsage(pair.usage))
+      : "";
+    const fgToken = pair.fg.replace(/^--color-/, "");
+    const parsedForeground = pair.foregroundClass
+      ? parseForegroundUtility(
+          parseClassToken(pair.foregroundClass),
+          new Set([fgToken]),
+        )
+      : undefined;
+    const fgClass = pair.foregroundClass;
+    if (!parsedForeground || parsedForeground.unsupported)
       failures.push(
         violation(
           manifestPath,
-          `${label} foregroundClass must map to ${fgClass}.`,
+          `${label} foregroundClass must be a supported text utility for ${pair.fg}.`,
         ),
       );
     if (!usage || !pair.backgroundClass || !pair.backdrop) {
@@ -249,6 +480,35 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
     }
     for (const theme of pair.themes ?? []) {
       const backgroundClass = pair.backgroundClass[theme];
+      const backgroundIsOpaque = isOpaqueBackgroundUtility(
+        backgroundClass ?? "",
+        intrinsicAlphaTokens,
+      );
+      const backdropLayers = pair.backdropLayers ?? [];
+      if (!backgroundIsOpaque) {
+        const terminalBackdrop = backdropLayers.at(-1);
+        const terminalToken = terminalBackdrop?.match(
+          /(?:^|:)bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+        )?.[1];
+        if (
+          !terminalBackdrop ||
+          !isOpaqueBackgroundUtility(terminalBackdrop, intrinsicAlphaTokens) ||
+          backdropLayers
+            .slice(0, -1)
+            .some((layer) =>
+              isOpaqueBackgroundUtility(layer, intrinsicAlphaTokens),
+            ) ||
+          pair.backdrop !== `--color-${terminalToken}`
+        ) {
+          failures.push(
+            violation(
+              manifestPath,
+              `${label} translucent surface ${backgroundClass} needs a source-bound paint chain ending at its opaque backdrop.`,
+            ),
+          );
+          continue;
+        }
+      }
       const tokenMatch = backgroundClass?.match(
         /(?:^|:)bg-([a-z0-9-]+)(?:\/\d+)?$/,
       );
@@ -262,7 +522,14 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
         );
         continue;
       }
-      const key = `${pair.fg}|${pair.bg}|${backgroundClass}|${theme}`;
+      const key = contrastPairKey(
+        pair.fg,
+        pair.bg,
+        backgroundClass,
+        theme,
+        pair.foregroundClass,
+        pair.backdropLayers ?? [],
+      );
       if (seen.has(key))
         failures.push(violation(manifestPath, `${label} duplicates ${key}.`));
       seen.add(key);
@@ -274,7 +541,116 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
           ),
         );
       }
-      if (!sourceUsesPair(usage, fgClass, backgroundClass, theme)) {
+      const inheritedSurface =
+        pair.surfaceContext === "nearest-opaque-ancestor" &&
+        observedPairs?.inheritedUses?.has(`${pair.usage}|${key}`);
+      const importedSurface =
+        pair.surfaceContext === "imported-opaque-wrapper" &&
+        observedPairs?.importedUses?.has(`${pair.usage}|${key}`);
+      const routeSurface =
+        pair.surfaceContext === "route-layout-body" &&
+        observedPairs?.routeUses?.has(`${pair.usage}|${key}`);
+      const callerSurface =
+        pair.surfaceContext === "caller-chain" &&
+        Array.isArray(pair.occurrenceIds) &&
+        pair.occurrenceIds.some((occurrenceId) =>
+          observedPairs?.callerUses?.has(`${occurrenceId}|${key}`),
+        );
+      const sameElementSurface =
+        pair.surfaceContext === "same-element" &&
+        Array.isArray(pair.occurrenceIds) &&
+        pair.occurrenceIds.some((occurrenceId) =>
+          observedPairs?.directOccurrenceUses?.has(`${occurrenceId}|${key}`),
+        );
+      const occurrenceBound =
+        Array.isArray(pair.occurrences) &&
+        pair.occurrences.length > 0 &&
+        new Set(
+          pair.occurrences.map(
+            (occurrence) =>
+              `${occurrence.usage ?? pair.usage}|${occurrence.id}|${occurrence.surfaceContext}|${JSON.stringify(occurrence.chain ?? [])}`,
+          ),
+        ).size === pair.occurrences.length &&
+        pair.occurrences.every((expected) =>
+          (observedPairs?.occurrences?.get(key) ?? []).some(
+            (actual) =>
+              actual.id === expected.id &&
+              actual.usage === (expected.usage ?? pair.usage) &&
+              actual.surfaceContext === expected.surfaceContext &&
+              actual.category === expected.category &&
+              JSON.stringify(actual.backdropLayers ?? []) ===
+                JSON.stringify(expected.backdropLayers ?? []) &&
+              Array.isArray(expected.chain) &&
+              JSON.stringify(actual.chain) === JSON.stringify(expected.chain),
+          ),
+        );
+      const occurrenceCoverage =
+        occurrenceBound &&
+        (observedPairs?.occurrences?.get(key) ?? []).every((actual) =>
+          pair.occurrences.some(
+            (expected) =>
+              actual.id === expected.id &&
+              actual.usage === (expected.usage ?? pair.usage) &&
+              actual.surfaceContext === expected.surfaceContext &&
+              actual.category === expected.category &&
+              JSON.stringify(actual.backdropLayers ?? []) ===
+                JSON.stringify(expected.backdropLayers ?? []) &&
+              JSON.stringify(actual.chain) === JSON.stringify(expected.chain),
+          ),
+        );
+      if (occurrenceCoverage) {
+        const actualOccurrences = observedPairs.occurrences.get(key);
+        const strongestCategory = actualOccurrences.some(
+          (occurrence) => occurrence.category === "body",
+        )
+          ? "body"
+          : "non-text";
+        if (pair.category !== strongestCategory) {
+          failures.push(
+            violation(
+              manifestPath,
+              `${label} threshold must use the strongest bound occurrence category (${strongestCategory}).`,
+            ),
+          );
+        }
+      }
+      if (Array.isArray(pair.occurrences) && !occurrenceBound) {
+        failures.push(
+          violation(
+            manifestPath,
+            `${label} occurrence contract no longer matches the live source context.`,
+          ),
+        );
+      }
+      if (
+        Array.isArray(pair.occurrences) &&
+        occurrenceBound &&
+        !occurrenceCoverage
+      ) {
+        failures.push(
+          violation(
+            manifestPath,
+            `${label} occurrence contract omits a live source context.`,
+          ),
+        );
+      }
+      if (
+        !inheritedSurface &&
+        !importedSurface &&
+        !routeSurface &&
+        !callerSurface &&
+        !sameElementSurface &&
+        !occurrenceBound &&
+        !usagePaths.some((usagePath) =>
+          sourceUsesPair(
+            usageSources.get(usagePath) ?? "",
+            fgClass,
+            backgroundClass,
+            theme,
+          ),
+        ) &&
+        !sourceUsesPair(usage, fgClass, backgroundClass, theme)
+      ) {
         failures.push(
           violation(
             manifestPath,
@@ -297,34 +673,55 @@ export function validatePairManifest(pairs, readUsage, observedPairs) {
   return failures;
 }
 
-export function observedPairsInSources(sources, tokenNames) {
-  const foregrounds = new Set(
-    [...tokenNames].filter(
-      (token) =>
-        token === "white" ||
-        token === "foreground" ||
-        token.endsWith("-foreground"),
-    ),
-  );
+export function observedPairsInSources(
+  sources,
+  tokenNames,
+  sourcePaths = [],
+  translucentBackgroundTokens = new Set(),
+) {
+  const foregrounds = new Set([...tokenNames]);
   const backgroundTokens = new Set(tokenNames);
   const observed = new Set();
-  for (const source of sources) {
-    for (const classText of classLiteralGroups(source)) {
+  observed.pairDetails = new Map();
+  observed.pairUses = new Map();
+  observed.unsupportedForegrounds = [];
+  for (const [sourceIndex, source] of sources.entries()) {
+    for (const classText of classNameLiteralGroups(source)) {
       const classes = classText.split(/\s+/).map(parseClassToken);
       const textNames = classes
-        .map((parsed) => ({
-          ...parsed,
-          name: parsed.utility.match(/^text-([a-z0-9-]+)$/)?.[1],
-          darkScoped: parsed.variants.includes("dark"),
-        }))
-        .filter(({ name }) => name && foregrounds.has(name));
+        .map((parsed) => {
+          const foreground = parseForegroundUtility(parsed, foregrounds);
+          if (foreground?.unsupported) {
+            observed.unsupportedForegrounds.push({
+              className: parsed.className,
+              usage: sourcePaths[sourceIndex],
+            });
+            return undefined;
+          }
+          return foreground
+            ? {
+                ...parsed,
+                ...foreground,
+                darkScoped: parsed.variants.includes("dark"),
+              }
+            : undefined;
+        })
+        .filter(Boolean);
       const backgroundEntries = classes
         .map((parsed) => ({
           ...parsed,
           name: parsed.utility.match(/^bg-([a-z0-9-]+)(?:\/\d+)?$/)?.[1],
           darkScoped: parsed.variants.includes("dark"),
         }))
-        .filter(({ name }) => name && backgroundTokens.has(name));
+        .filter(
+          ({ name, className }) =>
+            name &&
+            backgroundTokens.has(name) &&
+            !isTranslucentBackgroundUtility(
+              className,
+              translucentBackgroundTokens,
+            ),
+        );
       const groups = new Map();
       for (const entry of backgroundEntries) {
         const modifiers = entry.variants.filter(
@@ -340,7 +737,19 @@ export function observedPairsInSources(sources, tokenNames) {
           (variant) => variant !== "dark",
         );
         for (const group of groups.values()) {
+          if (
+            group.modifiers.includes("before") ||
+            group.modifiers.includes("after")
+          ) {
+            continue;
+          }
           const state = new Set([...foregroundModifiers, ...group.modifiers]);
+          if (
+            foregroundModifiers.includes("data-indeterminate") &&
+            group.modifiers.includes("data-checked")
+          ) {
+            continue;
+          }
           const applicableBackgroundGroups = [...groups.values()].filter(
             (candidate) =>
               candidate.modifiers.every((modifier) => state.has(modifier)),
@@ -386,9 +795,24 @@ export function observedPairsInSources(sources, tokenNames) {
               (entry) => entry.darkScoped === darkOverride,
             );
             for (const entry of activeEntries) {
-              observed.add(
-                `--color-${foreground.name}|--color-${entry.name}|${entry.className}|${theme}`,
+              const key = contrastPairKey(
+                `--color-${foreground.name}`,
+                `--color-${entry.name}`,
+                entry.className,
+                theme,
+                foreground.className,
               );
+              observed.add(key);
+              const usages = observed.pairUses.get(key) ?? new Set();
+              usages.add(sourcePaths[sourceIndex]);
+              observed.pairUses.set(key, usages);
+              if (!observed.pairDetails.has(key)) {
+                observed.pairDetails.set(key, {
+                  usage: sourcePaths[sourceIndex],
+                  foregroundClass: foreground.className,
+                  backgroundClass: entry.className,
+                });
+              }
             }
           }
         }
@@ -396,6 +820,2243 @@ export function observedPairsInSources(sources, tokenNames) {
     }
   }
   return observed;
+}
+
+export function observeInheritedForegroundSurfaces(sourcePaths, tokenNames) {
+  const parser = new API({ cwd: repoRoot });
+  const globalCss = requireFromWeb("node:fs").readFileSync(
+    path.join(repoRoot, "apps/web/src/index.css"),
+    "utf8",
+  );
+  const themeSource = requireFromWeb("node:fs").readFileSync(
+    path.join(repoRoot, "packages/ui/src/styles/theme.css"),
+    "utf8",
+  );
+  const translucentBackgroundTokens = new Set(
+    [...themeSource.matchAll(/--([a-z0-9-]+)\s*:\s*--alpha\(/gu)].map(
+      (match) => match[1],
+    ),
+  );
+  function opaqueBackground(background) {
+    return isOpaqueBackgroundUtility(
+      background.className ?? background.utility,
+      translucentBackgroundTokens,
+    );
+  }
+  const cssBackgroundByClass = new Map();
+  for (const rule of globalCss.matchAll(
+    /\.([A-Za-z_][\w-]*)\s*\{([^{}]*)\}/gu,
+  )) {
+    const token = rule[2].match(
+      /\bbackground(?:-color)?\s*:\s*var\(--([a-z0-9-]+)\)/u,
+    )?.[1];
+    if (token && tokenNames.has(token))
+      cssBackgroundByClass.set(rule[1], token);
+  }
+  const absolutePaths = sourcePaths.map((sourcePath) =>
+    path.join(repoRoot, sourcePath),
+  );
+  const snapshot = parser.updateSnapshot({ openFiles: absolutePaths });
+  const pairs = new Set();
+  const uses = new Set();
+  const pairDetails = new Map();
+  const unresolved = new Map();
+  const importedUses = new Set();
+  const routeUses = new Set();
+  const callerUses = new Set();
+  const directOccurrenceUses = new Set();
+  const alphaSurfaceUses = new Map();
+  const sourceFilesByPath = new Map();
+  const importsByPath = new Map();
+
+  function classTokens(node, sourceFile) {
+    if (!node) return [];
+    const attributes = ts.isJsxElement(node)
+      ? node.openingElement.attributes
+      : ts.isJsxSelfClosingElement(node)
+        ? node.attributes
+        : undefined;
+    if (!attributes) return [];
+    const tokens = attributes.properties
+      .filter(
+        (attribute) =>
+          ts.isJsxAttribute(attribute) &&
+          attribute.name.getText(sourceFile) === "className",
+      )
+      .flatMap((attribute) =>
+        classNameLiteralGroups(attribute.getText(sourceFile)).flatMap((group) =>
+          group.split(/\s+/u).filter(Boolean).map(parseClassToken),
+        ),
+      );
+    return [
+      ...new Map(tokens.map((token) => [token.className, token])).values(),
+    ];
+  }
+  function paintedBackgrounds(node, sourceFile) {
+    const utility = classTokens(node, sourceFile).filter((entry) =>
+      /^bg-[a-z0-9-]+(?:\/\d+)?$/u.test(entry.utility),
+    );
+    if (!node || (!ts.isJsxElement(node) && !ts.isJsxSelfClosingElement(node)))
+      return utility;
+    const attributes = ts.isJsxElement(node)
+      ? node.openingElement.attributes
+      : node.attributes;
+    const classAttribute = attributes.properties.find(
+      (attribute) =>
+        ts.isJsxAttribute(attribute) &&
+        attribute.name.getText(sourceFile) === "className",
+    );
+    const source = classAttribute?.getText(sourceFile) ?? "";
+    for (const [className, token] of cssBackgroundByClass) {
+      if (
+        new RegExp(
+          `(?:^|[^A-Za-z0-9_-])${className}(?:$|[^A-Za-z0-9_-])`,
+          "u",
+        ).test(source)
+      ) {
+        utility.push({
+          className: `bg-${token}`,
+          variants: [],
+          utility: `bg-${token}`,
+          cssClass: className,
+        });
+      }
+    }
+    return utility;
+  }
+  function paintedBackgroundOptions(node, sourceFile) {
+    if (!node || (!ts.isJsxElement(node) && !ts.isJsxSelfClosingElement(node)))
+      return [];
+    const attributes = ts.isJsxElement(node)
+      ? node.openingElement.attributes
+      : node.attributes;
+    const classAttribute = attributes.properties.find(
+      (attribute) =>
+        ts.isJsxAttribute(attribute) &&
+        attribute.name.getText(sourceFile) === "className",
+    );
+    if (!classAttribute) return [];
+    const classSource = classAttribute.getText(sourceFile);
+    const options = new Map();
+    let hasUnpainted = false;
+    for (const group of classNameLiteralGroups(classSource)) {
+      const backgrounds = group
+        .split(/\s+/u)
+        .filter(Boolean)
+        .map(parseClassToken)
+        .filter((entry) => {
+          const name = entry.utility.match(/^bg-([a-z0-9-]+)(?:\/\d+)?$/u)?.[1];
+          return name && tokenNames.has(name);
+        });
+      for (const [className, token] of cssBackgroundByClass) {
+        if (
+          new RegExp(
+            `(?:^|[^A-Za-z0-9_-])${className}(?:$|[^A-Za-z0-9_-])`,
+            "u",
+          ).test(group)
+        )
+          backgrounds.push({
+            className: `bg-${token}`,
+            variants: [],
+            utility: `bg-${token}`,
+          });
+      }
+      if (backgrounds.length === 0) {
+        hasUnpainted = true;
+        continue;
+      }
+      if (
+        backgrounds.every((background) =>
+          background.variants.some(
+            (variant) => variant !== "dark" && variant !== "light",
+          ),
+        )
+      )
+        hasUnpainted = true;
+      const groups = new Map();
+      for (const background of backgrounds) {
+        const state = background.variants
+          .filter((variant) => variant !== "dark" && variant !== "light")
+          .join(":");
+        const groupOptions = groups.get(state) ?? [];
+        const theme = background.variants.includes("dark")
+          ? "dark"
+          : background.variants.includes("light")
+            ? "light"
+            : undefined;
+        if (groupOptions.some((option) => option.theme === theme))
+          return undefined;
+        groupOptions.push({ ...background, theme });
+        groups.set(state, groupOptions);
+      }
+      for (const groupOptions of groups.values()) {
+        const hasDark = groupOptions.some((option) => option.theme === "dark");
+        for (const option of groupOptions) {
+          const themes = option.theme
+            ? [option.theme]
+            : hasDark
+              ? ["light"]
+              : ["light", "dark"];
+          options.set(option.className, { ...option, themes });
+        }
+      }
+    }
+    const result = [...options.values()];
+    result.hasUnpainted = hasUnpainted;
+    return result;
+  }
+  const wrapperSurfaceCache = new Map();
+  const wrapperSurfaceActive = new Set();
+  const uiExportCache = new Map();
+  const localExportCache = new Map();
+  function sourceModulePath(relative) {
+    const candidates = [
+      relative,
+      `${relative}.tsx`,
+      `${relative}.ts`,
+      `${relative}.jsx`,
+      `${relative}.js`,
+      path.join(relative, "index.tsx"),
+      path.join(relative, "index.ts"),
+      path.join(relative, "index.jsx"),
+      path.join(relative, "index.js"),
+    ];
+    for (const candidate of candidates) {
+      try {
+        if (
+          requireFromWeb("node:fs")
+            .statSync(path.join(repoRoot, candidate))
+            .isFile()
+        ) {
+          return candidate;
+        }
+      } catch {
+        // Continue with the next source extension.
+      }
+    }
+    return `${relative}.tsx`;
+  }
+  function resolveUiExport(exportName) {
+    if (!uiExportCache.size) {
+      const index = requireFromWeb("node:fs").readFileSync(
+        path.join(repoRoot, "packages/ui/src/index.ts"),
+        "utf8",
+      );
+      for (const block of index.matchAll(
+        /export\s*\{([\s\S]*?)\}\s*from\s*["']\.\/components\/([^"']+)["']/gu,
+      )) {
+        const file = `packages/ui/src/components/${block[2]}.tsx`;
+        for (const part of block[1].split(",")) {
+          const names = part.trim().split(/\s+as\s+/u);
+          if (names.length === 1)
+            uiExportCache.set(names[0], { file, symbol: names[0] });
+          else uiExportCache.set(names[1], { file, symbol: names[0] });
+        }
+      }
+    }
+    return uiExportCache.get(exportName);
+  }
+  function resolveLocalExport(target) {
+    const key = `${target.file}|${target.symbol}`;
+    if (localExportCache.has(key)) return localExportCache.get(key);
+    let source;
+    try {
+      source = requireFromWeb("node:fs").readFileSync(
+        path.join(repoRoot, target.file),
+        "utf8",
+      );
+    } catch {
+      localExportCache.set(key, target);
+      return target;
+    }
+    let resolved = target;
+    const visited = new Set([target.symbol]);
+    for (let depth = 0; depth < 8; depth += 1) {
+      let nextSymbol;
+      for (const block of source.matchAll(/export\s*\{([\s\S]*?)\}/gu)) {
+        for (const entry of block[1].split(",")) {
+          const [original, exported] = entry.trim().split(/\s+as\s+/u);
+          if ((exported ?? original) === resolved.symbol && original) {
+            nextSymbol = original;
+            break;
+          }
+        }
+        if (nextSymbol) break;
+      }
+      if (!nextSymbol || visited.has(nextSymbol)) break;
+      visited.add(nextSymbol);
+      resolved = { ...target, symbol: nextSymbol };
+    }
+    localExportCache.set(key, resolved);
+    return resolved;
+  }
+  function importedComponents(sourcePath) {
+    const source = requireFromWeb("node:fs").readFileSync(
+      path.join(repoRoot, sourcePath),
+      "utf8",
+    );
+    const imported = new Map();
+    for (const match of source.matchAll(
+      /(?:function|const)\s+([A-Z][A-Za-z0-9_]*)\s*(?:=\s*)?(?:\(|<|=)/gu,
+    )) {
+      imported.set(match[1], { file: sourcePath, symbol: match[1] });
+    }
+    for (const declaration of source.matchAll(
+      /import\s+\{([\s\S]*?)\}\s+from\s*["']([^"']+)["']/gu,
+    )) {
+      const moduleName = declaration[2];
+      for (const entry of declaration[1].split(",")) {
+        const [original, local] = entry.trim().split(/\s+as\s+/u);
+        if (!original) continue;
+        if (moduleName === "@taskdesk/ui") {
+          const target = resolveUiExport(original);
+          if (target) imported.set(local ?? original, target);
+        } else if (moduleName.startsWith(".")) {
+          const relative = path.resolve(
+            path.dirname(path.join(repoRoot, sourcePath)),
+            moduleName,
+          );
+          imported.set(local ?? original, {
+            file: sourceModulePath(path.relative(repoRoot, relative)),
+            symbol: original,
+          });
+        } else if (moduleName.startsWith("@/")) {
+          const relative = path.join("apps/web/src", moduleName.slice(2));
+          imported.set(local ?? original, {
+            file: sourceModulePath(relative),
+            symbol: original,
+          });
+        }
+      }
+    }
+    for (const declaration of source.matchAll(
+      /import\s+([A-Za-z_$][\w$]*)(?:\s*,\s*\{[\s\S]*?\})?\s+from\s*["']([^"']+)["']/gu,
+    )) {
+      const localName = declaration[1];
+      const moduleName = declaration[2];
+      if (localName === "type") continue;
+      if (moduleName.startsWith(".")) {
+        const relative = path.resolve(
+          path.dirname(path.join(repoRoot, sourcePath)),
+          moduleName,
+        );
+        imported.set(localName, {
+          file: sourceModulePath(path.relative(repoRoot, relative)),
+          symbol: "default",
+        });
+      } else if (moduleName.startsWith("@/")) {
+        const relative = path.join("apps/web/src", moduleName.slice(2));
+        imported.set(localName, {
+          file: sourceModulePath(relative),
+          symbol: "default",
+        });
+      }
+    }
+    for (const lazy of source.matchAll(
+      /(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*lazy\(\s*(?:([A-Za-z_$][\w$]*)|(?:\(\s*\)\s*=>\s*import\(\s*["']([^"']+)["']\s*\)\s*,?))\s*\)/gu,
+    )) {
+      let target;
+      if (lazy[3]) {
+        const moduleName = lazy[3];
+        const relative = moduleName.startsWith("@/")
+          ? path.join("apps/web/src", moduleName.slice(2))
+          : moduleName.startsWith(".")
+            ? path.relative(
+                repoRoot,
+                path.resolve(
+                  path.dirname(path.join(repoRoot, sourcePath)),
+                  moduleName,
+                ),
+              )
+            : undefined;
+        if (relative)
+          target = { file: sourceModulePath(relative), symbol: "default" };
+      } else if (lazy[2]) {
+        const loader = imported.get(lazy[2]);
+        if (loader) {
+          const loaderSource = requireFromWeb("node:fs").readFileSync(
+            path.join(repoRoot, loader.file),
+            "utf8",
+          );
+          const dynamicPath = loaderSource.match(
+            /import\(\s*["']([^"']+)["']\s*\)/u,
+          )?.[1];
+          if (dynamicPath) {
+            const relative = dynamicPath.startsWith("@/")
+              ? path.join("apps/web/src", dynamicPath.slice(2))
+              : dynamicPath.startsWith(".")
+                ? path.relative(
+                    repoRoot,
+                    path.resolve(
+                      path.dirname(path.join(repoRoot, loader.file)),
+                      dynamicPath,
+                    ),
+                  )
+                : undefined;
+            if (relative)
+              target = { file: sourceModulePath(relative), symbol: "default" };
+          }
+        }
+      }
+      if (target?.file) imported.set(lazy[1], target);
+    }
+    for (const [localName, target] of imported)
+      imported.set(localName, resolveLocalExport(target));
+    return imported;
+  }
+  function wrapperSurface(target) {
+    const normalized = resolveLocalExport(target);
+    if (normalized.symbol !== target.symbol) return wrapperSurface(normalized);
+    const key = `${target.file}|${target.symbol}`;
+    if (wrapperSurfaceCache.has(key)) return wrapperSurfaceCache.get(key);
+    if (wrapperSurfaceActive.has(key)) return undefined;
+    wrapperSurfaceActive.add(key);
+    const absolute = path.join(repoRoot, target.file);
+    let source = "";
+    try {
+      source = requireFromWeb("node:fs").readFileSync(absolute, "utf8");
+    } catch {
+      wrapperSurfaceCache.set(key, undefined);
+      wrapperSurfaceActive.delete(key);
+      return undefined;
+    }
+    const defaultName =
+      target.symbol === "default"
+        ? source
+            .match(
+              /export\s+default\s+(?:function|class)\s+([A-Za-z_$][\w$]*)|export\s+default\s+([A-Za-z_$][\w$]*)/u,
+            )
+            ?.slice(1)
+            .find(Boolean)
+        : target.symbol;
+    if (!defaultName) {
+      wrapperSurfaceCache.set(key, undefined);
+      wrapperSurfaceActive.delete(key);
+      return undefined;
+    }
+    const start = source.search(
+      new RegExp(`(?:function|const)\\s+${defaultName}\\b`, "u"),
+    );
+    if (start < 0) {
+      wrapperSurfaceCache.set(key, undefined);
+      return undefined;
+    }
+    const tail = source.slice(start);
+    const next = tail.search(/\n(?:function|const)\s+[A-Z][A-Za-z0-9_]*\b/u);
+    const body = next > 0 ? tail.slice(0, next) : tail;
+    const surfaces = new Set();
+    for (const match of body.matchAll(
+      /(?:^|[\s"'`])(bg-[a-z0-9-]+)(?=\s|["'`])/gu,
+    )) {
+      if (tokenNames.has(match[1].slice(3))) surfaces.add(match[1]);
+    }
+    let result = surfaces.size === 1 ? [...surfaces][0] : undefined;
+    if (surfaces.size === 0) {
+      const rootTag = body.match(
+        /\breturn\s*(?:\(\s*)?<([A-Z][A-Za-z0-9_]*)/u,
+      )?.[1];
+      const rootTarget =
+        rootTag && importedComponents(target.file).get(rootTag);
+      if (rootTarget) result = wrapperSurface(rootTarget);
+    }
+    wrapperSurfaceCache.set(key, result);
+    wrapperSurfaceActive.delete(key);
+    return result;
+  }
+  function callerWrapperSurface(ancestor, sourceFile, target) {
+    if (
+      target.file === "packages/ui/src/components/button.tsx" &&
+      target.symbol === "Button"
+    ) {
+      const variants = {
+        default: "bg-primary",
+        destructive: "bg-destructive-strong",
+        "destructive-outline": "bg-popover",
+        outline: "bg-popover",
+        secondary: "bg-secondary",
+      };
+      const attributes = ts.isJsxElement(ancestor)
+        ? ancestor.openingElement.attributes
+        : ancestor.attributes;
+      const variantAttribute = attributes.properties.find(
+        (attribute) =>
+          ts.isJsxAttribute(attribute) &&
+          attribute.name.getText(sourceFile) === "variant",
+      );
+      const variant =
+        variantAttribute?.initializer &&
+        ts.isStringLiteral(variantAttribute.initializer)
+          ? variantAttribute.initializer.text
+          : variantAttribute
+            ? undefined
+            : "default";
+      const surface = variant ? variants[variant] : undefined;
+      const implementation = requireFromWeb("node:fs").readFileSync(
+        path.join(repoRoot, target.file),
+        "utf8",
+      );
+      return surface && implementation.includes(surface) ? surface : undefined;
+    }
+    return wrapperSurface(target);
+  }
+
+  try {
+    for (const [index, sourcePath] of absolutePaths.entries()) {
+      const sourceFile = snapshot
+        .getDefaultProjectForFile(sourcePath)
+        .program.getSourceFile(sourcePath);
+      if (!sourceFile) {
+        unresolved.set(`${sourcePaths[index]}::<source-file-unavailable>`, {
+          id: `${sourcePaths[index]}::<source-file-unavailable>`,
+          usage: sourcePaths[index],
+          component: "<unavailable>",
+          ancestry: [],
+          foregroundClass: "<source-file-unavailable>",
+        });
+        continue;
+      }
+      sourceFilesByPath.set(sourcePaths[index], sourceFile);
+      const componentImports = importedComponents(sourcePaths[index]);
+      importsByPath.set(sourcePaths[index], componentImports);
+      const nonTextComponents = new Set();
+      for (const declaration of sourceFile.statements) {
+        if (
+          !ts.isImportDeclaration(declaration) ||
+          declaration.moduleSpecifier.getText(sourceFile) !== '"lucide-react"'
+        ) {
+          continue;
+        }
+        const bindings = declaration.importClause?.namedBindings;
+        if (!bindings || !ts.isNamedImports(bindings)) continue;
+        for (const element of bindings.elements)
+          nonTextComponents.add(element.name.text);
+      }
+      const occurrenceCounters = new Map();
+
+      function contrastCategory(node, foreground) {
+        const tag = ts.isJsxElement(node)
+          ? node.openingElement.tagName.getText(sourceFile)
+          : node.tagName.getText(sourceFile);
+        return nonTextComponents.has(tag) ||
+          new Set([
+            "svg",
+            "circle",
+            "ellipse",
+            "line",
+            "path",
+            "polygon",
+            "polyline",
+            "rect",
+          ]).has(tag.toLowerCase()) ||
+          foreground.variants.some((variant) => variant.includes("_svg"))
+          ? "non-text"
+          : "body";
+      }
+
+      function returnedObjectProperty(node) {
+        const parents = [];
+        for (let current = node.parent; current; current = current.parent) {
+          parents.push(current);
+          if (ts.isFunctionDeclaration(current) || ts.isArrowFunction(current))
+            break;
+        }
+        if (!parents.some(ts.isReturnStatement)) return undefined;
+        const property = parents.find(ts.isPropertyAssignment);
+        const functionNode = parents.find(
+          (parent) =>
+            ts.isFunctionDeclaration(parent) || ts.isArrowFunction(parent),
+        );
+        if (!property || !functionNode) return undefined;
+        const propertyName = property.name.getText(sourceFile);
+        const functionName = ts.isFunctionDeclaration(functionNode)
+          ? functionNode.name?.text
+          : ts.isVariableDeclaration(functionNode.parent)
+            ? functionNode.parent.name.getText(sourceFile)
+            : undefined;
+        return functionName ? { functionName, propertyName } : undefined;
+      }
+
+      function enclosingFunctionName(node) {
+        for (let current = node.parent; current; current = current.parent) {
+          if (ts.isFunctionDeclaration(current) && current.name)
+            return current.name.text;
+          if (
+            (ts.isArrowFunction(current) || ts.isFunctionExpression(current)) &&
+            ts.isVariableDeclaration(current.parent) &&
+            ts.isIdentifier(current.parent.name)
+          )
+            return current.parent.name.text;
+        }
+        return undefined;
+      }
+
+      function visit(
+        node,
+        jsxAncestors,
+        componentName,
+        jsxPath,
+        siblingIndex = 0,
+      ) {
+        let owningComponent = componentName;
+        let currentJsxPath = jsxPath;
+        if (
+          ts.isFunctionDeclaration(node) &&
+          node.name &&
+          node.parent === sourceFile
+        ) {
+          owningComponent = node.name.text;
+          currentJsxPath = [];
+        } else if (
+          ts.isVariableDeclaration(node) &&
+          node.parent?.parent?.parent === sourceFile &&
+          node.name &&
+          node.initializer &&
+          ts.isArrowFunction(node.initializer)
+        ) {
+          owningComponent = node.name.getText(sourceFile);
+          currentJsxPath = [];
+        }
+        const isElement =
+          ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node);
+        const ancestors = isElement ? [...jsxAncestors, node] : jsxAncestors;
+        let elementPath = currentJsxPath;
+        if (isElement) {
+          const tag = ts.isJsxElement(node)
+            ? node.openingElement.tagName.getText(sourceFile)
+            : node.tagName.getText(sourceFile);
+          elementPath = [...currentJsxPath, `${tag}[${siblingIndex}]`];
+          const localClasses = classTokens(node, sourceFile);
+          const foregrounds = localClasses.filter((entry) => {
+            const foreground = parseForegroundUtility(entry, tokenNames);
+            return foreground && !foreground.unsupported;
+          });
+          const localBackgrounds = paintedBackgrounds(node, sourceFile).filter(
+            (entry) => {
+              const name = entry.utility.match(
+                /^bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+              )?.[1];
+              return name && tokenNames.has(name);
+            },
+          );
+          if (foregrounds.length > 0 && localBackgrounds.length > 0) {
+            const attributes = ts.isJsxElement(node)
+              ? node.openingElement.attributes
+              : node.attributes;
+            const classGroups = classNameLiteralGroups(
+              attributes.properties
+                .filter(
+                  (attribute) =>
+                    ts.isJsxAttribute(attribute) &&
+                    attribute.name.getText(sourceFile) === "className",
+                )
+                .map((attribute) => attribute.getText(sourceFile))
+                .join(" "),
+            );
+            for (const foreground of foregrounds) {
+              const occurrenceBase = `${sourcePaths[index]}::${owningComponent ?? "<module>"}::${elementPath.join("/")}::${foreground.className}`;
+              const occurrenceOrdinal =
+                occurrenceCounters.get(occurrenceBase) ?? 0;
+              occurrenceCounters.set(occurrenceBase, occurrenceOrdinal + 1);
+              const occurrenceId = `${occurrenceBase}#${occurrenceOrdinal}`;
+              const foregroundToken = `--color-${parseForegroundUtility(foreground, tokenNames).name}`;
+              for (const classGroup of classGroups) {
+                const direct = observedPairsInSources(
+                  [`<div className=${JSON.stringify(classGroup)} />`],
+                  tokenNames,
+                );
+                for (const key of direct) {
+                  if (!key.startsWith(`${foregroundToken}|`)) continue;
+                  const keyTail = key.split("|").slice(4);
+                  const keyForeground = keyTail.find((part) =>
+                    part.startsWith("text-"),
+                  );
+                  const foregroundUtility = parseClassToken(
+                    foreground.className,
+                  ).utility;
+                  const tokenUtility = foregroundToken.replace(
+                    /^--color-/u,
+                    "text-",
+                  );
+                  if (
+                    (foregroundUtility === tokenUtility && keyForeground) ||
+                    (foregroundUtility !== tokenUtility &&
+                      keyForeground !== foregroundUtility)
+                  )
+                    continue;
+                  const backgroundClass = key.split("|")[2];
+                  const backgroundToken = backgroundClass.match(
+                    /(?:^|:)bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+                  )?.[1];
+                  if (
+                    backgroundToken &&
+                    isTranslucentBackgroundUtility(
+                      backgroundClass,
+                      translucentBackgroundTokens,
+                    )
+                  ) {
+                    const alphaUse = alphaSurfaceUses.get(occurrenceId) ?? {
+                      occurrence: {
+                        id: occurrenceId,
+                        usage: sourcePaths[index],
+                        component: owningComponent ?? "<module>",
+                        ancestry: elementPath,
+                        foregroundClass: foreground.className,
+                        category: contrastCategory(node, foreground),
+                      },
+                      node,
+                      ancestors: jsxAncestors,
+                      path: elementPath,
+                      owner: owningComponent ?? "<module>",
+                      surfaces: [],
+                    };
+                    alphaUse.surfaces.push({
+                      className: backgroundClass,
+                      theme: key.split("|")[3],
+                    });
+                    alphaSurfaceUses.set(occurrenceId, alphaUse);
+                    continue;
+                  }
+                  directOccurrenceUses.add(`${occurrenceId}|${key}`);
+                  const contexts = uses.occurrences?.get(key) ?? [];
+                  const context = {
+                    id: occurrenceId,
+                    usage: sourcePaths[index],
+                    component: owningComponent ?? "<module>",
+                    ancestry: elementPath,
+                    foregroundClass: foreground.className,
+                    backgroundClass: key.split("|")[2],
+                    surfaceContext: "same-element",
+                    category: contrastCategory(node, foreground),
+                    chain: [
+                      `${sourcePaths[index]}:${owningComponent ?? "<module>"}`,
+                      `jsx:${elementPath.join("/")}>${key.split("|")[2]}`,
+                    ],
+                  };
+                  if (
+                    !contexts.some(
+                      (item) =>
+                        item.id === context.id &&
+                        item.surfaceContext === context.surfaceContext &&
+                        item.backgroundClass === context.backgroundClass &&
+                        JSON.stringify(item.chain) ===
+                          JSON.stringify(context.chain),
+                    )
+                  )
+                    contexts.push(context);
+                  const occurrenceUses = uses.occurrences ?? new Map();
+                  occurrenceUses.set(key, contexts);
+                  uses.occurrences = occurrenceUses;
+                }
+              }
+            }
+          }
+          if (foregrounds.length > 0 && localBackgrounds.length === 0) {
+            let inheritedBackgrounds = [];
+            let importedSurface;
+            let importedSurfaceComponent;
+            let importedSurfaceTarget;
+            const importedTranslucentLayers = [];
+            const translucentAncestors = [];
+            for (const ancestor of [...jsxAncestors].reverse()) {
+              let ancestorBackgrounds = paintedBackgrounds(
+                ancestor,
+                sourceFile,
+              ).filter((entry) => {
+                const name = entry.utility.match(
+                  /^bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+                )?.[1];
+                return name && tokenNames.has(name);
+              });
+              if (ancestorBackgrounds.length === 0) {
+                const tag = ts.isJsxElement(ancestor)
+                  ? ancestor.openingElement.tagName.getText(sourceFile)
+                  : ancestor.tagName.getText(sourceFile);
+                const target = componentImports.get(tag);
+                const surface = target
+                  ? callerWrapperSurface(ancestor, sourceFile, target)
+                  : undefined;
+                if (!surface) continue;
+                ancestorBackgrounds = [
+                  {
+                    ...parseClassToken(surface),
+                    sourceChain: `${tag}->${target.file}:${target.symbol}`,
+                    sourceWrapper: tag,
+                    wrapper: tag,
+                    wrapperTarget: target,
+                  },
+                ];
+              }
+              const supportedBackgrounds = ancestorBackgrounds.filter(
+                (entry) =>
+                  !entry.variants.some(
+                    (variant) =>
+                      variant !== "dark" &&
+                      variant !== "hover" &&
+                      variant !== "active",
+                  ) &&
+                  !entry.variants.includes("before") &&
+                  !entry.variants.includes("after"),
+              );
+              if (supportedBackgrounds.length !== ancestorBackgrounds.length) {
+                inheritedBackgrounds = [];
+                break;
+              }
+              const opaque = supportedBackgrounds.filter((entry) =>
+                isOpaqueBackgroundUtility(
+                  entry.className,
+                  translucentBackgroundTokens,
+                ),
+              );
+              const translucent = supportedBackgrounds.filter((entry) =>
+                isTranslucentBackgroundUtility(
+                  entry.className,
+                  translucentBackgroundTokens,
+                ),
+              );
+              const pendingAlphaCount = translucentAncestors.length;
+              if (opaque.length > 0) {
+                if (pendingAlphaCount > 0) {
+                  const nearestAlpha = translucentAncestors[0];
+                  inheritedBackgrounds.push({
+                    ...nearestAlpha,
+                    backdropLayers: [
+                      ...translucentAncestors
+                        .slice(1)
+                        .map((layer) => layer.className),
+                      ...opaque.map((layer) => layer.className),
+                    ],
+                    ...(nearestAlpha.sourceChain
+                      ? { sourceChain: nearestAlpha.sourceChain }
+                      : {}),
+                  });
+                } else {
+                  inheritedBackgrounds.push(...opaque);
+                }
+              }
+              if (translucent.length > 0)
+                translucentAncestors.push(...translucent);
+              if (opaque.length > 0 && translucent.length === 0) break;
+              if (translucent.length > 0) continue;
+              if (opaque.length === 0) break;
+            }
+            if (inheritedBackgrounds.length === 0) {
+              for (const ancestor of [...jsxAncestors].reverse()) {
+                const tag = ts.isJsxElement(ancestor)
+                  ? ancestor.openingElement.tagName.getText(sourceFile)
+                  : ancestor.tagName.getText(sourceFile);
+                const target = componentImports.get(tag);
+                if (!target) continue;
+                const callerBackground = classTokens(ancestor, sourceFile).some(
+                  (entry) => /^bg-[a-z0-9-]+/u.test(entry.utility),
+                );
+                if (callerBackground) break;
+                const surface = callerWrapperSurface(
+                  ancestor,
+                  sourceFile,
+                  target,
+                );
+                if (!surface) continue;
+                if (
+                  isTranslucentBackgroundUtility(
+                    surface,
+                    translucentBackgroundTokens,
+                  )
+                ) {
+                  importedTranslucentLayers.push(surface);
+                  continue;
+                }
+                importedSurface = surface;
+                importedSurfaceComponent = tag;
+                importedSurfaceTarget = target;
+                break;
+              }
+            }
+            for (const foreground of foregrounds) {
+              const fgName = parseForegroundUtility(
+                foreground,
+                tokenNames,
+              )?.name;
+              if (!fgName) continue;
+              const occurrenceBase = `${sourcePaths[index]}::${owningComponent ?? "<module>"}::${elementPath.join("/")}::${foreground.className}`;
+              const occurrenceOrdinal =
+                occurrenceCounters.get(occurrenceBase) ?? 0;
+              occurrenceCounters.set(occurrenceBase, occurrenceOrdinal + 1);
+              const occurrenceId = `${occurrenceBase}#${occurrenceOrdinal}`;
+              const returnProperty = returnedObjectProperty(node);
+              const context = {
+                id: occurrenceId,
+                usage: sourcePaths[index],
+                component: owningComponent ?? "<module>",
+                ancestry: elementPath,
+                foregroundClass: foreground.className,
+                category: contrastCategory(node, foreground),
+                ...(returnProperty ? { returnProperty } : {}),
+              };
+              if (inheritedBackgrounds.length === 0 && !importedSurface) {
+                unresolved.set(occurrenceId, {
+                  ...context,
+                  sourceNode: node,
+                  sourceAncestors: jsxAncestors,
+                  sourceOwner: owningComponent ?? "<module>",
+                  pendingAlphaSurfaces: translucentAncestors.map((entry) => ({
+                    className: entry.className,
+                    themes: ["light", "dark"],
+                    chain: [
+                      `${sourcePaths[index]}:${owningComponent ?? "<module>"}`,
+                      `jsx:${elementPath.join("/")}>${entry.className}`,
+                    ],
+                  })),
+                  localFunctionName: enclosingFunctionName(node),
+                });
+                continue;
+              }
+              const surfaces = importedSurface
+                ? [
+                    {
+                      className: importedSurface,
+                      wrapper: importedSurfaceComponent,
+                      backdropLayers: importedTranslucentLayers,
+                    },
+                  ]
+                : inheritedBackgrounds;
+              for (const background of surfaces) {
+                const bgName = background.className.match(
+                  /(?:^|:)bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+                )?.[1];
+                if (!bgName) continue;
+                for (const theme of ["light", "dark"]) {
+                  const key = contrastPairKey(
+                    `--color-${fgName}`,
+                    `--color-${bgName}`,
+                    background.className,
+                    theme,
+                    foreground.className,
+                    background.backdropLayers ?? [],
+                  );
+                  pairs.add(key);
+                  uses.add(`${sourcePaths[index]}|${key}`);
+                  if (background.wrapper)
+                    importedUses.add(`${sourcePaths[index]}|${key}`);
+                  const occurrenceUses = uses.occurrences ?? new Map();
+                  const contexts = occurrenceUses.get(key) ?? [];
+                  const inheritedContext = {
+                    ...context,
+                    backgroundClass: background.className,
+                    backdropLayers: background.backdropLayers ?? [],
+                    surfaceContext: background.wrapper
+                      ? "imported-opaque-wrapper"
+                      : "nearest-opaque-ancestor",
+                    chain: background.wrapper
+                      ? [
+                          `${sourcePaths[index]}:${owningComponent ?? "<module>"}`,
+                          `jsx:${elementPath.join("/")}`,
+                          `${background.wrapper}->${(background.wrapperTarget ?? importedSurfaceTarget).file}:${(background.wrapperTarget ?? importedSurfaceTarget).symbol}>${background.className}`,
+                        ]
+                      : background.cssClass
+                        ? [
+                            `${sourcePaths[index]}:${owningComponent ?? "<module>"}`,
+                            `jsx:${elementPath.join("/")}`,
+                            `css:.${background.cssClass}>background:var(--${bgName})`,
+                          ]
+                        : background.sourceChain
+                          ? [
+                              `${sourcePaths[index]}:${owningComponent ?? "<module>"}`,
+                              `jsx:${elementPath.join("/")}`,
+                              background.sourceChain,
+                              ...(background.backdropLayers ?? []),
+                            ]
+                          : (context.chain ?? [
+                              `${sourcePaths[index]}:${owningComponent ?? "<module>"}`,
+                              `jsx:${elementPath.join("/")}>${background.className}`,
+                            ]),
+                    ...(background.wrapper
+                      ? { wrapper: background.wrapper }
+                      : {}),
+                  };
+                  if (
+                    !contexts.some(
+                      (item) =>
+                        item.id === inheritedContext.id &&
+                        item.surfaceContext ===
+                          inheritedContext.surfaceContext &&
+                        item.backgroundClass ===
+                          inheritedContext.backgroundClass &&
+                        JSON.stringify(item.chain) ===
+                          JSON.stringify(inheritedContext.chain),
+                    )
+                  )
+                    contexts.push(inheritedContext);
+                  occurrenceUses.set(key, contexts);
+                  uses.occurrences = occurrenceUses;
+                  if (!pairDetails.has(key)) {
+                    pairDetails.set(key, {
+                      usage: sourcePaths[index],
+                      foregroundClass: foreground.className,
+                      backgroundClass: background.className,
+                    });
+                  }
+                }
+              }
+            }
+          }
+        }
+        const siblingOrdinals = new Map();
+        node.forEachChild((child) => {
+          let ordinal = 0;
+          if (ts.isJsxElement(child) || ts.isJsxSelfClosingElement(child)) {
+            const tag = ts.isJsxElement(child)
+              ? child.openingElement.tagName.getText(sourceFile)
+              : child.tagName.getText(sourceFile);
+            ordinal = siblingOrdinals.get(tag) ?? 0;
+            siblingOrdinals.set(tag, ordinal + 1);
+          }
+          visit(child, ancestors, owningComponent, elementPath, ordinal);
+        });
+      }
+
+      visit(sourceFile, [], undefined, []);
+    }
+
+    const routeDefinitions = [...sourceFilesByPath.entries()]
+      .filter(([sourcePath]) => sourcePath.startsWith("apps/web/src/routes/"))
+      .flatMap(([sourcePath, sourceFile]) => {
+        const routePath = sourceFile
+          .getText()
+          .match(/createFileRoute\(\s*["']([^"']+)["']/u)?.[1];
+        return routePath ? [{ sourcePath, sourceFile, routePath }] : [];
+      });
+    const routeSurfaceCache = new Map();
+    function outletSurfaces(sourceFile) {
+      const found = new Set();
+      const unsupported = { value: false };
+      function inspect(node, ancestors) {
+        const isElement =
+          ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node);
+        const nextAncestors = isElement ? [...ancestors, node] : ancestors;
+        if (isElement) {
+          const tag = ts.isJsxElement(node)
+            ? node.openingElement.tagName.getText(sourceFile)
+            : node.tagName.getText(sourceFile);
+          if (tag === "Outlet") {
+            let nearest = [];
+            for (const ancestor of [...ancestors].reverse()) {
+              const backgrounds = classTokens(ancestor, sourceFile).filter(
+                (entry) => {
+                  const name = entry.utility.match(
+                    /^bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+                  )?.[1];
+                  return name && tokenNames.has(name);
+                },
+              );
+              if (backgrounds.length === 0) continue;
+              if (backgrounds.some((entry) => entry.variants.length > 0)) {
+                unsupported.value = true;
+                break;
+              }
+              nearest = backgrounds;
+              break;
+            }
+            if (nearest.length !== 1) unsupported.value = true;
+            else found.add(nearest[0].className);
+          }
+        }
+        node.forEachChild((child) => inspect(child, nextAncestors));
+      }
+      inspect(sourceFile, []);
+      return unsupported.value || found.size !== 1 ? undefined : [...found][0];
+    }
+    function routeLayoutSurface(sourcePath, active = new Set()) {
+      if (routeSurfaceCache.has(sourcePath))
+        return routeSurfaceCache.get(sourcePath);
+      if (active.has(sourcePath)) return undefined;
+      const route = routeDefinitions.find(
+        (candidate) => candidate.sourcePath === sourcePath,
+      );
+      if (!route) return undefined;
+      const nextActive = new Set(active).add(sourcePath);
+      const parent = routeDefinitions
+        .filter(
+          (candidate) =>
+            candidate.sourcePath !== sourcePath &&
+            candidate.routePath.length < route.routePath.length &&
+            route.routePath.startsWith(`${candidate.routePath}/`),
+        )
+        .sort(
+          (left, right) => right.routePath.length - left.routePath.length,
+        )[0];
+      if (parent) {
+        const surface = outletSurfaces(parent.sourceFile);
+        if (surface) {
+          const result = {
+            backgroundClass: surface,
+            chain: [
+              `${route.sourcePath}:${route.routePath}`,
+              `${parent.sourcePath}:Outlet>${surface}`,
+            ],
+          };
+          routeSurfaceCache.set(sourcePath, result);
+          return result;
+        }
+        const inherited = routeLayoutSurface(parent.sourcePath, nextActive);
+        if (inherited) {
+          const result = {
+            ...inherited,
+            chain: [
+              `${route.sourcePath}:${route.routePath}`,
+              ...inherited.chain,
+            ],
+          };
+          routeSurfaceCache.set(sourcePath, result);
+          return result;
+        }
+      }
+      const indexCss = requireFromWeb("node:fs").readFileSync(
+        path.join(repoRoot, "apps/web/src/index.css"),
+        "utf8",
+      );
+      const bodyBackground = indexCss.match(/body\s*\{([^}]*)\}/su)?.[1];
+      const bodyPaintsBackground =
+        bodyBackground &&
+        (/(?:^|\s)bg-background(?:\s|$)/u.test(bodyBackground) ||
+          /@apply\s+[^;}]*\bbg-background\b/u.test(bodyBackground));
+      if (bodyPaintsBackground) {
+        const result = {
+          backgroundClass: "bg-background",
+          chain: [
+            `${route.sourcePath}:${route.routePath}`,
+            "apps/web/src/index.css:body>@apply bg-background",
+          ],
+        };
+        routeSurfaceCache.set(sourcePath, result);
+        return result;
+      }
+      routeSurfaceCache.set(sourcePath, undefined);
+      return undefined;
+    }
+
+    const componentCallSitesCache = new Map();
+    function componentCallSites(target) {
+      const targetKey = `${target.file}|${target.symbol}`;
+      if (componentCallSitesCache.has(targetKey))
+        return componentCallSitesCache.get(targetKey);
+      const calls = [];
+      function matchesTarget(imported) {
+        if (imported?.file !== target.file) return false;
+        if (imported.symbol === target.symbol) return true;
+        if (imported.symbol !== "default") return false;
+        const source = requireFromWeb("node:fs").readFileSync(
+          path.join(repoRoot, target.file),
+          "utf8",
+        );
+        const defaultName = source
+          .match(
+            /export\s+default\s+(?:function|class)\s+([A-Za-z_$][\w$]*)|export\s+default\s+([A-Za-z_$][\w$]*)/u,
+          )
+          ?.slice(1)
+          .find(Boolean);
+        const exportedName =
+          source.match(
+            /export\s+default\s+memo\(\s*([A-Za-z_$][\w$]*)\s*\)/u,
+          )?.[1] ?? defaultName;
+        return exportedName === target.symbol;
+      }
+      for (const [callerPath, sourceFile] of sourceFilesByPath) {
+        if (/\.(?:test|spec)\.(?:tsx|jsx)$/u.test(callerPath)) continue;
+        const imports = importsByPath.get(callerPath) ?? new Map();
+        function find(
+          node,
+          ancestors,
+          componentName,
+          jsxPath,
+          siblingIndex = 0,
+        ) {
+          let owner = componentName;
+          let currentPath = jsxPath;
+          if (
+            ts.isFunctionDeclaration(node) &&
+            node.name &&
+            node.parent === sourceFile
+          ) {
+            owner = node.name.text;
+            currentPath = [];
+          } else if (
+            ts.isVariableDeclaration(node) &&
+            node.name &&
+            node.initializer &&
+            ts.isArrowFunction(node.initializer)
+          ) {
+            owner = node.name.getText(sourceFile);
+            currentPath = [];
+          }
+          const isElement =
+            ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node);
+          const nextAncestors = isElement ? [...ancestors, node] : ancestors;
+          let nextPath = currentPath;
+          if (isElement) {
+            const tag = ts.isJsxElement(node)
+              ? node.openingElement.tagName.getText(sourceFile)
+              : node.tagName.getText(sourceFile);
+            nextPath = [...currentPath, `${tag}[${siblingIndex}]`];
+            const imported = imports.get(tag);
+            const attributes = ts.isJsxElement(node)
+              ? node.openingElement.attributes
+              : node.attributes;
+            const explicitlyUnstyled = attributes.properties.some(
+              (attribute) =>
+                ts.isJsxAttribute(attribute) &&
+                attribute.name.getText(sourceFile) === "unstyled" &&
+                (!attribute.initializer ||
+                  attribute.initializer.kind === ts.SyntaxKind.TrueKeyword),
+            );
+            if (matchesTarget(imported) && !explicitlyUnstyled) {
+              calls.push({
+                node,
+                ancestors,
+                callerPath,
+                owner,
+                path: nextPath,
+                target,
+              });
+            }
+          }
+          const calledImport =
+            ts.isCallExpression(node) &&
+            ts.isIdentifier(node.expression) &&
+            matchesTarget(imports.get(node.expression.text));
+          const calledLocalFunction =
+            callerPath === target.file &&
+            ts.isCallExpression(node) &&
+            ts.isIdentifier(node.expression) &&
+            node.expression.text === target.symbol;
+          if ((calledImport || calledLocalFunction) && ancestors.length > 0) {
+            calls.push({
+              node,
+              ancestors,
+              callerPath,
+              owner,
+              path: nextPath,
+              target,
+            });
+          }
+          const siblingCounts = new Map();
+          node.forEachChild((child) => {
+            let ordinal = 0;
+            if (ts.isJsxElement(child) || ts.isJsxSelfClosingElement(child)) {
+              const tag = ts.isJsxElement(child)
+                ? child.openingElement.tagName.getText(sourceFile)
+                : child.tagName.getText(sourceFile);
+              ordinal = siblingCounts.get(tag) ?? 0;
+              siblingCounts.set(tag, ordinal + 1);
+            }
+            find(child, nextAncestors, owner, nextPath, ordinal);
+          });
+        }
+        find(sourceFile, [], undefined, []);
+      }
+      componentCallSitesCache.set(targetKey, calls);
+      return calls;
+    }
+    function returnedPropertyCallSites(sourcePath, returnProperty) {
+      const sourceFile = sourceFilesByPath.get(sourcePath);
+      if (!sourceFile) return [];
+      const calls = [];
+      function find(node, ancestors, owner, jsxPath, siblingIndex = 0) {
+        let currentOwner = owner;
+        let currentPath = jsxPath;
+        if (ts.isFunctionDeclaration(node) && node.name)
+          currentOwner = node.name.text;
+        else if (
+          ts.isVariableDeclaration(node) &&
+          node.name &&
+          node.initializer &&
+          (ts.isArrowFunction(node.initializer) ||
+            ts.isFunctionExpression(node.initializer))
+        )
+          currentOwner = node.name.getText(sourceFile);
+        const isElement =
+          ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node);
+        const nextAncestors = isElement ? [...ancestors, node] : ancestors;
+        if (isElement) {
+          const tag = ts.isJsxElement(node)
+            ? node.openingElement.tagName.getText(sourceFile)
+            : node.tagName.getText(sourceFile);
+          currentPath = [...jsxPath, `${tag}[${siblingIndex}]`];
+        }
+        if (
+          ts.isCallExpression(node) &&
+          ts.isIdentifier(node.expression) &&
+          node.expression.text === returnProperty.functionName &&
+          ts.isPropertyAccessExpression(node.parent) &&
+          node.parent.expression === node &&
+          node.parent.name.text === returnProperty.propertyName
+        ) {
+          calls.push({
+            node,
+            ancestors,
+            callerPath: sourcePath,
+            owner: currentOwner,
+            path: currentPath,
+          });
+        }
+        const siblingCounts = new Map();
+        node.forEachChild((child) => {
+          let ordinal = 0;
+          if (ts.isJsxElement(child) || ts.isJsxSelfClosingElement(child)) {
+            const tag = ts.isJsxElement(child)
+              ? child.openingElement.tagName.getText(sourceFile)
+              : child.tagName.getText(sourceFile);
+            ordinal = siblingCounts.get(tag) ?? 0;
+            siblingCounts.set(tag, ordinal + 1);
+          }
+          find(child, nextAncestors, currentOwner, currentPath, ordinal);
+        });
+      }
+      find(sourceFile, [], undefined, []);
+      return calls;
+    }
+    function localFunctionCallSites(sourcePath, functionName, lexicalOwner) {
+      const sourceFile = sourceFilesByPath.get(sourcePath);
+      if (!sourceFile || !functionName) return [];
+      const calls = [];
+      function find(node, ancestors, owner, jsxPath, siblingIndex = 0) {
+        let currentOwner = owner;
+        let currentPath = jsxPath;
+        if (ts.isFunctionDeclaration(node) && node.name)
+          currentOwner = node.name.text;
+        else if (
+          (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) &&
+          ts.isVariableDeclaration(node.parent) &&
+          ts.isIdentifier(node.parent.name)
+        )
+          currentOwner = node.parent.name.text;
+        const isElement =
+          ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node);
+        const nextAncestors = isElement ? [...ancestors, node] : ancestors;
+        if (isElement) {
+          const tag = ts.isJsxElement(node)
+            ? node.openingElement.tagName.getText(sourceFile)
+            : node.tagName.getText(sourceFile);
+          currentPath = [...jsxPath, `${tag}[${siblingIndex}]`];
+        }
+        if (
+          ts.isCallExpression(node) &&
+          ts.isIdentifier(node.expression) &&
+          node.expression.text === functionName &&
+          currentOwner === lexicalOwner &&
+          ancestors.length > 0
+        ) {
+          calls.push({
+            node,
+            ancestors,
+            callerPath: sourcePath,
+            owner: currentOwner,
+            path: currentPath,
+          });
+        }
+        const siblingCounts = new Map();
+        node.forEachChild((child) => {
+          let ordinal = 0;
+          if (ts.isJsxElement(child) || ts.isJsxSelfClosingElement(child)) {
+            const tag = ts.isJsxElement(child)
+              ? child.openingElement.tagName.getText(sourceFile)
+              : child.tagName.getText(sourceFile);
+            ordinal = siblingCounts.get(tag) ?? 0;
+            siblingCounts.set(tag, ordinal + 1);
+          }
+          find(child, nextAncestors, currentOwner, currentPath, ordinal);
+        });
+      }
+      find(sourceFile, [], undefined, []);
+      return calls;
+    }
+    function functionReturnBackgroundOptions(target) {
+      const sourceFile = sourceFilesByPath.get(target.file);
+      if (!sourceFile) return undefined;
+      const declarationName = target.symbol;
+      const roots = [];
+      function findDeclaration(node) {
+        const namedFunction =
+          ts.isFunctionDeclaration(node) && node.name?.text === declarationName;
+        const variableFunction =
+          ts.isVariableDeclaration(node) &&
+          ts.isIdentifier(node.name) &&
+          node.name.text === declarationName &&
+          node.initializer &&
+          (ts.isArrowFunction(node.initializer) ||
+            ts.isFunctionExpression(node.initializer));
+        if (namedFunction || variableFunction) {
+          const body = namedFunction ? node.body : node.initializer.body;
+          if (body) {
+            function findReturns(current) {
+              if (ts.isReturnStatement(current) && current.expression) {
+                let expression = current.expression;
+                while (ts.isParenthesizedExpression(expression))
+                  expression = expression.expression;
+                if (
+                  ts.isJsxElement(expression) ||
+                  ts.isJsxSelfClosingElement(expression)
+                )
+                  roots.push(expression);
+                else if (
+                  ts.isConditionalExpression(expression) ||
+                  ts.isBinaryExpression(expression)
+                ) {
+                  function findJsx(value) {
+                    if (
+                      ts.isJsxElement(value) ||
+                      ts.isJsxSelfClosingElement(value)
+                    )
+                      roots.push(value);
+                    else value.forEachChild(findJsx);
+                  }
+                  findJsx(expression);
+                }
+              }
+              if (
+                current !== body &&
+                (ts.isFunctionDeclaration(current) ||
+                  ts.isFunctionExpression(current) ||
+                  ts.isArrowFunction(current))
+              )
+                return;
+              current.forEachChild(findReturns);
+            }
+            if (ts.isBlock(body)) findReturns(body);
+            else if (ts.isJsxElement(body) || ts.isJsxSelfClosingElement(body))
+              roots.push(body);
+          }
+          return;
+        }
+        node.forEachChild(findDeclaration);
+      }
+      findDeclaration(sourceFile);
+      const options = [];
+      for (const root of roots) {
+        const backgrounds = paintedBackgroundOptions(root, sourceFile);
+        if (backgrounds === undefined) return undefined;
+        options.push(...backgrounds);
+      }
+      return options;
+    }
+    function callerSurface(call, active = new Set(), depth = 0, pending = []) {
+      if (depth > 8) return undefined;
+      const callerFile = sourceFilesByPath.get(call.callerPath);
+      if (!callerFile) return undefined;
+      if (ts.isJsxElement(call.node) || ts.isJsxSelfClosingElement(call.node)) {
+        const ownBackgrounds = classTokens(call.node, callerFile).filter(
+          (entry) => {
+            const name = entry.utility.match(
+              /^bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+            )?.[1];
+            return name && tokenNames.has(name);
+          },
+        );
+        if (ownBackgrounds.length === 1 && call.target) {
+          const targetSource = requireFromWeb("node:fs").readFileSync(
+            path.join(repoRoot, call.target.file),
+            "utf8",
+          );
+          const targetName =
+            call.target.symbol === "default"
+              ? targetSource.match(
+                  /export\s+default\s+([A-Za-z_$][\w$]*)/u,
+                )?.[1]
+              : call.target.symbol;
+          const rootBinding =
+            targetName &&
+            /<[A-Za-z_$][\w.$]*\b[^>]*className=\{[^}]*\bclassName\b[^}]*\}/u.test(
+              targetSource.slice(
+                targetSource.search(
+                  new RegExp(`(?:function|const)\\s+${targetName}\\b`, "u"),
+                ),
+              ),
+            );
+          if (
+            rootBinding &&
+            ownBackgrounds[0].variants.length === 0 &&
+            opaqueBackground(ownBackgrounds[0])
+          ) {
+            return [
+              {
+                className: ownBackgrounds[0].className,
+                backdropClass: ownBackgrounds[0].className,
+                chain: [
+                  `${call.callerPath}:${call.owner ?? "<module>"}`,
+                  `jsx:${call.path.join("/")}:root-className`,
+                ],
+              },
+            ];
+          }
+        }
+      }
+      const imports = importsByPath.get(call.callerPath) ?? new Map();
+      let pendingOptions = pending;
+      const resolvedOptions = [];
+      let unpaintedPossible = false;
+      if (ts.isCallExpression(call.node) && call.target) {
+        const returned = functionReturnBackgroundOptions(call.target);
+        if (returned === undefined) return undefined;
+        if (returned.length > 0) {
+          const opaque = returned.filter(opaqueBackground);
+          const translucent = returned.filter(
+            (background) => !opaqueBackground(background),
+          );
+          if (pendingOptions.length > 0 && opaque.length > 0) {
+            pendingOptions = pendingOptions.flatMap((foregroundSurface) =>
+              opaque.flatMap((backdrop) => {
+                const themes = foregroundSurface.themes.filter((theme) =>
+                  backdrop.themes.includes(theme),
+                );
+                return themes.length === 0
+                  ? []
+                  : [
+                      {
+                        className: foregroundSurface.className,
+                        backdropClass: backdrop.className,
+                        themes,
+                        chain: [
+                          ...foregroundSurface.chain,
+                          `function-return:${call.target.file}:${call.target.symbol}`,
+                          `opaque-backdrop:${backdrop.className}`,
+                        ],
+                      },
+                    ];
+              }),
+            );
+          } else if (pendingOptions.length === 0 && opaque.length > 0) {
+            pendingOptions = opaque.map((background) => ({
+              className: background.className,
+              backdropClass: background.className,
+              themes: background.themes,
+              chain: [
+                `function-return:${call.target.file}:${call.target.symbol}`,
+              ],
+            }));
+          }
+          if (translucent.length > 0) {
+            if (pendingOptions.length > 0) return undefined;
+            pendingOptions = translucent.map((background) => ({
+              className: background.className,
+              themes: background.themes,
+              chain: [
+                `function-return:${call.target.file}:${call.target.symbol}`,
+              ],
+            }));
+          }
+        }
+      }
+      for (const ancestor of [...call.ancestors].reverse()) {
+        const backgrounds = paintedBackgroundOptions(ancestor, callerFile);
+        if (backgrounds === undefined) return undefined;
+        if (backgrounds.length > 0) {
+          unpaintedPossible ||= backgrounds.hasUnpainted === true;
+          const chain = [
+            `${call.callerPath}:${call.owner ?? "<module>"}`,
+            `jsx:${call.path.join("/")}`,
+          ];
+          const opaque = [];
+          const translucent = [];
+          const hadPending = pendingOptions.length > 0;
+          for (const background of backgrounds) {
+            (opaqueBackground(background) ? opaque : translucent).push(
+              background,
+            );
+          }
+          if (pendingOptions.length > 0 && opaque.length > 0) {
+            resolvedOptions.push(
+              ...pendingOptions.flatMap((foregroundSurface) =>
+                opaque.flatMap((backdrop) => {
+                  const themes = foregroundSurface.themes.filter((theme) =>
+                    backdrop.themes.includes(theme),
+                  );
+                  return themes.length === 0
+                    ? []
+                    : [
+                        {
+                          className: foregroundSurface.className,
+                          backdropClass: backdrop.className,
+                          backdropLayers: [
+                            ...(foregroundSurface.backdropLayers ?? []),
+                            backdrop.className,
+                          ],
+                          themes,
+                          chain: [
+                            ...foregroundSurface.chain,
+                            ...chain,
+                            `opaque-backdrop:${backdrop.className}`,
+                          ],
+                        },
+                      ];
+                }),
+              ),
+            );
+            pendingOptions = [];
+          }
+          if (!hadPending && opaque.length > 0) {
+            resolvedOptions.push(
+              ...opaque.map((background) => ({
+                className: background.className,
+                backdropClass: background.className,
+                backdropLayers: [],
+                themes: background.themes,
+                chain,
+              })),
+            );
+          }
+          if (translucent.length > 0) {
+            pendingOptions =
+              pendingOptions.length > 0
+                ? pendingOptions.flatMap((foregroundSurface) =>
+                    translucent.flatMap((background) => {
+                      const themes = foregroundSurface.themes.filter((theme) =>
+                        background.themes.includes(theme),
+                      );
+                      return themes.length === 0
+                        ? []
+                        : [
+                            {
+                              ...foregroundSurface,
+                              backdropLayers: [
+                                ...(foregroundSurface.backdropLayers ?? []),
+                                background.className,
+                              ],
+                              themes,
+                              chain: [...foregroundSurface.chain, ...chain],
+                            },
+                          ];
+                    }),
+                  )
+                : translucent.map((background) => ({
+                    className: background.className,
+                    backdropLayers: [],
+                    themes: background.themes,
+                    chain,
+                  }));
+          }
+          if (backgrounds.hasUnpainted !== true && pendingOptions.length === 0)
+            return resolvedOptions.length > 0 ? resolvedOptions : undefined;
+        }
+        const tag = ts.isJsxElement(ancestor)
+          ? ancestor.openingElement.tagName.getText(callerFile)
+          : ancestor.tagName.getText(callerFile);
+        const imported = imports.get(tag);
+        if (!imported) continue;
+        const callerBackground = classTokens(ancestor, callerFile).some(
+          (entry) => /^bg-[a-z0-9-]+/u.test(entry.utility),
+        );
+        if (callerBackground && !unpaintedPossible) return undefined;
+        const surface = callerWrapperSurface(ancestor, callerFile, imported);
+        if (surface) {
+          const chain = [
+            `${call.callerPath}:${call.owner ?? "<module>"}`,
+            `${tag}->${imported.file}:${imported.symbol}`,
+          ];
+          if (
+            isTranslucentBackgroundUtility(surface, translucentBackgroundTokens)
+          ) {
+            const themes = parseClassToken(surface).variants.includes("dark")
+              ? ["dark"]
+              : ["light", "dark"];
+            pendingOptions =
+              pendingOptions.length > 0
+                ? pendingOptions.map((pendingSurface) => ({
+                    ...pendingSurface,
+                    backdropLayers: [
+                      ...(pendingSurface.backdropLayers ?? []),
+                      surface,
+                    ],
+                    themes: pendingSurface.themes.filter((theme) =>
+                      themes.includes(theme),
+                    ),
+                    chain: [...pendingSurface.chain, ...chain],
+                  }))
+                : [
+                    {
+                      className: surface,
+                      backdropLayers: [],
+                      themes,
+                      chain,
+                    },
+                  ];
+            continue;
+          }
+          const wrapperOptions =
+            pendingOptions.length > 0
+              ? pendingOptions.map((pendingSurface) => ({
+                  ...pendingSurface,
+                  backdropClass: surface,
+                  backdropLayers: [
+                    ...(pendingSurface.backdropLayers ?? []),
+                    surface,
+                  ],
+                  themes: pendingSurface.themes,
+                  chain: [...pendingSurface.chain, ...chain],
+                }))
+              : [
+                  {
+                    className: surface,
+                    backdropClass: surface,
+                    backdropLayers: [],
+                    themes: ["light", "dark"],
+                    chain,
+                  },
+                ];
+          return [...resolvedOptions, ...wrapperOptions];
+        }
+      }
+      const routeSurface = routeLayoutSurface(call.callerPath);
+      if (routeSurface)
+        return [
+          ...resolvedOptions,
+          ...(pendingOptions.length > 0
+            ? pendingOptions.map((surface) => ({
+                ...surface,
+                backdropClass: routeSurface.backgroundClass,
+                backdropLayers: [
+                  ...(surface.backdropLayers ?? []),
+                  routeSurface.backgroundClass,
+                ],
+                themes: surface.themes,
+                chain: [...surface.chain, ...routeSurface.chain],
+              }))
+            : []),
+          ...(unpaintedPossible
+            ? [
+                {
+                  className: routeSurface.backgroundClass,
+                  backdropClass: routeSurface.backgroundClass,
+                  backdropLayers: [routeSurface.backgroundClass],
+                  themes: ["light", "dark"],
+                  chain: routeSurface.chain,
+                },
+              ]
+            : []),
+        ];
+      if (
+        call.callerPath.startsWith("packages/ui/src/components/") &&
+        call.callerPath.endsWith(".stories.tsx")
+      ) {
+        const preview = requireFromWeb("node:fs").readFileSync(
+          path.join(repoRoot, "packages/ui/.storybook/preview.ts"),
+          "utf8",
+        );
+        const styles = requireFromWeb("node:fs").readFileSync(
+          path.join(repoRoot, "packages/ui/.storybook/tailwind.css"),
+          "utf8",
+        );
+        const bodySurface = storybookBodySurfaceContract(
+          call.callerPath,
+          preview,
+          styles,
+        );
+        if (bodySurface)
+          return [
+            {
+              className: pendingOptions[0]?.className ?? bodySurface.className,
+              backdropClass: bodySurface.className,
+              backdropLayers: [
+                ...(pendingOptions[0]?.backdropLayers ?? []),
+                bodySurface.className,
+              ],
+              themes: pendingOptions[0]?.themes ?? ["light", "dark"],
+              chain: [
+                `${call.callerPath}:${call.owner ?? "<story>"}`,
+                ...(pendingOptions[0]?.chain ?? []),
+                ...bodySurface.chain.slice(1),
+              ],
+            },
+          ];
+      }
+      if (!call.owner || call.owner === "<module>") return undefined;
+      const key = `${call.callerPath}|${call.owner}`;
+      if (active.has(key)) return undefined;
+      const nextActive = new Set(active).add(key);
+      const nested = componentCallSites({
+        file: call.callerPath,
+        symbol: call.owner,
+      });
+      const options = nested.map((item) =>
+        callerSurface(item, nextActive, depth + 1, pendingOptions),
+      );
+      if (options.length === 0 || options.some((item) => !item))
+        return undefined;
+      return options.flat();
+    }
+    for (const [occurrenceId, occurrence] of [...unresolved.entries()]) {
+      if (
+        !occurrence.localFunctionName ||
+        occurrence.pendingAlphaSurfaces?.length === 0
+      )
+        continue;
+      const calls = localFunctionCallSites(
+        occurrence.usage,
+        occurrence.localFunctionName,
+        occurrence.sourceOwner,
+      );
+      if (calls.length === 0) continue;
+      const alphaUse = {
+        occurrence,
+        node: occurrence.sourceNode,
+        ancestors: occurrence.sourceAncestors,
+        path: occurrence.ancestry,
+        owner: occurrence.sourceOwner,
+        surfaces: occurrence.pendingAlphaSurfaces.flatMap((surface) =>
+          (surface.themes ?? []).map((theme) => ({
+            className: surface.className,
+            theme,
+            chain: surface.chain,
+          })),
+        ),
+        helperCalls: calls,
+      };
+      alphaSurfaceUses.set(occurrenceId, alphaUse);
+      unresolved.delete(occurrenceId);
+    }
+    for (const [occurrenceId, alphaUse] of alphaSurfaceUses) {
+      const { occurrence } = alphaUse;
+      const options = [];
+      for (const surface of alphaUse.surfaces) {
+        if (!classAvailableInTheme(surface.className, surface.theme)) continue;
+        let resolved = alphaUse.helperCalls
+          ? alphaUse.helperCalls
+              .map((call) =>
+                callerSurface(call, new Set(), 0, [
+                  {
+                    className: surface.className,
+                    themes: [surface.theme],
+                    backdropLayers: [],
+                    chain: surface.chain,
+                  },
+                ]),
+              )
+              .some((item) => !item)
+            ? undefined
+            : alphaUse.helperCalls.flatMap((call) =>
+                callerSurface(call, new Set(), 0, [
+                  {
+                    className: surface.className,
+                    themes: [surface.theme],
+                    backdropLayers: [],
+                    chain: surface.chain,
+                  },
+                ]),
+              )
+          : callerSurface(
+              {
+                node: alphaUse.node,
+                ancestors: alphaUse.ancestors,
+                callerPath: occurrence.usage,
+                owner: alphaUse.owner,
+                path: alphaUse.path,
+              },
+              new Set(),
+              0,
+              [
+                {
+                  className: surface.className,
+                  themes: [surface.theme],
+                  backdropLayers: [],
+                  chain: [
+                    `${occurrence.usage}:${occurrence.component}`,
+                    `jsx:${alphaUse.path.join("/")}>${surface.className}`,
+                  ],
+                },
+              ],
+            );
+        if (!resolved && occurrence.component !== "<module>") {
+          const calls = componentCallSites({
+            file: occurrence.usage,
+            symbol: occurrence.component,
+          });
+          if (calls.length > 0) {
+            const callerOptions = calls.map((call) =>
+              callerSurface(call, new Set(), 0, [
+                {
+                  className: surface.className,
+                  themes: [surface.theme],
+                  backdropLayers: [],
+                  chain: [
+                    `${occurrence.usage}:${occurrence.component}`,
+                    `jsx:${alphaUse.path.join("/")}>${surface.className}`,
+                  ],
+                },
+              ]),
+            );
+            resolved = callerOptions.some((item) => !item)
+              ? undefined
+              : callerOptions.flat();
+          }
+        }
+        if (!resolved) continue;
+        options.push(...resolved);
+      }
+      if (options.length === 0) {
+        unresolved.set(occurrenceId, occurrence);
+        continue;
+      }
+      const foreground = parseForegroundUtility(
+        parseClassToken(occurrence.foregroundClass),
+        tokenNames,
+      )?.name;
+      if (!foreground) continue;
+      for (const surface of options) {
+        const background = surface.className.match(
+          /(?:^|:)bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+        )?.[1];
+        if (!background) continue;
+        for (const theme of surface.themes ?? []) {
+          const key = contrastPairKey(
+            `--color-${foreground}`,
+            `--color-${background}`,
+            surface.className,
+            theme,
+            occurrence.foregroundClass,
+            surface.backdropLayers ?? [],
+          );
+          pairs.add(key);
+          uses.add(`${occurrence.usage}|${key}`);
+          callerUses.add(`${occurrenceId}|${key}`);
+          const contexts = uses.occurrences?.get(key) ?? [];
+          contexts.push({
+            ...occurrence,
+            backgroundClass: surface.className,
+            backdropClass: surface.backdropClass,
+            backdropLayers: surface.backdropLayers ?? [],
+            surfaceContext: "caller-chain",
+            chain: surface.chain,
+          });
+          const occurrenceUses = uses.occurrences ?? new Map();
+          occurrenceUses.set(key, contexts);
+          uses.occurrences = occurrenceUses;
+        }
+      }
+      unresolved.delete(occurrenceId);
+    }
+    for (const [sourcePath, occurrences] of [...unresolved.entries()]) {
+      if (!sourcePath.startsWith("apps/web/src/routes/")) continue;
+      const occurrence = occurrences;
+      const surface = routeLayoutSurface(occurrence.usage);
+      if (!surface) continue;
+      const parsedForeground = parseForegroundUtility(
+        parseClassToken(occurrence.foregroundClass),
+        tokenNames,
+      );
+      const fgName = parsedForeground?.name;
+      if (!fgName) continue;
+      const bgName = surface.backgroundClass.match(/^bg-([a-z0-9-]+)$/u)?.[1];
+      if (!bgName) continue;
+      for (const theme of ["light", "dark"]) {
+        const key = contrastPairKey(
+          `--color-${fgName}`,
+          `--color-${bgName}`,
+          surface.backgroundClass,
+          theme,
+          occurrence.foregroundClass,
+        );
+        pairs.add(key);
+        uses.add(`${occurrence.usage}|${key}`);
+        routeUses.add(`${occurrence.usage}|${key}`);
+        const contexts = uses.occurrences?.get(key) ?? [];
+        contexts.push({
+          ...occurrence,
+          backgroundClass: surface.backgroundClass,
+          chain: surface.chain,
+          surfaceContext: "route-layout-body",
+        });
+        const occurrenceUses = uses.occurrences ?? new Map();
+        occurrenceUses.set(key, contexts);
+        uses.occurrences = occurrenceUses;
+      }
+      unresolved.delete(sourcePath);
+    }
+    for (const [occurrenceId, occurrence] of [...unresolved.entries()]) {
+      const sourcePath = occurrence.usage;
+      if (
+        !sourcePath?.startsWith("packages/ui/src/components/") ||
+        !sourcePath.endsWith(".stories.tsx")
+      )
+        continue;
+      const preview = requireFromWeb("node:fs").readFileSync(
+        path.join(repoRoot, "packages/ui/.storybook/preview.ts"),
+        "utf8",
+      );
+      const styles = requireFromWeb("node:fs").readFileSync(
+        path.join(repoRoot, "packages/ui/.storybook/tailwind.css"),
+        "utf8",
+      );
+      const bodySurface = storybookBodySurfaceContract(
+        sourcePath,
+        preview,
+        styles,
+      );
+      const foreground = parseForegroundUtility(
+        parseClassToken(occurrence.foregroundClass),
+        tokenNames,
+      )?.name;
+      if (!bodySurface || !foreground) continue;
+      for (const theme of ["light", "dark"]) {
+        const key = contrastPairKey(
+          `--color-${foreground}`,
+          "--color-background",
+          "bg-background",
+          theme,
+          occurrence.foregroundClass,
+        );
+        pairs.add(key);
+        uses.add(`${sourcePath}|${key}`);
+        const contexts = uses.occurrences?.get(key) ?? [];
+        contexts.push({
+          ...occurrence,
+          backgroundClass: "bg-background",
+          surfaceContext: "storybook-body",
+          chain: [
+            `${sourcePath}:${occurrence.component}`,
+            `jsx:${occurrence.ancestry.join("/")}`,
+            ...bodySurface.chain.slice(1),
+          ],
+        });
+        const occurrenceUses = uses.occurrences ?? new Map();
+        occurrenceUses.set(key, contexts);
+        uses.occurrences = occurrenceUses;
+      }
+      unresolved.delete(occurrenceId);
+    }
+    for (const [occurrenceId, occurrence] of [...unresolved.entries()]) {
+      if (!occurrence.returnProperty) continue;
+      const calls = returnedPropertyCallSites(
+        occurrence.usage,
+        occurrence.returnProperty,
+      );
+      if (calls.length === 0) continue;
+      const surfaceOptions = calls.map((call) => callerSurface(call));
+      if (surfaceOptions.some((surface) => !surface)) continue;
+      const foreground = parseForegroundUtility(
+        parseClassToken(occurrence.foregroundClass),
+        tokenNames,
+      )?.name;
+      if (!foreground) continue;
+      for (const surface of surfaceOptions.flat()) {
+        const background = surface.className.match(
+          /(?:^|:)bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+        )?.[1];
+        if (!background) continue;
+        for (const theme of ["light", "dark"]) {
+          if (
+            !(surface.themes ?? ["light", "dark"]).includes(theme) ||
+            !classAvailableInTheme(surface.className, theme)
+          )
+            continue;
+          const key = contrastPairKey(
+            `--color-${foreground}`,
+            `--color-${background}`,
+            surface.className,
+            theme,
+            occurrence.foregroundClass,
+            surface.backdropLayers ?? [],
+          );
+          pairs.add(key);
+          uses.add(`${occurrence.usage}|${key}`);
+          callerUses.add(`${occurrenceId}|${key}`);
+          const contexts = uses.occurrences?.get(key) ?? [];
+          contexts.push({
+            ...occurrence,
+            backgroundClass: surface.className,
+            backdropClass: surface.backdropClass,
+            backdropLayers: surface.backdropLayers ?? [],
+            chain: [
+              `${occurrence.usage}:${occurrence.returnProperty.functionName}.${occurrence.returnProperty.propertyName}`,
+              ...surface.chain,
+            ],
+            surfaceContext: "function-return-property",
+          });
+          const occurrenceUses = uses.occurrences ?? new Map();
+          occurrenceUses.set(key, contexts);
+          uses.occurrences = occurrenceUses;
+        }
+      }
+      unresolved.delete(occurrenceId);
+    }
+    for (const [occurrenceId, occurrence] of [...unresolved.entries()]) {
+      if (
+        occurrence.usage !== "packages/ui/src/components/sidebar.tsx" ||
+        !["Sidebar", "SidebarMenuBadge"].includes(occurrence.component)
+      )
+        continue;
+      const target = { file: occurrence.usage, symbol: occurrence.component };
+      const calls = componentCallSites(target);
+      if (occurrence.component === "SidebarMenuBadge" && calls.length > 0)
+        continue;
+      if (
+        occurrence.component === "Sidebar" &&
+        calls.some((call) =>
+          classTokens(call.node, sourceFilesByPath.get(call.callerPath)).some(
+            (entry) => /^(?:text|bg)-[a-z0-9-]+/u.test(entry.utility),
+          ),
+        )
+      )
+        continue;
+      const source = requireFromWeb("node:fs").readFileSync(
+        path.join(repoRoot, occurrence.usage),
+        "utf8",
+      );
+      const surfaces = sidebarSurfaceContract(
+        occurrence,
+        source,
+        calls.length > 0,
+      );
+      const foreground = parseForegroundUtility(
+        parseClassToken(occurrence.foregroundClass),
+        tokenNames,
+      )?.name;
+      if (!surfaces || !foreground) continue;
+      for (const surface of surfaces) {
+        const background = surface.className.match(
+          /(?:^|:)bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+        )?.[1];
+        if (!background) continue;
+        for (const theme of ["light", "dark"]) {
+          if (
+            !(surface.themes ?? ["light", "dark"]).includes(theme) ||
+            !classAvailableInTheme(surface.className, theme)
+          )
+            continue;
+          const key = contrastPairKey(
+            `--color-${foreground}`,
+            `--color-${background}`,
+            surface.className,
+            theme,
+            occurrence.foregroundClass,
+            surface.backdropLayers ?? [],
+          );
+          pairs.add(key);
+          uses.add(`${occurrence.usage}|${key}`);
+          const contexts = uses.occurrences?.get(key) ?? [];
+          const contractContext = {
+            ...occurrence,
+            backgroundClass: surface.className,
+            backdropClass: surface.backdropClass,
+            backdropLayers: surface.backdropLayers ?? [],
+            surfaceContext: "component-surface-contract",
+            chain: surface.chain,
+          };
+          if (
+            !contexts.some(
+              (item) =>
+                item.id === contractContext.id &&
+                item.surfaceContext === contractContext.surfaceContext &&
+                item.backgroundClass === contractContext.backgroundClass &&
+                JSON.stringify(item.chain) ===
+                  JSON.stringify(contractContext.chain),
+            )
+          )
+            contexts.push(contractContext);
+          const occurrenceUses = uses.occurrences ?? new Map();
+          occurrenceUses.set(key, contexts);
+          uses.occurrences = occurrenceUses;
+        }
+      }
+      unresolved.delete(occurrenceId);
+    }
+    for (const [occurrenceId, occurrence] of [...unresolved.entries()]) {
+      if (!occurrence.component || occurrence.component.startsWith("<"))
+        continue;
+      const target = { file: occurrence.usage, symbol: occurrence.component };
+      const calls = componentCallSites(target);
+      if (calls.length === 0) continue;
+      const surfaceOptions = calls.map((call) => callerSurface(call));
+      if (surfaceOptions.some((surface) => !surface)) continue;
+      const foreground = parseForegroundUtility(
+        parseClassToken(occurrence.foregroundClass),
+        tokenNames,
+      )?.name;
+      if (!foreground) continue;
+      for (const surface of surfaceOptions.flat()) {
+        const background = surface.className.match(
+          /(?:^|:)bg-([a-z0-9-]+)(?:\/\d+)?$/u,
+        )?.[1];
+        if (!background) continue;
+        for (const theme of ["light", "dark"]) {
+          if (
+            !(surface.themes ?? ["light", "dark"]).includes(theme) ||
+            !classAvailableInTheme(surface.className, theme)
+          )
+            continue;
+          const pairKey = contrastPairKey(
+            `--color-${foreground}`,
+            `--color-${background}`,
+            surface.className,
+            theme,
+            occurrence.foregroundClass,
+            surface.backdropLayers ?? [],
+          );
+          pairs.add(pairKey);
+          uses.add(`${occurrence.usage}|${pairKey}`);
+          callerUses.add(`${occurrenceId}|${pairKey}`);
+          const occurrenceUses = uses.occurrences ?? new Map();
+          const contexts = occurrenceUses.get(pairKey) ?? [];
+          contexts.push({
+            ...occurrence,
+            backgroundClass: surface.className,
+            backdropClass: surface.backdropClass,
+            backdropLayers: surface.backdropLayers ?? [],
+            chain: surface.chain,
+            surfaceContext: "caller-chain",
+          });
+          occurrenceUses.set(pairKey, contexts);
+          uses.occurrences = occurrenceUses;
+        }
+      }
+      unresolved.delete(occurrenceId);
+    }
+  } finally {
+    snapshot.dispose();
+    parser.close();
+  }
+
+  for (const [key, contexts] of uses.occurrences ?? []) {
+    const unique = new Map();
+    for (const context of contexts) {
+      const binding = JSON.stringify([
+        context.usage,
+        context.id,
+        context.surfaceContext,
+        context.category,
+        context.chain ?? [],
+        context.backdropLayers ?? [],
+      ]);
+      unique.set(binding, context);
+    }
+    uses.occurrences.set(key, [...unique.values()]);
+  }
+
+  return {
+    pairs,
+    uses,
+    pairDetails,
+    unresolved,
+    importedUses,
+    routeUses,
+    callerUses,
+    directOccurrenceUses,
+  };
+}
+
+export async function collectContrastSourcePaths() {
+  const roots = ["apps/web/src", "packages/ui/src"];
+  const files = await Promise.all(
+    roots.map((root) =>
+      walk(
+        path.join(repoRoot, root),
+        (file) =>
+          (file.endsWith(".tsx") || file.endsWith(".jsx")) &&
+          !/\.(?:test|spec)\.(?:tsx|jsx)$/u.test(file),
+      ),
+    ),
+  );
+  return files
+    .flat()
+    .map((file) => path.relative(repoRoot, file))
+    .sort();
 }
 
 export function luminance(rgb) {
@@ -411,6 +3072,126 @@ export function contrastRatio(a, b) {
   return (high + 0.05) / (low + 0.05);
 }
 
+export function sidebarSurfaceContract(occurrence, source, hasCallers = false) {
+  if (occurrence.usage !== "packages/ui/src/components/sidebar.tsx")
+    return undefined;
+  const section = (name) => {
+    const start = source.search(new RegExp(`function ${name}\\b`, "u"));
+    if (start < 0) return "";
+    const next = source.slice(start + 1).search(/\nfunction [A-Z]/u);
+    return source.slice(start, next < 0 ? undefined : start + next + 1);
+  };
+  if (occurrence.component === "Sidebar") {
+    const implementation = section("Sidebar");
+    if (
+      occurrence.foregroundClass === "text-sidebar-foreground" &&
+      implementation.includes("text-sidebar-foreground") &&
+      implementation.includes("bg-sidebar")
+    ) {
+      return [
+        {
+          className: "bg-sidebar",
+          chain: [
+            `${occurrence.usage}:Sidebar`,
+            "component-owned:sidebar-inner.bg-sidebar",
+          ],
+        },
+      ];
+    }
+    return undefined;
+  }
+  if (occurrence.component !== "SidebarMenuBadge" || hasCallers)
+    return undefined;
+  const badge = section("SidebarMenuBadge");
+  if (!badge.includes(occurrence.foregroundClass)) return undefined;
+  if (occurrence.foregroundClass === "text-sidebar-foreground") {
+    const sidebar = section("Sidebar");
+    if (!sidebar.includes("bg-sidebar")) return undefined;
+    return [
+      {
+        className: "bg-sidebar",
+        chain: [
+          `${occurrence.usage}:SidebarMenuBadge`,
+          "component-contract:parent Sidebar > sidebar-inner.bg-sidebar",
+        ],
+      },
+    ];
+  }
+  const buttonStart = source.indexOf("const sidebarMenuButtonVariants = cva(");
+  const buttonEnd = source.indexOf("function SidebarMenuButton", buttonStart);
+  const button =
+    buttonStart >= 0 && buttonEnd > buttonStart
+      ? source.slice(buttonStart, buttonEnd)
+      : "";
+  if (
+    occurrence.foregroundClass ===
+      "peer-hover/menu-button:text-sidebar-accent-foreground" &&
+    badge.includes("peer-hover/menu-button:text-sidebar-accent-foreground") &&
+    button.includes("peer/menu-button") &&
+    button.includes("hover:bg-sidebar-accent")
+  ) {
+    return [
+      {
+        className: "bg-sidebar-accent",
+        backdropClass: "bg-sidebar",
+        backdropLayers: ["bg-sidebar"],
+        chain: [
+          `${occurrence.usage}:SidebarMenuBadge`,
+          "peer/menu-button:SidebarMenuButton.hover.bg-sidebar-accent",
+          "component-contract:Sidebar > sidebar-inner.bg-sidebar",
+        ],
+      },
+    ];
+  }
+  if (
+    occurrence.foregroundClass ===
+      "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground" &&
+    badge.includes(
+      "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground",
+    ) &&
+    button.includes("peer/menu-button") &&
+    button.includes("data-[active=true]:bg-sidebar-accent")
+  ) {
+    return [
+      {
+        className: "bg-sidebar-accent",
+        backdropClass: "bg-sidebar",
+        backdropLayers: ["bg-sidebar"],
+        chain: [
+          `${occurrence.usage}:SidebarMenuBadge`,
+          "peer/menu-button:SidebarMenuButton.data-active.bg-sidebar-accent",
+          "component-contract:Sidebar > sidebar-inner.bg-sidebar",
+        ],
+      },
+    ];
+  }
+  return undefined;
+}
+
+export function storybookBodySurfaceContract(
+  callerPath,
+  previewSource,
+  styleSource,
+) {
+  if (
+    !callerPath.startsWith("packages/ui/src/components/") ||
+    !callerPath.endsWith(".stories.tsx") ||
+    !previewSource.includes('import "./tailwind.css"') ||
+    !/#storybook-root\s*\{[^}]*background-color:\s*var\(--background\)/su.test(
+      styleSource,
+    )
+  )
+    return undefined;
+  return {
+    className: "bg-background",
+    chain: [
+      `${callerPath}:<story>`,
+      "packages/ui/.storybook/preview.ts:imports tailwind.css",
+      "packages/ui/.storybook/tailwind.css:#storybook-root.background-color:var(--background)",
+    ],
+  };
+}
+
 export function composite(fg, bg) {
   const alpha = fg[3] ?? 1;
   return [0, 1, 2].map((index) =>
@@ -421,8 +3202,12 @@ export function composite(fg, bg) {
 function parseColor(value) {
   const match = value.match(/^rgba?\(([^)]+)\)$/);
   if (!match) {
+    const number = "[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:e[+-]?\\d+)?";
     const srgb = value.match(
-      /^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\s*\)$/,
+      new RegExp(
+        `^color\\(srgb\\s+(${number})\\s+(${number})\\s+(${number})(?:\\s*\\/\\s*(${number}))?\\s*\\)$`,
+        "u",
+      ),
     );
     if (srgb)
       return [
@@ -432,10 +3217,16 @@ function parseColor(value) {
         Number(srgb[4] ?? 1),
       ];
     const oklab = value.match(
-      /^oklab\(\s*([\d.]+)(%?)\s+([+-]?[\d.]+)\s+([+-]?[\d.]+)(?:\s*\/\s*([\d.]+)(%?))?\s*\)$/,
+      new RegExp(
+        `^oklab\\(\\s*(${number})(%?)\\s+(${number})\\s+(${number})(?:\\s*\\/\\s*(${number})(%?))?\\s*\\)$`,
+        "u",
+      ),
     );
     const oklch = value.match(
-      /^oklch\(\s*([\d.]+)(%?)\s+([\d.]+)\s+([\d.]+|none)(?:\s*\/\s*([\d.]+)(%?))?\s*\)$/,
+      new RegExp(
+        `^oklch\\(\\s*(${number})(%?)\\s+(${number})\\s+(${number}|none)(?:\\s*\\/\\s*(${number})(%?))?\\s*\\)$`,
+        "u",
+      ),
     );
     if (!oklab && !oklch)
       throw new Error(
@@ -485,11 +3276,7 @@ async function main() {
   const pairs = JSON.parse(
     await readFile(path.join(repoRoot, manifestPath), "utf8"),
   );
-  const sourcePaths = [
-    "packages/ui/src/components/button.tsx",
-    "packages/ui/src/components/badge.tsx",
-    "packages/ui/src/components/input.tsx",
-  ];
+  const sourcePaths = await collectContrastSourcePaths();
   const sourceText = await Promise.all(
     sourcePaths.map((file) => readFile(path.join(repoRoot, file), "utf8")),
   );
@@ -501,7 +3288,25 @@ async function main() {
     [...theme.matchAll(/--color-([a-z0-9-]+)\s*:/g)].map((match) => match[1]),
   );
   tokenNames.add("white");
-  const observedPairs = observedPairsInSources(sourceText, tokenNames);
+  const translucentBackgroundTokens = new Set(
+    [...theme.matchAll(/--([a-z0-9-]+)\s*:\s*--alpha\(/gu)].map(
+      (match) => match[1],
+    ),
+  );
+  const observedPairs = observedPairsInSources(
+    sourceText,
+    tokenNames,
+    sourcePaths,
+    translucentBackgroundTokens,
+  );
+  const inherited = observeInheritedForegroundSurfaces(sourcePaths, tokenNames);
+  for (const key of inherited.pairs) observedPairs.add(key);
+  observedPairs.inheritedUses = inherited.uses;
+  observedPairs.importedUses = inherited.importedUses;
+  observedPairs.routeUses = inherited.routeUses;
+  observedPairs.callerUses = inherited.callerUses;
+  observedPairs.directOccurrenceUses = inherited.directOccurrenceUses;
+  observedPairs.occurrences = inherited.uses.occurrences;
   const failures = validatePairManifest(
     pairs,
     (file) => {
@@ -516,6 +3321,22 @@ async function main() {
     },
     observedPairs,
   );
+  for (const unsupported of observedPairs.unsupportedForegrounds) {
+    failures.push(
+      violation(
+        unsupported.usage ?? manifestPath,
+        `unsupported semantic foreground utility ${unsupported.className} must be measured with an exact token class and supported opacity.`,
+      ),
+    );
+  }
+  for (const entry of inherited.unresolved.values()) {
+    failures.push(
+      violation(
+        manifestPath,
+        `foreground-only color occurrence ${entry.id} has no supported opaque ancestor or explicit surface contract.`,
+      ),
+    );
+  }
   if (failures.length) {
     console.error(failures.join("\n"));
     process.exitCode = 1;
@@ -590,18 +3411,88 @@ async function main() {
           theme,
         );
         const surfaceClass = pair.backgroundClass?.[theme] ?? "";
-        const values = await page.evaluate(
-          ({ bg, backdrop, foregroundClass, backgroundClass, theme }) => {
+        const probeSurface = probeSurfaceDescriptor(surfaceClass);
+        const backdropClasses = pair.backdropLayers ?? [];
+        await page.evaluate(
+          ({
+            bg,
+            backdrop,
+            backdropClasses,
+            foregroundClass,
+            backgroundClass,
+            sourceSurfaceClass,
+            descendantSurface,
+            theme,
+          }) => {
             const surfaceClass = backgroundClass?.[theme] ?? "";
+            const parent = document.createElement("span");
+            let surfaceParent;
+            const backdropRoot = document.createElement("span");
+            if (backdropClasses.length === 0)
+              backdropRoot.dataset.contrastBackdrop = "true";
+            document.body.append(backdropRoot);
+            surfaceParent = backdropRoot;
+            if (backdropClasses.length === 0)
+              backdropRoot.style.backgroundColor = `var(${backdrop})`;
+            for (const className of [...backdropClasses].reverse()) {
+              const layer = document.createElement("span");
+              layer.className = className;
+              layer.dataset.contrastBackdrop = "true";
+              surfaceParent.append(layer);
+              surfaceParent = layer;
+              for (const variant of className.split(":")) {
+                const bracketAttribute = variant.match(
+                  /^data-\[([a-z0-9-]+)(?:=([^\]]+))?\]$/,
+                );
+                const plainAttribute = variant.match(/^data-([a-z0-9-]+)$/);
+                if (bracketAttribute)
+                  layer.setAttribute(
+                    `data-${bracketAttribute[1]}`,
+                    bracketAttribute[2]?.replace(/^['"]|['"]$/g, "") ?? "",
+                  );
+                else if (plainAttribute)
+                  layer.setAttribute(`data-${plainAttribute[1]}`, "");
+              }
+            }
             const node = document.createElement(
               surfaceClass.includes("[button&,a&]") ? "a" : "span",
             );
-            if (foregroundClass) node.className = foregroundClass;
-            if (backgroundClass)
+            if (descendantSurface && sourceSurfaceClass)
+              parent.className = `${foregroundClass ?? ""} ${sourceSurfaceClass}`;
+            if (foregroundClass && !descendantSurface)
+              node.className = foregroundClass;
+            if (backgroundClass && !descendantSurface)
               node.className = `${node.className} ${backgroundClass[theme]}`;
             node.id = "contrast-probe";
-            if (backgroundClass?.[theme]?.includes("data-pressed")) {
-              node.setAttribute("data-pressed", "");
+            let parentNeeded = false;
+            for (const variant of surfaceClass.split(":")) {
+              const bracketAttribute = variant.match(
+                /^data-\[([a-z0-9-]+)(?:=([^\]]+))?\]$/,
+              );
+              const plainAttribute = variant.match(/^data-([a-z0-9-]+)$/);
+              const ancestorAttribute = variant.match(/^in-data-([a-z0-9-]+)$/);
+              const ancestorClass = variant.match(/^in-\[\.([a-z0-9-]+)\]$/);
+              if (bracketAttribute) {
+                node.setAttribute(
+                  `data-${bracketAttribute[1]}`,
+                  bracketAttribute[2]?.replace(/^['"]|['"]$/g, "") ?? "",
+                );
+              } else if (plainAttribute) {
+                node.setAttribute(`data-${plainAttribute[1]}`, "");
+              } else if (ancestorAttribute) {
+                parent.setAttribute(`data-${ancestorAttribute[1]}`, "");
+                parentNeeded = true;
+              } else if (ancestorClass) {
+                parent.classList.add(ancestorClass[1]);
+                parentNeeded = true;
+              }
+            }
+            if (parentNeeded || descendantSurface) {
+              parent.dataset.contrastBackdrop = "true";
+              parent.append(node);
+              surfaceParent.append(parent);
+            } else {
+              surfaceParent.append(node);
             }
             if (backgroundClass?.[theme]?.includes("has-autofill:")) {
               const child = document.createElement("input");
@@ -614,35 +3505,42 @@ async function main() {
             node.style.display = "inline-block";
             node.style.padding = "1rem";
             if (!backgroundClass) node.style.backgroundColor = `var(${bg})`;
-            document.body.append(node);
-            const style = getComputedStyle(node);
-            const backdropNode = document.createElement("span");
-            backdropNode.style.backgroundColor = `var(${backdrop})`;
-            document.body.append(backdropNode);
-            const backdropColor =
-              getComputedStyle(backdropNode).backgroundColor;
-            const result = {
-              fg: style.color,
-              bg: style.backgroundColor,
-              backdrop: backdropColor,
-            };
-            backdropNode.remove();
-            return result;
+            return true;
           },
-          { ...pair, theme },
+          {
+            ...pair,
+            backgroundClass: pair.backgroundClass
+              ? { ...pair.backgroundClass, [theme]: probeSurface.className }
+              : undefined,
+            backdropClasses,
+            sourceSurfaceClass: surfaceClass,
+            descendantSurface: probeSurface.descendant,
+            theme,
+          },
         );
-        if (surfaceClass.includes("hover:")) {
-          await page.locator("#contrast-probe").hover();
-        }
         if (
           surfaceClass.includes("hover:") ||
-          surfaceClass.includes("data-pressed")
+          backdropClasses.some((className) => className.includes("hover:"))
         ) {
-          values.bg = await page
-            .locator("#contrast-probe")
-            .evaluate((node) => getComputedStyle(node).backgroundColor);
+          await page.locator("#contrast-probe").hover();
         }
-        const backdrop = parseColor(values.backdrop);
+        const values = await page
+          .locator("#contrast-probe")
+          .evaluate((node) => {
+            const style = getComputedStyle(node);
+            const backdrops = [];
+            for (
+              let current = node.parentElement;
+              current?.dataset.contrastBackdrop;
+              current = current.parentElement
+            )
+              backdrops.push(getComputedStyle(current).backgroundColor);
+            return {
+              fg: style.color,
+              bg: style.backgroundColor,
+              backdrops,
+            };
+          });
         const background = parseColor(values.bg);
         if (pair.backgroundClass?.[theme] && background[3] === 0) {
           failures.push(
@@ -652,10 +3550,47 @@ async function main() {
             ),
           );
         }
-        const opaqueBg =
-          background[3] < 1
-            ? composite(background, backdrop)
-            : background.slice(0, 3);
+        if (pair.backdropLayers?.length) {
+          const terminalBackdropColor = values.backdrops.at(-1);
+          if (!terminalBackdropColor) {
+            failures.push(
+              violation(
+                manifestPath,
+                `entry ${index + 1} source-bound backdrop chain produced no computed ancestor in ${theme}.`,
+              ),
+            );
+            await page.evaluate(() =>
+              document
+                .querySelector('[data-contrast-backdrop="true"]')
+                ?.remove(),
+            );
+            continue;
+          }
+          const terminalBackdrop = parseColor(terminalBackdropColor);
+          if (terminalBackdrop.length < 4 || terminalBackdrop[3] < 0.999999) {
+            failures.push(
+              violation(
+                manifestPath,
+                `entry ${index + 1} terminal computed backdrop is not opaque in ${theme}.`,
+              ),
+            );
+            await page.evaluate(() =>
+              document
+                .querySelector('[data-contrast-backdrop="true"]')
+                ?.remove(),
+            );
+            continue;
+          }
+        }
+        let opaqueBg = values.backdrops.length
+          ? parseColor(values.backdrops.at(-1)).slice(0, 3)
+          : parseColor(values.backdrops[0] ?? "rgb(255, 255, 255)").slice(0, 3);
+        for (const color of values.backdrops.slice(0, -1).reverse()) {
+          const layer = parseColor(color);
+          if (layer[3] > 0) opaqueBg = composite(layer, opaqueBg);
+        }
+        if (background[3] < 1) opaqueBg = composite(background, opaqueBg);
+        else opaqueBg = background.slice(0, 3);
         const foreground = parseColor(values.fg);
         const opaqueFg =
           foreground[3] < 1
@@ -666,11 +3601,13 @@ async function main() {
           failures.push(
             violation(
               manifestPath,
-              `entry ${index + 1} ${pair.fg} on ${pair.bg} is ${ratio.toFixed(2)}:1 in ${theme} (computed ${values.fg} on ${values.bg}, backdrop ${values.backdrop}); needs ${pair.minRatio}:1.`,
+              `entry ${index + 1} ${pair.fg} on ${pair.bg} is ${ratio.toFixed(2)}:1 in ${theme} (computed ${values.fg} on ${values.bg}, backdrops ${values.backdrops.join(" over ")}); needs ${pair.minRatio}:1.`,
             ),
           );
         }
-        await page.locator("#contrast-probe").evaluate((node) => node.remove());
+        await page.evaluate(() =>
+          document.querySelector('[data-contrast-backdrop="true"]')?.remove(),
+        );
       }
     }
     const density = await page.evaluate(() => {

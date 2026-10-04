@@ -4,6 +4,7 @@ import { HTTPException } from "hono/http-exception";
 import { appendAuditLog } from "../audit/audit-writer";
 import type { LocalFactorState } from "../auth/local-factor-service";
 import { loadLocalFactorState } from "../auth/local-factor-service";
+import { appendStepUpAudit } from "../auth/step-up-audit";
 import { consumeMfaResetProof } from "../auth/step-up-service";
 import db, { schema } from "../database";
 import { apiRouter, createRoute, jsonResponse, z } from "../openapi";
@@ -23,6 +24,15 @@ const responseSchema = z.object({
   reset: z.literal(true),
   notificationEmailSent: z.boolean(),
 });
+
+class StepUpRejection extends Error {
+  constructor(
+    readonly status: 403 | 409,
+    readonly message: string,
+  ) {
+    super(message);
+  }
+}
 
 const resetRoute = createRoute({
   method: "post",
@@ -96,54 +106,89 @@ const resetMfa = apiRouter().openapi(resetRoute, async (c) => {
     throw new HTTPException(401, { message: "Unauthorized" });
   }
 
-  const wasEnabled = await db.transaction(async (tx) => {
-    const proof = await consumeMfaResetProof(tx, {
-      token: c.req.valid("header")["x-taskdesk-step-up-token"],
+  let transactionResult:
+    | { kind: "denied" }
+    | { kind: "success"; wasEnabled: boolean };
+  try {
+    transactionResult = await db.transaction(async (tx) => {
+      const proof = await consumeMfaResetProof(tx, {
+        token: c.req.valid("header")["x-taskdesk-step-up-token"],
+        personId: actorFactor.personId,
+        sessionId: (c.get("session") as { id: string }).id,
+        userId: id,
+        verificationNote,
+      });
+      if (!proof) {
+        await appendStepUpAudit(tx, {
+          action: "auth.step_up_denied",
+          actorId: c.get("userId"),
+          personId: actorFactor.personId,
+          operation: "mfa_reset",
+          traceId: c.req.header("x-request-id"),
+        });
+        return { kind: "denied" as const };
+      }
+      if (
+        (proof.authMethod === "password" &&
+          (actorFactor.required || actorFactor.enabled)) ||
+        ((proof.authMethod === "totp" || proof.authMethod === "backup_code") &&
+          !actorFactor.enabled)
+      ) {
+        throw new StepUpRejection(403, "step_up_unavailable");
+      }
+      const [current] = await tx
+        .select({ enabled: schema.userTable.twoFactorEnabled })
+        .from(schema.userTable)
+        .where(eq(schema.userTable.id, id))
+        .for("update")
+        .limit(1);
+      if (!current?.enabled)
+        throw new StepUpRejection(409, "factor_reset_unavailable");
+      await tx
+        .delete(schema.twoFactorTable)
+        .where(eq(schema.twoFactorTable.userId, id));
+      await tx
+        .update(schema.userTable)
+        .set({ twoFactorEnabled: false })
+        .where(eq(schema.userTable.id, id));
+      await tx
+        .delete(schema.sessionTable)
+        .where(eq(schema.sessionTable.userId, id));
+      await tx
+        .delete(schema.apikeyTable)
+        .where(eq(schema.apikeyTable.referenceId, id));
+      await tx.insert(schema.notificationTable).values({
+        userId: id,
+        type: "security_alert",
+        title: "Two-factor authentication reset",
+        content:
+          "An instance administrator reset your authenticator factor. Sign in and enroll a new factor before using protected features if instance policy requires it.",
+        eventData: { kind: "mfa_reset" },
+      });
+      await appendStepUpAudit(tx, {
+        action: "auth.step_up_consumed",
+        actorId: c.get("userId"),
+        personId: actorFactor.personId,
+        operation: "mfa_reset",
+        traceId: c.req.header("x-request-id"),
+      });
+      return { kind: "success" as const, wasEnabled: current.enabled === true };
+    });
+  } catch (error) {
+    if (!(error instanceof StepUpRejection)) throw error;
+    await appendStepUpAudit(db, {
+      action: "auth.step_up_denied",
+      actorId: c.get("userId"),
       personId: actorFactor.personId,
-      sessionId: (c.get("session") as { id: string }).id,
-      userId: id,
-      verificationNote,
+      operation: "mfa_reset",
+      traceId: c.req.header("x-request-id"),
     });
-    if (
-      !proof ||
-      (proof.authMethod === "password" &&
-        (actorFactor.required || actorFactor.enabled)) ||
-      ((proof.authMethod === "totp" || proof.authMethod === "backup_code") &&
-        !actorFactor.enabled)
-    ) {
-      throw new HTTPException(403, { message: "step_up_unavailable" });
-    }
-    const [current] = await tx
-      .select({ enabled: schema.userTable.twoFactorEnabled })
-      .from(schema.userTable)
-      .where(eq(schema.userTable.id, id))
-      .for("update")
-      .limit(1);
-    if (!current?.enabled)
-      throw new HTTPException(409, { message: "factor_reset_unavailable" });
-    await tx
-      .delete(schema.twoFactorTable)
-      .where(eq(schema.twoFactorTable.userId, id));
-    await tx
-      .update(schema.userTable)
-      .set({ twoFactorEnabled: false })
-      .where(eq(schema.userTable.id, id));
-    await tx
-      .delete(schema.sessionTable)
-      .where(eq(schema.sessionTable.userId, id));
-    await tx
-      .delete(schema.apikeyTable)
-      .where(eq(schema.apikeyTable.referenceId, id));
-    await tx.insert(schema.notificationTable).values({
-      userId: id,
-      type: "security_alert",
-      title: "Two-factor authentication reset",
-      content:
-        "An instance administrator reset your authenticator factor. Sign in and enroll a new factor before using protected features if instance policy requires it.",
-      eventData: { kind: "mfa_reset" },
-    });
-    return current?.enabled === true;
-  });
+    throw new HTTPException(error.status, { message: error.message });
+  }
+
+  if (transactionResult.kind === "denied")
+    throw new HTTPException(403, { message: "step_up_unavailable" });
+  const wasEnabled = transactionResult.wasEnabled;
 
   await appendAuditLog(db, {
     action: "auth.mfa_reset",

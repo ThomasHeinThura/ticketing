@@ -239,7 +239,7 @@ function TaskRow({ task, projectSlug }: TaskRowProps) {
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             {getPRInfo(pullRequests[0]).icon}
                             <span>{getPRInfo(pullRequests[0]).status}</span>
-                            <span className="text-muted-foreground/50">•</span>
+                            <span className="text-muted-foreground">•</span>
                             <span>#{pullRequests[0].externalId}</span>
                           </div>
                           <p className="text-sm font-medium leading-snug">

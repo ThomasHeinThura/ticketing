@@ -114,6 +114,18 @@ type WorkspaceAccessMiddlewareConfig = {
   sources: WorkspaceIdSource[];
 };
 
+type PolicyScopeResource =
+  | "project"
+  | "task"
+  | "label"
+  | "timeEntry"
+  | "activity"
+  | "comment"
+  | "column"
+  | "workflowRule"
+  | "workflow"
+  | "workflowVersion";
+
 type WorkspaceRowScope = {
   workspaceId: string;
   projectId?: string;
@@ -155,6 +167,7 @@ export function workspaceAccessMiddleware(
     let shadowProjectId: string | null = null;
     let shadowWorkItemId: string | null = null;
     let shadowWorkspaceIdSource: "request" | "row" | null = null;
+    let policyScopeResource: PolicyScopeResource | null = null;
 
     // Read once, ahead of the loop: `lookup`/`lookupMany` sources need it to check
     // reach as soon as they resolve a row, not only after the loop ends.
@@ -219,6 +232,15 @@ export function workspaceAccessMiddleware(
             userId,
             apiKeyId,
           );
+          if (resolved) {
+            policyScopeResource =
+              source.resource === "task" ||
+              source.resource === "timeEntry" ||
+              source.resource === "activity" ||
+              source.resource === "comment"
+                ? "task"
+                : source.resource;
+          }
           workspaceId = resolved?.workspaceId ?? null;
           if (resolved) {
             shadowWorkspaceIdSource = "row";
@@ -306,6 +328,7 @@ export function workspaceAccessMiddleware(
             shadowWorkspaceIdSource = "row";
             shadowWorkItemId =
               taskIds.length === 1 ? (taskIds[0] ?? null) : null;
+            policyScopeResource = "task";
           }
         }
       }
@@ -342,6 +365,7 @@ export function workspaceAccessMiddleware(
       c.set("projectId", shadowProjectId);
     }
     if (shadowWorkItemId) c.set("workItemId", shadowWorkItemId);
+    if (policyScopeResource) c.set("policyScopeResource", policyScopeResource);
 
     return next();
   };

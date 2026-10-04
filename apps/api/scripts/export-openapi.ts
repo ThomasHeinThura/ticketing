@@ -1,13 +1,12 @@
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { getConfiguredAgentOrigin } from "../src/auth";
 import { createApp } from "../src/index";
 
 process.env.KANEO_API_URL = "https://taskdesk.bimats.com";
 
 const { app } = createApp();
-const agentOrigin = new URL(
-  process.env.TASKDESK_AGENT_URL || "http://localhost:5173",
-);
+const agentOrigin = new URL(getConfiguredAgentOrigin());
 const response = await app.request(
   new URL("/api/openapi", agentOrigin).toString(),
   { headers: { host: agentOrigin.host } },

@@ -113,14 +113,14 @@ function RouteComponent() {
               <p className="truncate text-sm md:overflow-visible md:text-clip md:whitespace-normal">
                 {workspace?.name}
               </p>
-              <p className="truncate text-xs text-sidebar-foreground/60 capitalize md:overflow-visible md:text-clip md:whitespace-normal">
+              <p className="truncate text-xs text-sidebar-foreground capitalize md:overflow-visible md:text-clip md:whitespace-normal">
                 {t(`team:roles.${role}`, { defaultValue: role })}
               </p>
             </div>
           </div>
 
           <SidebarGroup className="gap-1 p-1">
-            <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground/70">
+            <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
               {t("navigation:projectSettings.projectLabel")}
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -169,7 +169,7 @@ function RouteComponent() {
           </SidebarGroup>
 
           <SidebarGroup className="gap-1 p-1">
-            <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground/70">
+            <SidebarGroupLabel className="h-7 px-2 text-xs uppercase tracking-wide text-sidebar-foreground">
               {t("navigation:page.settingsTitle")}
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -188,7 +188,7 @@ function RouteComponent() {
                         size="sm"
                         disabled={!selectedProject}
                         className={cn(
-                          "h-8 w-full justify-start gap-2 rounded-lg px-2 text-sm font-normal text-sidebar-foreground/80",
+                          "h-8 w-full justify-start gap-2 rounded-lg px-2 text-sm font-normal text-sidebar-foreground",
                           isActive &&
                             "bg-sidebar-accent text-sidebar-accent-foreground",
                         )}

@@ -4,6 +4,7 @@ import CommandPaletteLauncher from "@/components/command-palette/command-palette
 // layout for the main app
 export const Route = createFileRoute("/_layout")({
   component: RouteComponent,
+  codeSplitGroupings: [],
 });
 
 function RouteComponent() {

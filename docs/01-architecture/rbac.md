@@ -347,7 +347,10 @@ Self-assignment by a `member` is `work_item:update` on an item where the new ass
 the actor — the `orSelfTarget` body predicate below, not `work_item:assign`
 ([assignment.md](../03-features/assignment.md)).
 
-Instance scope has one system role: `instance_admin`, holding `instance:*`.
+Instance scope has one system role: `instance_admin`, holding `instance:*`. In the current
+runtime, the existing Better Auth `user.role = 'admin'` field is the sole instance-admin
+authority source; identity resolution projects it to this instance-scope grant. The Better
+Auth admin plugin's HTTP endpoints are not mounted and are not a second grant path.
 
 ## The customer role is special
 

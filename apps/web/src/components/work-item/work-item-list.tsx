@@ -13,7 +13,6 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -29,16 +28,8 @@ import {
   ListTodo,
   TriangleAlert,
 } from "lucide-react";
-import {
-  type FocusEvent,
-  type MouseEvent,
-  memo,
-  useEffect,
-  useRef,
-} from "react";
+import { type FocusEvent, type MouseEvent, memo } from "react";
 import { useTranslation } from "react-i18next";
-import loadWorkItemDetail from "@/components/work-item/load-work-item-detail";
-import getWorkItem from "@/fetchers/work-item/get-work-item";
 import { formatDateShort } from "@/lib/format";
 import { getPriorityIcon } from "@/lib/priority";
 import {
@@ -48,6 +39,7 @@ import {
   type WorkItemSortField,
 } from "@/lib/routes";
 import type { WorkItemField, WorkItemRow } from "@/types/work-item";
+import WorkItemListLoading from "./work-item-list-loading";
 
 export type WorkItemListProps = {
   workItems: WorkItemRow[] | undefined;
@@ -163,7 +155,6 @@ function WorkItemList({
 }: WorkItemListProps) {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const preloadedDetailKey = useRef<string | null>(null);
   const { t } = useTranslation();
   const noPriorityLabel = t("workItems:list.noPriority");
   const noDueDateLabel = t("workItems:list.noDueDate");
@@ -182,25 +173,6 @@ function WorkItemList({
     return label;
   }
 
-  useEffect(() => {
-    const firstReachableItem = workItems?.find(
-      (item) => !item.unavailableFields.includes("key"),
-    );
-    if (
-      !firstReachableItem ||
-      preloadedDetailKey.current === firstReachableItem.key
-    )
-      return;
-
-    preloadedDetailKey.current = firstReachableItem.key;
-    void router
-      .preloadRoute({
-        to: routes.workItemDetail.path,
-        params: { key: firstReachableItem.key },
-      })
-      .catch(() => {});
-  }, [router, workItems]);
-
   function handleHeaderClick(field: WorkItemSortField) {
     if (field === sort) {
       onSortChange(field, toggleWorkItemSortDirection(dir));
@@ -216,10 +188,17 @@ function WorkItemList({
         params: { key },
       })
       .catch(() => {});
-    void loadWorkItemDetail().catch(() => {});
+    void import("@/components/work-item/load-work-item-detail")
+      .then(({ default: loadWorkItemDetail }) => loadWorkItemDetail())
+      .catch(() => {});
     void queryClient.prefetchQuery({
       queryKey: ["work-items", "detail", key],
-      queryFn: () => getWorkItem(key),
+      queryFn: async () => {
+        const { default: getWorkItem } = await import(
+          "@/fetchers/work-item/get-work-item"
+        );
+        return getWorkItem(key);
+      },
       staleTime: 5_000,
     });
   }
@@ -300,22 +279,7 @@ function WorkItemList({
   }
 
   if (isLoading) {
-    return (
-      <div
-        className="flex flex-col gap-2"
-        data-testid="work-item-list-loading"
-        aria-busy="true"
-        aria-live="polite"
-      >
-        <span className="sr-only">{t("workItems:list.loading")}</span>
-        {Array.from({ length: 6 }).map((_, index) => (
-          // Skeleton rows have no identity to key on; the list is static in length and
-          // never reordered while loading.
-          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholder rows
-          <Skeleton key={index} className="h-10 w-full" />
-        ))}
-      </div>
-    );
+    return <WorkItemListLoading />;
   }
 
   if (!workItems || workItems.length === 0) {

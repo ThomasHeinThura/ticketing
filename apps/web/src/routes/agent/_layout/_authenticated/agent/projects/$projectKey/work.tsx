@@ -3,7 +3,7 @@ import { Alert, AlertDescription, Button } from "@taskdesk/ui";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import PageTitle from "@/components/page-title";
-import WorkItemList from "@/components/work-item/work-item-list";
+import WorkItemListLoading from "@/components/work-item/work-item-list-loading";
 import useGetProjectStates from "@/hooks/queries/project/use-get-project-states";
 import useGetProjects from "@/hooks/queries/project/use-get-projects";
 import useGetBoardWorkItems from "@/hooks/queries/work-item/use-get-board-work-items";
@@ -12,6 +12,9 @@ import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import type { WorkItemRealtimeStatus } from "@/hooks/use-native-work-item-realtime";
 import { useWorkspacePermission } from "@/hooks/use-workspace-permission";
 
+const WorkItemsPanel = lazy(
+  () => import("@/components/work-item/work-items-panel"),
+);
 const CreateWorkItemDialog = lazy(
   () => import("@/components/work-item/create-work-item-dialog"),
 );
@@ -251,7 +254,8 @@ function WorkItemsRouteComponent() {
             ) : null}
           </div>
         </div>
-        {project &&
+        {layout === "board" &&
+        project &&
         realtimeStatus?.projectId === project.id &&
         realtimeStatus.status === "unavailable" ? (
           <Alert
@@ -265,36 +269,45 @@ function WorkItemsRouteComponent() {
           </Alert>
         ) : null}
         {layout === "list" ? (
-          <WorkItemList
-            workItems={workItems}
-            isLoading={isLoading}
-            isError={isError}
-            sort={sort}
-            dir={dir}
-            onSortChange={handleSortChange}
-            onRetry={handleRetry}
-            selectedKeys={selectedKeys}
-            canBulkAssign={canBulkAssign}
-            onSelectionChange={(key, checked) => {
-              setSelectedKeys((current) =>
-                checked
-                  ? current.includes(key)
-                    ? current
-                    : [...current, key]
-                  : current.filter((selected) => selected !== key),
-              );
-            }}
-            onSelectAll={(checked) => {
-              const keys = (workItems ?? [])
-                .filter((item) => !item.unavailableFields.includes("key"))
-                .map((item) => item.key);
-              setSelectedKeys((current) =>
-                checked
-                  ? [...new Set([...current, ...keys])]
-                  : current.filter((key) => !keys.includes(key)),
-              );
-            }}
-          />
+          <Suspense fallback={<WorkItemListLoading />}>
+            <WorkItemsPanel
+              project={project}
+              workspaceId={workspace?.id}
+              workItemsResult={workItemsResult}
+              isLoading={isLoading}
+              isError={isError}
+              realtimeProjectId={realtimeProjectId}
+              realtimeStatus={realtimeStatus}
+              sort={sort}
+              dir={dir}
+              isCreateOpen={isCreateOpen}
+              onCloseCreate={() => setIsCreateOpen(false)}
+              onSortChange={handleSortChange}
+              onRealtimeAvailabilityChange={handleRealtimeAvailabilityChange}
+              onRetry={handleRetry}
+              selectedKeys={selectedKeys}
+              canBulkAssign={canBulkAssign}
+              onSelectionChange={(key, checked) => {
+                setSelectedKeys((current) =>
+                  checked
+                    ? current.includes(key)
+                      ? current
+                      : [...current, key]
+                    : current.filter((selected) => selected !== key),
+                );
+              }}
+              onSelectAll={(checked) => {
+                const keys = (workItems ?? [])
+                  .filter((item) => !item.unavailableFields.includes("key"))
+                  .map((item) => item.key);
+                setSelectedKeys((current) =>
+                  checked
+                    ? [...new Set([...current, ...keys])]
+                    : current.filter((key) => !keys.includes(key)),
+                );
+              }}
+            />
+          </Suspense>
         ) : project ? (
           <Suspense fallback={null}>
             <WorkItemBoard
@@ -340,7 +353,10 @@ function WorkItemsRouteComponent() {
             />
           </Suspense>
         )}
-        {project && !isLoading && realtimeProjectId === project.id ? (
+        {layout === "board" &&
+        project &&
+        !isLoading &&
+        realtimeProjectId === project.id ? (
           <Suspense fallback={null}>
             <WorkItemListRealtime
               key={project.id}
@@ -349,7 +365,7 @@ function WorkItemsRouteComponent() {
             />
           </Suspense>
         ) : null}
-        {project && isCreateOpen ? (
+        {layout === "board" && project && isCreateOpen ? (
           <Suspense fallback={null}>
             <CreateWorkItemDialog
               open

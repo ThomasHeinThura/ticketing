@@ -152,8 +152,7 @@ describe("WorkItemList", () => {
       />,
     );
 
-    await waitFor(() => expect(mocks.preloadRoute).toHaveBeenCalled());
-    mocks.preloadRoute.mockClear();
+    expect(mocks.preloadRoute).not.toHaveBeenCalled();
 
     fireEvent.mouseOver(
       screen.getByText("PROJ-123").closest("a") as HTMLElement,
@@ -176,6 +175,21 @@ describe("WorkItemList", () => {
     expect(mocks.getWorkItem).toHaveBeenCalledOnce();
   });
 
+  it("does not preload detail code for the first row before navigation intent", () => {
+    renderWithQueryClient(
+      <WorkItemList
+        {...baseProps}
+        workItems={[workItem]}
+        isLoading={false}
+        isError={false}
+      />,
+    );
+
+    expect(mocks.preloadRoute).not.toHaveBeenCalled();
+    expect(mocks.loadDetail).not.toHaveBeenCalled();
+    expect(mocks.getWorkItem).not.toHaveBeenCalled();
+  });
+
   it("renders the loading skeleton state", () => {
     renderWithQueryClient(
       <WorkItemList
@@ -186,7 +200,10 @@ describe("WorkItemList", () => {
       />,
     );
 
-    expect(screen.getByTestId("work-item-list-loading")).toBeInTheDocument();
+    const loading = screen.getByTestId("work-item-list-loading");
+    expect(loading).toBeInTheDocument();
+    expect(loading).toHaveAttribute("aria-busy", "true");
+    expect(loading).toHaveAttribute("aria-live", "polite");
     expect(
       screen.queryByTestId("work-item-list-populated"),
     ).not.toBeInTheDocument();

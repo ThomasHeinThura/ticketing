@@ -71,6 +71,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Build the web app and workspace dependencies
         run: pnpm build
+        env:
+          VITE_API_URL: ""
       - name: Install Chromium
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Run browser smoke
@@ -92,6 +94,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Build the web app and workspace dependencies
         run: pnpm build
+        env:
+          VITE_API_URL: ""
       - name: Install Chromium
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Scan Storybook stories and browser screens
@@ -144,6 +148,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Build the web app and workspace dependencies
         run: pnpm build
+        env:
+          VITE_API_URL: ""
       - name: Install Chromium
         run: apps/web/node_modules/.bin/playwright install --with-deps chromium
       - name: Measure G11 performance budgets
@@ -154,5 +160,17 @@ jobs:
         with:
           name: playwright-performance
           path: apps/web/test-results/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Capture source-bound initial-page diagnostic (non-gating)
+        if: always()
+        continue-on-error: true
+        run: pnpm --filter @taskdesk/web exec playwright test --config playwright.perf-diagnostic.config.ts
+      - name: Upload initial-page diagnostic
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: g11-initial-page-diagnostic
+          path: apps/web/test-results/g11-initial-page-diagnostic/initial-page-profile.json
           if-no-files-found: warn
           retention-days: 7

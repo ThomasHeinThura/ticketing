@@ -60,6 +60,8 @@ function visualSpec(
     shadowedFixtureHelperFor,
     setContentInApiRouteFor,
     computedTaggedSetContentInApiRouteFor,
+    enrollmentReadinessFor,
+    invalidEnrollmentReadinessFor,
     mutationInVisibilityFor,
     locatorScreenshotFor,
     viewportScreenshotFor,
@@ -156,6 +158,12 @@ function visualSpec(
         testName === shadowedSettleHelperFor
           ? "await settleVisuals(page);"
           : "";
+      const enrollmentReadiness =
+        testName === enrollmentReadinessFor
+          ? 'await page.locator("#factor-password").fill("visual-enrollment-password"); await expect(page.getByRole("button", { name: "Set up authenticator" })).toBeEnabled();'
+          : testName === invalidEnrollmentReadinessFor
+            ? 'await page.locator("#other-password").fill("visual-enrollment-password"); await expect(page.getByRole("button", { name: "Set up authenticator" })).toBeEnabled();'
+            : "";
       const beforeNavigation =
         testName === screenshotBeforeNavigationFor
           ? `${screenshotEvidence} `
@@ -166,7 +174,7 @@ function visualSpec(
         testName === disabledFor
           ? 'if (process.env.CI) test.fixme(true, "known issue");'
           : ""
-      } ${testName === computedSkipFor ? 'test["skip"](true, "temporarily disabled");' : ""} ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${shadowedPageBinding} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${additionalVisualOperation} ${nestedNavigation} ${helperNavigation} ${mutationInVisibility} ${testName === mutationInVisibilityFor ? "" : 'await expect(page.getByText("screen ready")).toBeVisible();'} ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
+      } ${testName === computedSkipFor ? 'test["skip"](true, "temporarily disabled");' : ""} ${targetDeclaration} ${documentIntercept} ${setContentInApiRoute} ${computedTaggedSetContentInApiRoute} ${shadowedFixtureHelper} await installAuthenticatedFixture(page); ${shadowedPageBinding} ${beforeNavigation}await page.goto(${JSON.stringify(navigation)}); ${earlyReturn} ${setContent} ${additionalNavigation} ${additionalVisualOperation} ${nestedNavigation} ${helperNavigation} ${enrollmentReadiness} ${mutationInVisibility} ${testName === mutationInVisibilityFor ? "" : 'await expect(page.getByText("screen ready")).toBeVisible();'} ${shadowedSettleHelper} ${useShadowedSettleHelper} ${afterNavigation} });`;
     })
     .join("\n");
   const testImport = fakeTestBinding
@@ -1726,6 +1734,32 @@ test("G8 rejects replacing the declared route document before capture", async ()
     routes: INVENTORY_ROUTES,
     source: visualSpec(SCREENS, {
       setContentAfterNavigationFor: "work list @visual",
+    }),
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(
+    result.output,
+    /work-list visual test must use only API fixture setup before navigation/,
+  );
+});
+
+test("G8 permits the authenticator password readiness interaction", async () => {
+  const result = await runVisualScope({
+    routes: INVENTORY_ROUTES,
+    source: visualSpec(SCREENS, {
+      enrollmentReadinessFor: "work list @visual",
+    }),
+  });
+
+  assert.equal(result.status, 0, result.output);
+});
+
+test("G8 rejects enrollment readiness interactions outside the named password field", async () => {
+  const result = await runVisualScope({
+    routes: INVENTORY_ROUTES,
+    source: visualSpec(SCREENS, {
+      invalidEnrollmentReadinessFor: "work list @visual",
     }),
   });
 

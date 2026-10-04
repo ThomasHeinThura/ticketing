@@ -75,6 +75,7 @@ import {
   declareCatchAllMiddleware,
   runNextWithPolicyShadow,
 } from "./permissions/shadow-middleware";
+import { installStrictPolicyRegistration } from "./permissions/strict-route-registration";
 import { initializePlugins } from "./plugins";
 // Importing this constructs and validates the registry at module load, so an invalid policy
 // refuses boot (#8 Slice 0). Keep the import even if its one use below moves: without a use,
@@ -546,7 +547,7 @@ export function createApp(
   declareCatchAllMiddleware(compressMiddleware);
   app.use(compressMiddleware);
 
-  const api = new OpenAPIHono<ApiVariables>();
+  const api = installStrictPolicyRegistration(new OpenAPIHono<ApiVariables>());
 
   api.get("/health", (c) => {
     return c.json({ status: "ok" });

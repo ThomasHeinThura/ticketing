@@ -76,9 +76,11 @@ export default function MonthGrid({
                   <span
                     className={cn(
                       "flex size-5 items-center justify-center rounded-full text-[11px] font-medium",
-                      !isSameMonth(day, visibleMonth) &&
-                        "text-muted-foreground/60",
-                      isToday(day) && "bg-primary text-primary-foreground",
+                      isToday(day)
+                        ? "bg-primary text-primary-foreground"
+                        : !isSameMonth(day, visibleMonth)
+                          ? "text-muted-foreground"
+                          : undefined,
                     )}
                   >
                     {format(day, "d")}

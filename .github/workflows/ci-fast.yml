@@ -273,6 +273,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: pnpm build
         run: pnpm build
+        env:
+          VITE_API_URL: ""
       - name: pnpm check:bundle-purity
         run: pnpm check:bundle-purity
       - name: pnpm check:bundle-size

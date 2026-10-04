@@ -316,7 +316,7 @@ function RouteComponent() {
                         {getInitials(user?.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[popup-open]:opacity-100 group-disabled:opacity-100">
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-foreground text-background opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[popup-open]:opacity-100 group-disabled:opacity-100">
                       {isUploadingAvatar || isRemovingAvatar ? (
                         <Loader2 className="size-4 animate-spin" />
                       ) : (

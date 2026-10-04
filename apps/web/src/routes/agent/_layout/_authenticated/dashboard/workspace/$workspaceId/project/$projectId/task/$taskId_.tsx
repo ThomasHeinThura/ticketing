@@ -1,6 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Button } from "@taskdesk/ui";
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import TaskLayout from "@/components/common/task-layout";
 import PageTitle from "@/components/page-title";
@@ -14,7 +13,6 @@ import TaskPropertiesSidebar from "@/components/task/task-properties-sidebar";
 import useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetTask from "@/hooks/queries/task/use-get-task";
-import { getSharedShikiHighlighter } from "@/lib/shiki-highlighter";
 
 export const Route = createFileRoute(
   "/_layout/_authenticated/dashboard/workspace/$workspaceId/project/$projectId/task/$taskId_",
@@ -30,36 +28,17 @@ function RouteComponent() {
     data: task,
     isLoading: isTaskLoading,
     isError: isTaskError,
-  } = useGetTask(taskId);
+  } = useGetTask(taskId, (currentTask) => ({
+    id: currentTask.id,
+    number: currentTask.number,
+    title: currentTask.title,
+  }));
   const { data: project, isLoading: isProjectLoading } = useGetProject({
     id: projectId,
     workspaceId,
   });
   const { isLoading: isActivitiesLoading } = useGetActivitiesByTaskId(taskId);
-  const [isShikiReady, setIsShikiReady] = useState(false);
-  useEffect(() => {
-    let mounted = true;
-
-    void getSharedShikiHighlighter()
-      .then(() => {
-        if (!mounted) return;
-        setIsShikiReady(true);
-      })
-      .catch((err) => {
-        console.error("Failed to initialize Shiki highlighter:", err);
-        if (!mounted) return;
-        // Render the task view without syntax highlighting rather than
-        // leaving the page stuck in a permanent loading state.
-        setIsShikiReady(true);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const isLoading =
-    isTaskLoading || isProjectLoading || isActivitiesLoading || !isShikiReady;
+  const isLoading = isTaskLoading || isProjectLoading || isActivitiesLoading;
 
   const handleDeleted = () => {
     navigate({

@@ -16,20 +16,26 @@ import {
 } from "../../observability/metrics-listener.js";
 import { defaultLogLevels } from "../../observability/settings.js";
 import { policyRegistry } from "../../policy-registry";
+import { createObservabilityConfigRefresher } from "./config-refresh-version";
 import { parseLogLevels } from "./settings";
 
 const routeKeys = policyRegistry.entries.flatMap(({ routeKey }) => {
   const match = /^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) (\/[^?#]*)$/u.exec(
     routeKey,
   );
-  return match ? [registeredRouteKey(match[1]!, match[2]!)] : [];
+  if (!match) return [];
+  const method = match[1];
+  const pathname = match[2];
+  return method && pathname ? [registeredRouteKey(method, pathname)] : [];
 });
 const trustedRoutes = new Set(routeKeys);
 const metrics = createTaskDeskMetrics(routeKeys);
 const logger = createTaskDeskLogger(defaultLogLevels(), trustedRoutes);
 let listener: ReturnType<typeof createMetricsListener> | undefined;
 let refreshTimer: ReturnType<typeof setInterval> | undefined;
-let failureLogged = false;
+let refreshController:
+  | ReturnType<typeof createObservabilityConfigRefresher>
+  | undefined;
 
 export function logTaskDesk(event: TaskDeskLogEvent): void {
   logger.log(event);
@@ -90,7 +96,10 @@ export function recordAuditWriteFailure(
 
 export async function startObservabilityRuntime(): Promise<void> {
   const [row] = await db
-    .select({ levels: schema.instanceSettingTable.observabilityLogLevels })
+    .select({
+      version: schema.instanceSettingTable.observabilityConfigVersion,
+      levels: schema.instanceSettingTable.observabilityLogLevels,
+    })
     .from(schema.instanceSettingTable)
     .where(eq(schema.instanceSettingTable.id, "singleton"))
     .limit(1);
@@ -122,27 +131,31 @@ export async function startObservabilityRuntime(): Promise<void> {
     );
   }
 
+  refreshController = createObservabilityConfigRefresher({
+    read: async () => {
+      const [current] = await db
+        .select({
+          version: schema.instanceSettingTable.observabilityConfigVersion,
+          levels: schema.instanceSettingTable.observabilityLogLevels,
+        })
+        .from(schema.instanceSettingTable)
+        .where(eq(schema.instanceSettingTable.id, "singleton"))
+        .limit(1);
+      return current;
+    },
+    validate: parseLogLevels,
+    apply: applyRuntimeLogLevels,
+    onFailure: () =>
+      logger.log({
+        module: "http",
+        message: "observability.config_refresh_failure",
+        level: "warn",
+        result: "degraded",
+      }),
+    initialVersion: row.version,
+  });
   refreshTimer = setInterval(() => {
-    void db
-      .select({ levels: schema.instanceSettingTable.observabilityLogLevels })
-      .from(schema.instanceSettingTable)
-      .where(eq(schema.instanceSettingTable.id, "singleton"))
-      .limit(1)
-      .then(([current]) => {
-        if (!current) throw new Error("settings_missing");
-        logger.setLogLevels(parseLogLevels(current.levels));
-        failureLogged = false;
-      })
-      .catch(() => {
-        if (failureLogged) return;
-        failureLogged = true;
-        logger.log({
-          module: "http",
-          message: "observability.config_refresh_failure",
-          level: "warn",
-          result: "degraded",
-        });
-      });
+    void refreshController?.refresh();
   }, 5_000);
   refreshTimer.unref();
 }
@@ -150,6 +163,8 @@ export async function startObservabilityRuntime(): Promise<void> {
 export async function stopObservabilityRuntime(): Promise<void> {
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = undefined;
+  refreshController?.stop();
+  refreshController = undefined;
   await listener?.stop();
   listener = undefined;
 }

@@ -23,6 +23,7 @@ import { useDeleteTask } from "@/hooks/mutations/task/use-delete-task";
 import { useUpdateTaskStatus } from "@/hooks/mutations/task/use-update-task-status";
 import useCreateTaskRelation from "@/hooks/mutations/task-relation/use-create-task-relation";
 import { useGetColumns } from "@/hooks/queries/column/use-get-columns";
+import useGetTask from "@/hooks/queries/task/use-get-task";
 import useGetTaskRelations from "@/hooks/queries/task-relation/use-get-task-relations";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
@@ -36,14 +37,14 @@ type TaskSubtasksProps = {
   taskId: string;
   projectId: string;
   workspaceId: string;
-  parentStatus: string;
+  parentStatus?: string;
 };
 
 export default function TaskSubtasks({
   taskId,
   projectId,
   workspaceId,
-  parentStatus,
+  parentStatus: initialParentStatus,
 }: TaskSubtasksProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -56,6 +57,11 @@ export default function TaskSubtasks({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { data: relations = [] } = useGetTaskRelations(taskId);
+  const { data: fetchedParentStatus } = useGetTask(
+    taskId,
+    (task) => task.status,
+  );
+  const parentStatus = fetchedParentStatus ?? initialParentStatus ?? "";
   const { data: workspace } = useActiveWorkspace();
   const { data: workspaceUsers } = useGetActiveWorkspaceUsers(
     workspace?.id ?? "",

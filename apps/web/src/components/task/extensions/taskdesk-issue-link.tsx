@@ -35,7 +35,7 @@ function TaskDeskIssueLinkView({ node }: NodeViewProps) {
 
   const { data: task } = useQuery({
     queryKey: ["task", taskId, "taskdesk-issue-link"],
-    queryFn: () => getTask(taskId),
+    queryFn: ({ signal }) => getTask(taskId, signal),
     enabled: Boolean(taskId),
     staleTime: 1000 * 60,
   });

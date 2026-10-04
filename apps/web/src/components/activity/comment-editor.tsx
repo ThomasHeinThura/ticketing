@@ -47,7 +47,7 @@ import {
 import type { MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { bundledLanguages, type Highlighter } from "shiki";
+import type { Highlighter } from "shiki";
 import { AttachmentCard } from "@/components/task/extensions/attachment-card";
 import { EmbedBlock } from "@/components/task/extensions/embed-block";
 import type { MentionMember } from "@/components/task/extensions/mention-list";
@@ -62,6 +62,7 @@ import { TaskDeskIssueLink } from "@/components/task/extensions/taskdesk-issue-l
 import { TaskDeskMention } from "@/components/task/extensions/taskdesk-mention";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
+import { useShikiHighlighterForCode } from "@/hooks/use-shiki-highlighter-for-code";
 import { cn } from "@/lib/cn";
 import { parseTaskListMarkdownToNodes } from "@/lib/editor-task-list-paste";
 import {
@@ -71,7 +72,6 @@ import {
   normalizeUrl,
 } from "@/lib/editor-url-utils";
 import { isInCodeBlockLanguagePicker } from "@/lib/is-in-codeblock-language-picker";
-import { getSharedShikiHighlighter } from "@/lib/shiki-highlighter";
 import { toast } from "@/lib/toast";
 import { uploadTaskImage } from "@/lib/upload-task-image";
 
@@ -233,9 +233,6 @@ export default function CommentEditor({
     range?: SlashRange;
   } | null>(null);
   const [slashMenu, setSlashMenu] = useState<SlashMenuState | null>(null);
-  const [shikiHighlighter, setShikiHighlighter] = useState<Highlighter | null>(
-    null,
-  );
   const shikiHighlighterRef = useRef<Highlighter | null>(null);
   const [hoveredCodeBlock, setHoveredCodeBlock] =
     useState<HoveredCodeBlock | null>(null);
@@ -263,7 +260,13 @@ export default function CommentEditor({
     [t],
   );
   const availableShikiLanguages = useMemo(
-    () => new Set(Object.keys(bundledLanguages)),
+    () =>
+      new Set([
+        ...CODE_LANG_VALUES.map(
+          (language) => COMMENT_SHIKI_LANGUAGE_ALIASES[language] || language,
+        ),
+        "text",
+      ]),
     [],
   );
   const toShikiLanguage = useCallback(
@@ -578,26 +581,6 @@ export default function CommentEditor({
     [openImagePicker, t],
   );
 
-  useEffect(() => {
-    let mounted = true;
-
-    void getSharedShikiHighlighter()
-      .then((instance) => {
-        if (!mounted) return;
-        shikiHighlighterRef.current = instance;
-        setShikiHighlighter(instance);
-      })
-      .catch((err) => {
-        // Shared initializer resets its cached promise on rejection so a
-        // later attempt can retry. If this attempt also fails, swallow it
-        // and render without syntax highlighting.
-        console.error("Failed to initialize Shiki highlighter:", err);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
   const filteredSlashCommands = useMemo(() => {
     const query = slashMenu?.query.trim().toLowerCase() || "";
     if (!query) return slashCommands;
@@ -926,6 +909,9 @@ export default function CommentEditor({
     },
     [handleAssetFileUpload, resolvedPlaceholder, toShikiLanguage],
   );
+
+  const shikiHighlighter = useShikiHighlighterForCode(editor);
+  shikiHighlighterRef.current = shikiHighlighter;
 
   useEffect(() => {
     if (!onAttachActionChange) return;

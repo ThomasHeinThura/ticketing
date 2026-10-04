@@ -24,10 +24,6 @@ vi.mock("@dnd-kit/sortable", () => ({
   }),
 }));
 
-vi.mock("@dnd-kit/utilities", () => ({
-  CSS: { Transform: { toString: () => undefined } },
-}));
-
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => vi.fn(),
 }));
@@ -56,35 +52,52 @@ vi.mock("@/hooks/mutations/task/use-delete-task", () => ({
 }));
 
 vi.mock("@/store/bulk-selection", () => ({
-  default: (
-    selector: (state: {
-      toggleSelection: typeof mocks.toggleSelection;
-      selectedTaskIds: Set<string>;
-      focusedTaskId: string | null;
-    }) => unknown,
-  ) =>
-    selector({
-      toggleSelection: mocks.toggleSelection,
-      selectedTaskIds: new Set(),
-      focusedTaskId: null,
-    }),
-}));
-
-vi.mock("@/store/project", () => ({
-  default: () => ({
-    project: { id: "project-1", slug: "PRJ", columns: [] },
-  }),
+  default: Object.assign(
+    (
+      selector: (state: {
+        toggleSelection: typeof mocks.toggleSelection;
+        selectedTaskIds: Set<string>;
+        focusedTaskId: string | null;
+      }) => unknown,
+    ) => {
+      const state = {
+        toggleSelection: mocks.toggleSelection,
+        selectedTaskIds: new Set<string>(),
+        focusedTaskId: null,
+      };
+      return selector(state);
+    },
+    {
+      getState: () => ({
+        toggleSelection: mocks.toggleSelection,
+        selectedTaskIds: new Set<string>(),
+        focusedTaskId: null,
+      }),
+    },
+  ),
 }));
 
 vi.mock("@/store/user-preferences", () => ({
-  useUserPreferencesStore: () => ({
-    showAssignees: false,
-    showPriority: false,
-    showDueDates: false,
-    showLabels: false,
-    showTaskNumbers: false,
-    showTaskItemCounts: false,
-  }),
+  useUserPreferencesStore: Object.assign(
+    () => ({
+      showAssignees: false,
+      showPriority: false,
+      showDueDates: false,
+      showLabels: false,
+      showTaskNumbers: false,
+      showTaskItemCounts: false,
+    }),
+    {
+      getState: () => ({
+        showAssignees: false,
+        showPriority: false,
+        showDueDates: false,
+        showLabels: false,
+        showTaskNumbers: false,
+        showTaskItemCounts: false,
+      }),
+    },
+  ),
 }));
 
 vi.mock("react-i18next", () => ({
@@ -113,6 +126,12 @@ function renderTaskCard() {
   render(
     <TaskCard
       task={task}
+      projectSlug="PRJ"
+      taskIsCompleted={false}
+      displayPreferences={displayPreferences}
+      isTaskSelected={false}
+      isTaskFocused={false}
+      toggleSelection={mocks.toggleSelection}
       workspaceId="workspace-1"
       workspaceUsers={undefined}
       onContextMenuTask={mocks.openContextMenu}
@@ -120,6 +139,15 @@ function renderTaskCard() {
   );
   return screen.getByText("Keyboard task").closest('[role="button"]');
 }
+
+const displayPreferences = {
+  showAssignees: false,
+  showPriority: false,
+  showDueDates: false,
+  showLabels: false,
+  showTaskNumbers: false,
+  showTaskItemCounts: false,
+};
 
 describe("TaskCard keyboard context menu", () => {
   it("G10: opens the focused card menu with Shift+F10", () => {
@@ -138,5 +166,29 @@ describe("TaskCard keyboard context menu", () => {
     fireEvent.keyDown(card as HTMLElement, { key: "ContextMenu" });
 
     expect(mocks.openContextMenu).toHaveBeenCalledExactlyOnceWith("task-1");
+  });
+
+  it("renders board-owned selection state supplied by the parent", () => {
+    const props = {
+      task,
+      taskIsCompleted: false,
+      workspaceId: "workspace-1",
+      workspaceUsers: undefined,
+      onContextMenuTask: mocks.openContextMenu,
+      displayPreferences,
+      isTaskSelected: false,
+      isTaskFocused: false,
+      toggleSelection: mocks.toggleSelection,
+      projectSlug: "PRJ",
+    };
+    const { rerender } = render(<TaskCard {...props} />);
+    expect(
+      screen.getByText("Keyboard task").closest('[role="button"]'),
+    ).not.toHaveAttribute("data-task-selected", "true");
+
+    rerender(<TaskCard {...props} isTaskSelected />);
+    expect(
+      screen.getByText("Keyboard task").closest('[role="button"]'),
+    ).toHaveAttribute("data-task-selected", "true");
   });
 });

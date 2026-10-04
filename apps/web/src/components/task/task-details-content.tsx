@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Timeline } from "@taskdesk/ui";
 import { ArrowUpRight } from "lucide-react";
+import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import Activity from "@/components/activity";
 import CommentInput from "@/components/activity/comment-input";
@@ -26,7 +27,7 @@ type TaskDetailsContentProps = {
   dataTestId?: string;
 };
 
-export default function TaskDetailsContent({
+function TaskDetailsContent({
   taskId,
   projectId,
   workspaceId,
@@ -35,7 +36,7 @@ export default function TaskDetailsContent({
 }: TaskDetailsContentProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { data: task } = useGetTask(taskId ?? "");
+  const { data: taskNumber } = useGetTask(taskId ?? "", (task) => task.number);
   const { data: project } = useGetProject({ id: projectId, workspaceId });
   const { data: activities = [] } = useGetActivitiesByTaskId(taskId ?? "");
   const { data: externalLinks = [], isLoading: isLoadingExternalLinks } =
@@ -75,8 +76,8 @@ export default function TaskDetailsContent({
             </span>
           </button>
         )}
-        <p className="text-xs font-semibold text-foreground/70">
-          {project?.slug}-{task?.number}
+        <p className="text-xs font-semibold text-foreground">
+          {project?.slug}-{taskNumber}
         </p>
         <TaskTitle taskId={taskId} />
         <TaskDescription taskId={taskId} />
@@ -90,12 +91,11 @@ export default function TaskDetailsContent({
         </div>
       )}
       <div className="mt-4">
-        {task && (
+        {taskId && (
           <TaskSubtasks
             taskId={taskId}
             projectId={projectId}
             workspaceId={workspaceId}
-            parentStatus={task.status}
           />
         )}
       </div>
@@ -138,3 +138,5 @@ export default function TaskDetailsContent({
     </div>
   );
 }
+
+export default memo(TaskDetailsContent);

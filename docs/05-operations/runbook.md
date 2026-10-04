@@ -12,11 +12,13 @@ dc() { docker compose -f compose.yml -f deploy/compose.prod.yml "$@"; }
 For local development, use `dc() { docker compose -f compose.yml -f deploy/compose.local.yml -f deploy/compose.traefik.yml "$@"; }`.
 The first-run `scripts/deploy.sh local` command sets up the local certificate and secrets.
 
-**Metrics endpoint status:** the architecture describes the intended Prometheus endpoint,
-but the current API image does not start a listener on port `9464` and does not serve
-`/metrics`. The metrics bearer-token setting is not usable yet. Use the container, database,
-and application logs below; do not export a `METRICS_TOKEN` or rely on the metrics commands
-until the endpoint is implemented and verified.
+**Metrics endpoint:** the serving API role starts a dedicated listener on port `9464` at
+`GET /metrics`. Scrapes require the current bearer token; the listener reads its SHA-256
+digest from PostgreSQL for each request. Rotate the token in God Mode → Observability and
+store the one-time response directly in the monitoring system's secret store. Never put the
+token in a command argument, log, ticket, or incident record. A missing or incorrect token
+returns `401`; a database credential-read failure returns `503`. The listener bind failure
+prevents API readiness. Migration and job roles do not start this listener.
 
 ## Audit-write failure alert (after instrumentation is deployed)
 
@@ -37,9 +39,12 @@ closed. Treat the result as a known audit gap, not as evidence that the append-o
 was altered. Record the affected time window and trace ids in the incident record without
 copying credentials or request bodies.
 
-The counter and log alert do not notify instance administrators. AU-14's durable
-administrator notification remains an implementation dependency; do not report the
-notification requirement as satisfied by this alert.
+AU-14 also writes an in-app notification for each current active instance administrator.
+The notification contains only the finite operation name and occurrence time. The notifier
+makes one bounded retry in a separate transaction after the audit savepoint has rolled back.
+If both writes fail, the counter and safe error log remain the operator signals. Check the
+administrators' in-app notifications alongside the matching metric and log record; neither
+signal means the underlying mutation was rolled back.
 
 ## Triage
 
@@ -311,6 +316,36 @@ For development/P0 and UAT verification, this per-router summary reports the use
 three UTC calendar-date window — run against the deployment's own database, not exposed as an
 HTTP endpoint. It does not establish production readiness or authorize production promotion;
 production-specific go-live criteria apply only when promoting an actual production release.
+
+## Strict policy router cutover
+
+`TASKDESK_POLICY_ENFORCE` is a temporary bootstrap control for strict request-path evaluation
+(`apps/api/src/permissions/strict-policy-enforcement.ts`). It accepts a comma-separated list of
+exact registered policy-source paths. The default is empty, so no source is enforced. A listed
+source is evaluated after that route's existing middleware and request validation, immediately
+before its terminal handler. Existing authorization checks continue to run; a registry denial
+prevents the handler from starting. The setting is read and validated during API module startup.
+An unknown, duplicate, blank, reordered, or malformed source refuses startup rather than
+silently selecting a weaker policy set.
+
+For a development or UAT rollout, first establish the documented three real, issue-free UTC
+date buckets for the exact source and representative behaviors being considered (see **Policy
+shadow summary** above). Record the source/build identity, selected UTC dates, route coverage,
+complete summary output, and any explained outcomes with the deployment evidence. Do not
+backfill missing observations or count a partial current day as a complete date. Only after
+that evidence is accepted should the deployment's operator set the approved exact source list
+and restart the API. Add eligible non-task sources in registry-owned path order; the complete
+registered set must precede `apps/api/src/task/policy.ts`, which is required to be last. Do not
+enable the task router until the role re-key prerequisite is verified and every preceding
+source is already enforced. This staged setting does not authorize production promotion.
+
+**Rollback:** remove the affected exact source path from the setting and restart the API. If
+the task path is selected, remove it first before removing any preceding source. Setting the
+value to empty and restarting returns all routes to their existing authorization plus shadow
+mode. Confirm the running deployment's environment through the deployment's protected
+configuration interface; never print environment values into a shell transcript or logs. Record
+the rollback source/build and reason. A malformed setting intentionally prevents boot, so use
+the last known-valid configuration when correcting a startup refusal.
 
 **Per-router, per-date development summary for three UTC dates** (UTC today and the preceding
 two dates; agree / disagree / unevaluated counts, by router group and outcome):

@@ -20,17 +20,20 @@ afterAll(() => {
 
 async function makeRequester() {
   const { user, workspace } = await createWorkspaceMember();
+  await ensureStaffPersonForUser(user.id);
   const person = requireRow(
     await db
-      .insert(schema.personTable)
-      .values({
-        userId: user.id,
-        organisationId: workspace.organisationId,
-        side: "staff",
-      })
-      .returning(),
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, user.id))
+      .limit(1),
     "pending-action requester",
   );
+  if (person.organisationId !== workspace.organisationId || !person.active) {
+    throw new Error(
+      "pending-action requester fixture requires active internal staff identity",
+    );
+  }
   return { person, workspace };
 }
 

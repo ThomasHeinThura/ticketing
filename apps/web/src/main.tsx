@@ -7,7 +7,7 @@ import queryClient from "@/query-client";
 import "@/index.css";
 import { useAuth } from "@/components/providers/auth-provider/hooks/use-auth";
 import { AppErrorBoundary } from "./components/app-error-boundary";
-import { KeyboardShortcutsHelp } from "./components/keyboard-shortcuts-help";
+import KeyboardShortcutsHelpLauncher from "./components/keyboard-shortcuts-help-launcher";
 import AuthProvider from "./components/providers/auth-provider";
 import { ThemeProvider } from "./components/providers/theme-provider";
 import { KeyboardShortcutsProvider } from "./hooks/use-keyboard-shortcuts";
@@ -125,7 +125,7 @@ if (!rootElement.innerHTML) {
               <AppI18nProvider>
                 <KeyboardShortcutsProvider>
                   <App />
-                  <KeyboardShortcutsHelp />
+                  <KeyboardShortcutsHelpLauncher />
                 </KeyboardShortcutsProvider>
               </AppI18nProvider>
             </AuthProvider>

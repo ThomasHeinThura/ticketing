@@ -18,15 +18,19 @@ import { useNavigate } from "@tanstack/react-router";
 import { ContextMenu, ContextMenuTrigger } from "@taskdesk/ui";
 import { produce } from "immer";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useUpdateTask } from "@/hooks/mutations/task/use-update-task";
 import useActiveWorkspace from "@/hooks/queries/workspace/use-active-workspace";
 import { useGetActiveWorkspaceUsers } from "@/hooks/queries/workspace-users/use-get-active-workspace-users";
 import { useRegisterShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { isTaskCompleted } from "@/lib/due-date-status";
 import useBulkSelectionStore from "@/store/bulk-selection";
 import useProjectStore from "@/store/project";
+import { useUserPreferencesStore } from "@/store/user-preferences";
 import type { ProjectWithTasks } from "@/types/project";
 import BulkToolbar from "../bulk-selection/bulk-toolbar";
 import Column from "./column";
+import type { TaskCardDisplayPreferences } from "./task-card";
 import TaskCard, { TaskCardDeleteConfirmation } from "./task-card";
 import TaskCardContextMenuContent from "./task-card-context-menu/task-card-context-menu-content";
 
@@ -38,13 +42,35 @@ type KanbanBoardProps = {
 function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
   const queryClient = useQueryClient();
   const { setProject } = useProjectStore();
+  const displayPreferences = useUserPreferencesStore(
+    useShallow((state) => ({
+      showAssignees: state.showAssignees,
+      showPriority: state.showPriority,
+      showDueDates: state.showDueDates,
+      showLabels: state.showLabels,
+      showTaskNumbers: state.showTaskNumbers,
+      showTaskItemCounts: state.showTaskItemCounts,
+    })),
+  ) as TaskCardDisplayPreferences;
   const {
     setAvailableTasks,
     focusNext,
     focusPrevious,
     focusedTaskId,
+    selectedTaskIds,
+    toggleSelection,
     clearFocus,
-  } = useBulkSelectionStore();
+  } = useBulkSelectionStore(
+    useShallow((state) => ({
+      setAvailableTasks: state.setAvailableTasks,
+      focusNext: state.focusNext,
+      focusPrevious: state.focusPrevious,
+      focusedTaskId: state.focusedTaskId,
+      selectedTaskIds: state.selectedTaskIds,
+      toggleSelection: state.toggleSelection,
+      clearFocus: state.clearFocus,
+    })),
+  );
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [contextMenuTaskId, setContextMenuTaskId] = useState<string | null>(
     null,
@@ -228,7 +254,7 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
 
   if (!project?.columns) {
     return (
-      <div className="flex h-full w-full flex-col bg-linear-to-b from-muted/25 to-background">
+      <div className="flex h-full w-full flex-col bg-background">
         <header className="mb-6 mt-6 space-y-6 shrink-0 px-6">
           <div className="flex items-center justify-between">
             <div className="w-48 h-8 bg-muted/50 rounded-md animate-pulse" />
@@ -296,7 +322,7 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
       >
         <ContextMenuTrigger asChild>
           <div
-            className="flex h-full w-full flex-col bg-linear-to-b from-muted/20 to-background"
+            className="flex h-full w-full flex-col bg-background"
             onContextMenuCapture={setContextTaskFromEvent}
           >
             <div className="min-h-0 flex-1 overflow-x-auto [-webkit-overflow-scrolling:touch]">
@@ -308,6 +334,12 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
                   >
                     <Column
                       column={column}
+                      projectSlug={project.slug}
+                      projectColumns={project.columns}
+                      displayPreferences={displayPreferences}
+                      selectedTaskIds={selectedTaskIds}
+                      focusedTaskId={focusedTaskId}
+                      toggleSelection={toggleSelection}
                       disableDragDrop={disableDragDrop}
                       workspaceId={workspace?.id}
                       workspaceUsers={workspaceUsers}
@@ -339,6 +371,15 @@ function KanbanBoard({ project, disableDragDrop = false }: KanbanBoardProps) {
             <div className="ring-2 ring-ring/35 rounded-lg">
               <TaskCard
                 task={activeTask}
+                projectSlug={project.slug}
+                taskIsCompleted={isTaskCompleted(
+                  activeTask.status,
+                  project.columns,
+                )}
+                displayPreferences={displayPreferences}
+                isTaskSelected={selectedTaskIds.has(activeTask.id)}
+                isTaskFocused={focusedTaskId === activeTask.id}
+                toggleSelection={toggleSelection}
                 workspaceId={workspace?.id}
                 workspaceUsers={workspaceUsers}
                 onContextMenuTask={openContextMenuForTask}

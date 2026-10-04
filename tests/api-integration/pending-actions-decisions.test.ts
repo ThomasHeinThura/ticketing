@@ -3,7 +3,9 @@ import { and, eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import db, { schema } from "../../apps/api/src/database";
 import { createApp } from "../../apps/api/src/index";
+import { ensureStaffPersonForUser } from "../../apps/api/src/utils/seed-internal-organisation";
 import { mockAuthenticatedSession } from "./helpers/auth";
+import { csrfRequest } from "./helpers/csrf";
 import { resetTestDatabase } from "./helpers/database";
 import { createWorkspaceMember, requireRow } from "./helpers/fixtures";
 
@@ -24,18 +26,37 @@ function hashApiKeyForTest(key: string): string {
 
 async function setupRequester() {
   const { user, workspace } = await createWorkspaceMember();
+  await ensureStaffPersonForUser(user.id);
   const person = requireRow(
     await db
-      .insert(schema.personTable)
-      .values({
-        userId: user.id,
-        organisationId: workspace.organisationId,
-        side: "staff",
-      })
-      .returning(),
+      .select()
+      .from(schema.personTable)
+      .where(eq(schema.personTable.userId, user.id))
+      .limit(1),
     "pending-action requester",
   );
-  return { user, workspace, person };
+  if (person.organisationId !== workspace.organisationId || !person.active) {
+    throw new Error(
+      "pending-action requester fixture requires active internal staff identity",
+    );
+  }
+  const sessionId = `session-${user.id}`;
+  const sessionToken = `token-${user.id}`;
+  await db.insert(schema.sessionTable).values({
+    id: sessionId,
+    token: sessionToken,
+    userId: user.id,
+    portal: "agent",
+    expiresAt: new Date(Date.now() + 60 * 60_000),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  return {
+    user,
+    workspace,
+    person,
+    sessionCookie: `__Host-tdk_agent_session=${sessionToken}`,
+  };
 }
 
 async function insertPendingAction(
@@ -104,7 +125,8 @@ describe("POST /api/me/pending-actions/{id}/deny and /cancel", () => {
   ] as const)(
     "AU-14: succeeds with the %s transition when its audit insert fails",
     async (route, outcome) => {
-      const { user, workspace, person } = await setupRequester();
+      const setup = await setupRequester();
+      const { user, workspace, person } = setup;
       await db
         .update(schema.userTable)
         .set({ role: "admin" })
@@ -134,9 +156,11 @@ describe("POST /api/me/pending-actions/{id}/deny and /cancel", () => {
       );
 
       try {
-        const response = await app.request(
+        const response = await csrfRequest(
+          app,
           `/api/me/pending-actions/${pending.id}/${route}`,
           { method: "POST" },
+          setup.sessionCookie,
         );
         expect(response.status).toBe(200);
         expect(await response.json()).toMatchObject({ state: outcome });
@@ -189,14 +213,16 @@ describe("POST /api/me/pending-actions/{id}/deny and /cancel", () => {
   );
 
   it("PA-9/PA-11: denies in a session, records audit and event, and cannot repeat", async () => {
-    const { user, workspace, person } = await setupRequester();
+    const { user, workspace, person, sessionCookie } = await setupRequester();
     const pending = await insertPendingAction(person.id, workspace.id);
     mockAuthenticatedSession(user);
     const { app } = createApp();
 
-    const response = await app.request(
+    const response = await csrfRequest(
+      app,
       `/api/me/pending-actions/${pending.id}/deny`,
       { method: "POST", headers: { "x-request-id": "deny-http-test" } },
+      sessionCookie,
     );
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
@@ -204,9 +230,11 @@ describe("POST /api/me/pending-actions/{id}/deny and /cancel", () => {
       state: "denied",
     });
 
-    const duplicate = await app.request(
+    const duplicate = await csrfRequest(
+      app,
       `/api/me/pending-actions/${pending.id}/deny`,
       { method: "POST" },
+      sessionCookie,
     );
     expect(duplicate.status).toBe(409);
 
@@ -242,12 +270,18 @@ describe("POST /api/me/pending-actions/{id}/deny and /cancel", () => {
       targetIds: ["SUP-race"],
     });
     const concurrent = await Promise.all([
-      app.request(`/api/me/pending-actions/${racing.id}/cancel`, {
-        method: "POST",
-      }),
-      app.request(`/api/me/pending-actions/${racing.id}/cancel`, {
-        method: "POST",
-      }),
+      csrfRequest(
+        app,
+        `/api/me/pending-actions/${racing.id}/cancel`,
+        { method: "POST" },
+        sessionCookie,
+      ),
+      csrfRequest(
+        app,
+        `/api/me/pending-actions/${racing.id}/cancel`,
+        { method: "POST" },
+        sessionCookie,
+      ),
     ]);
     expect(concurrent.map((item) => item.status).sort()).toEqual([200, 409]);
   });
@@ -271,6 +305,9 @@ describe("POST /api/me/pending-actions/{id}/deny and /cancel", () => {
     expect(await denyResponse.text()).toContain("session_required");
 
     mockAuthenticatedSession(user, { impersonatedBy: "admin-user" });
+    // The CSRF issuer intentionally rejects impersonated sessions. This raw
+    // request carries no ambient session cookie so this assertion reaches the
+    // decision route's explicit session_required denial.
     const impersonatedDeny = await app.request(
       `/api/me/pending-actions/${denied.id}/deny`,
       { method: "POST" },
@@ -348,9 +385,11 @@ describe("POST /api/me/pending-actions/{id}/deny and /cancel", () => {
     mockAuthenticatedSession(other.user);
     const { app } = createApp();
 
-    const foreign = await app.request(
+    const foreign = await csrfRequest(
+      app,
       `/api/me/pending-actions/${pending.id}/cancel`,
       { method: "POST" },
+      other.sessionCookie,
     );
     expect(foreign.status).toBe(404);
 

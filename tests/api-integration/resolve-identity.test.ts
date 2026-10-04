@@ -167,12 +167,13 @@ describe("resolveIdentity (loader) — a multi-workspace user, and bounded query
       identity?.memberships.map((membership) => membership.scopeId).sort(),
     ).toEqual([firstWorkspace.id, ...extraWorkspaceIds].sort());
 
-    // Exactly 4 queries: person+role, workspace_member (all rows), the issue #318
-    // genuine-built-in-row check (`workspace_role` where `is_system` for every workspace
-    // query 2 found, one `IN (...)`), and team_member (all rows) -- fixed regardless of
-    // the 5 memberships above. Re-run with only 1 membership below and assert the SAME
-    // count, which is what actually proves "no N+1" rather than merely "a small number
-    // this time."
+    // Exactly 5 bounded queries: person/organisation, workspace_member (all rows), the
+    // issue #318 genuine-built-in-row check (`workspace_role` for every workspace in one
+    // `IN (...)` query), generic membership joined to role/scope facts, and team_member
+    // rows. The generic membership query is required for authoritative project and
+    // organisation reach grants; removing it to hit the old count would drop valid
+    // identities. Re-run with only 1 workspace membership and assert the SAME count,
+    // which proves the loader remains fixed-cost rather than N+1.
     const fiveMembershipQueryCount = selectCalls;
 
     const { user: soloUser } = await createWorkspaceMember({ role: "owner" });
@@ -183,7 +184,7 @@ describe("resolveIdentity (loader) — a multi-workspace user, and bounded query
       countingExecutor,
     );
     expect(selectCalls).toBe(fiveMembershipQueryCount);
-    expect(selectCalls).toBe(4);
+    expect(selectCalls).toBe(5);
   });
 });
 
