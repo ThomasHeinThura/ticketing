@@ -138,6 +138,7 @@ export const workspaceTableRelations = relations(
     invitations: many(invitationTable),
     notificationWorkspaceRules: many(userNotificationWorkspaceRuleTable),
     slaPolicies: many(slaPolicyTable),
+    identityConnections: many(identityConnectionTable),
   }),
 );
 
@@ -557,6 +558,10 @@ export const identityConnectionTableRelations = relations(
     organisation: one(organisationTable, {
       fields: [identityConnectionTable.organisationId],
       references: [organisationTable.id],
+    }),
+    defaultWorkspace: one(workspaceTable, {
+      fields: [identityConnectionTable.defaultWorkspaceId],
+      references: [workspaceTable.id],
     }),
     scimConnection: one(scimConnectionTable),
     externalIdentities: many(externalIdentityTable),

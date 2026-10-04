@@ -20,6 +20,7 @@ import { and, count, eq, ne, sql } from "drizzle-orm";
 import { appendAuditLog } from "./audit/audit-writer";
 import { loadLocalFactorState } from "./auth/local-factor-service";
 import db, { schema } from "./database";
+import { identityOidcPlugin } from "./identity/oidc-login";
 import { notifyCurrentInstanceAdminsOfAuditFailure } from "./instance/observability/audit-failure-notifier";
 import {
   logTaskDesk,
@@ -227,6 +228,7 @@ function createAuth(portal: AuthPortal) {
       },
     },
     plugins: [
+      identityOidcPlugin(portal),
       // anonymous() guest sign-in removed in #6. kaneo enabled it BY DEFAULT —
       // it was opt-OUT via DISABLE_GUEST_ACCESS. It minted a real user row, which
       // also let a guest arriving first consume the zero-user first-run window and

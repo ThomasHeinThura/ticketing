@@ -113,6 +113,15 @@ has not been granted. These are target contracts, not implemented tables.
   ineligible until corrected; a later ceiling increase never revives retired grants without
   fresh evidence from their own source. Rank guardrails and elevated-action rules in
   [RBAC](../01-architecture/rbac.md) apply to what a connection is configured to grant.
+  An agent connection's nullable `default_workspace_id` is the sole target for its JIT
+  default grant. When agent JIT is enabled, it must reference an active workspace in the
+  active internal organisation, and `default_role_id` must be scoped to that exact
+  workspace and satisfy the connection's rank/capability ceiling. The server never selects
+  a workspace from IdP data or from an arbitrary first/oldest workspace. Customer
+  connections keep `default_workspace_id` null and use only the canonical Customer
+  organisation role. A valid configured target may remain dormant when JIT is disabled or
+  its role is above a subsequently lowered ceiling; it grants nothing until made eligible
+  by an audited config change.
 - `IP-4` **All scope is resolved from the connection**, never from the request. A SCIM or
   OIDC payload supplying `organisation_id`, `workspace_id`, a role, a capability or a portal
   scope is rejected `400 forbidden_attribute` — it is not ignored, it is refused, and the
@@ -205,7 +214,18 @@ has not been granted. These are target contracts, not implemented tables.
   not JIT is enabled.** Every Entra connection must store one exact, nonempty
   `required_entra_app_role` in its existing `identity_connection.jit_policy` at creation and
   configuration save, and before enable; changing `jit_policy.enabled` cannot remove or
-  bypass this admission setting. Missing or malformed persisted admission configuration
+  bypass this admission setting. The closed `jit_policy` object contains exactly
+  `enabled: boolean`, `default_role_id: string | null` (an existing canonical TaskDesk role
+  id), and `required_entra_app_role: string` (the exact nonempty Entra app-role value).
+  Agent JIT additionally requires the connection's `default_workspace_id` and a role scoped
+  to that workspace; the target is connection configuration, never an IdP selector.
+  Unknown keys and malformed values are refused at save and fail login closed when found in
+  persisted configuration. The required app-role value is preserved byte-for-byte; it is not
+  a TaskDesk role id, wildcard or selector. A customer connection has only its canonical
+  Customer default role. Enabled JIT requires a usable default role under IP-3/IP-10/IP-22;
+  a default role left above a subsequently lowered ceiling is retained as dormant policy
+  and grants nothing until made eligible again. Reserved non-Entra provider types cannot be
+  enabled in this release. Missing or malformed persisted admission configuration
   fails authentication closed and is surfaced as invalid connection health. After the
   protocol floor (`IP-7`) and exact selected-connection `iss`, `tid` and `aud` validation
   (`IP-26`), resolve the immutable `oid` under that connection. Before creating a person or
@@ -238,6 +258,15 @@ has not been granted. These are target contracts, not implemented tables.
   for admission. Generic and other provider JIT remains disabled until its own admission
   rule is approved. The first-release Entra JIT rule rejects guests, including a missing or
   malformed `acct`; it does not create a guest-login or alternate account-linking path.
+
+  The first-release `claim_mapping` is a closed profile-only object:
+  `{ "version": 1, "displayName": "name" }`. A missing/null value means this exact
+  default; malformed non-null data fails login closed and must be repaired through strict
+  connection configuration. The signed `oid` and `tid` remain the fixed subject selectors,
+  and email metadata remains the fixed `email` → `preferred_username` → `upn` precedence
+  above. The profile map cannot select identity, email, tenant, portal, organisation, role,
+  capability or reach; no arbitrary claim path is accepted. A missing/invalid optional name
+  is omitted rather than synthesized from email or username.
 - `IP-29` **The portal login page has a limited domain-specific SSO disclosure.** See
   [ADR 0014](../01-architecture/adr/0014-limited-home-realm-disclosure.md) for the rationale
   and alternatives. It does
@@ -280,7 +309,10 @@ protocol code; only the credential check reuses the platform.
   /Users`; `GET /Users?filter=userName eq "…"` (and `externalId`, and the configured match
   attributes) returning a correct `ListResponse`; `GET /Users/{id}`; `PATCH /Users/{id}`
   (`active`, profile attributes); `PUT /Users/{id}`; `GET /Users` with `startIndex`/`count`
-  pagination; `ServiceProviderConfig`, `ResourceTypes`, `Schemas`. **`/Bulk` is not
+  pagination; `POST`, `PUT`, `PATCH`, `GET` and `DELETE` for `/Groups` and `/Groups/{id}`;
+  `ServiceProviderConfig`, `ResourceTypes`, `Schemas`. Group writes are full same-connection
+  directory reconciliations; `DELETE` is soft deactivation, and a mapping grants only from
+  a successful authenticated membership reconciliation. **`/Bulk` is not
   implemented** unless Entra interoperability testing proves it necessary. `DELETE /Users/{id}`
   is accepted and treated as `active=false` (`IP-15`) — SCIM de-provisioning is never a
   hard delete.
@@ -588,8 +620,12 @@ protocol code; only the credential check reuses the platform.
   `provisioning_event` row; those that change authority, reach or configuration also write
   `audit_log`. Grant changes record bounded source kind, connection/identity/mapping ids,
   affected scope/role ids and reason; never raw claims or tokens. Grant delta, effective
-  projection and these rows commit together. The God Mode identity screens show provisioning
-  status, last sync result and errors **without exposing secrets**.
+  projection and these rows commit together. SCIM group directory create, metadata update or
+  soft deactivation records `group.directory_changed` with only connection, group and changed
+  field identifiers; member additions/removals retain `group.member_added` and
+  `group.member_removed`. Directory-change events never masquerade as membership or mapping
+  changes. The God Mode identity screens show provisioning status, last sync result and errors
+  **without exposing secrets**.
 - `IP-25` `plugin-health` pings each enabled connection's discovery document; a connection
   whose IdP is unreachable is flagged in God Mode → Health.
 
