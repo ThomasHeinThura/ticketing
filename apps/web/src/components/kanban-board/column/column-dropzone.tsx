@@ -81,7 +81,9 @@ export function ColumnDropzone({
               toggleSelection={toggleSelection}
               disableDragDrop={disableDragDrop}
               workspaceId={workspaceId}
-              workspaceUsersById={workspaceUsersById}
+              assignee={
+                task.userId ? workspaceUsersById.get(task.userId) : undefined
+              }
               onContextMenuTask={onContextMenuTask}
               onOpenTask={onOpenTask}
               t={t}

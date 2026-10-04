@@ -8,7 +8,7 @@ import CommentInput from "@/components/activity/comment-input";
 import { isCommentActivity } from "@/components/activity/utils";
 import { ExternalLinksAccordion } from "@/components/external-links/external-links-accordion";
 import useAuth from "@/components/providers/auth-provider/hooks/use-auth";
-import type useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
+import useGetActivitiesByTaskId from "@/hooks/queries/activity/use-get-activities-by-task-id";
 import useExternalLinks from "@/hooks/queries/external-link/use-external-links";
 import useGetProject from "@/hooks/queries/project/use-get-project";
 import useGetTask from "@/hooks/queries/task/use-get-task";
@@ -25,14 +25,13 @@ type TaskDetailsContentProps = {
   taskId: string;
   projectId: string;
   workspaceId: string;
-  task?: Task;
+  task?: TaskDetailsSummary;
   project?: Project;
-  activities: NonNullable<ReturnType<typeof useGetActivitiesByTaskId>["data"]>;
   className?: string;
   dataTestId?: string;
 };
 
-type TaskDetailsSummary = Pick<Task, "number" | "title" | "description">;
+export type TaskDetailsSummary = Pick<Task, "number" | "title" | "description">;
 
 export const selectTaskDetailsSummary = (task: Task): TaskDetailsSummary => ({
   number: task.number,
@@ -46,7 +45,6 @@ function TaskDetailsContent({
   workspaceId,
   task,
   project: providedProject,
-  activities,
   className,
   dataTestId,
 }: TaskDetailsContentProps) {
@@ -79,7 +77,6 @@ function TaskDetailsContent({
   const { data: externalLinks = [], isLoading: isLoadingExternalLinks } =
     useExternalLinks(taskId ?? "");
   const { data: relations = [] } = useGetTaskRelations(taskId ?? "");
-  const { user } = useAuth();
 
   const parentRelation = relations.find(
     (rel) => rel.relationType === "subtask" && rel.targetTaskId === taskId,
@@ -144,34 +141,44 @@ function TaskDetailsContent({
         />
       </div>
       <span className="text-sm font-medium text-muted-foreground h-[1px] bg-border w-full block shrink-0" />
-      <div className="flex flex-col gap-4">
-        <h1 className="text-md font-semibold">{t("tasks:detail.activity")}</h1>
-        {user?.id && taskId && <CommentInput taskId={taskId} />}
-        {activities.length > 0 ? (
-          <Timeline>
-            {activities.map((activity, index) => {
-              const nextActivity = activities[index + 1];
-              const showConnector =
-                !isCommentActivity(activity) &&
-                Boolean(nextActivity) &&
-                !isCommentActivity(nextActivity);
+      <TaskActivitySection taskId={taskId} />
+    </div>
+  );
+}
 
-              return (
-                <Activity
-                  key={activity.id}
-                  activity={activity}
-                  step={activities.length - index}
-                  showConnector={showConnector}
-                />
-              );
-            })}
-          </Timeline>
-        ) : (
-          <p className="text-sm font-medium text-muted-foreground">
-            {t("tasks:detail.noActivity")}
-          </p>
-        )}
-      </div>
+function TaskActivitySection({ taskId }: { taskId: string }) {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const { data: activities = [] } = useGetActivitiesByTaskId(taskId);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <h1 className="text-md font-semibold">{t("tasks:detail.activity")}</h1>
+      {user?.id && <CommentInput taskId={taskId} />}
+      {activities.length > 0 ? (
+        <Timeline>
+          {activities.map((activity, index) => {
+            const nextActivity = activities[index + 1];
+            const showConnector =
+              !isCommentActivity(activity) &&
+              Boolean(nextActivity) &&
+              !isCommentActivity(nextActivity);
+
+            return (
+              <Activity
+                key={activity.id}
+                activity={activity}
+                step={activities.length - index}
+                showConnector={showConnector}
+              />
+            );
+          })}
+        </Timeline>
+      ) : (
+        <p className="text-sm font-medium text-muted-foreground">
+          {t("tasks:detail.noActivity")}
+        </p>
+      )}
     </div>
   );
 }

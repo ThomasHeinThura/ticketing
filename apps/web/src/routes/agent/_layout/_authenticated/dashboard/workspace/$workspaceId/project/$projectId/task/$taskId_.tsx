@@ -4,7 +4,9 @@ import { useTranslation } from "react-i18next";
 import TaskLayout from "@/components/common/task-layout";
 import PageTitle from "@/components/page-title";
 import TaskDeleteButton from "@/components/task/task-delete-button";
-import TaskDetailsContent from "@/components/task/task-details-content";
+import TaskDetailsContent, {
+  selectTaskDetailsSummary,
+} from "@/components/task/task-details-content";
 import {
   TaskDetailsSkeleton,
   TaskPropertiesSidebarSkeleton,
@@ -28,13 +30,15 @@ function RouteComponent() {
     data: task,
     isLoading: isTaskLoading,
     isError: isTaskError,
-  } = useGetTask(taskId);
+  } = useGetTask(taskId, selectTaskDetailsSummary);
   const { data: project, isLoading: isProjectLoading } = useGetProject({
     id: projectId,
     workspaceId,
   });
-  const { data: activities = [], isLoading: isActivitiesLoading } =
-    useGetActivitiesByTaskId(taskId);
+  const { isLoading: isActivitiesLoading } = useGetActivitiesByTaskId(
+    taskId,
+    () => null,
+  );
   const isLoading = isTaskLoading || isProjectLoading || isActivitiesLoading;
 
   const handleDeleted = () => {
@@ -66,7 +70,6 @@ function RouteComponent() {
             taskId={taskId}
             projectId={projectId}
             workspaceId={workspaceId}
-            task={task}
             project={project}
             className="h-full w-full lg:w-72 xl:w-80 flex flex-col gap-2"
           />
@@ -117,7 +120,6 @@ function RouteComponent() {
           workspaceId={workspaceId}
           task={task}
           project={project}
-          activities={activities}
           className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col gap-2 px-3 pb-16 pt-3 sm:px-4 xl:pb-20 xl:pt-8"
           dataTestId="g13-legacy-task-content"
         />
