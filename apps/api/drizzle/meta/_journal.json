@@ -617,6 +617,13 @@
 			"when": 1791107747302,
 			"tag": "0087_romantic_sway",
 			"breakpoints": true
+		},
+		{
+			"idx": 88,
+			"version": "7",
+			"when": 1791154982152,
+			"tag": "0088_tearful_thena",
+			"breakpoints": true
 		}
 	]
 }

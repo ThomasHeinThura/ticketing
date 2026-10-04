@@ -283,9 +283,8 @@ Which keys, how many calls, which tools, error rates, auto-disabled keys
 ### Users
 
 Every account on the instance, across organisations. Search, view, suspend, unsuspend,
-force sign-out, reset MFA (planned; unavailable until a factor adapter exists), delete
-(deactivate — people are never hard-deleted), export a person's data, anonymise a person,
-and **impersonate**.
+force sign-out, reset MFA, grant instance administrator, deactivate, export a person's data,
+anonymise a person, and **impersonate**.
 
 Person deactivation is a separate IP-15 lifecycle transition. It is requested as a server-owned
 pending action (`action = 'user_deactivation'`, `target_type = 'person'`) on
@@ -302,6 +301,48 @@ API keys, retires external and direct grants, recomputes effective membership, a
 authored history. It never hard-deletes the person or user. SCIM retains its configured
 lifecycle policy; IP-16 reactivation does not restore retired grants. No last-administrator
 guardrail is introduced.
+
+The directory uses `GET /api/instance/users` with opaque cursor pagination (`limit` defaults
+to 50 and is capped at 200). `q` is trimmed and searched as a case-insensitive substring of
+name or email. Optional `side`, `active` and `organisationId` filters are exact matches.
+Results are ordered by account creation time descending, then user id descending; the cursor
+is bound to the normalized query and filters. The response is `{data, page:{nextCursor,
+hasMore}}` with no total count. Each `data` item contains only `id`, `name`, `email`,
+`emailVerified`, `createdAt`, `locale`, `isInstanceAdmin`, `isSuspended`,
+`suspensionExpiresAt`, `twoFactorEnabled`, and `person`. `person` is null for an unlinked
+account; otherwise it contains only `id`, `side`, `organisationId`, `organisationName`,
+`active`, and `isPlaceholder`. `isSuspended` reflects a current ban (not a ban whose expiry
+has passed). `GET /api/instance/users/{id}` returns the same allowlisted shape. Responses
+never include credentials, session identifiers, IP or user-agent data, raw auth roles, or
+ban reasons.
+
+Suspension is reversible and distinct from person deactivation. Suspending sets the existing
+`user.banned` fields, records a bounded reason and optional expiry, revokes all current
+sessions, and revokes all personal keys in the current native Better Auth `apikey` store.
+There is no separate MCP credential store in this implementation. Unsuspending clears the
+ban fields; it does not recreate sessions or keys. Deactivation sets `person.active = false` and follows
+`identity-provisioning.md` IP-15, including its membership and external-grant lifecycle.
+There is no God Mode unsuspend for a deactivated person; reactivation follows IP-16.
+Force sign-out deletes all current target sessions, including impersonation sessions, and
+does not change keys or account status. It is safe to repeat and reports only the count of
+revoked sessions.
+
+The suspension request is strict JSON `{ reason?: string, expiresAt?: string | null }`.
+When present, `reason` is trimmed, must be non-empty, and is limited to 500 Unicode
+codepoints. `expiresAt`, when a string, must be a valid ISO timestamp strictly later than
+the server's current time. Omission or `null` means an indefinite suspension. The reason is
+used only in the existing Better Auth ban field; it is never returned by the Users API or
+written to audit/security-alert payloads. Expired bans are reported as not currently
+suspended and do not trigger credential restoration.
+
+Granting `instance:admin` uses the recovery contract's existing eligibility and concurrency
+invariants: the target is an existing non-anonymous, unbanned user with exactly one active
+staff person. The operation changes only `user.role`, uses the shared promotion lock and
+re-reads eligibility while holding the user/person rows. Already-admin is an audited
+idempotent result. The browser operation requires a current agent session and one-use
+PA-15 step-up bound to the acting user/person/session, target id, exact route, and canonical
+request body. The grant, audit append, and durable security alerts commit in one transaction;
+email is not required by this route.
 
 ### Audit
 
@@ -332,7 +373,7 @@ Import runs and their history. See [import strategy](../06-data-import/import-st
   the server chooses the confirmation level, and for God Mode targets — organisations,
   identity connections, auth plugins, hard purge — that level is **typed exact name +
   step-up**. The client cannot lower it.
-- `GM-12` God Mode person deactivation uses the dedicated `user_deactivation` pending-action
+- `GM-15` God Mode person deactivation uses the dedicated `user_deactivation` pending-action
   kind (not a deletion). Its fixed target type is `person`, the route is
   `POST /api/instance/users/{id}/deactivate`, and the one confirmation is
   `typed_name_step_up`: the requester types the target's exact current account email and
@@ -447,7 +488,7 @@ GET    /api/instance/users                            instance:admin
 POST   /api/instance/users/{id}/suspend               instance:admin
 POST   /api/instance/users/{id}/unsuspend             instance:admin
 POST   /api/instance/users/{id}/sign-out              instance:admin
-POST   /api/instance/users/{id}/reset-mfa             instance:admin  E  (planned; unavailable until the factor adapter exists)
+POST   /api/instance/users/{id}/reset-mfa             instance:admin  E
 POST   /api/instance/users/{id}/grant-admin           instance:admin  E
 POST   /api/instance/users/{id}/deactivate            instance:admin  E (session-only; `user_deactivation` pending action; exact current email + step-up)
 GET    /api/instance/users/{id}/export                instance:admin  E

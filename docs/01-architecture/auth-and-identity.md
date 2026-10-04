@@ -575,6 +575,114 @@ If every administrator is locked out, recovery is the CLI (`grant-instance-admin
 an audit row with `actor_type = 'system'`, and emails every existing administrator that it
 was used. Break-glass is loud by design.
 
+Registration refusals do not reveal whether a first administrator has already claimed the
+instance. Any unauthenticated password-signup attempt refused because global registration,
+password registration, bootstrap proof, or invitation validation does not permit it returns
+`403` with the same generic message: `Registration is currently unavailable.` This does not
+change policy: valid invitations still work where allowed, an initialized instance with open
+registration still accepts ordinary signup, and a valid setup token or configured headless
+address still admits the first local-credential bootstrap even when registration is disabled.
+No error text describes which gate refused the request.
+
+### P4 recovery contract — orchestrator decision
+
+The following is the **orchestrator-selected implementation contract**, using Thomas's
+standing authorization to proceed with recommended decisions. It is not Thomas's P4 design
+approval. The operational command shape is `grant-instance-admin <email>` inside the TaskDesk
+container.
+
+- The command is only for recovery on an already initialized instance. It requires a
+  non-null `instance_setting.setup_completed_at`; it never substitutes for or reopens the
+  first-run setup flow.
+- The process must run in the `taskdesk` container as its configured service UID and resolve
+  that effective UID through the container's passwd database. It must not infer an operator
+  from environment variables, command-line actor fields, or the target email. The CLI can
+  attest only to the container process identity; host Docker access records remain the
+  source for identifying the human operator.
+- Recovery is interactive and requires a TTY. Before mutation, the operator must attest
+  that all current instance administrators are unable to recover access and that the target
+  person's identity was verified through the deployment's independent operator process;
+  the operator types `YES` to attest.
+  The CLI resolves and displays the single target, then requires the operator to type the
+  fixed phrase `GRANT INSTANCE ADMIN`. In a short transaction after confirmation, it takes
+  the shared promotion lock and re-reads setup state, target identity and the set of current
+  admin user ids. If that state differs from what was displayed, it refuses and asks the
+  operator to restart the command and verify again. It never holds database locks while
+  waiting for input. There is no unattended mode in this contract.
+- `<email>` is an exact match against the stored email of one existing, non-anonymous,
+  unbanned user. That user must have exactly one active `person` row with `side = 'staff'`;
+  missing, inactive, customer-side, banned, or ambiguous identity resolution fails closed
+  with no authority change. The CLI does not create or relink a user or person, alter
+  account status, or change local-factor enrollment. Existing MFA policy continues to gate
+  protected use.
+- The grant uses the existing `user.role = 'admin'` source only. It does not create a new
+  identity-provider grant, membership, role row, or parallel authority source. Identity
+  resolution projects that existing source to the RBAC `instance_admin` grant.
+- The command acquires the same transaction-scoped PostgreSQL advisory lock as first-user
+  promotion (currently `pg_advisory_xact_lock(2026)`) before re-reading setup state, target
+  identity, current administrators, and target role. This serializes concurrent recovery
+  commands with each other and with first-user promotion. It locks the resolved target user
+  row and the eligible staff person row before changing `user.role`; concurrent identity
+  deactivation or side changes cannot race that eligibility read. Every validly formed invocation that reaches the database
+  is audited, including refusal and operator cancellation; a missing target uses the
+  singleton instance-settings row as its audit entity. The role update, append-only audit row, and
+  durable in-app security notifications for a successful or already-admin result commit in
+  one database transaction. If any required write fails, the whole transaction rolls back;
+  in particular, audit failure means no grant. A database outage means the command fails
+  closed and cannot claim an audit record was written.
+- The command is idempotent with respect to authority: an already-admin target remains
+  unchanged. Each invocation that reaches the database is a separate audited use. A new
+  grant produces one durable in-app `security_alert` for every user whose
+  `role = 'admin'` at the transaction's locked read, plus the target; recipients are
+  deduplicated by user id. An already-admin target is already in that recipient set. A
+  refused or cancelled command writes its audit outcome but creates no alert. The append
+  uses `actor_type = 'system'`, null `actor_id`, the target user as the entity when resolved
+  (otherwise the singleton instance settings row), and records the effective container UID
+  and passwd name; it never stores the supplied email, credentials, or secret material. The
+  host operator is not misrepresented as the container's service account.
+- Email notices are attempted only after the transaction commits. SMTP failure never rolls
+  back a committed grant or durable in-app notice. The command reports only aggregate
+  delivery success/failure counts, exits nonzero when any email fails, and instructs the
+  operator to notify recipients through the host's established incident channel. It never
+  prints recipient addresses or secrets.
+
+Break-glass is loud by design. The audit key is registered in the
+[audit action catalogue](../03-features/audit-trail.md#audit-action-catalogue). Before adding
+notification writers, register the finite security-alert payload and email template in the
+canonical notifications contract. Implementation and its tests receive bulk independent
+authority/security review; human P4 design acceptance remains outstanding.
+
+### P4 God Mode Users — selected implementation contracts
+
+The browser `grant-admin` route uses the same target eligibility and serialization as
+recovery, but the authenticated actor is the current administrator's person and session.
+It requires a real, non-anonymous, unbanned target user with exactly one active staff person;
+it refuses unlinked, inactive, customer-side, or otherwise ineligible targets. It changes
+only the existing `user.role = 'admin'` source and never creates or links an identity. It
+takes the shared `pg_advisory_xact_lock(2026)`, locks the target user and eligible person,
+then re-reads setup state, target eligibility, current administrator state, and target role
+before mutation. An already-admin target is an audited idempotent result. No last-admin
+restriction is added; the rank/last-administrator guardrails remain deferred as recorded in
+`rbac.md`.
+
+The operation is `instance_admin_grant`, fixed version `1`, on
+`POST /api/instance/users/{id}/grant-admin`. Its strict JSON body is `{}`. The one-use PA-15
+proof binds the acting user, active person, session, target user id, fixed route, operation
+key/version and canonical empty body. The route consumes that proof in the transaction that
+locks/revalidates the target and writes the role change. The role change, `auth.instance_admin_granted`
+audit append, and durable in-app security alerts commit atomically; audit or alert failure
+means no role change. The alert goes to every current instance administrator and the target,
+with a closed payload that contains no identity-provider data, credentials, or secrets.
+
+God Mode suspension uses the existing Better Auth `user.banned`, `banReason`, and
+`banExpires` fields, not `person.active`. Suspending blocks login and API-key authentication,
+revokes all existing sessions and all personal keys in the current native Better Auth
+`apikey` store, and preserves the person's identity and memberships. There is no separate
+MCP credential store in this implementation. Unsuspending clears the ban fields only. It
+never restores sessions or keys. Force sign-out deletes all current sessions, including any
+impersonation session, and leaves account state and API keys unchanged. Deactivation is
+the separate IP-15 identity-provisioning lifecycle and is not a suspension alias.
+
 ## Threat notes
 
 | Threat | Mitigation |

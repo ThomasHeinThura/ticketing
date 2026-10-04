@@ -7,6 +7,7 @@ import { normaliseTraceId } from "../permissions/shadow-middleware";
 export type StepUpOperation =
   | "metrics_token_rotate"
   | "mfa_reset"
+  | "instance_admin_grant"
   | "oidc_group_mapping_create"
   | "oidc_group_mapping_update";
 
@@ -21,6 +22,7 @@ type AuditDatabase = typeof db | StepUpTransaction;
 const operationRoutes: Record<StepUpOperation, string> = {
   metrics_token_rotate: "POST /api/instance/observability/metrics-token/rotate",
   mfa_reset: "POST /api/instance/users/{id}/reset-mfa",
+  instance_admin_grant: "POST /api/instance/users/{id}/grant-admin",
   oidc_group_mapping_create:
     "POST /api/instance/identity-connections/{id}/oidc-group-mappings",
   oidc_group_mapping_update:

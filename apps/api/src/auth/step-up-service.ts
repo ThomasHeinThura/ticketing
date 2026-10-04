@@ -9,6 +9,9 @@ export const STEP_UP_ROUTE =
 export const MFA_RESET_OPERATION = "mfa_reset" as const;
 export const MFA_RESET_ROUTE =
   "POST /api/instance/users/{id}/reset-mfa" as const;
+export const INSTANCE_ADMIN_GRANT_OPERATION = "instance_admin_grant" as const;
+export const INSTANCE_ADMIN_GRANT_ROUTE =
+  "POST /api/instance/users/{id}/grant-admin" as const;
 export class StepUpAttemptLimitError extends Error {
   constructor() {
     super("step_up_attempt_limit");
@@ -31,6 +34,15 @@ export function canonicalMfaResetBody(
     userId,
     verificationNote,
   });
+}
+
+export function canonicalInstanceAdminGrantBody(userId: string): Buffer {
+  return canonicalOperationBody(
+    INSTANCE_ADMIN_GRANT_OPERATION,
+    INSTANCE_ADMIN_GRANT_ROUTE,
+    1,
+    { userId },
+  );
 }
 
 function canonicalOperationBody(
@@ -79,6 +91,20 @@ export async function createMfaResetChallenge(input: {
   });
 }
 
+export async function createInstanceAdminGrantChallenge(input: {
+  personId: string;
+  sessionId: string;
+  userId: string;
+}) {
+  return createOperationChallenge({
+    ...input,
+    operation: INSTANCE_ADMIN_GRANT_OPERATION,
+    route: INSTANCE_ADMIN_GRANT_ROUTE,
+    version: 1,
+    body: canonicalInstanceAdminGrantBody(input.userId),
+  });
+}
+
 async function createOperationChallenge(input: {
   personId: string;
   sessionId: string;
@@ -95,7 +121,9 @@ async function createOperationChallenge(input: {
     const clock = await tx.execute<{ challenge_expires_at: string }>(
       sql`SELECT (now() + interval '5 minutes')::text AS challenge_expires_at`,
     );
-    const expiresAt = new Date(clock.rows[0]!.challenge_expires_at);
+    const clockRow = clock.rows[0];
+    if (!clockRow) throw new Error("Database time is unavailable");
+    const expiresAt = new Date(clockRow.challenge_expires_at);
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(hashtext(${input.sessionId}), hashtext(${input.operation}))`,
     );
@@ -200,6 +228,19 @@ export async function consumeMfaResetProof(
     operation: MFA_RESET_OPERATION,
     route: MFA_RESET_ROUTE,
     body: canonicalMfaResetBody(input.userId, input.verificationNote),
+  });
+}
+
+export async function consumeInstanceAdminGrantProof(
+  tx: StepUpTransaction,
+  input: { token: string; personId: string; sessionId: string; userId: string },
+): Promise<{ authMethod: "password" | "totp" | "backup_code" } | null> {
+  return consumeOperationProof(tx, {
+    ...input,
+    version: 1,
+    operation: INSTANCE_ADMIN_GRANT_OPERATION,
+    route: INSTANCE_ADMIN_GRANT_ROUTE,
+    body: canonicalInstanceAdminGrantBody(input.userId),
   });
 }
 
@@ -316,6 +357,31 @@ export async function issueMfaResetToken(
   );
 }
 
+export async function issueInstanceAdminGrantToken(
+  input: {
+    id: string;
+    nonce: string;
+    personId: string;
+    sessionId: string;
+    userId: string;
+    targetUserId: string;
+  },
+  verifyAuthentication: () => Promise<
+    "password" | "totp" | "backup_code" | null
+  >,
+) {
+  return issueOperationToken(
+    {
+      ...input,
+      version: 1,
+      operation: INSTANCE_ADMIN_GRANT_OPERATION,
+      route: INSTANCE_ADMIN_GRANT_ROUTE,
+      body: canonicalInstanceAdminGrantBody(input.targetUserId),
+    },
+    verifyAuthentication,
+  );
+}
+
 async function issueOperationToken(
   input: {
     id: string;
@@ -412,8 +478,10 @@ async function issueOperationToken(
     }>(
       sql`SELECT now()::text AS issued_at, (now() + interval '5 minutes')::text AS token_expires_at`,
     );
-    const issuedAt = new Date(clock.rows[0]!.issued_at);
-    const tokenExpiresAt = new Date(clock.rows[0]!.token_expires_at);
+    const clockRow = clock.rows[0];
+    if (!clockRow) throw new Error("Database time is unavailable");
+    const issuedAt = new Date(clockRow.issued_at);
+    const tokenExpiresAt = new Date(clockRow.token_expires_at);
 
     const updated = await tx
       .update(schema.stepUpConfirmationTable)

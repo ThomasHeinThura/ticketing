@@ -1822,6 +1822,74 @@
 				"outOfReach": "allow"
 			}
 		},
+		"GET /api/instance/users": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"GET /api/instance/users/{id}": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
 		"GET /api/invitation/{id}": {
 			"instance_admin": {
 				"inReach": "403 forbidden",
@@ -4338,10 +4406,146 @@
 				"outOfReach": "403 forbidden"
 			}
 		},
+		"POST /api/instance/users/{id}/grant-admin": {
+			"instance_admin": {
+				"inReach": "allow (step-up)",
+				"outOfReach": "allow (step-up)"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
 		"POST /api/instance/users/{id}/reset-mfa": {
 			"instance_admin": {
 				"inReach": "allow (step-up)",
 				"outOfReach": "allow (step-up)"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"POST /api/instance/users/{id}/sign-out": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"POST /api/instance/users/{id}/suspend": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
+			},
+			"owner": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"admin": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"manager": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"lead": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"member": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"viewer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			},
+			"customer": {
+				"inReach": "403 forbidden",
+				"outOfReach": "403 forbidden"
+			}
+		},
+		"POST /api/instance/users/{id}/unsuspend": {
+			"instance_admin": {
+				"inReach": "allow",
+				"outOfReach": "allow"
 			},
 			"owner": {
 				"inReach": "403 forbidden",
