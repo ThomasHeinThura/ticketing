@@ -172,7 +172,7 @@ dc exec -T postgres psql -U "${POSTGRES_USER:-taskdesk}" -d "${POSTGRES_DB:-task
 Requires database access. Every step is audited.
 
 ```bash
-dc exec taskdesk node dist/cli.js grant-instance-admin you@example.com
+dc exec taskdesk node apps/api/dist/cli.js grant-instance-admin you@example.com
 ```
 
 Run it from an interactive terminal as the container's configured `taskdesk` service user;
@@ -182,16 +182,14 @@ recovery attestations and target in the prompt. A committed grant remains in eff
 SMTP is unavailable; the command reports aggregate delivery counts and directs the
 operator to the host incident channel for any failed notices.
 
-The CLI is a build target of the image (`apps/api/src/cli.ts` → `dist/cli.js`,
-[container-image.md](container-image.md)). Every command writes an audit row with
-`actor_type = 'system'` and the invoking OS user. Commands:
+The CLI is a build target of the image (`apps/api/src/cli.ts` →
+`apps/api/dist/cli.js`, [container-image.md](container-image.md)). The recovery command writes
+an audit row with `actor_type = 'system'`, the effective container UID, and its passwd name.
+The implemented command is:
 
 | Command | Does |
 | --- | --- |
 | `grant-instance-admin <email>` | Break-glass: grants `instance:admin` to an existing person |
-| `disable-auth-plugin <id>` | Disables an identity provider and bumps `config_version` so every replica reloads ([auth runtime reconfiguration](../01-architecture/auth-runtime-reconfiguration.md)) |
-| `verify-backup <file>` | `pg_restore --list` plus a decrypt check of one plugin secret against the current key |
-| `rekey-status` | Progress of `secrets-rekey`: rows on the new `key_id` vs total |
 
 The command writes an `audit_log` row recording that break-glass was used. If it appears in
 the audit log and nobody knows why, treat it as an incident.
