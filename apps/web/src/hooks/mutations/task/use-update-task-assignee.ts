@@ -10,6 +10,24 @@ import {
 type AssigneeFields = Pick<Task, "userId" | "assigneeId" | "assigneeName">;
 type TaskUpdateContext = { version: number };
 
+function equalAssigneeFields(current: unknown, next: unknown) {
+  if (
+    !current ||
+    !next ||
+    typeof current !== "object" ||
+    typeof next !== "object"
+  )
+    return current === next;
+
+  const currentFields = current as AssigneeFields;
+  const nextFields = next as AssigneeFields;
+  return (
+    currentFields.userId === nextFields.userId &&
+    currentFields.assigneeId === nextFields.assigneeId &&
+    currentFields.assigneeName === nextFields.assigneeName
+  );
+}
+
 export function useUpdateTaskAssignee() {
   const queryClient = useQueryClient();
 
@@ -41,6 +59,7 @@ export function useUpdateTaskAssignee() {
             ...current,
             ...(value as AssigneeFields),
           }),
+          equalAssigneeFields,
         );
         return { version };
       };
